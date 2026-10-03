@@ -10,13 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as FormularioRouteImport } from './routes/formulario'
-import { Route as HomeRouteImport } from './routes/home'
-import { Route as MinhasCaronasRouteImport } from './routes/minhas-caronas'
-import { Route as OferecerRouteImport } from './routes/oferecer'
-import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
+import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
+import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
+import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
@@ -29,9 +32,18 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuscarRoute = BuscarRouteImport.update({
@@ -68,7 +80,7 @@ const AuthenticatedOferecerRoute = AuthenticatedOferecerRouteImport.update({
 const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
@@ -106,12 +118,14 @@ const AdminFormulariosRespostasIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/home': typeof HomeRoute
-  '/minhas-caronas': typeof MinhasCaronasRoute
-  '/oferecer': typeof OferecerRoute
-  '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/home': typeof AuthenticatedHomeRoute
+  '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
+  '/oferecer': typeof AuthenticatedOferecerRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
@@ -124,10 +138,11 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/home': typeof HomeRoute
-  '/minhas-caronas': typeof MinhasCaronasRoute
-  '/oferecer': typeof OferecerRoute
-  '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/home': typeof AuthenticatedHomeRoute
+  '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
+  '/oferecer': typeof AuthenticatedOferecerRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
@@ -138,13 +153,16 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/home': typeof HomeRoute
-  '/minhas-caronas': typeof MinhasCaronasRoute
-  '/oferecer': typeof OferecerRoute
-  '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/home': typeof AuthenticatedHomeRoute
+  '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
+  '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
+  '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
@@ -157,6 +175,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/auth'
     | '/buscar'
     | '/formulario'
     | '/reset-password'
@@ -190,13 +209,16 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/admin'
+    | '/auth'
     | '/buscar'
     | '/formulario'
-    | '/home'
-    | '/minhas-caronas'
-    | '/oferecer'
-    | '/perfil'
+    | '/reset-password'
+    | '/_authenticated/home'
+    | '/_authenticated/minhas-caronas'
+    | '/_authenticated/oferecer'
+    | '/_authenticated/perfil'
     | '/admin/'
     | '/admin/usuarios/$id'
     | '/admin/formularios/'
@@ -207,7 +229,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  AuthRoute: typeof AuthRoute
   BuscarRoute: typeof BuscarRoute
   FormularioRoute: typeof FormularioRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -222,11 +246,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/buscar': {
@@ -275,8 +313,8 @@ declare module '@tanstack/react-router' {
       id: '/_authenticated/perfil'
       path: '/perfil'
       fullPath: '/perfil'
-      preLoaderRoute: typeof PerfilRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/admin/': {
       id: '/admin/'
@@ -323,6 +361,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
+  AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
+  AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
+  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedHomeRoute: AuthenticatedHomeRoute,
+  AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
+  AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
+  AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 interface AdminRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
@@ -345,7 +400,9 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  AuthRoute: AuthRoute,
   BuscarRoute: BuscarRoute,
   FormularioRoute: FormularioRoute,
   ResetPasswordRoute: ResetPasswordRoute,

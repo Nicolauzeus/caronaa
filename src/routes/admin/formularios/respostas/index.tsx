@@ -1,6 +1,6 @@
 import { Download, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,19 @@ import { adminService } from "@/mockData";
 
 const sources = ["all", "STS2026", "UNIFOR", "Instagram", "QR Code", "Direct"];
 
-export const Route = {
+export const Route = createFileRoute("/admin/formularios/respostas/")({
+  head: () => ({
+    meta: [
+      { title: "Respostas — Administração CARONAA" },
+      { name: "description", content: "Consulte as respostas dos formulários do CARONAA." },
+      { property: "og:title", content: "Respostas — Administração CARONAA" },
+      { property: "og:description", content: "Consulte as respostas dos formulários do CARONAA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminResponsesPage,
-};
+});
 
 function exportCsv(rows: ReturnType<typeof adminService.listSurveyResponses>) {
   const header = ["id", "participante", "perfil", "cidade", "contato", "origem", "data", "status"];

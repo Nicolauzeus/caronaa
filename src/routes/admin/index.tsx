@@ -1,13 +1,23 @@
 import { ArrowRight, Activity, BellRing, FileText, Gauge, ShieldCheck, Users } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminOverview } from "@/mockData";
 
-export const Route = {
+export const Route = createFileRoute("/admin/")({
+  head: () => ({
+    meta: [
+      { title: "Administração — CARONAA" },
+      { name: "description", content: "Visão geral da operação do CARONAA." },
+      { property: "og:title", content: "Administração — CARONAA" },
+      { property: "og:description", content: "Visão geral da operação do CARONAA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: DashboardPage,
-};
+});
 
 function DashboardPage() {
   const { metrics, funnel, activity, pending, quickActions } = adminOverview;
