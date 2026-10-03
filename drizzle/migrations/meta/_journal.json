@@ -15,6 +15,20 @@
       "when": 1791064988746,
       "tag": "0001_secure_existing_tables_and_profile_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791066828245,
+      "tag": "0002_add_secure_user_roles_and_repair_profile_trigger",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791066886973,
+      "tag": "0003_allow_auth_service_to_create_profiles",
+      "breakpoints": true
     }
   ]
 }
