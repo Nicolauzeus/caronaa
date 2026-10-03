@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as FormularioRouteImport } from './routes/formulario'
@@ -22,6 +23,10 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -45,25 +50,25 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
-  id: '/_authenticated/home',
+  id: '/home',
   path: '/home',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMinhasCaronasRoute =
   AuthenticatedMinhasCaronasRouteImport.update({
-    id: '/_authenticated/minhas-caronas',
+    id: '/minhas-caronas',
     path: '/minhas-caronas',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOferecerRoute = AuthenticatedOferecerRouteImport.update({
-  id: '/_authenticated/oferecer',
+  id: '/oferecer',
   path: '/oferecer',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
-  id: '/_authenticated/perfil',
+  id: '/perfil',
   path: '/perfil',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -91,6 +96,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
@@ -126,6 +132,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/auth'
     | '/buscar'
     | '/formulario'
@@ -138,14 +145,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   BuscarRoute: typeof BuscarRoute
   FormularioRoute: typeof FormularioRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
-  AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
-  AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
-  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -155,6 +159,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -190,42 +201,56 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof AuthenticatedHomeRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/minhas-caronas': {
       id: '/_authenticated/minhas-caronas'
       path: '/minhas-caronas'
       fullPath: '/minhas-caronas'
       preLoaderRoute: typeof AuthenticatedMinhasCaronasRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/oferecer': {
       id: '/_authenticated/oferecer'
       path: '/oferecer'
       fullPath: '/oferecer'
       preLoaderRoute: typeof AuthenticatedOferecerRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/perfil': {
       id: '/_authenticated/perfil'
       path: '/perfil'
       fullPath: '/perfil'
       preLoaderRoute: typeof AuthenticatedPerfilRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AuthRoute: AuthRoute,
-  BuscarRoute: BuscarRoute,
-  FormularioRoute: FormularioRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
+  AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
+  AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
+  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  BuscarRoute: BuscarRoute,
+  FormularioRoute: FormularioRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
