@@ -8,6 +8,13 @@
       "when": 1791064899140,
       "tag": "0000_create_user_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791064988746,
+      "tag": "0001_secure_existing_tables_and_profile_trigger",
+      "breakpoints": true
     }
   ]
 }
