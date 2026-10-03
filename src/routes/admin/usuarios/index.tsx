@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,19 @@ const filters = [
   { label: "Bloqueados", value: "bloqueados" },
 ];
 
-export const Route = {
+export const Route = createFileRoute("/admin/usuarios/")({
+  head: () => ({
+    meta: [
+      { title: "Usuários — Administração CARONAA" },
+      { name: "description", content: "Gerencie os usuários da comunidade CARONAA." },
+      { property: "og:title", content: "Usuários — Administração CARONAA" },
+      { property: "og:description", content: "Gerencie os usuários da comunidade CARONAA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminUsersPage,
-};
+});
 
 function AdminUsersPage() {
   const [query, setQuery] = useState("");

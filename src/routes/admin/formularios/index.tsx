@@ -1,13 +1,23 @@
 import { ArrowRight, FileText, Filter, Users } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminLeadSources, adminValidationSummary } from "@/mockData";
 
-export const Route = {
+export const Route = createFileRoute("/admin/formularios/")({
+  head: () => ({
+    meta: [
+      { title: "Formulários — Administração CARONAA" },
+      { name: "description", content: "Acompanhe os formulários de validação do CARONAA." },
+      { property: "og:title", content: "Formulários — Administração CARONAA" },
+      { property: "og:description", content: "Acompanhe os formulários de validação do CARONAA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminFormsPage,
-};
+});
 
 function AdminFormsPage() {
   return (
