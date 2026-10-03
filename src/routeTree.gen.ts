@@ -13,11 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as FormularioRouteImport } from './routes/formulario'
-import { Route as HomeRouteImport } from './routes/home'
-import { Route as MinhasCaronasRouteImport } from './routes/minhas-caronas'
-import { Route as OferecerRouteImport } from './routes/oferecer'
-import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
+import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
+import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
+import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,29 +39,30 @@ const FormularioRoute = FormularioRouteImport.update({
   path: '/formulario',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HomeRoute = HomeRouteImport.update({
-  id: '/home',
-  path: '/home',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MinhasCaronasRoute = MinhasCaronasRouteImport.update({
-  id: '/minhas-caronas',
-  path: '/minhas-caronas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OferecerRoute = OferecerRouteImport.update({
-  id: '/oferecer',
-  path: '/oferecer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PerfilRoute = PerfilRouteImport.update({
-  id: '/perfil',
-  path: '/perfil',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
+  id: '/_authenticated/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedMinhasCaronasRoute =
+  AuthenticatedMinhasCaronasRouteImport.update({
+    id: '/_authenticated/minhas-caronas',
+    path: '/minhas-caronas',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedOferecerRoute = AuthenticatedOferecerRouteImport.update({
+  id: '/_authenticated/oferecer',
+  path: '/oferecer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
+  id: '/_authenticated/perfil',
+  path: '/perfil',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -70,22 +71,22 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/home': typeof HomeRoute
-  '/minhas-caronas': typeof MinhasCaronasRoute
-  '/oferecer': typeof OferecerRoute
-  '/perfil': typeof PerfilRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/home': typeof AuthenticatedHomeRoute
+  '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
+  '/oferecer': typeof AuthenticatedOferecerRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/home': typeof HomeRoute
-  '/minhas-caronas': typeof MinhasCaronasRoute
-  '/oferecer': typeof OferecerRoute
-  '/perfil': typeof PerfilRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/home': typeof AuthenticatedHomeRoute
+  '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
+  '/oferecer': typeof AuthenticatedOferecerRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -93,11 +94,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/home': typeof HomeRoute
-  '/minhas-caronas': typeof MinhasCaronasRoute
-  '/oferecer': typeof OferecerRoute
-  '/perfil': typeof PerfilRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/home': typeof AuthenticatedHomeRoute
+  '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
+  '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
+  '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -106,33 +107,33 @@ export interface FileRouteTypes {
     | '/auth'
     | '/buscar'
     | '/formulario'
+    | '/reset-password'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
-    | '/reset-password'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/buscar'
     | '/formulario'
+    | '/reset-password'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
-    | '/reset-password'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/buscar'
     | '/formulario'
-    | '/home'
-    | '/minhas-caronas'
-    | '/oferecer'
-    | '/perfil'
     | '/reset-password'
+    | '/_authenticated/home'
+    | '/_authenticated/minhas-caronas'
+    | '/_authenticated/oferecer'
+    | '/_authenticated/perfil'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -140,11 +141,11 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BuscarRoute: typeof BuscarRoute
   FormularioRoute: typeof FormularioRoute
-  HomeRoute: typeof HomeRoute
-  MinhasCaronasRoute: typeof MinhasCaronasRoute
-  OferecerRoute: typeof OferecerRoute
-  PerfilRoute: typeof PerfilRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
+  AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
+  AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
+  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -177,39 +178,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormularioRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/minhas-caronas': {
-      id: '/minhas-caronas'
-      path: '/minhas-caronas'
-      fullPath: '/minhas-caronas'
-      preLoaderRoute: typeof MinhasCaronasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/oferecer': {
-      id: '/oferecer'
-      path: '/oferecer'
-      fullPath: '/oferecer'
-      preLoaderRoute: typeof OferecerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/perfil': {
-      id: '/perfil'
-      path: '/perfil'
-      fullPath: '/perfil'
-      preLoaderRoute: typeof PerfilRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/home': {
+      id: '/_authenticated/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof AuthenticatedHomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/minhas-caronas': {
+      id: '/_authenticated/minhas-caronas'
+      path: '/minhas-caronas'
+      fullPath: '/minhas-caronas'
+      preLoaderRoute: typeof AuthenticatedMinhasCaronasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/oferecer': {
+      id: '/_authenticated/oferecer'
+      path: '/oferecer'
+      fullPath: '/oferecer'
+      preLoaderRoute: typeof AuthenticatedOferecerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/perfil': {
+      id: '/_authenticated/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -220,11 +221,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BuscarRoute: BuscarRoute,
   FormularioRoute: FormularioRoute,
-  HomeRoute: HomeRoute,
-  MinhasCaronasRoute: MinhasCaronasRoute,
-  OferecerRoute: OferecerRoute,
-  PerfilRoute: PerfilRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  AuthenticatedHomeRoute: AuthenticatedHomeRoute,
+  AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
+  AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
+  AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
