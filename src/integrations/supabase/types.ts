@@ -14,7 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      teste_backup_caronaa: {
+        Row: {
+          criado_em: string
+          email: string | null
+          id: number
+          nome: string
+          observacao: string | null
+          origem: string | null
+        }
+        Insert: {
+          criado_em?: string
+          email?: string | null
+          id?: number
+          nome: string
+          observacao?: string | null
+          origem?: string | null
+        }
+        Update: {
+          criado_em?: string
+          email?: string | null
+          id?: number
+          nome?: string
+          observacao?: string | null
+          origem?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
