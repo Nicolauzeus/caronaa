@@ -10,16 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as FormularioRouteImport } from './routes/formulario'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as MinhasCaronasRouteImport } from './routes/minhas-caronas'
 import { Route as OferecerRouteImport } from './routes/oferecer'
 import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuscarRoute = BuscarRouteImport.update({
@@ -52,73 +59,92 @@ const PerfilRoute = PerfilRouteImport.update({
   path: '/perfil',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
   '/home': typeof HomeRoute
   '/minhas-caronas': typeof MinhasCaronasRoute
   '/oferecer': typeof OferecerRoute
   '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
   '/home': typeof HomeRoute
   '/minhas-caronas': typeof MinhasCaronasRoute
   '/oferecer': typeof OferecerRoute
   '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
   '/home': typeof HomeRoute
   '/minhas-caronas': typeof MinhasCaronasRoute
   '/oferecer': typeof OferecerRoute
   '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/buscar'
     | '/formulario'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/reset-password'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/buscar'
     | '/formulario'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/reset-password'
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/buscar'
     | '/formulario'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/reset-password'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   BuscarRoute: typeof BuscarRoute
   FormularioRoute: typeof FormularioRoute
   HomeRoute: typeof HomeRoute
   MinhasCaronasRoute: typeof MinhasCaronasRoute
   OferecerRoute: typeof OferecerRoute
   PerfilRoute: typeof PerfilRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/buscar': {
@@ -172,17 +205,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PerfilRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   BuscarRoute: BuscarRoute,
   FormularioRoute: FormularioRoute,
   HomeRoute: HomeRoute,
   MinhasCaronasRoute: MinhasCaronasRoute,
   OferecerRoute: OferecerRoute,
   PerfilRoute: PerfilRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
