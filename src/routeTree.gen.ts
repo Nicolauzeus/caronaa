@@ -10,28 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as FormularioRouteImport } from './routes/formulario'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
-import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
-import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
-import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as MinhasCaronasRouteImport } from './routes/minhas-caronas'
+import { Route as OferecerRouteImport } from './routes/oferecer'
+import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
+import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
+import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
+import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
+import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuscarRoute = BuscarRouteImport.update({
@@ -68,49 +68,95 @@ const AuthenticatedOferecerRoute = AuthenticatedOferecerRouteImport.update({
 const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFormulariosIndexRoute = AdminFormulariosIndexRouteImport.update({
+  id: '/formularios/',
+  path: '/formularios/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsuariosIndexRoute = AdminUsuariosIndexRouteImport.update({
+  id: '/usuarios/',
+  path: '/usuarios/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsuariosIdRoute = AdminUsuariosIdRouteImport.update({
+  id: '/usuarios/$id',
+  path: '/usuarios/$id',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFormulariosRespostasIndexRoute =
+  AdminFormulariosRespostasIndexRouteImport.update({
+    id: '/formularios/respostas/',
+    path: '/formularios/respostas/',
+    getParentRoute: () => AdminRoute,
+  } as any)
+const AdminFormulariosRespostasIdRoute =
+  AdminFormulariosRespostasIdRouteImport.update({
+    id: '/formularios/respostas/$id',
+    path: '/formularios/respostas/$id',
+    getParentRoute: () => AdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/admin': typeof AdminRouteWithChildren
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/home': typeof AuthenticatedHomeRoute
-  '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
-  '/oferecer': typeof AuthenticatedOferecerRoute
-  '/perfil': typeof AuthenticatedPerfilRoute
+  '/home': typeof HomeRoute
+  '/minhas-caronas': typeof MinhasCaronasRoute
+  '/oferecer': typeof OferecerRoute
+  '/perfil': typeof PerfilRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
+  '/admin/formularios/': typeof AdminFormulariosIndexRoute
+  '/admin/usuarios/': typeof AdminUsuariosIndexRoute
+  '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
+  '/admin/formularios/respostas/': typeof AdminFormulariosRespostasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/home': typeof AuthenticatedHomeRoute
-  '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
-  '/oferecer': typeof AuthenticatedOferecerRoute
-  '/perfil': typeof AuthenticatedPerfilRoute
+  '/home': typeof HomeRoute
+  '/minhas-caronas': typeof MinhasCaronasRoute
+  '/oferecer': typeof OferecerRoute
+  '/perfil': typeof PerfilRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
+  '/admin/formularios': typeof AdminFormulariosIndexRoute
+  '/admin/usuarios': typeof AdminUsuariosIndexRoute
+  '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
+  '/admin/formularios/respostas': typeof AdminFormulariosRespostasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/admin': typeof AdminRouteWithChildren
   '/buscar': typeof BuscarRoute
   '/formulario': typeof FormularioRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/_authenticated/home': typeof AuthenticatedHomeRoute
-  '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
-  '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
-  '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/home': typeof HomeRoute
+  '/minhas-caronas': typeof MinhasCaronasRoute
+  '/oferecer': typeof OferecerRoute
+  '/perfil': typeof PerfilRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
+  '/admin/formularios/': typeof AdminFormulariosIndexRoute
+  '/admin/usuarios/': typeof AdminUsuariosIndexRoute
+  '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
+  '/admin/formularios/respostas/': typeof AdminFormulariosRespostasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/auth'
+    | '/admin'
     | '/buscar'
     | '/formulario'
     | '/reset-password'
@@ -118,6 +164,12 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/'
+    | '/admin/usuarios/$id'
+    | '/admin/formularios/'
+    | '/admin/usuarios/'
+    | '/admin/formularios/respostas/$id'
+    | '/admin/formularios/respostas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -129,24 +181,33 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin'
+    | '/admin/usuarios/$id'
+    | '/admin/formularios'
+    | '/admin/usuarios'
+    | '/admin/formularios/respostas/$id'
+    | '/admin/formularios/respostas'
   id:
     | '__root__'
     | '/'
-    | '/_authenticated'
-    | '/auth'
+    | '/admin'
     | '/buscar'
     | '/formulario'
-    | '/reset-password'
-    | '/_authenticated/home'
-    | '/_authenticated/minhas-caronas'
-    | '/_authenticated/oferecer'
-    | '/_authenticated/perfil'
+    | '/home'
+    | '/minhas-caronas'
+    | '/oferecer'
+    | '/perfil'
+    | '/admin/'
+    | '/admin/usuarios/$id'
+    | '/admin/formularios/'
+    | '/admin/usuarios/'
+    | '/admin/formularios/respostas/$id'
+    | '/admin/formularios/respostas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AdminRoute: typeof AdminRouteWithChildren
   BuscarRoute: typeof BuscarRoute
   FormularioRoute: typeof FormularioRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -161,18 +222,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/buscar': {
@@ -221,33 +275,77 @@ declare module '@tanstack/react-router' {
       id: '/_authenticated/perfil'
       path: '/perfil'
       fullPath: '/perfil'
-      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/formularios/': {
+      id: '/admin/formularios/'
+      path: '/formularios'
+      fullPath: '/admin/formularios/'
+      preLoaderRoute: typeof AdminFormulariosIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/usuarios/': {
+      id: '/admin/usuarios/'
+      path: '/usuarios'
+      fullPath: '/admin/usuarios/'
+      preLoaderRoute: typeof AdminUsuariosIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/usuarios/$id': {
+      id: '/admin/usuarios/$id'
+      path: '/usuarios/$id'
+      fullPath: '/admin/usuarios/$id'
+      preLoaderRoute: typeof AdminUsuariosIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/formularios/respostas/': {
+      id: '/admin/formularios/respostas/'
+      path: '/formularios/respostas'
+      fullPath: '/admin/formularios/respostas/'
+      preLoaderRoute: typeof AdminFormulariosRespostasIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/formularios/respostas/$id': {
+      id: '/admin/formularios/respostas/$id'
+      path: '/formularios/respostas/$id'
+      fullPath: '/admin/formularios/respostas/$id'
+      preLoaderRoute: typeof AdminFormulariosRespostasIdRouteImport
+      parentRoute: typeof AdminRoute
     }
   }
 }
 
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
-  AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
-  AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
-  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
+  AdminFormulariosIndexRoute: typeof AdminFormulariosIndexRoute
+  AdminUsuariosIndexRoute: typeof AdminUsuariosIndexRoute
+  AdminFormulariosRespostasIdRoute: typeof AdminFormulariosRespostasIdRoute
+  AdminFormulariosRespostasIndexRoute: typeof AdminFormulariosRespostasIndexRoute
 }
 
-const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedHomeRoute: AuthenticatedHomeRoute,
-  AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
-  AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
-  AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+  AdminUsuariosIdRoute: AdminUsuariosIdRoute,
+  AdminFormulariosIndexRoute: AdminFormulariosIndexRoute,
+  AdminUsuariosIndexRoute: AdminUsuariosIndexRoute,
+  AdminFormulariosRespostasIdRoute: AdminFormulariosRespostasIdRoute,
+  AdminFormulariosRespostasIndexRoute: AdminFormulariosRespostasIndexRoute,
 }
 
-const AuthenticatedRouteRouteWithChildren =
-  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AdminRoute: AdminRouteWithChildren,
   BuscarRoute: BuscarRoute,
   FormularioRoute: FormularioRoute,
   ResetPasswordRoute: ResetPasswordRoute,
