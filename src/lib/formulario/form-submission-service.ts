@@ -12,9 +12,20 @@ type StablePainCode = (typeof stablePainCodes)[number];
 
 type FormSubmissionInsert = TablesInsert<"form_submissions">;
 type FormPainInsert = TablesInsert<"form_submission_pain_points">;
+type FormStartInsert = TablesInsert<"form_starts">;
 
 export type FormSubmissionRow = Tables<"form_submissions"> & {
   pain_points: Tables<"form_submission_pain_points">[];
+};
+
+export type RegisterFormStartInput = {
+  userId: string | null;
+  source?: string;
+  campaign?: string | null;
+  campaignEvent?: string;
+  tipoUsuario?: FormStartInsert["tipo_usuario"];
+  ocupacao?: string | null;
+  rawPayload?: FormStartInsert["raw_payload"];
 };
 
 function isStablePainCode(value: PainPointCode | null | undefined): value is StablePainCode {
@@ -117,6 +128,33 @@ export async function saveFormSubmission(payload: CaronaaStsSubmission, userId: 
 
   if (painError) {
     throw new Error(`Não foi possível salvar as dores da resposta: ${painError.message}`);
+  }
+}
+
+export async function registerFormStart({
+  userId,
+  source = "sts-2026",
+  campaign = null,
+  campaignEvent = "Siará Tech Summit 2026",
+  tipoUsuario = null,
+  ocupacao = null,
+  rawPayload = {},
+}: RegisterFormStartInput) {
+  const row: FormStartInsert = {
+    user_id: userId,
+    anonymous_session_id: userId ? null : getAnonymousSessionId(),
+    source,
+    campaign,
+    campaign_event: campaignEvent,
+    tipo_usuario: tipoUsuario,
+    ocupacao,
+    raw_payload: rawPayload,
+  };
+
+  const { error } = await supabase.from("form_starts").insert(row);
+
+  if (error) {
+    throw new Error(`Não foi possível registrar o início do formulário: ${error.message}`);
   }
 }
 

@@ -43,6 +43,13 @@
       "when": 1791080000000,
       "tag": "0005_create_form_bi_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791080100000,
+      "tag": "0006_create_form_metrics_layer",
+      "breakpoints": true
     }
   ]
 }

@@ -118,6 +118,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      form_starts: {
+        Row: {
+          anonymous_session_id: string | null;
+          campaign: string | null;
+          campaign_event: string;
+          created_at: string;
+          ocupacao: string | null;
+          raw_payload: Json;
+          source: string;
+          start_id: string;
+          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+          user_id: string | null;
+        };
+        Insert: {
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event: string;
+          created_at?: string;
+          ocupacao?: string | null;
+          raw_payload?: Json;
+          source: string;
+          start_id?: string;
+          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+          user_id?: string | null;
+        };
+        Update: {
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event?: string;
+          created_at?: string;
+          ocupacao?: string | null;
+          raw_payload?: Json;
+          source?: string;
+          start_id?: string;
+          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -198,6 +237,18 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_form_metrics: {
+        Args: {
+          p_campaign?: string | null;
+          p_event?: string | null;
+          p_ocupacao?: string | null;
+          p_period_end?: string | null;
+          p_period_start?: string | null;
+          p_source?: string | null;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+        };
+        Returns: Json;
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
