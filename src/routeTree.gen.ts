@@ -25,6 +25,7 @@ import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
+import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
 import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
 import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
 
@@ -108,6 +109,11 @@ const AdminUsuariosIdRoute = AdminUsuariosIdRouteImport.update({
   path: '/usuarios/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminValidacaoPainIdRoute = AdminValidacaoPainIdRouteImport.update({
+  id: '/$painId',
+  path: '/$painId',
+  getParentRoute: () => AdminValidacaoRoute,
+} as any)
 const AdminFormulariosRespostasIndexRoute =
   AdminFormulariosRespostasIndexRouteImport.update({
     id: '/formularios/respostas/',
@@ -132,9 +138,10 @@ export interface FileRoutesByFullPath {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
-  '/admin/validacao': typeof AdminValidacaoRoute
+  '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
+  '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
@@ -150,9 +157,10 @@ export interface FileRoutesByTo {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
-  '/admin/validacao': typeof AdminValidacaoRoute
+  '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
+  '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
@@ -171,9 +179,10 @@ export interface FileRoutesById {
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
-  '/admin/validacao': typeof AdminValidacaoRoute
+  '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
+  '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
+    | '/admin/validacao/$painId'
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/admin/formularios/respostas/$id'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/admin/validacao'
     | '/admin'
     | '/admin/usuarios/$id'
+    | '/admin/validacao/$painId'
     | '/admin/formularios'
     | '/admin/usuarios'
     | '/admin/formularios/respostas/$id'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
+    | '/admin/validacao/$painId'
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/admin/formularios/respostas/$id'
@@ -363,6 +375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsuariosIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/validacao/$painId': {
+      id: '/admin/validacao/$painId'
+      path: '/$painId'
+      fullPath: '/admin/validacao/$painId'
+      preLoaderRoute: typeof AdminValidacaoPainIdRouteImport
+      parentRoute: typeof AdminValidacaoRoute
+    }
     '/admin/formularios/respostas/': {
       id: '/admin/formularios/respostas/'
       path: '/formularios/respostas'
@@ -397,8 +416,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AdminValidacaoRouteChildren {
+  AdminValidacaoPainIdRoute: typeof AdminValidacaoPainIdRoute
+}
+
+const AdminValidacaoRouteChildren: AdminValidacaoRouteChildren = {
+  AdminValidacaoPainIdRoute: AdminValidacaoPainIdRoute,
+}
+
+const AdminValidacaoRouteWithChildren = AdminValidacaoRoute._addFileChildren(
+  AdminValidacaoRouteChildren,
+)
+
 interface AdminRouteChildren {
-  AdminValidacaoRoute: typeof AdminValidacaoRoute
+  AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
   AdminFormulariosIndexRoute: typeof AdminFormulariosIndexRoute
@@ -408,7 +439,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminValidacaoRoute: AdminValidacaoRoute,
+  AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
   AdminFormulariosIndexRoute: AdminFormulariosIndexRoute,

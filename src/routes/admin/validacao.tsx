@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertCircle, Filter, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
@@ -483,15 +483,21 @@ function MarketValidationPage() {
                 painRows.map((pain, index) => (
                   <TableRow key={pain.codigoDor}>
                     <TableCell className="px-4 py-4">
-                      <div className="flex items-start gap-3">
+                      <Link
+                        to="/admin/validacao/$painId"
+                        params={{ painId: pain.codigoDor }}
+                        className="flex items-start gap-3 rounded-lg outline-none ring-primary transition-colors hover:text-primary focus-visible:ring-2"
+                      >
                         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                           {index + 1}
                         </span>
                         <div>
                           <p className="font-semibold text-foreground">{pain.label}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{pain.codigoDor}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {pain.codigoDor} · abrir análise detalhada
+                          </p>
                         </div>
-                      </div>
+                      </Link>
                     </TableCell>
                     <TableCell className="px-4 py-4 text-right font-semibold">
                       {formatPercent(pain.selectedPercentage)}
