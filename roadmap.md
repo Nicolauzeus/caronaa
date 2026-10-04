@@ -1,3 +1,6 @@
+- [x] Rebuild the sign-in screen from the supplied visual reference.
+- [x] Add persistent light and dark modes across the app and admin area.
+- [x] Verify administrator access uses the secure database role.
 - [x] Create CARONAA visual identity and shared navigation.
 - [x] Build landing, home, search, offer, rides, profile, and validation placeholder routes with centralized sample data.
 - [x] Verify route navigation and responsive rendering.

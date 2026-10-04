@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 
 const nav = [
   { to: "/home" as const, label: "Início", icon: House },
@@ -62,6 +63,7 @@ export function AppShell({
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <ThemeToggle className="hidden md:inline-flex" />
             <Button asChild className="hidden h-9 rounded-lg px-4 font-semibold xl:inline-flex">
               <Link to="/formulario">
                 Validação Siará Tech Summit <ArrowUpRight size={16} />
