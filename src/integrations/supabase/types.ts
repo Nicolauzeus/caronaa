@@ -8,6 +8,45 @@ export type Database = {
   };
   public: {
     Tables: {
+      form_funnel_events: {
+        Row: {
+          anonymous_session_id: string;
+          campaign: string | null;
+          campaign_event: string;
+          created_at: string;
+          event_id: string;
+          event_name: string;
+          event_step: string | null;
+          idempotency_key: string;
+          source: string;
+          user_id: string | null;
+        };
+        Insert: {
+          anonymous_session_id: string;
+          campaign?: string | null;
+          campaign_event: string;
+          created_at?: string;
+          event_id?: string;
+          event_name: string;
+          event_step?: string | null;
+          idempotency_key: string;
+          source: string;
+          user_id?: string | null;
+        };
+        Update: {
+          anonymous_session_id?: string;
+          campaign?: string | null;
+          campaign_event?: string;
+          created_at?: string;
+          event_id?: string;
+          event_name?: string;
+          event_step?: string | null;
+          idempotency_key?: string;
+          source?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       form_submission_pain_points: {
         Row: {
           codigo_dor: Database["public"]["Enums"]["form_dor_codigo"];
@@ -46,6 +85,7 @@ export type Database = {
       form_submissions: {
         Row: {
           anonymous_session_id: string | null;
+          campaign: string | null;
           campaign_event: string;
           consentimento: boolean;
           created_at: string;
@@ -70,6 +110,7 @@ export type Database = {
         };
         Insert: {
           anonymous_session_id?: string | null;
+          campaign?: string | null;
           campaign_event: string;
           consentimento?: boolean;
           created_at?: string;
@@ -94,6 +135,7 @@ export type Database = {
         };
         Update: {
           anonymous_session_id?: string | null;
+          campaign?: string | null;
           campaign_event?: string;
           consentimento?: boolean;
           created_at?: string;
@@ -237,6 +279,18 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_form_funnel_metrics: {
+        Args: {
+          p_campaign?: string | null;
+          p_event?: string | null;
+          p_ocupacao?: string | null;
+          p_period_end?: string | null;
+          p_period_start?: string | null;
+          p_source?: string | null;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+        };
+        Returns: Json;
+      };
       get_form_metrics: {
         Args: {
           p_campaign?: string | null;

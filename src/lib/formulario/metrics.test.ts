@@ -50,9 +50,13 @@ describe("form metrics", () => {
     const summary = buildFormMetricsSummary({ started: 4, submissions });
 
     expect(summary.totals).toEqual({
+      reached: 4,
       started: 4,
       completed: 3,
+      leads: 3,
+      startRate: 100,
       completionRate: 75,
+      leadRate: 100,
       passageiros: 1,
       motoristas: 1,
       ambos: 1,

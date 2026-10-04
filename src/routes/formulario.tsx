@@ -33,6 +33,7 @@ import { caronaaStsFormSchema } from "@/lib/formulario/schema";
 import { prepareSubmission } from "@/lib/formulario/submission";
 import { saveFormSubmission } from "@/lib/formulario/form-submission-service";
 import { useAuth } from "@/lib/auth-context";
+import { getFormAttribution, trackFunnelEvent } from "@/lib/formulario/funnel-analytics";
 
 export const Route = createFileRoute("/formulario")({
   head: () => ({
@@ -65,12 +66,13 @@ export const Route = createFileRoute("/formulario")({
   component: Formulario,
 });
 
-const initialData: CaronaaStsFormData = {
-  source: "sts-2026",
-};
-
 function Formulario() {
   const { user } = useAuth();
+  const attribution = React.useMemo(getFormAttribution, []);
+  const initialData = React.useMemo<CaronaaStsFormData>(
+    () => ({ source: attribution.source, campaign: attribution.campaign }),
+    [attribution],
+  );
 
   const [step, setStep] = React.useState<FormStep>("INTRO");
 
@@ -81,6 +83,10 @@ function Formulario() {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const progress = getProgressPercentage(step, data);
+
+  React.useEffect(() => {
+    void trackFunnelEvent({ name: "landing_view", attribution, userId: user?.id ?? null }).catch(() => undefined);
+  }, [attribution, user?.id]);
 
   function updateData(patch: Partial<CaronaaStsFormData>) {
     setData((current) => ({
@@ -132,6 +138,12 @@ function Formulario() {
     const next = getNextStep(step, data);
 
     if (next) {
+      void trackFunnelEvent({
+        name: "form_step_completed",
+        attribution,
+        userId: user?.id ?? null,
+        step,
+      }).catch(() => undefined);
       setStep(next);
       window.scrollTo({
         top: 0,
@@ -183,6 +195,13 @@ function Formulario() {
 
       await saveFormSubmission(payload, user?.id ?? null);
 
+      // Analytics must not block a valid lead if the telemetry endpoint is temporarily unavailable.
+      void Promise.all([
+        trackFunnelEvent({ name: "form_step_completed", attribution, userId: user?.id ?? null, step: "CONTACT" }),
+        trackFunnelEvent({ name: "form_completed", attribution, userId: user?.id ?? null }),
+        trackFunnelEvent({ name: "lead_created", attribution, userId: user?.id ?? null }),
+      ]).catch(() => undefined);
+
       setData((current) => ({
         ...current,
         submissionId: payload.submissionId,
@@ -231,7 +250,14 @@ function Formulario() {
           </div>
         ) : null}
 
-        {step === "INTRO" ? <FormIntro onStart={() => setStep("PROFILE_ROUTE")} /> : null}
+        {step === "INTRO" ? (
+          <FormIntro
+            onStart={() => {
+              void trackFunnelEvent({ name: "form_started", attribution, userId: user?.id ?? null }).catch(() => undefined);
+              setStep("PROFILE_ROUTE");
+            }}
+          />
+        ) : null}
 
         {step === "PROFILE_ROUTE" ? (
           <ProfileRouteStep

@@ -79,6 +79,7 @@ function buildFormSubmissionRow(
     user_id: userId,
     anonymous_session_id: userId ? null : getAnonymousSessionId(),
     source: payload.source,
+    campaign: payload.campaign,
     campaign_event: "Siará Tech Summit 2026",
     created_at: payload.createdAt,
     tipo_usuario: payload.intent,

@@ -57,7 +57,8 @@ export type PriceRange =
 export type CommitmentLevel = "SIM_HOJE" | "QUERO_VER_MATCH" | "NAO_HOJE";
 
 export interface CaronaaStsFormData {
-  source: "sts-2026";
+  source: string;
+  campaign?: string | null;
 
   intent?: CaronaaIntent | undefined;
 

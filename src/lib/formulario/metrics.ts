@@ -12,9 +12,13 @@ export type FormMetricsFilters = {
 };
 
 export type FormMetricsTotals = {
+  reached: number;
   started: number;
   completed: number;
+  leads: number;
+  startRate: number;
   completionRate: number;
+  leadRate: number;
   passageiros: number;
   motoristas: number;
   ambos: number;
@@ -114,9 +118,13 @@ export function buildFormMetricsSummary({
     custoAtualFaixa: {},
   };
   const totals: FormMetricsTotals = {
+    reached: started,
     started,
     completed,
+    leads: completed,
+    startRate: 100,
     completionRate: started === 0 ? 0 : roundPercent((completed / started) * 100),
+    leadRate: completed === 0 ? 0 : 100,
     passageiros: 0,
     motoristas: 0,
     ambos: 0,
@@ -210,5 +218,26 @@ export async function getFormMetrics(filters: FormMetricsFilters = {}) {
     throw new Error(`Não foi possível carregar métricas do formulário: ${error.message}`);
   }
 
-  return data as FormMetricsSummary;
+  const summary = data as FormMetricsSummary;
+  const { data: funnelData, error: funnelError } = await supabase.rpc("get_form_funnel_metrics", {
+    p_period_start: filters.periodStart ?? null,
+    p_period_end: filters.periodEnd ?? null,
+    p_source: filters.source ?? null,
+    p_campaign: filters.campaign ?? null,
+    p_event: filters.event ?? null,
+    p_tipo_usuario: filters.tipoUsuario ?? null,
+    p_ocupacao: filters.ocupacao ?? null,
+  });
+
+  if (funnelError) {
+    throw new Error(`Não foi possível carregar métricas do funil: ${funnelError.message}`);
+  }
+
+  return {
+    ...summary,
+    totals: {
+      ...summary.totals,
+      ...((funnelData as { totals: Pick<FormMetricsTotals, "reached" | "started" | "completed" | "leads" | "startRate" | "completionRate" | "leadRate"> }).totals),
+    },
+  };
 }

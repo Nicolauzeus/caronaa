@@ -245,13 +245,14 @@ function MarketValidationPage() {
 
   const completed = metrics?.totals.completed ?? 0;
   const topMetrics = [
-    { label: "Pessoas alcançadas", value: "N/D", detail: "Sem evento de alcance conectado" },
-    { label: "Formulários iniciados", value: formatNumber(metrics?.totals.started) },
-    { label: "Formulários concluídos", value: formatNumber(metrics?.totals.completed) },
+    { label: "Pessoas alcançadas", value: formatNumber(metrics?.totals.reached) },
+    { label: "Formulários iniciados", value: formatNumber(metrics?.totals.started), detail: metrics ? `${formatPercent(metrics.totals.startRate)} dos alcançados` : undefined },
+    { label: "Formulários concluídos", value: formatNumber(metrics?.totals.completed), detail: metrics ? `${formatPercent(metrics.totals.completionRate)} dos iniciados` : undefined },
     {
       label: "Taxa de conclusão",
       value: metrics ? formatPercent(metrics.totals.completionRate) : "N/D",
     },
+    { label: "Viraram lead", value: formatNumber(metrics?.totals.leads), detail: metrics ? `${formatPercent(metrics.totals.leadRate)} dos concluídos` : undefined },
     { label: "Passageiros", value: formatNumber(metrics?.totals.passageiros) },
     { label: "Motoristas", value: formatNumber(metrics?.totals.motoristas) },
     { label: "Ambos", value: formatNumber(metrics?.totals.ambos) },
