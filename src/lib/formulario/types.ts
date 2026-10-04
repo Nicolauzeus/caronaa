@@ -1,28 +1,10 @@
-export type CaronaaIntent =
-  | "MOTORISTA"
-  | "PASSAGEIRO"
-  | "AMBOS";
+export type CaronaaIntent = "MOTORISTA" | "PASSAGEIRO" | "AMBOS";
 
-export type VehicleType =
-  | "CARRO_PROPRIO"
-  | "CARRO_COMPARTILHADO"
-  | "MOTO";
+export type VehicleType = "CARRO_PROPRIO" | "CARRO_COMPARTILHADO" | "MOTO";
 
-export type PassengerTransport =
-  | "ONIBUS"
-  | "UBER_99"
-  | "CARONA"
-  | "BICICLETA"
-  | "APE"
-  | "OUTRO";
+export type PassengerTransport = "ONIBUS" | "UBER_99" | "CARONA" | "BICICLETA" | "APE" | "OUTRO";
 
-export type DepartureWindow =
-  | "ANTES_18"
-  | "18_19"
-  | "19_20"
-  | "20_21"
-  | "21_22"
-  | "APOS_22";
+export type DepartureWindow = "ANTES_18" | "18_19" | "19_20" | "20_21" | "21_22" | "APOS_22";
 
 export type TrustFactor =
   | "IDENTIDADE_VERIFICADA"
@@ -38,18 +20,9 @@ export type TrustFactor =
   | "OUTRO";
 
 export type PriceRange =
-  | "ATE_5"
-  | "5_10"
-  | "10_15"
-  | "15_20"
-  | "ACIMA_20"
-  | "DEPENDE_DISTANCIA"
-  | "GRATUITO";
+  "ATE_5" | "5_10" | "10_15" | "15_20" | "ACIMA_20" | "DEPENDE_DISTANCIA" | "GRATUITO";
 
-export type CommitmentLevel =
-  | "SIM_HOJE"
-  | "QUERO_VER_MATCH"
-  | "NAO_HOJE";
+export type CommitmentLevel = "SIM_HOJE" | "QUERO_VER_MATCH" | "NAO_HOJE";
 
 export interface CaronaaStsFormData {
   source: "sts-2026";

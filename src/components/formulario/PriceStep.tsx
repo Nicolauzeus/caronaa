@@ -1,7 +1,4 @@
-import type {
-  CaronaaIntent,
-  PriceRange,
-} from "@/lib/formulario/types";
+import type { CaronaaIntent, PriceRange } from "@/lib/formulario/types";
 
 type PriceStepProps = {
   intent: Exclude<CaronaaIntent, "AMBOS">;
@@ -95,18 +92,10 @@ const driverOptions: Array<{
   },
 ];
 
-export function PriceStep({
-  intent,
-  value,
-  onChange,
-  onNext,
-  onBack,
-}: PriceStepProps) {
+export function PriceStep({ intent, value, onChange, onNext, onBack }: PriceStepProps) {
   const isPassenger = intent === "PASSAGEIRO";
 
-  const options = isPassenger
-    ? passengerOptions
-    : driverOptions;
+  const options = isPassenger ? passengerOptions : driverOptions;
 
   const title = isPassenger
     ? "Quanto você consideraria justo contribuir pela viagem?"
@@ -119,23 +108,17 @@ export function PriceStep({
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Contribuição pela viagem
-        </p>
+        <p className="text-sm font-medium text-primary">Contribuição pela viagem</p>
 
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {title}
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
 
-        <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-          {description}
-        </p>
+        <p className="text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>
       </div>
 
       <div className="rounded-xl border bg-muted/40 p-4">
         <p className="text-sm leading-6 text-muted-foreground">
-          A ideia da CARONAA é compartilhar uma rota que já aconteceria,
-          com uma contribuição justa entre as pessoas envolvidas.
+          A ideia da CARONAA é compartilhar uma rota que já aconteceria, com uma contribuição justa
+          entre as pessoas envolvidas.
         </p>
       </div>
 
@@ -165,17 +148,13 @@ export function PriceStep({
               <span
                 className={[
                   "mt-0.5 h-5 w-5 shrink-0 rounded-full border",
-                  selected
-                    ? "border-[6px] border-primary"
-                    : "border-muted-foreground/40",
+                  selected ? "border-[6px] border-primary" : "border-muted-foreground/40",
                 ].join(" ")}
                 aria-hidden="true"
               />
 
               <span className="min-w-0 space-y-1">
-                <span className="block text-sm font-semibold">
-                  {option.label}
-                </span>
+                <span className="block text-sm font-semibold">{option.label}</span>
 
                 <span className="block text-xs leading-5 text-muted-foreground">
                   {option.description}
@@ -187,13 +166,10 @@ export function PriceStep({
       </div>
 
       <div className="space-y-1 rounded-xl border border-primary/20 bg-primary/5 p-4">
-        <p className="text-sm font-medium">
-          Isso não confirma nenhuma cobrança.
-        </p>
+        <p className="text-sm font-medium">Isso não confirma nenhuma cobrança.</p>
 
         <p className="text-xs leading-5 text-muted-foreground">
-          Estamos validando qual faixa parece justa antes de qualquer
-          match ou viagem.
+          Estamos validando qual faixa parece justa antes de qualquer match ou viagem.
         </p>
       </div>
 

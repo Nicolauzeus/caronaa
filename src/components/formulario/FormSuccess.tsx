@@ -6,9 +6,7 @@ type FormSuccessProps = {
   onRestart?: () => void;
 };
 
-function getIntentLabel(
-  intent: CaronaaStsFormData["intent"],
-) {
+function getIntentLabel(intent: CaronaaStsFormData["intent"]) {
   switch (intent) {
     case "MOTORISTA":
       return "Oferecer carona";
@@ -24,9 +22,7 @@ function getIntentLabel(
   }
 }
 
-function getDepartureLabel(
-  departureWindow: CaronaaStsFormData["departureWindow"],
-) {
+function getDepartureLabel(departureWindow: CaronaaStsFormData["departureWindow"]) {
   switch (departureWindow) {
     case "ANTES_18":
       return "Antes das 18h";
@@ -51,20 +47,13 @@ function getDepartureLabel(
   }
 }
 
-function getActivationMessage(
-  data: CaronaaStsFormData,
-) {
-  const classification =
-    getLeadClassification(data);
+function getActivationMessage(data: CaronaaStsFormData) {
+  const classification = getLeadClassification(data);
 
-  if (
-    classification.activationStatus ===
-    "QUER_USAR_HOJE"
-  ) {
+  if (classification.activationStatus === "QUER_USAR_HOJE") {
     if (data.intent === "MOTORISTA") {
       return {
-        title:
-          "Sua rota entrou na CARONAA",
+        title: "Sua rota entrou na CARONAA",
         description:
           "Vamos procurar passageiros do STS com destino e horário compatíveis com os seus.",
       };
@@ -72,53 +61,40 @@ function getActivationMessage(
 
     if (data.intent === "PASSAGEIRO") {
       return {
-        title:
-          "Vamos tentar encontrar sua carona",
+        title: "Vamos tentar encontrar sua carona",
         description:
           "Vamos procurar motoristas do STS saindo em horário parecido e indo para perto do seu destino.",
       };
     }
 
     return {
-      title:
-        "Vamos procurar a melhor combinação para você",
+      title: "Vamos procurar a melhor combinação para você",
       description:
         "Como você pode oferecer ou pegar carona, vamos considerar as duas possibilidades.",
     };
   }
 
-  if (
-    classification.activationStatus ===
-    "QUER_VER_MATCH"
-  ) {
+  if (classification.activationStatus === "QUER_VER_MATCH") {
     return {
-      title:
-        "Vamos procurar uma combinação para você avaliar",
+      title: "Vamos procurar uma combinação para você avaliar",
       description:
         "Se encontrarmos uma opção compatível, você poderá analisar as informações antes de decidir.",
     };
   }
 
   return {
-    title:
-      "Obrigado por participar da validação da CARONAA",
+    title: "Obrigado por participar da validação da CARONAA",
     description:
       "Sua resposta vai nos ajudar a entender melhor como tornar a experiência segura e útil para quem sai do STS.",
   };
 }
 
-export function FormSuccess({
-  data,
-  onRestart,
-}: FormSuccessProps) {
-  const classification =
-    getLeadClassification(data);
+export function FormSuccess({ data, onRestart }: FormSuccessProps) {
+  const classification = getLeadClassification(data);
 
-  const message =
-    getActivationMessage(data);
+  const message = getActivationMessage(data);
 
-  const shouldShowMatching =
-    classification.wantsToSeeMatch;
+  const shouldShowMatching = classification.wantsToSeeMatch;
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">
@@ -131,13 +107,9 @@ export function FormSuccess({
         </div>
 
         <div className="mt-5 space-y-2">
-          <p className="text-sm font-medium text-primary">
-            Resposta registrada
-          </p>
+          <p className="text-sm font-medium text-primary">Resposta registrada</p>
 
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {message.title}
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{message.title}</h1>
 
           <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
             {message.description}
@@ -148,13 +120,9 @@ export function FormSuccess({
       <div className="rounded-2xl border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between gap-4 border-b pb-3">
           <div>
-            <p className="text-xs text-muted-foreground">
-              Seu papel
-            </p>
+            <p className="text-xs text-muted-foreground">Seu papel</p>
 
-            <p className="mt-1 text-sm font-semibold">
-              {getIntentLabel(data.intent)}
-            </p>
+            <p className="mt-1 text-sm font-semibold">{getIntentLabel(data.intent)}</p>
           </div>
 
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -164,62 +132,41 @@ export function FormSuccess({
 
         <dl className="grid gap-4 pt-4 sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-muted-foreground">
-              Destino
-            </dt>
+            <dt className="text-xs text-muted-foreground">Destino</dt>
 
             <dd className="mt-1 text-sm font-medium">
-              {data.destinationNeighborhood ??
-                "Não informado"}
+              {data.destinationNeighborhood ?? "Não informado"}
             </dd>
           </div>
 
           <div>
-            <dt className="text-xs text-muted-foreground">
-              Horário de saída
-            </dt>
+            <dt className="text-xs text-muted-foreground">Horário de saída</dt>
 
-            <dd className="mt-1 text-sm font-medium">
-              {getDepartureLabel(
-                data.departureWindow,
-              )}
-            </dd>
+            <dd className="mt-1 text-sm font-medium">{getDepartureLabel(data.departureWindow)}</dd>
           </div>
 
-          {data.intent !== "PASSAGEIRO" &&
-          data.vehicleType ? (
+          {data.intent !== "PASSAGEIRO" && data.vehicleType ? (
             <div>
-              <dt className="text-xs text-muted-foreground">
-                Veículo
-              </dt>
+              <dt className="text-xs text-muted-foreground">Veículo</dt>
 
               <dd className="mt-1 text-sm font-medium">
-                {data.vehicleType ===
-                "CARRO_PROPRIO"
+                {data.vehicleType === "CARRO_PROPRIO"
                   ? "Carro próprio"
-                  : data.vehicleType ===
-                      "CARRO_COMPARTILHADO"
+                  : data.vehicleType === "CARRO_COMPARTILHADO"
                     ? "Carro compartilhado"
                     : "Moto"}
               </dd>
             </div>
           ) : null}
 
-          {data.intent !== "MOTORISTA" &&
-          data.passengerCount ? (
+          {data.intent !== "MOTORISTA" && data.passengerCount ? (
             <div>
-              <dt className="text-xs text-muted-foreground">
-                Pessoas
-              </dt>
+              <dt className="text-xs text-muted-foreground">Pessoas</dt>
 
               <dd className="mt-1 text-sm font-medium">
                 {data.passengerCount === 1
                   ? "1 pessoa"
-                  : `${data.passengerCount}${
-                      data.passengerCount === 4
-                        ? "+"
-                        : ""
-                    } pessoas`}
+                  : `${data.passengerCount}${data.passengerCount === 4 ? "+" : ""} pessoas`}
               </dd>
             </div>
           ) : null}
@@ -229,24 +176,17 @@ export function FormSuccess({
       {shouldShowMatching ? (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
           <div className="flex gap-3">
-            <span
-              className="text-xl"
-              aria-hidden="true"
-            >
+            <span className="text-xl" aria-hidden="true">
               🔎
             </span>
 
             <div className="space-y-1">
-              <p className="text-sm font-semibold">
-                Agora começa a parte real do teste
-              </p>
+              <p className="text-sm font-semibold">Agora começa a parte real do teste</p>
 
               <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
-                Vamos comparar destino, horário,
-                disponibilidade e intenção. Se
-                encontrarmos uma combinação relevante,
-                a equipe CARONAA poderá falar com você
-                pelo WhatsApp informado.
+                Vamos comparar destino, horário, disponibilidade e intenção. Se encontrarmos uma
+                combinação relevante, a equipe CARONAA poderá falar com você pelo WhatsApp
+                informado.
               </p>
             </div>
           </div>
@@ -255,10 +195,8 @@ export function FormSuccess({
 
       <div className="space-y-2 text-center">
         <p className="text-xs leading-5 text-muted-foreground">
-          Nenhuma viagem é confirmada automaticamente.
-          Antes de qualquer carona, você poderá analisar
-          as informações disponíveis e decidir se deseja
-          continuar.
+          Nenhuma viagem é confirmada automaticamente. Antes de qualquer carona, você poderá
+          analisar as informações disponíveis e decidir se deseja continuar.
         </p>
 
         {onRestart ? (

@@ -9,5 +9,6 @@
 - [x] Apply the supplied CARONAA logo and desktop/mobile backgrounds.
 - [x] Replace demo admin access with database-backed role access.
 - [x] Remove existing users and make only the first new signup an administrator.
+
 12. [ ] Replace driver price ranges with a custom per-passenger price (minimum R$ 3,50), showing the 15% CARONAA fee and net payout.
 13. [ ] Remove familiarity/family-based matching prompts and keep objective safety criteria only.

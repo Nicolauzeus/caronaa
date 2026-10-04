@@ -3,6 +3,7 @@
 Crie o MVP visual do aplicativo CARONAA (plataforma comunitária de caronas compartilhadas urbanas e intermunicipais).
 
 Foco deste primeiro passo:
+
 1. Design: Mobile-first moderno, limpo, paleta com verde/esmeralda e tons escuros/neutros de mobilidade e confiança, cantos arredondados e boa densidade de informação.
 2. Navegação: Header simples e Bottom Navigation fixa para mobile com abas: Início, Buscar, Oferecer, Minhas Caronas e Perfil.
 3. Páginas (todas navegáveis com dados mockados em um arquivo centralizado mockData.ts):
