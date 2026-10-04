@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { currentUser } from "@/mockData";
+import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
 const navigation = [
   { title: "Visão Geral", items: [{ label: "Dashboard", to: "/admin", icon: LayoutDashboard }] },
@@ -113,11 +114,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden w-[280px] shrink-0 rounded-2xl border border-border bg-card/85 p-4 shadow-soft backdrop-blur-md lg:block">
           <div className="mb-6 flex items-center justify-between gap-3">
             <Link to="/admin" className="inline-flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg font-black text-primary-foreground">
-                C
-              </span>
+              <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
               <div>
-                <p className="font-display text-lg font-extrabold leading-none text-foreground">CARONAA</p>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
                   Admin Center
                 </p>
