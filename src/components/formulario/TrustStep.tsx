@@ -5,7 +5,7 @@ import type {
 
 type TrustStepProps = {
   intent: Exclude<CaronaaIntent, "AMBOS">;
-  value?: TrustFactor[];
+  value?: TrustFactor[] | undefined;
   onChange: (value: TrustFactor[]) => void;
   onNext: () => void;
   onBack: () => void;

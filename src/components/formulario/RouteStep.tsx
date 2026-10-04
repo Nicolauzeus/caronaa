@@ -3,9 +3,9 @@ import type {
 } from "@/lib/formulario/types";
 
 type RouteStepProps = {
-  destinationNeighborhood?: string;
-  destinationReference?: string;
-  departureWindow?: DepartureWindow;
+  destinationNeighborhood?: string | undefined;
+  destinationReference?: string | undefined;
+  departureWindow?: DepartureWindow | undefined;
   onDestinationNeighborhoodChange: (value: string) => void;
   onDestinationReferenceChange: (value: string) => void;
   onDepartureWindowChange: (value: DepartureWindow) => void;

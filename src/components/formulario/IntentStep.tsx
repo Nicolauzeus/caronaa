@@ -1,7 +1,7 @@
 import type { CaronaaIntent } from "@/lib/formulario/types";
 
 type IntentStepProps = {
-  value?: CaronaaIntent;
+  value?: CaronaaIntent | undefined;
   onChange: (intent: CaronaaIntent) => void;
   onNext: () => void;
   onBack: () => void;

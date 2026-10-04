@@ -54,31 +54,31 @@ export type CommitmentLevel =
 export interface CaronaaStsFormData {
   source: "sts-2026";
 
-  intent?: CaronaaIntent;
+  intent?: CaronaaIntent | undefined;
 
-  destinationNeighborhood?: string;
-  destinationReference?: string;
-  departureWindow?: DepartureWindow;
+  destinationNeighborhood?: string | undefined;
+  destinationReference?: string | undefined;
+  departureWindow?: DepartureWindow | undefined;
 
-  name?: string;
-  whatsapp?: string;
+  name?: string | undefined;
+  whatsapp?: string | undefined;
 
   // Passageiro
-  passengerCount?: number;
-  currentTransport?: PassengerTransport;
-  passengerTrustFactors?: TrustFactor[];
-  passengerPriceRange?: PriceRange;
-  passengerCommitment?: CommitmentLevel;
+  passengerCount?: number | undefined;
+  currentTransport?: PassengerTransport | undefined;
+  passengerTrustFactors?: TrustFactor[] | undefined;
+  passengerPriceRange?: PriceRange | undefined;
+  passengerCommitment?: CommitmentLevel | undefined;
 
   // Motorista
-  vehicleType?: VehicleType;
-  availableSeats?: number;
-  maxDetourMinutes?: number;
-  driverTrustFactors?: TrustFactor[];
-  driverPriceRange?: PriceRange;
-  driverCommitment?: CommitmentLevel;
+  vehicleType?: VehicleType | undefined;
+  availableSeats?: number | undefined;
+  maxDetourMinutes?: number | undefined;
+  driverTrustFactors?: TrustFactor[] | undefined;
+  driverPriceRange?: PriceRange | undefined;
+  driverCommitment?: CommitmentLevel | undefined;
 
   // Metadados
-  submissionId?: string;
-  createdAt?: string;
+  submissionId?: string | undefined;
+  createdAt?: string | undefined;
 }

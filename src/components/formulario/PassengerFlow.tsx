@@ -1,8 +1,8 @@
 import type { PassengerTransport } from "@/lib/formulario/types";
 
 type PassengerFlowProps = {
-  passengerCount?: number;
-  currentTransport?: PassengerTransport;
+  passengerCount?: number | undefined;
+  currentTransport?: PassengerTransport | undefined;
   onPassengerCountChange: (value: number) => void;
   onCurrentTransportChange: (value: PassengerTransport) => void;
   onNext: () => void;
