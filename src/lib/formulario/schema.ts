@@ -75,7 +75,7 @@ const priceRangeSchema = z.enum([
 const commitmentLevelSchema = z.enum(["SIM_HOJE", "QUERO_VER_MATCH", "NAO_HOJE"]);
 
 const baseSchema = z.object({
-  source: z.literal("sts-2026"),
+  source: z.string().trim().min(1).max(120),
 
   intent: intentSchema,
 
@@ -104,6 +104,10 @@ const baseSchema = z.object({
   submissionId: z.string().uuid().optional(),
 
   createdAt: z.string().optional(),
+
+  campaign: z.string().trim().max(120).nullable().optional(),
+
+  campaignEvent: z.string().trim().min(1).max(160).optional(),
 
   passengerCount: z.number().int().min(1).max(6).optional(),
 

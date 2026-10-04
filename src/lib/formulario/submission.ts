@@ -3,7 +3,9 @@ import { getLeadClassification } from "./classification";
 import { calculateDriverPricing } from "./pricing";
 
 export type CaronaaStsSubmission = {
-  source: "sts-2026";
+  source: string;
+  campaign: string | null;
+  campaignEvent: string;
 
   intent: CaronaaStsFormData["intent"];
 
@@ -104,7 +106,11 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
       : null;
 
   return {
-    source: "sts-2026",
+    source: data.source,
+
+    campaign: data.campaign ?? null,
+
+    campaignEvent: data.campaignEvent ?? "Siará Tech Summit 2026",
 
     intent: data.intent,
 

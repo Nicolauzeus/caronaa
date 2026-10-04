@@ -31,8 +31,9 @@ import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formu
 import { caronaaStsFormSchema } from "@/lib/formulario/schema";
 
 import { prepareSubmission } from "@/lib/formulario/submission";
-import { saveFormSubmission } from "@/lib/formulario/form-submission-service";
+import { registerFormStart, saveFormSubmission } from "@/lib/formulario/form-submission-service";
 import { useAuth } from "@/lib/auth-context";
+import { getCampaignAttribution, trackFunnelEvent } from "@/lib/funnel-events";
 
 export const Route = createFileRoute("/formulario")({
   head: () => ({
@@ -66,7 +67,9 @@ export const Route = createFileRoute("/formulario")({
 });
 
 const initialData: CaronaaStsFormData = {
-  source: "sts-2026",
+  source: "sts2026",
+  campaign: null,
+  campaignEvent: "Siará Tech Summit 2026",
 };
 
 function Formulario() {
@@ -81,6 +84,17 @@ function Formulario() {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const progress = getProgressPercentage(step, data);
+
+  const attribution = React.useMemo(() => getCampaignAttribution(), []);
+
+  React.useEffect(() => {
+    setData((current) => ({
+      ...current,
+      source: attribution.source,
+      campaign: attribution.campaign,
+      campaignEvent: attribution.campaignEvent,
+    }));
+  }, [attribution]);
 
   function updateData(patch: Partial<CaronaaStsFormData>) {
     setData((current) => ({
@@ -132,6 +146,13 @@ function Formulario() {
     const next = getNextStep(step, data);
 
     if (next) {
+      void trackFunnelEvent({
+        eventName: "form_step_completed",
+        userId: user?.id ?? null,
+        ...attribution,
+        formStep: step,
+      });
+
       setStep(next);
       window.scrollTo({
         top: 0,
@@ -189,6 +210,25 @@ function Formulario() {
         createdAt: payload.createdAt,
       }));
 
+      void trackFunnelEvent({
+        eventName: "form_completed",
+        userId: user?.id ?? null,
+        ...attribution,
+        formStep: "CONTACT",
+        submissionId: payload.submissionId,
+      });
+
+      void trackFunnelEvent({
+        eventName: "lead_created",
+        userId: user?.id ?? null,
+        ...attribution,
+        submissionId: payload.submissionId,
+        metadata: {
+          leadType: payload.leadType,
+          activationStatus: payload.activationStatus,
+        },
+      });
+
       setStep("SUCCESS");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Não foi possível finalizar agora.");
@@ -231,7 +271,24 @@ function Formulario() {
           </div>
         ) : null}
 
-        {step === "INTRO" ? <FormIntro onStart={() => setStep("PROFILE_ROUTE")} /> : null}
+        {step === "INTRO" ? (
+          <FormIntro
+            onStart={() => {
+              void registerFormStart({
+                userId: user?.id ?? null,
+                source: attribution.source,
+                campaign: attribution.campaign,
+                campaignEvent: attribution.campaignEvent,
+              });
+              void trackFunnelEvent({
+                eventName: "form_started",
+                userId: user?.id ?? null,
+                ...attribution,
+              });
+              setStep("PROFILE_ROUTE");
+            }}
+          />
+        ) : null}
 
         {step === "PROFILE_ROUTE" ? (
           <ProfileRouteStep

@@ -1,10 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { getAnonymousSessionId } from "@/lib/funnel-events";
 
 import type { CaronaaStsSubmission } from "./submission";
 import type { InterestLevel, PainPointCode } from "./types";
-
-const ANONYMOUS_SESSION_KEY = "caronaa-form-anonymous-session-id";
 
 const stablePainCodes = ["DOR_01", "DOR_02", "DOR_03", "DOR_04", "DOR_05", "DOR_06"] as const;
 
@@ -30,21 +29,6 @@ export type RegisterFormStartInput = {
 
 function isStablePainCode(value: PainPointCode | null | undefined): value is StablePainCode {
   return stablePainCodes.includes(value as StablePainCode);
-}
-
-function getAnonymousSessionId(): string {
-  const existing = window.localStorage.getItem(ANONYMOUS_SESSION_KEY);
-
-  if (existing) return existing;
-
-  const sessionId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-  window.localStorage.setItem(ANONYMOUS_SESSION_KEY, sessionId);
-
-  return sessionId;
 }
 
 function normalizeCostPeriod(value: CaronaaStsSubmission["costPeriod"]) {
@@ -79,7 +63,7 @@ function buildFormSubmissionRow(
     user_id: userId,
     anonymous_session_id: userId ? null : getAnonymousSessionId(),
     source: payload.source,
-    campaign_event: "Siará Tech Summit 2026",
+    campaign_event: payload.campaignEvent,
     created_at: payload.createdAt,
     tipo_usuario: payload.intent,
     ocupacao: payload.occupation,
@@ -140,6 +124,17 @@ export async function registerFormStart({
   ocupacao = null,
   rawPayload = {},
 }: RegisterFormStartInput) {
+  const deduplicationKey = [
+    "caronaa-form-start",
+    source,
+    campaign ?? "",
+    campaignEvent,
+  ].join(":");
+
+  if (typeof window !== "undefined" && window.localStorage.getItem(deduplicationKey) === "1") {
+    return;
+  }
+
   const row: FormStartInsert = {
     user_id: userId,
     anonymous_session_id: userId ? null : getAnonymousSessionId(),
@@ -155,6 +150,10 @@ export async function registerFormStart({
 
   if (error) {
     throw new Error(`Não foi possível registrar o início do formulário: ${error.message}`);
+  }
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(deduplicationKey, "1");
   }
 }
 
