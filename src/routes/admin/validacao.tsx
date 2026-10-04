@@ -27,6 +27,7 @@ import {
   type FormMetricsSummary,
 } from "@/lib/formulario/metrics";
 import { getFunnelMetrics, type FunnelMetricsSummary } from "@/lib/funnel-metrics";
+import { getMainFunnelMetrics, type MainFunnelSummary } from "@/lib/main-funnel-metrics";
 import { getPainAnalysis, type PainAnalysisSummary } from "@/lib/formulario/pain-analysis";
 import type { Enums } from "@/integrations/supabase/types";
 
@@ -204,6 +205,7 @@ function MarketValidationPage() {
   const [filters, setFilters] = useState(initialFilters);
   const [metrics, setMetrics] = useState<FormMetricsSummary | null>(null);
   const [funnelMetrics, setFunnelMetrics] = useState<FunnelMetricsSummary | null>(null);
+  const [mainFunnel, setMainFunnel] = useState<MainFunnelSummary | null>(null);
   const [painAnalysis, setPainAnalysis] = useState<PainAnalysisSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -223,12 +225,14 @@ function MarketValidationPage() {
         console.warn(caught instanceof Error ? caught.message : "Não foi possível carregar funil.");
         return null;
       }),
+      getMainFunnelMetrics(metricFilters),
     ])
-      .then(([nextMetrics, nextPainAnalysis, nextFunnelMetrics]) => {
+      .then(([nextMetrics, nextPainAnalysis, nextFunnelMetrics, nextMainFunnel]) => {
         if (!active) return;
         setMetrics(nextMetrics);
         setPainAnalysis(nextPainAnalysis);
         setFunnelMetrics(nextFunnelMetrics);
+        setMainFunnel(nextMainFunnel);
       })
       .catch((caught) => {
         if (!active) return;
@@ -239,6 +243,7 @@ function MarketValidationPage() {
         );
         setMetrics(null);
         setFunnelMetrics(null);
+        setMainFunnel(null);
         setPainAnalysis(null);
       })
       .finally(() => {
@@ -410,6 +415,33 @@ function MarketValidationPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <div className="border-b border-border px-5 py-4">
+          <SectionHeader title="Funil principal da CARONAA" eyebrow="Aquisição à recorrência" />
+          {mainFunnel?.largestDrop ? (
+            <p className="mt-2 text-sm text-destructive">
+              Maior queda: entrada em {mainFunnel.largestDrop.label} ({formatPercent(mainFunnel.largestDrop.fromPrevious)} da etapa anterior).
+            </p>
+          ) : null}
+        </div>
+        {isLoading ? (
+          <div className="p-5 text-sm text-muted-foreground">Carregando funil...</div>
+        ) : mainFunnel ? (
+          <div className="divide-y divide-border">
+            {mainFunnel.stages.map((stage, index) => (
+              <div key={stage.key} className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-8">
+                <div>
+                  <p className="font-semibold text-foreground">{index ? "↓ " : ""}{stage.label}</p>
+                  <p className="text-xs text-muted-foreground">{index ? `${formatPercent(stage.fromPrevious)} da etapa anterior · ${formatPercent(stage.fromStart)} do início` : "Base do funil"}</p>
+                </div>
+                <p className="text-2xl font-extrabold text-foreground">{formatNumber(stage.count)}</p>
+                {index ? <Badge variant={mainFunnel.largestDrop?.key === stage.key ? "destructive" : "secondary"}>{formatPercent(stage.fromPrevious)}</Badge> : null}
+              </div>
+            ))}
+          </div>
+        ) : <div className="p-5 text-sm text-muted-foreground">Sem dados reais para os filtros atuais.</div>}
       </section>
 
       <section className="space-y-4">
