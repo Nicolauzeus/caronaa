@@ -28,6 +28,7 @@ import {
 } from "@/lib/formulario/metrics";
 import { getFunnelMetrics, type FunnelMetricsSummary } from "@/lib/funnel-metrics";
 import { getMainFunnelMetrics, type MainFunnelSummary } from "@/lib/main-funnel-metrics";
+import { getRetentionMetrics, type RetentionMetrics } from "@/lib/retention-metrics";
 import { getPainAnalysis, type PainAnalysisSummary } from "@/lib/formulario/pain-analysis";
 import type { Enums } from "@/integrations/supabase/types";
 
@@ -206,6 +207,7 @@ function MarketValidationPage() {
   const [metrics, setMetrics] = useState<FormMetricsSummary | null>(null);
   const [funnelMetrics, setFunnelMetrics] = useState<FunnelMetricsSummary | null>(null);
   const [mainFunnel, setMainFunnel] = useState<MainFunnelSummary | null>(null);
+  const [retention, setRetention] = useState<RetentionMetrics | null>(null);
   const [painAnalysis, setPainAnalysis] = useState<PainAnalysisSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,13 +228,15 @@ function MarketValidationPage() {
         return null;
       }),
       getMainFunnelMetrics(metricFilters),
+      getRetentionMetrics(metricFilters),
     ])
-      .then(([nextMetrics, nextPainAnalysis, nextFunnelMetrics, nextMainFunnel]) => {
+      .then(([nextMetrics, nextPainAnalysis, nextFunnelMetrics, nextMainFunnel, nextRetention]) => {
         if (!active) return;
         setMetrics(nextMetrics);
         setPainAnalysis(nextPainAnalysis);
         setFunnelMetrics(nextFunnelMetrics);
         setMainFunnel(nextMainFunnel);
+        setRetention(nextRetention);
       })
       .catch((caught) => {
         if (!active) return;
@@ -244,6 +248,7 @@ function MarketValidationPage() {
         setMetrics(null);
         setFunnelMetrics(null);
         setMainFunnel(null);
+        setRetention(null);
         setPainAnalysis(null);
       })
       .finally(() => {
@@ -415,6 +420,27 @@ function MarketValidationPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <SectionHeader title="Recorrência" eyebrow="Apenas caronas realizadas" />
+        {isLoading ? <p className="mt-4 text-sm text-muted-foreground">Carregando recorrência...</p> : retention ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <CompactMetric label="repeat_rate_7d" value={formatPercent(retention.repeatRate7d)} detail="voltaram após a 1ª carona em até 7 dias" />
+            <CompactMetric label="repeat_rate_30d" value={formatPercent(retention.repeatRate30d)} detail="voltaram após a 1ª carona em até 30 dias" />
+            <CompactMetric label="2 caronas" value={formatNumber(retention.usersWith2Rides)} />
+            <CompactMetric label="3 ou mais" value={formatNumber(retention.usersWith3OrMoreRides)} />
+          </div>
+        ) : <p className="mt-4 text-sm text-muted-foreground">Sem caronas realizadas nos filtros atuais.</p>}
+        {retention ? <div className="mt-5 grid gap-2 text-sm sm:grid-cols-4">
+          <span>1 carona: <strong>{formatNumber(retention.distribution.one)}</strong></span>
+          <span>2 caronas: <strong>{formatNumber(retention.distribution.two)}</strong></span>
+          <span>3–5: <strong>{formatNumber(retention.distribution.threeToFive)}</strong></span>
+          <span>6+: <strong>{formatNumber(retention.distribution.sixOrMore)}</strong></span>
+        </div> : null}
+        {retention ? <p className="mt-4 text-xs text-muted-foreground">
+          Por perfil: Passageiro {formatNumber((retention.byProfile.PASSAGEIRO?.one ?? 0) + (retention.byProfile.PASSAGEIRO?.two ?? 0) + (retention.byProfile.PASSAGEIRO?.threeOrMore ?? 0))} · Motorista {formatNumber((retention.byProfile.MOTORISTA?.one ?? 0) + (retention.byProfile.MOTORISTA?.two ?? 0) + (retention.byProfile.MOTORISTA?.threeOrMore ?? 0))} · Ambos {formatNumber((retention.byProfile.AMBOS?.one ?? 0) + (retention.byProfile.AMBOS?.two ?? 0) + (retention.byProfile.AMBOS?.threeOrMore ?? 0))}
+        </p> : null}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">

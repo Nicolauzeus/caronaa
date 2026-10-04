@@ -1,9 +1,11 @@
 import { ArrowRight, Activity, BellRing, FileText, Gauge, ShieldCheck, Users } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminOverview } from "@/mockData";
+import { getRetentionMetrics, type RetentionMetrics } from "@/lib/retention-metrics";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -21,6 +23,11 @@ export const Route = createFileRoute("/admin/")({
 
 function DashboardPage() {
   const { metrics, funnel, activity, pending, quickActions } = adminOverview;
+  const [retention, setRetention] = useState<RetentionMetrics | null>(null);
+
+  useEffect(() => {
+    void getRetentionMetrics().then(setRetention).catch(() => setRetention(null));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -102,6 +109,34 @@ function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border border-border bg-card/85 shadow-soft">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="font-display text-xl font-extrabold">Recorrência</CardTitle>
+            <span className="text-xs text-muted-foreground">Somente caronas realizadas</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {retention ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <MetricCard label="Retorno em 7 dias" value={`${retention.repeatRate7d}%`} detail="Após a 1ª carona" />
+              <MetricCard label="Retorno em 30 dias" value={`${retention.repeatRate30d}%`} detail="Após a 1ª carona" />
+              <MetricCard label="1 / 2 caronas" value={`${retention.distribution.one} / ${retention.distribution.two}`} detail="Usuários realizados" />
+              <MetricCard label="3–5 / 6+" value={`${retention.distribution.threeToFive} / ${retention.distribution.sixOrMore}`} detail="Usuários recorrentes" />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              {Object.entries(retention.byProfile).map(([profile, counts]) => (
+                <span key={profile} className="rounded-full border border-border bg-secondary/40 px-3 py-1.5">
+                  {profile}: {counts.one}×1 · {counts.two}×2 · {counts.threeOrMore}×3+
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Métricas de recorrência indisponíveis no momento.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
         <Card className="border border-border bg-card/85 shadow-soft">

@@ -338,6 +338,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_retention_metrics: {
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null; };
+        Returns: Json;
+      };
+      get_strategic_crossings: {
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; };
+        Returns: Json;
+      };
       get_form_funnel_metrics: {
         Args: {
           p_campaign?: string | null;
