@@ -45,6 +45,7 @@ const navigation = [
   {
     title: "Validação",
     items: [
+      { label: "Oportunidades", to: "/admin/oportunidades", icon: Gauge },
       { label: "Formulários", to: "/admin/formularios", icon: FileText },
       { label: "Respostas", to: "/admin/formularios/respostas", icon: FileText },
       { label: "Validação", to: "/admin/validacao", icon: ShieldCheck },
