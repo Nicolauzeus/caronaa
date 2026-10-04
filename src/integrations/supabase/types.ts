@@ -249,6 +249,23 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_form_pain_analysis: {
+        Args: {
+          p_campaign?: string | null;
+          p_event?: string | null;
+          p_frequency_weight?: number | null;
+          p_intensity_weight?: number | null;
+          p_interest_weight?: number | null;
+          p_ocupacao?: string | null;
+          p_period_end?: string | null;
+          p_period_start?: string | null;
+          p_primary_weight?: number | null;
+          p_sort_by?: string | null;
+          p_source?: string | null;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+        };
+        Returns: Json;
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
