@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
+import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 
 const authSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
@@ -103,7 +105,7 @@ function AuthPage() {
 }
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
-  return <main className="grid min-h-screen bg-background lg:grid-cols-[1fr_480px]"><section className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between"><Brand light/><div className="relative z-10 max-w-lg"><CarFront size={44}/><h2 className="mt-6 font-display text-4xl font-extrabold leading-tight">Seu caminho fica melhor junto.</h2><p className="mt-4 text-lg text-primary-foreground/85">Conecte-se com pessoas que seguem na mesma direção.</p></div><p className="relative z-10 text-sm text-primary-foreground/70">Mais que um caminho. Uma conexão.</p></section><section className="flex items-center justify-center px-5 py-10"><div className="w-full max-w-sm"><div className="mb-8 lg:hidden"><Brand/></div>{children}<p className="mt-8 text-center text-sm text-muted-foreground"><Link to="/" className="font-semibold text-primary">Voltar à página inicial</Link></p></div></section></main>;
+  return <main className="relative grid min-h-screen bg-background lg:grid-cols-[1fr_480px]"><picture className="absolute inset-0 lg:hidden"><source media="(min-width: 768px)" srcSet={desktopBackground.url}/><img src={mobileBackground.url} alt="" className="size-full object-cover"/></picture><div className="absolute inset-0 bg-background/90 backdrop-blur-sm lg:hidden"/><section className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between"><img src={desktopBackground.url} alt="" className="absolute inset-0 size-full object-cover"/><div className="absolute inset-0 bg-hero-overlay"/><div className="relative z-10"><Brand light/></div><div className="relative z-10 max-w-lg"><CarFront size={44}/><h2 className="mt-6 font-display text-4xl font-extrabold leading-tight">Seu caminho fica melhor junto.</h2><p className="mt-4 text-lg text-primary-foreground/85">Conecte-se com pessoas que seguem na mesma direção.</p></div><p className="relative z-10 text-sm text-primary-foreground/70">Mais que um caminho. Uma conexão.</p></section><section className="relative z-10 flex items-center justify-center px-5 py-10"><div className="w-full max-w-sm rounded-lg bg-background/95 p-6 shadow-card lg:bg-transparent lg:p-0 lg:shadow-none"><div className="mb-8 lg:hidden"><Brand/></div>{children}<p className="mt-8 text-center text-sm text-muted-foreground"><Link to="/" className="font-semibold text-primary">Voltar à página inicial</Link></p></div></section></main>;
 }
 
 function authErrorMessage(error: unknown) {

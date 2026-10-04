@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
 const nav = [
   { to: "/home" as const, label: "Início", icon: House },
@@ -16,15 +17,10 @@ export function Brand({ light = false }: { light?: boolean }) {
   return (
     <Link
       to="/"
-      className={`inline-flex items-center gap-2 font-display text-xl font-extrabold ${light ? "text-primary-foreground" : "text-foreground"}`}
+      className="inline-flex items-center"
       aria-label="CARONAA — página inicial"
     >
-      <span
-        className={`flex size-8 items-center justify-center rounded-lg ${light ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}
-      >
-        <CarFront size={19} strokeWidth={2.6} />
-      </span>
-      CARONAA<span className="text-primary">.</span>
+      <img src={logoAsset.url} alt="CARONAA" className={`h-12 w-auto object-contain ${light ? "brightness-0 invert" : ""}`} />
     </Link>
   );
 }

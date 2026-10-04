@@ -1,33 +1,30 @@
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
-
-const ADMIN_ACCESS_KEY = "caronaa-admin-demo";
-
-export function hasAdminAccess() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return sessionStorage.getItem(ADMIN_ACCESS_KEY) === "enabled";
-}
-
-export function enableAdminDemoAccess() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  sessionStorage.setItem(ADMIN_ACCESS_KEY, "enabled");
-}
+import { getAdminAccess } from "@/lib/admin.functions";
+import { useAuth } from "@/lib/auth-context";
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const checkAdmin = useServerFn(getAdminAccess);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setAuthorized(hasAdminAccess());
-  }, []);
+    let active = true;
+    if (loading) return () => { active = false; };
+    if (!user) {
+      setAuthorized(false);
+      return () => { active = false; };
+    }
+    setAuthorized(null);
+    void checkAdmin()
+      .then(({ isAdmin }) => { if (active) setAuthorized(isAdmin); })
+      .catch(() => { if (active) setAuthorized(false); });
+    return () => { active = false; };
+  }, [checkAdmin, loading, user]);
 
   if (authorized === null) {
     return (
@@ -56,19 +53,10 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
             Acesso restrito
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Esta área do CARONAA é exclusiva para administradores autorizados. Para entrar em modo
-            de demonstração, use a conta de administrador do painel.
+            Esta área do CARONAA é exclusiva para administradores autorizados.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button
-              type="button"
-              onClick={() => {
-                enableAdminDemoAccess();
-                window.location.assign("/admin");
-              }}
-            >
-              Entrar como admin demo
-            </Button>
+            {!user && <Button asChild><Link to="/auth" search={{ redirect: "/admin" }}>Entrar como administrador</Link></Button>}
             <Button asChild variant="outline">
               <Link to="/home">Voltar ao app</Link>
             </Button>
