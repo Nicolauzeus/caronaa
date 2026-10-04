@@ -26,6 +26,7 @@ import {
   type FormMetricsFilters,
   type FormMetricsSummary,
 } from "@/lib/formulario/metrics";
+import { getFunnelMetrics, type FunnelMetricsSummary } from "@/lib/funnel-metrics";
 import { getPainAnalysis, type PainAnalysisSummary } from "@/lib/formulario/pain-analysis";
 import type { Enums } from "@/integrations/supabase/types";
 
@@ -202,6 +203,7 @@ function SectionHeader({ title, eyebrow }: { title: string; eyebrow?: string }) 
 function MarketValidationPage() {
   const [filters, setFilters] = useState(initialFilters);
   const [metrics, setMetrics] = useState<FormMetricsSummary | null>(null);
+  const [funnelMetrics, setFunnelMetrics] = useState<FunnelMetricsSummary | null>(null);
   const [painAnalysis, setPainAnalysis] = useState<PainAnalysisSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -217,11 +219,16 @@ function MarketValidationPage() {
     void Promise.all([
       getFormMetrics(metricFilters),
       getPainAnalysis({ ...metricFilters, sortBy: "frequency" }),
+      getFunnelMetrics(metricFilters).catch((caught) => {
+        console.warn(caught instanceof Error ? caught.message : "Não foi possível carregar funil.");
+        return null;
+      }),
     ])
-      .then(([nextMetrics, nextPainAnalysis]) => {
+      .then(([nextMetrics, nextPainAnalysis, nextFunnelMetrics]) => {
         if (!active) return;
         setMetrics(nextMetrics);
         setPainAnalysis(nextPainAnalysis);
+        setFunnelMetrics(nextFunnelMetrics);
       })
       .catch((caught) => {
         if (!active) return;
@@ -231,6 +238,7 @@ function MarketValidationPage() {
             : "Não foi possível carregar a validação de mercado.",
         );
         setMetrics(null);
+        setFunnelMetrics(null);
         setPainAnalysis(null);
       })
       .finally(() => {
@@ -245,18 +253,42 @@ function MarketValidationPage() {
 
   const completed = metrics?.totals.completed ?? 0;
   const topMetrics = [
-    { label: "Pessoas alcançadas", value: formatNumber(metrics?.totals.reached) },
-    { label: "Formulários iniciados", value: formatNumber(metrics?.totals.started), detail: metrics ? `${formatPercent(metrics.totals.startRate)} dos alcançados` : undefined },
-    { label: "Formulários concluídos", value: formatNumber(metrics?.totals.completed), detail: metrics ? `${formatPercent(metrics.totals.completionRate)} dos iniciados` : undefined },
+    {
+      label: "Pessoas alcançadas",
+      value: funnelMetrics ? formatNumber(funnelMetrics.reached) : "N/D",
+      detail: funnelMetrics ? "Sessões únicas com landing_view" : "Aguardando eventos de funil",
+    },
+    {
+      label: "Formulários iniciados",
+      value: formatNumber(funnelMetrics?.started ?? metrics?.totals.started),
+      detail: funnelMetrics
+        ? `${formatPercent(funnelMetrics.rates.reachedToStarted)} do alcance`
+        : undefined,
+    },
+    {
+      label: "Formulários concluídos",
+      value: formatNumber(funnelMetrics?.completed ?? metrics?.totals.completed),
+      detail: funnelMetrics
+        ? `${formatPercent(funnelMetrics.rates.startedToCompleted)} dos inícios`
+        : undefined,
+    },
     {
       label: "Taxa de conclusão",
       value: metrics ? formatPercent(metrics.totals.completionRate) : "N/D",
     },
-    { label: "Viraram lead", value: formatNumber(metrics?.totals.leads), detail: metrics ? `${formatPercent(metrics.totals.leadRate)} dos concluídos` : undefined },
     { label: "Passageiros", value: formatNumber(metrics?.totals.passageiros) },
     { label: "Motoristas", value: formatNumber(metrics?.totals.motoristas) },
     { label: "Ambos", value: formatNumber(metrics?.totals.ambos) },
     { label: "Alta intenção", value: formatNumber(highIntentCount(metrics)) },
+    {
+      label: "Viraram lead",
+      value: funnelMetrics
+        ? formatNumber(funnelMetrics.leads)
+        : formatNumber(metrics?.totals.completed),
+      detail: funnelMetrics
+        ? `${formatPercent(funnelMetrics.rates.completedToLead)} dos concluídos`
+        : "Fallback: formulários concluídos",
+    },
   ];
   const profiles = profileDistribution(metrics);
   const occupation = distributionRows(metrics?.distributions.ocupacao ?? {}, completed);

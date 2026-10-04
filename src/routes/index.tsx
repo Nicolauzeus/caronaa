@@ -7,8 +7,11 @@ import {
   MapPinned,
   ShieldCheck,
 } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
+import { getCampaignAttribution, trackFunnelEvent } from "@/lib/funnel-events";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 
@@ -34,6 +37,23 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const { user } = useAuth();
+  const attribution = useMemo(
+    () => getCampaignAttribution({ defaultSource: "direct", defaultCampaignEvent: "Site" }),
+    [],
+  );
+
+  useEffect(() => {
+    void trackFunnelEvent({
+      eventName: "landing_view",
+      userId: user?.id ?? null,
+      ...attribution,
+      metadata: {
+        surface: "home",
+      },
+    });
+  }, [attribution, user?.id]);
+
   return (
     <AppShell publicPage>
       <section className="relative isolate flex min-h-[620px] items-end overflow-hidden bg-foreground md:min-h-[650px] md:items-center">

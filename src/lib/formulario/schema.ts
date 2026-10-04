@@ -106,6 +106,10 @@ const baseSchema = z.object({
 
   createdAt: z.string().optional(),
 
+  campaign: z.string().trim().max(120).nullable().optional(),
+
+  campaignEvent: z.string().trim().min(1).max(160).optional(),
+
   passengerCount: z.number().int().min(1).max(6).optional(),
 
   currentTransport: passengerTransportSchema.optional(),

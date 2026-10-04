@@ -12,6 +12,8 @@ import {
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
+import { trackProductEvent } from "@/lib/product-events";
 export const Route = createFileRoute("/_authenticated/oferecer")({
   head: () => ({
     meta: [
@@ -43,6 +45,7 @@ const initial = {
   price: "",
 };
 function Oferecer() {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(initial);
   const update = (key: keyof typeof initial, value: string) =>
@@ -50,9 +53,17 @@ function Oferecer() {
   const next = (e: FormEvent) => {
     e.preventDefault();
     if (step === 2) {
+      const isRepeat = Boolean(sessionStorage.getItem("caronaa-offered-ride"));
       try {
         sessionStorage.setItem("caronaa-offered-ride", JSON.stringify(form));
       } catch {}
+      if (user) {
+        void trackProductEvent({
+          eventName: isRepeat ? "RIDE_REPEATED" : "RIDE_OFFER_CREATED",
+          userId: user.id,
+          status: "published",
+        }).catch(() => undefined);
+      }
       setStep(3);
     } else setStep(2);
   };

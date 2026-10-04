@@ -6,6 +6,8 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { myDriverRides, myPassengerRides, currentUser } from "@/mockData";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
+import { trackProductEvent } from "@/lib/product-events";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -39,6 +41,7 @@ const initialForm: FormState = {
 };
 
 function MinhasCaronas() {
+  const { user } = useAuth();
   const [tab, setTab] = useState<"pedidos" | "disponiveis">("pedidos");
   const [form, setForm] = useState(initialForm);
   const [offered, setOffered] = useState<{
@@ -60,10 +63,18 @@ function MinhasCaronas() {
     setForm((current) => ({ ...current, [key]: value }));
   function submit(event: FormEvent) {
     event.preventDefault();
+    const isRepeat = Boolean(sessionStorage.getItem("caronaa-requested-ride"));
     try {
       sessionStorage.setItem("caronaa-requested-ride", JSON.stringify(form));
     } catch {
       /* keep the form usable without storage */
+    }
+    if (user) {
+      void trackProductEvent({
+        eventName: isRepeat ? "RIDE_REPEATED" : "RIDE_REQUEST_CREATED",
+        userId: user.id,
+        status: "published",
+      }).catch(() => undefined);
     }
     toast.success("Pedido publicado", {
       description: "Seu trajeto já está disponível para a comunidade.",

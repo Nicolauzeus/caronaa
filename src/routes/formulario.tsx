@@ -31,9 +31,9 @@ import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formu
 import { caronaaStsFormSchema } from "@/lib/formulario/schema";
 
 import { prepareSubmission } from "@/lib/formulario/submission";
-import { saveFormSubmission } from "@/lib/formulario/form-submission-service";
+import { registerFormStart, saveFormSubmission } from "@/lib/formulario/form-submission-service";
 import { useAuth } from "@/lib/auth-context";
-import { getFormAttribution, trackFunnelEvent } from "@/lib/formulario/funnel-analytics";
+import { getCampaignAttribution, trackFunnelEvent } from "@/lib/funnel-events";
 
 export const Route = createFileRoute("/formulario")({
   head: () => ({
@@ -68,9 +68,9 @@ export const Route = createFileRoute("/formulario")({
 
 function Formulario() {
   const { user } = useAuth();
-  const attribution = React.useMemo(getFormAttribution, []);
+  const attribution = React.useMemo(() => getCampaignAttribution(), []);
   const initialData = React.useMemo<CaronaaStsFormData>(
-    () => ({ source: attribution.source, campaign: attribution.campaign }),
+    () => ({ source: attribution.source, campaign: attribution.campaign, campaignEvent: attribution.campaignEvent }),
     [attribution],
   );
 
@@ -85,7 +85,7 @@ function Formulario() {
   const progress = getProgressPercentage(step, data);
 
   React.useEffect(() => {
-    void trackFunnelEvent({ name: "landing_view", attribution, userId: user?.id ?? null }).catch(() => undefined);
+    void trackFunnelEvent({ eventName: "landing_view", userId: user?.id ?? null, ...attribution });
   }, [attribution, user?.id]);
 
   function updateData(patch: Partial<CaronaaStsFormData>) {
@@ -138,12 +138,7 @@ function Formulario() {
     const next = getNextStep(step, data);
 
     if (next) {
-      void trackFunnelEvent({
-        name: "form_step_completed",
-        attribution,
-        userId: user?.id ?? null,
-        step,
-      }).catch(() => undefined);
+      void trackFunnelEvent({ eventName: "form_step_completed", userId: user?.id ?? null, ...attribution, formStep: step });
       setStep(next);
       window.scrollTo({
         top: 0,
@@ -195,18 +190,30 @@ function Formulario() {
 
       await saveFormSubmission(payload, user?.id ?? null);
 
-      // Analytics must not block a valid lead if the telemetry endpoint is temporarily unavailable.
-      void Promise.all([
-        trackFunnelEvent({ name: "form_step_completed", attribution, userId: user?.id ?? null, step: "CONTACT" }),
-        trackFunnelEvent({ name: "form_completed", attribution, userId: user?.id ?? null }),
-        trackFunnelEvent({ name: "lead_created", attribution, userId: user?.id ?? null }),
-      ]).catch(() => undefined);
-
       setData((current) => ({
         ...current,
         submissionId: payload.submissionId,
         createdAt: payload.createdAt,
       }));
+
+      void trackFunnelEvent({
+        eventName: "form_completed",
+        userId: user?.id ?? null,
+        ...attribution,
+        formStep: "CONTACT",
+        submissionId: payload.submissionId,
+      });
+
+      void trackFunnelEvent({
+        eventName: "lead_created",
+        userId: user?.id ?? null,
+        ...attribution,
+        submissionId: payload.submissionId,
+        metadata: {
+          leadType: payload.leadType,
+          activationStatus: payload.activationStatus,
+        },
+      });
 
       setStep("SUCCESS");
     } catch (error) {
@@ -250,14 +257,7 @@ function Formulario() {
           </div>
         ) : null}
 
-        {step === "INTRO" ? (
-          <FormIntro
-            onStart={() => {
-              void trackFunnelEvent({ name: "form_started", attribution, userId: user?.id ?? null }).catch(() => undefined);
-              setStep("PROFILE_ROUTE");
-            }}
-          />
-        ) : null}
+        {step === "INTRO" ? <FormIntro onStart={() => { void registerFormStart({ userId: user?.id ?? null, ...attribution }); void trackFunnelEvent({ eventName: "form_started", userId: user?.id ?? null, ...attribution }); setStep("PROFILE_ROUTE"); }} /> : null}
 
         {step === "PROFILE_ROUTE" ? (
           <ProfileRouteStep

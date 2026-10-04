@@ -99,6 +99,8 @@ export interface CaronaaStsFormData {
   driverCommitment?: CommitmentLevel | undefined;
 
   // Metadados
+  campaign?: string | null | undefined;
+  campaignEvent?: string | undefined;
   submissionId?: string | undefined;
   createdAt?: string | undefined;
 }

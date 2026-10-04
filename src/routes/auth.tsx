@@ -24,6 +24,7 @@ import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.ass
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
+import { trackProductEvent } from "@/lib/product-events";
 
 const authSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
@@ -79,6 +80,13 @@ function AuthPage() {
           options: { emailRedirectTo: window.location.origin, data: { full_name: name.trim() } },
         });
         if (error) throw error;
+        if (data.user) {
+          void trackProductEvent({
+            eventName: "USER_REGISTERED",
+            userId: data.user.id,
+            status: data.session ? "active" : "pending_email_confirmation",
+          }).catch(() => undefined);
+        }
         if (!data.session) {
           setConfirmationSent(true);
           return;

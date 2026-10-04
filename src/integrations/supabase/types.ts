@@ -8,6 +8,12 @@ export type Database = {
   };
   public: {
     Tables: {
+      product_events: {
+        Row: { event_id: string; event_name: Database["public"]["Enums"]["product_event_name"]; user_id: string; ride_id: string | null; match_id: string | null; status: string | null; source: string | null; campaign: string | null; created_at: string; metadata: Json };
+        Insert: { event_id?: string; event_name: Database["public"]["Enums"]["product_event_name"]; user_id: string; ride_id?: string | null; match_id?: string | null; status?: string | null; source?: string | null; campaign?: string | null; created_at?: string; metadata?: Json };
+        Update: { event_id?: string; event_name?: Database["public"]["Enums"]["product_event_name"]; user_id?: string; ride_id?: string | null; match_id?: string | null; status?: string | null; source?: string | null; campaign?: string | null; created_at?: string; metadata?: Json };
+        Relationships: [];
+      };
       form_funnel_events: {
         Row: {
           anonymous_session_id: string;
@@ -199,6 +205,59 @@ export type Database = {
         };
         Relationships: [];
       };
+      funnel_events: {
+        Row: {
+          anonymous_session_id: string | null;
+          campaign: string | null;
+          campaign_event: string;
+          created_at: string;
+          device_category: string | null;
+          event_id: string;
+          event_name: Database["public"]["Enums"]["funnel_event_name"];
+          form_step: string | null;
+          metadata: Json;
+          source: string;
+          submission_id: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event: string;
+          created_at?: string;
+          device_category?: string | null;
+          event_id?: string;
+          event_name: Database["public"]["Enums"]["funnel_event_name"];
+          form_step?: string | null;
+          metadata?: Json;
+          source: string;
+          submission_id?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event?: string;
+          created_at?: string;
+          device_category?: string | null;
+          event_id?: string;
+          event_name?: Database["public"]["Enums"]["funnel_event_name"];
+          form_step?: string | null;
+          metadata?: Json;
+          source?: string;
+          submission_id?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "funnel_events_submission_id_fkey";
+            columns: ["submission_id"];
+            isOneToOne: false;
+            referencedRelation: "form_submissions";
+            referencedColumns: ["submission_id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -334,6 +393,17 @@ export type Database = {
       form_dor_codigo: "DOR_01" | "DOR_02" | "DOR_03" | "DOR_04" | "DOR_05" | "DOR_06";
       form_intencao: "HOJE" | "PROVAVELMENTE" | "TALVEZ" | "PROVAVELMENTE_NAO" | "NAO";
       form_tipo_usuario: "PASSAGEIRO" | "MOTORISTA" | "AMBOS";
+      funnel_event_name:
+        "landing_view" | "form_started" | "form_step_completed" | "form_completed" | "lead_created";
+      product_event_name:
+        | "USER_REGISTERED"
+        | "RIDE_REQUEST_CREATED"
+        | "RIDE_OFFER_CREATED"
+        | "MATCH_CREATED"
+        | "RIDE_STARTED"
+        | "RIDE_COMPLETED"
+        | "PAYMENT_COMPLETED"
+        | "RIDE_REPEATED";
     };
     CompositeTypes: {
       [_ in never]: never;

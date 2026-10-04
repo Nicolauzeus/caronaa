@@ -106,7 +106,10 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
   return {
     source: data.source,
+
     campaign: data.campaign ?? null,
+
+    campaignEvent: data.campaignEvent ?? "Siará Tech Summit 2026",
 
     intent: data.intent,
 
