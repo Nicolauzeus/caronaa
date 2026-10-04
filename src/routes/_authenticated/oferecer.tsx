@@ -54,14 +54,17 @@ function Oferecer() {
     e.preventDefault();
     if (step === 2) {
       const isRepeat = Boolean(sessionStorage.getItem("caronaa-offered-ride"));
+      const rideId = crypto.randomUUID();
       try {
-        sessionStorage.setItem("caronaa-offered-ride", JSON.stringify(form));
+        sessionStorage.setItem("caronaa-offered-ride", JSON.stringify({ ...form, rideId }));
       } catch {}
       if (user) {
         void trackProductEvent({
           eventName: isRepeat ? "RIDE_REPEATED" : "RIDE_OFFER_CREATED",
           userId: user.id,
-          status: "published",
+          rideId,
+          status: "available",
+          metadata: { origin: form.origin, destination: form.destination, timeWindow: form.time, profile: "MOTORISTA" },
         }).catch(() => undefined);
       }
       setStep(3);

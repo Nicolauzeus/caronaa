@@ -15,6 +15,7 @@ export type ProductEventInput = {
   status?: string | null;
   source?: string | null;
   campaign?: string | null;
+  metadata?: Record<string, string | number | boolean | null>;
 };
 
 export async function trackProductEvent(input: ProductEventInput) {
@@ -27,6 +28,7 @@ export async function trackProductEvent(input: ProductEventInput) {
     status: input.status ?? null,
     source: input.source ?? attribution.source,
     campaign: input.campaign ?? attribution.campaign,
+    metadata: input.metadata ?? {},
   });
   if (error) throw new Error(`Não foi possível registrar evento de produto: ${error.message}`);
 }

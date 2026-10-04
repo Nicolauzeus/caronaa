@@ -64,8 +64,9 @@ function MinhasCaronas() {
   function submit(event: FormEvent) {
     event.preventDefault();
     const isRepeat = Boolean(sessionStorage.getItem("caronaa-requested-ride"));
+    const rideId = crypto.randomUUID();
     try {
-      sessionStorage.setItem("caronaa-requested-ride", JSON.stringify(form));
+      sessionStorage.setItem("caronaa-requested-ride", JSON.stringify({ ...form, rideId }));
     } catch {
       /* keep the form usable without storage */
     }
@@ -73,7 +74,9 @@ function MinhasCaronas() {
       void trackProductEvent({
         eventName: isRepeat ? "RIDE_REPEATED" : "RIDE_REQUEST_CREATED",
         userId: user.id,
-        status: "published",
+          rideId,
+          status: "open",
+          metadata: { origin: form.origin, destination: form.destination, timeWindow: form.time, profile: "PASSAGEIRO" },
       }).catch(() => undefined);
     }
     toast.success("Pedido publicado", {
