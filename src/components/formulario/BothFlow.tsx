@@ -199,7 +199,7 @@ export function BothFlow({
       <div className="space-y-3">
         <div className="space-y-1">
           <h3 className="font-semibold">
-            E se você preferir pegar carona, como voltaria sem a CARONAA?
+            E se você preferir sair sem o teu veiculo, como voltaria sem a CARONAA?
           </h3>
 
           <p className="text-sm text-muted-foreground">

@@ -23,11 +23,6 @@ const passengerOptions: Array<{
     title: "Quero ver motorista e rota primeiro",
     description: "Tenho interesse, mas quero analisar as informações antes de decidir.",
   },
-  {
-    value: "NAO_HOJE",
-    title: "Hoje não",
-    description: "Gostei da ideia, mas não pretendo usar uma carona hoje.",
-  },
 ];
 
 const driverOptions: Array<{

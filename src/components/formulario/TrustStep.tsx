@@ -52,23 +52,7 @@ const trustOptions: Array<{
     value: "PARTICIPANTE_STS",
     title: "Saber que está no STS",
     description: "Ter certeza de que a outra pessoa também participa do evento.",
-  },
-  {
-    value: "ROTA_VISIVEL",
-    title: "Ver a rota antes",
-    description: "Conferir destino e percurso antes de confirmar.",
-  },
-  {
-    value: "COMPARTILHAR_VIAGEM",
-    title: "Compartilhar a viagem",
-    description: "Poder compartilhar informações da viagem com alguém.",
-  },
-  {
-    value: "OUTRO",
-    title: "Outro fator",
-    description: "Existe outra coisa importante para você se sentir seguro.",
-  },
-];
+  },];
 
 export function TrustStep({ intent, value = [], onChange, onNext, onBack }: TrustStepProps) {
   const isPassenger = intent === "PASSAGEIRO";
