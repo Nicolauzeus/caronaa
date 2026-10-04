@@ -150,22 +150,22 @@ function AuthPage() {
     <AuthFrame>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">
+          <p className="text-sm font-extrabold uppercase text-primary">
             {mode === "cadastro" ? "VENHA COM A GENTE" : "BEM-VINDO DE VOLTA"}
           </p>
-          <h1 className="mt-2 font-display text-3xl font-extrabold md:text-4xl">
+          <h1 className="mt-2 font-display text-4xl font-extrabold leading-tight text-foreground md:text-5xl">
             {mode === "cadastro" ? "Crie sua conta" : "Entre na Caronaa"}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-2 text-base font-medium text-muted-foreground">
             {mode === "cadastro" ? "Comece a compartilhar caminhos." : "Continue de onde parou."}
           </p>
         </div>
-        <ThemeToggle className="shrink-0" />
+        <ThemeToggle className="shrink-0 border-border/70 bg-background/70" />
       </div>
       <Button
         type="button"
         variant="outline"
-        className="h-12 w-full font-bold"
+        className="h-13 w-full rounded-lg border-border bg-white text-base font-extrabold shadow-[0_8px_22px_-18px_oklch(0.2_0.03_255_/_35%)] hover:bg-white"
         onClick={continueWithGoogle}
         disabled={busy}
       >
@@ -189,7 +189,7 @@ function AuthPage() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-13 bg-auth-field pl-11"
+                className="h-14 rounded-lg border-border bg-auth-field pl-11 text-base font-medium shadow-inner"
                 autoComplete="name"
                 required
               />
@@ -208,7 +208,7 @@ function AuthPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-13 bg-auth-field pl-11"
+              className="h-14 rounded-lg border-border bg-auth-field pl-11 text-base font-medium shadow-inner"
               autoComplete="email"
               required
             />
@@ -226,7 +226,7 @@ function AuthPage() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-13 bg-auth-field px-11"
+              className="h-14 rounded-lg border-border bg-auth-field px-11 text-base font-medium shadow-inner"
               autoComplete={mode === "cadastro" ? "new-password" : "current-password"}
               minLength={6}
               required
@@ -243,7 +243,11 @@ function AuthPage() {
             </Button>
           </div>
         </div>
-        <Button type="submit" className="h-13 w-full text-base font-extrabold" disabled={busy}>
+        <Button
+          type="submit"
+          className="h-14 w-full rounded-lg text-base font-extrabold shadow-[0_18px_30px_-22px_oklch(0.79_0.17_76_/_70%)]"
+          disabled={busy}
+        >
           {busy ? (
             "Aguarde..."
           ) : mode === "cadastro" ? (
@@ -265,7 +269,7 @@ function AuthPage() {
           </Button>
         )}
       </form>
-      <div className="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
+      <div className="mt-7 border-t border-border pt-5 text-center text-sm font-medium text-muted-foreground">
         {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
         <Button
           type="button"
@@ -287,57 +291,60 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
     { icon: ShieldCheck, text: "Viaje com segurança" },
   ];
   return (
-    <main className="relative grid min-h-screen bg-background lg:grid-cols-[1.12fr_.88fr]">
-      <section className="relative hidden min-h-screen overflow-hidden px-10 py-9 text-primary-foreground lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-12">
+    <main className="relative grid min-h-screen bg-background lg:grid-cols-[1.14fr_.86fr]">
+      <section className="relative hidden min-h-screen overflow-hidden px-10 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-12">
         <img
           src={desktopBackground.url}
           alt="Cidade conectada pelos trajetos da Caronaa"
           className="absolute inset-0 size-full object-cover"
         />
         <div className="absolute inset-0 bg-hero-overlay" />
-        <div className="relative z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_44%,oklch(0.79_0.17_76_/_0.28),transparent_23%),linear-gradient(180deg,oklch(0.12_0.03_249_/_0.08),oklch(0.12_0.03_249_/_0.42))]" />
+        <div className="relative z-10 [&_img]:h-14">
           <Brand light />
         </div>
-        <div className="relative z-10 max-w-xl">
-          <p className="text-sm font-bold uppercase tracking-widest text-primary">
+        <div className="relative z-10 max-w-2xl">
+          <p className="text-base font-extrabold uppercase text-primary drop-shadow-[0_2px_10px_oklch(0.08_0.02_249_/_0.6)]">
             SUA CIDADE, SEU CAMINHO
           </p>
-          <h2 className="mt-4 font-display text-5xl font-extrabold leading-[1.08] xl:text-6xl">
+          <h2 className="mt-5 max-w-[680px] font-display text-[4.5rem] font-extrabold leading-[0.98] text-white drop-shadow-[0_8px_28px_oklch(0.08_0.02_249_/_0.55)] xl:text-[5.6rem]">
             Seu caminho
             <br />
             pode levar
             <br />
-            <span className="text-primary">alguém junto.</span>
+            <span className="text-primary drop-shadow-[0_4px_18px_oklch(0.79_0.17_76_/_0.35)]">
+              alguém junto.
+            </span>
           </h2>
-          <p className="mt-6 max-w-lg text-lg leading-relaxed text-primary-foreground/80">
+          <p className="mt-7 max-w-xl text-[1.35rem] font-medium leading-relaxed text-white/82 drop-shadow-[0_4px_18px_oklch(0.08_0.02_249_/_0.45)]">
             Encontre pessoas indo para a mesma direção, compartilhe o trajeto e transforme
             deslocamentos em conexões.
           </p>
-          <div className="mt-10 grid grid-cols-3 gap-3">
+          <div className="mt-12 grid max-w-[760px] grid-cols-3 gap-5">
             {features.map(({ icon: Icon, text }) => (
               <div
                 key={text}
-                className="flex min-h-20 items-center gap-3 rounded-lg border border-primary-foreground/25 bg-primary-foreground/5 px-4 backdrop-blur-sm"
+                className="flex min-h-24 items-center gap-4 rounded-xl border border-white/20 bg-white/[0.06] px-5 shadow-[0_18px_40px_-28px_oklch(0.02_0.02_249_/_0.9)] backdrop-blur-sm"
               >
-                <Icon className="shrink-0 text-primary" size={25} />
-                <span className="text-sm font-semibold">{text}</span>
+                <Icon className="shrink-0 text-primary" size={29} strokeWidth={2.4} />
+                <span className="text-base font-bold leading-tight text-white">{text}</span>
               </div>
             ))}
           </div>
         </div>
-        <p className="relative z-10 flex items-center gap-4 text-sm text-primary-foreground/65">
-          <span className="h-px w-10 bg-primary-foreground/60" />
+        <p className="relative z-10 flex items-center gap-5 text-base font-medium text-white/68">
+          <span className="h-px w-14 bg-white/70" />
           Juntos chegamos mais longe.
         </p>
       </section>
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-8 md:px-10">
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fbfaf6] px-5 py-8 md:px-10">
         <picture className="absolute inset-0 lg:hidden">
           <img src={mobileBackground.url} alt="" className="size-full object-cover" />
         </picture>
-        <div className="absolute inset-0 bg-background/88 backdrop-blur-sm lg:hidden" />
-        <div className="relative z-10 w-full max-w-lg rounded-lg border border-border bg-card/95 p-6 shadow-card md:p-9">
-          <div className="mb-7">
-            <img src={logoAsset.url} alt="CARONAA" className="h-14 w-auto object-contain" />
+        <div className="absolute inset-0 bg-background/90 backdrop-blur-sm lg:hidden" />
+        <div className="relative z-10 w-full max-w-[620px] rounded-3xl border border-white/70 bg-white/92 p-6 shadow-[0_26px_80px_-46px_oklch(0.19_0.04_255_/_0.34)] md:p-11 xl:p-12">
+          <div className="mb-9">
+            <img src={logoAsset.url} alt="CARONAA" className="h-[58px] w-auto object-contain" />
           </div>
           {children}
         </div>

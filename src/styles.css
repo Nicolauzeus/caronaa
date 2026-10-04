@@ -67,33 +67,33 @@
 
 :root {
   --radius: 0.75rem;
-  --caronaa-primary: #f5a800;
+  --caronaa-primary: #ffb000;
   --caronaa-primary-strong: #e89500;
   --caronaa-primary-soft: #fff3d1;
   --caronaa-secondary: #f4a11d;
   --caronaa-accent: #ffc400;
-  --caronaa-background: #fafaf8;
+  --caronaa-background: #f8f6f1;
   --caronaa-surface: #ffffff;
   --caronaa-surface-elevated: #fffdf8;
   --caronaa-border: #e8e4da;
-  --caronaa-text: #181818;
-  --caronaa-text-muted: #66635d;
+  --caronaa-text: #111827;
+  --caronaa-text-muted: #667085;
   --caronaa-success: #198754;
   --caronaa-warning: #d97706;
   --caronaa-danger: #dc2626;
   --caronaa-info: #0f766e;
-  --background: oklch(0.987 0.008 88.4);
-  --foreground: oklch(0.18 0.035 255);
+  --background: oklch(0.977 0.011 85);
+  --foreground: oklch(0.21 0.034 266);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.035 255);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.035 255);
-  --primary: oklch(0.738 0.155 70.7);
+  --primary: oklch(0.79 0.171 76.3);
   --primary-foreground: oklch(0.18 0.04 20);
   --secondary: oklch(0.966 0.023 82);
   --secondary-foreground: oklch(0.2 0.035 255);
   --muted: oklch(0.963 0.01 86);
-  --muted-foreground: oklch(0.46 0.015 24);
+  --muted-foreground: oklch(0.52 0.026 265);
   --accent: oklch(0.97 0.021 82);
   --accent-foreground: oklch(0.18 0.035 255);
   --destructive: oklch(0.62 0.217 25);
@@ -172,9 +172,9 @@
 .bg-hero-overlay {
   background: linear-gradient(
     90deg,
-    oklch(0.16 0.03 188 / 83%) 0%,
-    oklch(0.16 0.03 188 / 52%) 45%,
-    oklch(0.16 0.03 188 / 7%) 100%
+    oklch(0.16 0.035 249 / 92%) 0%,
+    oklch(0.16 0.035 249 / 74%) 42%,
+    oklch(0.16 0.035 249 / 24%) 100%
   );
 }
 .shadow-soft {
