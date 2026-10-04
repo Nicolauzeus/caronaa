@@ -6,5 +6,201 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { RideCard } from "@/components/caronaa/RideCard";
 import { Button } from "@/components/ui/button";
 import { rideService } from "@/mockData";
-export const Route = createFileRoute("/buscar")({ head: () => ({ meta: [{ title: "Buscar carona — CARONAA" }, { name: "description", content: "Busque caronas urbanas e intermunicipais compartilhadas com sua comunidade." }, { property: "og:title", content: "Buscar carona — CARONAA" }, { property: "og:description", content: "Busque caronas urbanas e intermunicipais compartilhadas com sua comunidade." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: Buscar });
-function Buscar() { const [origin, setOrigin] = useState(""); const [destination, setDestination] = useState(""); const [date, setDate] = useState(""); const [time, setTime] = useState(""); const [passengers, setPassengers] = useState("1"); const [filter, setFilter] = useState("Todas"); const [submitted, setSubmitted] = useState({ origin: "", destination: "", date: "", time: "", passengers: "1" }); useEffect(() => { const params = new URLSearchParams(window.location.search); const from = params.get("origem") || ""; const to = params.get("destino") || ""; const when = params.get("data") || ""; if (from || to || when) { setOrigin(from); setDestination(to); setDate(when); setSubmitted({ origin: from, destination: to, date: when, time: "", passengers: "1" }); } }, []); const matches = rideService.list().filter((r) => (filter === "Todas" || r.type === filter) && (!submitted.origin || r.origin.toLowerCase().includes(submitted.origin.toLowerCase())) && (!submitted.destination || r.destination.toLowerCase().includes(submitted.destination.toLowerCase())) && r.seats >= Number(submitted.passengers) && (!submitted.date || (submitted.date.endsWith("-10-03") ? r.date.includes("03 out") : submitted.date.endsWith("-10-04") ? r.date.includes("04 out") : false)) && (!submitted.time || r.time >= submitted.time)); return <AppShell><PageHeading eyebrow="VÁ PELO MESMO CAMINHO" title="Encontre sua próxima carona" description="Descubra trajetos compartilhados e escolha a companhia ideal para o seu caminho."/><form onSubmit={(e) => {e.preventDefault(); setSubmitted({origin, destination, date, time, passengers});}} className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-soft md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end"><label className="text-xs font-bold text-muted-foreground">ORIGEM<div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3"><MapPin size={16} className="text-primary"/><input value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="De onde?" className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"/></div></label><label className="text-xs font-bold text-muted-foreground">DESTINO<div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3"><MapPin size={16} className="text-primary"/><input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Para onde?" className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"/></div></label><label className="text-xs font-bold text-muted-foreground">DATA<div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3"><CalendarDays size={16} className="text-primary"/><input aria-label="Data da viagem" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"/></div></label><label className="text-xs font-bold text-muted-foreground">HORÁRIO<div className="mt-2 flex h-11 items-center rounded-md border border-input px-3"><input aria-label="Horário aproximado" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full bg-transparent text-sm text-foreground outline-none"/></div></label><Button type="submit" className="h-11"><Search/> Buscar</Button></form><div className="mt-6 flex flex-wrap items-center gap-2"><SlidersHorizontal size={17} className="mr-1 text-muted-foreground"/>{["Todas", "Urbana", "Intermunicipal"].map((option) => <Button key={option} variant={filter === option ? "default" : "outline"} size="sm" onClick={() => setFilter(option)}>{option}</Button>)}<label className="ml-auto flex items-center gap-2 text-sm font-semibold text-muted-foreground"><UsersRound size={16}/> Passageiros <select value={passengers} onChange={(e) => {setPassengers(e.target.value); setSubmitted((current) => ({...current, passengers: e.target.value}));}} className="rounded-md border border-input bg-card px-2 py-1 text-foreground"><option>1</option><option>2</option><option>3</option></select></label></div><div className="mb-5 mt-9 flex items-end justify-between"><div><h2 className="font-display text-xl font-extrabold">Caronas disponíveis</h2><p className="mt-1 text-sm text-muted-foreground">{matches.length} {matches.length === 1 ? "trajeto encontrado" : "trajetos encontrados"}</p></div></div>{matches.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{matches.map((ride) => <RideCard key={ride.id} ride={ride}/>)}</div> : <div className="rounded-lg border border-dashed border-border py-16 text-center"><Search className="mx-auto mb-3 text-muted-foreground"/><p className="font-bold">Nenhuma carona encontrada</p><p className="mt-1 text-sm text-muted-foreground">Tente outro trajeto ou ajuste os filtros.</p><Button variant="link" className="mt-3" onClick={() => {setOrigin("");setDestination("");setDate("");setTime("");setPassengers("1");setSubmitted({origin:"",destination:"",date:"",time:"",passengers:"1"});setFilter("Todas")}}>Limpar filtros</Button></div>}</AppShell> }
+export const Route = createFileRoute("/buscar")({
+  head: () => ({
+    meta: [
+      { title: "Buscar carona — CARONAA" },
+      {
+        name: "description",
+        content: "Busque caronas urbanas e intermunicipais compartilhadas com sua comunidade.",
+      },
+      { property: "og:title", content: "Buscar carona — CARONAA" },
+      {
+        property: "og:description",
+        content: "Busque caronas urbanas e intermunicipais compartilhadas com sua comunidade.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: Buscar,
+});
+function Buscar() {
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [passengers, setPassengers] = useState("1");
+  const [filter, setFilter] = useState("Todas");
+  const [submitted, setSubmitted] = useState({
+    origin: "",
+    destination: "",
+    date: "",
+    time: "",
+    passengers: "1",
+  });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get("origem") || "";
+    const to = params.get("destino") || "";
+    const when = params.get("data") || "";
+    if (from || to || when) {
+      setOrigin(from);
+      setDestination(to);
+      setDate(when);
+      setSubmitted({ origin: from, destination: to, date: when, time: "", passengers: "1" });
+    }
+  }, []);
+  const matches = rideService
+    .list()
+    .filter(
+      (r) =>
+        (filter === "Todas" || r.type === filter) &&
+        (!submitted.origin || r.origin.toLowerCase().includes(submitted.origin.toLowerCase())) &&
+        (!submitted.destination ||
+          r.destination.toLowerCase().includes(submitted.destination.toLowerCase())) &&
+        r.seats >= Number(submitted.passengers) &&
+        (!submitted.date ||
+          (submitted.date.endsWith("-10-03")
+            ? r.date.includes("03 out")
+            : submitted.date.endsWith("-10-04")
+              ? r.date.includes("04 out")
+              : false)) &&
+        (!submitted.time || r.time >= submitted.time),
+    );
+  return (
+    <AppShell>
+      <PageHeading
+        eyebrow="VÁ PELO MESMO CAMINHO"
+        title="Encontre sua próxima carona"
+        description="Descubra trajetos compartilhados e escolha a companhia ideal para o seu caminho."
+      />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSubmitted({ origin, destination, date, time, passengers });
+        }}
+        className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-soft md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end"
+      >
+        <label className="text-xs font-bold text-muted-foreground">
+          ORIGEM
+          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
+            <MapPin size={16} className="text-primary" />
+            <input
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value)}
+              placeholder="De onde?"
+              className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
+            />
+          </div>
+        </label>
+        <label className="text-xs font-bold text-muted-foreground">
+          DESTINO
+          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
+            <MapPin size={16} className="text-primary" />
+            <input
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              placeholder="Para onde?"
+              className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
+            />
+          </div>
+        </label>
+        <label className="text-xs font-bold text-muted-foreground">
+          DATA
+          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
+            <CalendarDays size={16} className="text-primary" />
+            <input
+              aria-label="Data da viagem"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
+            />
+          </div>
+        </label>
+        <label className="text-xs font-bold text-muted-foreground">
+          HORÁRIO
+          <div className="mt-2 flex h-11 items-center rounded-md border border-input px-3">
+            <input
+              aria-label="Horário aproximado"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full bg-transparent text-sm text-foreground outline-none"
+            />
+          </div>
+        </label>
+        <Button type="submit" className="h-11">
+          <Search /> Buscar
+        </Button>
+      </form>
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <SlidersHorizontal size={17} className="mr-1 text-muted-foreground" />
+        {["Todas", "Urbana", "Intermunicipal"].map((option) => (
+          <Button
+            key={option}
+            variant={filter === option ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter(option)}
+          >
+            {option}
+          </Button>
+        ))}
+        <label className="ml-auto flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <UsersRound size={16} /> Passageiros{" "}
+          <select
+            value={passengers}
+            onChange={(e) => {
+              setPassengers(e.target.value);
+              setSubmitted((current) => ({ ...current, passengers: e.target.value }));
+            }}
+            className="rounded-md border border-input bg-card px-2 py-1 text-foreground"
+          >
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+        </label>
+      </div>
+      <div className="mb-5 mt-9 flex items-end justify-between">
+        <div>
+          <h2 className="font-display text-xl font-extrabold">Caronas disponíveis</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {matches.length} {matches.length === 1 ? "trajeto encontrado" : "trajetos encontrados"}
+          </p>
+        </div>
+      </div>
+      {matches.length ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {matches.map((ride) => (
+            <RideCard key={ride.id} ride={ride} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-border py-16 text-center">
+          <Search className="mx-auto mb-3 text-muted-foreground" />
+          <p className="font-bold">Nenhuma carona encontrada</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tente outro trajeto ou ajuste os filtros.
+          </p>
+          <Button
+            variant="link"
+            className="mt-3"
+            onClick={() => {
+              setOrigin("");
+              setDestination("");
+              setDate("");
+              setTime("");
+              setPassengers("1");
+              setSubmitted({ origin: "", destination: "", date: "", time: "", passengers: "1" });
+              setFilter("Todas");
+            }}
+          >
+            Limpar filtros
+          </Button>
+        </div>
+      )}
+    </AppShell>
+  );
+}

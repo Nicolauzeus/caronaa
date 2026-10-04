@@ -1,7 +1,4 @@
-import type {
-  CaronaaIntent,
-  CommitmentLevel,
-} from "@/lib/formulario/types";
+import type { CaronaaIntent, CommitmentLevel } from "@/lib/formulario/types";
 
 type CommitmentStepProps = {
   intent: Exclude<CaronaaIntent, "AMBOS">;
@@ -19,20 +16,17 @@ const passengerOptions: Array<{
   {
     value: "SIM_HOJE",
     title: "Sim, quero tentar usar hoje",
-    description:
-      "Se aparecer uma carona compatível, quero que a CARONAA me conecte.",
+    description: "Se aparecer uma carona compatível, quero que a CARONAA me conecte.",
   },
   {
     value: "QUERO_VER_MATCH",
     title: "Quero ver motorista e rota primeiro",
-    description:
-      "Tenho interesse, mas quero analisar as informações antes de decidir.",
+    description: "Tenho interesse, mas quero analisar as informações antes de decidir.",
   },
   {
     value: "NAO_HOJE",
     title: "Hoje não",
-    description:
-      "Gostei da ideia, mas não pretendo usar uma carona hoje.",
+    description: "Gostei da ideia, mas não pretendo usar uma carona hoje.",
   },
 ];
 
@@ -44,35 +38,24 @@ const driverOptions: Array<{
   {
     value: "SIM_HOJE",
     title: "Sim, posso levar alguém hoje",
-    description:
-      "Se aparecer um passageiro compatível, quero que a CARONAA me conecte.",
+    description: "Se aparecer um passageiro compatível, quero que a CARONAA me conecte.",
   },
   {
     value: "QUERO_VER_MATCH",
     title: "Quero ver passageiro e destino primeiro",
-    description:
-      "Posso oferecer carona, mas quero analisar a combinação antes de decidir.",
+    description: "Posso oferecer carona, mas quero analisar a combinação antes de decidir.",
   },
   {
     value: "NAO_HOJE",
     title: "Hoje não",
-    description:
-      "Tenho interesse na CARONAA, mas não vou oferecer carona hoje.",
+    description: "Tenho interesse na CARONAA, mas não vou oferecer carona hoje.",
   },
 ];
 
-export function CommitmentStep({
-  intent,
-  value,
-  onChange,
-  onNext,
-  onBack,
-}: CommitmentStepProps) {
+export function CommitmentStep({ intent, value, onChange, onNext, onBack }: CommitmentStepProps) {
   const isPassenger = intent === "PASSAGEIRO";
 
-  const options = isPassenger
-    ? passengerOptions
-    : driverOptions;
+  const options = isPassenger ? passengerOptions : driverOptions;
 
   const title = isPassenger
     ? "Se encontrarmos uma carona compatível, você usaria hoje?"
@@ -85,17 +68,11 @@ export function CommitmentStep({
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Uso real hoje
-        </p>
+        <p className="text-sm font-medium text-primary">Uso real hoje</p>
 
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {title}
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
 
-        <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-          {description}
-        </p>
+        <p className="text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>
       </div>
 
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -104,16 +81,12 @@ export function CommitmentStep({
         </p>
 
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Queremos medir quem realmente toparia formar uma viagem hoje,
-          e não apenas quem acha a ideia interessante.
+          Queremos medir quem realmente toparia formar uma viagem hoje, e não apenas quem acha a
+          ideia interessante.
         </p>
       </div>
 
-      <div
-        className="grid gap-3"
-        role="radiogroup"
-        aria-label="Intenção de uso hoje"
-      >
+      <div className="grid gap-3" role="radiogroup" aria-label="Intenção de uso hoje">
         {options.map((option) => {
           const selected = value === option.value;
 
@@ -135,17 +108,13 @@ export function CommitmentStep({
               <span
                 className={[
                   "mt-0.5 h-5 w-5 shrink-0 rounded-full border",
-                  selected
-                    ? "border-[6px] border-primary"
-                    : "border-muted-foreground/40",
+                  selected ? "border-[6px] border-primary" : "border-muted-foreground/40",
                 ].join(" ")}
                 aria-hidden="true"
               />
 
               <span className="min-w-0 space-y-1">
-                <span className="block text-sm font-semibold">
-                  {option.title}
-                </span>
+                <span className="block text-sm font-semibold">{option.title}</span>
 
                 <span className="block text-xs leading-5 text-muted-foreground">
                   {option.description}
@@ -177,4 +146,3 @@ export function CommitmentStep({
     </section>
   );
 }
-

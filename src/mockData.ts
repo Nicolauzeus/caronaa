@@ -31,19 +31,110 @@ export const currentUser = {
 };
 
 export const rides: Ride[] = [
-  { id: 1, driver: "Rafael Oliveira", photo: rafael, rating: "4,9", reviews: 42, origin: "Aldeota", destination: "Meireles", date: "Hoje, 03 out", time: "07:30", arrival: "08:05", seats: 2, price: 8, vehicle: "Honda Fit · Prata", meeting: "Praça Portugal", type: "Urbana" },
-  { id: 2, driver: "Marina Costa", photo: marina, rating: "5,0", reviews: 28, origin: "Fortaleza", destination: "Eusébio", date: "Hoje, 03 out", time: "08:15", arrival: "09:00", seats: 3, price: 15, vehicle: "Hyundai HB20 · Branco", meeting: "Shopping Iguatemi Bosque", type: "Intermunicipal" },
-  { id: 3, driver: "Lucas Ferreira", photo: lucas, rating: "4,8", reviews: 36, origin: "Benfica", destination: "Centro", date: "Amanhã, 04 out", time: "09:00", arrival: "09:30", seats: 1, price: 7, vehicle: "Chevrolet Onix · Azul", meeting: "Praça da Gentilândia", type: "Urbana" },
-  { id: 4, driver: "Rafael Oliveira", photo: rafael, rating: "4,9", reviews: 42, origin: "Fortaleza", destination: "Aquiraz", date: "Amanhã, 04 out", time: "10:30", arrival: "11:25", seats: 2, price: 20, vehicle: "Honda Fit · Prata", meeting: "Terminal Papicu", type: "Intermunicipal" },
+  {
+    id: 1,
+    driver: "Rafael Oliveira",
+    photo: rafael,
+    rating: "4,9",
+    reviews: 42,
+    origin: "Aldeota",
+    destination: "Meireles",
+    date: "Hoje, 03 out",
+    time: "07:30",
+    arrival: "08:05",
+    seats: 2,
+    price: 8,
+    vehicle: "Honda Fit · Prata",
+    meeting: "Praça Portugal",
+    type: "Urbana",
+  },
+  {
+    id: 2,
+    driver: "Marina Costa",
+    photo: marina,
+    rating: "5,0",
+    reviews: 28,
+    origin: "Fortaleza",
+    destination: "Eusébio",
+    date: "Hoje, 03 out",
+    time: "08:15",
+    arrival: "09:00",
+    seats: 3,
+    price: 15,
+    vehicle: "Hyundai HB20 · Branco",
+    meeting: "Shopping Iguatemi Bosque",
+    type: "Intermunicipal",
+  },
+  {
+    id: 3,
+    driver: "Lucas Ferreira",
+    photo: lucas,
+    rating: "4,8",
+    reviews: 36,
+    origin: "Benfica",
+    destination: "Centro",
+    date: "Amanhã, 04 out",
+    time: "09:00",
+    arrival: "09:30",
+    seats: 1,
+    price: 7,
+    vehicle: "Chevrolet Onix · Azul",
+    meeting: "Praça da Gentilândia",
+    type: "Urbana",
+  },
+  {
+    id: 4,
+    driver: "Rafael Oliveira",
+    photo: rafael,
+    rating: "4,9",
+    reviews: 42,
+    origin: "Fortaleza",
+    destination: "Aquiraz",
+    date: "Amanhã, 04 out",
+    time: "10:30",
+    arrival: "11:25",
+    seats: 2,
+    price: 20,
+    vehicle: "Honda Fit · Prata",
+    meeting: "Terminal Papicu",
+    type: "Intermunicipal",
+  },
 ];
 
 export const myPassengerRides = [
-  { id: 101, origin: "Aldeota", destination: "Meireles", date: "Hoje, 03 out", time: "07:30", driver: "Rafael Oliveira", status: "Confirmada", photo: rafael },
-  { id: 102, origin: "Fortaleza", destination: "Eusébio", date: "Amanhã, 04 out", time: "08:15", driver: "Marina Costa", status: "Aguardando", photo: marina },
+  {
+    id: 101,
+    origin: "Aldeota",
+    destination: "Meireles",
+    date: "Hoje, 03 out",
+    time: "07:30",
+    driver: "Rafael Oliveira",
+    status: "Confirmada",
+    photo: rafael,
+  },
+  {
+    id: 102,
+    origin: "Fortaleza",
+    destination: "Eusébio",
+    date: "Amanhã, 04 out",
+    time: "08:15",
+    driver: "Marina Costa",
+    status: "Aguardando",
+    photo: marina,
+  },
 ];
 
 export const myDriverRides = [
-  { id: 201, origin: "Benfica", destination: "Centro", date: "Seg, 05 out", time: "08:00", driver: "Você está dirigindo", status: "Publicada", photo: marina },
+  {
+    id: 201,
+    origin: "Benfica",
+    destination: "Centro",
+    date: "Seg, 05 out",
+    time: "08:00",
+    driver: "Você está dirigindo",
+    status: "Publicada",
+    photo: marina,
+  },
 ];
 
 export const rideService = {
@@ -238,7 +329,7 @@ export const adminResponses: AdminResponse[] = [
       Destino: "Meireles",
       Frequência: "4x por semana",
       Dores: ["Assentos vazios"],
-      Expectativas: ["Mais segurança e avaliação"] ,
+      Expectativas: ["Mais segurança e avaliação"],
     },
   },
   {
@@ -308,14 +399,17 @@ export const adminService = {
     return filtered;
   },
   getUser: (id: string) => adminUsers.find((user) => user.id === id) ?? null,
-  listSurveyResponses: ({ source = "all", search = "" }: { source?: string; search?: string } = {}) => {
+  listSurveyResponses: ({
+    source = "all",
+    search = "",
+  }: { source?: string; search?: string } = {}) => {
     return adminResponses.filter((response) => {
       const matchesSource = source === "all" || response.source === source;
       const query = search.trim().toLowerCase();
       const matchesSearch =
         !query ||
-        [response.participant, response.city, response.contact, response.id, response.source].some((field) =>
-          field.toLowerCase().includes(query),
+        [response.participant, response.city, response.contact, response.id, response.source].some(
+          (field) => field.toLowerCase().includes(query),
         );
 
       return matchesSource && matchesSearch;

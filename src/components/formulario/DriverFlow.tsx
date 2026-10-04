@@ -1,6 +1,4 @@
-import type {
-  VehicleType,
-} from "@/lib/formulario/types";
+import type { VehicleType } from "@/lib/formulario/types";
 
 type DriverFlowProps = {
   vehicleType?: VehicleType | undefined;
@@ -23,22 +21,19 @@ const vehicleOptions: Array<{
     value: "CARRO_PROPRIO",
     icon: "🚗",
     title: "Carro próprio",
-    description:
-      "Estou com meu próprio carro hoje.",
+    description: "Estou com meu próprio carro hoje.",
   },
   {
     value: "CARRO_COMPARTILHADO",
     icon: "🚙",
     title: "Carro da família / compartilhado",
-    description:
-      "Tenho acesso ao carro e posso oferecer a carona.",
+    description: "Tenho acesso ao carro e posso oferecer a carona.",
   },
   {
     value: "MOTO",
     icon: "🏍️",
     title: "Moto",
-    description:
-      "Estou de moto hoje.",
+    description: "Estou de moto hoje.",
   },
 ];
 
@@ -52,26 +47,22 @@ const detourOptions: Array<{
   {
     value: 0,
     label: "Só no meu caminho",
-    description:
-      "Não quero desviar da rota.",
+    description: "Não quero desviar da rota.",
   },
   {
     value: 5,
     label: "Até 5 min",
-    description:
-      "Aceito um pequeno desvio.",
+    description: "Aceito um pequeno desvio.",
   },
   {
     value: 10,
     label: "Até 10 min",
-    description:
-      "Tenho alguma flexibilidade.",
+    description: "Tenho alguma flexibilidade.",
   },
   {
     value: 15,
     label: "Até 15 min",
-    description:
-      "Posso ajustar um pouco mais a rota.",
+    description: "Posso ajustar um pouco mais a rota.",
   },
 ];
 
@@ -88,21 +79,12 @@ export function DriverFlow({
   const isMoto = vehicleType === "MOTO";
 
   const canContinue =
-    Boolean(vehicleType) &&
-    (
-      isMoto ||
-      (
-        Boolean(availableSeats) &&
-        maxDetourMinutes !== undefined
-      )
-    );
+    Boolean(vehicleType) && (isMoto || (Boolean(availableSeats) && maxDetourMinutes !== undefined));
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-7 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Sua oferta de carona
-        </p>
+        <p className="text-sm font-medium text-primary">Sua oferta de carona</p>
 
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Como você poderia levar alguém hoje?
@@ -115,23 +97,16 @@ export function DriverFlow({
 
       <div className="space-y-3">
         <div className="space-y-1">
-          <h3 className="font-semibold">
-            Com qual veículo você está hoje?
-          </h3>
+          <h3 className="font-semibold">Com qual veículo você está hoje?</h3>
 
           <p className="text-sm text-muted-foreground">
             Escolha a opção que você realmente poderia usar na carona.
           </p>
         </div>
 
-        <div
-          className="grid gap-3 sm:grid-cols-3"
-          role="radiogroup"
-          aria-label="Tipo de veículo"
-        >
+        <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Tipo de veículo">
           {vehicleOptions.map((option) => {
-            const selected =
-              vehicleType === option.value;
+            const selected = vehicleType === option.value;
 
             return (
               <button
@@ -139,9 +114,7 @@ export function DriverFlow({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() =>
-                  onVehicleTypeChange(option.value)
-                }
+                onClick={() => onVehicleTypeChange(option.value)}
                 className={[
                   "flex min-h-28 flex-col items-start rounded-xl border p-4 text-left transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -150,16 +123,11 @@ export function DriverFlow({
                     : "border-border bg-card hover:border-primary/40 hover:bg-accent/40",
                 ].join(" ")}
               >
-                <span
-                  className="text-2xl"
-                  aria-hidden="true"
-                >
+                <span className="text-2xl" aria-hidden="true">
                   {option.icon}
                 </span>
 
-                <span className="mt-3 text-sm font-semibold">
-                  {option.title}
-                </span>
+                <span className="mt-3 text-sm font-semibold">{option.title}</span>
 
                 <span className="mt-1 text-xs leading-5 text-muted-foreground">
                   {option.description}
@@ -172,13 +140,11 @@ export function DriverFlow({
 
       {vehicleType === "MOTO" ? (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <p className="text-sm font-medium">
-            Moto será analisada separadamente nesta validação.
-          </p>
+          <p className="text-sm font-medium">Moto será analisada separadamente nesta validação.</p>
 
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Estamos entendendo também esse perfil, sem assumir a mesma
-            capacidade e dinâmica de um carro.
+            Estamos entendendo também esse perfil, sem assumir a mesma capacidade e dinâmica de um
+            carro.
           </p>
         </div>
       ) : null}
@@ -187,9 +153,7 @@ export function DriverFlow({
         <>
           <div className="space-y-3">
             <div className="space-y-1">
-              <h3 className="font-semibold">
-                Quantos lugares você poderia disponibilizar hoje?
-              </h3>
+              <h3 className="font-semibold">Quantos lugares você poderia disponibilizar hoje?</h3>
 
               <p className="text-sm text-muted-foreground">
                 Conte apenas os lugares que você realmente toparia oferecer.
@@ -202,8 +166,7 @@ export function DriverFlow({
               aria-label="Lugares disponíveis"
             >
               {seatOptions.map((seat) => {
-                const selected =
-                  availableSeats === seat;
+                const selected = availableSeats === seat;
 
                 return (
                   <button
@@ -211,9 +174,7 @@ export function DriverFlow({
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    onClick={() =>
-                      onAvailableSeatsChange(seat)
-                    }
+                    onClick={() => onAvailableSeatsChange(seat)}
                     className={[
                       "min-h-14 rounded-xl border px-3 py-3 text-sm font-semibold transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -231,13 +192,10 @@ export function DriverFlow({
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <h3 className="font-semibold">
-                Quanto você aceitaria desviar da sua rota?
-              </h3>
+              <h3 className="font-semibold">Quanto você aceitaria desviar da sua rota?</h3>
 
               <p className="text-sm text-muted-foreground">
-                Isso ajuda a entender quais passageiros realmente cabem
-                no seu trajeto.
+                Isso ajuda a entender quais passageiros realmente cabem no seu trajeto.
               </p>
             </div>
 
@@ -247,8 +205,7 @@ export function DriverFlow({
               aria-label="Desvio máximo da rota"
             >
               {detourOptions.map((option) => {
-                const selected =
-                  maxDetourMinutes === option.value;
+                const selected = maxDetourMinutes === option.value;
 
                 return (
                   <button
@@ -256,9 +213,7 @@ export function DriverFlow({
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    onClick={() =>
-                      onMaxDetourMinutesChange(option.value)
-                    }
+                    onClick={() => onMaxDetourMinutesChange(option.value)}
                     className={[
                       "flex min-h-20 items-start gap-3 rounded-xl border p-4 text-left transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -270,17 +225,13 @@ export function DriverFlow({
                     <span
                       className={[
                         "mt-0.5 h-5 w-5 shrink-0 rounded-full border",
-                        selected
-                          ? "border-[6px] border-primary"
-                          : "border-muted-foreground/40",
+                        selected ? "border-[6px] border-primary" : "border-muted-foreground/40",
                       ].join(" ")}
                       aria-hidden="true"
                     />
 
                     <span className="min-w-0 space-y-1">
-                      <span className="block text-sm font-semibold">
-                        {option.label}
-                      </span>
+                      <span className="block text-sm font-semibold">{option.label}</span>
 
                       <span className="block text-xs leading-5 text-muted-foreground">
                         {option.description}

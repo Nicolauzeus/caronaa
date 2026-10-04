@@ -16,12 +16,12 @@ const nav = [
 
 export function Brand({ light = false }: { light?: boolean }) {
   return (
-    <Link
-      to="/"
-      className="inline-flex items-center"
-      aria-label="CARONAA — página inicial"
-    >
-      <img src={logoAsset.url} alt="CARONAA" className={`h-12 w-auto object-contain ${light ? "brightness-0 invert" : ""}`} />
+    <Link to="/" className="inline-flex items-center" aria-label="CARONAA — página inicial">
+      <img
+        src={logoAsset.url}
+        alt="CARONAA"
+        className={`h-12 w-auto object-contain ${light ? "brightness-0 invert" : ""}`}
+      />
     </Link>
   );
 }

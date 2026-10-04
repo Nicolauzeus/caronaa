@@ -26,7 +26,9 @@ function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">CARONAA admin</p>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
+            CARONAA admin
+          </p>
           <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight md:text-4xl">
             Visão geral da operação
           </h1>
@@ -64,12 +66,18 @@ function DashboardPage() {
                     <div className="flex-1 rounded-full bg-secondary px-2 py-1.5">
                       <div
                         className="h-2 rounded-full bg-primary"
-                        style={{ width: `${Math.max(22, (Number(step.value.replace(/\D/g, "")) / 1284) * 100)}%` }}
+                        style={{
+                          width: `${Math.max(22, (Number(step.value.replace(/\D/g, "")) / 1284) * 100)}%`,
+                        }}
                       />
                     </div>
-                    <span className="w-16 text-right text-sm font-semibold text-foreground">{step.value}</span>
+                    <span className="w-16 text-right text-sm font-semibold text-foreground">
+                      {step.value}
+                    </span>
                   </div>
-                  {index < funnel.length - 1 ? <div className="ml-[8.5rem] mt-1 text-xs text-muted-foreground">↓</div> : null}
+                  {index < funnel.length - 1 ? (
+                    <div className="ml-[8.5rem] mt-1 text-xs text-muted-foreground">↓</div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -98,11 +106,16 @@ function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
-            <CardTitle className="font-display text-2xl font-extrabold">Atividade recente</CardTitle>
+            <CardTitle className="font-display text-2xl font-extrabold">
+              Atividade recente
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {activity.map((item, index) => (
-              <div key={`${item.title}-${index}`} className="flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-3">
+              <div
+                key={`${item.title}-${index}`}
+                className="flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-3"
+              >
                 <div className="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
                   {index % 2 === 0 ? <Users size={14} /> : <Activity size={14} />}
                 </div>
@@ -136,39 +149,72 @@ function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-bold"><Gauge size={16} className="text-primary" /> Oferta x demanda</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <Gauge size={16} className="text-primary" /> Oferta x demanda
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center justify-between"><span>Motoristas ativos</span><span className="font-semibold text-foreground">184</span></div>
-              <div className="flex items-center justify-between"><span>Demandas abertas</span><span className="font-semibold text-foreground">96</span></div>
-              <div className="flex items-center justify-between"><span>Taxa de conversão</span><span className="font-semibold text-foreground">67%</span></div>
+              <div className="flex items-center justify-between">
+                <span>Motoristas ativos</span>
+                <span className="font-semibold text-foreground">184</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Demandas abertas</span>
+                <span className="font-semibold text-foreground">96</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Taxa de conversão</span>
+                <span className="font-semibold text-foreground">67%</span>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-bold"><FileText size={16} className="text-primary" /> Validação</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <FileText size={16} className="text-primary" /> Validação
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center justify-between"><span>Respostas hoje</span><span className="font-semibold text-foreground">37</span></div>
-              <div className="flex items-center justify-between"><span>STS2026</span><span className="font-semibold text-foreground">137</span></div>
-              <div className="flex items-center justify-between"><span>UNIFOR</span><span className="font-semibold text-foreground">109</span></div>
+              <div className="flex items-center justify-between">
+                <span>Respostas hoje</span>
+                <span className="font-semibold text-foreground">37</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>STS2026</span>
+                <span className="font-semibold text-foreground">137</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>UNIFOR</span>
+                <span className="font-semibold text-foreground">109</span>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-bold"><ShieldCheck size={16} className="text-primary" /> Segurança</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <ShieldCheck size={16} className="text-primary" /> Segurança
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center justify-between"><span>Incidentes abertos</span><span className="font-semibold text-foreground">3</span></div>
-              <div className="flex items-center justify-between"><span>Usuários bloqueados</span><span className="font-semibold text-foreground">11</span></div>
-              <div className="flex items-center justify-between"><span>Denúncias pendentes</span><span className="font-semibold text-foreground">8</span></div>
+              <div className="flex items-center justify-between">
+                <span>Incidentes abertos</span>
+                <span className="font-semibold text-foreground">3</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Usuários bloqueados</span>
+                <span className="font-semibold text-foreground">11</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Denúncias pendentes</span>
+                <span className="font-semibold text-foreground">8</span>
+              </div>
             </div>
           </CardContent>
         </Card>

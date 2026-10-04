@@ -56,7 +56,10 @@ function AdminResponsesPage() {
   const [source, setSource] = useState("all");
   const [query, setQuery] = useState("");
 
-  const rows = useMemo(() => adminService.listSurveyResponses({ source, search: query }), [source, query]);
+  const rows = useMemo(
+    () => adminService.listSurveyResponses({ source, search: query }),
+    [source, query],
+  );
 
   return (
     <div className="space-y-6">
@@ -65,7 +68,11 @@ function AdminResponsesPage() {
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">Validação</p>
           <h1 className="mt-2 font-display text-3xl font-extrabold">Respostas</h1>
         </div>
-        <Button type="button" onClick={() => exportCsv(rows)} className="inline-flex items-center gap-2">
+        <Button
+          type="button"
+          onClick={() => exportCsv(rows)}
+          className="inline-flex items-center gap-2"
+        >
           <Download size={16} />
           Exportar CSV
         </Button>
@@ -74,7 +81,10 @@ function AdminResponsesPage() {
       <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              size={16}
+            />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -120,9 +130,16 @@ function AdminResponsesPage() {
                 </tr>
               ) : (
                 rows.map((row) => (
-                  <tr key={row.id} className="border-t border-border text-sm text-foreground hover:bg-secondary/30">
+                  <tr
+                    key={row.id}
+                    className="border-t border-border text-sm text-foreground hover:bg-secondary/30"
+                  >
                     <td className="px-4 py-3">
-                      <Link to="/admin/formularios/respostas/$id" params={{ id: row.id }} className="font-semibold text-primary underline-offset-2 hover:underline">
+                      <Link
+                        to="/admin/formularios/respostas/$id"
+                        params={{ id: row.id }}
+                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                      >
                         {row.participant}
                       </Link>
                       <p className="mt-1 text-xs text-muted-foreground">{row.contact}</p>
@@ -130,7 +147,9 @@ function AdminResponsesPage() {
                     <td className="px-4 py-3">{row.profile}</td>
                     <td className="px-4 py-3">{row.city}</td>
                     <td className="px-4 py-3">{row.source}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(row.submittedAt).toLocaleDateString("pt-BR")}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(row.submittedAt).toLocaleDateString("pt-BR")}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
                         {row.status}

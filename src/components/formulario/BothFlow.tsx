@@ -1,7 +1,4 @@
-import type {
-  PassengerTransport,
-  VehicleType,
-} from "@/lib/formulario/types";
+import type { PassengerTransport, VehicleType } from "@/lib/formulario/types";
 
 type BothFlowProps = {
   vehicleType?: VehicleType | undefined;
@@ -88,32 +85,26 @@ export function BothFlow({
   const isMoto = vehicleType === "MOTO";
 
   const canContinue =
-    Boolean(vehicleType) &&
-    Boolean(currentTransport) &&
-    (isMoto || Boolean(availableSeats));
+    Boolean(vehicleType) && Boolean(currentTransport) && (isMoto || Boolean(availableSeats));
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-7 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Flexibilidade
-        </p>
+        <p className="text-sm font-medium text-primary">Flexibilidade</p>
 
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Você pode oferecer ou pegar carona
         </h2>
 
         <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-          Vamos entender rapidamente as duas possibilidades para tentar
-          encontrar a melhor opção para você hoje.
+          Vamos entender rapidamente as duas possibilidades para tentar encontrar a melhor opção
+          para você hoje.
         </p>
       </div>
 
       <div className="space-y-3">
         <div className="space-y-1">
-          <h3 className="font-semibold">
-            Se você oferecer carona, qual veículo usaria?
-          </h3>
+          <h3 className="font-semibold">Se você oferecer carona, qual veículo usaria?</h3>
 
           <p className="text-sm text-muted-foreground">
             Escolha o veículo que você realmente poderia usar hoje.
@@ -126,8 +117,7 @@ export function BothFlow({
           aria-label="Veículo para oferecer carona"
         >
           {vehicleOptions.map((option) => {
-            const selected =
-              vehicleType === option.value;
+            const selected = vehicleType === option.value;
 
             return (
               <button
@@ -135,9 +125,7 @@ export function BothFlow({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() =>
-                  onVehicleTypeChange(option.value)
-                }
+                onClick={() => onVehicleTypeChange(option.value)}
                 className={[
                   "flex min-h-24 flex-col items-start rounded-xl border p-4 text-left transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -146,16 +134,11 @@ export function BothFlow({
                     : "border-border bg-card hover:border-primary/40 hover:bg-accent/40",
                 ].join(" ")}
               >
-                <span
-                  className="text-2xl"
-                  aria-hidden="true"
-                >
+                <span className="text-2xl" aria-hidden="true">
                   {option.icon}
                 </span>
 
-                <span className="mt-3 text-sm font-semibold">
-                  {option.label}
-                </span>
+                <span className="mt-3 text-sm font-semibold">{option.label}</span>
               </button>
             );
           })}
@@ -165,9 +148,7 @@ export function BothFlow({
       {vehicleType && vehicleType !== "MOTO" ? (
         <div className="space-y-3">
           <div className="space-y-1">
-            <h3 className="font-semibold">
-              Quantos lugares você teria disponíveis?
-            </h3>
+            <h3 className="font-semibold">Quantos lugares você teria disponíveis?</h3>
 
             <p className="text-sm text-muted-foreground">
               Informe apenas o que você realmente toparia oferecer.
@@ -180,8 +161,7 @@ export function BothFlow({
             aria-label="Lugares disponíveis"
           >
             {seatOptions.map((seat) => {
-              const selected =
-                availableSeats === seat;
+              const selected = availableSeats === seat;
 
               return (
                 <button
@@ -189,9 +169,7 @@ export function BothFlow({
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() =>
-                    onAvailableSeatsChange(seat)
-                  }
+                  onClick={() => onAvailableSeatsChange(seat)}
                   className={[
                     "min-h-14 rounded-xl border px-3 py-3 text-sm font-semibold transition",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -210,13 +188,10 @@ export function BothFlow({
 
       {vehicleType === "MOTO" ? (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <p className="text-sm font-medium">
-            Vamos considerar a moto separadamente.
-          </p>
+          <p className="text-sm font-medium">Vamos considerar a moto separadamente.</p>
 
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Essa modalidade ainda pode ter regras diferentes de uma carona
-            de carro.
+            Essa modalidade ainda pode ter regras diferentes de uma carona de carro.
           </p>
         </div>
       ) : null}
@@ -238,8 +213,7 @@ export function BothFlow({
           aria-label="Alternativa de transporte"
         >
           {transportOptions.map((option) => {
-            const selected =
-              currentTransport === option.value;
+            const selected = currentTransport === option.value;
 
             return (
               <button
@@ -247,9 +221,7 @@ export function BothFlow({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() =>
-                  onCurrentTransportChange(option.value)
-                }
+                onClick={() => onCurrentTransportChange(option.value)}
                 className={[
                   "flex min-h-14 items-center gap-3 rounded-xl border px-4 py-3 text-left transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -265,16 +237,12 @@ export function BothFlow({
                   {option.icon}
                 </span>
 
-                <span className="min-w-0 flex-1 text-sm font-medium">
-                  {option.label}
-                </span>
+                <span className="min-w-0 flex-1 text-sm font-medium">{option.label}</span>
 
                 <span
                   className={[
                     "h-5 w-5 shrink-0 rounded-full border",
-                    selected
-                      ? "border-[6px] border-primary"
-                      : "border-muted-foreground/40",
+                    selected ? "border-[6px] border-primary" : "border-muted-foreground/40",
                   ].join(" ")}
                   aria-hidden="true"
                 />
@@ -286,8 +254,8 @@ export function BothFlow({
 
       <div className="rounded-xl border bg-muted/40 p-4">
         <p className="text-sm leading-6 text-muted-foreground">
-          Mais adiante vamos perguntar confiança e contribuição apenas uma
-          vez para cada papel, sem repetir destino, horário ou contato.
+          Mais adiante vamos perguntar confiança e contribuição apenas uma vez para cada papel, sem
+          repetir destino, horário ou contato.
         </p>
       </div>
 

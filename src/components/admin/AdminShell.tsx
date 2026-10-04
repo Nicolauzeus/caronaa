@@ -83,7 +83,10 @@ function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
                     <Icon size={16} />
                     {label}
                   </span>
-                  <ChevronRight size={14} className={cn(active ? "text-primary-foreground" : "opacity-60")} />
+                  <ChevronRight
+                    size={14}
+                    className={cn(active ? "text-primary-foreground" : "opacity-60")}
+                  />
                 </Link>
               );
             })}
@@ -155,14 +158,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   <Menu size={18} />
                 </Button>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">CARONAA admin</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
+                    CARONAA admin
+                  </p>
                   <p className="mt-1 text-sm text-muted-foreground">{breadcrumb}</p>
                 </div>
               </div>
 
               <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center md:justify-end">
                 <div className="relative w-full md:max-w-sm">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    size={16}
+                  />
                   <Input
                     aria-label="Busca global administrativa"
                     placeholder="Buscar usuário, carona ou protocolo"
@@ -211,10 +219,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm lg:hidden">
           <div className="h-full w-[82%] max-w-xs border-r border-border bg-card p-4 shadow-soft">
             <div className="mb-5 flex items-center justify-between">
-              <Link to="/admin" onClick={() => setMobileOpen(false)} className="font-display text-xl font-extrabold">
+              <Link
+                to="/admin"
+                onClick={() => setMobileOpen(false)}
+                className="font-display text-xl font-extrabold"
+              >
                 CARONAA Admin
               </Link>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileOpen(false)}
+              >
                 <X size={18} />
               </Button>
             </div>

@@ -53,7 +53,10 @@ function AdminUsersPage() {
       <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              size={16}
+            />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -99,9 +102,16 @@ function AdminUsersPage() {
                 </tr>
               ) : (
                 users.map((user) => (
-                  <tr key={user.id} className="border-t border-border text-sm text-foreground hover:bg-secondary/30">
+                  <tr
+                    key={user.id}
+                    className="border-t border-border text-sm text-foreground hover:bg-secondary/30"
+                  >
                     <td className="px-4 py-3">
-                      <Link to="/admin/usuarios/$id" params={{ id: user.id }} className="flex items-center gap-3">
+                      <Link
+                        to="/admin/usuarios/$id"
+                        params={{ id: user.id }}
+                        className="flex items-center gap-3"
+                      >
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={user.avatar} alt={user.name} />
                           <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>

@@ -14,16 +14,27 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    if (loading) return () => { active = false; };
+    if (loading)
+      return () => {
+        active = false;
+      };
     if (!user) {
       setAuthorized(false);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
     setAuthorized(null);
     void checkAdmin()
-      .then(({ isAdmin }) => { if (active) setAuthorized(isAdmin); })
-      .catch(() => { if (active) setAuthorized(false); });
-    return () => { active = false; };
+      .then(({ isAdmin }) => {
+        if (active) setAuthorized(isAdmin);
+      })
+      .catch(() => {
+        if (active) setAuthorized(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [checkAdmin, loading, user]);
 
   if (authorized === null) {
@@ -56,7 +67,13 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
             Esta área do CARONAA é exclusiva para administradores autorizados.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            {!user && <Button asChild><Link to="/auth" search={{ redirect: "/admin" }}>Entrar como administrador</Link></Button>}
+            {!user && (
+              <Button asChild>
+                <Link to="/auth" search={{ redirect: "/admin" }}>
+                  Entrar como administrador
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline">
               <Link to="/home">Voltar ao app</Link>
             </Button>

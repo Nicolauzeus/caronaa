@@ -17,45 +17,34 @@ const options: Array<{
     value: "MOTORISTA",
     icon: "🚗",
     title: "Quero oferecer carona",
-    description:
-      "Tenho veículo e posso levar pessoas que estejam indo para uma rota parecida.",
+    description: "Tenho veículo e posso levar pessoas que estejam indo para uma rota parecida.",
   },
   {
     value: "PASSAGEIRO",
     icon: "🎒",
     title: "Quero pegar carona",
-    description:
-      "Quero encontrar alguém saindo do STS e indo para perto do meu destino.",
+    description: "Quero encontrar alguém saindo do STS e indo para perto do meu destino.",
   },
   {
     value: "AMBOS",
     icon: "🔄",
     title: "Posso fazer os dois",
-    description:
-      "Posso oferecer ou pegar carona, dependendo da melhor opção disponível.",
+    description: "Posso oferecer ou pegar carona, dependendo da melhor opção disponível.",
   },
 ];
 
-export function IntentStep({
-  value,
-  onChange,
-  onNext,
-  onBack,
-}: IntentStepProps) {
+export function IntentStep({ value, onChange, onNext, onBack }: IntentStepProps) {
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Primeiro, escolha seu papel
-        </p>
+        <p className="text-sm font-medium text-primary">Primeiro, escolha seu papel</p>
 
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Como você quer usar a CARONAA hoje?
         </h2>
 
         <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-          Vamos mostrar apenas as perguntas que fazem sentido
-          para você.
+          Vamos mostrar apenas as perguntas que fazem sentido para você.
         </p>
       </div>
 
@@ -86,9 +75,7 @@ export function IntentStep({
                 <div
                   className={[
                     "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl",
-                    selected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted",
+                    selected ? "bg-primary text-primary-foreground" : "bg-muted",
                   ].join(" ")}
                   aria-hidden="true"
                 >
@@ -97,28 +84,20 @@ export function IntentStep({
 
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold">
-                      {option.title}
-                    </h3>
+                    <h3 className="font-semibold">{option.title}</h3>
 
                     <span
                       className={[
                         "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                        selected
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground/40",
+                        selected ? "border-primary bg-primary" : "border-muted-foreground/40",
                       ].join(" ")}
                       aria-hidden="true"
                     >
-                      {selected && (
-                        <span className="h-2 w-2 rounded-full bg-primary-foreground" />
-                      )}
+                      {selected && <span className="h-2 w-2 rounded-full bg-primary-foreground" />}
                     </span>
                   </div>
 
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {option.description}
-                  </p>
+                  <p className="text-sm leading-6 text-muted-foreground">{option.description}</p>
                 </div>
               </div>
             </button>

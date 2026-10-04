@@ -20,7 +20,9 @@ export function MetricCard({
     <Card className="border border-border bg-card/80 shadow-soft">
       <CardContent className="p-4 sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            {label}
+          </p>
           {trend ? (
             <span
               className={cn(
@@ -37,7 +39,9 @@ export function MetricCard({
         </div>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="font-display text-3xl font-extrabold tracking-tight text-foreground">{value}</p>
+            <p className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+              {value}
+            </p>
             {detail ? <p className="mt-2 text-xs text-muted-foreground">{detail}</p> : null}
           </div>
         </div>

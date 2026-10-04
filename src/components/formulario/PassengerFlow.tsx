@@ -77,32 +77,26 @@ export function PassengerFlow({
   onNext,
   onBack,
 }: PassengerFlowProps) {
-  const canContinue =
-    Boolean(passengerCount) &&
-    Boolean(currentTransport);
+  const canContinue = Boolean(passengerCount) && Boolean(currentTransport);
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-7 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Sua carona
-        </p>
+        <p className="text-sm font-medium text-primary">Sua carona</p>
 
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Vamos tentar encontrar sua volta para casa
         </h2>
 
         <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-          Precisamos entender quantos lugares você precisa e qual
-          alternativa usaria se não encontrasse uma CARONAA hoje.
+          Precisamos entender quantos lugares você precisa e qual alternativa usaria se não
+          encontrasse uma CARONAA hoje.
         </p>
       </div>
 
       <div className="space-y-3">
         <div className="space-y-1">
-          <h3 className="font-semibold">
-            A carona seria para quantas pessoas?
-          </h3>
+          <h3 className="font-semibold">A carona seria para quantas pessoas?</h3>
 
           <p className="text-sm text-muted-foreground">
             Isso nos ajuda a procurar um veículo com vagas suficientes.
@@ -115,8 +109,7 @@ export function PassengerFlow({
           aria-label="Quantidade de passageiros"
         >
           {passengerCountOptions.map((option) => {
-            const selected =
-              passengerCount === option.value;
+            const selected = passengerCount === option.value;
 
             return (
               <button
@@ -124,9 +117,7 @@ export function PassengerFlow({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() =>
-                  onPassengerCountChange(option.value)
-                }
+                onClick={() => onPassengerCountChange(option.value)}
                 className={[
                   "flex min-h-20 flex-col items-center justify-center rounded-xl border px-3 py-3 text-center transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -135,13 +126,9 @@ export function PassengerFlow({
                     : "border-border bg-card hover:border-primary/40 hover:bg-accent/40",
                 ].join(" ")}
               >
-                <span className="text-sm font-semibold">
-                  {option.label}
-                </span>
+                <span className="text-sm font-semibold">{option.label}</span>
 
-                <span className="mt-1 text-xs text-muted-foreground">
-                  {option.description}
-                </span>
+                <span className="mt-1 text-xs text-muted-foreground">{option.description}</span>
               </button>
             );
           })}
@@ -155,8 +142,7 @@ export function PassengerFlow({
           </h3>
 
           <p className="text-sm leading-5 text-muted-foreground">
-            Queremos entender qual alternativa a CARONAA estaria
-            substituindo nesta viagem.
+            Queremos entender qual alternativa a CARONAA estaria substituindo nesta viagem.
           </p>
         </div>
 
@@ -166,8 +152,7 @@ export function PassengerFlow({
           aria-label="Alternativa de transporte para hoje"
         >
           {transportOptions.map((option) => {
-            const selected =
-              currentTransport === option.value;
+            const selected = currentTransport === option.value;
 
             return (
               <button
@@ -175,9 +160,7 @@ export function PassengerFlow({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() =>
-                  onCurrentTransportChange(option.value)
-                }
+                onClick={() => onCurrentTransportChange(option.value)}
                 className={[
                   "flex min-h-14 items-center gap-3 rounded-xl border px-4 py-3 text-left transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -193,16 +176,12 @@ export function PassengerFlow({
                   {option.icon}
                 </span>
 
-                <span className="min-w-0 flex-1 text-sm font-medium">
-                  {option.label}
-                </span>
+                <span className="min-w-0 flex-1 text-sm font-medium">{option.label}</span>
 
                 <span
                   className={[
                     "h-5 w-5 shrink-0 rounded-full border",
-                    selected
-                      ? "border-[6px] border-primary"
-                      : "border-muted-foreground/40",
+                    selected ? "border-[6px] border-primary" : "border-muted-foreground/40",
                   ].join(" ")}
                   aria-hidden="true"
                 />

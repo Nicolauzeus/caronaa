@@ -1,24 +1,11 @@
-import type {
-  CaronaaIntent,
-  CaronaaStsFormData,
-  CommitmentLevel,
-} from "./types";
+import type { CaronaaIntent, CaronaaStsFormData, CommitmentLevel } from "./types";
 
-export type LeadType =
-  | "POTENCIAL_MOTORISTA"
-  | "POTENCIAL_PASSAGEIRO"
-  | "AMBOS"
-  | "INTERESSADO";
+export type LeadType = "POTENCIAL_MOTORISTA" | "POTENCIAL_PASSAGEIRO" | "AMBOS" | "INTERESSADO";
 
 export type StsActivationStatus =
-  | "QUER_USAR_HOJE"
-  | "QUER_VER_MATCH"
-  | "NAO_USA_HOJE"
-  | "INDEFINIDO";
+  "QUER_USAR_HOJE" | "QUER_VER_MATCH" | "NAO_USA_HOJE" | "INDEFINIDO";
 
-export function classifyLeadType(
-  intent?: CaronaaIntent,
-): LeadType {
+export function classifyLeadType(intent?: CaronaaIntent): LeadType {
   switch (intent) {
     case "MOTORISTA":
       return "POTENCIAL_MOTORISTA";
@@ -34,9 +21,7 @@ export function classifyLeadType(
   }
 }
 
-function classifyCommitment(
-  commitment?: CommitmentLevel,
-): StsActivationStatus {
+function classifyCommitment(commitment?: CommitmentLevel): StsActivationStatus {
   switch (commitment) {
     case "SIM_HOJE":
       return "QUER_USAR_HOJE";
@@ -52,48 +37,29 @@ function classifyCommitment(
   }
 }
 
-export function getStsActivationStatus(
-  data: CaronaaStsFormData,
-): StsActivationStatus {
+export function getStsActivationStatus(data: CaronaaStsFormData): StsActivationStatus {
   if (data.intent === "PASSAGEIRO") {
-    return classifyCommitment(
-      data.passengerCommitment,
-    );
+    return classifyCommitment(data.passengerCommitment);
   }
 
   if (data.intent === "MOTORISTA") {
-    return classifyCommitment(
-      data.driverCommitment,
-    );
+    return classifyCommitment(data.driverCommitment);
   }
 
   if (data.intent === "AMBOS") {
-    const passengerStatus = classifyCommitment(
-      data.passengerCommitment,
-    );
+    const passengerStatus = classifyCommitment(data.passengerCommitment);
 
-    const driverStatus = classifyCommitment(
-      data.driverCommitment,
-    );
+    const driverStatus = classifyCommitment(data.driverCommitment);
 
-    if (
-      passengerStatus === "QUER_USAR_HOJE" ||
-      driverStatus === "QUER_USAR_HOJE"
-    ) {
+    if (passengerStatus === "QUER_USAR_HOJE" || driverStatus === "QUER_USAR_HOJE") {
       return "QUER_USAR_HOJE";
     }
 
-    if (
-      passengerStatus === "QUER_VER_MATCH" ||
-      driverStatus === "QUER_VER_MATCH"
-    ) {
+    if (passengerStatus === "QUER_VER_MATCH" || driverStatus === "QUER_VER_MATCH") {
       return "QUER_VER_MATCH";
     }
 
-    if (
-      passengerStatus === "NAO_USA_HOJE" &&
-      driverStatus === "NAO_USA_HOJE"
-    ) {
+    if (passengerStatus === "NAO_USA_HOJE" && driverStatus === "NAO_USA_HOJE") {
       return "NAO_USA_HOJE";
     }
 
@@ -103,29 +69,17 @@ export function getStsActivationStatus(
   return "INDEFINIDO";
 }
 
-export function wantsToUseToday(
-  data: CaronaaStsFormData,
-): boolean {
-  return (
-    getStsActivationStatus(data) ===
-    "QUER_USAR_HOJE"
-  );
+export function wantsToUseToday(data: CaronaaStsFormData): boolean {
+  return getStsActivationStatus(data) === "QUER_USAR_HOJE";
 }
 
-export function wantsToSeeMatch(
-  data: CaronaaStsFormData,
-): boolean {
+export function wantsToSeeMatch(data: CaronaaStsFormData): boolean {
   const status = getStsActivationStatus(data);
 
-  return (
-    status === "QUER_USAR_HOJE" ||
-    status === "QUER_VER_MATCH"
-  );
+  return status === "QUER_USAR_HOJE" || status === "QUER_VER_MATCH";
 }
 
-export function shouldPrioritizeForMatching(
-  data: CaronaaStsFormData,
-): boolean {
+export function shouldPrioritizeForMatching(data: CaronaaStsFormData): boolean {
   if (!data.intent) {
     return false;
   }
@@ -141,18 +95,12 @@ export function shouldPrioritizeForMatching(
   return wantsToSeeMatch(data);
 }
 
-export function getLeadClassification(
-  data: CaronaaStsFormData,
-) {
+export function getLeadClassification(data: CaronaaStsFormData) {
   return {
     leadType: classifyLeadType(data.intent),
-    activationStatus:
-      getStsActivationStatus(data),
-    wantsToUseToday:
-      wantsToUseToday(data),
-    wantsToSeeMatch:
-      wantsToSeeMatch(data),
-    prioritizeForMatching:
-      shouldPrioritizeForMatching(data),
+    activationStatus: getStsActivationStatus(data),
+    wantsToUseToday: wantsToUseToday(data),
+    wantsToSeeMatch: wantsToSeeMatch(data),
+    prioritizeForMatching: shouldPrioritizeForMatching(data),
   };
 }

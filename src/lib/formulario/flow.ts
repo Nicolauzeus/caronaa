@@ -1,8 +1,4 @@
-import type {
-  CaronaaIntent,
-  CaronaaStsFormData,
-  VehicleType,
-} from "./types";
+import type { CaronaaIntent, CaronaaStsFormData, VehicleType } from "./types";
 
 export type FormStep =
   | "INTRO"
@@ -59,9 +55,7 @@ const bothSteps: FormStep[] = [
   "SUCCESS",
 ];
 
-export function getStepsForIntent(
-  intent?: CaronaaIntent,
-): FormStep[] {
+export function getStepsForIntent(intent?: CaronaaIntent): FormStep[] {
   if (intent === "MOTORISTA") {
     return driverSteps;
   }
@@ -77,10 +71,7 @@ export function getStepsForIntent(
   return ["INTRO", "INTENT"];
 }
 
-export function getNextStep(
-  currentStep: FormStep,
-  data: CaronaaStsFormData,
-): FormStep | null {
+export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
   const steps = getStepsForIntent(data.intent);
 
   const currentIndex = steps.indexOf(currentStep);
@@ -98,10 +89,7 @@ export function getNextStep(
   return nextStep;
 }
 
-export function getPreviousStep(
-  currentStep: FormStep,
-  data: CaronaaStsFormData,
-): FormStep | null {
+export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
   const steps = getStepsForIntent(data.intent);
 
   const currentIndex = steps.indexOf(currentStep);
@@ -113,25 +101,17 @@ export function getPreviousStep(
   return steps[currentIndex - 1] ?? null;
 }
 
-export function getStepIndex(
-  currentStep: FormStep,
-  data: CaronaaStsFormData,
-): number {
+export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): number {
   const steps = getStepsForIntent(data.intent);
 
   return steps.indexOf(currentStep);
 }
 
-export function getStepCount(
-  data: CaronaaStsFormData,
-): number {
+export function getStepCount(data: CaronaaStsFormData): number {
   return getStepsForIntent(data.intent).length;
 }
 
-export function getProgressPercentage(
-  currentStep: FormStep,
-  data: CaronaaStsFormData,
-): number {
+export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFormData): number {
   const steps = getStepsForIntent(data.intent);
 
   const currentIndex = steps.indexOf(currentStep);
@@ -140,40 +120,21 @@ export function getProgressPercentage(
     return 0;
   }
 
-  return Math.round(
-    (currentIndex / (steps.length - 1)) * 100,
-  );
+  return Math.round((currentIndex / (steps.length - 1)) * 100);
 }
 
-export function shouldShowPassengerFlow(
-  intent?: CaronaaIntent,
-): boolean {
-  return (
-    intent === "PASSAGEIRO" ||
-    intent === "AMBOS"
-  );
+export function shouldShowPassengerFlow(intent?: CaronaaIntent): boolean {
+  return intent === "PASSAGEIRO" || intent === "AMBOS";
 }
 
-export function shouldShowDriverFlow(
-  intent?: CaronaaIntent,
-): boolean {
-  return (
-    intent === "MOTORISTA" ||
-    intent === "AMBOS"
-  );
+export function shouldShowDriverFlow(intent?: CaronaaIntent): boolean {
+  return intent === "MOTORISTA" || intent === "AMBOS";
 }
 
-export function isCarVehicle(
-  vehicleType?: VehicleType,
-): boolean {
-  return (
-    vehicleType === "CARRO_PROPRIO" ||
-    vehicleType === "CARRO_COMPARTILHADO"
-  );
+export function isCarVehicle(vehicleType?: VehicleType): boolean {
+  return vehicleType === "CARRO_PROPRIO" || vehicleType === "CARRO_COMPARTILHADO";
 }
 
-export function isMotorcycle(
-  vehicleType?: VehicleType,
-): boolean {
+export function isMotorcycle(vehicleType?: VehicleType): boolean {
   return vehicleType === "MOTO";
 }

@@ -1,6 +1,4 @@
-import type {
-  DepartureWindow,
-} from "@/lib/formulario/types";
+import type { DepartureWindow } from "@/lib/formulario/types";
 
 type RouteStepProps = {
   destinationNeighborhood?: string | undefined;
@@ -54,33 +52,26 @@ export function RouteStep({
   onNext,
   onBack,
 }: RouteStepProps) {
-  const canContinue =
-    Boolean(destinationNeighborhood?.trim()) &&
-    Boolean(departureWindow);
+  const canContinue = Boolean(destinationNeighborhood?.trim()) && Boolean(departureWindow);
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">
-          Sua rota hoje
-        </p>
+        <p className="text-sm font-medium text-primary">Sua rota hoje</p>
 
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Para onde você vai depois do STS?
         </h2>
 
         <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-          Usaremos essas informações para tentar encontrar pessoas
-          com rota e horário compatíveis com os seus.
+          Usaremos essas informações para tentar encontrar pessoas com rota e horário compatíveis
+          com os seus.
         </p>
       </div>
 
       <div className="space-y-5">
         <div className="space-y-2">
-          <label
-            htmlFor="destinationNeighborhood"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="destinationNeighborhood" className="text-sm font-medium">
             Bairro ou região de destino
           </label>
 
@@ -88,9 +79,7 @@ export function RouteStep({
             id="destinationNeighborhood"
             type="text"
             value={destinationNeighborhood ?? ""}
-            onChange={(event) =>
-              onDestinationNeighborhoodChange(event.target.value)
-            }
+            onChange={(event) => onDestinationNeighborhoodChange(event.target.value)}
             placeholder="Ex.: Aldeota, Messejana, Maracanaú..."
             autoComplete="address-level3"
             className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -102,23 +91,16 @@ export function RouteStep({
         </div>
 
         <div className="space-y-2">
-          <label
-            htmlFor="destinationReference"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="destinationReference" className="text-sm font-medium">
             Ponto de referência
-            <span className="ml-1 font-normal text-muted-foreground">
-              opcional
-            </span>
+            <span className="ml-1 font-normal text-muted-foreground">opcional</span>
           </label>
 
           <input
             id="destinationReference"
             type="text"
             value={destinationReference ?? ""}
-            onChange={(event) =>
-              onDestinationReferenceChange(event.target.value)
-            }
+            onChange={(event) => onDestinationReferenceChange(event.target.value)}
             placeholder="Ex.: Shopping, avenida, praça..."
             className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
@@ -127,9 +109,7 @@ export function RouteStep({
 
       <div className="space-y-3">
         <div className="space-y-1">
-          <h3 className="font-semibold">
-            Que horas você pretende sair do evento?
-          </h3>
+          <h3 className="font-semibold">Que horas você pretende sair do evento?</h3>
 
           <p className="text-sm text-muted-foreground">
             Escolha a faixa que mais se aproxima do seu horário.
@@ -142,8 +122,7 @@ export function RouteStep({
           aria-label="Horário de saída do STS"
         >
           {departureOptions.map((option) => {
-            const selected =
-              departureWindow === option.value;
+            const selected = departureWindow === option.value;
 
             return (
               <button
@@ -151,9 +130,7 @@ export function RouteStep({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() =>
-                  onDepartureWindowChange(option.value)
-                }
+                onClick={() => onDepartureWindowChange(option.value)}
                 className={[
                   "min-h-12 rounded-xl border px-3 py-3 text-sm font-medium transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -171,9 +148,8 @@ export function RouteStep({
 
       <div className="rounded-xl border bg-muted/40 p-4">
         <p className="text-sm leading-6 text-muted-foreground">
-          A CARONAA usará apenas sua região e faixa de horário para
-          procurar compatibilidade. Você poderá avaliar a pessoa e a
-          rota antes de confirmar qualquer carona.
+          A CARONAA usará apenas sua região e faixa de horário para procurar compatibilidade. Você
+          poderá avaliar a pessoa e a rota antes de confirmar qualquer carona.
         </p>
       </div>
 
