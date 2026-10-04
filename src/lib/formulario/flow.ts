@@ -2,73 +2,27 @@ import type { CaronaaIntent, CaronaaStsFormData, VehicleType } from "./types";
 
 export type FormStep =
   | "INTRO"
-  | "INTENT"
-  | "ROUTE"
-  | "PASSENGER_CONTEXT"
-  | "PASSENGER_TRUST"
-  | "PASSENGER_PRICE"
-  | "PASSENGER_COMMITMENT"
-  | "DRIVER_CONTEXT"
-  | "DRIVER_TRUST"
-  | "DRIVER_PRICE"
-  | "DRIVER_COMMITMENT"
+  | "PROFILE_ROUTE"
+  | "CURRENT_PRICE"
+  | "PROBLEMS"
+  | "MAIN_PROBLEM"
+  | "INTEREST"
   | "CONTACT"
   | "SUCCESS";
 
-const passengerSteps: FormStep[] = [
+const mainSteps: FormStep[] = [
   "INTRO",
-  "INTENT",
-  "ROUTE",
-  "PASSENGER_CONTEXT",
-  "PASSENGER_TRUST",
-  "PASSENGER_PRICE",
-  "PASSENGER_COMMITMENT",
-  "CONTACT",
-  "SUCCESS",
-];
-
-const driverSteps: FormStep[] = [
-  "INTRO",
-  "INTENT",
-  "ROUTE",
-  "DRIVER_CONTEXT",
-  "DRIVER_TRUST",
-  "DRIVER_PRICE",
-  "DRIVER_COMMITMENT",
-  "CONTACT",
-  "SUCCESS",
-];
-
-const bothSteps: FormStep[] = [
-  "INTRO",
-  "INTENT",
-  "ROUTE",
-  "DRIVER_CONTEXT",
-  "PASSENGER_CONTEXT",
-  "DRIVER_TRUST",
-  "PASSENGER_TRUST",
-  "DRIVER_PRICE",
-  "PASSENGER_PRICE",
-  "DRIVER_COMMITMENT",
-  "PASSENGER_COMMITMENT",
+  "PROFILE_ROUTE",
+  "CURRENT_PRICE",
+  "PROBLEMS",
+  "MAIN_PROBLEM",
+  "INTEREST",
   "CONTACT",
   "SUCCESS",
 ];
 
 export function getStepsForIntent(intent?: CaronaaIntent): FormStep[] {
-  if (intent === "MOTORISTA") {
-    return driverSteps;
-  }
-
-  if (intent === "PASSAGEIRO") {
-    return passengerSteps;
-  }
-
-  if (intent === "AMBOS") {
-    return bothSteps;
-  }
-
-  return ["INTRO", "INTENT"];
+  return intent ? mainSteps : ["INTRO", "PROFILE_ROUTE"];
 }
 
 export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
@@ -112,15 +66,23 @@ export function getStepCount(data: CaronaaStsFormData): number {
 }
 
 export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFormData): number {
-  const steps = getStepsForIntent(data.intent);
-
-  const currentIndex = steps.indexOf(currentStep);
-
-  if (currentIndex < 0 || steps.length <= 1) {
+  if (currentStep === "INTRO" || currentStep === "SUCCESS") {
     return 0;
   }
 
-  return Math.round((currentIndex / (steps.length - 1)) * 100);
+  if (currentStep === "CONTACT") {
+    return 100;
+  }
+
+  const mainStepIndex = [
+    "PROFILE_ROUTE",
+    "CURRENT_PRICE",
+    "PROBLEMS",
+    "MAIN_PROBLEM",
+    "INTEREST",
+  ].indexOf(currentStep);
+
+  return mainStepIndex >= 0 ? (mainStepIndex + 1) * 20 : 0;
 }
 
 export function shouldShowPassengerFlow(intent?: CaronaaIntent): boolean {

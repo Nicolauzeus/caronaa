@@ -3,26 +3,25 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/caronaa/AppShell";
 
 import { FormIntro } from "@/components/formulario/FormIntro";
-import { IntentStep } from "@/components/formulario/IntentStep";
-import { RouteStep } from "@/components/formulario/RouteStep";
-import { PassengerFlow } from "@/components/formulario/PassengerFlow";
-import { DriverFlow } from "@/components/formulario/DriverFlow";
-import { BothFlow } from "@/components/formulario/BothFlow";
-import { TrustStep } from "@/components/formulario/TrustStep";
-import { PriceStep } from "@/components/formulario/PriceStep";
-import { CommitmentStep } from "@/components/formulario/CommitmentStep";
 import { ContactStep } from "@/components/formulario/ContactStep";
 import { FormSuccess } from "@/components/formulario/FormSuccess";
+import {
+  CurrentPriceStep,
+  InterestStep,
+  MainProblemStep,
+  ProblemsStep,
+  ProfileRouteStep,
+} from "@/components/formulario/SimplifiedSteps";
 
 import type {
   CaronaaStsFormData,
   CaronaaIntent,
-  CommitmentLevel,
   DepartureWindow,
+  InterestLevel,
+  PainPointCode,
   PassengerTransport,
-  PriceRange,
-  TrustFactor,
-  VehicleType,
+  UserOccupation,
+  WeeklyFrequency,
 } from "@/lib/formulario/types";
 
 import type { FormStep } from "@/lib/formulario/flow";
@@ -30,8 +29,6 @@ import type { FormStep } from "@/lib/formulario/flow";
 import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formulario/flow";
 
 import { caronaaStsFormSchema } from "@/lib/formulario/schema";
-
-import { calculateDriverPricing } from "@/lib/formulario/pricing";
 
 import { prepareSubmission } from "@/lib/formulario/submission";
 
@@ -92,10 +89,10 @@ function Formulario() {
     setData((current) => ({
       ...current,
       passengerCount: undefined,
-      currentTransport: undefined,
       passengerTrustFactors: undefined,
       passengerPriceRange: undefined,
       passengerCommitment: undefined,
+      passengerInterest: undefined,
     }));
   }
 
@@ -109,6 +106,8 @@ function Formulario() {
       driverPrice: undefined,
       caronaaFee: undefined,
       driverNetAmount: undefined,
+      familyCarCompanions: undefined,
+      driverInterest: undefined,
       driverCommitment: undefined,
     }));
   }
@@ -236,30 +235,30 @@ function Formulario() {
           </div>
         ) : null}
 
-        {step === "INTRO" ? <FormIntro onStart={() => setStep("INTENT")} /> : null}
+        {step === "INTRO" ? <FormIntro onStart={() => setStep("PROFILE_ROUTE")} /> : null}
 
-        {step === "INTENT" ? (
-          <IntentStep
-            value={data.intent}
-            onChange={changeIntent}
-            onNext={goNext}
-            onBack={() => setStep("INTRO")}
-          />
-        ) : null}
-
-        {step === "ROUTE" ? (
-          <RouteStep
+        {step === "PROFILE_ROUTE" ? (
+          <ProfileRouteStep
+            intent={data.intent}
+            occupation={data.occupation}
+            originNeighborhood={data.originNeighborhood}
             destinationNeighborhood={data.destinationNeighborhood}
-            destinationReference={data.destinationReference}
             departureWindow={data.departureWindow}
+            weeklyFrequency={data.weeklyFrequency}
+            onIntentChange={changeIntent}
+            onOccupationChange={(value: UserOccupation) =>
+              updateData({
+                occupation: value,
+              })
+            }
+            onOriginNeighborhoodChange={(value) =>
+              updateData({
+                originNeighborhood: value,
+              })
+            }
             onDestinationNeighborhoodChange={(value) =>
               updateData({
                 destinationNeighborhood: value,
-              })
-            }
-            onDestinationReferenceChange={(value) =>
-              updateData({
-                destinationReference: value,
               })
             }
             onDepartureWindowChange={(value: DepartureWindow) =>
@@ -267,101 +266,34 @@ function Formulario() {
                 departureWindow: value,
               })
             }
+            onWeeklyFrequencyChange={(value: WeeklyFrequency) =>
+              updateData({
+                weeklyFrequency: value,
+              })
+            }
             onNext={goNext}
-            onBack={goBack}
+            onBack={() => setStep("INTRO")}
           />
         ) : null}
 
-        {step === "PASSENGER_CONTEXT" ? (
-          <PassengerFlow
-            passengerCount={data.passengerCount}
+        {step === "CURRENT_PRICE" ? (
+          <CurrentPriceStep
             currentTransport={data.currentTransport}
-            onPassengerCountChange={(value) =>
-              updateData({
-                passengerCount: value,
-              })
-            }
+            routeCostRange={data.routeCostRange}
+            costPeriod={data.costPeriod}
             onCurrentTransportChange={(value: PassengerTransport) =>
               updateData({
                 currentTransport: value,
               })
             }
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "DRIVER_CONTEXT" ? (
-          data.intent === "AMBOS" ? (
-            <BothFlow
-              vehicleType={data.vehicleType}
-              availableSeats={data.availableSeats}
-              currentTransport={data.currentTransport}
-              onVehicleTypeChange={(value: VehicleType) => {
-                updateData({
-                  vehicleType: value,
-                });
-
-                if (value === "MOTO") {
-                  updateData({
-                    availableSeats: undefined,
-                    maxDetourMinutes: undefined,
-                  });
-                }
-              }}
-              onAvailableSeatsChange={(value) =>
-                updateData({
-                  availableSeats: value,
-                })
-              }
-              onCurrentTransportChange={(value: PassengerTransport) =>
-                updateData({
-                  currentTransport: value,
-                })
-              }
-              onNext={goNext}
-              onBack={goBack}
-            />
-          ) : (
-            <DriverFlow
-              vehicleType={data.vehicleType}
-              availableSeats={data.availableSeats}
-              maxDetourMinutes={data.maxDetourMinutes}
-              onVehicleTypeChange={(value: VehicleType) => {
-                updateData({
-                  vehicleType: value,
-                });
-
-                if (value === "MOTO") {
-                  updateData({
-                    availableSeats: undefined,
-                    maxDetourMinutes: undefined,
-                  });
-                }
-              }}
-              onAvailableSeatsChange={(value) =>
-                updateData({
-                  availableSeats: value,
-                })
-              }
-              onMaxDetourMinutesChange={(value) =>
-                updateData({
-                  maxDetourMinutes: value,
-                })
-              }
-              onNext={goNext}
-              onBack={goBack}
-            />
-          )
-        ) : null}
-
-        {step === "PASSENGER_TRUST" ? (
-          <TrustStep
-            intent="PASSAGEIRO"
-            value={data.passengerTrustFactors}
-            onChange={(value: TrustFactor[]) =>
+            onRouteCostRangeChange={(value) =>
               updateData({
-                passengerTrustFactors: value,
+                routeCostRange: value,
+              })
+            }
+            onCostPeriodChange={(value) =>
+              updateData({
+                costPeriod: value,
               })
             }
             onNext={goNext}
@@ -369,13 +301,18 @@ function Formulario() {
           />
         ) : null}
 
-        {step === "DRIVER_TRUST" ? (
-          <TrustStep
-            intent="MOTORISTA"
-            value={data.driverTrustFactors}
-            onChange={(value: TrustFactor[]) =>
+        {step === "PROBLEMS" ? (
+          <ProblemsStep
+            value={data.painPoints}
+            onChange={(value: PainPointCode[]) =>
               updateData({
-                driverTrustFactors: value,
+                painPoints: value,
+                mainPainPoint: value.includes(data.mainPainPoint as PainPointCode)
+                  ? data.mainPainPoint
+                  : undefined,
+                mainPainIntensity: value.includes(data.mainPainPoint as PainPointCode)
+                  ? data.mainPainIntensity
+                  : undefined,
               })
             }
             onNext={goNext}
@@ -383,13 +320,19 @@ function Formulario() {
           />
         ) : null}
 
-        {step === "PASSENGER_PRICE" ? (
-          <PriceStep
-            intent="PASSAGEIRO"
-            value={data.passengerPriceRange}
-            onChange={(value: PriceRange) =>
+        {step === "MAIN_PROBLEM" ? (
+          <MainProblemStep
+            painPoints={data.painPoints}
+            mainPainPoint={data.mainPainPoint}
+            mainPainIntensity={data.mainPainIntensity}
+            onMainPainPointChange={(value: PainPointCode) =>
               updateData({
-                passengerPriceRange: value,
+                mainPainPoint: value,
+              })
+            }
+            onMainPainIntensityChange={(value) =>
+              updateData({
+                mainPainIntensity: value,
               })
             }
             onNext={goNext}
@@ -397,49 +340,19 @@ function Formulario() {
           />
         ) : null}
 
-        {step === "DRIVER_PRICE" ? (
-          <PriceStep
-            intent="MOTORISTA"
-            value={data.driverPrice}
-            onChange={(value) => {
-              if (value === undefined) {
-                updateData({
-                  driverPrice: undefined,
-                  caronaaFee: undefined,
-                  driverNetAmount: undefined,
-                });
-
-                return;
-              }
-
-              updateData(calculateDriverPricing(value));
-            }}
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "PASSENGER_COMMITMENT" ? (
-          <CommitmentStep
-            intent="PASSAGEIRO"
-            value={data.passengerCommitment}
-            onChange={(value: CommitmentLevel) =>
+        {step === "INTEREST" ? (
+          <InterestStep
+            intent={data.intent}
+            passengerInterest={data.passengerInterest}
+            driverInterest={data.driverInterest}
+            onPassengerInterestChange={(value: InterestLevel) =>
               updateData({
-                passengerCommitment: value,
+                passengerInterest: value,
               })
             }
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "DRIVER_COMMITMENT" ? (
-          <CommitmentStep
-            intent="MOTORISTA"
-            value={data.driverCommitment}
-            onChange={(value: CommitmentLevel) =>
+            onDriverInterestChange={(value: InterestLevel) =>
               updateData({
-                driverCommitment: value,
+                driverInterest: value,
               })
             }
             onNext={goNext}
@@ -451,6 +364,7 @@ function Formulario() {
           <ContactStep
             name={data.name}
             whatsapp={data.whatsapp}
+            email={data.email}
             onNameChange={(value) =>
               updateData({
                 name: value,
@@ -459,6 +373,11 @@ function Formulario() {
             onWhatsappChange={(value) =>
               updateData({
                 whatsapp: value,
+              })
+            }
+            onEmailChange={(value) =>
+              updateData({
+                email: value,
               })
             }
             onNext={submit}

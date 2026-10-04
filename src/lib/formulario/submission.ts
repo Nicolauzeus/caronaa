@@ -17,13 +17,23 @@ export type CaronaaStsSubmission = {
 
   destinationNeighborhood: string;
   destinationReference: string | null;
+  originNeighborhood: string | null;
   departureWindow: CaronaaStsFormData["departureWindow"] | null;
+  occupation: CaronaaStsFormData["occupation"] | null;
+  weeklyFrequency: CaronaaStsFormData["weeklyFrequency"] | null;
 
   name: string;
   whatsapp: string;
+  email: string | null;
 
   passengerCount: number | null;
   currentTransport: CaronaaStsFormData["currentTransport"] | null;
+  routeCostRange: CaronaaStsFormData["routeCostRange"] | null;
+  costPeriod: CaronaaStsFormData["costPeriod"] | null;
+  painPoints: CaronaaStsFormData["painPoints"] | null;
+  mainPainPoint: CaronaaStsFormData["mainPainPoint"] | null;
+  mainPainIntensity: number | null;
+  passengerInterest: CaronaaStsFormData["passengerInterest"] | null;
   passengerTrustFactors: CaronaaStsFormData["passengerTrustFactors"] | null;
   passengerPriceRange: CaronaaStsFormData["passengerPriceRange"] | null;
   passengerCommitment: CaronaaStsFormData["passengerCommitment"] | null;
@@ -35,6 +45,8 @@ export type CaronaaStsSubmission = {
   driverPrice: number | null;
   caronaaFee: number | null;
   driverNetAmount: number | null;
+  familyCarCompanions: number | null;
+  driverInterest: CaronaaStsFormData["driverInterest"] | null;
   driverCommitment: CaronaaStsFormData["driverCommitment"] | null;
 
   submissionId: string;
@@ -110,15 +122,35 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     destinationReference: cleanString(data.destinationReference),
 
+    originNeighborhood: cleanString(data.originNeighborhood),
+
     departureWindow: data.departureWindow,
+
+    occupation: data.occupation ?? null,
+
+    weeklyFrequency: data.weeklyFrequency ?? null,
 
     name: data.name.trim(),
 
     whatsapp: normalizeWhatsapp(data.whatsapp),
 
+    email: cleanString(data.email),
+
     passengerCount: includePassenger ? (data.passengerCount ?? null) : null,
 
-    currentTransport: includePassenger ? (data.currentTransport ?? null) : null,
+    currentTransport: data.currentTransport ?? null,
+
+    routeCostRange: data.routeCostRange ?? null,
+
+    costPeriod: data.costPeriod ?? null,
+
+    painPoints: data.painPoints ?? null,
+
+    mainPainPoint: data.mainPainPoint ?? null,
+
+    mainPainIntensity: data.mainPainIntensity ?? null,
+
+    passengerInterest: includePassenger ? (data.passengerInterest ?? null) : null,
 
     passengerTrustFactors: includePassenger ? (data.passengerTrustFactors ?? null) : null,
 
@@ -141,6 +173,13 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
     caronaaFee: driverPricing?.caronaaFee ?? null,
 
     driverNetAmount: driverPricing?.driverNetAmount ?? null,
+
+    familyCarCompanions:
+      includeDriver && data.vehicleType === "CARRO_COMPARTILHADO"
+        ? (data.familyCarCompanions ?? null)
+        : null,
+
+    driverInterest: includeDriver ? (data.driverInterest ?? null) : null,
 
     driverCommitment: includeDriver ? (data.driverCommitment ?? null) : null,
 

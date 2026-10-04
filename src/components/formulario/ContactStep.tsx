@@ -1,8 +1,10 @@
 type ContactStepProps = {
   name?: string | undefined;
   whatsapp?: string | undefined;
+  email?: string | undefined;
   onNameChange: (value: string) => void;
   onWhatsappChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
 };
@@ -24,14 +26,17 @@ function formatWhatsapp(value: string) {
 export function ContactStep({
   name,
   whatsapp,
+  email,
   onNameChange,
   onWhatsappChange,
+  onEmailChange,
   onNext,
   onBack,
 }: ContactStepProps) {
   const normalizedWhatsapp = whatsapp?.replace(/\D/g, "") ?? "";
 
-  const canContinue = Boolean(name?.trim()) && normalizedWhatsapp.length >= 10;
+  const canContinue =
+    Boolean(name?.trim()) && normalizedWhatsapp.length >= 10 && Boolean(email?.trim());
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -85,6 +90,22 @@ export function ContactStep({
             Usaremos esse contato apenas para tentar viabilizar sua experiência com a CARONAA e
             comunicações relacionadas.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="contact-email" className="text-sm font-medium">
+            E-mail
+          </label>
+
+          <input
+            id="contact-email"
+            type="email"
+            value={email ?? ""}
+            onChange={(event) => onEmailChange(event.target.value)}
+            placeholder="voce@email.com"
+            autoComplete="email"
+            className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
         </div>
       </div>
 

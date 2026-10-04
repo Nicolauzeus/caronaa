@@ -7,14 +7,46 @@ const vehicleTypeSchema = z.enum(["CARRO_PROPRIO", "CARRO_COMPARTILHADO", "MOTO"
 
 const passengerTransportSchema = z.enum([
   "ONIBUS",
+  "METRO_VLT",
+  "CARRO_PROPRIO",
+  "MOTO_PROPRIA",
   "UBER_99",
+  "TAXI",
   "CARONA",
   "BICICLETA",
   "APE",
+  "COMBINACAO",
   "OUTRO",
 ]);
 
 const departureWindowSchema = z.enum(["ANTES_18", "18_19", "19_20", "20_21", "21_22", "APOS_22"]);
+
+const occupationSchema = z.enum(["ESTUDANTE", "TRABALHADOR", "ESTUDANTE_TRABALHADOR", "OUTRO"]);
+
+const weeklyFrequencySchema = z.enum(["1_2", "3_4", "5_MAIS", "EVENTUAL"]);
+
+const routeCostRangeSchema = z.enum(["0_5", "6_10", "11_20", "21_30", "31_50", "ACIMA_50"]);
+
+const costPeriodSchema = z.enum(["POR_TRECHO", "POR_DIA"]);
+
+const painPointSchema = z.enum([
+  "DOR_01",
+  "DOR_02",
+  "DOR_03",
+  "DOR_04",
+  "DOR_05",
+  "DOR_06",
+  "OUTRO_PROBLEMA",
+  "SEM_GRANDES_DIFICULDADES",
+]);
+
+const interestLevelSchema = z.enum([
+  "USARIA_HOJE",
+  "PROVAVELMENTE_USARIA",
+  "TALVEZ",
+  "PROVAVELMENTE_NAO",
+  "NAO_USARIA",
+]);
 
 const trustFactorSchema = z.enum([
   "IDENTIDADE_VERIFICADA",
@@ -55,11 +87,19 @@ const baseSchema = z.object({
 
   destinationReference: z.string().trim().max(160, "Ponto de referência muito longo.").optional(),
 
+  originNeighborhood: z.string().trim().max(120, "Origem muito longa.").optional(),
+
   departureWindow: departureWindowSchema,
+
+  occupation: occupationSchema.optional(),
+
+  weeklyFrequency: weeklyFrequencySchema.optional(),
 
   name: z.string().trim().min(2, "Informe seu nome.").max(120, "Nome muito longo."),
 
   whatsapp: z.string().trim().min(10, "Informe um WhatsApp válido.").max(20, "WhatsApp inválido."),
+
+  email: z.string().trim().email("Informe um e-mail válido.").optional(),
 
   submissionId: z.string().uuid().optional(),
 
@@ -68,6 +108,18 @@ const baseSchema = z.object({
   passengerCount: z.number().int().min(1).max(6).optional(),
 
   currentTransport: passengerTransportSchema.optional(),
+
+  routeCostRange: routeCostRangeSchema.optional(),
+
+  costPeriod: costPeriodSchema.optional(),
+
+  painPoints: z.array(painPointSchema).max(8).optional(),
+
+  mainPainPoint: painPointSchema.optional(),
+
+  mainPainIntensity: z.number().int().min(1).max(5).optional(),
+
+  passengerInterest: interestLevelSchema.optional(),
 
   passengerTrustFactors: z.array(trustFactorSchema).max(12).optional(),
 
@@ -89,100 +141,112 @@ const baseSchema = z.object({
 
   driverNetAmount: z.number().finite().optional(),
 
+  familyCarCompanions: z.number().int().min(0).max(10).optional(),
+
+  driverInterest: interestLevelSchema.optional(),
+
   driverCommitment: commitmentLevelSchema.optional(),
 });
 
 export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
   if (data.intent === "PASSAGEIRO" || data.intent === "AMBOS") {
-    if (!data.passengerCount) {
+    if (!data.passengerInterest) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["passengerCount"],
-        message: "Informe para quantas pessoas você procura carona.",
-      });
-    }
-
-    if (!data.currentTransport) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["currentTransport"],
-        message: "Informe como você faria esse trajeto hoje.",
-      });
-    }
-
-    if (!data.passengerTrustFactors || data.passengerTrustFactors.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passengerTrustFactors"],
-        message: "Selecione pelo menos um fator de confiança.",
-      });
-    }
-
-    if (!data.passengerPriceRange) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passengerPriceRange"],
-        message: "Informe uma faixa de contribuição.",
-      });
-    }
-
-    if (!data.passengerCommitment) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passengerCommitment"],
-        message: "Informe se você usaria a CARONAA hoje.",
+        path: ["passengerInterest"],
+        message: "Informe seu interesse em usar a CARONAA como passageiro.",
       });
     }
   }
 
   if (data.intent === "MOTORISTA" || data.intent === "AMBOS") {
-    if (!data.vehicleType) {
+    if (!data.driverInterest) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["vehicleType"],
-        message: "Informe qual veículo você utilizaria.",
+        path: ["driverInterest"],
+        message: "Informe seu interesse em oferecer lugares pela CARONAA.",
       });
     }
+  }
 
-    if (data.vehicleType !== "MOTO" && !data.availableSeats) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["availableSeats"],
-        message: "Informe quantos lugares você teria disponíveis.",
-      });
-    }
+  if (!data.occupation) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["occupation"],
+      message: "Informe seu perfil.",
+    });
+  }
 
-    if (data.vehicleType !== "MOTO" && data.maxDetourMinutes === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["maxDetourMinutes"],
-        message: "Informe quanto você aceitaria desviar da rota.",
-      });
-    }
+  if (!data.originNeighborhood?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["originNeighborhood"],
+      message: "Informe a origem aproximada do trajeto.",
+    });
+  }
 
-    if (!data.driverTrustFactors || data.driverTrustFactors.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["driverTrustFactors"],
-        message: "Selecione pelo menos um fator de confiança.",
-      });
-    }
+  if (!data.weeklyFrequency) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["weeklyFrequency"],
+      message: "Informe a frequência semanal desse trajeto.",
+    });
+  }
 
-    if (data.driverPrice === undefined || data.driverPrice < MIN_DRIVER_PRICE) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["driverPrice"],
-        message: "O valor mínimo por passageiro é R$ 3,50.",
-      });
-    }
+  if (!data.currentTransport) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["currentTransport"],
+      message: "Informe como você faz esse trajeto atualmente.",
+    });
+  }
 
-    if (!data.driverCommitment) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["driverCommitment"],
-        message: "Informe se você ofereceria a carona hoje.",
-      });
-    }
+  if (!data.routeCostRange) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["routeCostRange"],
+      message: "Informe quanto você costuma gastar nesse deslocamento.",
+    });
+  }
+
+  if (!data.costPeriod) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["costPeriod"],
+      message: "Informe se o gasto é por trecho ou por dia.",
+    });
+  }
+
+  if (!data.painPoints || data.painPoints.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["painPoints"],
+      message: "Selecione pelo menos uma resposta sobre os problemas do trajeto.",
+    });
+  }
+
+  if (!data.mainPainPoint) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["mainPainPoint"],
+      message: "Informe qual problema mais incomoda você.",
+    });
+  }
+
+  if (data.mainPainPoint && !data.painPoints?.includes(data.mainPainPoint)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["mainPainPoint"],
+      message: "A dor principal deve estar entre as opções selecionadas.",
+    });
+  }
+
+  if (!data.mainPainIntensity) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["mainPainIntensity"],
+      message: "Informe quanto esse problema impacta sua rotina.",
+    });
   }
 });
 

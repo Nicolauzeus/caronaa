@@ -1,4 +1,4 @@
-import type { CaronaaIntent, CaronaaStsFormData, CommitmentLevel } from "./types";
+import type { CaronaaIntent, CaronaaStsFormData, CommitmentLevel, InterestLevel } from "./types";
 
 export type LeadType = "POTENCIAL_MOTORISTA" | "POTENCIAL_PASSAGEIRO" | "AMBOS" | "INTERESSADO";
 
@@ -37,19 +37,47 @@ function classifyCommitment(commitment?: CommitmentLevel): StsActivationStatus {
   }
 }
 
+function classifyInterest(interest?: InterestLevel): StsActivationStatus {
+  switch (interest) {
+    case "USARIA_HOJE":
+      return "QUER_USAR_HOJE";
+
+    case "PROVAVELMENTE_USARIA":
+    case "TALVEZ":
+      return "QUER_VER_MATCH";
+
+    case "PROVAVELMENTE_NAO":
+    case "NAO_USARIA":
+      return "NAO_USA_HOJE";
+
+    default:
+      return "INDEFINIDO";
+  }
+}
+
 export function getStsActivationStatus(data: CaronaaStsFormData): StsActivationStatus {
   if (data.intent === "PASSAGEIRO") {
-    return classifyCommitment(data.passengerCommitment);
+    return classifyInterest(data.passengerInterest) !== "INDEFINIDO"
+      ? classifyInterest(data.passengerInterest)
+      : classifyCommitment(data.passengerCommitment);
   }
 
   if (data.intent === "MOTORISTA") {
-    return classifyCommitment(data.driverCommitment);
+    return classifyInterest(data.driverInterest) !== "INDEFINIDO"
+      ? classifyInterest(data.driverInterest)
+      : classifyCommitment(data.driverCommitment);
   }
 
   if (data.intent === "AMBOS") {
-    const passengerStatus = classifyCommitment(data.passengerCommitment);
+    const passengerStatus =
+      classifyInterest(data.passengerInterest) !== "INDEFINIDO"
+        ? classifyInterest(data.passengerInterest)
+        : classifyCommitment(data.passengerCommitment);
 
-    const driverStatus = classifyCommitment(data.driverCommitment);
+    const driverStatus =
+      classifyInterest(data.driverInterest) !== "INDEFINIDO"
+        ? classifyInterest(data.driverInterest)
+        : classifyCommitment(data.driverCommitment);
 
     if (passengerStatus === "QUER_USAR_HOJE" || driverStatus === "QUER_USAR_HOJE") {
       return "QUER_USAR_HOJE";
