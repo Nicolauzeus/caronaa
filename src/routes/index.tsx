@@ -47,16 +47,16 @@ function Landing() {
         </picture>
         <div className="absolute inset-0 -z-10 bg-hero-overlay" />
         <div className="mx-auto w-full max-w-7xl px-5 pb-16 pt-36 md:px-8 md:py-24">
-          <div className="max-w-[650px] text-primary-foreground">
-            <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary-foreground/35 bg-primary-foreground/15 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
+          <div className="max-w-[650px] text-white">
+            <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
               <span className="size-2 rounded-full bg-highlight" /> Mobilidade que conecta pessoas
             </span>
-            <h1 className="font-display text-4xl font-extrabold leading-[1.08] md:text-6xl">
+            <h1 className="font-display text-4xl font-extrabold leading-[1.08] text-white md:text-6xl">
               CARONAA.
               <br />
               Seu caminho fica melhor junto.
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-primary-foreground/90 md:text-lg">
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-white md:text-lg">
               Encontre pessoas que vão pelo mesmo caminho. Divida o trajeto, compartilhe bons
               momentos e vá mais longe em comunidade.
             </p>
@@ -64,7 +64,7 @@ function Landing() {
               <Button
                 asChild
                 size="lg"
-                className="h-12 bg-primary-foreground px-6 font-bold text-primary hover:bg-primary-foreground/90"
+                className="h-12 bg-primary px-6 font-bold text-white hover:bg-primary/90"
               >
                 <Link to="/buscar">
                   Encontrar carona <ArrowRight />
@@ -74,7 +74,7 @@ function Landing() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-12 border-primary-foreground/70 bg-transparent px-6 font-bold text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+                className="h-12 border-white/70 bg-transparent px-6 font-bold text-white hover:bg-white/15 hover:text-white"
               >
                 <Link to="/oferecer">
                   Oferecer carona <ArrowUpRight />
