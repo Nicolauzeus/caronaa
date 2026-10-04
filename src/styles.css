@@ -114,6 +114,7 @@
   --sidebar-accent-foreground: oklch(0.18 0.02 22);
   --sidebar-border: oklch(0.91 0.014 82);
   --sidebar-ring: oklch(0.74 0.155 70.7);
+  --auth-field: oklch(0.965 0.018 250);
 }
 
 .dark {
@@ -149,6 +150,11 @@
   --sidebar-accent-foreground: oklch(0.98 0.005 78);
   --sidebar-border: oklch(1 0 0 / 11%);
   --sidebar-ring: oklch(0.83 0.14 77);
+  --auth-field: oklch(0.25 0.022 250);
+}
+
+@theme inline {
+  --color-auth-field: var(--auth-field);
 }
 
 @layer base {

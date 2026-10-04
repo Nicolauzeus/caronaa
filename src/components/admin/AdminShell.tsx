@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { currentUser } from "@/mockData";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 
 const navigation = [
   { title: "Visão Geral", items: [{ label: "Dashboard", to: "/admin", icon: LayoutDashboard }] },
@@ -109,7 +110,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(245,168,0,0.08),_transparent_30%),linear-gradient(180deg,_rgba(250,250,248,0.9),_rgba(255,255,255,1))]">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-[1680px] gap-5 p-3 md:p-5 lg:p-6">
         <aside className="hidden w-[280px] shrink-0 rounded-2xl border border-border bg-card/85 p-4 shadow-soft backdrop-blur-md lg:block">
           <div className="mb-6 flex items-center justify-between gap-3">
@@ -169,6 +170,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   />
                 </div>
                 <div className="flex items-center gap-2">
+                  <ThemeToggle />
                   <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-2.5 py-1.5 text-[11px] font-semibold text-foreground">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     Ambiente: produção
