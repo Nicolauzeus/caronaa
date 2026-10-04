@@ -31,6 +31,8 @@ import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formu
 import { caronaaStsFormSchema } from "@/lib/formulario/schema";
 
 import { prepareSubmission } from "@/lib/formulario/submission";
+import { saveFormSubmission } from "@/lib/formulario/form-submission-service";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/formulario")({
   head: () => ({
@@ -68,6 +70,8 @@ const initialData: CaronaaStsFormData = {
 };
 
 function Formulario() {
+  const { user } = useAuth();
+
   const [step, setStep] = React.useState<FormStep>("INTRO");
 
   const [data, setData] = React.useState<CaronaaStsFormData>(initialData);
@@ -177,15 +181,7 @@ function Formulario() {
 
       const payload = prepareSubmission(validation.data);
 
-      /*
-       * Neste momento estamos validando toda a experiência
-       * antes de conectar o submit definitivo ao banco.
-       *
-       * O próximo passo será persistir `payload`
-       * no Supabase.
-       */
-
-      console.info("CARONAA STS submission prepared", payload);
+      await saveFormSubmission(payload, user?.id ?? null);
 
       setData((current) => ({
         ...current,

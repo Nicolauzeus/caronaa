@@ -1,12 +1,15 @@
 import { Download, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { adminService } from "@/mockData";
+import {
+  listFormSubmissions,
+  type FormSubmissionRow,
+} from "@/lib/formulario/form-submission-service";
 
-const sources = ["all", "STS2026", "UNIFOR", "Instagram", "QR Code", "Direct"];
+const sources = ["all", "sts-2026"];
 
 export const Route = createFileRoute("/admin/formularios/respostas/")({
   head: () => ({
@@ -22,20 +25,31 @@ export const Route = createFileRoute("/admin/formularios/respostas/")({
   component: AdminResponsesPage,
 });
 
-function exportCsv(rows: ReturnType<typeof adminService.listSurveyResponses>) {
-  const header = ["id", "participante", "perfil", "cidade", "contato", "origem", "data", "status"];
+function exportCsv(rows: FormSubmissionRow[]) {
+  const header = [
+    "submission_id",
+    "nome",
+    "tipo_usuario",
+    "origem_trajeto",
+    "destino_trajeto",
+    "whatsapp",
+    "source",
+    "campaign_event",
+    "created_at",
+  ];
   const csv = [header.join(",")]
     .concat(
       rows.map((row) =>
         [
-          row.id,
-          row.participant,
-          row.profile,
-          row.city,
-          row.contact,
+          row.submission_id,
+          row.nome,
+          row.tipo_usuario,
+          row.origem_trajeto ?? "",
+          row.destino_trajeto,
+          row.whatsapp,
           row.source,
-          row.submittedAt,
-          row.status,
+          row.campaign_event,
+          row.created_at,
         ]
           .map((value) => `"${String(value).replace(/"/g, '""')}"`)
           .join(","),
@@ -55,11 +69,56 @@ function exportCsv(rows: ReturnType<typeof adminService.listSurveyResponses>) {
 function AdminResponsesPage() {
   const [source, setSource] = useState("all");
   const [query, setQuery] = useState("");
+  const [responses, setResponses] = useState<FormSubmissionRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const rows = useMemo(
-    () => adminService.listSurveyResponses({ source, search: query }),
-    [source, query],
-  );
+  useEffect(() => {
+    let active = true;
+
+    setIsLoading(true);
+    setError(null);
+
+    void listFormSubmissions()
+      .then((data) => {
+        if (!active) return;
+        setResponses(data);
+      })
+      .catch((caught) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : "Não foi possível carregar respostas.");
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const rows = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+
+    return responses.filter((response) => {
+      const matchesSource = source === "all" || response.source === source;
+      const matchesSearch =
+        !normalized ||
+        [
+          response.nome,
+          response.email ?? "",
+          response.whatsapp,
+          response.submission_id,
+          response.source,
+          response.campaign_event,
+          response.origem_trajeto ?? "",
+          response.destino_trajeto,
+        ].some((field) => field.toLowerCase().includes(normalized));
+
+      return matchesSource && matchesSearch;
+    });
+  }, [responses, source, query]);
 
   return (
     <div className="space-y-6">
@@ -88,7 +147,7 @@ function AdminResponsesPage() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar participante, cidade ou origem"
+              placeholder="Buscar participante, rota ou origem"
               className="h-11 border-border bg-background pl-9"
             />
           </div>
@@ -115,14 +174,26 @@ function AdminResponsesPage() {
               <tr>
                 <th className="px-4 py-3 font-semibold">Participante</th>
                 <th className="px-4 py-3 font-semibold">Perfil</th>
-                <th className="px-4 py-3 font-semibold">Cidade</th>
+                <th className="px-4 py-3 font-semibold">Trajeto</th>
                 <th className="px-4 py-3 font-semibold">Origem</th>
                 <th className="px-4 py-3 font-semibold">Data</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Evento</th>
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    Carregando respostas...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-destructive">
+                    {error}
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     Nenhuma resposta encontrada para estes filtros.
@@ -131,28 +202,32 @@ function AdminResponsesPage() {
               ) : (
                 rows.map((row) => (
                   <tr
-                    key={row.id}
+                    key={row.submission_id}
                     className="border-t border-border text-sm text-foreground hover:bg-secondary/30"
                   >
                     <td className="px-4 py-3">
                       <Link
                         to="/admin/formularios/respostas/$id"
-                        params={{ id: row.id }}
+                        params={{ id: row.submission_id }}
                         className="font-semibold text-primary underline-offset-2 hover:underline"
                       >
-                        {row.participant}
+                        {row.nome}
                       </Link>
-                      <p className="mt-1 text-xs text-muted-foreground">{row.contact}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {row.email ? `${row.whatsapp} • ${row.email}` : row.whatsapp}
+                      </p>
                     </td>
-                    <td className="px-4 py-3">{row.profile}</td>
-                    <td className="px-4 py-3">{row.city}</td>
+                    <td className="px-4 py-3">{row.tipo_usuario}</td>
+                    <td className="px-4 py-3">
+                      {row.origem_trajeto ?? "Não informado"} → {row.destino_trajeto}
+                    </td>
                     <td className="px-4 py-3">{row.source}</td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(row.submittedAt).toLocaleDateString("pt-BR")}
+                      {new Date(row.created_at).toLocaleDateString("pt-BR")}
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
-                        {row.status}
+                        {row.campaign_event}
                       </span>
                     </td>
                   </tr>

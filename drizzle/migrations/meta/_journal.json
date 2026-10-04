@@ -36,6 +36,13 @@
       "when": 1791074450375,
       "tag": "0004_make_first_registered_user_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791080000000,
+      "tag": "0005_create_form_bi_tables",
+      "breakpoints": true
     }
   ]
 }

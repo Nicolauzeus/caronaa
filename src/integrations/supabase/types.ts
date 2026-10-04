@@ -8,6 +8,116 @@ export type Database = {
   };
   public: {
     Tables: {
+      form_submission_pain_points: {
+        Row: {
+          codigo_dor: Database["public"]["Enums"]["form_dor_codigo"];
+          created_at: string;
+          intensidade: number | null;
+          principal: boolean;
+          selecionada: boolean;
+          submission_id: string;
+        };
+        Insert: {
+          codigo_dor: Database["public"]["Enums"]["form_dor_codigo"];
+          created_at?: string;
+          intensidade?: number | null;
+          principal?: boolean;
+          selecionada?: boolean;
+          submission_id: string;
+        };
+        Update: {
+          codigo_dor?: Database["public"]["Enums"]["form_dor_codigo"];
+          created_at?: string;
+          intensidade?: number | null;
+          principal?: boolean;
+          selecionada?: boolean;
+          submission_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "form_submission_pain_points_submission_id_fkey";
+            columns: ["submission_id"];
+            isOneToOne: false;
+            referencedRelation: "form_submissions";
+            referencedColumns: ["submission_id"];
+          },
+        ];
+      };
+      form_submissions: {
+        Row: {
+          anonymous_session_id: string | null;
+          campaign_event: string;
+          consentimento: boolean;
+          created_at: string;
+          custo_atual_faixa: string | null;
+          custo_referencia: Database["public"]["Enums"]["form_custo_referencia"] | null;
+          destino_trajeto: string;
+          email: string | null;
+          faixa_horario: string | null;
+          frequencia_semanal: string | null;
+          intencao_motorista: Database["public"]["Enums"]["form_intencao"] | null;
+          intencao_passageiro: Database["public"]["Enums"]["form_intencao"] | null;
+          nome: string;
+          ocupacao: string | null;
+          origem_trajeto: string | null;
+          raw_payload: Json;
+          source: string;
+          submission_id: string;
+          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"];
+          transporte_atual: string | null;
+          user_id: string | null;
+          whatsapp: string;
+        };
+        Insert: {
+          anonymous_session_id?: string | null;
+          campaign_event: string;
+          consentimento?: boolean;
+          created_at?: string;
+          custo_atual_faixa?: string | null;
+          custo_referencia?: Database["public"]["Enums"]["form_custo_referencia"] | null;
+          destino_trajeto: string;
+          email?: string | null;
+          faixa_horario?: string | null;
+          frequencia_semanal?: string | null;
+          intencao_motorista?: Database["public"]["Enums"]["form_intencao"] | null;
+          intencao_passageiro?: Database["public"]["Enums"]["form_intencao"] | null;
+          nome: string;
+          ocupacao?: string | null;
+          origem_trajeto?: string | null;
+          raw_payload?: Json;
+          source: string;
+          submission_id?: string;
+          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"];
+          transporte_atual?: string | null;
+          user_id?: string | null;
+          whatsapp: string;
+        };
+        Update: {
+          anonymous_session_id?: string | null;
+          campaign_event?: string;
+          consentimento?: boolean;
+          created_at?: string;
+          custo_atual_faixa?: string | null;
+          custo_referencia?: Database["public"]["Enums"]["form_custo_referencia"] | null;
+          destino_trajeto?: string;
+          email?: string | null;
+          faixa_horario?: string | null;
+          frequencia_semanal?: string | null;
+          intencao_motorista?: Database["public"]["Enums"]["form_intencao"] | null;
+          intencao_passageiro?: Database["public"]["Enums"]["form_intencao"] | null;
+          nome?: string;
+          ocupacao?: string | null;
+          origem_trajeto?: string | null;
+          raw_payload?: Json;
+          source?: string;
+          submission_id?: string;
+          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+          transporte_atual?: string | null;
+          user_id?: string | null;
+          whatsapp?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -98,6 +208,10 @@ export type Database = {
     };
     Enums: {
       app_role: "admin" | "moderator" | "user";
+      form_custo_referencia: "TRECHO" | "DIA";
+      form_dor_codigo: "DOR_01" | "DOR_02" | "DOR_03" | "DOR_04" | "DOR_05" | "DOR_06";
+      form_intencao: "HOJE" | "PROVAVELMENTE" | "TALVEZ" | "PROVAVELMENTE_NAO" | "NAO";
+      form_tipo_usuario: "PASSAGEIRO" | "MOTORISTA" | "AMBOS";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -220,6 +334,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      form_custo_referencia: ["TRECHO", "DIA"],
+      form_dor_codigo: ["DOR_01", "DOR_02", "DOR_03", "DOR_04", "DOR_05", "DOR_06"],
+      form_intencao: ["HOJE", "PROVAVELMENTE", "TALVEZ", "PROVAVELMENTE_NAO", "NAO"],
+      form_tipo_usuario: ["PASSAGEIRO", "MOTORISTA", "AMBOS"],
     },
   },
 } as const;
