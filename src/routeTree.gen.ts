@@ -21,6 +21,7 @@ import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authen
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
@@ -87,6 +88,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
+  id: '/validacao',
+  path: '/validacao',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFormulariosIndexRoute = AdminFormulariosIndexRouteImport.update({
   id: '/formularios/',
   path: '/formularios/',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/validacao': typeof AdminValidacaoRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/validacao': typeof AdminValidacaoRoute
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/validacao': typeof AdminValidacaoRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
     | '/admin/formularios/'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/validacao'
     | '/admin'
     | '/admin/usuarios/$id'
     | '/admin/formularios'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
+    | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
     | '/admin/formularios/'
@@ -323,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/validacao': {
+      id: '/admin/validacao'
+      path: '/validacao'
+      fullPath: '/admin/validacao'
+      preLoaderRoute: typeof AdminValidacaoRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/formularios/': {
       id: '/admin/formularios/'
       path: '/formularios'
@@ -379,6 +398,7 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface AdminRouteChildren {
+  AdminValidacaoRoute: typeof AdminValidacaoRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
   AdminFormulariosIndexRoute: typeof AdminFormulariosIndexRoute
@@ -388,6 +408,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminValidacaoRoute: AdminValidacaoRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
   AdminFormulariosIndexRoute: AdminFormulariosIndexRoute,
