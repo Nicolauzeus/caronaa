@@ -31,6 +31,8 @@ import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formu
 
 import { caronaaStsFormSchema } from "@/lib/formulario/schema";
 
+import { calculateDriverPricing } from "@/lib/formulario/pricing";
+
 import { prepareSubmission } from "@/lib/formulario/submission";
 
 export const Route = createFileRoute("/formulario")({
@@ -104,7 +106,9 @@ function Formulario() {
       availableSeats: undefined,
       maxDetourMinutes: undefined,
       driverTrustFactors: undefined,
-      driverPriceRange: undefined,
+      driverPrice: undefined,
+      caronaaFee: undefined,
+      driverNetAmount: undefined,
       driverCommitment: undefined,
     }));
   }
@@ -396,12 +400,20 @@ function Formulario() {
         {step === "DRIVER_PRICE" ? (
           <PriceStep
             intent="MOTORISTA"
-            value={data.driverPriceRange}
-            onChange={(value: PriceRange) =>
-              updateData({
-                driverPriceRange: value,
-              })
-            }
+            value={data.driverPrice}
+            onChange={(value) => {
+              if (value === undefined) {
+                updateData({
+                  driverPrice: undefined,
+                  caronaaFee: undefined,
+                  driverNetAmount: undefined,
+                });
+
+                return;
+              }
+
+              updateData(calculateDriverPricing(value));
+            }}
             onNext={goNext}
             onBack={goBack}
           />

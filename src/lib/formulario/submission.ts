@@ -1,5 +1,6 @@
 import type { CaronaaStsFormData } from "./types";
 import { getLeadClassification } from "./classification";
+import { calculateDriverPricing } from "./pricing";
 
 export type CaronaaStsSubmission = {
   source: "sts-2026";
@@ -31,7 +32,9 @@ export type CaronaaStsSubmission = {
   availableSeats: number | null;
   maxDetourMinutes: number | null;
   driverTrustFactors: CaronaaStsFormData["driverTrustFactors"] | null;
-  driverPriceRange: CaronaaStsFormData["driverPriceRange"] | null;
+  driverPrice: number | null;
+  caronaaFee: number | null;
+  driverNetAmount: number | null;
   driverCommitment: CaronaaStsFormData["driverCommitment"] | null;
 
   submissionId: string;
@@ -83,6 +86,11 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
   const includeDriver = data.intent === "MOTORISTA" || data.intent === "AMBOS";
 
+  const driverPricing =
+    includeDriver && data.driverPrice !== undefined
+      ? calculateDriverPricing(data.driverPrice)
+      : null;
+
   return {
     source: "sts-2026",
 
@@ -128,7 +136,11 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     driverTrustFactors: includeDriver ? (data.driverTrustFactors ?? null) : null,
 
-    driverPriceRange: includeDriver ? (data.driverPriceRange ?? null) : null,
+    driverPrice: driverPricing?.driverPrice ?? null,
+
+    caronaaFee: driverPricing?.caronaaFee ?? null,
+
+    driverNetAmount: driverPricing?.driverNetAmount ?? null,
 
     driverCommitment: includeDriver ? (data.driverCommitment ?? null) : null,
 

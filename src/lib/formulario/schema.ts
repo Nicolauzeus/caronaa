@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MIN_DRIVER_PRICE } from "./pricing";
 
 const intentSchema = z.enum(["MOTORISTA", "PASSAGEIRO", "AMBOS"]);
 
@@ -82,7 +83,11 @@ const baseSchema = z.object({
 
   driverTrustFactors: z.array(trustFactorSchema).max(12).optional(),
 
-  driverPriceRange: priceRangeSchema.optional(),
+  driverPrice: z.number().finite().optional(),
+
+  caronaaFee: z.number().finite().optional(),
+
+  driverNetAmount: z.number().finite().optional(),
 
   driverCommitment: commitmentLevelSchema.optional(),
 });
@@ -163,11 +168,11 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
       });
     }
 
-    if (!data.driverPriceRange) {
+    if (data.driverPrice === undefined || data.driverPrice < MIN_DRIVER_PRICE) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["driverPriceRange"],
-        message: "Informe uma faixa de contribuição.",
+        path: ["driverPrice"],
+        message: "O valor mínimo por passageiro é R$ 3,50.",
       });
     }
 

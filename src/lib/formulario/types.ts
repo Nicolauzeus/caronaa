@@ -48,7 +48,9 @@ export interface CaronaaStsFormData {
   availableSeats?: number | undefined;
   maxDetourMinutes?: number | undefined;
   driverTrustFactors?: TrustFactor[] | undefined;
-  driverPriceRange?: PriceRange | undefined;
+  driverPrice?: number | undefined;
+  caronaaFee?: number | undefined;
+  driverNetAmount?: number | undefined;
   driverCommitment?: CommitmentLevel | undefined;
 
   // Metadados

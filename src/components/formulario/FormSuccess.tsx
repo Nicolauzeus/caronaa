@@ -1,6 +1,11 @@
 import type { CaronaaStsFormData } from "@/lib/formulario/types";
 import { getLeadClassification } from "@/lib/formulario/classification";
 
+const moneyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 type FormSuccessProps = {
   data: CaronaaStsFormData;
   onRestart?: () => void;
@@ -167,6 +172,16 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
                 {data.passengerCount === 1
                   ? "1 pessoa"
                   : `${data.passengerCount}${data.passengerCount === 4 ? "+" : ""} pessoas`}
+              </dd>
+            </div>
+          ) : null}
+
+          {data.intent !== "PASSAGEIRO" && data.driverPrice !== undefined ? (
+            <div>
+              <dt className="text-xs text-muted-foreground">Valor por passageiro</dt>
+
+              <dd className="mt-1 text-sm font-medium">
+                {moneyFormatter.format(data.driverPrice)}
               </dd>
             </div>
           ) : null}
