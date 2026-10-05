@@ -1,5 +1,9 @@
+import React from "react";
+import { Link } from "@tanstack/react-router";
+import { CheckCircle2, MapPin, Calendar, Clock, Car, Users, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
 import type { CaronaaStsFormData } from "@/lib/formulario/types";
 import { getLeadClassification } from "@/lib/formulario/classification";
+import { StsBadge } from "@/components/caronaa/BrandElements";
 
 const moneyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -14,16 +18,13 @@ type FormSuccessProps = {
 function getIntentLabel(intent: CaronaaStsFormData["intent"]) {
   switch (intent) {
     case "MOTORISTA":
-      return "Oferecer carona";
-
+      return "Motorista (Oferecer lugares)";
     case "PASSAGEIRO":
-      return "Pegar carona";
-
+      return "Passageiro (Pegar carona)";
     case "AMBOS":
-      return "Oferecer ou pegar carona";
-
+      return "Ambos (Oferecer ou pegar carona)";
     default:
-      return "CARONAA";
+      return "Participante CARONAA";
   }
 }
 
@@ -31,199 +32,178 @@ function getDepartureLabel(departureWindow: CaronaaStsFormData["departureWindow"
   switch (departureWindow) {
     case "ANTES_18":
       return "Antes das 18h";
-
     case "18_19":
       return "18h – 19h";
-
     case "19_20":
       return "19h – 20h";
-
     case "20_21":
       return "20h – 21h";
-
     case "21_22":
       return "21h – 22h";
-
     case "APOS_22":
       return "Depois das 22h";
-
     default:
-      return "Não informado";
+      return "Horário flexível";
   }
-}
-
-function getActivationMessage(data: CaronaaStsFormData) {
-  const classification = getLeadClassification(data);
-
-  if (classification.activationStatus === "QUER_USAR_HOJE") {
-    if (data.intent === "MOTORISTA") {
-      return {
-        title: "Sua rota entrou na CARONAA",
-        description:
-          "Vamos procurar passageiros do STS com destino e horário compatíveis com os seus.",
-      };
-    }
-
-    if (data.intent === "PASSAGEIRO") {
-      return {
-        title: "Vamos tentar encontrar sua carona",
-        description:
-          "Vamos procurar motoristas do STS saindo em horário parecido e indo para perto do seu destino.",
-      };
-    }
-
-    return {
-      title: "Vamos procurar a melhor combinação para você",
-      description:
-        "Como você pode oferecer ou pegar carona, vamos considerar as duas possibilidades.",
-    };
-  }
-
-  if (classification.activationStatus === "QUER_VER_MATCH") {
-    return {
-      title: "Vamos procurar uma combinação para você avaliar",
-      description:
-        "Se encontrarmos uma opção compatível, você poderá analisar as informações antes de decidir.",
-    };
-  }
-
-  return {
-    title: "Obrigado por participar da validação da CARONAA",
-    description:
-      "Sua resposta vai nos ajudar a entender melhor como tornar a experiência segura e útil para quem sai do STS.",
-  };
 }
 
 export function FormSuccess({ data, onRestart }: FormSuccessProps) {
   const classification = getLeadClassification(data);
 
-  const message = getActivationMessage(data);
-
-  const shouldShowMatching = classification.wantsToSeeMatch;
-
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">
+      {/* Header status */}
       <div className="flex flex-col items-center text-center">
         <div
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-3xl"
+          className="flex h-20 w-20 items-center justify-center rounded-3xl bg-caronaa-primary/20 text-caronaa-primary ring-8 ring-caronaa-primary/10 shadow-lg"
           aria-hidden="true"
         >
-          ✓
+          <CheckCircle2 size={44} className="text-emerald-500" />
         </div>
 
-        <div className="mt-5 space-y-2">
-          <p className="text-sm font-medium text-primary">Resposta registrada</p>
+        <div className="mt-6 space-y-2">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            Perfil 100% preparado • STS 2026
+          </div>
 
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{message.title}</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            🚗 Sua CARONAA começou!
+          </h1>
 
-          <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-            {message.description}
+          <p className="mx-auto max-w-lg text-base text-muted-foreground">
+            Agora vamos analisar seu trajeto e procurar combinações compatíveis com quem também está saindo do Siará Tech Summit.
           </p>
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-4 border-b pb-3">
+      {/* Trajectory Summary Card */}
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-md space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div>
-            <p className="text-xs text-muted-foreground">Seu papel</p>
-
-            <p className="mt-1 text-sm font-semibold">{getIntentLabel(data.intent)}</p>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Resumo da sua solicitação
+            </span>
+            <p className="text-base font-bold text-foreground mt-0.5">
+              {getIntentLabel(data.intent)}
+            </p>
           </div>
-
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            STS 2026
-          </span>
+          <div className="flex items-center gap-2">
+            <StsBadge />
+          </div>
         </div>
 
-        <dl className="grid gap-4 pt-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs text-muted-foreground">Destino</dt>
-
-            <dd className="mt-1 text-sm font-medium">
-              {data.destinationNeighborhood ?? "Não informado"}
-            </dd>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+            <MapPin size={20} className="text-caronaa-primary shrink-0 mt-0.5" />
+            <div>
+              <div className="text-xs text-muted-foreground">Origem do evento</div>
+              <div className="font-semibold text-foreground">
+                {data.originNeighborhood || "Centro de Eventos do Ceará"}
+              </div>
+            </div>
           </div>
 
-          <div>
-            <dt className="text-xs text-muted-foreground">Horário de saída</dt>
-
-            <dd className="mt-1 text-sm font-medium">{getDepartureLabel(data.departureWindow)}</dd>
+          <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+            <MapPin size={20} className="text-event-magenta shrink-0 mt-0.5" />
+            <div>
+              <div className="text-xs text-muted-foreground">Destino pretendido</div>
+              <div className="font-semibold text-foreground">
+                {data.destinationNeighborhood || "Fortaleza / Região Metropolitana"}
+              </div>
+            </div>
           </div>
 
-          {data.intent !== "PASSAGEIRO" && data.vehicleType ? (
+          <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+            <Clock size={20} className="text-event-cyan shrink-0 mt-0.5" />
             <div>
-              <dt className="text-xs text-muted-foreground">Veículo</dt>
-
-              <dd className="mt-1 text-sm font-medium">
-                {data.vehicleType === "CARRO_PROPRIO"
-                  ? "Carro próprio"
-                  : data.vehicleType === "CARRO_COMPARTILHADO"
-                    ? "Carro compartilhado"
-                    : "Moto"}
-              </dd>
+              <div className="text-xs text-muted-foreground">Janela de saída</div>
+              <div className="font-semibold text-foreground">
+                {getDepartureLabel(data.departureWindow)}
+              </div>
             </div>
-          ) : null}
+          </div>
 
-          {data.intent !== "MOTORISTA" && data.passengerCount ? (
+          <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+            <Calendar size={20} className="text-primary shrink-0 mt-0.5" />
             <div>
-              <dt className="text-xs text-muted-foreground">Pessoas</dt>
-
-              <dd className="mt-1 text-sm font-medium">
-                {data.passengerCount === 1
-                  ? "1 pessoa"
-                  : `${data.passengerCount}${data.passengerCount === 4 ? "+" : ""} pessoas`}
-              </dd>
+              <div className="text-xs text-muted-foreground">Datas do STS</div>
+              <div className="font-semibold text-foreground">07 a 09 de outubro de 2026</div>
             </div>
-          ) : null}
+          </div>
 
-          {data.intent !== "PASSAGEIRO" && data.driverPrice !== undefined ? (
-            <div>
-              <dt className="text-xs text-muted-foreground">Valor por passageiro</dt>
-
-              <dd className="mt-1 text-sm font-medium">
-                {moneyFormatter.format(data.driverPrice)}
-              </dd>
+          {data.driverPrice !== undefined && (
+            <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+              <Car size={20} className="text-caronaa-primary shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs text-muted-foreground">Contribuição por passageiro</div>
+                <div className="font-semibold text-foreground">
+                  {moneyFormatter.format(data.driverPrice)}
+                </div>
+              </div>
             </div>
-          ) : null}
-        </dl>
+          )}
+
+          {data.passengerCount !== undefined && (
+            <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+              <Users size={20} className="text-primary shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs text-muted-foreground">Passageiros no grupo</div>
+                <div className="font-semibold text-foreground">{data.passengerCount} pessoa(s)</div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {shouldShowMatching ? (
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
-          <div className="flex gap-3">
-            <span className="text-xl" aria-hidden="true">
-              🔎
-            </span>
-
-            <div className="space-y-1">
-              <p className="text-sm font-semibold">Agora começa a parte real do teste</p>
-
-              <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
-                Vamos comparar destino, horário, disponibilidade e intenção. Se encontrarmos uma
-                combinação relevante, a equipe CARONAA poderá falar com você pelo WhatsApp
-                informado.
-              </p>
-            </div>
+      {/* Honest MVP Disclaimer Notice */}
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <ShieldCheck size={22} className="text-caronaa-primary shrink-0 mt-0.5" />
+          <div className="space-y-1.5">
+            <p className="text-sm font-bold text-foreground">
+              Como funciona o próximo passo?
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              Seu cadastro foi registrado com sucesso! Vale lembrar que a realização de uma carona
+              depende de existir uma combinação compatível de horários e rotas, e de ambas as partes
+              concordarem com os detalhes. Se encontramos alguém compatível, entraremos em contato
+              para apresentar a oportunidade.
+            </p>
           </div>
         </div>
-      ) : null}
+      </div>
 
-      <div className="space-y-2 text-center">
-        <p className="text-xs leading-5 text-muted-foreground">
-          Nenhuma viagem é confirmada automaticamente. Antes de qualquer carona, você poderá
-          analisar as informações disponíveis e decidir se deseja continuar.
-        </p>
+      {/* Navigation Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Link
+          to="/auth"
+          className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-caronaa-primary px-6 py-3 text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition"
+        >
+          Acessar minha conta / App
+          <ArrowRight size={16} />
+        </Link>
 
-        {onRestart ? (
+        <Link
+          to="/"
+          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold hover:bg-accent transition"
+        >
+          Voltar para a página inicial
+        </Link>
+      </div>
+
+      {onRestart && (
+        <div className="text-center pt-2">
           <button
             type="button"
             onClick={onRestart}
-            className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium transition hover:bg-accent"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition underline underline-offset-4"
           >
-            Fazer outra resposta
+            <RefreshCw size={13} />
+            Preencher outro trajeto ou simulação
           </button>
-        ) : null}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

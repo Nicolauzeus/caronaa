@@ -249,23 +249,29 @@ function Formulario() {
   return (
     <AppShell publicPage>
       <div className="min-h-[calc(100vh-72px)] bg-background">
-        {step !== "INTRO" && step !== "SUCCESS" && step !== "CONTACT" ? (
-          <div className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
+        {step !== "INTRO" && step !== "SUCCESS" ? (
+          <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-md">
             <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
               <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">CARONAA • STS 2026</p>
-
-                  <p className="text-xs text-muted-foreground">{progress}% concluído</p>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-caronaa-primary-strong">CARONAA</span>
+                    <span className="text-xs text-muted-foreground">• Siará Tech Summit</span>
+                  </div>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {progress}% concluído • Etapa {step === "CONTACT" ? "Final" : `${Math.round(progress / 20)}/5`}
+                  </p>
                 </div>
 
-                <div className="h-2 w-32 overflow-hidden rounded-full bg-muted sm:w-48">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{
-                      width: `${progress}%`,
-                    }}
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-32 overflow-hidden rounded-full bg-muted sm:w-48 ring-1 ring-border">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-caronaa-primary to-caronaa-primary-strong transition-all duration-300"
+                      style={{
+                        width: `${progress}%`,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -398,6 +404,8 @@ function Formulario() {
             intent={data.intent}
             passengerInterest={data.passengerInterest}
             driverInterest={data.driverInterest}
+            passengerPriceRange={data.passengerPriceRange}
+            driverPrice={data.driverPrice}
             onPassengerInterestChange={(value: InterestLevel) =>
               updateData({
                 passengerInterest: value,
@@ -406,6 +414,16 @@ function Formulario() {
             onDriverInterestChange={(value: InterestLevel) =>
               updateData({
                 driverInterest: value,
+              })
+            }
+            onPassengerPriceRangeChange={(value) =>
+              updateData({
+                passengerPriceRange: value,
+              })
+            }
+            onDriverPriceChange={(value) =>
+              updateData({
+                driverPrice: value,
               })
             }
             onNext={openContact}
