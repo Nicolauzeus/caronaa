@@ -80,6 +80,10 @@ function Formulario() {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  // Keeps retries and rapid repeated clicks bound to the same database idempotency key.
+  const isSubmittingRef = React.useRef(false);
+  const submissionAttemptIdRef = React.useRef<string | null>(null);
+
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const progress = getProgressPercentage(step, data);
@@ -160,6 +164,8 @@ function Formulario() {
   }
 
   function restart() {
+    submissionAttemptIdRef.current = null;
+    isSubmittingRef.current = false;
     setData(initialData);
     setStep("INTRO");
     setSubmitError(null);
@@ -171,6 +177,8 @@ function Formulario() {
   }
 
   async function submit() {
+    if (isSubmittingRef.current) return;
+
     setSubmitError(null);
 
     const validation = caronaaStsFormSchema.safeParse(data);
@@ -184,9 +192,14 @@ function Formulario() {
     }
 
     try {
+      isSubmittingRef.current = true;
       setIsSubmitting(true);
 
-      const payload = prepareSubmission(validation.data);
+      const payload = prepareSubmission({
+        ...validation.data,
+        submissionId: submissionAttemptIdRef.current ?? validation.data.submissionId,
+      });
+      submissionAttemptIdRef.current = payload.submissionId;
 
       await saveFormSubmission(payload, user?.id ?? null);
 
@@ -219,6 +232,7 @@ function Formulario() {
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Não foi possível finalizar agora.");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   }

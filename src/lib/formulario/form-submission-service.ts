@@ -93,11 +93,32 @@ function buildPainPointRows(payload: CaronaaStsSubmission): FormPainInsert[] {
   }));
 }
 
+/** Mirrors the database's deferred constraint so invalid requests fail early. */
+export function assertPainPointIntegrity(rows: FormPainInsert[]) {
+  const selectedRows = rows.filter((row) => row.selecionada);
+  const principalRows = rows.filter((row) => row.principal);
+
+  if (selectedRows.length === 0 && principalRows.length === 0) return;
+
+  if (
+    principalRows.length !== 1 ||
+    !principalRows[0]?.selecionada ||
+    !Number.isInteger(principalRows[0]?.intensidade) ||
+    (principalRows[0]?.intensidade ?? 0) < 1 ||
+    (principalRows[0]?.intensidade ?? 0) > 5
+  ) {
+    throw new Error("As dores selecionadas exigem uma única dor principal com intensidade de 1 a 5.");
+  }
+}
+
 export async function saveFormSubmission(payload: CaronaaStsSubmission, userId: string | null) {
   // The RPC obtains auth.uid() itself; a client cannot choose another user_id.
+  const painPoints = buildPainPointRows(payload);
+  assertPainPointIntegrity(painPoints);
+
   const { error } = await supabase.rpc("submit_form_response", {
     p_submission: buildFormSubmissionRow(payload),
-    p_pain_points: buildPainPointRows(payload),
+    p_pain_points: painPoints,
     p_anonymous_session_id: userId ? null : getAnonymousSessionId(),
   });
 
