@@ -10,6 +10,7 @@ export type RideOperationalEvent = {
   source?: string | null;
   campaign?: string | null;
   metadata?: Record<string, unknown>;
+  trustedSource?: boolean;
 };
 
 export type OperationalFilters = {
@@ -59,6 +60,7 @@ export function buildOperationalMetrics(
   filters: OperationalFilters = {},
 ): OperationalMetrics {
   const filtered = events.filter((event) => {
+    if (["RIDE_STARTED", "RIDE_COMPLETED"].includes(event.eventName) && !event.trustedSource) return false;
     const at = event.createdAt;
     if (filters.periodStart && at < filters.periodStart) return false;
     if (filters.periodEnd && at >= filters.periodEnd) return false;
@@ -155,7 +157,7 @@ export function buildOperationalMetrics(
         ? Math.round((timings.reduce((a, b) => a + b, 0) / timings.length / 60000) * 100) / 100
         : null,
       cancelled: uniqueMatches.filter((e) => e.status === "cancelled").length,
-      completed: uniqueMatches.filter((e) => e.status === "completed").length,
+      completed: new Set(filtered.filter((e) => e.eventName === "RIDE_COMPLETED" && e.trustedSource && e.rideId).map((e) => e.rideId)).size,
     },
   };
 }
@@ -189,6 +191,7 @@ export async function getOperationalMetrics(filters: OperationalFilters = {}) {
       source: event.source,
       campaign: event.campaign,
       metadata: event.metadata as Record<string, unknown>,
+      trustedSource: event.trusted_source,
     })),
     filters,
   );

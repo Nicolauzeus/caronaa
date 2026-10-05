@@ -13,10 +13,19 @@ const event = (
   matchId,
   status: null,
   createdAt: "2026-01-01T10:00:00Z",
+  trustedSource: true,
   metadata,
 });
 
 describe("operational match metrics", () => {
+  it("ignores untrusted client-side ride completion events", () => {
+    const summary = buildOperationalMetrics([
+      { ...event("RIDE_COMPLETED", "fake-ride"), trustedSource: false },
+      { ...event("RIDE_COMPLETED", "real-ride"), trustedSource: true },
+    ]);
+    expect(summary.match.completed).toBe(1);
+  });
+
   it("calculates request and offer rates from their own eligible populations", () => {
     const requests = Array.from({ length: 100 }, (_, index) =>
       event("RIDE_REQUEST_CREATED", `r${index + 1}`),

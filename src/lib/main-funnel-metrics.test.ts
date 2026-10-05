@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { buildMainFunnel } from "./main-funnel-metrics";
 describe("main funnel", () => {
   it("calculates both conversion references and identifies the largest drop", () => {
-    const funnel = buildMainFunnel(100, [50, 20, 10, 8, 4, 1]);
+    const funnel = buildMainFunnel(100, [50, 20, 10, 8, null, 1]);
     expect(funnel.stages[2]).toMatchObject({ fromPrevious: 40, fromStart: 20 });
-    expect(funnel.largestDrop?.label).toBe("Nova carona");
+    expect(funnel.largestDrop?.label).toBe("Ofertas/Solicitações");
+    expect(funnel.stages[5]).toMatchObject({ count: null, fromPrevious: null, fromStart: null });
+    expect(funnel.stages[6].fromPrevious).toBeNull();
   });
 });

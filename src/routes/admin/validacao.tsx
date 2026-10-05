@@ -102,7 +102,8 @@ function toMetricFilters(filters: FilterState): FormMetricsFilters {
   };
 }
 
-function formatPercent(value: number) {
+function formatPercent(value: number | null) {
+  if (value === null) return "N/D";
   return `${Math.round(value * 10) / 10}%`;
 }
 
@@ -491,8 +492,8 @@ function MarketValidationPage() {
                   <p className="font-semibold text-foreground">{index ? "↓ " : ""}{stage.label}</p>
                   <p className="text-xs text-muted-foreground">{index ? `${formatPercent(stage.fromPrevious)} da etapa anterior · ${formatPercent(stage.fromStart)} do início` : "Base do funil"}</p>
                 </div>
-                <p className="text-2xl font-extrabold text-foreground">{formatNumber(stage.count)}</p>
-                {index ? <Badge variant={mainFunnel.largestDrop?.key === stage.key ? "destructive" : "secondary"}>{formatPercent(stage.fromPrevious)}</Badge> : null}
+                <p className="text-2xl font-extrabold text-foreground">{stage.count === null ? "N/D" : formatNumber(stage.count)}</p>
+                {index && stage.fromPrevious !== null ? <Badge variant={mainFunnel.largestDrop?.key === stage.key ? "destructive" : "secondary"}>{formatPercent(stage.fromPrevious)}</Badge> : null}
               </div>
             ))}
           </div>

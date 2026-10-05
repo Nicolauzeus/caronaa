@@ -22,7 +22,7 @@ describe("product event semantics", () => {
     expect(productEventForRide("request", true)).toBe("RIDE_REPEATED");
   });
 
-  it("does not expose MATCH_CREATED to browser event tracking", () => {
-    expect(clientProductEventNames).not.toContain("MATCH_CREATED");
+  it("does not expose server-authoritative domain events to browser tracking", () => {
+    expect(clientProductEventNames).not.toEqual(expect.arrayContaining(["RIDE_REQUEST_CREATED", "RIDE_OFFER_CREATED", "MATCH_CREATED", "RIDE_STARTED", "RIDE_COMPLETED", "PAYMENT_COMPLETED", "RIDE_REPEATED"]));
   });
 });

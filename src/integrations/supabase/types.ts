@@ -129,6 +129,10 @@ export type Database = {
         }
         Returns: string
       }
+      transition_ride_status: {
+        Args: { p_ride_id: string; p_next_status: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

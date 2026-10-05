@@ -38,7 +38,7 @@ export function buildRetentionMetrics(events: CompletedRideEvent[]): RetentionMe
 }
 
 async function getRetentionMetricsInMemory(filters: FormMetricsFilters = {}) {
-  let query = supabase.from("product_events").select("user_id, created_at, metadata, source, campaign").eq("event_name", "RIDE_COMPLETED");
+  let query = supabase.from("product_events").select("user_id, created_at, metadata, source, campaign").eq("event_name", "RIDE_COMPLETED").eq("trusted_source", true);
   if (filters.periodStart) query = query.gte("created_at", filters.periodStart);
   if (filters.periodEnd) query = query.lt("created_at", filters.periodEnd);
   if (filters.source) query = query.eq("source", filters.source);

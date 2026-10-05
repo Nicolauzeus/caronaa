@@ -13,8 +13,8 @@ export const productEventNames = [
 ] as const;
 export type ProductEventName = (typeof productEventNames)[number];
 export const clientProductEventNames = productEventNames.filter(
-  (eventName): eventName is Exclude<ProductEventName, "MATCH_CREATED"> =>
-    eventName !== "MATCH_CREATED",
+  (eventName): eventName is Exclude<ProductEventName, "RIDE_REQUEST_CREATED" | "RIDE_OFFER_CREATED" | "MATCH_CREATED" | "RIDE_STARTED" | "RIDE_COMPLETED" | "PAYMENT_COMPLETED" | "RIDE_REPEATED"> =>
+    !["RIDE_REQUEST_CREATED", "RIDE_OFFER_CREATED", "MATCH_CREATED", "RIDE_STARTED", "RIDE_COMPLETED", "PAYMENT_COMPLETED", "RIDE_REPEATED"].includes(eventName),
 );
 
 export type ProductEventInput = {
