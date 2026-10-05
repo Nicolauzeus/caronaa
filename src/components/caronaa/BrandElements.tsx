@@ -44,6 +44,40 @@ export function CaronaaSymbol({
 }
 
 /**
+ * Logotipo oficial CARONAA
+ */
+export function BrandLogo({
+  size = "md",
+  className,
+}: {
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const sizeClasses = {
+    sm: "h-8",
+    md: "h-11",
+    lg: "h-16",
+  }[size];
+
+  return (
+    <div className={cn("inline-flex items-center gap-2", className)}>
+      <CaronaaSymbol size={size === "sm" ? 22 : size === "md" ? 30 : 40} className="text-caronaa-primary" />
+      <span className={cn("font-display font-extrabold tracking-tight text-foreground", size === "sm" ? "text-lg" : size === "md" ? "text-2xl" : "text-3xl")}>
+        CARONAA
+      </span>
+    </div>
+  );
+}
+
+export function StsBadge({ className }: { className?: string }) {
+  return <BrandBadge variant="sts" className={className} />;
+}
+
+export function UniforHubBadge({ className }: { className?: string }) {
+  return <BrandBadge variant="unifor" className={className} />;
+}
+
+/**
  * Badges padronizados do Design System da CARONAA
  */
 export type BrandBadgeVariant =
