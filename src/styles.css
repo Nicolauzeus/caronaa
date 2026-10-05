@@ -22,7 +22,16 @@
   --font-sans: "Manrope", sans-serif;
   --font-display: "Manrope", sans-serif;
   --color-highlight: var(--caronaa-accent);
-  --color-warning: var(--caronaa-warning);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-caronaa-primary: var(--caronaa-primary);
+  --color-caronaa-primary-strong: var(--caronaa-primary-strong);
+  --color-caronaa-primary-soft: var(--caronaa-primary-soft);
+  --color-caronaa-dark: var(--caronaa-dark);
+  --color-caronaa-white: var(--caronaa-white);
+  --color-event-cyan: var(--event-cyan);
+  --color-event-magenta: var(--event-magenta);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -67,9 +76,16 @@
 
 :root {
   --radius: 0.75rem;
-  --caronaa-primary: #ffb000;
-  --caronaa-primary-strong: #e89500;
-  --caronaa-primary-soft: #fff3d1;
+  --caronaa-primary: oklch(0.79 0.171 76.3);
+  --caronaa-primary-strong: oklch(0.71 0.18 65);
+  --caronaa-primary-soft: oklch(0.96 0.04 85);
+  --caronaa-dark: oklch(0.18 0.035 255);
+  --caronaa-white: oklch(1 0 0);
+  --event-cyan: oklch(0.80 0.16 210);
+  --event-magenta: oklch(0.66 0.26 355);
+  --success: oklch(0.68 0.17 155);
+  --warning: oklch(0.75 0.17 70);
+  --danger: oklch(0.62 0.22 25);
   --caronaa-secondary: #f4a11d;
   --caronaa-accent: #ffc400;
   --caronaa-background: #f8f6f1;
@@ -78,9 +94,6 @@
   --caronaa-border: #e8e4da;
   --caronaa-text: #111827;
   --caronaa-text-muted: #667085;
-  --caronaa-success: #198754;
-  --caronaa-warning: #d97706;
-  --caronaa-danger: #dc2626;
   --caronaa-info: #0f766e;
   --background: oklch(0.977 0.011 85);
   --foreground: oklch(0.21 0.034 266);
@@ -118,6 +131,16 @@
 }
 
 .dark {
+  --caronaa-primary: oklch(0.82 0.15 76.3);
+  --caronaa-primary-strong: oklch(0.86 0.15 78);
+  --caronaa-primary-soft: oklch(0.28 0.06 75);
+  --caronaa-dark: oklch(0.12 0.02 260);
+  --caronaa-white: oklch(0.98 0.005 78);
+  --event-cyan: oklch(0.82 0.15 210);
+  --event-magenta: oklch(0.70 0.23 355);
+  --success: oklch(0.72 0.16 155);
+  --warning: oklch(0.78 0.16 70);
+  --danger: oklch(0.67 0.20 25);
   --background: oklch(0.16 0.02 26);
   --foreground: oklch(0.98 0.005 78);
   --card: oklch(0.21 0.022 25);
@@ -217,6 +240,25 @@ a:active {
     opacity: 1;
     transform: translateY(0);
   }
+}
+.shadow-glow-primary {
+  box-shadow: 0 0 25px -4px oklch(0.79 0.171 76.3 / 36%);
+}
+.shadow-glow-cyan {
+  box-shadow: 0 0 25px -4px oklch(0.80 0.16 210 / 32%);
+}
+.shadow-subtle {
+  box-shadow: 0 4px 20px -8px oklch(0.18 0.035 255 / 8%);
+}
+.connection-line {
+  background-image: linear-gradient(
+    to bottom,
+    oklch(0.79 0.171 76.3) 0%,
+    oklch(0.79 0.171 76.3) 50%,
+    transparent 50%,
+    transparent 100%
+  );
+  background-size: 2px 8px;
 }
 @media (max-width: 767px) {
   .bg-hero-overlay {
