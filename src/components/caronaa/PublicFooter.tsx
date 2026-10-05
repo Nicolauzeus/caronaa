@@ -72,14 +72,14 @@ export function PublicFooter() {
 
           {/* Coluna 3: Confiança e Legal */}
           <div className="space-y-3">
-            <p className="text-xs font-bold tracking-wider text-primary uppercase">Confiança & Termos</p>
+            <p className="text-xs font-bold tracking-wider text-primary uppercase">Confiança & Diretrizes</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link
                   to="/seguranca"
                   className="transition-colors hover:text-foreground"
                 >
-                  Segurança & Comunidade
+                  Segurança e responsabilidades
                 </Link>
               </li>
               <li>
@@ -95,7 +95,7 @@ export function PublicFooter() {
                   to="/privacidade"
                   className="transition-colors hover:text-foreground"
                 >
-                  Privacidade (LGPD)
+                  Privacidade
                 </Link>
               </li>
               <li>
@@ -103,15 +103,30 @@ export function PublicFooter() {
                   to="/auth"
                   className="transition-colors hover:text-foreground"
                 >
-                  Acessar Conta
+                  Entrar
                 </Link>
+              </li>
+              <li>
+                <a
+                  href="mailto:contato@caronaa.com.br"
+                  className="transition-colors hover:text-foreground"
+                >
+                  Contato
+                </a>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
-          <p>© {new Date().getFullYear()} CARONAA. Todos os direitos reservados. Fortaleza, Ceará.</p>
+        <div className="mt-8 rounded-xl border border-border/60 bg-muted/30 p-3.5 text-center text-xs text-muted-foreground">
+          <p>
+            A CARONAA conecta motoristas e passageiros de rotas afins em um ambiente de validação comunitária.
+            Não fazemos promessas de segurança absoluta; a plataforma atua aproximando membros da comunidade que combinam seus deslocamentos com respeito mútuo.
+          </p>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
+          <p>© {new Date().getFullYear()} CARONAA • Siará Tech Summit 2026 • Unifor Hub. Fortaleza, Ceará.</p>
           <p className="text-center sm:text-right">
             Projeto em estágio inicial de validação • Programa de Pré-Aceleração Unifor Hub
           </p>
