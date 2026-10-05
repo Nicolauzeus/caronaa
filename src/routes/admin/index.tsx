@@ -119,19 +119,21 @@ function DashboardPage() {
         </CardHeader>
         <CardContent>
           {retention ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <MetricCard label="Retorno em 7 dias" value={`${retention.repeatRate7d}%`} detail="Após a 1ª carona" />
-              <MetricCard label="Retorno em 30 dias" value={`${retention.repeatRate30d}%`} detail="Após a 1ª carona" />
-              <MetricCard label="1 / 2 caronas" value={`${retention.distribution.one} / ${retention.distribution.two}`} detail="Usuários realizados" />
-              <MetricCard label="3–5 / 6+" value={`${retention.distribution.threeToFive} / ${retention.distribution.sixOrMore}`} detail="Usuários recorrentes" />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {Object.entries(retention.byProfile).map(([profile, counts]) => (
-                <span key={profile} className="rounded-full border border-border bg-secondary/40 px-3 py-1.5">
-                  {profile}: {counts.one}×1 · {counts.two}×2 · {counts.threeOrMore}×3+
-                </span>
-              ))}
-            </div>
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <MetricCard label="Retorno em 7 dias" value={`${retention.repeatRate7d}%`} detail="Após a 1ª carona" />
+                <MetricCard label="Retorno em 30 dias" value={`${retention.repeatRate30d}%`} detail="Após a 1ª carona" />
+                <MetricCard label="1 / 2 caronas" value={`${retention.distribution.one} / ${retention.distribution.two}`} detail="Usuários realizados" />
+                <MetricCard label="3–5 / 6+" value={`${retention.distribution.threeToFive} / ${retention.distribution.sixOrMore}`} detail="Usuários recorrentes" />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                {Object.entries(retention.byProfile).map(([profile, counts]) => (
+                  <span key={profile} className="rounded-full border border-border bg-secondary/40 px-3 py-1.5">
+                    {profile}: {counts.one}×1 · {counts.two}×2 · {counts.threeOrMore}×3+
+                  </span>
+                ))}
+              </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">Métricas de recorrência indisponíveis no momento.</p>
           )}
