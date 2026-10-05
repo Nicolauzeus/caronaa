@@ -3,6 +3,7 @@ import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { getAnonymousSessionId } from "@/lib/funnel-events";
 
 import type { CaronaaStsSubmission } from "./submission";
+import { sanitizeSubmissionRawPayload } from "./submission";
 import type { InterestLevel, PainPointCode } from "./types";
 
 const stablePainCodes = ["DOR_01", "DOR_02", "DOR_03", "DOR_04", "DOR_05", "DOR_06"] as const;
@@ -70,13 +71,13 @@ function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionIn
     transporte_atual: payload.currentTransport,
     custo_atual_faixa: payload.routeCostRange,
     custo_referencia: normalizeCostPeriod(payload.costPeriod),
-    intencao_passageiro: normalizeInterest(payload.passengerInterest),
-    intencao_motorista: normalizeInterest(payload.driverInterest),
+    intencao_passageiro: normalizeInterest(payload.passengerInterest ?? null),
+    intencao_motorista: normalizeInterest(payload.driverInterest ?? null),
     nome: payload.name,
     whatsapp: payload.whatsapp,
     email: payload.email,
     consentimento: true,
-    raw_payload: payload,
+    raw_payload: sanitizeSubmissionRawPayload(payload),
   };
 }
 

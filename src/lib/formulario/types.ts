@@ -58,7 +58,7 @@ export type CommitmentLevel = "SIM_HOJE" | "QUERO_VER_MATCH" | "NAO_HOJE";
 
 export interface CaronaaStsFormData {
   source: string;
-  campaign?: string | null;
+  campaign?: string | null | undefined;
 
   intent?: CaronaaIntent | undefined;
 
@@ -99,7 +99,6 @@ export interface CaronaaStsFormData {
   driverCommitment?: CommitmentLevel | undefined;
 
   // Metadados
-  campaign?: string | null | undefined;
   campaignEvent?: string | undefined;
   submissionId?: string | undefined;
   createdAt?: string | undefined;

@@ -11,14 +11,12 @@ export type FormStep =
   | "SUCCESS";
 
 const mainSteps: FormStep[] = [
-  "INTRO",
   "PROFILE_ROUTE",
   "CURRENT_PRICE",
   "PROBLEMS",
   "MAIN_PROBLEM",
   "INTEREST",
   "CONTACT",
-  "SUCCESS",
 ];
 
 export function getStepsForIntent(intent?: CaronaaIntent): FormStep[] {
@@ -26,6 +24,9 @@ export function getStepsForIntent(intent?: CaronaaIntent): FormStep[] {
 }
 
 export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
+  if (currentStep === "INTRO") return "PROFILE_ROUTE";
+  if (currentStep === "INTEREST") return "CONTACT";
+  if (currentStep === "CONTACT") return "SUCCESS";
   const steps = getStepsForIntent(data.intent);
 
   const currentIndex = steps.indexOf(currentStep);
@@ -44,6 +45,8 @@ export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): Fo
 }
 
 export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
+  if (currentStep === "CONTACT") return "INTEREST";
+  if (currentStep === "SUCCESS") return "CONTACT";
   const steps = getStepsForIntent(data.intent);
 
   const currentIndex = steps.indexOf(currentStep);
@@ -62,17 +65,14 @@ export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): n
 }
 
 export function getStepCount(data: CaronaaStsFormData): number {
-  return getStepsForIntent(data.intent).length;
+  return 5;
 }
 
 export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFormData): number {
   if (currentStep === "INTRO" || currentStep === "SUCCESS") {
     return 0;
   }
-
-  if (currentStep === "CONTACT") {
-    return 100;
-  }
+  if (currentStep === "CONTACT") return 100;
 
   const mainStepIndex = [
     "PROFILE_ROUTE",

@@ -36,15 +36,15 @@ export function ContactStep({
   const normalizedWhatsapp = whatsapp?.replace(/\D/g, "") ?? "";
 
   const canContinue =
-    Boolean(name?.trim()) && normalizedWhatsapp.length >= 10 && Boolean(email?.trim());
+    Boolean(name?.trim()) && normalizedWhatsapp.length >= 10;
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-primary">Último passo</p>
+        <p className="text-sm font-medium text-primary">Pesquisa concluída • 5/5</p>
 
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Como podemos falar com você se surgir um match?
+          Quer participar do teste da CARONAA?
         </h2>
 
         <p className="text-sm leading-6 text-muted-foreground sm:text-base">
@@ -102,7 +102,7 @@ export function ContactStep({
             type="email"
             value={email ?? ""}
             onChange={(event) => onEmailChange(event.target.value)}
-            placeholder="voce@email.com"
+            placeholder="voce@email.com (opcional)"
             autoComplete="email"
             className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
           />

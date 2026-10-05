@@ -28,7 +28,7 @@ import type { FormStep } from "@/lib/formulario/flow";
 
 import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formulario/flow";
 
-import { caronaaStsFormSchema } from "@/lib/formulario/schema";
+import { caronaaStsFormSchema, validateFormStep } from "@/lib/formulario/schema";
 
 import { prepareSubmission } from "@/lib/formulario/submission";
 import { registerFormStart, saveFormSubmission } from "@/lib/formulario/form-submission-service";
@@ -67,7 +67,7 @@ export const Route = createFileRoute("/formulario")({
 });
 
 function Formulario() {
- x1 const { user } = useAuth();
+  const { user } = useAuth();
   const attribution = React.useMemo(() => getCampaignAttribution(), []);
   const initialData = React.useMemo<CaronaaStsFormData>(
     () => ({ source: attribution.source, campaign: attribution.campaign, campaignEvent: attribution.campaignEvent }),
@@ -85,6 +85,7 @@ function Formulario() {
   const submissionAttemptIdRef = React.useRef<string | null>(null);
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [stepErrors, setStepErrors] = React.useState<Record<string, string>>({});
 
   const progress = getProgressPercentage(step, data);
 
@@ -93,6 +94,11 @@ function Formulario() {
   }, [attribution, user?.id]);
 
   function updateData(patch: Partial<CaronaaStsFormData>) {
+    setStepErrors((current) => {
+      const next = { ...current };
+      for (const key of Object.keys(patch)) delete next[key];
+      return next;
+    });
     setData((current) => ({
       ...current,
       ...patch,
@@ -139,6 +145,15 @@ function Formulario() {
   }
 
   function goNext() {
+    if (step !== "INTRO" && step !== "SUCCESS") {
+      const validation = validateFormStep(step, data as unknown as Record<string, unknown>);
+      if (!validation.success) {
+        if ("errors" in validation) setStepErrors(validation.errors as Record<string, string>);
+        else setStepErrors(Object.fromEntries(validation.error.issues.map((issue) => [String(issue.path[0]), issue.message])));
+        return;
+      }
+    }
+    setStepErrors({});
     const next = getNextStep(step, data);
 
     if (next) {
@@ -161,6 +176,18 @@ function Formulario() {
         behavior: "smooth",
       });
     }
+  }
+
+  function openContact() {
+    const validation = validateFormStep("INTEREST", data as unknown as Record<string, unknown>);
+    if (!validation.success) {
+      if ("errors" in validation) setStepErrors(validation.errors as Record<string, string>);
+      return;
+    }
+    setStepErrors({});
+    void trackFunnelEvent({ eventName: "form_step_completed", userId: user?.id ?? null, ...attribution, formStep: "INTEREST" });
+    setStep("CONTACT");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function restart() {
@@ -197,6 +224,7 @@ function Formulario() {
 
       const payload = prepareSubmission({
         ...validation.data,
+        campaign: validation.data.campaign ?? null,
         submissionId: submissionAttemptIdRef.current ?? validation.data.submissionId,
       });
       submissionAttemptIdRef.current = payload.submissionId;
@@ -221,7 +249,7 @@ function Formulario() {
   return (
     <AppShell publicPage>
       <div className="min-h-[calc(100vh-72px)] bg-background">
-        {step !== "INTRO" && step !== "SUCCESS" ? (
+        {step !== "INTRO" && step !== "SUCCESS" && step !== "CONTACT" ? (
           <div className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
             <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
               <div className="flex items-center justify-between gap-4">
@@ -249,6 +277,14 @@ function Formulario() {
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
               <p className="text-sm font-medium text-destructive">{submitError}</p>
             </div>
+          </div>
+        ) : null}
+
+        {Object.entries(stepErrors).length > 0 ? (
+          <div className="mx-auto w-full max-w-2xl space-y-1 px-4 pt-3 sm:px-6" role="alert">
+            {Object.entries(stepErrors).map(([field, message]) => (
+              <p key={field} className="text-sm text-destructive">{message}</p>
+            ))}
           </div>
         ) : null}
 
@@ -372,7 +408,7 @@ function Formulario() {
                 driverInterest: value,
               })
             }
-            onNext={goNext}
+            onNext={openContact}
             onBack={goBack}
           />
         ) : null}

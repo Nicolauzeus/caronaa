@@ -138,7 +138,7 @@ export type Database = {
         Returns: Json
       }
       get_main_funnel_metrics: {
-        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_event?: string | null; p_profile?: string | null }
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_event?: string | null; p_profile?: string | null; p_cohort_event?: string | null }
         Returns: Json
       }
       get_operational_metrics: {

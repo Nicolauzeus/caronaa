@@ -1,12 +1,14 @@
-import type { CaronaaStsFormData } from "./types";
+﻿import type { CaronaaStsFormData } from "./types";
 import { getLeadClassification } from "./classification";
 import { calculateDriverPricing } from "./pricing";
 
 export type CaronaaStsSubmission = {
   source: string;
-  campaign: string | null;
+  campaign: string | null | undefined;
 
-  intent: CaronaaStsFormData["intent"];
+  intent: NonNullable<CaronaaStsFormData["intent"]>;
+
+  campaignEvent: string;
 
   leadType: ReturnType<typeof getLeadClassification>["leadType"];
 
@@ -19,7 +21,7 @@ export type CaronaaStsSubmission = {
   destinationNeighborhood: string;
   destinationReference: string | null;
   originNeighborhood: string | null;
-  departureWindow: CaronaaStsFormData["departureWindow"] | null;
+  departureWindow: NonNullable<CaronaaStsFormData["departureWindow"]> | null;
   occupation: CaronaaStsFormData["occupation"] | null;
   weeklyFrequency: CaronaaStsFormData["weeklyFrequency"] | null;
 
@@ -74,23 +76,19 @@ function createSubmissionId(): string {
 
 export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmission {
   if (!data.intent) {
-    throw new Error("Não é possível preparar a submissão sem intenção.");
+    throw new Error("NÃ£o Ã© possÃ­vel preparar a submissÃ£o sem intenÃ§Ã£o.");
   }
 
   if (!data.destinationNeighborhood?.trim()) {
-    throw new Error("Não é possível preparar a submissão sem destino.");
+    throw new Error("NÃ£o Ã© possÃ­vel preparar a submissÃ£o sem destino.");
   }
 
   if (!data.departureWindow) {
-    throw new Error("Não é possível preparar a submissão sem horário de saída.");
+    throw new Error("NÃ£o Ã© possÃ­vel preparar a submissÃ£o sem horÃ¡rio de saÃ­da.");
   }
 
-  if (!data.name?.trim()) {
-    throw new Error("Não é possível preparar a submissão sem nome.");
-  }
-
-  if (!data.whatsapp?.trim()) {
-    throw new Error("Não é possível preparar a submissão sem WhatsApp.");
+  if (!data.name?.trim() || !data.whatsapp?.trim()) {
+    throw new Error("Preencha nome e WhatsApp antes de enviar.");
   }
 
   const classification = getLeadClassification(data);
@@ -109,7 +107,7 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     campaign: data.campaign ?? null,
 
-    campaignEvent: data.campaignEvent ?? "Siará Tech Summit 2026",
+    campaignEvent: data.campaignEvent ?? "SiarÃ¡ Tech Summit 2026",
 
     intent: data.intent,
 
@@ -192,4 +190,27 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     createdAt: data.createdAt ?? new Date().toISOString(),
   };
+}
+
+const duplicatedStructuredFields = new Set([
+  "name", "whatsapp", "email", "destinationNeighborhood", "originNeighborhood",
+  "destinationReference", "intent", "occupation", "weeklyFrequency", "departureWindow",
+  "currentTransport", "routeCostRange", "costPeriod", "campaign", "source", "campaignEvent",
+  "submissionId", "createdAt",
+]);
+
+const rawPayloadAllowlist = new Set([
+  "campaign", "campaignEvent", "leadType", "activationStatus", "wantsToUseToday",
+  "wantsToSeeMatch", "prioritizeForMatching", "passengerCount", "painPoints",
+  "mainPainPoint", "mainPainIntensity", "passengerInterest", "passengerTrustFactors",
+  "passengerPriceRange", "passengerCommitment", "vehicleType", "availableSeats",
+  "maxDetourMinutes", "driverTrustFactors", "driverPrice", "caronaaFee",
+  "driverNetAmount", "familyCarCompanions", "driverInterest", "driverCommitment",
+]);
+
+/** Removes PII and values already stored in dedicated form_submissions columns from new raw payloads. */
+export function sanitizeSubmissionRawPayload(payload: CaronaaStsSubmission): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(payload).filter(([key, value]) =>
+    !duplicatedStructuredFields.has(key) && rawPayloadAllowlist.has(key) && value !== null && value !== undefined,
+  ));
 }

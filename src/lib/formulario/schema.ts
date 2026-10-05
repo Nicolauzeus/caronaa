@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 import { MIN_DRIVER_PRICE } from "./pricing";
 
 const intentSchema = z.enum(["MOTORISTA", "PASSAGEIRO", "AMBOS"]);
@@ -83,40 +83,38 @@ const baseSchema = z.object({
   destinationNeighborhood: z
     .string()
     .trim()
-    .min(2, "Informe o bairro ou região de destino.")
+    .min(2, "Informe o bairro ou regiÃ£o de destino.")
     .max(120, "Destino muito longo."),
 
-  destinationReference: z.string().trim().max(160, "Ponto de referência muito longo.").optional(),
+  destinationReference: z.string().trim().max(160, "Ponto de referÃªncia muito longo.").optional(),
 
-  originNeighborhood: z.string().trim().max(120, "Origem muito longa.").optional(),
+  originNeighborhood: z.string().trim().min(2, "Informe a origem aproximada do trajeto.").max(120, "Origem muito longa."),
 
   departureWindow: departureWindowSchema,
 
-  occupation: occupationSchema.optional(),
+  occupation: occupationSchema,
 
-  weeklyFrequency: weeklyFrequencySchema.optional(),
+  weeklyFrequency: weeklyFrequencySchema,
 
-  name: z.string().trim().min(2, "Informe seu nome.").max(120, "Nome muito longo."),
+  name: z.string().trim().min(2, "Informe seu nome.").max(120, "Nome muito longo.").optional(),
 
-  whatsapp: z.string().trim().min(10, "Informe um WhatsApp válido.").max(20, "WhatsApp inválido."),
+  whatsapp: z.string().trim().min(10, "Informe um WhatsApp vÃ¡lido.").max(20, "WhatsApp invÃ¡lido.").optional(),
 
-  email: z.string().trim().email("Informe um e-mail válido.").optional(),
+  email: z.string().trim().email("Informe um e-mail vÃ¡lido.").optional(),
 
   submissionId: z.string().uuid().optional(),
 
   createdAt: z.string().optional(),
 
-  campaign: z.string().trim().max(120).nullable().optional(),
-
   campaignEvent: z.string().trim().min(1).max(160).optional(),
 
   passengerCount: z.number().int().min(1).max(6).optional(),
 
-  currentTransport: passengerTransportSchema.optional(),
+  currentTransport: passengerTransportSchema,
 
-  routeCostRange: routeCostRangeSchema.optional(),
+  routeCostRange: routeCostRangeSchema,
 
-  costPeriod: costPeriodSchema.optional(),
+  costPeriod: costPeriodSchema,
 
   painPoints: z.array(painPointSchema).max(8).optional(),
 
@@ -194,7 +192,7 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["weeklyFrequency"],
-      message: "Informe a frequência semanal desse trajeto.",
+      message: "Informe a frequÃªncia semanal desse trajeto.",
     });
   }
 
@@ -202,7 +200,7 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["currentTransport"],
-      message: "Informe como você faz esse trajeto atualmente.",
+      message: "Informe como vocÃª faz esse trajeto atualmente.",
     });
   }
 
@@ -210,7 +208,7 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["routeCostRange"],
-      message: "Informe quanto você costuma gastar nesse deslocamento.",
+      message: "Informe quanto vocÃª costuma gastar nesse deslocamento.",
     });
   }
 
@@ -218,7 +216,7 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["costPeriod"],
-      message: "Informe se o gasto é por trecho ou por dia.",
+      message: "Informe se o gasto Ã© por trecho ou por dia.",
     });
   }
 
@@ -234,7 +232,7 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["mainPainPoint"],
-      message: "Informe qual problema mais incomoda você.",
+      message: "Informe qual problema mais incomoda vocÃª.",
     });
   }
 
@@ -242,7 +240,7 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["mainPainPoint"],
-      message: "A dor principal deve estar entre as opções selecionadas.",
+      message: "A dor principal deve estar entre as opÃ§Ãµes selecionadas.",
     });
   }
 
@@ -253,6 +251,60 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
       message: "Informe quanto esse problema impacta sua rotina.",
     });
   }
+  if (!data.name || data.name.trim().length < 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["name"], message: "Informe seu nome." });
+  }
+  if (!data.whatsapp || data.whatsapp.replace(/\D/g, "").length < 10) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["whatsapp"], message: "Informe um WhatsApp vÃ¡lido." });
+  }
 });
+
+const stepFields = {
+  PROFILE_ROUTE: ["intent", "occupation", "originNeighborhood", "destinationNeighborhood", "departureWindow", "weeklyFrequency"],
+  CURRENT_PRICE: ["currentTransport", "routeCostRange", "costPeriod"],
+  PROBLEMS: ["painPoints"],
+  MAIN_PROBLEM: ["mainPainPoint", "mainPainIntensity"],
+  INTEREST: ["passengerInterest", "driverInterest"],
+  CONTACT: ["name", "whatsapp", "email"],
+} as const;
+
+export type FormValidationStep = keyof typeof stepFields;
+
+export function validateFormStep(step: FormValidationStep, data: Record<string, unknown>) {
+  const fields = stepFields[step];
+  const partial = baseSchema.pick(Object.fromEntries(fields.map((field) => [field, true])) as never);
+  const parsed = partial.safeParse(data);
+  if (!parsed.success) return parsed;
+
+  const errors: Partial<Record<(typeof fields)[number], string>> = {};
+  const add = (field: (typeof fields)[number], message: string) => { errors[field] = message; };
+  const value = data as Record<string, unknown>;
+  if (step === "PROFILE_ROUTE") {
+    if (!value["intent"]) add("intent", "Escolha como pretende usar a CARONAA.");
+    if (!value["occupation"]) add("occupation", "Informe seu perfil.");
+    if (typeof value["originNeighborhood"] !== "string" || !value["originNeighborhood"].trim()) add("originNeighborhood", "Informe a origem aproximada do trajeto.");
+    if (!value["weeklyFrequency"]) add("weeklyFrequency", "Informe a frequÃªncia semanal desse trajeto.");
+  }
+  if (step === "CURRENT_PRICE") {
+    if (!value["currentTransport"]) add("currentTransport", "Informe como vocÃª faz esse trajeto atualmente.");
+    if (!value["routeCostRange"]) add("routeCostRange", "Informe quanto costuma gastar nesse deslocamento.");
+    if (!value["costPeriod"]) add("costPeriod", "Informe se o gasto Ã© por trecho ou por dia.");
+  }
+  if (step === "PROBLEMS" && (!Array.isArray(value["painPoints"]) || value["painPoints"].length === 0)) add("painPoints", "Selecione pelo menos uma resposta sobre os problemas do trajeto.");
+  if (step === "MAIN_PROBLEM") {
+    if (!value["mainPainPoint"]) add("mainPainPoint", "Informe qual problema mais incomoda vocÃª.");
+    else if (!Array.isArray(value["painPoints"]) || !value["painPoints"].includes(value["mainPainPoint"])) add("mainPainPoint", "A dor principal deve estar entre as opÃ§Ãµes selecionadas.");
+    if (!Number.isInteger(value["mainPainIntensity"]) || Number(value["mainPainIntensity"]) < 1 || Number(value["mainPainIntensity"]) > 5) add("mainPainIntensity", "Informe uma intensidade de 1 a 5.");
+  }
+  if (step === "INTEREST") {
+    if ((value["intent"] === "PASSAGEIRO" || value["intent"] === "AMBOS") && !value["passengerInterest"]) add("passengerInterest", "Informe seu interesse como passageiro.");
+    if ((value["intent"] === "MOTORISTA" || value["intent"] === "AMBOS") && !value["driverInterest"]) add("driverInterest", "Informe seu interesse como motorista.");
+  }
+  if (step === "CONTACT") {
+    if (typeof value["name"] !== "string" || value["name"].trim().length < 2) add("name", "Informe seu nome.");
+    if (typeof value["whatsapp"] !== "string" || value["whatsapp"].replace(/\D/g, "").length < 10) add("whatsapp", "Informe um WhatsApp vÃ¡lido.");
+  }
+  return Object.keys(errors).length ? { success: false as const, errors } : { success: true as const, data };
+}
 
 export type CaronaaStsFormValues = z.infer<typeof caronaaStsFormSchema>;

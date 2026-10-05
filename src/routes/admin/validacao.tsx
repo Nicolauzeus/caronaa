@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertCircle, Download, Filter, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
@@ -36,15 +36,15 @@ import type { Enums } from "@/integrations/supabase/types";
 export const Route = createFileRoute("/admin/validacao")({
   head: () => ({
     meta: [
-      { title: "Validação de Mercado — Administração CARONAA" },
+      { title: "ValidaÃ§Ã£o de Mercado â€” AdministraÃ§Ã£o CARONAA" },
       {
         name: "description",
-        content: "Visão executiva da validação de mercado do CARONAA.",
+        content: "VisÃ£o executiva da validaÃ§Ã£o de mercado do CARONAA.",
       },
-      { property: "og:title", content: "Validação de Mercado — Administração CARONAA" },
+      { property: "og:title", content: "ValidaÃ§Ã£o de Mercado â€” AdministraÃ§Ã£o CARONAA" },
       {
         property: "og:description",
-        content: "Acompanhe intenção, perfis, deslocamento atual e dores da validação de mercado.",
+        content: "Acompanhe intenÃ§Ã£o, perfis, deslocamento atual e dores da validaÃ§Ã£o de mercado.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -60,6 +60,7 @@ type FilterState = {
   source: string;
   event: string;
   profile: "all" | Enums<"form_tipo_usuario">;
+  cohortEvent: "landing_view" | "user_registered";
 };
 
 type DistributionRow = {
@@ -77,7 +78,7 @@ const profileLabels: Record<Enums<"form_tipo_usuario">, string> = {
 const intentLabels: Partial<Record<Enums<"form_intencao">, string>> = {
   HOJE: "Alta",
   PROVAVELMENTE: "Alta",
-  TALVEZ: "Média",
+  TALVEZ: "MÃ©dia",
   PROVAVELMENTE_NAO: "Baixa",
   NAO: "Baixa",
 };
@@ -89,6 +90,7 @@ const initialFilters: FilterState = {
   source: "",
   event: "",
   profile: "all",
+  cohortEvent: "landing_view",
 };
 
 function toMetricFilters(filters: FilterState): FormMetricsFilters {
@@ -178,7 +180,7 @@ function DistributionList({ rows }: { rows: DistributionRow[] }) {
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="font-medium text-foreground">{row.label}</span>
             <span className="text-muted-foreground">
-              {formatNumber(row.value)} · {formatPercent(row.percentage)}
+              {formatNumber(row.value)} Â· {formatPercent(row.percentage)}
             </span>
           </div>
           <div className="mt-2 h-2 rounded-full bg-secondary">
@@ -227,10 +229,10 @@ function MarketValidationPage() {
       getFormMetrics(metricFilters),
       getPainAnalysis({ ...metricFilters, sortBy: "frequency" }),
       getFunnelMetrics(metricFilters).catch((caught) => {
-        console.warn(caught instanceof Error ? caught.message : "Não foi possível carregar funil.");
+        console.warn(caught instanceof Error ? caught.message : "NÃ£o foi possÃ­vel carregar funil.");
         return null;
       }),
-      getMainFunnelMetrics(metricFilters),
+      getMainFunnelMetrics(metricFilters, filters.cohortEvent),
       getRetentionMetrics(metricFilters),
     ])
       .then(([nextMetrics, nextPainAnalysis, nextFunnelMetrics, nextMainFunnel, nextRetention]) => {
@@ -246,7 +248,7 @@ function MarketValidationPage() {
         setError(
           caught instanceof Error
             ? caught.message
-            : "Não foi possível carregar a validação de mercado.",
+            : "NÃ£o foi possÃ­vel carregar a validaÃ§Ã£o de mercado.",
         );
         setMetrics(null);
         setFunnelMetrics(null);
@@ -262,45 +264,45 @@ function MarketValidationPage() {
     return () => {
       active = false;
     };
-  }, [metricFilters]);
+  }, [metricFilters, filters.cohortEvent]);
 
   const completed = metrics?.totals.completed ?? 0;
   const topMetrics = [
     {
-      label: "Pessoas alcançadas",
+      label: "Pessoas alcanÃ§adas",
       value: funnelMetrics ? formatNumber(funnelMetrics.reached) : "N/D",
-      detail: funnelMetrics ? "Sessões únicas com landing_view" : "Aguardando eventos de funil",
+      detail: funnelMetrics ? "SessÃµes Ãºnicas com landing_view" : "Aguardando eventos de funil",
     },
     {
-      label: "Formulários iniciados",
+      label: "FormulÃ¡rios iniciados",
       value: formatNumber(funnelMetrics?.started ?? metrics?.totals.started),
       detail: funnelMetrics
         ? `${formatPercent(funnelMetrics.rates.reachedToStarted)} do alcance`
         : undefined,
     },
     {
-      label: "Formulários concluídos",
+      label: "FormulÃ¡rios concluÃ­dos",
       value: formatNumber(funnelMetrics?.completed ?? metrics?.totals.completed),
       detail: funnelMetrics
-        ? `${formatPercent(funnelMetrics.rates.startedToCompleted)} dos inícios`
+        ? `${formatPercent(funnelMetrics.rates.startedToCompleted)} dos inÃ­cios`
         : undefined,
     },
     {
-      label: "Taxa de conclusão",
+      label: "Taxa de conclusÃ£o",
       value: metrics ? formatPercent(metrics.totals.completionRate) : "N/D",
     },
     { label: "Passageiros", value: formatNumber(metrics?.totals.passageiros) },
     { label: "Motoristas", value: formatNumber(metrics?.totals.motoristas) },
     { label: "Ambos", value: formatNumber(metrics?.totals.ambos) },
-    { label: "Alta intenção", value: formatNumber(highIntentCount(metrics)) },
+    { label: "Alta intenÃ§Ã£o", value: formatNumber(highIntentCount(metrics)) },
     {
       label: "Viraram lead",
       value: funnelMetrics
         ? formatNumber(funnelMetrics.leads)
         : formatNumber(metrics?.totals.completed),
       detail: funnelMetrics
-        ? `${formatPercent(funnelMetrics.rates.completedToLead)} dos concluídos`
-        : "Fallback: formulários concluídos",
+        ? `${formatPercent(funnelMetrics.rates.completedToLead)} dos concluÃ­dos`
+        : "Fallback: formulÃ¡rios concluÃ­dos",
     },
   ];
   const profiles = profileDistribution(metrics);
@@ -313,7 +315,7 @@ function MarketValidationPage() {
   const exportCsv = async (kind: ValidationExportKind) => {
     setExporting(kind);
     try { await downloadValidationExport(kind, metricFilters); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível exportar os dados."); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "NÃ£o foi possÃ­vel exportar os dados."); }
     finally { setExporting(null); }
   };
 
@@ -321,11 +323,11 @@ function MarketValidationPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">Validação</p>
-          <h1 className="mt-2 font-display text-3xl font-extrabold">Validação de Mercado</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">ValidaÃ§Ã£o</p>
+          <h1 className="mt-2 font-display text-3xl font-extrabold">ValidaÃ§Ã£o de Mercado</h1>
         </div>
         <Badge variant="secondary" className="w-fit px-3 py-1.5 text-xs font-semibold">
-          Dados reais do formulário
+          Dados reais do formulÃ¡rio
         </Badge>
       </div>
 
@@ -341,7 +343,7 @@ function MarketValidationPage() {
             onChange={(event) =>
               setFilters((current) => ({ ...current, periodStart: event.target.value }))
             }
-            aria-label="Início do período"
+            aria-label="InÃ­cio do perÃ­odo"
             className="h-10 border-border bg-background"
           />
           <Input
@@ -350,7 +352,7 @@ function MarketValidationPage() {
             onChange={(event) =>
               setFilters((current) => ({ ...current, periodEnd: event.target.value }))
             }
-            aria-label="Fim do período"
+            aria-label="Fim do perÃ­odo"
             className="h-10 border-border bg-background"
           />
           <Input
@@ -410,20 +412,20 @@ function MarketValidationPage() {
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-foreground">Exportar resultados</p>
-            <p className="text-xs text-muted-foreground">Os CSVs aplicam os filtros globais atuais. A exportação analítica não inclui dados pessoais.</p>
+            <p className="text-xs text-muted-foreground">Os CSVs aplicam os filtros globais atuais. A exportaÃ§Ã£o analÃ­tica nÃ£o inclui dados pessoais.</p>
           </div>
           <Badge variant="outline" className="w-fit">CSV</Badge>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {([
-            ["raw_analytics", "Respostas analíticas"], ["pain_ranking", "Ranking de dores"],
+            ["raw_analytics", "Respostas analÃ­ticas"], ["pain_ranking", "Ranking de dores"],
             ["profile", "Perfil"], ["transport", "Alternativas atuais"], ["costs", "Custos"],
-            ["intent", "Intenção de uso"], ["funnel", "Funil"], ["match", "Métricas de match"],
-          ] as const).map(([kind, label]) => <Button key={kind} type="button" size="sm" variant="outline" disabled={exporting !== null} onClick={() => void exportCsv(kind)}><Download size={14} className="mr-1" />{exporting === kind ? "Exportando…" : label}</Button>)}
+            ["intent", "IntenÃ§Ã£o de uso"], ["funnel", "Funil"], ["match", "MÃ©tricas de match"],
+          ] as const).map(([kind, label]) => <Button key={kind} type="button" size="sm" variant="outline" disabled={exporting !== null} onClick={() => void exportCsv(kind)}><Download size={14} className="mr-1" />{exporting === kind ? "Exportandoâ€¦" : label}</Button>)}
         </div>
         <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-2 text-xs text-muted-foreground">Leads contém nome, telefone e e-mail, quando informados. Acesso exclusivo de administradores autorizados.</p>
-          <Button type="button" size="sm" variant="secondary" disabled={exporting !== null} onClick={() => void exportCsv("leads")}><Download size={14} className="mr-1" />{exporting === "leads" ? "Exportando…" : "Exportar leads"}</Button>
+          <p className="mb-2 text-xs text-muted-foreground">Leads contÃ©m nome, telefone e e-mail, quando informados. Acesso exclusivo de administradores autorizados.</p>
+          <Button type="button" size="sm" variant="secondary" disabled={exporting !== null} onClick={() => void exportCsv("leads")}><Download size={14} className="mr-1" />{exporting === "leads" ? "Exportandoâ€¦" : "Exportar leads"}</Button>
         </div>
       </section>
 
@@ -436,12 +438,12 @@ function MarketValidationPage() {
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <div className="border-b border-border px-5 py-4">
-          <SectionHeader title="Visão executiva" />
+          <SectionHeader title="VisÃ£o executiva" />
         </div>
         {isLoading ? (
           <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 size={18} className="animate-spin" />
-            Carregando validação...
+            Carregando validaÃ§Ã£o...
           </div>
         ) : (
           <div className="grid md:grid-cols-2 xl:grid-cols-4">
@@ -453,11 +455,11 @@ function MarketValidationPage() {
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-        <SectionHeader title="Recorrência" eyebrow="Apenas caronas realizadas" />
-        {isLoading ? <p className="mt-4 text-sm text-muted-foreground">Carregando recorrência...</p> : retention ? (
+        <SectionHeader title="RecorrÃªncia" eyebrow="Apenas caronas realizadas" />
+        {isLoading ? <p className="mt-4 text-sm text-muted-foreground">Carregando recorrÃªncia...</p> : retention ? (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <CompactMetric label="repeat_rate_7d" value={formatPercent(retention.repeatRate7d)} detail="voltaram após a 1ª carona em até 7 dias" />
-            <CompactMetric label="repeat_rate_30d" value={formatPercent(retention.repeatRate30d)} detail="voltaram após a 1ª carona em até 30 dias" />
+            <CompactMetric label="repeat_rate_7d" value={formatPercent(retention.repeatRate7d)} detail="voltaram apÃ³s a 1Âª carona em atÃ© 7 dias" />
+            <CompactMetric label="repeat_rate_30d" value={formatPercent(retention.repeatRate30d)} detail="voltaram apÃ³s a 1Âª carona em atÃ© 30 dias" />
             <CompactMetric label="2 caronas" value={formatNumber(retention.usersWith2Rides)} />
             <CompactMetric label="3 ou mais" value={formatNumber(retention.usersWith3OrMoreRides)} />
           </div>
@@ -465,17 +467,32 @@ function MarketValidationPage() {
         {retention ? <div className="mt-5 grid gap-2 text-sm sm:grid-cols-4">
           <span>1 carona: <strong>{formatNumber(retention.distribution.one)}</strong></span>
           <span>2 caronas: <strong>{formatNumber(retention.distribution.two)}</strong></span>
-          <span>3–5: <strong>{formatNumber(retention.distribution.threeToFive)}</strong></span>
+          <span>3â€“5: <strong>{formatNumber(retention.distribution.threeToFive)}</strong></span>
           <span>6+: <strong>{formatNumber(retention.distribution.sixOrMore)}</strong></span>
         </div> : null}
         {retention ? <p className="mt-4 text-xs text-muted-foreground">
-          Por perfil: Passageiro {formatNumber((retention.byProfile.PASSAGEIRO?.one ?? 0) + (retention.byProfile.PASSAGEIRO?.two ?? 0) + (retention.byProfile.PASSAGEIRO?.threeOrMore ?? 0))} · Motorista {formatNumber((retention.byProfile.MOTORISTA?.one ?? 0) + (retention.byProfile.MOTORISTA?.two ?? 0) + (retention.byProfile.MOTORISTA?.threeOrMore ?? 0))} · Ambos {formatNumber((retention.byProfile.AMBOS?.one ?? 0) + (retention.byProfile.AMBOS?.two ?? 0) + (retention.byProfile.AMBOS?.threeOrMore ?? 0))}
+          Por perfil: Passageiro {formatNumber((retention.byProfile.PASSAGEIRO?.one ?? 0) + (retention.byProfile.PASSAGEIRO?.two ?? 0) + (retention.byProfile.PASSAGEIRO?.threeOrMore ?? 0))} Â· Motorista {formatNumber((retention.byProfile.MOTORISTA?.one ?? 0) + (retention.byProfile.MOTORISTA?.two ?? 0) + (retention.byProfile.MOTORISTA?.threeOrMore ?? 0))} Â· Ambos {formatNumber((retention.byProfile.AMBOS?.one ?? 0) + (retention.byProfile.AMBOS?.two ?? 0) + (retention.byProfile.AMBOS?.threeOrMore ?? 0))}
         </p> : null}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <div className="border-b border-border px-5 py-4">
-          <SectionHeader title="Funil principal da CARONAA" eyebrow="Aquisição à recorrência" />
+          <SectionHeader title="Funil principal da CARONAA" eyebrow="Coorte adquirida no perÃ­odo" />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Select
+              value={filters.cohortEvent}
+              onValueChange={(value) => setFilters((current) => ({ ...current, cohortEvent: value as FilterState["cohortEvent"] }))}
+            >
+              <SelectTrigger className="h-9 w-56 border-border bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="landing_view">Coorte: landing_view</SelectItem>
+                <SelectItem value="user_registered">Coorte: user_registered</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Base: {formatNumber(mainFunnel?.cohortSize)} identidades adquiridas no período. Conversão = membros da coorte na etapa ÷ membros da coorte na etapa anterior. Atividade no período é um conceito separado.
+            </p>
+          </div>
           {mainFunnel?.largestDrop ? (
             <p className="mt-2 text-sm text-destructive">
               Maior queda: entrada em {mainFunnel.largestDrop.label} ({formatPercent(mainFunnel.largestDrop.fromPrevious)} da etapa anterior).
@@ -489,8 +506,8 @@ function MarketValidationPage() {
             {mainFunnel.stages.map((stage, index) => (
               <div key={stage.key} className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-8">
                 <div>
-                  <p className="font-semibold text-foreground">{index ? "↓ " : ""}{stage.label}</p>
-                  <p className="text-xs text-muted-foreground">{index ? `${formatPercent(stage.fromPrevious)} da etapa anterior · ${formatPercent(stage.fromStart)} do início` : "Base do funil"}</p>
+                  <p className="font-semibold text-foreground">{index ? "â†“ " : ""}{stage.label}</p>
+                  <p className="text-xs text-muted-foreground">{index ? `${formatPercent(stage.fromPrevious)} dos usuÃ¡rios da coorte na etapa anterior Â· ${formatPercent(stage.fromStart)} da coorte adquirida` : "Denominador: usuÃ¡rios adquiridos no perÃ­odo selecionado"}</p>
                 </div>
                 <p className="text-2xl font-extrabold text-foreground">{stage.count === null ? "N/D" : formatNumber(stage.count)}</p>
                 {index && stage.fromPrevious !== null ? <Badge variant={mainFunnel.largestDrop?.key === stage.key ? "destructive" : "secondary"}>{formatPercent(stage.fromPrevious)}</Badge> : null}
@@ -528,7 +545,7 @@ function MarketValidationPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Ocupação
+                OcupaÃ§Ã£o
               </h3>
               <div className="mt-4">
                 <DistributionList rows={occupation} />
@@ -536,7 +553,7 @@ function MarketValidationPage() {
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Frequência
+                FrequÃªncia
               </h3>
               <div className="mt-4">
                 <DistributionList rows={frequency} />
@@ -544,7 +561,7 @@ function MarketValidationPage() {
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Horário
+                HorÃ¡rio
               </h3>
               <div className="mt-4">
                 <DistributionList rows={departureWindow} />
@@ -573,22 +590,22 @@ function MarketValidationPage() {
               <DistributionList rows={costRange} />
             </div>
             <p className="mt-4 rounded-xl bg-secondary/50 p-3 text-xs text-muted-foreground">
-              O custo por trecho/dia usa o campo real de referencia salvo no formulário. A função
-              agregada atual ainda não separa esse recorte.
+              O custo por trecho/dia usa o campo real de referencia salvo no formulÃ¡rio. A funÃ§Ã£o
+              agregada atual ainda nÃ£o separa esse recorte.
             </p>
           </div>
         </div>
       </section>
 
       <section className="space-y-4">
-        <SectionHeader title="Quais são as maiores dores?" eyebrow="Ranking" />
+        <SectionHeader title="Quais sÃ£o as maiores dores?" eyebrow="Ranking" />
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/40 hover:bg-secondary/40">
                 <TableHead className="min-w-72 px-4 py-3">Dor</TableHead>
                 <TableHead className="px-4 py-3 text-right">% relata</TableHead>
-                <TableHead className="px-4 py-3 text-right">Intensidade média</TableHead>
+                <TableHead className="px-4 py-3 text-right">Intensidade mÃ©dia</TableHead>
                 <TableHead className="px-4 py-3 text-right">% principal</TableHead>
                 <TableHead className="px-4 py-3 text-right">Opportunity Score</TableHead>
               </TableRow>
@@ -615,7 +632,7 @@ function MarketValidationPage() {
                         <div>
                           <p className="font-semibold text-foreground">{pain.label}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {pain.codigoDor} · abrir análise detalhada
+                            {pain.codigoDor} Â· abrir anÃ¡lise detalhada
                           </p>
                         </div>
                       </Link>
@@ -641,7 +658,7 @@ function MarketValidationPage() {
           </Table>
         </div>
         <p className="text-xs text-muted-foreground">
-          {intentLabels.HOJE ? "Alta intenção considera respostas HOJE e PROVAVELMENTE." : null}
+          {intentLabels.HOJE ? "Alta intenÃ§Ã£o considera respostas HOJE e PROVAVELMENTE." : null}
         </p>
       </section>
     </div>

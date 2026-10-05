@@ -16,6 +16,9 @@ describe("admin metric SQL security and aggregation", () => {
     expect(migration).toContain("event_name IN ('landing_view', 'form_started', 'form_step_completed')");
     expect(migration).toContain("AND (fe.event_name NOT IN ('form_completed', 'lead_created') OR fe.trusted_source)");
     expect(migration).toContain("CREATE TRIGGER form_submission_track_funnel_outcomes");
+    expect(migration).toContain("v_raw_payload := p_submission - ARRAY[");
+    expect(migration).toContain("raw_payload");
+    expect(migration).toContain("source = p_source");
     expect(telemetryMigration).toContain("GRANT INSERT ON public.funnel_events TO anon, authenticated");
     expect(telemetryMigration).toContain("CREATE POLICY \"Anyone can register funnel events\"");
   });
@@ -24,9 +27,9 @@ describe("admin metric SQL security and aggregation", () => {
     for (const rpc of ["get_acquisition_funnel_metrics", "get_main_funnel_metrics", "get_operational_metrics"]) {
       expect(migration).toContain(`FUNCTION public.${rpc}`);
     }
-    expect(migration.match(/Admin access required/g)?.length).toBe(3);
+    expect(migration.match(/Admin access required/g)?.length).toBe(4);
     expect(migration).toContain("count(DISTINCT CASE WHEN fe.event_name = 'landing_view'");
-    expect(migration).toContain("count(DISTINCT pe.ride_id)");
+    expect(migration).toContain("count(DISTINCT pe.user_id) FILTER (WHERE pe.event_name = 'RIDE_COMPLETED'");
     expect(migration).toContain("count(DISTINCT m.request_id)");
     expect(migration).toContain("count(DISTINCT m.offer_id)");
     for (const filter of ["p_period_start", "p_period_end", "p_source", "p_campaign", "p_profile", "p_origin", "p_destination", "p_time_window"]) {
@@ -43,5 +46,12 @@ describe("admin metric SQL security and aggregation", () => {
     expect(operational).toContain('rpc("get_operational_metrics"');
     expect(main).not.toContain('.from("product_events")');
     expect(operational).not.toContain('.from("product_events")');
+  });
+
+  it("builds a bounded acquisition cohort and follows only its members", () => {
+    expect(migration).toContain("p_cohort_event text DEFAULT 'landing_view'");
+    expect(migration).toContain("p_cohort_event NOT IN ('landing_view', 'user_registered')");
+    expect(migration).toContain("WITH cohort AS (");
+    expect(migration).toContain("FROM cohort LEFT JOIN public.product_events pe ON pe.user_id = cohort.user_id");
   });
 });
