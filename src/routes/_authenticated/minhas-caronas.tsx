@@ -76,7 +76,13 @@ function MinhasCaronas() {
         userId: user.id,
           rideId,
           status: "open",
-          metadata: { origin: form.origin, destination: form.destination, timeWindow: form.time, profile: "PASSAGEIRO" },
+          metadata: {
+            origin: form.origin,
+            destination: form.destination,
+            timeWindow: form.time,
+            profile: "PASSAGEIRO",
+            passengerCount: Number(form.seats),
+          },
       }).catch(() => undefined);
     }
     toast.success("Pedido publicado", {

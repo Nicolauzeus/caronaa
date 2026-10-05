@@ -67,7 +67,7 @@ export const Route = createFileRoute("/formulario")({
 });
 
 function Formulario() {
-  const { user } = useAuth();
+ x1 const { user } = useAuth();
   const attribution = React.useMemo(() => getCampaignAttribution(), []);
   const initialData = React.useMemo<CaronaaStsFormData>(
     () => ({ source: attribution.source, campaign: attribution.campaign, campaignEvent: attribution.campaignEvent }),

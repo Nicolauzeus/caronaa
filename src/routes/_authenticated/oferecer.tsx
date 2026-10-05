@@ -64,7 +64,13 @@ function Oferecer() {
           userId: user.id,
           rideId,
           status: "available",
-          metadata: { origin: form.origin, destination: form.destination, timeWindow: form.time, profile: "MOTORISTA" },
+          metadata: {
+            origin: form.origin,
+            destination: form.destination,
+            timeWindow: form.time,
+            profile: "MOTORISTA",
+            availableSeats: Number(form.seats),
+          },
         }).catch(() => undefined);
       }
       setStep(3);
