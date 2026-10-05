@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
@@ -12,8 +13,8 @@ import {
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth-context";
-import { trackProductEvent } from "@/lib/product-events";
+import { createRideOffer } from "@/lib/ride-matching.functions";
+import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/oferecer")({
   head: () => ({
     meta: [
@@ -45,33 +46,32 @@ const initial = {
   price: "",
 };
 function Oferecer() {
-  const { user } = useAuth();
+  const publishOffer = useServerFn(createRideOffer);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(initial);
   const update = (key: keyof typeof initial, value: string) =>
     setForm((previous) => ({ ...previous, [key]: value }));
-  const next = (e: FormEvent) => {
+  const next = async (e: FormEvent) => {
     e.preventDefault();
     if (step === 2) {
-      const isRepeat = Boolean(sessionStorage.getItem("caronaa-offered-ride"));
-      const rideId = crypto.randomUUID();
       try {
-        sessionStorage.setItem("caronaa-offered-ride", JSON.stringify({ ...form, rideId }));
-      } catch {}
-      if (user) {
-        void trackProductEvent({
-          eventName: isRepeat ? "RIDE_REPEATED" : "RIDE_OFFER_CREATED",
-          userId: user.id,
-          rideId,
-          status: "available",
-          metadata: {
+        const { offerId } = await publishOffer({
+          data: {
             origin: form.origin,
             destination: form.destination,
-            timeWindow: form.time,
-            profile: "MOTORISTA",
+            rideDate: form.date,
+            departureTime: form.time,
             availableSeats: Number(form.seats),
           },
-        }).catch(() => undefined);
+        });
+        try {
+          sessionStorage.setItem("caronaa-offered-ride", JSON.stringify({ ...form, rideId: offerId }));
+        } catch {
+          // The offer is already persisted; browser storage is only a display hint.
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível publicar a oferta.");
+        return;
       }
       setStep(3);
     } else setStep(2);

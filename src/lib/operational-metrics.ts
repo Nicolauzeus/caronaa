@@ -86,7 +86,9 @@ export function buildOperationalMetrics(
   );
   const offerIds = new Set(offers.flatMap((offer) => (offer.rideId ? [offer.rideId] : [])));
   const matchRideId = (match: RideOperationalEvent, kind: "request" | "offer") => {
-    const metadataId = match.metadata?.[kind === "request" ? "requestRideId" : "offerRideId"];
+    const metadataId =
+      match.metadata?.[kind === "request" ? "requestId" : "offerId"] ??
+      match.metadata?.[kind === "request" ? "requestRideId" : "offerRideId"];
     const candidate = typeof metadataId === "string" ? metadataId : match.rideId;
     return candidate ?? null;
   };
@@ -123,7 +125,9 @@ export function buildOperationalMetrics(
         }, 0);
   const timings = uniqueMatches
     .map((match) => {
-      const ride = match.rideId ? rides.get(match.rideId) : undefined;
+      const requestId = match.metadata?.["requestId"];
+      const rideId = typeof requestId === "string" ? requestId : match.rideId;
+      const ride = rideId ? rides.get(rideId) : undefined;
       return ride ? Date.parse(match.createdAt) - Date.parse(ride.createdAt) : NaN;
     })
     .filter(Number.isFinite);

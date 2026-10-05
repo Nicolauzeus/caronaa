@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, CalendarDays, CarFront, Clock3, MapPin, Plus, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
@@ -6,8 +7,7 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { myDriverRides, myPassengerRides, currentUser } from "@/mockData";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth-context";
-import { trackProductEvent } from "@/lib/product-events";
+import { createRideRequest } from "@/lib/ride-matching.functions";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -41,7 +41,7 @@ const initialForm: FormState = {
 };
 
 function MinhasCaronas() {
-  const { user } = useAuth();
+  const publishRequest = useServerFn(createRideRequest);
   const [tab, setTab] = useState<"pedidos" | "disponiveis">("pedidos");
   const [form, setForm] = useState(initialForm);
   const [offered, setOffered] = useState<{
@@ -61,29 +61,26 @@ function MinhasCaronas() {
   }, []);
   const update = (key: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    const isRepeat = Boolean(sessionStorage.getItem("caronaa-requested-ride"));
-    const rideId = crypto.randomUUID();
     try {
-      sessionStorage.setItem("caronaa-requested-ride", JSON.stringify({ ...form, rideId }));
-    } catch {
-      /* keep the form usable without storage */
-    }
-    if (user) {
-      void trackProductEvent({
-        eventName: isRepeat ? "RIDE_REPEATED" : "RIDE_REQUEST_CREATED",
-        userId: user.id,
-          rideId,
-          status: "open",
-          metadata: {
-            origin: form.origin,
-            destination: form.destination,
-            timeWindow: form.time,
-            profile: "PASSAGEIRO",
-            passengerCount: Number(form.seats),
-          },
-      }).catch(() => undefined);
+      const { requestId } = await publishRequest({
+        data: {
+          origin: form.origin,
+          destination: form.destination,
+          rideDate: form.date,
+          departureTime: form.time,
+          passengerCount: Number(form.seats),
+        },
+      });
+      try {
+        sessionStorage.setItem("caronaa-requested-ride", JSON.stringify({ ...form, rideId: requestId }));
+      } catch {
+        // The request is already persisted; browser storage is only a display hint.
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível publicar o pedido.");
+      return;
     }
     toast.success("Pedido publicado", {
       description: "Seu trajeto já está disponível para a comunidade.",

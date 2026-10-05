@@ -2,13 +2,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCampaignAttribution } from "@/lib/funnel-events";
 
 export const productEventNames = [
-  "USER_REGISTERED", "RIDE_REQUEST_CREATED", "RIDE_OFFER_CREATED", "MATCH_CREATED",
-  "RIDE_STARTED", "RIDE_COMPLETED", "PAYMENT_COMPLETED", "RIDE_REPEATED",
+  "USER_REGISTERED",
+  "RIDE_REQUEST_CREATED",
+  "RIDE_OFFER_CREATED",
+  "MATCH_CREATED",
+  "RIDE_STARTED",
+  "RIDE_COMPLETED",
+  "PAYMENT_COMPLETED",
+  "RIDE_REPEATED",
 ] as const;
 export type ProductEventName = (typeof productEventNames)[number];
+export const clientProductEventNames = productEventNames.filter(
+  (eventName): eventName is Exclude<ProductEventName, "MATCH_CREATED"> =>
+    eventName !== "MATCH_CREATED",
+);
 
 export type ProductEventInput = {
-  eventName: ProductEventName;
+  eventName: (typeof clientProductEventNames)[number];
   userId: string;
   rideId?: string | null;
   matchId?: string | null;
@@ -35,5 +45,5 @@ export async function trackProductEvent(input: ProductEventInput) {
 
 export function productEventForRide(kind: "offer" | "request", isRepeat: boolean) {
   if (isRepeat) return "RIDE_REPEATED" as const;
-  return kind === "offer" ? "RIDE_OFFER_CREATED" as const : "RIDE_REQUEST_CREATED" as const;
+  return kind === "offer" ? ("RIDE_OFFER_CREATED" as const) : ("RIDE_REQUEST_CREATED" as const);
 }

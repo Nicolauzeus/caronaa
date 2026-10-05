@@ -109,6 +109,26 @@ export type Database = {
         }
         Returns: string
       }
+      create_ride_request: {
+        Args: {
+          p_origin: string
+          p_destination: string
+          p_ride_date: string
+          p_departure_time: string
+          p_passenger_count: number
+        }
+        Returns: string
+      }
+      create_ride_offer: {
+        Args: {
+          p_origin: string
+          p_destination: string
+          p_ride_date: string
+          p_departure_time: string
+          p_available_seats: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

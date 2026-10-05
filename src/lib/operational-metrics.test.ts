@@ -62,6 +62,22 @@ describe("operational match metrics", () => {
     expect(summary.seats).toEqual({ availableSeats: 3, occupiedSeats: 2, seatFillRate: 66.67 });
   });
 
+  it("reads request and offer ids emitted by persisted domain matches", () => {
+    const summary = buildOperationalMetrics([
+      event("RIDE_REQUEST_CREATED", "request-1"),
+      event("RIDE_OFFER_CREATED", "offer-1", null, { availableSeats: 2 }),
+      event("MATCH_CREATED", "", "match-1", {
+        requestId: "request-1",
+        offerId: "offer-1",
+        seatsOccupied: 1,
+      }),
+    ]);
+
+    expect(summary.request.matchedRequests).toBe(1);
+    expect(summary.offer.utilizedOffers).toBe(1);
+    expect(summary.seats.occupiedSeats).toBe(1);
+  });
+
   it("reports a perfect rate for one eligible request and one eligible offer with one match", () => {
     const summary = buildOperationalMetrics([
       event("RIDE_REQUEST_CREATED", "r1"),

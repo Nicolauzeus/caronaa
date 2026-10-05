@@ -5,7 +5,16 @@ import { describe, expect, it } from "vitest";
 import { routeTree } from "@/routeTree.gen";
 
 describe("CARONAA navigation", () => {
-  it.each(["/", "/home", "/buscar", "/oferecer", "/minhas-caronas", "/perfil", "/formulario"])(
+  it.each([
+    "/",
+    "/home",
+    "/buscar",
+    "/oferecer",
+    "/minhas-caronas",
+    "/perfil",
+    "/formulario",
+    "/admin/oportunidades",
+  ])(
     "matches %s",
     (path) => {
       const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
