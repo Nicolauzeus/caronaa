@@ -12,3 +12,4 @@
 
 12. [ ] Replace driver price ranges with a custom per-passenger price (minimum R$ 3,50), showing the 15% CARONAA fee and net payout.
 13. [ ] Remove familiarity/family-based matching prompts and keep objective safety criteria only.
+14. [ ] Remove the “Edit with Lovable” badge from the published app.
