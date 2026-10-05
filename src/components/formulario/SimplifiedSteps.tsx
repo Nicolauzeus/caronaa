@@ -15,7 +15,7 @@ import type {
   PriceRange,
   VehicleType,
 } from "@/lib/formulario/types";
-import { calculateSuggestedDriverPrice, calculateCaronaaFee, calculateDriverNet, MIN_DRIVER_PRICE } from "@/lib/formulario/pricing";
+import { calculateCaronaaFee, calculateDriverNet, MIN_DRIVER_PRICE } from "@/lib/formulario/pricing";
 
 type NavProps = {
   onNext: () => void;
