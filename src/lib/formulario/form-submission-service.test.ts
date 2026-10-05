@@ -13,6 +13,14 @@ describe("form pain payload integrity", () => {
     expect(() => assertPainPointIntegrity(validRows as unknown as never[])).not.toThrow();
   });
 
+  it("accepts no principal when no pain is selected", () => {
+    expect(() =>
+      assertPainPointIntegrity(
+        validRows.map((row) => ({ ...row, selecionada: false, principal: false, intensidade: null })) as never[],
+      ),
+    ).not.toThrow();
+  });
+
   it("rejects two principal pains", () => {
     expect(() => assertPainPointIntegrity([{ ...validRows[0]!, principal: true }, { ...validRows[1]!, principal: true }] as never[])).toThrow();
   });
