@@ -21,6 +21,7 @@ import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authen
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminOportunidadesRouteImport } from './routes/admin/oportunidades'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
@@ -89,6 +90,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOportunidadesRoute = AdminOportunidadesRouteImport.update({
+  id: '/oportunidades',
+  path: '/oportunidades',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
   id: '/validacao',
   path: '/validacao',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/oportunidades': typeof AdminOportunidadesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/oportunidades': typeof AdminOportunidadesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/oportunidades': typeof AdminOportunidadesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/oportunidades'
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/oportunidades'
     | '/admin/validacao'
     | '/admin'
     | '/admin/usuarios/$id'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
+    | '/admin/oportunidades'
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
@@ -347,6 +359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/oportunidades': {
+      id: '/admin/oportunidades'
+      path: '/oportunidades'
+      fullPath: '/admin/oportunidades'
+      preLoaderRoute: typeof AdminOportunidadesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/validacao': {
       id: '/admin/validacao'
       path: '/validacao'
@@ -429,6 +448,7 @@ const AdminValidacaoRouteWithChildren = AdminValidacaoRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminOportunidadesRoute: typeof AdminOportunidadesRoute
   AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
@@ -439,6 +459,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminOportunidadesRoute: AdminOportunidadesRoute,
   AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
