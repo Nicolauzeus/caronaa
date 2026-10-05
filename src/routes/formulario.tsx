@@ -209,25 +209,6 @@ function Formulario() {
         createdAt: payload.createdAt,
       }));
 
-      void trackFunnelEvent({
-        eventName: "form_completed",
-        userId: user?.id ?? null,
-        ...attribution,
-        formStep: "CONTACT",
-        submissionId: payload.submissionId,
-      });
-
-      void trackFunnelEvent({
-        eventName: "lead_created",
-        userId: user?.id ?? null,
-        ...attribution,
-        submissionId: payload.submissionId,
-        metadata: {
-          leadType: payload.leadType,
-          activationStatus: payload.activationStatus,
-        },
-      });
-
       setStep("SUCCESS");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Não foi possível finalizar agora.");

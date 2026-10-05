@@ -8,6 +8,7 @@ const ATTRIBUTION_STORAGE_PREFIX = "caronaa-campaign-attribution";
 const MAX_ATTRIBUTE_LENGTH = 120;
 
 export type FunnelEventName = Enums<"funnel_event_name">;
+export type ClientFunnelEventName = "landing_view" | "form_started" | "form_step_completed";
 
 export type CampaignAttribution = {
   source: string;
@@ -16,7 +17,7 @@ export type CampaignAttribution = {
 };
 
 export type TrackFunnelEventInput = CampaignAttribution & {
-  eventName: FunnelEventName;
+  eventName: ClientFunnelEventName;
   userId?: string | null;
   formStep?: string | null;
   submissionId?: string | null;

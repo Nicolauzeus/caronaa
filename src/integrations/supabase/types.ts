@@ -133,6 +133,22 @@ export type Database = {
         Args: { p_ride_id: string; p_next_status: string }
         Returns: string
       }
+      get_acquisition_funnel_metrics: {
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_event?: string | null; p_profile?: string | null }
+        Returns: Json
+      }
+      get_main_funnel_metrics: {
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_event?: string | null; p_profile?: string | null }
+        Returns: Json
+      }
+      get_operational_metrics: {
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_profile?: string | null; p_origin?: string | null; p_destination?: string | null; p_time_window?: string | null }
+        Returns: Json
+      }
+      get_retention_metrics: {
+        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_tipo_usuario?: string | null }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

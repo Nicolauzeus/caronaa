@@ -25,174 +25,77 @@ export type OperationalFilters = {
 };
 
 export type OperationalMetrics = {
-  request: {
-    eligibleRequests: number;
-    matchedRequests: number;
-    unmatchedRequests: number;
-    requestMatchRate: number;
-  };
-  offer: {
-    eligibleOffers: number;
-    utilizedOffers: number;
-    unmatchedOffers: number;
-    offerMatchRate: number;
-  };
-  seats: {
-    availableSeats: number | null;
-    occupiedSeats: number | null;
-    seatFillRate: number | null;
-  };
-  match: {
-    total: number;
-    averageMinutesToMatch: number | null;
-    cancelled: number;
-    completed: number;
-  };
+  request: { eligibleRequests: number; matchedRequests: number; unmatchedRequests: number; requestMatchRate: number };
+  offer: { eligibleOffers: number; utilizedOffers: number; unmatchedOffers: number; offerMatchRate: number };
+  seats: { availableSeats: number | null; occupiedSeats: number | null; seatFillRate: number | null };
+  match: { total: number; averageMinutesToMatch: number | null; cancelled: number; completed: number };
 };
 
-const pct = (value: number, total: number) =>
-  total ? Math.round((value / total) * 10000) / 100 : 0;
-const value = (event: RideOperationalEvent, field: string) =>
+const pct = (value: number, total: number) => total ? Math.round((value / total) * 10000) / 100 : 0;
+const metadataValue = (event: RideOperationalEvent, field: string) =>
   String(event.metadata?.[field] ?? "").toLowerCase();
 
-export function buildOperationalMetrics(
-  events: RideOperationalEvent[],
-  filters: OperationalFilters = {},
-): OperationalMetrics {
+/** In-memory reference reducer retained for the SQL aggregation equivalence tests. */
+export function buildOperationalMetrics(events: RideOperationalEvent[], filters: OperationalFilters = {}): OperationalMetrics {
   const filtered = events.filter((event) => {
-    if (["RIDE_STARTED", "RIDE_COMPLETED"].includes(event.eventName) && !event.trustedSource) return false;
-    const at = event.createdAt;
-    if (filters.periodStart && at < filters.periodStart) return false;
-    if (filters.periodEnd && at >= filters.periodEnd) return false;
+    if (["RIDE_REQUEST_CREATED", "RIDE_OFFER_CREATED", "MATCH_CREATED", "RIDE_STARTED", "RIDE_COMPLETED", "RIDE_REPEATED"].includes(event.eventName) && !event.trustedSource) return false;
+    if (filters.periodStart && event.createdAt < filters.periodStart) return false;
+    if (filters.periodEnd && event.createdAt >= filters.periodEnd) return false;
     if (filters.source && event.source !== filters.source) return false;
     if (filters.campaign && event.campaign !== filters.campaign) return false;
-    return (
-      [
-        ["origin", filters.origin],
-        ["destination", filters.destination],
-        ["timeWindow", filters.timeWindow],
-        ["profile", filters.profile],
-      ] as const
-    ).every(([field, expected]) => !expected || value(event, field) === expected.toLowerCase());
+    return ([
+      ["origin", filters.origin], ["destination", filters.destination],
+      ["timeWindow", filters.timeWindow], ["profile", filters.profile],
+    ] as const).every(([field, expected]) => !expected || metadataValue(event, field) === expected.toLowerCase());
   });
-  const created = filtered.filter(
-    (e) => e.eventName === "RIDE_REQUEST_CREATED" || e.eventName === "RIDE_OFFER_CREATED",
-  );
-  const rides = new Map(created.filter((e) => e.rideId).map((e) => [e.rideId!, e]));
-  const requests = [...rides.values()].filter((e) => e.eventName === "RIDE_REQUEST_CREATED");
-  const offers = [...rides.values()].filter((e) => e.eventName === "RIDE_OFFER_CREATED");
-  const matches = filtered.filter((e) => e.eventName === "MATCH_CREATED" && e.matchId);
-  const uniqueMatches = [...new Map(matches.map((e) => [e.matchId!, e])).values()];
-  const requestIds = new Set(
-    requests.flatMap((request) => (request.rideId ? [request.rideId] : [])),
-  );
-  const offerIds = new Set(offers.flatMap((offer) => (offer.rideId ? [offer.rideId] : [])));
-  const matchRideId = (match: RideOperationalEvent, kind: "request" | "offer") => {
-    const metadataId =
-      match.metadata?.[kind === "request" ? "requestId" : "offerId"] ??
-      match.metadata?.[kind === "request" ? "requestRideId" : "offerRideId"];
-    const candidate = typeof metadataId === "string" ? metadataId : match.rideId;
-    return candidate ?? null;
-  };
-  const servedRequestIds = new Set(
-    uniqueMatches
-      .map((match) => matchRideId(match, "request"))
-      .filter((id): id is string => Boolean(id && requestIds.has(id))),
-  );
-  const utilizedOfferIds = new Set(
-    uniqueMatches
-      .map((match) => matchRideId(match, "offer"))
-      .filter((id): id is string => Boolean(id && offerIds.has(id))),
-  );
-  const seatValues = offers.map((offer) => offer.metadata?.availableSeats);
-  const offeredSeats =
-    seatValues.length > 0 &&
-    seatValues.every((seats) => typeof seats === "number" && Number.isFinite(seats) && seats >= 0)
-      ? (seatValues as number[]).reduce((total, seats) => total + seats, 0)
-      : null;
-  // Seats only count for matches tied to an eligible offer. This prevents an
-  // unrelated or stale match event from inflating the offer fill rate.
-  const matchesForEligibleOffers = uniqueMatches.filter((match) => {
-    const offerId = matchRideId(match, "offer");
-    return Boolean(offerId && offerIds.has(offerId));
-  });
-  const occupiedSeats =
-    offeredSeats === null
-      ? null
-      : matchesForEligibleOffers.reduce((total, match) => {
-          const seats = match.metadata?.seatsOccupied ?? match.metadata?.passengerCount ?? 1;
-          return (
-            total + (typeof seats === "number" && Number.isFinite(seats) && seats > 0 ? seats : 1)
-          );
-        }, 0);
-  const timings = uniqueMatches
-    .map((match) => {
-      const requestId = match.metadata?.["requestId"];
-      const rideId = typeof requestId === "string" ? requestId : match.rideId;
-      const ride = rideId ? rides.get(rideId) : undefined;
-      return ride ? Date.parse(match.createdAt) - Date.parse(ride.createdAt) : NaN;
-    })
-    .filter(Number.isFinite);
+  const creations = filtered.filter((event) => event.eventName === "RIDE_REQUEST_CREATED" || event.eventName === "RIDE_OFFER_CREATED");
+  const uniqueCreations = [...new Map(creations.filter((event) => event.rideId).map((event) => [event.rideId!, event])).values()];
+  const requests = uniqueCreations.filter((event) => event.eventName === "RIDE_REQUEST_CREATED");
+  const offers = uniqueCreations.filter((event) => event.eventName === "RIDE_OFFER_CREATED");
+  const matches = [...new Map(filtered.filter((event) => event.eventName === "MATCH_CREATED" && event.matchId).map((event) => [event.matchId!, event])).values()];
+  const requestIds = new Set(requests.map((event) => event.rideId!));
+  const offerIds = new Set(offers.map((event) => event.rideId!));
+  const relatedId = (event: RideOperationalEvent, key: string, fallback: string) =>
+    String(event.metadata?.[key] ?? event.metadata?.[fallback] ?? event.rideId ?? "");
+  const matchedRequestIds = new Set(matches.map((event) => relatedId(event, "requestId", "requestRideId")).filter((id) => requestIds.has(id)));
+  const utilizedOfferIds = new Set(matches.map((event) => relatedId(event, "offerId", "offerRideId")).filter((id) => offerIds.has(id)));
+  const capacities = offers.map((event) => event.metadata?.availableSeats);
+  const availableSeats = capacities.length && capacities.every((seats) => typeof seats === "number" && Number.isFinite(seats) && seats >= 0)
+    ? (capacities as number[]).reduce((sum, seats) => sum + seats, 0) : null;
+  const eligibleOfferMatches = matches.filter((event) => offerIds.has(relatedId(event, "offerId", "offerRideId")));
+  const occupiedSeats = availableSeats === null ? null : eligibleOfferMatches.reduce((sum, event) => {
+    const seats = event.metadata?.seatsOccupied ?? event.metadata?.passengerCount ?? 1;
+    return sum + (typeof seats === "number" && Number.isFinite(seats) && seats > 0 ? seats : 1);
+  }, 0);
+  const requestTimes = new Map(requests.map((event) => [event.rideId!, Date.parse(event.createdAt)]));
+  const matchDurations = matches.map((event) => {
+    const requestId = relatedId(event, "requestId", "requestRideId");
+    return Date.parse(event.createdAt) - (requestTimes.get(requestId) ?? Number.NaN);
+  }).filter(Number.isFinite);
   return {
-    request: {
-      eligibleRequests: requests.length,
-      matchedRequests: servedRequestIds.size,
-      unmatchedRequests: requests.length - servedRequestIds.size,
-      requestMatchRate: pct(servedRequestIds.size, requests.length),
-    },
-    offer: {
-      eligibleOffers: offers.length,
-      utilizedOffers: utilizedOfferIds.size,
-      unmatchedOffers: offers.length - utilizedOfferIds.size,
-      offerMatchRate: pct(utilizedOfferIds.size, offers.length),
-    },
-    seats: {
-      availableSeats: offeredSeats,
-      occupiedSeats,
-      seatFillRate: offeredSeats === null ? null : pct(occupiedSeats!, offeredSeats),
-    },
+    request: { eligibleRequests: requests.length, matchedRequests: matchedRequestIds.size, unmatchedRequests: requests.length - matchedRequestIds.size, requestMatchRate: pct(matchedRequestIds.size, requests.length) },
+    offer: { eligibleOffers: offers.length, utilizedOffers: utilizedOfferIds.size, unmatchedOffers: offers.length - utilizedOfferIds.size, offerMatchRate: pct(utilizedOfferIds.size, offers.length) },
+    seats: { availableSeats, occupiedSeats, seatFillRate: availableSeats === null ? null : pct(occupiedSeats!, availableSeats) },
     match: {
-      total: uniqueMatches.length,
-      averageMinutesToMatch: timings.length
-        ? Math.round((timings.reduce((a, b) => a + b, 0) / timings.length / 60000) * 100) / 100
-        : null,
-      cancelled: uniqueMatches.filter((e) => e.status === "cancelled").length,
-      completed: new Set(filtered.filter((e) => e.eventName === "RIDE_COMPLETED" && e.trustedSource && e.rideId).map((e) => e.rideId)).size,
+      total: matches.length,
+      averageMinutesToMatch: matchDurations.length ? Math.round(matchDurations.reduce((sum, ms) => sum + ms, 0) / matchDurations.length / 60000 * 100) / 100 : null,
+      cancelled: matches.filter((event) => event.status === "cancelled").length,
+      completed: new Set(filtered.filter((event) => event.eventName === "RIDE_COMPLETED" && event.rideId).map((event) => event.rideId)).size,
     },
   };
 }
 
 export async function getOperationalMetrics(filters: OperationalFilters = {}) {
-  let query = supabase
-    .from("product_events")
-    .select("*")
-    .in("event_name", [
-      "RIDE_REQUEST_CREATED",
-      "RIDE_OFFER_CREATED",
-      "MATCH_CREATED",
-      "RIDE_STARTED",
-      "RIDE_COMPLETED",
-    ])
-    .order("created_at", { ascending: true });
-  if (filters.periodStart) query = query.gte("created_at", filters.periodStart);
-  if (filters.periodEnd) query = query.lt("created_at", filters.periodEnd);
-  if (filters.source) query = query.eq("source", filters.source);
-  if (filters.campaign) query = query.eq("campaign", filters.campaign);
-  const { data, error } = await query;
-  if (error)
-    throw new Error(`Não foi possível carregar indicadores operacionais: ${error.message}`);
-  return buildOperationalMetrics(
-    (data ?? []).map((event) => ({
-      eventName: event.event_name,
-      rideId: event.ride_id,
-      matchId: event.match_id,
-      status: event.status,
-      createdAt: event.created_at,
-      source: event.source,
-      campaign: event.campaign,
-      metadata: event.metadata as Record<string, unknown>,
-      trustedSource: event.trusted_source,
-    })),
-    filters,
-  );
+  const { data, error } = await supabase.rpc("get_operational_metrics", {
+    p_period_start: filters.periodStart ?? null,
+    p_period_end: filters.periodEnd ?? null,
+    p_source: filters.source ?? null,
+    p_campaign: filters.campaign ?? null,
+    p_profile: filters.profile ?? null,
+    p_origin: filters.origin ?? null,
+    p_destination: filters.destination ?? null,
+    p_time_window: filters.timeWindow ?? null,
+  });
+  if (error) throw new Error(`NÃ£o foi possÃ­vel carregar indicadores operacionais: ${error.message}`);
+  return data as OperationalMetrics;
 }

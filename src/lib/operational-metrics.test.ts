@@ -57,6 +57,24 @@ describe("operational match metrics", () => {
     expect(summary.seats).toEqual({ availableSeats: 100, occupiedSeats: 70, seatFillRate: 70 });
   });
 
+  it("matches the aggregate RPC DTO on a controlled ride dataset", () => {
+    const fixture = [
+      { ...event("RIDE_REQUEST_CREATED", "request-1", null, { passengerCount: 1 }), createdAt: "2026-01-01T10:00:00Z" },
+      { ...event("RIDE_REQUEST_CREATED", "request-2", null, { passengerCount: 2 }), createdAt: "2026-01-01T10:05:00Z" },
+      event("RIDE_OFFER_CREATED", "offer-1", null, { availableSeats: 3 }),
+      { ...event("MATCH_CREATED", "ride-1", "match-1", { requestId: "request-1", offerId: "offer-1", seatsOccupied: 1 }), createdAt: "2026-01-01T10:30:00Z" },
+      { ...event("MATCH_CREATED", "ride-2", "match-2", { requestId: "request-2", offerId: "offer-1", seatsOccupied: 2 }), createdAt: "2026-01-01T10:40:00Z" },
+      event("RIDE_COMPLETED", "ride-1"),
+      event("RIDE_COMPLETED", "ride-1"),
+    ];
+    expect(buildOperationalMetrics(fixture)).toEqual({
+      request: { eligibleRequests: 2, matchedRequests: 2, unmatchedRequests: 0, requestMatchRate: 100 },
+      offer: { eligibleOffers: 1, utilizedOffers: 1, unmatchedOffers: 0, offerMatchRate: 100 },
+      seats: { availableSeats: 3, occupiedSeats: 3, seatFillRate: 100 },
+      match: { total: 2, averageMinutesToMatch: 32.5, cancelled: 0, completed: 1 },
+    });
+  });
+
   it("counts an offer only once even when it serves multiple requests", () => {
     const summary = buildOperationalMetrics([
       event("RIDE_REQUEST_CREATED", "r1"),
