@@ -101,6 +101,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      submit_form_response: {
+        Args: {
+          p_submission: Json
+          p_pain_points: Json
+          p_anonymous_session_id?: string | null
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

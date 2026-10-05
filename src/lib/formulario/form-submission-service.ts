@@ -54,14 +54,9 @@ function normalizeInterest(value: InterestLevel | null) {
   }
 }
 
-function buildFormSubmissionRow(
-  payload: CaronaaStsSubmission,
-  userId: string | null,
-): FormSubmissionInsert {
+function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionInsert {
   return {
     submission_id: payload.submissionId,
-    user_id: userId,
-    anonymous_session_id: userId ? null : getAnonymousSessionId(),
     source: payload.source,
     campaign: payload.campaign,
     campaign_event: "Siará Tech Summit 2026",
@@ -99,20 +94,15 @@ function buildPainPointRows(payload: CaronaaStsSubmission): FormPainInsert[] {
 }
 
 export async function saveFormSubmission(payload: CaronaaStsSubmission, userId: string | null) {
-  const { error: submissionError } = await supabase
-    .from("form_submissions")
-    .insert(buildFormSubmissionRow(payload, userId));
+  // The RPC obtains auth.uid() itself; a client cannot choose another user_id.
+  const { error } = await supabase.rpc("submit_form_response", {
+    p_submission: buildFormSubmissionRow(payload),
+    p_pain_points: buildPainPointRows(payload),
+    p_anonymous_session_id: userId ? null : getAnonymousSessionId(),
+  });
 
-  if (submissionError) {
-    throw new Error(`Não foi possível salvar sua resposta: ${submissionError.message}`);
-  }
-
-  const { error: painError } = await supabase
-    .from("form_submission_pain_points")
-    .insert(buildPainPointRows(payload));
-
-  if (painError) {
-    throw new Error(`Não foi possível salvar as dores da resposta: ${painError.message}`);
+  if (error) {
+    throw new Error(`Não foi possível salvar sua resposta: ${error.message}`);
   }
 }
 
