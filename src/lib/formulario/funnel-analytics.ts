@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCampaignAttribution } from "@/lib/funnel-events";
 
 export type FunnelEventName =
   | "landing_view"
@@ -14,7 +15,6 @@ export type Attribution = {
 };
 
 const SESSION_KEY = "caronaa-funnel-session-id";
-const MAX_ATTRIBUTE_LENGTH = 100;
 
 function sessionId() {
   const existing = window.sessionStorage.getItem(SESSION_KEY);
@@ -25,20 +25,8 @@ function sessionId() {
   return next;
 }
 
-function cleanAttribute(value: string | null, fallback: string | null = null) {
-  const normalized = value?.trim().slice(0, MAX_ATTRIBUTE_LENGTH);
-  return normalized || fallback;
-}
-
 export function getFormAttribution(): Attribution {
-  const query = new URLSearchParams(window.location.search);
-
-  return {
-    // `src` is intentionally first-class so each printed QR code can be named explicitly.
-    source: cleanAttribute(query.get("src") ?? query.get("utm_source"), "sts2026")!,
-    campaign: cleanAttribute(query.get("campaign") ?? query.get("utm_campaign")),
-    campaignEvent: "sts2026",
-  };
+  return getCampaignAttribution();
 }
 
 export async function trackFunnelEvent({

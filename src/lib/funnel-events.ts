@@ -4,6 +4,8 @@ import type { Enums, TablesInsert } from "@/integrations/supabase/types";
 const ANONYMOUS_SESSION_KEY = "caronaa-anonymous-session-id";
 const DEFAULT_SOURCE = "sts2026";
 const DEFAULT_CAMPAIGN_EVENT = "Siará Tech Summit 2026";
+const ATTRIBUTION_STORAGE_PREFIX = "caronaa-campaign-attribution";
+const MAX_ATTRIBUTE_LENGTH = 120;
 
 export type FunnelEventName = Enums<"funnel_event_name">;
 
@@ -66,8 +68,33 @@ export function getAnonymousSessionId(): string | null {
 }
 
 function cleanAttributionValue(value: string | null) {
-  const normalized = value?.trim();
-  return normalized ? normalized.slice(0, 120) : null;
+  const normalized = value?.replace(/[\u0000-\u001F\u007F]/g, "").trim();
+  return normalized ? normalized.slice(0, MAX_ATTRIBUTE_LENGTH) : null;
+}
+
+function attributionStorageKey(defaultCampaignEvent: string) {
+  return `${ATTRIBUTION_STORAGE_PREFIX}:${defaultCampaignEvent}`;
+}
+
+function readStoredAttribution(defaultCampaignEvent: string): CampaignAttribution | null {
+  if (!canUseBrowserStorage()) return null;
+
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(attributionStorageKey(defaultCampaignEvent)) ?? "null") as Partial<CampaignAttribution> | null;
+    const source = cleanAttributionValue(parsed?.source ?? null);
+    const campaignEvent = cleanAttributionValue(parsed?.campaignEvent ?? null);
+
+    return source && campaignEvent
+      ? { source, campaign: cleanAttributionValue(parsed?.campaign ?? null), campaignEvent }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistAttribution(attribution: CampaignAttribution, defaultCampaignEvent: string) {
+  if (!canUseBrowserStorage()) return;
+  window.sessionStorage.setItem(attributionStorageKey(defaultCampaignEvent), JSON.stringify(attribution));
 }
 
 export function getCampaignAttribution({
@@ -86,19 +113,27 @@ export function getCampaignAttribution({
   }
 
   const search = new URLSearchParams(window.location.search);
-  const source =
+  const sourceFromQuery =
     cleanAttributionValue(search.get("src")) ??
     cleanAttributionValue(search.get("source")) ??
-    defaultSource;
+    cleanAttributionValue(search.get("utm_source"));
+  const campaignFromQuery = cleanAttributionValue(search.get("campaign")) ?? cleanAttributionValue(search.get("utm_campaign"));
+  const eventFromQuery =
+    cleanAttributionValue(search.get("event")) ??
+    cleanAttributionValue(search.get("campaign_event"));
+  const stored = !sourceFromQuery && !campaignFromQuery && !eventFromQuery
+    ? readStoredAttribution(defaultCampaignEvent)
+    : null;
 
-  return {
-    source,
-    campaign: cleanAttributionValue(search.get("campaign")),
-    campaignEvent:
-      cleanAttributionValue(search.get("event")) ??
-      cleanAttributionValue(search.get("campaign_event")) ??
-      defaultCampaignEvent,
+  const attribution = {
+    source: sourceFromQuery ?? stored?.source ?? defaultSource,
+    campaign: campaignFromQuery ?? stored?.campaign ?? null,
+    campaignEvent: eventFromQuery ?? stored?.campaignEvent ?? defaultCampaignEvent,
   };
+
+  persistAttribution(attribution, defaultCampaignEvent);
+
+  return attribution;
 }
 
 export function getDeviceCategory(): "mobile" | "tablet" | "desktop" | null {

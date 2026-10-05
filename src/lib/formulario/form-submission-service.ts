@@ -59,7 +59,7 @@ function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionIn
     submission_id: payload.submissionId,
     source: payload.source,
     campaign: payload.campaign,
-    campaign_event: "Siará Tech Summit 2026",
+    campaign_event: payload.campaignEvent,
     created_at: payload.createdAt,
     tipo_usuario: payload.intent,
     ocupacao: payload.occupation,
