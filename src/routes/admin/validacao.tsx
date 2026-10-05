@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertCircle, Filter, Loader2 } from "lucide-react";
+import { AlertCircle, Download, Filter, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
@@ -30,6 +30,7 @@ import { getFunnelMetrics, type FunnelMetricsSummary } from "@/lib/funnel-metric
 import { getMainFunnelMetrics, type MainFunnelSummary } from "@/lib/main-funnel-metrics";
 import { getRetentionMetrics, type RetentionMetrics } from "@/lib/retention-metrics";
 import { getPainAnalysis, type PainAnalysisSummary } from "@/lib/formulario/pain-analysis";
+import { downloadValidationExport, type ValidationExportKind } from "@/lib/validation-export";
 import type { Enums } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/admin/validacao")({
@@ -211,6 +212,7 @@ function MarketValidationPage() {
   const [painAnalysis, setPainAnalysis] = useState<PainAnalysisSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<ValidationExportKind | null>(null);
 
   const metricFilters = useMemo(() => toMetricFilters(filters), [filters]);
 
@@ -307,6 +309,12 @@ function MarketValidationPage() {
   const transport = distributionRows(metrics?.distributions.transporteAtual ?? {}, completed);
   const costRange = distributionRows(metrics?.distributions.custoAtualFaixa ?? {}, completed);
   const painRows = (painAnalysis?.painPoints ?? []).slice(0, 6);
+  const exportCsv = async (kind: ValidationExportKind) => {
+    setExporting(kind);
+    try { await downloadValidationExport(kind, metricFilters); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível exportar os dados."); }
+    finally { setExporting(null); }
+  };
 
   return (
     <div className="space-y-6">
@@ -394,6 +402,27 @@ function MarketValidationPage() {
           >
             Limpar filtros
           </Button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-soft">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Exportar resultados</p>
+            <p className="text-xs text-muted-foreground">Os CSVs aplicam os filtros globais atuais. A exportação analítica não inclui dados pessoais.</p>
+          </div>
+          <Badge variant="outline" className="w-fit">CSV</Badge>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {([
+            ["raw_analytics", "Respostas analíticas"], ["pain_ranking", "Ranking de dores"],
+            ["profile", "Perfil"], ["transport", "Alternativas atuais"], ["costs", "Custos"],
+            ["intent", "Intenção de uso"], ["funnel", "Funil"], ["match", "Métricas de match"],
+          ] as const).map(([kind, label]) => <Button key={kind} type="button" size="sm" variant="outline" disabled={exporting !== null} onClick={() => void exportCsv(kind)}><Download size={14} className="mr-1" />{exporting === kind ? "Exportando…" : label}</Button>)}
+        </div>
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="mb-2 text-xs text-muted-foreground">Leads contém nome, telefone e e-mail, quando informados. Acesso exclusivo de administradores autorizados.</p>
+          <Button type="button" size="sm" variant="secondary" disabled={exporting !== null} onClick={() => void exportCsv("leads")}><Download size={14} className="mr-1" />{exporting === "leads" ? "Exportando…" : "Exportar leads"}</Button>
         </div>
       </section>
 

@@ -78,6 +78,13 @@
       "when": 1791080500000,
       "tag": "0010_add_retention_and_strategic_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791080600000,
+      "tag": "0011_add_validation_csv_exports",
+      "breakpoints": true
     }
   ]
 }
