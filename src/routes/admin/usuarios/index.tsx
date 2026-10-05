@@ -151,4 +151,3 @@ function AdminUsersPage() {
   );
 }
 
-export default AdminUsersPage;

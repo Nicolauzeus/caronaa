@@ -665,4 +665,3 @@ function MarketValidationPage() {
   );
 }
 
-export default MarketValidationPage;

@@ -697,4 +697,3 @@ function PainDetailPage() {
   );
 }
 
-export default PainDetailPage;

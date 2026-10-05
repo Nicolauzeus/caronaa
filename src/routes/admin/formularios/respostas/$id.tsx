@@ -194,4 +194,3 @@ function SurveyDetailPage() {
   );
 }
 
-export default SurveyDetailPage;

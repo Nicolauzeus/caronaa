@@ -173,4 +173,3 @@ function UserDetailPage() {
   );
 }
 
-export default UserDetailPage;

@@ -29,4 +29,3 @@ function OpportunitiesPage() {
     <Panel title="5. Regiões com maior demanda sem oferta">{gaps.length ? gaps.map((item, index) => <div key={`${item.origin}-${item.destination}-${item.timeWindow}`} className="rounded-xl border border-border bg-secondary/25 p-4"><strong>{index + 1}. {item.origin} → {item.destination} · {item.timeWindow}</strong><Evidence><li>Solicitações: <b className="text-foreground">{item.requests}</b></li><li>Ofertas: <b className="text-foreground">{item.offers}</b></li><li>Saldo sem oferta: <b className="text-foreground">{item.requestGap}</b></li></Evidence></div>) : <p className="py-6 text-sm text-muted-foreground">Não há desequilíbrio de demanda sem oferta nos dados atuais.</p>}</Panel>
   </div></div>;
 }
-export default OpportunitiesPage;
