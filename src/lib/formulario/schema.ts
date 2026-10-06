@@ -74,6 +74,19 @@ const priceRangeSchema = z.enum([
 
 const commitmentLevelSchema = z.enum(["SIM_HOJE", "QUERO_VER_MATCH", "NAO_HOJE"]);
 
+const formLocationDetailsSchema = z
+  .object({
+    rawText: z.string().trim().min(1).max(250),
+    formattedAddress: z.string().trim().max(300).optional(),
+    city: z.string().trim().max(100).optional(),
+    state: z.string().trim().max(20).optional(),
+    neighborhood: z.string().trim().max(100).optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+    providerId: z.string().trim().max(250).optional(),
+  })
+  .optional();
+
 const baseSchema = z.object({
   source: z.string().trim().min(1).max(100),
   campaign: z.string().trim().max(100).nullable().optional(),
@@ -83,12 +96,14 @@ const baseSchema = z.object({
   destinationNeighborhood: z
     .string()
     .trim()
-    .min(2, "Informe o bairro ou regiÃ£o de destino.")
+    .min(2, "Informe o bairro ou região de destino.")
     .max(120, "Destino muito longo."),
 
-  destinationReference: z.string().trim().max(160, "Ponto de referÃªncia muito longo.").optional(),
+  destinationReference: z.string().trim().max(160, "Ponto de referência muito longo.").optional(),
+  destinationLocation: formLocationDetailsSchema,
 
   originNeighborhood: z.string().trim().min(2, "Informe a origem aproximada do trajeto.").max(120, "Origem muito longa."),
+  originLocation: formLocationDetailsSchema,
 
   departureWindow: departureWindowSchema,
 

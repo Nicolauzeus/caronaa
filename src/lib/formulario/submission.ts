@@ -20,7 +20,9 @@ export type CaronaaStsSubmission = {
 
   destinationNeighborhood: string;
   destinationReference: string | null;
+  destinationLocation?: CaronaaStsFormData["destinationLocation"];
   originNeighborhood: string | null;
+  originLocation?: CaronaaStsFormData["originLocation"];
   departureWindow: NonNullable<CaronaaStsFormData["departureWindow"]> | null;
   occupation: CaronaaStsFormData["occupation"] | null;
   occupationDetails: string | null;
@@ -127,8 +129,10 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
     destinationNeighborhood: data.destinationNeighborhood.trim(),
 
     destinationReference: cleanString(data.destinationReference),
+    destinationLocation: data.destinationLocation ?? null,
 
     originNeighborhood: cleanString(data.originNeighborhood),
+    originLocation: data.originLocation ?? null,
 
     departureWindow: data.departureWindow,
 
@@ -213,6 +217,7 @@ const rawPayloadAllowlist = new Set([
   "maxDetourMinutes", "driverTrustFactors", "driverPrice", "caronaaFee",
   "driverNetAmount", "familyCarCompanions", "driverInterest", "driverCommitment",
   "occupationDetails", "eventPresenceDays", "eventPresenceCustom",
+  "originLocation", "destinationLocation",
 ]);
 
 /** Removes PII and values already stored in dedicated form_submissions columns from new raw payloads. */

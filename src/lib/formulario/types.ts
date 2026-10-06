@@ -56,6 +56,9 @@ export type PriceRange =
 
 export type CommitmentLevel = "SIM_HOJE" | "QUERO_VER_MATCH" | "NAO_HOJE";
 
+import type { FormLocationDetails } from "@/lib/location/types";
+export type { FormLocationDetails };
+
 export interface CaronaaStsFormData {
   source: string;
   campaign?: string | null | undefined;
@@ -64,7 +67,9 @@ export interface CaronaaStsFormData {
 
   destinationNeighborhood?: string | undefined;
   destinationReference?: string | undefined;
+  destinationLocation?: FormLocationDetails | undefined;
   originNeighborhood?: string | undefined;
+  originLocation?: FormLocationDetails | undefined;
   departureWindow?: DepartureWindow | undefined;
   occupation?: UserOccupation | undefined;
   occupationDetails?: string | undefined;

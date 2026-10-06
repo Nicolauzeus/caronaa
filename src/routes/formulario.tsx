@@ -389,7 +389,9 @@ function Formulario() {
             occupation={data.occupation}
             occupationDetails={data.occupationDetails}
             originNeighborhood={data.originNeighborhood}
+            originLocation={data.originLocation}
             destinationNeighborhood={data.destinationNeighborhood}
+            destinationLocation={data.destinationLocation}
             departureWindow={data.departureWindow}
             weeklyFrequency={data.weeklyFrequency}
             eventPresenceDays={data.eventPresenceDays}
@@ -412,9 +414,21 @@ function Formulario() {
                 originNeighborhood: value,
               })
             }
+            onOriginLocationChange={(value, details) =>
+              updateData({
+                originNeighborhood: value,
+                originLocation: details,
+              })
+            }
             onDestinationNeighborhoodChange={(value) =>
               updateData({
                 destinationNeighborhood: value,
+              })
+            }
+            onDestinationLocationChange={(value, details) =>
+              updateData({
+                destinationNeighborhood: value,
+                destinationLocation: details,
               })
             }
             onDepartureWindowChange={(value: DepartureWindow) =>

@@ -1,6 +1,8 @@
 import React from "react";
 import { Check, Sparkles, AlertCircle, Shield, Car, HeartHandshake, MapPin } from "lucide-react";
 import { STS_2026_CONFIG } from "@/lib/formulario/event-config";
+import { LocationAutocomplete } from "./LocationAutocomplete";
+import type { FormLocationDetails } from "@/lib/location/types";
 import type {
   CaronaaIntent,
   CostPeriod,
@@ -268,7 +270,9 @@ export function ProfileRouteStep({
   occupation,
   occupationDetails,
   originNeighborhood,
+  originLocation,
   destinationNeighborhood,
+  destinationLocation,
   departureWindow,
   weeklyFrequency,
   eventPresenceDays,
@@ -277,7 +281,9 @@ export function ProfileRouteStep({
   onOccupationChange,
   onOccupationDetailsChange,
   onOriginNeighborhoodChange,
+  onOriginLocationChange,
   onDestinationNeighborhoodChange,
+  onDestinationLocationChange,
   onDepartureWindowChange,
   onWeeklyFrequencyChange,
   onEventPresenceDaysChange,
@@ -291,7 +297,9 @@ export function ProfileRouteStep({
   occupation?: UserOccupation | undefined;
   occupationDetails?: string | undefined;
   originNeighborhood?: string | undefined;
+  originLocation?: FormLocationDetails | undefined;
   destinationNeighborhood?: string | undefined;
+  destinationLocation?: FormLocationDetails | undefined;
   departureWindow?: DepartureWindow | undefined;
   weeklyFrequency?: WeeklyFrequency | undefined;
   eventPresenceDays?: string[] | undefined;
@@ -300,7 +308,9 @@ export function ProfileRouteStep({
   onOccupationChange: (value: UserOccupation) => void;
   onOccupationDetailsChange?: (value: string) => void;
   onOriginNeighborhoodChange: (value: string) => void;
+  onOriginLocationChange?: (value: string, details?: FormLocationDetails) => void;
   onDestinationNeighborhoodChange: (value: string) => void;
+  onDestinationLocationChange?: (value: string, details?: FormLocationDetails) => void;
   onDepartureWindowChange: (value: DepartureWindow) => void;
   onWeeklyFrequencyChange: (value: WeeklyFrequency) => void;
   onEventPresenceDaysChange?: (value: string[]) => void;
@@ -318,6 +328,18 @@ export function ProfileRouteStep({
   // Preenchimento de atalho para o Centro de Eventos
   const fillMeetingPoint = () => {
     onOriginNeighborhoodChange(STS_2026_CONFIG.defaultMeetingPoint);
+    if (onOriginLocationChange) {
+      onOriginLocationChange(STS_2026_CONFIG.defaultMeetingPoint, {
+        rawText: STS_2026_CONFIG.defaultMeetingPoint,
+        formattedAddress: `${STS_2026_CONFIG.defaultMeetingPoint}, Fortaleza - CE`,
+        neighborhood: "Edson Queiroz",
+        city: "Fortaleza",
+        state: "CE",
+        lat: -3.7915,
+        lng: -38.4802,
+        providerId: "shortcut_cec",
+      });
+    }
   };
 
   // Toggle de dias de presença no evento
@@ -408,13 +430,20 @@ export function ProfileRouteStep({
             )}
           </div>
 
-          {/* Origem e Destino com campos simples e atalho */}
+          {/* Origem e Destino com autocomplete de localização e atalho */}
           <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="origin-input" className="text-sm font-semibold text-foreground">
-                  {originLabel} *
-                </label>
+            <LocationAutocomplete
+              id="origin-input"
+              label={originLabel}
+              required
+              value={originNeighborhood ?? ""}
+              selectedLocation={originLocation}
+              placeholder="Ex.: Centro de Eventos do Ceará, Aldeota, Benfica..."
+              onChange={(val, details) => {
+                onOriginNeighborhoodChange(val);
+                if (onOriginLocationChange) onOriginLocationChange(val, details);
+              }}
+              shortcutButton={
                 <button
                   type="button"
                   onClick={fillMeetingPoint}
@@ -423,33 +452,22 @@ export function ProfileRouteStep({
                   <MapPin size={13} />
                   📍 {STS_2026_CONFIG.defaultMeetingPoint}
                 </button>
-              </div>
-              <input
-                id="origin-input"
-                type="text"
-                value={originNeighborhood ?? ""}
-                onChange={(e) => onOriginNeighborhoodChange(e.target.value)}
-                placeholder="Ex.: Centro de Eventos do Ceará, Aldeota, Benfica..."
-                className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-sm outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
-              />
-            </div>
+              }
+            />
 
-            <div className="space-y-1.5">
-              <label htmlFor="destination-input" className="text-sm font-semibold text-foreground">
-                {destinationLabel} *
-              </label>
-              <input
-                id="destination-input"
-                type="text"
-                value={destinationNeighborhood ?? ""}
-                onChange={(e) => onDestinationNeighborhoodChange(e.target.value)}
-                placeholder="Ex.: UNIFOR, Aldeota, Messejana, Maracanaú, Eusébio..."
-                className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-sm outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Apenas o bairro ou região aproximada será usado para encontrar trajetos compatíveis.
-              </p>
-            </div>
+            <LocationAutocomplete
+              id="destination-input"
+              label={destinationLabel}
+              required
+              value={destinationNeighborhood ?? ""}
+              selectedLocation={destinationLocation}
+              placeholder="Ex.: UNIFOR, Aldeota, Messejana, Maracanaú, Eusébio..."
+              onChange={(val, details) => {
+                onDestinationNeighborhoodChange(val);
+                if (onDestinationLocationChange) onDestinationLocationChange(val, details);
+              }}
+              helperText="Apenas o bairro ou região aproximada será usado para encontrar trajetos compatíveis."
+            />
           </div>
 
           {/* Horário de saída */}
