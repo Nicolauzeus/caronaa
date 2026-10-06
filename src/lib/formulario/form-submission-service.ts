@@ -55,10 +55,13 @@ function normalizeInterest(value: InterestLevel | null) {
   }
 }
 
-function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionInsert {
+export function buildFormSubmissionRow(
+  payload: CaronaaStsSubmission,
+): FormSubmissionInsert & Record<string, unknown> {
   const includePassenger = payload.intent === "PASSAGEIRO" || payload.intent === "AMBOS";
   const includeDriver = payload.intent === "MOTORISTA" || payload.intent === "AMBOS";
 
+  // Derivação com múltiplos fallbacks — nunca deve restar null para os roles relevantes
   let passengerInterest = payload.passengerInterest;
   if (includePassenger && !passengerInterest) {
     if (payload.passengerIntention === "TALVEZ") passengerInterest = "TALVEZ";
@@ -72,7 +75,31 @@ function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionIn
     else driverInterest = "USARIA_HOJE";
   }
 
+  // Valores normalizados para o banco — garantia dupla com || "HOJE"
+  const intencaoPassageiro: string | null = includePassenger
+    ? normalizeInterest(passengerInterest) || "HOJE"
+    : null;
+
+  const intencaoMotorista: string | null = includeDriver
+    ? normalizeInterest(driverInterest) || "HOJE"
+    : null;
+
+  // Guarda: nunca envia null violando a constraint
+  if (includePassenger && !intencaoPassageiro) {
+    throw new Error(
+      "Erro interno: interesse do passageiro não pôde ser determinado. Tente novamente.",
+    );
+  }
+  if (includeDriver && !intencaoMotorista) {
+    throw new Error(
+      "Erro interno: interesse do motorista não pôde ser determinado. Tente novamente.",
+    );
+  }
+
+  const costPeriodNorm = normalizeCostPeriod(payload.costPeriod);
+
   return {
+    // 1. Colunas padrão da tabela form_submissions (compatibilidade com migração 0013 e insert direto)
     submission_id: payload.submissionId,
     source: payload.source,
     campaign: payload.campaign,
@@ -86,14 +113,41 @@ function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionIn
     frequencia_semanal: payload.weeklyFrequency,
     transporte_atual: payload.currentTransport,
     custo_atual_faixa: payload.routeCostRange,
-    custo_referencia: normalizeCostPeriod(payload.costPeriod),
-    intencao_passageiro: includePassenger ? (normalizeInterest(passengerInterest) ?? "HOJE") : null,
-    intencao_motorista: includeDriver ? (normalizeInterest(driverInterest) ?? "HOJE") : null,
+    custo_referencia: costPeriodNorm,
+    intencao_passageiro: intencaoPassageiro,
+    intencao_motorista: intencaoMotorista,
     nome: payload.name,
     whatsapp: payload.whatsapp,
     email: payload.email,
     consentimento: true,
     raw_payload: sanitizeSubmissionRawPayload(payload),
+
+    // 2. Chaves compatíveis com a RPC submit_form_response (migração 0017):
+    // A RPC no Supabase extrai:
+    // coalesce(p_submission ->> 'passengerInterest', p_submission ->> 'passenger_interest')::public.form_intencao
+    // coalesce(p_submission ->> 'driverInterest', p_submission ->> 'driver_interest')::public.form_intencao
+    // Se essas chaves não existirem no payload, a RPC insere NULL em intencao_passageiro / intencao_motorista!
+    passengerInterest: intencaoPassageiro,
+    passenger_interest: intencaoPassageiro,
+    driverInterest: intencaoMotorista,
+    driver_interest: intencaoMotorista,
+
+    // Outros campos lidos pela RPC 0017 via coalesce(camelCase, snake_case)
+    submissionId: payload.submissionId,
+    campaignEvent: payload.campaignEvent,
+    intent: payload.intent,
+    occupation: payload.occupation,
+    originNeighborhood: payload.originNeighborhood,
+    destinationNeighborhood: payload.destinationNeighborhood,
+    departureWindow: payload.departureWindow,
+    departure_window: payload.departureWindow,
+    weeklyFrequency: payload.weeklyFrequency,
+    weekly_frequency: payload.weeklyFrequency,
+    currentTransport: payload.currentTransport,
+    routeCostRange: payload.routeCostRange,
+    costPeriod: costPeriodNorm,
+    cost_period: costPeriodNorm,
+    name: payload.name,
   };
 }
 

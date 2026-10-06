@@ -117,5 +117,3 @@ function AdminFormsPage() {
     </div>
   );
 }
-
-export default AdminFormsPage;
