@@ -101,54 +101,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      submit_form_response: {
-        Args: {
-          p_submission: Json
-          p_pain_points: Json
-          p_anonymous_session_id?: string | null
-        }
-        Returns: string
-      }
-      create_ride_request: {
-        Args: {
-          p_origin: string
-          p_destination: string
-          p_ride_date: string
-          p_departure_time: string
-          p_passenger_count: number
-        }
-        Returns: string
-      }
-      create_ride_offer: {
-        Args: {
-          p_origin: string
-          p_destination: string
-          p_ride_date: string
-          p_departure_time: string
-          p_available_seats: number
-        }
-        Returns: string
-      }
-      transition_ride_status: {
-        Args: { p_ride_id: string; p_next_status: string }
-        Returns: string
-      }
-      get_acquisition_funnel_metrics: {
-        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_event?: string | null; p_profile?: string | null }
-        Returns: Json
-      }
-      get_main_funnel_metrics: {
-        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_event?: string | null; p_profile?: string | null; p_cohort_event?: string | null }
-        Returns: Json
-      }
-      get_operational_metrics: {
-        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_profile?: string | null; p_origin?: string | null; p_destination?: string | null; p_time_window?: string | null }
-        Returns: Json
-      }
-      get_retention_metrics: {
-        Args: { p_period_start?: string | null; p_period_end?: string | null; p_source?: string | null; p_campaign?: string | null; p_tipo_usuario?: string | null }
-        Returns: Json
-      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
