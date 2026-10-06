@@ -1,4 +1,4 @@
-﻿-- product_events is a business-event log, not a browser telemetry endpoint.
+-- product_events is a business-event log, not a browser telemetry endpoint.
 -- Browser page/form telemetry remains in funnel_events with its privacy-safe RLS policy.
 -- Contact and other column-backed values are stripped server-side before raw persistence.
 -- Replace legacy raw_payload campaign filters with the structured campaign column.
