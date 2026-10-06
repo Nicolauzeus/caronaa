@@ -102,8 +102,8 @@ export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): n
 /** Retorna o número total N de etapas principais ativas (excluindo contato/sucesso do questionário central) */
 export function getStepCount(data: CaronaaStsFormData): number {
   const active = getActiveSteps(data);
-  // As etapas de questionário antes de CONTACT
-  const questionsOnly = active.filter((s) => s !== "CONTACT");
+  // As etapas de questionário antes de CONTACT (excluindo telas de transição pura)
+  const questionsOnly = active.filter((s) => s !== "CONTACT" && s !== "PROPOSAL_TRANSITION");
   return questionsOnly.length || 5;
 }
 
@@ -115,11 +115,15 @@ export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFor
     return 100;
   }
 
-  const active = getActiveSteps(data).filter((s) => s !== "CONTACT");
-  const total = active.length;
+  const activeQuestions = getActiveSteps(data).filter((s) => s !== "CONTACT" && s !== "PROPOSAL_TRANSITION");
+  const total = activeQuestions.length;
   if (total === 0) return 0;
 
-  const currentIndex = active.indexOf(currentStep);
+  if (currentStep === "PROPOSAL_TRANSITION") {
+    return Math.round((1 / total) * 100);
+  }
+
+  const currentIndex = activeQuestions.indexOf(currentStep);
   if (currentIndex === -1) return 0;
 
   return Math.round(((currentIndex + 1) / total) * 100);

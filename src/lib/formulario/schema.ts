@@ -74,18 +74,10 @@ const priceRangeSchema = z.enum([
 
 const commitmentLevelSchema = z.enum(["SIM_HOJE", "QUERO_VER_MATCH", "NAO_HOJE"]);
 
-const formLocationDetailsSchema = z
-  .object({
-    rawText: z.string().trim().min(1).max(250),
-    formattedAddress: z.string().trim().max(300).optional(),
-    city: z.string().trim().max(100).optional(),
-    state: z.string().trim().max(20).optional(),
-    neighborhood: z.string().trim().max(100).optional(),
-    lat: z.number().optional(),
-    lng: z.number().optional(),
-    providerId: z.string().trim().max(250).optional(),
-  })
-  .optional();
+const proposalSenseSchema = z.enum(["POUCO", "MEDIO", "ALTO", "ALTISSIMO"]);
+const driverFutureOfferSchema = z.enum(["SIM", "TALVEZ", "NAO"]);
+const driverGenderPreferenceSchema = z.enum(["MASCULINO", "FEMININO", "OUTRO"]);
+const driverRealValidationSchema = z.enum(["COM_CERTEZA", "TALVEZ", "APENAS_STS"]);
 
 const baseSchema = z.object({
   source: z.string().trim().min(1).max(100),
@@ -96,14 +88,12 @@ const baseSchema = z.object({
   destinationNeighborhood: z
     .string()
     .trim()
-    .min(2, "Informe o bairro ou região de destino.")
+    .min(2, "Informe o bairro ou regiÃ£o de destino.")
     .max(120, "Destino muito longo."),
 
-  destinationReference: z.string().trim().max(160, "Ponto de referência muito longo.").optional(),
-  destinationLocation: formLocationDetailsSchema,
+  destinationReference: z.string().trim().max(160, "Ponto de referÃªncia muito longo.").optional(),
 
   originNeighborhood: z.string().trim().min(2, "Informe a origem aproximada do trajeto.").max(120, "Origem muito longa."),
-  originLocation: formLocationDetailsSchema,
 
   departureWindow: departureWindowSchema,
 
@@ -151,19 +141,28 @@ const baseSchema = z.object({
 
   vehicleType: vehicleTypeSchema.optional(),
 
-  availableSeats: z.number().int().min(1).max(6).optional(),
+  availableSeats: z.number().int().min(0).max(10).optional(),
 
   maxDetourMinutes: z.number().int().min(0).max(60).optional(),
 
   driverTrustFactors: z.array(trustFactorSchema).max(12).optional(),
 
-  driverPrice: z.number().finite().optional(),
+  driverPrice: z.number().finite().min(3.5).max(20500).optional(),
 
   caronaaFee: z.number().finite().optional(),
 
   driverNetAmount: z.number().finite().optional(),
 
   familyCarCompanions: z.number().int().min(0).max(10).optional(),
+
+  // Proposta e Validação Motorista
+  proposalSense: proposalSenseSchema.optional(),
+  driverFutureOffer: driverFutureOfferSchema.optional(),
+  driverComfortFactors: z.array(z.string().trim()).max(10).optional(),
+  driverGenderPreference: driverGenderPreferenceSchema.optional(),
+  driverBarriers: z.array(z.string().trim()).max(10).optional(),
+  driverBarriersCustom: z.string().trim().max(300).optional(),
+  driverRealValidation: driverRealValidationSchema.optional(),
 
   driverInterest: interestLevelSchema.optional(),
 
@@ -179,10 +178,66 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
         message: "Informe seu interesse em usar a CARONAA como passageiro.",
       });
     }
+
+    if (!data.currentTransport) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["currentTransport"],
+        message: "Informe como você faz esse trajeto atualmente.",
+      });
+    }
+
+    if (!data.routeCostRange) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["routeCostRange"],
+        message: "Informe quanto você costuma gastar nesse deslocamento.",
+      });
+    }
+
+    if (!data.costPeriod) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["costPeriod"],
+        message: "Informe se o gasto é por trecho ou por dia.",
+      });
+    }
+
+    if (!data.painPoints || data.painPoints.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["painPoints"],
+        message: "Selecione pelo menos uma resposta sobre os problemas do trajeto.",
+      });
+    }
+
+    if (!data.mainPainPoint) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mainPainPoint"],
+        message: "Informe qual problema mais incomoda você.",
+      });
+    }
+
+    if (data.mainPainPoint && !data.painPoints?.includes(data.mainPainPoint)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mainPainPoint"],
+        message: "A dor principal deve estar entre as opções selecionadas.",
+      });
+    }
+
+    if (!data.mainPainIntensity) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mainPainIntensity"],
+        message: "Informe quanto esse problema impacta sua rotina.",
+      });
+    }
   }
 
   if (data.intent === "MOTORISTA" || data.intent === "AMBOS") {
-    if (!data.driverInterest) {
+    if (!data.driverInterest && !data.driverRealValidation) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["driverInterest"],
@@ -211,75 +266,22 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["weeklyFrequency"],
-      message: "Informe a frequÃªncia semanal desse trajeto.",
+      message: "Informe a frequência semanal desse trajeto.",
     });
   }
 
-  if (!data.currentTransport) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["currentTransport"],
-      message: "Informe como vocÃª faz esse trajeto atualmente.",
-    });
-  }
-
-  if (!data.routeCostRange) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["routeCostRange"],
-      message: "Informe quanto vocÃª costuma gastar nesse deslocamento.",
-    });
-  }
-
-  if (!data.costPeriod) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["costPeriod"],
-      message: "Informe se o gasto Ã© por trecho ou por dia.",
-    });
-  }
-
-  if (!data.painPoints || data.painPoints.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["painPoints"],
-      message: "Selecione pelo menos uma resposta sobre os problemas do trajeto.",
-    });
-  }
-
-  if (!data.mainPainPoint) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["mainPainPoint"],
-      message: "Informe qual problema mais incomoda vocÃª.",
-    });
-  }
-
-  if (data.mainPainPoint && !data.painPoints?.includes(data.mainPainPoint)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["mainPainPoint"],
-      message: "A dor principal deve estar entre as opÃ§Ãµes selecionadas.",
-    });
-  }
-
-  if (!data.mainPainIntensity) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["mainPainIntensity"],
-      message: "Informe quanto esse problema impacta sua rotina.",
-    });
-  }
   if (!data.name || data.name.trim().length < 2) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["name"], message: "Informe seu nome." });
   }
   if (!data.whatsapp || data.whatsapp.replace(/\D/g, "").length < 10) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["whatsapp"], message: "Informe um WhatsApp vÃ¡lido." });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["whatsapp"], message: "Informe um WhatsApp válido." });
   }
 });
 
 const stepFields = {
   PROFILE_ROUTE: ["intent", "occupation", "originNeighborhood", "destinationNeighborhood", "departureWindow", "weeklyFrequency"],
+  PROPOSAL_TRANSITION: ["proposalSense"],
+  DRIVER_FLOW: ["vehicleType", "availableSeats", "driverPrice", "driverRealValidation"],
   CURRENT_PRICE: ["currentTransport", "routeCostRange", "costPeriod"],
   PROBLEMS: ["painPoints"],
   MAIN_PROBLEM: ["mainPainPoint", "mainPainIntensity"],
@@ -291,6 +293,7 @@ export type FormValidationStep = keyof typeof stepFields;
 
 export function validateFormStep(step: FormValidationStep, data: Record<string, unknown>) {
   const fields = stepFields[step];
+  if (!fields) return { success: true as const, data };
   const partial = baseSchema.pick(Object.fromEntries(fields.map((field) => [field, true])) as never);
   const parsed = partial.safeParse(data);
   if (!parsed.success) return parsed;
@@ -302,17 +305,34 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
     if (!value["intent"]) add("intent", "Escolha como pretende usar a CARONAA.");
     if (!value["occupation"]) add("occupation", "Informe seu perfil.");
     if (typeof value["originNeighborhood"] !== "string" || !value["originNeighborhood"].trim()) add("originNeighborhood", "Informe a origem aproximada do trajeto.");
-    if (!value["weeklyFrequency"]) add("weeklyFrequency", "Informe a frequÃªncia semanal desse trajeto.");
+    if (!value["weeklyFrequency"]) add("weeklyFrequency", "Informe a frequência semanal desse trajeto.");
+  }
+  if (step === "PROPOSAL_TRANSITION") {
+    if (!value["proposalSense"]) add("proposalSense", "Informe quanto essa proposta faz sentido para você.");
+  }
+  if (step === "DRIVER_FLOW") {
+    if (!value["vehicleType"]) add("vehicleType", "Selecione o veículo com o qual pretende se deslocar.");
+    if (value["availableSeats"] === undefined || value["availableSeats"] === null) add("availableSeats", "Informe o número de lugares disponíveis (0 a 10).");
+    const price = Number(value["driverPrice"]);
+    if (isNaN(price) || price < 3.5 || price > 20500) {
+      add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 20.500,00.");
+    }
+    if (Array.isArray(value["driverBarriers"]) && value["driverBarriers"].includes("OUTRA")) {
+      if (typeof value["driverBarriersCustom"] !== "string" || !value["driverBarriersCustom"].trim()) {
+        add("driverBarriersCustom", "Descreva sua principal dúvida ou questão.");
+      }
+    }
+    if (!value["driverRealValidation"]) add("driverRealValidation", "Informe se você toparia oferecer carona.");
   }
   if (step === "CURRENT_PRICE") {
-    if (!value["currentTransport"]) add("currentTransport", "Informe como vocÃª faz esse trajeto atualmente.");
+    if (!value["currentTransport"]) add("currentTransport", "Informe como você faz esse trajeto atualmente.");
     if (!value["routeCostRange"]) add("routeCostRange", "Informe quanto costuma gastar nesse deslocamento.");
-    if (!value["costPeriod"]) add("costPeriod", "Informe se o gasto Ã© por trecho ou por dia.");
+    if (!value["costPeriod"]) add("costPeriod", "Informe se o gasto é por trecho ou por dia.");
   }
   if (step === "PROBLEMS" && (!Array.isArray(value["painPoints"]) || value["painPoints"].length === 0)) add("painPoints", "Selecione pelo menos uma resposta sobre os problemas do trajeto.");
   if (step === "MAIN_PROBLEM") {
-    if (!value["mainPainPoint"]) add("mainPainPoint", "Informe qual problema mais incomoda vocÃª.");
-    else if (!Array.isArray(value["painPoints"]) || !value["painPoints"].includes(value["mainPainPoint"])) add("mainPainPoint", "A dor principal deve estar entre as opÃ§Ãµes selecionadas.");
+    if (!value["mainPainPoint"]) add("mainPainPoint", "Informe qual problema mais incomoda você.");
+    else if (!Array.isArray(value["painPoints"]) || !value["painPoints"].includes(value["mainPainPoint"])) add("mainPainPoint", "A dor principal deve estar entre as opções selecionadas.");
     if (!Number.isInteger(value["mainPainIntensity"]) || Number(value["mainPainIntensity"]) < 1 || Number(value["mainPainIntensity"]) > 5) add("mainPainIntensity", "Informe uma intensidade de 1 a 5.");
   }
   if (step === "INTEREST") {
@@ -321,7 +341,7 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
   }
   if (step === "CONTACT") {
     if (typeof value["name"] !== "string" || value["name"].trim().length < 2) add("name", "Informe seu nome.");
-    if (typeof value["whatsapp"] !== "string" || value["whatsapp"].replace(/\D/g, "").length < 10) add("whatsapp", "Informe um WhatsApp vÃ¡lido.");
+    if (typeof value["whatsapp"] !== "string" || value["whatsapp"].replace(/\D/g, "").length < 10) add("whatsapp", "Informe um WhatsApp válido.");
   }
   return Object.keys(errors).length ? { success: false as const, errors } : { success: true as const, data };
 }

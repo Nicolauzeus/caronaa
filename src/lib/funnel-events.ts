@@ -15,7 +15,11 @@ export type ClientFunnelEventName =
   | "form_role_selected"
   | "form_route_started"
   | "form_route_completed"
-  | "form_event_presence_completed";
+  | "form_event_presence_completed"
+  | "form_driver_interest"
+  | "form_driver_vehicle_selected"
+  | "form_driver_seats_selected"
+  | "form_price_input";
 
 export type CampaignAttribution = {
   source: string;
@@ -182,8 +186,14 @@ export async function trackFunnelEvent({
     window.localStorage.setItem(deduplicationKey, "1");
   }
 
+  const isStandardDbEvent = (
+    name: string,
+  ): name is "landing_view" | "form_started" | "form_step_completed" | "form_completed" | "lead_created" => {
+    return ["landing_view", "form_started", "form_step_completed", "form_completed", "lead_created"].includes(name);
+  };
+
   const row: FunnelEventInsert = {
-    event_name: eventName,
+    event_name: isStandardDbEvent(eventName) ? eventName : "form_step_completed",
     anonymous_session_id: anonymousSessionId,
     user_id: userId,
     source,
@@ -192,7 +202,10 @@ export async function trackFunnelEvent({
     form_step: formStep,
     submission_id: submissionId,
     device_category: getDeviceCategory(),
-    metadata,
+    metadata: {
+      ...metadata,
+      clientEventName: eventName,
+    },
   };
 
   const { error } = await supabase.from("funnel_events").insert(row);

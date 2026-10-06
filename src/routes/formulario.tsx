@@ -5,6 +5,8 @@ import { AppShell } from "@/components/caronaa/AppShell";
 import { FormIntro } from "@/components/formulario/FormIntro";
 import { ContactStep } from "@/components/formulario/ContactStep";
 import { FormSuccess } from "@/components/formulario/FormSuccess";
+import { ProposalTransitionStep } from "@/components/formulario/ProposalTransitionStep";
+import { DriverFlow } from "@/components/formulario/DriverFlow";
 import {
   CurrentPriceStep,
   InterestStep,
@@ -17,10 +19,15 @@ import type {
   CaronaaStsFormData,
   CaronaaIntent,
   DepartureWindow,
+  DriverFutureOffer,
+  DriverGenderPreference,
+  DriverRealValidation,
   InterestLevel,
   PainPointCode,
   PassengerTransport,
+  ProposalSense,
   UserOccupation,
+  VehicleType,
   WeeklyFrequency,
 } from "@/lib/formulario/types";
 
@@ -213,6 +220,65 @@ function Formulario() {
     updateData({ intent });
     sendFunnelEvent("form_role_selected", { role: intent });
   }
+
+  const priceInputTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (priceInputTimeoutRef.current) {
+        clearTimeout(priceInputTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleProposalSenseChange = React.useCallback(
+    (value: ProposalSense) => {
+      updateData({ proposalSense: value });
+      sendFunnelEvent("form_driver_interest", { level: value });
+    },
+    [sendFunnelEvent],
+  );
+
+  const handleVehicleTypeChange = React.useCallback(
+    (value: VehicleType) => {
+      updateData({ vehicleType: value });
+      sendFunnelEvent("form_driver_vehicle_selected", { vehicle: value });
+    },
+    [sendFunnelEvent],
+  );
+
+  const handleAvailableSeatsChange = React.useCallback(
+    (value: number) => {
+      updateData({ availableSeats: value });
+      sendFunnelEvent("form_driver_seats_selected", { seats: value });
+    },
+    [sendFunnelEvent],
+  );
+
+  const handleDriverPriceChange = React.useCallback(
+    (value: number) => {
+      updateData({ driverPrice: value });
+      if (priceInputTimeoutRef.current) {
+        clearTimeout(priceInputTimeoutRef.current);
+      }
+      priceInputTimeoutRef.current = setTimeout(() => {
+        sendFunnelEvent("form_price_input", { price: value });
+      }, 600);
+    },
+    [sendFunnelEvent],
+  );
+
+  const handleDriverRealValidationChange = React.useCallback(
+    (value: DriverRealValidation) => {
+      const mappedInterest: InterestLevel =
+        value === "COM_CERTEZA" ? "USARIA_HOJE" : value === "TALVEZ" ? "TALVEZ" : "USARIA_HOJE";
+      updateData({
+        driverRealValidation: value,
+        driverInterest: mappedInterest,
+      });
+    },
+    [],
+  );
 
   function goNext() {
     if (step !== "INTRO" && step !== "SUCCESS") {
@@ -452,6 +518,45 @@ function Formulario() {
             }
             onNext={goNext}
             onBack={() => setStep("INTRO")}
+          />
+        ) : null}
+
+        {step === "PROPOSAL_TRANSITION" ? (
+          <ProposalTransitionStep
+            intent={data.intent}
+            proposalSense={data.proposalSense}
+            onProposalSenseChange={handleProposalSenseChange}
+            onNext={goNext}
+            onBack={goBack}
+            stepNumber={currentStepNumber}
+            totalSteps={totalSteps}
+          />
+        ) : null}
+
+        {step === "DRIVER_FLOW" ? (
+          <DriverFlow
+            vehicleType={data.vehicleType}
+            availableSeats={data.availableSeats}
+            driverFutureOffer={data.driverFutureOffer}
+            driverComfortFactors={data.driverComfortFactors}
+            driverGenderPreference={data.driverGenderPreference}
+            driverPrice={data.driverPrice}
+            driverBarriers={data.driverBarriers}
+            driverBarriersCustom={data.driverBarriersCustom}
+            driverRealValidation={data.driverRealValidation}
+            onVehicleTypeChange={handleVehicleTypeChange}
+            onAvailableSeatsChange={handleAvailableSeatsChange}
+            onDriverFutureOfferChange={(value) => updateData({ driverFutureOffer: value })}
+            onDriverComfortFactorsChange={(value) => updateData({ driverComfortFactors: value })}
+            onDriverGenderPreferenceChange={(value) => updateData({ driverGenderPreference: value })}
+            onDriverPriceChange={handleDriverPriceChange}
+            onDriverBarriersChange={(value) => updateData({ driverBarriers: value })}
+            onDriverBarriersCustomChange={(value) => updateData({ driverBarriersCustom: value })}
+            onDriverRealValidationChange={handleDriverRealValidationChange}
+            onNext={goNext}
+            onBack={goBack}
+            stepNumber={currentStepNumber}
+            totalSteps={totalSteps}
           />
         ) : null}
 

@@ -57,6 +57,14 @@ export type CaronaaStsSubmission = {
   driverInterest: CaronaaStsFormData["driverInterest"] | null;
   driverCommitment: CaronaaStsFormData["driverCommitment"] | null;
 
+  proposalSense: CaronaaStsFormData["proposalSense"] | null;
+  driverFutureOffer: CaronaaStsFormData["driverFutureOffer"] | null;
+  driverComfortFactors: CaronaaStsFormData["driverComfortFactors"] | null;
+  driverGenderPreference: CaronaaStsFormData["driverGenderPreference"] | null;
+  driverBarriers: CaronaaStsFormData["driverBarriers"] | null;
+  driverBarriersCustom: string | null;
+  driverRealValidation: CaronaaStsFormData["driverRealValidation"] | null;
+
   submissionId: string;
   createdAt: string;
 };
@@ -196,6 +204,14 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     driverCommitment: includeDriver ? (data.driverCommitment ?? null) : null,
 
+    proposalSense: data.proposalSense ?? null,
+    driverFutureOffer: data.driverFutureOffer ?? null,
+    driverComfortFactors: data.driverComfortFactors ?? null,
+    driverGenderPreference: data.driverGenderPreference ?? null,
+    driverBarriers: data.driverBarriers ?? null,
+    driverBarriersCustom: cleanString(data.driverBarriersCustom),
+    driverRealValidation: data.driverRealValidation ?? null,
+
     submissionId: data.submissionId ?? createSubmissionId(),
 
     createdAt: data.createdAt ?? new Date().toISOString(),
@@ -218,6 +234,8 @@ const rawPayloadAllowlist = new Set([
   "driverNetAmount", "familyCarCompanions", "driverInterest", "driverCommitment",
   "occupationDetails", "eventPresenceDays", "eventPresenceCustom",
   "originLocation", "destinationLocation",
+  "proposalSense", "driverFutureOffer", "driverComfortFactors", "driverGenderPreference",
+  "driverBarriers", "driverBarriersCustom", "driverRealValidation",
 ]);
 
 /** Removes PII and values already stored in dedicated form_submissions columns from new raw payloads. */
