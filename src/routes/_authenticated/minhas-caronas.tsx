@@ -5,9 +5,12 @@ import { ArrowRight, CalendarDays, CarFront, Clock3, MapPin, Plus, UsersRound } 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
-import { myDriverRides, myPassengerRides, currentUser } from "@/mockData";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { createRideRequest } from "@/lib/ride-matching.functions";
+import { getMyRides, type RideSummary } from "@/lib/rides.functions";
+import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
+import type { RideStatus } from "@/lib/ride-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -42,29 +45,38 @@ const initialForm: FormState = {
 
 function MinhasCaronas() {
   const publishRequest = useServerFn(createRideRequest);
+  const loadMyRides = useServerFn(getMyRides);
   const [tab, setTab] = useState<"pedidos" | "disponiveis">("pedidos");
   const [form, setForm] = useState(initialForm);
-  const [offered, setOffered] = useState<{
-    origin: string;
-    destination: string;
-    date: string;
-    time: string;
-    seats: string;
-  } | null>(null);
-  useEffect(() => {
+  const [passengerRides, setPassengerRides] = useState<RideSummary[]>([]);
+  const [driverRides, setDriverRides] = useState<RideSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refreshRides() {
+    setLoading(true);
+    setError(null);
     try {
-      const value = sessionStorage.getItem("caronaa-offered-ride");
-      if (value) setOffered(JSON.parse(value));
-    } catch {
-      /* session storage is optional in previews */
+      const data = await loadMyRides();
+      setPassengerRides(data.passenger);
+      setDriverRides(data.driver);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar suas viagens.");
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }
+
+  useEffect(() => {
+    void refreshRides();
+  }, [loadMyRides]);
+
   const update = (key: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
   async function submit(event: FormEvent) {
     event.preventDefault();
     try {
-      const { requestId } = await publishRequest({
+      await publishRequest({
         data: {
           origin: form.origin,
           destination: form.destination,
@@ -73,21 +85,17 @@ function MinhasCaronas() {
           passengerCount: Number(form.seats),
         },
       });
-      try {
-        sessionStorage.setItem("caronaa-requested-ride", JSON.stringify({ ...form, rideId: requestId }));
-      } catch {
-        // The request is already persisted; browser storage is only a display hint.
-      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível publicar o pedido.");
       return;
     }
-    toast.success("Pedido publicado", {
-      description: "Seu trajeto já está disponível para a comunidade.",
-    });
-    setForm(initialForm);
-  }
-  const items = tab === "pedidos" ? myPassengerRides : myDriverRides;
+      toast.success("Pedido publicado", {
+        description: "Seu trajeto já está disponível para a comunidade.",
+      });
+      setForm(initialForm);
+      void refreshRides();
+    }
+  const items = tab === "pedidos" ? passengerRides : driverRides;
   return (
     <AppShell>
       <PageHeading
@@ -202,29 +210,41 @@ function MinhasCaronas() {
       <div className="mt-7 border-b border-border">
         <div className="flex gap-5">
           <Tab active={tab === "pedidos"} onClick={() => setTab("pedidos")}>
-            Meus pedidos ({myPassengerRides.length})
+            Meus pedidos ({passengerRides.length})
           </Tab>
           <Tab active={tab === "disponiveis"} onClick={() => setTab("disponiveis")}>
-            Caronas disponíveis ({myDriverRides.length})
+            Minhas ofertas ({driverRides.length})
           </Tab>
         </div>
       </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {tab === "disponiveis" && offered && (
-          <Trip
-            origin={offered.origin}
-            destination={offered.destination}
-            date={offered.date}
-            time={offered.time}
-            driver="Você está dirigindo"
-            status="Publicada"
-            photo={currentUser.photo}
-          />
-        )}
-        {items.map((item) => (
-          <Trip key={item.id} {...item} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="mt-5 rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          Carregando suas viagens...
+        </div>
+      ) : error ? (
+        <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center text-sm text-destructive">
+          {error}
+        </div>
+      ) : items.length ? (
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {items.map((item) => (
+            <Trip key={item.id} ride={item} onChanged={refreshRides} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-lg border border-dashed border-border p-8 text-center">
+          <p className="font-bold">
+            {tab === "pedidos"
+              ? "Você ainda não tem pedidos de carona."
+              : "Você ainda não publicou ofertas de carona."}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {tab === "pedidos"
+              ? "Publique um pedido ou explore caronas disponíveis."
+              : "Ofereça uma carona para aparecer nesta lista."}
+          </p>
+        </div>
+      )}
       <div className="mt-6 flex justify-end">
         <Button asChild variant="outline" size="sm">
           <Link to="/buscar">
@@ -285,53 +305,136 @@ function Field({
     </label>
   );
 }
-function Trip({
-  origin,
-  destination,
-  date,
-  time,
-  driver,
-  status,
-  photo,
-}: {
-  origin: string;
-  destination: string;
-  date: string;
-  time: string;
-  driver: string;
-  status: string;
-  photo: string;
-}) {
+function formatDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value || "Data não informada";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    open: "Aberto",
+    matched: "Com match",
+    available: "Publicada",
+    full: "Lotada",
+    MATCHED: "Match criado",
+    CONFIRMED: "Confirmada",
+    IN_PROGRESS: "Em andamento",
+    COMPLETED: "Concluída",
+    CANCELLED: "Cancelada",
+    NO_SHOW: "Não compareceu",
+  };
+  return labels[status] ?? status;
+}
+
+function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join("")
+      .toUpperCase() || "CA"
+  );
+}
+
+function nextActions(status: string): Array<{ label: string; status: RideStatus; variant?: "outline" }> {
+  if (status === "MATCHED") {
+    return [
+      { label: "Confirmar", status: "CONFIRMED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ];
+  }
+
+  if (status === "CONFIRMED") {
+    return [
+      { label: "Iniciar", status: "IN_PROGRESS" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ];
+  }
+
+  if (status === "IN_PROGRESS") {
+    return [
+      { label: "Concluir", status: "COMPLETED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ];
+  }
+
+  return [];
+}
+
+function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise<void> }) {
   const [details, setDetails] = useState(false);
+  const [updating, setUpdating] = useState<RideStatus | null>(null);
+  const person =
+    ride.role === "driver"
+      ? ride.passenger
+      : ride.driver ?? ride.passenger;
+  const name =
+    ride.role === "driver"
+      ? person?.fullName || "Passageiro"
+      : person?.fullName || "Você";
+  const actions = ride.rideId ? nextActions(ride.status) : [];
+
+  async function updateStatus(nextStatus: RideStatus) {
+    if (!ride.rideId) return;
+    setUpdating(nextStatus);
+    try {
+      const result = await transitionRideStatus(ride.rideId, nextStatus);
+      toast.success(
+        result === "AWAITING_OTHER_PARTICIPANT"
+          ? "Confirmação registrada"
+          : "Viagem atualizada",
+        {
+          description:
+            result === "AWAITING_OTHER_PARTICIPANT"
+              ? "A conclusão será efetivada quando a outra pessoa confirmar."
+              : `Novo status: ${statusLabel(String(result))}.`,
+        },
+      );
+      await onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a viagem.");
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   return (
     <article className="card-interactive rounded-xl border border-border bg-card p-4 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
           <CalendarDays size={15} className="text-primary" />
-          {date}
+          {formatDate(ride.rideDate)}
         </span>
         <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-primary">
-          {status}
+          {statusLabel(ride.status)}
         </span>
       </div>
       <div className="mt-4 flex items-center gap-3 text-lg font-extrabold">
-        <span>{origin}</span>
+        <span>{ride.origin}</span>
         <ArrowRight size={16} className="shrink-0 text-primary" />
-        <span>{destination}</span>
+        <span>{ride.destination}</span>
       </div>
       <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-        <Clock3 size={14} /> Saída às {time}
+        <Clock3 size={14} /> Saída às {ride.departureTime}
       </p>
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-2">
-          <img
-            src={photo}
-            alt=""
-            width={32}
-            height={32}
-            className="size-8 rounded-full object-cover"
-          />
-          <span className="text-sm font-semibold">{driver}</span>
+          <Avatar className="size-8">
+            {person?.avatarUrl ? (
+              <AvatarImage src={person.avatarUrl} alt={name} className="object-cover" />
+            ) : null}
+            <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-semibold">
+            {ride.role === "driver" ? `Passageiro: ${name}` : name}
+          </span>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setDetails((value) => !value)}>
           {details ? "Ocultar" : "Detalhes"} <ArrowRight size={15} />
@@ -340,10 +443,11 @@ function Trip({
       {details && (
         <div className="mt-3 space-y-2 rounded-lg bg-secondary p-3 text-sm text-muted-foreground">
           <p className="flex items-center gap-2">
-            <MapPin size={15} /> {origin} → {destination}
+            <MapPin size={15} /> {ride.origin} → {ride.destination}
           </p>
           <p className="flex items-center gap-2">
-            <UsersRound size={15} /> Viagem compartilhada
+            <UsersRound size={15} />{" "}
+            {ride.seatsRemaining ?? ride.seats} {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
           </p>
           <p>
             <CarFront size={15} className="mr-2 inline" />
@@ -351,6 +455,22 @@ function Trip({
           </p>
         </div>
       )}
+      {actions.length ? (
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          {actions.map((action) => (
+            <Button
+              key={action.status}
+              type="button"
+              size="sm"
+              variant={action.variant}
+              disabled={updating !== null}
+              onClick={() => void updateStatus(action.status)}
+            >
+              {updating === action.status ? "Atualizando..." : action.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
     </article>
   );
 }

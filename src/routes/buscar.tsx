@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, MapPin, Search, SlidersHorizontal, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { RideCard } from "@/components/caronaa/RideCard";
 import { Button } from "@/components/ui/button";
-import { rideService } from "@/mockData";
+import { searchRideOffers, type RideSummary } from "@/lib/rides.functions";
 export const Route = createFileRoute("/buscar")({
   head: () => ({
     meta: [
@@ -26,12 +27,12 @@ export const Route = createFileRoute("/buscar")({
   component: Buscar,
 });
 function Buscar() {
+  const searchOffers = useServerFn(searchRideOffers);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [passengers, setPassengers] = useState("1");
-  const [filter, setFilter] = useState("Todas");
   const [submitted, setSubmitted] = useState({
     origin: "",
     destination: "",
@@ -39,6 +40,10 @@ function Buscar() {
     time: "",
     passengers: "1",
   });
+  const [matches, setMatches] = useState<RideSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const from = params.get("origem") || "";
@@ -51,23 +56,37 @@ function Buscar() {
       setSubmitted({ origin: from, destination: to, date: when, time: "", passengers: "1" });
     }
   }, []);
-  const matches = rideService
-    .list()
-    .filter(
-      (r) =>
-        (filter === "Todas" || r.type === filter) &&
-        (!submitted.origin || r.origin.toLowerCase().includes(submitted.origin.toLowerCase())) &&
-        (!submitted.destination ||
-          r.destination.toLowerCase().includes(submitted.destination.toLowerCase())) &&
-        r.seats >= Number(submitted.passengers) &&
-        (!submitted.date ||
-          (submitted.date.endsWith("-10-03")
-            ? r.date.includes("03 out")
-            : submitted.date.endsWith("-10-04")
-              ? r.date.includes("04 out")
-              : false)) &&
-        (!submitted.time || r.time >= submitted.time),
-    );
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    void searchOffers({
+      data: {
+        origin: submitted.origin || undefined,
+        destination: submitted.destination || undefined,
+        rideDate: submitted.date || undefined,
+        departureTime: submitted.time || undefined,
+        passengerCount: Number(submitted.passengers) || 1,
+      },
+    })
+      .then((data) => {
+        if (active) setMatches(data);
+      })
+      .catch((searchError) => {
+        if (!active) return;
+        setMatches([]);
+        setError(searchError instanceof Error ? searchError.message : "Não foi possível buscar caronas.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [searchOffers, submitted]);
+
   return (
     <AppShell>
       <PageHeading
@@ -137,16 +156,9 @@ function Buscar() {
       </form>
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <SlidersHorizontal size={17} className="mr-1 text-muted-foreground" />
-        {["Todas", "Urbana", "Intermunicipal"].map((option) => (
-          <Button
-            key={option}
-            variant={filter === option ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(option)}
-          >
-            {option}
-          </Button>
-        ))}
+        <span className="text-sm text-muted-foreground">
+          Matching real por origem, destino, data, horário e vagas.
+        </span>
         <label className="ml-auto flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <UsersRound size={16} /> Passageiros{" "}
           <select
@@ -167,14 +179,26 @@ function Buscar() {
         <div>
           <h2 className="font-display text-xl font-extrabold">Caronas disponíveis</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {matches.length} {matches.length === 1 ? "trajeto encontrado" : "trajetos encontrados"}
+            {loading
+              ? "Buscando trajetos..."
+              : `${matches.length} ${matches.length === 1 ? "trajeto encontrado" : "trajetos encontrados"}`}
           </p>
         </div>
       </div>
-      {matches.length ? (
+      {loading ? (
+        <div className="rounded-lg border border-border bg-card py-16 text-center text-sm text-muted-foreground">
+          Carregando caronas disponíveis...
+        </div>
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 py-16 text-center">
+          <Search className="mx-auto mb-3 text-destructive" />
+          <p className="font-bold text-destructive">Não foi possível buscar caronas</p>
+          <p className="mt-1 text-sm text-destructive/80">{error}</p>
+        </div>
+      ) : matches.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {matches.map((ride) => (
-            <RideCard key={ride.id} ride={ride} />
+            <RideCard key={ride.id} ride={ride} passengerCount={Number(submitted.passengers) || 1} />
           ))}
         </div>
       ) : (
@@ -194,7 +218,6 @@ function Buscar() {
               setTime("");
               setPassengers("1");
               setSubmitted({ origin: "", destination: "", date: "", time: "", passengers: "1" });
-              setFilter("Todas");
             }}
           >
             Limpar filtros
