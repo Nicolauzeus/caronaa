@@ -56,3 +56,4 @@ CREATE INDEX IF NOT EXISTS idx_pitch_contacts_created_at ON public.pitch_contact
 CREATE INDEX IF NOT EXISTS idx_pitch_contacts_interest ON public.pitch_contacts (interest);
 CREATE INDEX IF NOT EXISTS idx_pitch_contacts_status ON public.pitch_contacts (status);
 CREATE INDEX IF NOT EXISTS idx_pitch_contacts_suggestion_status ON public.pitch_contacts (suggestion_status);
+

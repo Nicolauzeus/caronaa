@@ -42,7 +42,7 @@ import {
   PartnershipType,
   PitchInterest,
 } from "@/lib/pitch/types";
-import { PitchFormValues, pitchFormSchema } from "@/lib/pitch/schema";
+import { PitchFormValues, formatBrazilianPhoneNumber, pitchFormSchema } from "@/lib/pitch/schema";
 import { savePitchContact } from "@/lib/pitch/pitch-service";
 import { cn } from "@/lib/utils";
 
@@ -446,12 +446,21 @@ export function PitchLandingPage() {
                         type="tel"
                         placeholder="(85) 99999-9999"
                         className="pl-9"
-                        {...register("whatsapp")}
+                        {...register("whatsapp", {
+                          onChange: (e) => {
+                            const formatted = formatBrazilianPhoneNumber(e.target.value);
+                            setValue("whatsapp", formatted);
+                          },
+                        })}
                       />
                     </div>
-                    {errors.whatsapp && (
+                    {errors.whatsapp ? (
                       <p className="text-xs text-destructive font-medium">
                         {errors.whatsapp.message}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">
+                        Informe com DDD (ex.: (85) 99999-9999)
                       </p>
                     )}
                   </div>
@@ -504,12 +513,21 @@ export function PitchLandingPage() {
                           type="tel"
                           placeholder="(85) 3333-3333"
                           className="pl-9"
-                          {...register("phone")}
+                          {...register("phone", {
+                            onChange: (e) => {
+                              const formatted = formatBrazilianPhoneNumber(e.target.value);
+                              setValue("phone", formatted);
+                            },
+                          })}
                         />
                       </div>
-                      {errors.phone && (
+                      {errors.phone ? (
                         <p className="text-xs text-destructive font-medium">
                           {errors.phone.message}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          Informe telefone fixo ou celular com DDD
                         </p>
                       )}
                     </div>

@@ -101,10 +101,14 @@ describe("Pitch Landing Page & Validation", () => {
       expect(
         screen.getByText("Selecione como gostaria de acompanhar a CARONAA."),
       ).toBeInTheDocument();
-      expect(screen.getByText("O nome deve ter no mínimo 2 caracteres.")).toBeInTheDocument();
-      expect(screen.getByText("Informe um número de WhatsApp válido.")).toBeInTheDocument();
       expect(
-        screen.getByText("Por favor, escreva uma breve mensagem ou sugestão."),
+        screen.getByText("Informe seu nome completo com pelo menos 3 letras."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Informe um número de WhatsApp válido com DDD (ex: (85) 99999-9999)."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Por favor, escreva sua mensagem ou sugestão (mínimo 3 caracteres)."),
       ).toBeInTheDocument();
       expect(
         screen.getByText("É necessário concordar com o contato para prosseguirmos."),
@@ -194,5 +198,42 @@ describe("Pitch Landing Page & Validation", () => {
     expect(screen.getByText("Conectado 🎉")).toBeInTheDocument();
 
     expect(saveSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Brazilian Phone Validation & Formatting Helpers", () => {
+    it("formats 10-digit and 11-digit numbers properly", async () => {
+      const { formatBrazilianPhoneNumber } = await import("@/lib/pitch/schema");
+
+      expect(formatBrazilianPhoneNumber("85999998888")).toBe("(85) 99999-8888");
+      expect(formatBrazilianPhoneNumber("8533334444")).toBe("(85) 3333-4444");
+      expect(formatBrazilianPhoneNumber("85")).toBe("85");
+      expect(formatBrazilianPhoneNumber("859")).toBe("(85) 9");
+      expect(formatBrazilianPhoneNumber("85999998888999")).toBe("(85) 99999-8888");
+    });
+
+    it("validates Brazilian phone numbers with valid DDDs and cell rules", async () => {
+      const { isValidBrazilianPhoneNumber } = await import("@/lib/pitch/schema");
+
+      // Valid numbers
+      expect(isValidBrazilianPhoneNumber("(85) 99999-8888")).toBe(true);
+      expect(isValidBrazilianPhoneNumber("85999998888")).toBe(true);
+      expect(isValidBrazilianPhoneNumber("8533334444")).toBe(true);
+      expect(isValidBrazilianPhoneNumber("11988887777")).toBe(true);
+
+      // Invalid DDD (00, 05, etc.)
+      expect(isValidBrazilianPhoneNumber("00999998888")).toBe(false);
+      expect(isValidBrazilianPhoneNumber("05999998888")).toBe(false);
+
+      // Repetitions
+      expect(isValidBrazilianPhoneNumber("11111111111")).toBe(false);
+      expect(isValidBrazilianPhoneNumber("00000000000")).toBe(false);
+
+      // Wrong length
+      expect(isValidBrazilianPhoneNumber("85999")).toBe(false);
+      expect(isValidBrazilianPhoneNumber("")).toBe(false);
+
+      // 11 digits without initial 9
+      expect(isValidBrazilianPhoneNumber("85888887777")).toBe(false);
+    });
   });
 });
