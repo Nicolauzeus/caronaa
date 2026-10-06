@@ -55,7 +55,7 @@ function Oferecer() {
     e.preventDefault();
     if (step === 2) {
       try {
-        const { offerId } = await publishOffer({
+        await publishOffer({
           data: {
             origin: form.origin,
             destination: form.destination,
@@ -64,11 +64,6 @@ function Oferecer() {
             availableSeats: Number(form.seats),
           },
         });
-        try {
-          sessionStorage.setItem("caronaa-offered-ride", JSON.stringify({ ...form, rideId: offerId }));
-        } catch {
-          // The offer is already persisted; browser storage is only a display hint.
-        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Não foi possível publicar a oferta.");
         return;
@@ -109,7 +104,7 @@ function Oferecer() {
             <h2 className="font-display text-2xl font-extrabold">Carona publicada!</h2>
             <p className="mx-auto mt-3 max-w-md text-muted-foreground">
               Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas caronas
-              nesta demonstração.
+              e já pode gerar matches reais com pedidos compatíveis.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button asChild>

@@ -14,47 +14,110 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
-import { currentUser } from "@/mockData";
-import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
-import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
+
+type AdminProfile = {
+  full_name: string;
+  avatar_url: string | null;
+};
 
 const navigation = [
-  { title: "Visão Geral", items: [{ label: "Dashboard", to: "/admin", icon: LayoutDashboard }] },
+  {
+    title: "Visão Geral",
+    items: [
+      {
+        label: "Dashboard",
+        to: "/admin",
+        icon: LayoutDashboard,
+      },
+    ],
+  },
   {
     title: "Operação",
     items: [
-      { label: "Caronas", to: "/admin/caronas", icon: Gauge },
-      { label: "Solicitações", to: "/admin/solicitacoes", icon: FileText },
-      { label: "Matching", to: "/admin/matching", icon: Activity },
+      {
+        label: "Caronas",
+        to: "/admin/caronas",
+        icon: Gauge,
+      },
+      {
+        label: "Solicitações",
+        to: "/admin/solicitacoes",
+        icon: FileText,
+      },
+      {
+        label: "Matching",
+        to: "/admin/matching",
+        icon: Activity,
+      },
     ],
   },
   {
     title: "Pessoas",
     items: [
-      { label: "Usuários", to: "/admin/usuarios", icon: Users },
-      { label: "Motoristas", to: "/admin/motoristas", icon: Building2 },
-      { label: "Passageiros", to: "/admin/passageiros", icon: Users },
+      {
+        label: "Usuários",
+        to: "/admin/usuarios",
+        icon: Users,
+      },
+      {
+        label: "Motoristas",
+        to: "/admin/motoristas",
+        icon: Building2,
+      },
+      {
+        label: "Passageiros",
+        to: "/admin/passageiros",
+        icon: Users,
+      },
     ],
   },
   {
     title: "Validação",
     items: [
-      { label: "Oportunidades", to: "/admin/oportunidades", icon: Gauge },
-      { label: "Formulários", to: "/admin/formularios", icon: FileText },
-      { label: "Respostas", to: "/admin/formularios/respostas", icon: FileText },
-      { label: "Validação", to: "/admin/validacao", icon: ShieldCheck },
+      {
+        label: "Oportunidades",
+        to: "/admin/oportunidades",
+        icon: Gauge,
+      },
+      {
+        label: "Formulários",
+        to: "/admin/formularios",
+        icon: FileText,
+      },
+      {
+        label: "Respostas",
+        to: "/admin/formularios/respostas",
+        icon: FileText,
+      },
+      {
+        label: "Validação",
+        to: "/admin/validacao",
+        icon: ShieldCheck,
+      },
     ],
   },
 ];
 
-function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+function AdminNav({
+  mobile = false,
+  onNavigate,
+}: {
+  mobile?: boolean;
+  onNavigate?: () => void;
+}) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
 
   return (
     <nav className="space-y-6" aria-label="Admin navigation">
@@ -63,34 +126,44 @@ function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
           <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground/80">
             {section.title}
           </p>
-          <div className="space-y-1">
-            {section.items.map(({ label, to, icon: Icon }) => {
-              const active = pathname === to || pathname.startsWith(`${to}/`);
 
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                    mobile ? "min-h-12" : "",
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon size={16} />
-                    {label}
-                  </span>
-                  <ChevronRight
-                    size={14}
-                    className={cn(active ? "text-primary-foreground" : "opacity-60")}
-                  />
-                </Link>
-              );
-            })}
+          <div className="space-y-1">
+            {section.items.map(
+              ({ label, to, icon: Icon }) => {
+                const active =
+                  pathname === to ||
+                  pathname.startsWith(`${to}/`);
+
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      mobile ? "min-h-12" : "",
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon size={16} />
+                      {label}
+                    </span>
+
+                    <ChevronRight
+                      size={14}
+                      className={cn(
+                        active
+                          ? "text-primary-foreground"
+                          : "opacity-60",
+                      )}
+                    />
+                  </Link>
+                );
+              },
+            )}
           </div>
         </div>
       ))}
@@ -98,34 +171,184 @@ function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
   );
 }
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+function getMetadataString(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+) {
+  const value = metadata?.[key];
+
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : null;
+}
+
+function getInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toUpperCase();
+
+  return initials || "AD";
+}
+
+export function AdminShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = useAuth();
+
   const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [profile, setProfile] = useState<AdminProfile | null>(
+    null,
+  );
+
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    if (!user?.id) {
+      setProfile(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!active) {
+        return;
+      }
+
+      if (error) {
+        console.error(
+          "[AdminShell] Não foi possível carregar o perfil do administrador.",
+          error,
+        );
+        setProfile(null);
+        return;
+      }
+
+      setProfile(
+        data
+          ? {
+              full_name: data.full_name ?? "",
+              avatar_url: data.avatar_url ?? null,
+            }
+          : null,
+      );
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const breadcrumb = useMemo(() => {
     const parts = pathname.split("/").filter(Boolean);
+
     if (!parts.length) {
       return "Dashboard";
     }
 
     return parts
       .map((segment) => segment.replace(/-/g, " "))
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .map(
+        (segment) =>
+          segment.charAt(0).toUpperCase() + segment.slice(1),
+      )
       .join(" / ");
   }, [pathname]);
+
+  const adminName = useMemo(() => {
+    const profileName = profile?.full_name?.trim();
+
+    if (profileName) {
+      return profileName;
+    }
+
+    const metadataName =
+      getMetadataString(
+        user?.user_metadata as
+          | Record<string, unknown>
+          | undefined,
+        "full_name",
+      ) ??
+      getMetadataString(
+        user?.user_metadata as
+          | Record<string, unknown>
+          | undefined,
+        "name",
+      );
+
+    if (metadataName) {
+      return metadataName;
+    }
+
+    const emailName = user?.email?.split("@")[0]?.trim();
+
+    return emailName || "Administrador";
+  }, [profile?.full_name, user]);
+
+  const adminAvatar = useMemo(() => {
+    if (profile?.avatar_url) {
+      return profile.avatar_url;
+    }
+
+    return (
+      getMetadataString(
+        user?.user_metadata as
+          | Record<string, unknown>
+          | undefined,
+        "avatar_url",
+      ) ??
+      getMetadataString(
+        user?.user_metadata as
+          | Record<string, unknown>
+          | undefined,
+        "picture",
+      )
+    );
+  }, [profile?.avatar_url, user]);
+
+  const adminInitials = useMemo(
+    () => getInitials(adminName),
+    [adminName],
+  );
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-[1680px] gap-5 p-3 md:p-5 lg:p-6">
         <aside className="hidden w-[280px] shrink-0 rounded-2xl border border-border bg-card/85 p-4 shadow-soft backdrop-blur-md lg:block">
           <div className="mb-6 flex items-center justify-between gap-3">
-            <Link to="/admin" className="inline-flex items-center gap-3">
-              <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-3"
+            >
+              <img
+                src={logoAsset.url}
+                alt="CARONAA"
+                className="h-11 w-auto object-contain"
+              />
+
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
                   Admin Center
                 </p>
               </div>
             </Link>
+
             <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
               live
             </span>
@@ -137,7 +360,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
               Segurança
             </p>
-            <p className="mt-2 text-sm font-semibold text-foreground">Controle administrativo</p>
+
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              Controle administrativo
+            </p>
+
             <p className="mt-1 text-xs text-muted-foreground">
               Acesso liberado para perfil com autorização ativa.
             </p>
@@ -158,11 +385,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 >
                   <Menu size={18} />
                 </Button>
+
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
                     CARONAA admin
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">{breadcrumb}</p>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {breadcrumb}
+                  </p>
                 </div>
               </div>
 
@@ -172,24 +403,37 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                     size={16}
                   />
+
                   <Input
                     aria-label="Busca global administrativa"
                     placeholder="Buscar usuário, carona ou protocolo"
                     className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
                   />
                 </div>
+
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
+
                   <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-2.5 py-1.5 text-[11px] font-semibold text-foreground">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     Ambiente: produção
                   </span>
-                  <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
+
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                  >
                     <Link to="/home">
-                      <ArrowLeft size={14} className="mr-1" />
+                      <ArrowLeft
+                        size={14}
+                        className="mr-1"
+                      />
                       Voltar ao app
                     </Link>
                   </Button>
+
                   <button
                     type="button"
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
@@ -197,14 +441,29 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   >
                     <Bell size={16} />
                   </button>
+
                   <div className="flex items-center gap-2 rounded-full border border-border bg-background p-1.5">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={currentUser.photo} alt={currentUser.name} />
-                      <AvatarFallback>{currentUser.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      {adminAvatar ? (
+                        <AvatarImage
+                          src={adminAvatar}
+                          alt={adminName}
+                        />
+                      ) : null}
+
+                      <AvatarFallback>
+                        {adminInitials}
+                      </AvatarFallback>
                     </Avatar>
-                    <div className="hidden text-left sm:block">
-                      <p className="text-xs font-semibold text-foreground">Admin</p>
-                      <p className="text-[10px] text-muted-foreground">Operação</p>
+
+                    <div className="hidden max-w-[150px] text-left sm:block">
+                      <p className="truncate text-xs font-semibold text-foreground">
+                        {adminName}
+                      </p>
+
+                      <p className="text-[10px] text-muted-foreground">
+                        Administrador
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -212,7 +471,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="px-0 py-5 md:py-6">{children}</main>
+          <main className="px-0 py-5 md:py-6">
+            {children}
+          </main>
         </div>
       </div>
 
@@ -227,19 +488,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               >
                 CARONAA Admin
               </Link>
+
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(false)}
+                aria-label="Fechar menu administrativo"
               >
                 <X size={18} />
               </Button>
             </div>
-            <AdminNav mobile onNavigate={() => setMobileOpen(false)} />
+
+            <AdminNav
+              mobile
+              onNavigate={() => setMobileOpen(false)}
+            />
           </div>
         </div>
       ) : null}
     </div>
-  );
-}
+  );}
