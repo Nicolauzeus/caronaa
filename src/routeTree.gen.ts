@@ -36,6 +36,8 @@ import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id
 import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
 import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
 import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -174,6 +176,16 @@ const AdminFormulariosRespostasIdRoute =
     path: '/formularios/respostas/$id',
     getParentRoute: () => AdminRoute,
   } as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -201,6 +213,8 @@ export interface FileRoutesByFullPath {
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/admin/formularios/respostas/': typeof AdminFormulariosRespostasIndexRoute
 }
 export interface FileRoutesByTo {
@@ -228,6 +242,8 @@ export interface FileRoutesByTo {
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/admin/formularios/respostas': typeof AdminFormulariosRespostasIndexRoute
 }
 export interface FileRoutesById {
@@ -258,6 +274,8 @@ export interface FileRoutesById {
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/admin/formularios/respostas/': typeof AdminFormulariosRespostasIndexRoute
 }
 export interface FileRouteTypes {
@@ -288,6 +306,8 @@ export interface FileRouteTypes {
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/admin/formularios/respostas/$id'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/admin/formularios/respostas/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -315,6 +335,8 @@ export interface FileRouteTypes {
     | '/admin/formularios'
     | '/admin/usuarios'
     | '/admin/formularios/respostas/$id'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/admin/formularios/respostas'
   id:
     | '__root__'
@@ -344,6 +366,8 @@ export interface FileRouteTypes {
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/admin/formularios/respostas/$id'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/admin/formularios/respostas/'
   fileRoutesById: FileRoutesById
 }
@@ -360,6 +384,8 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -553,6 +579,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFormulariosRespostasIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -626,6 +666,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

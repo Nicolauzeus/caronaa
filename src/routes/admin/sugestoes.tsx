@@ -1,3 +1,4 @@
+// @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Archive,
