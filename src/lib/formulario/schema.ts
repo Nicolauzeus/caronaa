@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { MIN_DRIVER_PRICE } from "./pricing";
 
-const intentSchema = z.enum(["MOTORISTA", "PASSAGEIRO", "AMBOS"]);
+const intentSchema = z.enum(["MOTORISTA", "PASSAGEIRO", "AMBOS"], {
+  required_error: "Escolha como você deseja participar.",
+  invalid_type_error: "Escolha como você deseja participar.",
+});
 
-const vehicleTypeSchema = z.enum(["CARRO_PROPRIO", "CARRO_COMPARTILHADO", "MOTO"]);
+const vehicleTypeSchema = z.enum(["CARRO_PROPRIO", "CARRO_COMPARTILHADO", "MOTO"], {
+  required_error: "Selecione o tipo de veículo.",
+  invalid_type_error: "Selecione o tipo de veículo.",
+});
 
 const passengerTransportSchema = z.enum([
   "ONIBUS",
@@ -19,9 +25,15 @@ const passengerTransportSchema = z.enum([
   "OUTRO",
 ]);
 
-const departureWindowSchema = z.enum(["ANTES_18", "18_19", "19_20", "20_21", "21_22", "APOS_22"]);
+const departureWindowSchema = z.enum(["ANTES_18", "18_19", "19_20", "20_21", "21_22", "APOS_22"], {
+  required_error: "Selecione o horário previsto de saída.",
+  invalid_type_error: "Selecione o horário previsto de saída.",
+});
 
-const occupationSchema = z.enum(["ESTUDANTE", "TRABALHADOR", "ESTUDANTE_TRABALHADOR", "OUTRO"]);
+const occupationSchema = z.enum(["ESTUDANTE", "TRABALHADOR", "ESTUDANTE_TRABALHADOR", "OUTRO"], {
+  required_error: "Informe seu perfil ou ocupação.",
+  invalid_type_error: "Informe seu perfil ou ocupação.",
+});
 
 const weeklyFrequencySchema = z.enum(["1_2", "3_4", "5_MAIS", "EVENTUAL"]);
 
@@ -90,10 +102,10 @@ const baseSchema = z.object({
   destinationNeighborhood: z
     .string()
     .trim()
-    .min(2, "Informe o bairro ou regiÃ£o de destino.")
+    .min(2, "Informe o bairro ou região de destino.")
     .max(120, "Destino muito longo."),
 
-  destinationReference: z.string().trim().max(160, "Ponto de referÃªncia muito longo.").optional(),
+  destinationReference: z.string().trim().max(160, "Ponto de referência muito longo.").optional(),
 
   originNeighborhood: z
     .string()
@@ -106,21 +118,26 @@ const baseSchema = z.object({
   occupation: occupationSchema,
   occupationDetails: z.string().trim().max(160, "Descrição muito longa.").optional(),
 
-  weeklyFrequency: weeklyFrequencySchema,
+  weeklyFrequency: weeklyFrequencySchema.optional(),
 
   eventPresenceDays: z.array(z.string().trim()).max(10).optional(),
   eventPresenceCustom: z.string().trim().max(200, "Texto muito longo.").optional(),
 
-  name: z.string().trim().min(2, "Informe seu nome.").max(120, "Nome muito longo.").optional(),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Informe como prefere ser chamado.")
+    .max(120, "Nome muito longo.")
+    .optional(),
 
   whatsapp: z
     .string()
     .trim()
-    .min(10, "Informe um WhatsApp vÃ¡lido.")
-    .max(20, "WhatsApp invÃ¡lido.")
+    .min(10, "Informe um WhatsApp válido com DDD.")
+    .max(20, "WhatsApp inválido.")
     .optional(),
 
-  email: z.string().trim().email("Informe um e-mail vÃ¡lido.").optional(),
+  email: z.string().trim().email("Informe um e-mail válido.").optional(),
 
   submissionId: z.string().uuid().optional(),
 
@@ -130,11 +147,11 @@ const baseSchema = z.object({
 
   passengerCount: z.number().int().min(1).max(6).optional(),
 
-  currentTransport: passengerTransportSchema,
+  currentTransport: passengerTransportSchema.optional(),
 
-  routeCostRange: routeCostRangeSchema,
+  routeCostRange: routeCostRangeSchema.optional(),
 
-  costPeriod: costPeriodSchema,
+  costPeriod: costPeriodSchema.optional(),
 
   painPoints: z.array(painPointSchema).max(8).optional(),
 
@@ -158,7 +175,7 @@ const baseSchema = z.object({
 
   driverTrustFactors: z.array(trustFactorSchema).max(12).optional(),
 
-  driverPrice: z.number().finite().min(3.5).max(20500).optional(),
+  driverPrice: z.number().finite().min(3.5).max(25.0).optional(),
 
   caronaaFee: z.number().finite().optional(),
 
@@ -192,6 +209,13 @@ const baseSchema = z.object({
   driverInterest: interestLevelSchema.optional(),
 
   driverCommitment: commitmentLevelSchema.optional(),
+
+  feedback: z.string().trim().max(500, "Comentário muito longo.").optional(),
+  termsAccepted: z.boolean().optional(),
+  privacyAccepted: z.boolean().optional(),
+  researchAccepted: z.boolean().optional(),
+  termsVersion: z.string().trim().max(50).optional(),
+  consentsTimestamp: z.string().optional(),
 });
 
 export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
@@ -366,34 +390,32 @@ export const caronaaStsFormSchema = baseSchema.superRefine((data, ctx) => {
     });
   }
 
-  if (!data.weeklyFrequency) {
+  if (!data.name || data.name.trim().length < 2) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["weeklyFrequency"],
-      message: "Informe a frequência semanal desse trajeto.",
+      path: ["name"],
+      message: "Informe como prefere ser chamado.",
     });
-  }
-
-  if (!data.name || data.name.trim().length < 2) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["name"], message: "Informe seu nome." });
   }
   if (!data.whatsapp || data.whatsapp.replace(/\D/g, "").length < 10) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["whatsapp"],
-      message: "Informe um WhatsApp válido.",
+      message: "Informe um WhatsApp válido com DDD.",
     });
   }
 });
 
 const stepFields = {
+  ROLE_SELECTION: ["intent"],
+  ROUTE_DETAILS: ["occupation", "originNeighborhood", "destinationNeighborhood", "departureWindow"],
+  EVENT_PRESENCE: ["eventPresenceDays"],
   PROFILE_ROUTE: [
     "intent",
     "occupation",
     "originNeighborhood",
     "destinationNeighborhood",
     "departureWindow",
-    "weeklyFrequency",
   ],
   PROPOSAL_TRANSITION: ["proposalSense"],
   DRIVER_FLOW: ["vehicleType", "availableSeats", "driverPrice", "driverRealValidation"],
@@ -418,7 +440,7 @@ const stepFields = {
   PROBLEMS: ["painPoints"],
   MAIN_PROBLEM: ["mainPainPoint", "mainPainIntensity"],
   INTEREST: ["passengerInterest", "driverInterest"],
-  CONTACT: ["name", "whatsapp", "email"],
+  CONTACT: ["name", "whatsapp", "email", "feedback", "termsAccepted", "privacyAccepted"],
 } as const;
 
 export type FormValidationStep = keyof typeof stepFields;
@@ -426,24 +448,96 @@ export type FormValidationStep = keyof typeof stepFields;
 export function validateFormStep(step: FormValidationStep, data: Record<string, unknown>) {
   const fields = stepFields[step];
   if (!fields) return { success: true as const, data };
+
+  const friendlyMessages: Record<string, string> = {
+    intent: "Escolha como você deseja participar.",
+    occupation: "Informe seu perfil ou ocupação.",
+    occupationDetails: "Descreva sua ocupação.",
+    originNeighborhood: "Informe a origem aproximada do trajeto.",
+    destinationNeighborhood: "Informe o destino aproximado do trajeto.",
+    departureWindow: "Selecione o horário previsto de saída.",
+    eventPresenceDays: "Selecione os dias em que você estará no evento.",
+    eventPresenceCustom: "Descreva sua disponibilidade.",
+    proposalSense: "Informe quanto essa proposta faz sentido para você.",
+    vehicleType: "Selecione o tipo de veículo.",
+    availableSeats: "Informe a quantidade de assentos disponíveis.",
+    driverPrice: "Informe o valor sugerido por vaga.",
+    driverRealValidation: "Informe se disponibilizaria a carona hoje.",
+    passengerTransports: "Selecione como costuma se deslocar.",
+    passengerTransportsCustom: "Especifique seu modo de transporte.",
+    passengerDifficulties: "Selecione suas dificuldades no deslocamento.",
+    passengerDifficultiesCustom: "Descreva sua principal dificuldade.",
+    passengerFairPrice: "Informe um valor justo para a carona.",
+    passengerIntention: "Informe sua intenção de pegar carona.",
+    dualPriority: "Informe qual possibilidade é mais importante para você hoje.",
+    name: "Informe como prefere ser chamado.",
+    whatsapp: "Informe um WhatsApp válido com DDD.",
+    feedback: "Deixe seu comentário, dúvida ou sugestão.",
+    termsAccepted: "É obrigatório aceitar os Termos de Uso.",
+    privacyAccepted: "É obrigatório aceitar a Política de Privacidade.",
+  };
+
+  const errors: Partial<Record<(typeof fields)[number], string>> = {};
+  const add = (field: (typeof fields)[number], message: string) => {
+    if (!errors[field]) {
+      errors[field] = message;
+    }
+  };
+
   const partial = baseSchema.pick(
     Object.fromEntries(fields.map((field) => [field, true])) as never,
   );
   const parsed = partial.safeParse(data);
-  if (!parsed.success) return parsed;
+  if (!parsed.success) {
+    parsed.error.issues.forEach((issue) => {
+      const field = String(issue.path[0] || "") as (typeof fields)[number];
+      if (
+        issue.message === "Required" ||
+        issue.message.toLowerCase().includes("required") ||
+        issue.code === "invalid_type"
+      ) {
+        add(field, friendlyMessages[field] || "Campo obrigatório.");
+      } else {
+        add(field, issue.message);
+      }
+    });
+  }
 
-  const errors: Partial<Record<(typeof fields)[number], string>> = {};
-  const add = (field: (typeof fields)[number], message: string) => {
-    errors[field] = message;
-  };
   const value = data as Record<string, unknown>;
+  if (step === "ROLE_SELECTION") {
+    if (!value["intent"]) add("intent", "Escolha como você deseja participar.");
+  }
+  if (step === "ROUTE_DETAILS") {
+    if (!value["occupation"]) add("occupation", "Informe seu perfil.");
+    if (
+      value["occupation"] === "OUTRO" &&
+      (typeof value["occupationDetails"] !== "string" || !value["occupationDetails"].trim())
+    ) {
+      add("occupationDetails", "Descreva sua ocupação.");
+    }
+    if (typeof value["originNeighborhood"] !== "string" || !value["originNeighborhood"].trim())
+      add("originNeighborhood", "Informe a origem aproximada do trajeto.");
+    if (
+      typeof value["destinationNeighborhood"] !== "string" ||
+      !value["destinationNeighborhood"].trim()
+    )
+      add("destinationNeighborhood", "Informe o destino aproximado do trajeto.");
+    if (!value["departureWindow"]) add("departureWindow", "Selecione o horário previsto de saída.");
+  }
+  if (step === "EVENT_PRESENCE") {
+    if (
+      Array.isArray(value["eventPresenceDays"]) &&
+      value["eventPresenceDays"].includes("OUTRO") &&
+      (typeof value["eventPresenceCustom"] !== "string" || !value["eventPresenceCustom"].trim())
+    ) {
+      add("eventPresenceCustom", "Descreva sua disponibilidade.");
+    }
+  }
   if (step === "PROFILE_ROUTE") {
     if (!value["intent"]) add("intent", "Escolha como pretende usar a CARONAA.");
     if (!value["occupation"]) add("occupation", "Informe seu perfil.");
     if (typeof value["originNeighborhood"] !== "string" || !value["originNeighborhood"].trim())
       add("originNeighborhood", "Informe a origem aproximada do trajeto.");
-    if (!value["weeklyFrequency"])
-      add("weeklyFrequency", "Informe a frequência semanal desse trajeto.");
   }
   if (step === "PROPOSAL_TRANSITION") {
     if (!value["proposalSense"])
@@ -455,8 +549,8 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
     if (value["availableSeats"] === undefined || value["availableSeats"] === null)
       add("availableSeats", "Informe o número de lugares disponíveis (0 a 10).");
     const price = Number(value["driverPrice"]);
-    if (isNaN(price) || price < 3.5 || price > 20500) {
-      add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 20.500,00.");
+    if (isNaN(price) || price < 3.5 || price > 25.0) {
+      add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 25,00.");
     }
     if (Array.isArray(value["driverBarriers"]) && value["driverBarriers"].includes("OUTRA")) {
       if (
@@ -521,8 +615,8 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
     if (value["availableSeats"] === undefined || value["availableSeats"] === null)
       add("availableSeats", "Informe o número de lugares disponíveis (0 a 10).");
     const dPrice = Number(value["driverPrice"]);
-    if (isNaN(dPrice) || dPrice < 3.5 || dPrice > 20500) {
-      add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 20.500,00.");
+    if (isNaN(dPrice) || dPrice < 3.5 || dPrice > 25.0) {
+      add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 25,00.");
     }
     if (Array.isArray(value["driverBarriers"]) && value["driverBarriers"].includes("OUTRA")) {
       if (
@@ -617,12 +711,34 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
   }
   if (step === "CONTACT") {
     if (typeof value["name"] !== "string" || value["name"].trim().length < 2)
-      add("name", "Informe seu nome.");
+      add("name", "Informe como prefere ser chamado.");
     if (typeof value["whatsapp"] !== "string" || value["whatsapp"].replace(/\D/g, "").length < 10)
-      add("whatsapp", "Informe um WhatsApp válido.");
+      add("whatsapp", "Informe um WhatsApp válido com DDD.");
+    if (
+      value["feedback"] !== undefined &&
+      (typeof value["feedback"] !== "string" || !value["feedback"].trim())
+    ) {
+      add("feedback", "Deixe seu comentário, dúvida ou sugestão.");
+    }
+    if (value["termsAccepted"] === false) {
+      add("termsAccepted", "Você precisa aceitar os Termos de Uso.");
+    }
+    if (value["privacyAccepted"] === false) {
+      add("privacyAccepted", "Você precisa aceitar a Política de Privacidade.");
+    }
   }
   return Object.keys(errors).length
-    ? { success: false as const, errors }
+    ? {
+        success: false as const,
+        errors,
+        error: {
+          issues: Object.entries(errors).map(([field, message]) => ({
+            path: [field],
+            message,
+            code: "custom" as const,
+          })),
+        },
+      }
     : { success: true as const, data };
 }
 

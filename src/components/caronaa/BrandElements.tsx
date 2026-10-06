@@ -61,8 +61,16 @@ export function BrandLogo({
 
   return (
     <div className={cn("inline-flex items-center gap-2", className)}>
-      <CaronaaSymbol size={size === "sm" ? 22 : size === "md" ? 30 : 40} className="text-caronaa-primary" />
-      <span className={cn("font-display font-extrabold tracking-tight text-foreground", size === "sm" ? "text-lg" : size === "md" ? "text-2xl" : "text-3xl")}>
+      <CaronaaSymbol
+        size={size === "sm" ? 22 : size === "md" ? 30 : 40}
+        className="text-caronaa-primary"
+      />
+      <span
+        className={cn(
+          "font-display font-extrabold tracking-tight text-foreground",
+          size === "sm" ? "text-lg" : size === "md" ? "text-2xl" : "text-3xl",
+        )}
+      >
         CARONAA
       </span>
     </div>
@@ -80,12 +88,7 @@ export function UniforHubBadge({ className }: { className?: string }) {
 /**
  * Badges padronizados do Design System da CARONAA
  */
-export type BrandBadgeVariant =
-  | "sts"
-  | "unifor"
-  | "validation"
-  | "community"
-  | "light";
+export type BrandBadgeVariant = "sts" | "unifor" | "validation" | "community" | "light";
 
 export function BrandBadge({
   variant = "validation",
@@ -236,11 +239,7 @@ export function RouteConnectionVisual({
 /**
  * Banner Institucional de Validação do Evento (Siará Tech Summit + Unifor Hub)
  */
-export function InstitutionalPartnershipStrip({
-  className,
-}: {
-  className?: string;
-}) {
+export function InstitutionalPartnershipStrip({ className }: { className?: string }) {
   return (
     <aside
       aria-label="Afiliação Institucional"

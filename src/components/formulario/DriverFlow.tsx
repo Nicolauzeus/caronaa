@@ -1,14 +1,5 @@
 import React from "react";
-import {
-  Car,
-  Check,
-  AlertTriangle,
-  ShieldCheck,
-  Sparkles,
-  Info,
-  Lock,
-  Bike,
-} from "lucide-react";
+import { Car, Check, AlertTriangle, ShieldCheck, Sparkles, Info, Lock, Bike } from "lucide-react";
 import type {
   DriverFutureOffer,
   DriverGenderPreference,
@@ -21,7 +12,7 @@ import {
   MIN_DRIVER_PRICE,
 } from "@/lib/formulario/pricing";
 
-const MAX_DRIVER_PRICE = 20500;
+const MAX_DRIVER_PRICE = 25.0;
 
 type DriverFlowProps = {
   vehicleType?: VehicleType | undefined;
@@ -206,8 +197,7 @@ export function DriverFlow({
   }
 
   const numericPrice = rawCents ? parseInt(rawCents, 10) / 100 : 0;
-  const isPriceValid =
-    numericPrice >= MIN_DRIVER_PRICE && numericPrice <= MAX_DRIVER_PRICE;
+  const isPriceValid = numericPrice >= MIN_DRIVER_PRICE && numericPrice <= MAX_DRIVER_PRICE;
 
   const currentFee = isPriceValid ? calculateCaronaaFee(numericPrice) : 0;
   const currentNet = isPriceValid ? calculateDriverNet(numericPrice) : 0;
@@ -328,7 +318,9 @@ export function DriverFlow({
               Alerta de segurança e conformidade legal
             </div>
             <p className="text-xs text-amber-800 dark:text-amber-300/90 leading-relaxed">
-              Para carona de moto, é indispensável o uso obrigatório de capacete homologado para condutor e passageiro, bem como o cumprimento integral de todas as exigências do Código de Trânsito Brasileiro (CTB).
+              Para carona de moto, é indispensável o uso obrigatório de capacete homologado para
+              condutor e passageiro, bem como o cumprimento integral de todas as exigências do
+              Código de Trânsito Brasileiro (CTB).
             </p>
           </div>
         )}
@@ -345,7 +337,11 @@ export function DriverFlow({
           </p>
         </div>
 
-        <div className="grid grid-cols-6 sm:grid-cols-11 gap-2" role="radiogroup" aria-label="Lugares disponíveis de 0 a 10">
+        <div
+          className="grid grid-cols-6 sm:grid-cols-11 gap-2"
+          role="radiogroup"
+          aria-label="Lugares disponíveis de 0 a 10"
+        >
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((seats) => {
             const isSelected = availableSeats === seats;
 
@@ -375,7 +371,8 @@ export function DriverFlow({
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 animate-in fade-in duration-200">
             <div className="space-y-1">
               <p className="text-xs sm:text-sm font-semibold text-foreground">
-                Tudo bem! Mesmo sem lugares livres hoje, sua resposta nos ajuda muito a mapear os fluxos do evento.
+                Tudo bem! Mesmo sem lugares livres hoje, sua resposta nos ajuda muito a mapear os
+                fluxos do evento.
               </p>
               <p className="text-xs text-muted-foreground">
                 Você pode continuar preenchendo normalmente.
@@ -415,7 +412,8 @@ export function DriverFlow({
             3. Fatores de conforto para você oferecer carona:
           </label>
           <p className="text-xs text-muted-foreground">
-            Selecione tudo o que traria mais tranquilidade para você levar alguém (múltipla escolha).
+            Selecione tudo o que traria mais tranquilidade para você levar alguém (múltipla
+            escolha).
           </p>
         </div>
 
@@ -469,7 +467,10 @@ export function DriverFlow({
                 {[
                   { value: "FEMININO" as DriverGenderPreference, label: "Feminino" },
                   { value: "MASCULINO" as DriverGenderPreference, label: "Masculino" },
-                  { value: "OUTRO" as DriverGenderPreference, label: "Outro / Prefiro não informar" },
+                  {
+                    value: "OUTRO" as DriverGenderPreference,
+                    label: "Outro / Prefiro não informar",
+                  },
                 ].map((g) => (
                   <button
                     key={g.value}
@@ -491,7 +492,9 @@ export function DriverFlow({
             <div className="flex items-start gap-2 rounded-lg bg-background/80 p-2.5 border border-border/60">
               <Lock size={14} className="text-muted-foreground shrink-0 mt-0.5" />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                <strong>Privacidade:</strong> Esta preferência é mantida sob sigilo absoluto. Não exclui automaticamente outros participantes de forma discriminatória nem é exibida publicamente.
+                <strong>Privacidade:</strong> Esta preferência é mantida sob sigilo absoluto. Não
+                exclui automaticamente outros participantes de forma discriminatória nem é exibida
+                publicamente.
               </p>
             </div>
           </div>
@@ -505,7 +508,7 @@ export function DriverFlow({
             4. Compensação justa por passageiro: *
           </label>
           <p className="text-xs text-muted-foreground">
-            Defina o valor por assento compartilhado (mínimo de R$ 3,50 e máximo de R$ 20.500,00).
+            Defina o valor por assento compartilhado (mínimo de R$ 3,50 e máximo de R$ 25,00).
           </p>
         </div>
 
@@ -520,7 +523,10 @@ export function DriverFlow({
               inputMode="numeric"
               value={
                 numericPrice > 0
-                  ? numericPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  ? numericPrice.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
                   : ""
               }
               onChange={handlePriceInputChange}
@@ -538,7 +544,7 @@ export function DriverFlow({
             <p className="text-xs text-destructive font-medium">
               {numericPrice < MIN_DRIVER_PRICE
                 ? `O valor mínimo permitido é de R$ ${MIN_DRIVER_PRICE.toFixed(2).replace(".", ",")}.`
-                : `O valor máximo permitido é de R$ ${MAX_DRIVER_PRICE.toLocaleString("pt-BR")},00.`}
+                : `O valor máximo permitido é de R$ ${MAX_DRIVER_PRICE.toFixed(2).replace(".", ",")}.`}
             </p>
           )}
 
@@ -573,7 +579,7 @@ export function DriverFlow({
               </span>
             </div>
             <div className="flex justify-between items-center text-muted-foreground">
-              <span>Taxa da plataforma (15% em validação):</span>
+              <span>Taxa da plataforma (25% em validação):</span>
               <span className="font-semibold text-muted-foreground">
                 - R$ {currentFee.toFixed(2).replace(".", ",")}
               </span>
@@ -587,11 +593,13 @@ export function DriverFlow({
           </div>
         )}
 
-        {/* Texto explicativo obrigatório (Sem mencionar 25%, mantendo 3,50 e 15%) */}
+        {/* Texto explicativo obrigatório */}
         <div className="rounded-xl border border-muted-foreground/20 bg-muted/20 p-3 flex items-start gap-2">
           <Info size={15} className="text-muted-foreground shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
-            R$ 3,50 é nossa referência mínima para compensação e o valor final pode variar conforme o percurso e ponto de encontro. Não cobramos mensalidade: a taxa de serviço é de 15% apenas quando a carona acontece.
+            R$ 3,50 é nossa referência mínima para compensação e o valor final pode variar conforme
+            o percurso e ponto de encontro. Não cobramos mensalidade: a taxa de serviço é de 25%
+            apenas quando a carona acontece.
           </p>
         </div>
       </div>
@@ -669,7 +677,11 @@ export function DriverFlow({
           </p>
         </div>
 
-        <div className="grid gap-2.5 sm:grid-cols-3" role="radiogroup" aria-label="Validação real para oferecer carona">
+        <div
+          className="grid gap-2.5 sm:grid-cols-3"
+          role="radiogroup"
+          aria-label="Validação real para oferecer carona"
+        >
           {realValidationOptions.map((opt) => {
             const isSelected = driverRealValidation === opt.value;
 
@@ -689,9 +701,7 @@ export function DriverFlow({
                 ].join(" ")}
               >
                 <div className="flex w-full items-center justify-between">
-                  <span className="font-bold text-xs sm:text-sm text-foreground">
-                    {opt.label}
-                  </span>
+                  <span className="font-bold text-xs sm:text-sm text-foreground">{opt.label}</span>
                   {isSelected && (
                     <span className="size-4 rounded-full bg-caronaa-primary flex items-center justify-center text-caronaa-dark shrink-0">
                       <Check size={11} className="stroke-[3]" />

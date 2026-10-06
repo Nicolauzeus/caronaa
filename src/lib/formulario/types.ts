@@ -89,6 +89,14 @@ export interface CaronaaStsFormData {
   name?: string | undefined;
   whatsapp?: string | undefined;
   email?: string | undefined;
+  feedback?: string | undefined;
+
+  // Consentimentos e Termos estruturados
+  termsAccepted?: boolean | undefined;
+  privacyAccepted?: boolean | undefined;
+  researchAccepted?: boolean | undefined;
+  termsVersion?: string | undefined;
+  consentsTimestamp?: string | undefined;
 
   // Passageiro
   passengerCount?: number | undefined;

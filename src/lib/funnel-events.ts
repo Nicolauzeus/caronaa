@@ -21,7 +21,12 @@ export type ClientFunnelEventName =
   | "form_driver_seats_selected"
   | "form_price_input"
   | "form_passenger_interest"
-  | "form_passenger_transport_selected";
+  | "form_passenger_transport_selected"
+  | "form_success"
+  | "account_cta_clicked"
+  | "signup_started_from_form"
+  | "signup_completed_from_form"
+  | "form_to_account_conversion";
 
 export type CampaignAttribution = {
   source: string;

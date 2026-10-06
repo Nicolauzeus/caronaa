@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   searchLocationsService,
   getLocationDetailsService,
+  geocodeAddressService,
   isLocationServiceConfigured,
   getLocationProviderName,
   getMissingLocationConfig,
@@ -14,6 +15,10 @@ const searchQuerySchema = z.object({
 
 const placeDetailsSchema = z.object({
   placeId: z.string().trim().min(1).max(250),
+});
+
+const geocodeQuerySchema = z.object({
+  address: z.string().trim().min(1).max(300),
 });
 
 export const searchLocationsServerFn = createServerFn({ method: "POST" })
@@ -28,11 +33,18 @@ export const getLocationDetailsServerFn = createServerFn({ method: "POST" })
     return await getLocationDetailsService(data.placeId);
   });
 
-export const getLocationConfigStatusServerFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+export const geocodeAddressServerFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => geocodeQuerySchema.parse(input))
+  .handler(async ({ data }) => {
+    return await geocodeAddressService(data.address);
+  });
+
+export const getLocationConfigStatusServerFn = createServerFn({ method: "GET" }).handler(
+  async () => {
     return {
       isConfigured: isLocationServiceConfigured(),
       provider: getLocationProviderName(),
       missingEnvVars: getMissingLocationConfig(),
     };
-  });
+  },
+);

@@ -16,15 +16,25 @@ describe("progressive questionnaire validation", () => {
     expect(validateFormStep("PROFILE_ROUTE", {}).success).toBe(false);
     expect(validateFormStep("CURRENT_PRICE", {}).success).toBe(false);
     expect(validateFormStep("PROBLEMS", { painPoints: [] }).success).toBe(false);
-    expect(validateFormStep("MAIN_PROBLEM", {
-      painPoints: ["DOR_01"], mainPainPoint: "DOR_02", mainPainIntensity: 6,
-    }).success).toBe(false);
-    expect(validateFormStep("INTEREST", { intent: "AMBOS", passengerInterest: "TALVEZ" }).success).toBe(false);
+    expect(
+      validateFormStep("MAIN_PROBLEM", {
+        painPoints: ["DOR_01"],
+        mainPainPoint: "DOR_02",
+        mainPainIntensity: 6,
+      }).success,
+    ).toBe(false);
+    expect(
+      validateFormStep("INTEREST", { intent: "AMBOS", passengerInterest: "TALVEZ" }).success,
+    ).toBe(false);
   });
 
   it("requires contact only on the conversion screen and keeps email optional", () => {
-    expect(validateFormStep("INTEREST", { intent: "PASSAGEIRO", passengerInterest: "TALVEZ" }).success).toBe(true);
-    expect(validateFormStep("CONTACT", { name: "Ana", whatsapp: "85999999999" }).success).toBe(true);
+    expect(
+      validateFormStep("INTEREST", { intent: "PASSAGEIRO", passengerInterest: "TALVEZ" }).success,
+    ).toBe(true);
+    expect(validateFormStep("CONTACT", { name: "Ana", whatsapp: "85999999999" }).success).toBe(
+      true,
+    );
     expect(validateFormStep("CONTACT", { name: "Ana", whatsapp: "123" }).success).toBe(false);
   });
 });

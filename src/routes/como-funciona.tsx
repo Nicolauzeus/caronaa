@@ -38,8 +38,8 @@ function ComoFuncionaPage() {
             Como funciona a CARONAA?
           </h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            A CARONAA conecta quem precisa ir com quem já está indo. Sem complicações e em fase
-            de validação prática no Siará Tech Summit 2026 e na comunidade da Unifor.
+            A CARONAA conecta quem precisa ir com quem já está indo. Sem complicações e em fase de
+            validação prática no Siará Tech Summit 2026 e na comunidade da Unifor.
           </p>
         </div>
 
@@ -59,8 +59,8 @@ function ComoFuncionaPage() {
             </span>
             <h2 className="mt-5 font-display text-xl font-bold">Conte para onde vai</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Você informa seu trajeto, se precisa de carona ou se tem lugares sobrando no carro, além
-              da sua faixa de horário pretendida.
+              Você informa seu trajeto, se precisa de carona ou se tem lugares sobrando no carro,
+              além da sua faixa de horário pretendida.
             </p>
           </div>
 
@@ -95,8 +95,8 @@ function ComoFuncionaPage() {
             </div>
             <h2 className="mt-4 font-display text-2xl font-bold">Tem lugar no carro?</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Se você já vai fazer o trajeto com assentos vazios, compartilhe sua rota. Ajude alguém da
-              sua comunidade que vai na mesma direção.
+              Se você já vai fazer o trajeto com assentos vazios, compartilhe sua rota. Ajude alguém
+              da sua comunidade que vai na mesma direção.
             </p>
             <div className="mt-6">
               <Button asChild variant="strong" className="w-full sm:w-auto">
@@ -113,8 +113,8 @@ function ComoFuncionaPage() {
             </div>
             <h2 className="mt-4 font-display text-2xl font-bold">Precisa de uma carona?</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Diga para onde você precisa ir e descubra quem da comunidade ou do evento está indo pelo
-              mesmo caminho na mesma faixa de horário.
+              Diga para onde você precisa ir e descubra quem da comunidade ou do evento está indo
+              pelo mesmo caminho na mesma faixa de horário.
             </p>
             <div className="mt-6">
               <Button asChild variant="default" className="w-full sm:w-auto">

@@ -10,7 +10,8 @@ export interface LocationSuggestion {
 
 export const KNOWN_CEARA_LOCATIONS: LocationSuggestion[] = [
   {
-    formattedAddress: "Centro de Eventos do Ceará - Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE",
+    formattedAddress:
+      "Centro de Eventos do Ceará - Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE",
     neighborhood: "Edson Queiroz",
     city: "Fortaleza",
     state: "CE",
@@ -19,7 +20,8 @@ export const KNOWN_CEARA_LOCATIONS: LocationSuggestion[] = [
     providerId: "cec-fortaleza",
   },
   {
-    formattedAddress: "Universidade de Fortaleza (UNIFOR) - Av. Washington Soares, 1321 - Edson Queiroz, Fortaleza - CE",
+    formattedAddress:
+      "Universidade de Fortaleza (UNIFOR) - Av. Washington Soares, 1321 - Edson Queiroz, Fortaleza - CE",
     neighborhood: "Edson Queiroz",
     city: "Fortaleza",
     state: "CE",

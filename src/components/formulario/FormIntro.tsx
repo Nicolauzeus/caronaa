@@ -29,12 +29,39 @@ export function FormIntro({ onStart }: FormIntroProps) {
 
       <div className="mx-auto flex w-full max-w-5xl items-center justify-center px-4 py-8 sm:px-6 md:py-14">
         <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0b0f19]/80 p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
-          {/* Header Badges & Co-branding */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-6">
-            <BrandLogo size="md" />
-            <div className="flex flex-wrap items-center gap-2">
-              <StsBadge />
-              <UniforHubBadge />
+          {/* Header Institucional com Hierarquia de Marcas:
+              1. CARONAA = Marca Principal
+              2. Siará Tech Summit = Contexto do evento
+              3. Unifor Hub = Ecossistema da startup
+              4. Sebrae = Realização do evento
+          */}
+          <div className="border-b border-white/10 pb-6 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <BrandLogo size="md" />
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/90 shadow-2xs backdrop-blur-md"
+                  title="Startup incubada/residente no ecossistema de inovação Unifor Hub"
+                >
+                  <span className="size-1.5 rounded-full bg-caronaa-primary shrink-0" />
+                  <span>Startup do Unifor Hub</span>
+                </span>
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 px-3 py-1 text-xs font-semibold text-cyan-300 shadow-2xs backdrop-blur-md"
+                  title="Startup expositora oficial no Siará Tech Summit 2026"
+                >
+                  <span className="relative flex size-1.5 shrink-0">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-pink-500 opacity-60" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-cyan-400" />
+                  </span>
+                  <span>Expositora no Siará Tech Summit 2026</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-end">
+              <span className="text-[10px] font-medium text-white/50 tracking-wider uppercase">
+                Evento realizado pelo Sebrae Ceará
+              </span>
             </div>
           </div>
 
@@ -45,8 +72,8 @@ export function FormIntro({ onStart }: FormIntroProps) {
             </div>
 
             <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
-              Garanta sua CARONAA no{" "}
-              <span className="text-caronaa-primary">Siará Tech Summit</span> 🚗
+              Garanta sua CARONAA no <span className="text-caronaa-primary">Siará Tech Summit</span>{" "}
+              🚗
             </h1>
 
             <p className="text-base leading-relaxed text-white/80 sm:text-lg">

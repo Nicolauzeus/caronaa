@@ -1,9 +1,22 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, MapPin, Calendar, Clock, Car, Users, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
+import {
+  CheckCircle2,
+  MapPin,
+  Calendar,
+  Clock,
+  Car,
+  Users,
+  ArrowRight,
+  ShieldCheck,
+  RefreshCw,
+  UserCheck,
+} from "lucide-react";
 import type { CaronaaStsFormData } from "@/lib/formulario/types";
-import { getLeadClassification } from "@/lib/formulario/classification";
 import { StsBadge } from "@/components/caronaa/BrandElements";
+import { useAuth } from "@/lib/auth-context";
+import { trackFunnelEvent } from "@/lib/funnel-events";
+import { saveFormConversionDraft } from "@/lib/formulario/conversion";
 
 const moneyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -14,6 +27,58 @@ type FormSuccessProps = {
   data: CaronaaStsFormData;
   onRestart?: () => void;
 };
+
+function getIntentBadge(intent: CaronaaStsFormData["intent"]) {
+  switch (intent) {
+    case "MOTORISTA":
+      return "🚗 Motorista cadastrado • STS 2026";
+    case "PASSAGEIRO":
+      return "🙋 Passageiro cadastrado • STS 2026";
+    case "AMBOS":
+      return "🔄 Motorista & Passageiro • STS 2026";
+    default:
+      return "Participante CARONAA • STS 2026";
+  }
+}
+
+function getIntentTitle(intent: CaronaaStsFormData["intent"]) {
+  switch (intent) {
+    case "MOTORISTA":
+      return "🚗 Oferta de carona registrada!";
+    case "PASSAGEIRO":
+      return "🙋 Interesse em carona registrado!";
+    case "AMBOS":
+      return "🔄 Disponibilidade registrada!";
+    default:
+      return "🚗 Cadastro concluído!";
+  }
+}
+
+function getIntentSubtitle(intent: CaronaaStsFormData["intent"]) {
+  switch (intent) {
+    case "MOTORISTA":
+      return "Recebemos sua oferta de carona! Mapearemos passageiros cujo trajeto e horário coincidam com os seus para que você possa avaliar as solicitações.";
+    case "PASSAGEIRO":
+      return "Recebemos sua solicitação de carona! Mapearemos motoristas credenciados que estejam fazendo o mesmo percurso para apresentar opções compatíveis.";
+    case "AMBOS":
+      return "Recebemos seu interesse duplo! Analisaremos tanto oportunidades para você pegar carona quanto passageiros interessados no seu trajeto, dando a você máxima flexibilidade.";
+    default:
+      return "Recebemos seu trajeto! Analisaremos participantes com caminhos e horários compatíveis no Siará Tech Summit.";
+  }
+}
+
+function getIntentDisclaimer(intent: CaronaaStsFormData["intent"]) {
+  switch (intent) {
+    case "MOTORISTA":
+      return "Seu cadastro como motorista foi registrado com sucesso. Vale lembrar: não prometemos carona confirmada ou garantida. Quando identificarmos passageiros com percurso e horário compatíveis, entraremos em contato para que você analise o perfil e aprove a carona antes de qualquer confirmação.";
+    case "PASSAGEIRO":
+      return "Seu pedido de carona foi registrado com sucesso. Vale lembrar: não prometemos carona encontrada, confirmada ou garantida. Havendo motoristas disponíveis na mesma rota e horário, notificaremos você para que ambos combinem e concordem com os detalhes da viagem.";
+    case "AMBOS":
+      return "Seu cadastro flexível foi registrado com sucesso. A realização de qualquer carona depende da existência de trajetos compatíveis com outros participantes e de confirmação mútua antecipada. Nenhuma viagem é agendada automaticamente.";
+    default:
+      return "Seu cadastro foi registrado com sucesso. A realização de qualquer carona depende de haver participantes compatíveis no mesmo horário e rota, com confirmação mútua prévia.";
+  }
+}
 
 function getIntentLabel(intent: CaronaaStsFormData["intent"]) {
   switch (intent) {
@@ -48,11 +113,71 @@ function getDepartureLabel(departureWindow: CaronaaStsFormData["departureWindow"
 }
 
 export function FormSuccess({ data, onRestart }: FormSuccessProps) {
-  const classification = getLeadClassification(data);
+  const { user } = useAuth();
+
+  React.useEffect(() => {
+    // Save draft for pre-filling /auth
+    saveFormConversionDraft(data);
+
+    void trackFunnelEvent({
+      eventName: "form_success",
+      userId: user?.id ?? null,
+      submissionId: data.submissionId ?? null,
+      source: data.source || "sts2026",
+      campaign: data.campaign ?? null,
+      campaignEvent: data.campaignEvent || "Siará Tech Summit 2026",
+      metadata: {
+        intent: data.intent ?? null,
+        authenticated: Boolean(user),
+      },
+    });
+
+    if (user) {
+      void trackFunnelEvent({
+        eventName: "form_to_account_conversion",
+        userId: user.id,
+        submissionId: data.submissionId ?? null,
+        source: data.source || "sts2026",
+        campaign: data.campaign ?? null,
+        campaignEvent: data.campaignEvent || "Siará Tech Summit 2026",
+        metadata: {
+          conversionType: "already_authenticated",
+          intent: data.intent ?? null,
+        },
+      });
+    }
+  }, [data, user]);
+
+  const handleCtaClick = (action: "continue_to_app" | "signup" | "login") => {
+    void trackFunnelEvent({
+      eventName: "account_cta_clicked",
+      userId: user?.id ?? null,
+      submissionId: data.submissionId ?? null,
+      source: data.source || "sts2026",
+      campaign: data.campaign ?? null,
+      campaignEvent: data.campaignEvent || "Siará Tech Summit 2026",
+      metadata: {
+        action,
+        intent: data.intent ?? null,
+      },
+    });
+  };
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">
-      {/* Header status */}
+      {/* Header institucional com Hierarquia de Marcas */}
+      <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-border/80 bg-secondary/50 px-4 py-2 text-xs text-muted-foreground shadow-2xs backdrop-blur-xs">
+        <span className="font-extrabold text-foreground">CARONAA</span>
+        <span className="text-border">•</span>
+        <span className="font-medium text-foreground/80">Startup do Unifor Hub</span>
+        <span className="text-border">•</span>
+        <span className="inline-flex items-center gap-1 font-semibold text-cyan-600 dark:text-cyan-400">
+          <span className="size-1.5 rounded-full bg-cyan-400" />
+          Expositora no Siará Tech Summit 2026
+        </span>
+      </div>
+
+      {/* Header status específico por perfil */}
       <div className="flex flex-col items-center text-center">
         <div
           className="flex h-20 w-20 items-center justify-center rounded-3xl bg-caronaa-primary/20 text-caronaa-primary ring-8 ring-caronaa-primary/10 shadow-lg"
@@ -64,15 +189,15 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
         <div className="mt-6 space-y-2">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            Perfil 100% preparado • STS 2026
+            {getIntentBadge(data.intent)}
           </div>
 
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            🚗 Sua CARONAA começou!
+            {getIntentTitle(data.intent)}
           </h1>
 
           <p className="mx-auto max-w-lg text-base text-muted-foreground">
-            Agora vamos analisar seu trajeto e procurar combinações compatíveis com quem também está saindo do Siará Tech Summit.
+            {getIntentSubtitle(data.intent)}
           </p>
         </div>
       </div>
@@ -82,7 +207,7 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Resumo da sua solicitação
+              Resumo da sua participação
             </span>
             <p className="text-base font-bold text-foreground mt-0.5">
               {getIntentLabel(data.intent)}
@@ -136,9 +261,21 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
             <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
               <Car size={20} className="text-caronaa-primary shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground">Contribuição por passageiro</div>
+                <div className="text-xs text-muted-foreground">Compensação por passageiro</div>
                 <div className="font-semibold text-foreground">
                   {moneyFormatter.format(data.driverPrice)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {data.passengerFairPrice !== undefined && (
+            <div className="flex items-start gap-3 rounded-2xl bg-muted/40 p-3.5">
+              <Car size={20} className="text-caronaa-primary shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs text-muted-foreground">Valor sugerido de referência</div>
+                <div className="font-semibold text-foreground">
+                  {moneyFormatter.format(data.passengerFairPrice)}
                 </div>
               </div>
             </div>
@@ -156,41 +293,93 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
         </div>
       </div>
 
-      {/* Honest MVP Disclaimer Notice */}
+      {/* Honest MVP Disclaimer Notice por perfil */}
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <ShieldCheck size={22} className="text-caronaa-primary shrink-0 mt-0.5" />
           <div className="space-y-1.5">
-            <p className="text-sm font-bold text-foreground">
-              Como funciona o próximo passo?
-            </p>
+            <p className="text-sm font-bold text-foreground">Como funciona o próximo passo?</p>
             <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              Seu cadastro foi registrado com sucesso! Vale lembrar que a realização de uma carona
-              depende de existir uma combinação compatível de horários e rotas, e de ambas as partes
-              concordarem com os detalhes. Se encontramos alguém compatível, entraremos em contato
-              para apresentar a oportunidade.
+              {getIntentDisclaimer(data.intent)}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <Link
-          to="/auth"
-          className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-caronaa-primary px-6 py-3 text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition"
-        >
-          Acessar minha conta / App
-          <ArrowRight size={16} />
-        </Link>
+      {/* Auth Account Association / Conversion Actions */}
+      {user ? (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-50/50 p-4 dark:bg-emerald-950/20">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <UserCheck size={22} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                Seu cadastro foi associado à sua conta CARONAA.
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Você já está autenticado e seu trajeto foi vinculado ao seu perfil.
+              </p>
+            </div>
+          </div>
 
-        <Link
-          to="/"
-          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold hover:bg-accent transition"
-        >
-          Voltar para a página inicial
-        </Link>
-      </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              to="/home"
+              onClick={() => handleCtaClick("continue_to_app")}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-caronaa-primary px-6 py-3 text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition"
+            >
+              Continuar no aplicativo
+              <ArrowRight size={16} />
+            </Link>
+
+            <Link
+              to="/"
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold hover:bg-accent transition sm:flex-none"
+            >
+              Voltar ao início
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              to="/auth"
+              search={{
+                mode: "cadastro",
+                submissionId: data.submissionId ?? undefined,
+              }}
+              onClick={() => handleCtaClick("signup")}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-caronaa-primary px-6 py-3 text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition"
+            >
+              Quero criar minha conta
+              <ArrowRight size={16} />
+            </Link>
+
+            <Link
+              to="/auth"
+              search={{
+                mode: "entrar",
+                submissionId: data.submissionId ?? undefined,
+              }}
+              onClick={() => handleCtaClick("login")}
+              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold hover:bg-accent transition"
+            >
+              Já tenho uma conta
+            </Link>
+          </div>
+
+          <div className="flex justify-center">
+            <Link
+              to="/"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition underline underline-offset-4 py-1"
+            >
+              Voltar ao início
+            </Link>
+          </div>
+        </div>
+      )}
 
       {onRestart && (
         <div className="text-center pt-2">

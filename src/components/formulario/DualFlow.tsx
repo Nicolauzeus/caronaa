@@ -19,10 +19,10 @@ import type {
 } from "@/lib/formulario/types";
 
 const MIN_DRIVER_PRICE = 3.5;
-const MAX_DRIVER_PRICE = 20500.0;
+const MAX_DRIVER_PRICE = 25.0;
 const MIN_PASSENGER_PRICE = 3.5;
 const MAX_PASSENGER_PRICE = 25.0;
-const PLATFORM_FEE_RATE = 0.15;
+const PLATFORM_FEE_RATE = 0.25;
 
 type DualFlowProps = {
   dualPriority?: DualPriority | undefined;
@@ -760,7 +760,7 @@ export function DualFlow({
                 </span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>Taxa da plataforma (15% em validação):</span>
+                <span>Taxa da plataforma (25% em validação):</span>
                 <span>- R$ {currentFee.toFixed(2).replace(".", ",")}</span>
               </div>
               <div className="flex justify-between border-t border-border pt-1 font-bold text-foreground">

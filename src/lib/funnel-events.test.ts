@@ -24,7 +24,10 @@ describe("form campaign attribution", () => {
 
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/formulario?utm_campaign=sts2026-pre-evento");
-    expect(getCampaignAttribution()).toMatchObject({ source: "sts2026", campaign: "sts2026-pre-evento" });
+    expect(getCampaignAttribution()).toMatchObject({
+      source: "sts2026",
+      campaign: "sts2026-pre-evento",
+    });
   });
 
   it("uses the STS form fallback only without a valid parameter", () => {

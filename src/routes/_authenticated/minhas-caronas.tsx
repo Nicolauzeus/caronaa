@@ -74,7 +74,10 @@ function MinhasCaronas() {
         },
       });
       try {
-        sessionStorage.setItem("caronaa-requested-ride", JSON.stringify({ ...form, rideId: requestId }));
+        sessionStorage.setItem(
+          "caronaa-requested-ride",
+          JSON.stringify({ ...form, rideId: requestId }),
+        );
       } catch {
         // The request is already persisted; browser storage is only a display hint.
       }

@@ -15,6 +15,7 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { createRideOffer } from "@/lib/ride-matching.functions";
 import { toast } from "sonner";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 export const Route = createFileRoute("/_authenticated/oferecer")({
   head: () => ({
     meta: [
@@ -65,7 +66,10 @@ function Oferecer() {
           },
         });
         try {
-          sessionStorage.setItem("caronaa-offered-ride", JSON.stringify({ ...form, rideId: offerId }));
+          sessionStorage.setItem(
+            "caronaa-offered-ride",
+            JSON.stringify({ ...form, rideId: offerId }),
+          );
         } catch {
           // The offer is already persisted; browser storage is only a display hint.
         }
@@ -150,19 +154,23 @@ function Oferecer() {
             </div>
             {step === 1 ? (
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field
+                <LocationAutocomplete
+                  id="oferecer-origem"
                   label="Origem"
                   value={form.origin}
                   onChange={(v) => update("origin", v)}
                   placeholder="Ex.: Aldeota, Fortaleza"
                   required
+                  variant="simple"
                 />
-                <Field
+                <LocationAutocomplete
+                  id="oferecer-destino"
                   label="Destino"
                   value={form.destination}
                   onChange={(v) => update("destination", v)}
-                  placeholder="Ex.: Eusébio"
+                  placeholder="Ex.: Eusébio, UNIFOR, Centro"
                   required
+                  variant="simple"
                 />
                 <Field
                   label="Data"

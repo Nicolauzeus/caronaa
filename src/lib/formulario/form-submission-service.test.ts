@@ -16,24 +16,40 @@ describe("form pain payload integrity", () => {
   it("accepts no principal when no pain is selected", () => {
     expect(() =>
       assertPainPointIntegrity(
-        validRows.map((row) => ({ ...row, selecionada: false, principal: false, intensidade: null })) as never[],
+        validRows.map((row) => ({
+          ...row,
+          selecionada: false,
+          principal: false,
+          intensidade: null,
+        })) as never[],
       ),
     ).not.toThrow();
   });
 
   it("rejects two principal pains", () => {
-    expect(() => assertPainPointIntegrity([{ ...validRows[0]!, principal: true }, { ...validRows[1]!, principal: true }] as never[])).toThrow();
+    expect(() =>
+      assertPainPointIntegrity([
+        { ...validRows[0]!, principal: true },
+        { ...validRows[1]!, principal: true },
+      ] as never[]),
+    ).toThrow();
   });
 
   it("rejects selected pains without a principal pain", () => {
-    expect(() => assertPainPointIntegrity(validRows.map((row) => ({ ...row, principal: false })) as never[])).toThrow();
+    expect(() =>
+      assertPainPointIntegrity(validRows.map((row) => ({ ...row, principal: false })) as never[]),
+    ).toThrow();
   });
 
   it("rejects a principal pain that was not selected", () => {
-    expect(() => assertPainPointIntegrity([{ ...validRows[0]!, selecionada: false }] as never[])).toThrow();
+    expect(() =>
+      assertPainPointIntegrity([{ ...validRows[0]!, selecionada: false }] as never[]),
+    ).toThrow();
   });
 
   it("rejects a principal pain without a valid intensity", () => {
-    expect(() => assertPainPointIntegrity([{ ...validRows[0]!, intensidade: 6 }] as never[])).toThrow();
+    expect(() =>
+      assertPainPointIntegrity([{ ...validRows[0]!, intensidade: 6 }] as never[]),
+    ).toThrow();
   });
 });

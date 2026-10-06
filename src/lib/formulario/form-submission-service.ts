@@ -56,6 +56,22 @@ function normalizeInterest(value: InterestLevel | null) {
 }
 
 function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionInsert {
+  const includePassenger = payload.intent === "PASSAGEIRO" || payload.intent === "AMBOS";
+  const includeDriver = payload.intent === "MOTORISTA" || payload.intent === "AMBOS";
+
+  let passengerInterest = payload.passengerInterest;
+  if (includePassenger && !passengerInterest) {
+    if (payload.passengerIntention === "TALVEZ") passengerInterest = "TALVEZ";
+    else passengerInterest = "USARIA_HOJE";
+  }
+
+  let driverInterest = payload.driverInterest;
+  if (includeDriver && !driverInterest) {
+    if (payload.driverRealValidation === "TALVEZ") driverInterest = "TALVEZ";
+    else if (payload.driverRealValidation === "NAO") driverInterest = "PROVAVELMENTE_NAO";
+    else driverInterest = "USARIA_HOJE";
+  }
+
   return {
     submission_id: payload.submissionId,
     source: payload.source,
@@ -71,8 +87,8 @@ function buildFormSubmissionRow(payload: CaronaaStsSubmission): FormSubmissionIn
     transporte_atual: payload.currentTransport,
     custo_atual_faixa: payload.routeCostRange,
     custo_referencia: normalizeCostPeriod(payload.costPeriod),
-    intencao_passageiro: normalizeInterest(payload.passengerInterest ?? null),
-    intencao_motorista: normalizeInterest(payload.driverInterest ?? null),
+    intencao_passageiro: includePassenger ? (normalizeInterest(passengerInterest) ?? "HOJE") : null,
+    intencao_motorista: includeDriver ? (normalizeInterest(driverInterest) ?? "HOJE") : null,
     nome: payload.name,
     whatsapp: payload.whatsapp,
     email: payload.email,
@@ -108,7 +124,9 @@ export function assertPainPointIntegrity(rows: FormPainInsert[]) {
     (principalRows[0]?.intensidade ?? 0) < 1 ||
     (principalRows[0]?.intensidade ?? 0) > 5
   ) {
-    throw new Error("As dores selecionadas exigem uma única dor principal com intensidade de 1 a 5.");
+    throw new Error(
+      "As dores selecionadas exigem uma única dor principal com intensidade de 1 a 5.",
+    );
   }
 }
 
@@ -137,12 +155,7 @@ export async function registerFormStart({
   ocupacao = null,
   rawPayload = {},
 }: RegisterFormStartInput) {
-  const deduplicationKey = [
-    "caronaa-form-start",
-    source,
-    campaign ?? "",
-    campaignEvent,
-  ].join(":");
+  const deduplicationKey = ["caronaa-form-start", source, campaign ?? "", campaignEvent].join(":");
 
   if (typeof window !== "undefined" && window.localStorage.getItem(deduplicationKey) === "1") {
     return;

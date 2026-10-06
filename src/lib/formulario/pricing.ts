@@ -11,7 +11,7 @@ function roundMoney(value: number): number {
 }
 
 export function calculateCaronaaFee(driverPrice: number): number {
-  return roundMoney(driverPrice * 0.15);
+  return roundMoney(driverPrice * 0.25);
 }
 
 export function calculateDriverNet(driverPrice: number): number {

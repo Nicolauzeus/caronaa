@@ -96,7 +96,9 @@ export function ProposalTransitionStep({
                   Receba pelo compartilhamento do trajeto
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Você já vai fazer o trajeto com seu veículo saindo do Siará Tech Summit. Com a CARONAA, receba pelo compartilhamento do trajeto e conte com uma compensação pelo lugar compartilhado para ajudar nos custos do deslocamento.
+                  Você já vai fazer o trajeto com seu veículo saindo do Siará Tech Summit. Com a
+                  CARONAA, receba pelo compartilhamento do trajeto e conte com uma compensação pelo
+                  lugar compartilhado para ajudar nos custos do deslocamento.
                 </p>
               </div>
             </div>
@@ -108,7 +110,8 @@ export function ProposalTransitionStep({
                   Estamos testando essa ideia agora
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Estamos testando essa ideia agora durante o evento para entender a adesão real de motoristas e passageiros e desenhar uma solução prática para o ecossistema.
+                  Estamos testando essa ideia agora durante o evento para entender a adesão real de
+                  motoristas e passageiros e desenhar uma solução prática para o ecossistema.
                 </p>
               </div>
             </div>
@@ -116,7 +119,9 @@ export function ProposalTransitionStep({
             <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 p-3 flex items-start gap-2.5">
               <Info size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
-                <strong>Transparência:</strong> Sem prometer renda garantida, matching automático ou segurança absoluta. Nosso objetivo é construir e validar juntos conexões baseadas em caminhos compatíveis e confiança mútua.
+                <strong>Transparência:</strong> Sem prometer renda garantida, matching automático ou
+                segurança absoluta. Nosso objetivo é construir e validar juntos conexões baseadas em
+                caminhos compatíveis e confiança mútua.
               </p>
             </div>
           </div>
@@ -131,7 +136,9 @@ export function ProposalTransitionStep({
                   Conecte-se com quem já vai pelo mesmo caminho
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Em vez de lidar com longas esperas ou tarifas dinâmicas elevadas na saída, encontre pessoas credenciadas que já vão na mesma direção e têm assentos disponíveis no carro.
+                  Em vez de lidar com longas esperas ou tarifas dinâmicas elevadas na saída,
+                  encontre pessoas credenciadas que já vão na mesma direção e têm assentos
+                  disponíveis no carro.
                 </p>
               </div>
             </div>
@@ -143,7 +150,8 @@ export function ProposalTransitionStep({
                   Compensação pelo lugar compartilhado
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Você contribui com uma compensação pelo lugar compartilhado, dividindo os custos de combustível de forma justa, acessível e combinada antecipadamente.
+                  Você contribui com uma compensação pelo lugar compartilhado, dividindo os custos
+                  de combustível de forma justa, acessível e combinada antecipadamente.
                 </p>
               </div>
             </div>
@@ -155,7 +163,8 @@ export function ProposalTransitionStep({
                   Estamos testando essa ideia agora
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Estamos testando essa ideia agora no Siará Tech Summit para entender na prática a demanda e os principais fluxos de mobilidade.
+                  Estamos testando essa ideia agora no Siará Tech Summit para entender na prática a
+                  demanda e os principais fluxos de mobilidade.
                 </p>
               </div>
             </div>
@@ -163,7 +172,9 @@ export function ProposalTransitionStep({
             <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 p-3 flex items-start gap-2.5">
               <Info size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
-                <strong>Transparência:</strong> Sem falsas promessas de carona disponível garantida ou segurança absoluta. Queremos mapear o interesse real para estruturar rotas seguras e colaborativas.
+                <strong>Transparência:</strong> Sem falsas promessas de carona disponível garantida
+                ou segurança absoluta. Queremos mapear o interesse real para estruturar rotas
+                seguras e colaborativas.
               </p>
             </div>
           </div>
@@ -178,7 +189,9 @@ export function ProposalTransitionStep({
                   Mobilidade compartilhada de ponta a ponta
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Quem dirige recebe pelo compartilhamento do trajeto e quem precisa de transporte contribui com uma compensação pelo lugar compartilhado, equilibrando custos e otimizando deslocamentos.
+                  Quem dirige recebe pelo compartilhamento do trajeto e quem precisa de transporte
+                  contribui com uma compensação pelo lugar compartilhado, equilibrando custos e
+                  otimizando deslocamentos.
                 </p>
               </div>
             </div>
@@ -190,7 +203,9 @@ export function ProposalTransitionStep({
                   Estamos testando essa ideia agora
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Estamos testando essa ideia agora durante o Siará Tech Summit. Não prometemos renda garantida, matching automático ou segurança absoluta, mas sim um formato colaborativo e transparente.
+                  Estamos testando essa ideia agora durante o Siará Tech Summit. Não prometemos
+                  renda garantida, matching automático ou segurança absoluta, mas sim um formato
+                  colaborativo e transparente.
                 </p>
               </div>
             </div>
@@ -209,7 +224,11 @@ export function ProposalTransitionStep({
           </p>
         </div>
 
-        <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Quanto essa proposta faz sentido para você">
+        <div
+          className="grid gap-2.5 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="Quanto essa proposta faz sentido para você"
+        >
           {proposalSenseOptions.map((opt) => {
             const isSelected = proposalSense === opt.value;
 
@@ -231,9 +250,7 @@ export function ProposalTransitionStep({
                 <span className="text-2xl shrink-0 mt-0.5">{opt.emoji}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground text-sm">
-                      {opt.label}
-                    </span>
+                    <span className="font-bold text-foreground text-sm">{opt.label}</span>
                     {isSelected && (
                       <span className="size-4 rounded-full bg-caronaa-primary flex items-center justify-center text-caronaa-dark shrink-0">
                         <Check size={11} className="stroke-[3]" />

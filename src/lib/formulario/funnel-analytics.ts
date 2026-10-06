@@ -2,11 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCampaignAttribution } from "@/lib/funnel-events";
 
 export type FunnelEventName =
-  | "landing_view"
-  | "form_started"
-  | "form_step_completed"
-  | "form_completed"
-  | "lead_created";
+  "landing_view" | "form_started" | "form_step_completed" | "form_completed" | "lead_created";
 
 export type Attribution = {
   source: string;

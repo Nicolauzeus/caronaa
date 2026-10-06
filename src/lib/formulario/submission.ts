@@ -33,6 +33,14 @@ export type CaronaaStsSubmission = {
   name: string;
   whatsapp: string;
   email: string | null;
+  feedback: string;
+
+  // Consentimentos e Termos estruturados
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  researchAccepted: boolean;
+  termsVersion: string;
+  consentsTimestamp: string;
 
   passengerCount: number | null;
   currentTransport: CaronaaStsFormData["currentTransport"] | null;
@@ -101,15 +109,15 @@ function createSubmissionId(): string {
 
 export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmission {
   if (!data.intent) {
-    throw new Error("NÃ£o Ã© possÃ­vel preparar a submissÃ£o sem intenÃ§Ã£o.");
+    throw new Error("Não é possível preparar a submissão sem intenção.");
   }
 
   if (!data.destinationNeighborhood?.trim()) {
-    throw new Error("NÃ£o Ã© possÃ­vel preparar a submissÃ£o sem destino.");
+    throw new Error("Não é possível preparar a submissão sem destino.");
   }
 
   if (!data.departureWindow) {
-    throw new Error("NÃ£o Ã© possÃ­vel preparar a submissÃ£o sem horÃ¡rio de saÃ­da.");
+    throw new Error("Não é possível preparar a submissão sem horário de saída.");
   }
 
   if (!data.name?.trim() || !data.whatsapp?.trim()) {
@@ -169,6 +177,14 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     email: cleanString(data.email),
 
+    feedback: cleanString(data.feedback) ?? "",
+
+    termsAccepted: Boolean(data.termsAccepted),
+    privacyAccepted: Boolean(data.privacyAccepted),
+    researchAccepted: Boolean(data.researchAccepted),
+    termsVersion: data.termsVersion ?? "sts_2026_v1",
+    consentsTimestamp: data.consentsTimestamp ?? new Date().toISOString(),
+
     passengerCount: includePassenger ? (data.passengerCount ?? null) : null,
 
     currentTransport: data.currentTransport ?? null,
@@ -183,7 +199,18 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 
     mainPainIntensity: data.mainPainIntensity ?? null,
 
-    passengerInterest: includePassenger ? (data.passengerInterest ?? null) : null,
+    passengerInterest: includePassenger
+      ? (data.passengerInterest ??
+        (data.passengerIntention === "TALVEZ"
+          ? "TALVEZ"
+          : data.passengerIntention
+            ? "USARIA_HOJE"
+            : data.proposalSense === "NAO_VEJO_SENTIDO"
+              ? "PROVAVELMENTE_NAO"
+              : data.proposalSense === "TALVEZ_DEPENDENDO"
+                ? "TALVEZ"
+                : "USARIA_HOJE"))
+      : null,
 
     passengerTrustFactors: includePassenger ? (data.passengerTrustFactors ?? null) : null,
 
@@ -212,7 +239,20 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
         ? (data.familyCarCompanions ?? null)
         : null,
 
-    driverInterest: includeDriver ? (data.driverInterest ?? null) : null,
+    driverInterest: includeDriver
+      ? (data.driverInterest ??
+        (data.driverRealValidation === "TALVEZ"
+          ? "TALVEZ"
+          : data.driverRealValidation === "NAO"
+            ? "PROVAVELMENTE_NAO"
+            : data.driverRealValidation === "COM_CERTEZA"
+              ? "USARIA_HOJE"
+              : data.proposalSense === "NAO_VEJO_SENTIDO"
+                ? "PROVAVELMENTE_NAO"
+                : data.proposalSense === "TALVEZ_DEPENDENDO"
+                  ? "TALVEZ"
+                  : "USARIA_HOJE"))
+      : null,
 
     driverCommitment: includeDriver ? (data.driverCommitment ?? null) : null,
 
@@ -310,6 +350,12 @@ const rawPayloadAllowlist = new Set([
   "passengerBarriersCustom",
   "passengerIntention",
   "dualPriority",
+  "feedback",
+  "termsAccepted",
+  "privacyAccepted",
+  "researchAccepted",
+  "termsVersion",
+  "consentsTimestamp",
 ]);
 
 /** Removes PII and values already stored in dedicated form_submissions columns from new raw payloads. */

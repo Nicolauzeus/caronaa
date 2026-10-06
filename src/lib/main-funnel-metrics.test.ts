@@ -16,7 +16,9 @@ describe("cohort main funnel", () => {
   });
 
   it("can label the registered-user acquisition cohort separately", () => {
-    expect(buildMainFunnel([{ userId: "u1", events: ["USER_REGISTERED"] }], "user_registered").cohortEvent)
-      .toBe("user_registered");
+    expect(
+      buildMainFunnel([{ userId: "u1", events: ["USER_REGISTERED"] }], "user_registered")
+        .cohortEvent,
+    ).toBe("user_registered");
   });
 });

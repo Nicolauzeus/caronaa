@@ -237,7 +237,20 @@ export async function getFormMetrics(filters: FormMetricsFilters = {}) {
     ...summary,
     totals: {
       ...summary.totals,
-      ...((funnelData as { totals: Pick<FormMetricsTotals, "reached" | "started" | "completed" | "leads" | "startRate" | "completionRate" | "leadRate"> }).totals),
+      ...(
+        funnelData as {
+          totals: Pick<
+            FormMetricsTotals,
+            | "reached"
+            | "started"
+            | "completed"
+            | "leads"
+            | "startRate"
+            | "completionRate"
+            | "leadRate"
+          >;
+        }
+      ).totals,
     },
   };
 }

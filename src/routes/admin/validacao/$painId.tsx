@@ -696,4 +696,3 @@ function PainDetailPage() {
     </div>
   );
 }
-

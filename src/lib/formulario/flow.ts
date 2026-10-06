@@ -2,7 +2,9 @@ import type { CaronaaIntent, CaronaaStsFormData, VehicleType } from "./types";
 
 export type FormStep =
   | "INTRO"
-  | "PROFILE_ROUTE"
+  | "ROLE_SELECTION"
+  | "ROUTE_DETAILS"
+  | "EVENT_PRESENCE"
   | "PROPOSAL_TRANSITION"
   | "DRIVER_FLOW"
   | "PASSENGER_FLOW"
@@ -12,7 +14,9 @@ export type FormStep =
   | "MAIN_PROBLEM"
   | "INTEREST"
   | "CONTACT"
-  | "SUCCESS";
+  | "SUCCESS"
+  // Legado para compatibilidade retroativa
+  | "PROFILE_ROUTE";
 
 export interface StepDefinition {
   id: FormStep;
@@ -23,34 +27,46 @@ export interface StepDefinition {
 
 export const STEP_DEFINITIONS: StepDefinition[] = [
   {
-    id: "PROFILE_ROUTE",
+    id: "ROLE_SELECTION",
     title: "Como você poderia usar a CARONAA?",
-    badgeText: "Perfil & Trajeto",
+    badgeText: "Seu Papel",
     isEligible: () => true,
   },
   {
-    id: "CURRENT_PRICE",
-    title: "Como você faz esse trajeto atualmente?",
-    badgeText: "Transporte & Custos",
+    id: "ROUTE_DETAILS",
+    title: "Vamos entender seu caminho",
+    badgeText: "Trajeto & Horário",
     isEligible: () => true,
   },
   {
-    id: "PROBLEMS",
-    title: "Quais problemas você enfrenta no trajeto?",
-    badgeText: "Dificuldades",
+    id: "EVENT_PRESENCE",
+    title: "Quando você estará por aqui?",
+    badgeText: "Dias no STS",
     isEligible: () => true,
   },
   {
-    id: "MAIN_PROBLEM",
-    title: "Qual problema mais incomoda você?",
-    badgeText: "Desafio Principal",
+    id: "PROPOSAL_TRANSITION",
+    title: "Como funciona a CARONAA",
+    badgeText: "Proposta",
     isEligible: () => true,
   },
   {
-    id: "INTEREST",
-    title: "Condições e confiança para usar a CARONAA",
-    badgeText: "Interesse & Confiança",
-    isEligible: () => true,
+    id: "DRIVER_FLOW",
+    title: "Preferências para oferecer carona",
+    badgeText: "Motorista",
+    isEligible: (data) => data.intent === "MOTORISTA",
+  },
+  {
+    id: "PASSENGER_FLOW",
+    title: "Preferências para pegar carona",
+    badgeText: "Passageiro",
+    isEligible: (data) => data.intent === "PASSAGEIRO",
+  },
+  {
+    id: "BOTH_FLOW",
+    title: "Preferências para oferecer e pegar carona",
+    badgeText: "Motorista & Passageiro",
+    isEligible: (data) => data.intent === "AMBOS",
   },
   {
     id: "CONTACT",
@@ -70,8 +86,20 @@ export function getStepsForIntent(intent?: CaronaaIntent): FormStep[] {
 }
 
 export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
-  if (currentStep === "INTRO") return "PROFILE_ROUTE";
+  if (currentStep === "INTRO") return "ROLE_SELECTION";
   if (currentStep === "CONTACT") return "SUCCESS";
+
+  if (currentStep === "ROLE_SELECTION") {
+    return "ROUTE_DETAILS";
+  }
+
+  if (currentStep === "ROUTE_DETAILS") {
+    return "EVENT_PRESENCE";
+  }
+
+  if (currentStep === "EVENT_PRESENCE") {
+    return "PROPOSAL_TRANSITION";
+  }
 
   if (currentStep === "PROFILE_ROUTE") {
     return "PROPOSAL_TRANSITION";
@@ -108,8 +136,12 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
   if (currentStep === "INTRO") return null;
   if (currentStep === "SUCCESS") return "CONTACT";
 
+  if (currentStep === "ROLE_SELECTION") return "INTRO";
   if (currentStep === "PROFILE_ROUTE") return "INTRO";
-  if (currentStep === "PROPOSAL_TRANSITION") return "PROFILE_ROUTE";
+  if (currentStep === "ROUTE_DETAILS") return "ROLE_SELECTION";
+  if (currentStep === "EVENT_PRESENCE") return "ROUTE_DETAILS";
+  if (currentStep === "PROPOSAL_TRANSITION") return "EVENT_PRESENCE";
+
   if (
     currentStep === "DRIVER_FLOW" ||
     currentStep === "PASSENGER_FLOW" ||
@@ -122,7 +154,7 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
     if (data.intent === "MOTORISTA") return "DRIVER_FLOW";
     if (data.intent === "PASSAGEIRO") return "PASSENGER_FLOW";
     if (data.intent === "AMBOS") return "BOTH_FLOW";
-    return "INTEREST";
+    return "PASSENGER_FLOW";
   }
 
   const active = getActiveSteps(data);
@@ -136,61 +168,57 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
 }
 
 export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): number {
-  if (currentStep === "PROFILE_ROUTE") return 0;
-  if (currentStep === "PROPOSAL_TRANSITION") return 1;
+  if (currentStep === "ROLE_SELECTION" || currentStep === "PROFILE_ROUTE") return 1;
+  if (currentStep === "ROUTE_DETAILS") return 2;
+  if (currentStep === "EVENT_PRESENCE") return 3;
+  if (currentStep === "PROPOSAL_TRANSITION") return 4;
   if (
     currentStep === "DRIVER_FLOW" ||
     currentStep === "PASSENGER_FLOW" ||
     currentStep === "BOTH_FLOW"
   ) {
-    return 2;
+    return 5;
   }
-  if (currentStep === "CONTACT") return 3;
+  if (currentStep === "CONTACT") return 6;
 
   const active = getActiveSteps(data);
-  return active.indexOf(currentStep);
+  const idx = active.indexOf(currentStep);
+  return idx >= 0 ? idx + 1 : 1;
 }
 
-/** Retorna o número total N de etapas principais ativas (excluindo contato/sucesso do questionário central) */
-export function getStepCount(data: CaronaaStsFormData): number {
-  const active = getActiveSteps(data);
-  // As etapas de questionário antes de CONTACT (excluindo telas de transição pura)
-  const questionsOnly = active.filter((s) => s !== "CONTACT" && s !== "PROPOSAL_TRANSITION");
-  return questionsOnly.length || 5;
+/** Retorna o número total N de etapas principais ativas do questionário */
+export function getStepCount(data?: CaronaaStsFormData): number {
+  return 5;
 }
 
 export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFormData): number {
   if (currentStep === "INTRO" || currentStep === "SUCCESS") {
     return 0;
   }
-  if (currentStep === "CONTACT" || currentStep === "INTEREST") {
-    return 100;
+  if (currentStep === "ROLE_SELECTION" || currentStep === "PROFILE_ROUTE") {
+    return 17;
   }
-
-  if (currentStep === "PROFILE_ROUTE") {
-    return 25;
+  if (currentStep === "ROUTE_DETAILS") {
+    return 33;
+  }
+  if (currentStep === "EVENT_PRESENCE") {
+    return 50;
   }
   if (currentStep === "PROPOSAL_TRANSITION") {
-    return 50;
+    return 67;
   }
   if (
     currentStep === "DRIVER_FLOW" ||
     currentStep === "PASSENGER_FLOW" ||
     currentStep === "BOTH_FLOW"
   ) {
-    return 75;
+    return 83;
+  }
+  if (currentStep === "CONTACT" || currentStep === "INTEREST") {
+    return 100;
   }
 
-  const activeQuestions = getActiveSteps(data).filter(
-    (s) => s !== "CONTACT" && s !== "PROPOSAL_TRANSITION",
-  );
-  const total = activeQuestions.length;
-  if (total === 0) return 0;
-
-  const currentIndex = activeQuestions.indexOf(currentStep);
-  if (currentIndex === -1) return 0;
-
-  return Math.round(((currentIndex + 1) / total) * 100);
+  return 50;
 }
 
 export function shouldShowPassengerFlow(intent?: CaronaaIntent): boolean {

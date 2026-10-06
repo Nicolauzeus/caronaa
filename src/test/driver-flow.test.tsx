@@ -26,7 +26,9 @@ describe("ProposalTransitionStep and DriverFlow", () => {
     );
 
     // Briefing text rules
-    expect(screen.getAllByText(/Receba pelo compartilhamento do trajeto/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Receba pelo compartilhamento do trajeto/i).length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getByText(/compensação pelo lugar compartilhado/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Estamos testando essa ideia agora/i).length).toBeGreaterThan(0);
 
@@ -34,9 +36,7 @@ describe("ProposalTransitionStep and DriverFlow", () => {
     expect(screen.getByText(/Sem prometer renda garantida/i)).toBeInTheDocument();
 
     // Structured question
-    expect(
-      screen.getByText(/Quanto essa proposta faz sentido para você\?/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Quanto essa proposta faz sentido para você\?/i)).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Pouco/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Médio/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Alto/i })).toBeInTheDocument();
@@ -109,19 +109,27 @@ describe("ProposalTransitionStep and DriverFlow", () => {
     expect(screen.getByRole("radio", { name: "10" })).toBeInTheDocument();
 
     // Item 3: Conforto
-    expect(screen.getByText(/3\. Fatores de conforto para você oferecer carona/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/3\. Fatores de conforto para você oferecer carona/i),
+    ).toBeInTheDocument();
 
     // Item 4: Compensação
     expect(screen.getByText(/4\. Compensação justa por passageiro/i)).toBeInTheDocument();
     expect(screen.getByText(/R\$ 3,50 é nossa referência mínima/i)).toBeInTheDocument();
-    expect(screen.getByText(/15% em validação/i)).toBeInTheDocument();
-    expect(screen.queryByText(/25%/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/25% em validação/i)).toBeInTheDocument();
+    expect(screen.queryByText(/15%/i)).not.toBeInTheDocument();
 
     // Item 5: Barreiras
-    expect(screen.getByText(/5\. O que mais te faria hesitar em oferecer uma carona\?/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/5\. O que mais te faria hesitar em oferecer uma carona\?/i),
+    ).toBeInTheDocument();
 
     // Item 6: Validação real
-    expect(screen.getByText(/6\. Se houver alguém compatível com o seu trajeto hoje, você ofereceria carona\?/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /6\. Se houver alguém compatível com o seu trajeto hoje, você ofereceria carona\?/i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Com certeza, posso oferecer\./i)).toBeInTheDocument();
     expect(screen.getByText(/Talvez\./i)).toBeInTheDocument();
     expect(screen.getByText(/Sim, mas apenas durante o Siará Tech Summit\./i)).toBeInTheDocument();
@@ -183,7 +191,9 @@ describe("ProposalTransitionStep and DriverFlow", () => {
     );
 
     expect(screen.getByText(/Tudo bem! Mesmo sem lugares livres hoje/i)).toBeInTheDocument();
-    expect(screen.getByText(/Você poderia oferecer uma carona em outro momento\?/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Você poderia oferecer uma carona em outro momento\?/i),
+    ).toBeInTheDocument();
 
     const continueBtn = screen.getByRole("button", { name: /Continuar/i });
     expect(continueBtn).not.toBeDisabled();
@@ -208,6 +218,15 @@ describe("ProposalTransitionStep and DriverFlow", () => {
       driverRealValidation: "COM_CERTEZA",
     });
     expect(res2.success).toBe(false);
+
+    // Above max price R$ 25.00
+    const res2b = validateFormStep("DRIVER_FLOW", {
+      vehicleType: "CARRO_PROPRIO",
+      availableSeats: 2,
+      driverPrice: 26.0,
+      driverRealValidation: "COM_CERTEZA",
+    });
+    expect(res2b.success).toBe(false);
 
     // Custom barrier without text
     const res3 = validateFormStep("DRIVER_FLOW", {

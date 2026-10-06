@@ -1,25 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/caronaa/AppShell";
-import { BrandBadge } from "@/components/caronaa/BrandElements";
+import { BrandBadge, StsBadge } from "@/components/caronaa/BrandElements";
 import { Button } from "@/components/ui/button";
 import {
-  Shield,
   ShieldCheck,
+  ShieldAlert,
   AlertTriangle,
-  UsersRound,
-  CheckCircle2,
+  UserCheck,
   MapPin,
-  ArrowUpRight,
+  Clock,
+  Lock,
+  PhoneCall,
+  CheckCircle2,
+  Car,
+  Scale,
+  ArrowRight,
+  ExternalLink,
+  Info,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/seguranca")({
   head: () => ({
     meta: [
-      { title: "Segurança e Responsabilidades — CARONAA" },
+      { title: "Segurança começa antes da carona — CARONAA" },
       {
         name: "description",
         content:
-          "Diretrizes de confiança, transparência e responsabilidades comunitárias na CARONAA durante o STS 2026.",
+          "Diretrizes e mecanismos da CARONAA para tomada de decisões conscientes e seguras no compartilhamento de trajetos.",
       },
     ],
   }),
@@ -29,100 +37,350 @@ export const Route = createFileRoute("/seguranca")({
 function SegurancaPage() {
   return (
     <AppShell publicPage>
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="text-center">
-          <BrandBadge variant="community" className="mb-4" />
-          <h1 className="font-display text-3xl font-extrabold text-foreground sm:text-5xl">
-            Segurança e Responsabilidades
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-14">
+        {/* Cabeçalho */}
+        <div className="space-y-4 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+            <BrandBadge variant="community" />
+            <StsBadge />
+          </div>
+
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+            Segurança começa antes da carona.
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            A CARONAA é construída sobre transparência, respeito mútuo e comunidade. Conheça as
-            nossas diretrizes e o funcionamento do MVP.
+
+          <p className="mx-auto sm:mx-0 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            A CARONAA está criando mecanismos para ajudar pessoas a tomar decisões mais conscientes
+            antes de compartilhar um trajeto. Compartilhar caminhos é um ato de confiança que exige
+            cuidado mútuo, clareza e bom senso.
           </p>
         </div>
 
-        {/* Aviso de Transparência e Limites */}
-        <div className="mt-12 rounded-3xl border border-warning/30 bg-warning/5 p-6 sm:p-8">
+        {/* Bloco de Clareza e Limites de Atuação */}
+        <div className="mt-8 rounded-3xl border border-primary/20 bg-primary/5 p-6 sm:p-8 space-y-4">
           <div className="flex items-start gap-3.5">
-            <AlertTriangle className="size-6 shrink-0 text-warning" />
-            <div>
+            <Info className="size-6 shrink-0 text-caronaa-primary mt-0.5" />
+            <div className="space-y-2">
               <h2 className="font-display text-lg font-bold text-foreground">
-                Fase de Validação Experimental
+                O papel e os limites da plataforma CARONAA
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                A CARONAA é uma iniciativa em estágio inicial de ideação e teste do ecossistema Unifor
-                Hub. <strong>Não fazemos afirmações de segurança absoluta</strong> e não atuamos como
-                empresa de transporte remunerado privado. A plataforma facilita o encontro entre pessoas
-                com rotas compatíveis para compartilhamento comunitário.
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Para que a experiência seja transparente e segura para todos, é fundamental
+                compreender a natureza da nossa atuação:
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-foreground pt-1">
+                <li className="flex items-start gap-2 rounded-xl bg-card/60 p-2.5 border border-border/50">
+                  <CheckCircle2 size={16} className="text-caronaa-primary shrink-0 mt-0.5" />
+                  <span>
+                    A CARONAA é uma <strong>plataforma tecnológica de conexão</strong> entre pessoas
+                    com trajetos convergentes.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 rounded-xl bg-card/60 p-2.5 border border-border/50">
+                  <CheckCircle2 size={16} className="text-caronaa-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Não é transportadora</strong> e não opera frotas de transporte público
+                    ou particular.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 rounded-xl bg-card/60 p-2.5 border border-border/50">
+                  <CheckCircle2 size={16} className="text-caronaa-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Não fornece motoristas</strong> nem contrata condutores de veículos.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 rounded-xl bg-card/60 p-2.5 border border-border/50">
+                  <CheckCircle2 size={16} className="text-caronaa-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Não garante que um usuário será confiável</strong> em todas as
+                    circunstâncias.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 rounded-xl bg-card/60 p-2.5 border border-border/50">
+                  <CheckCircle2 size={16} className="text-caronaa-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Não garante que uma viagem ocorrerá</strong> (o matching depende de
+                    mútua concordância).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 rounded-xl bg-card/60 p-2.5 border border-border/50">
+                  <CheckCircle2 size={16} className="text-caronaa-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Não substitui cuidados pessoais</strong>, legislação de trânsito ou bom
+                    senso individual.
+                  </span>
+                </li>
+              </ul>
+              <p className="text-xs text-muted-foreground pt-1">
+                A CARONAA disponibiliza ferramentas de apoio e verificação, mas{" "}
+                <strong>não promete segurança absoluta</strong>. A prudência e a decisão final de
+                ingressar em qualquer viagem cabem a cada participante.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Pilares de Boas Práticas */}
+        {/* 7 Seções Práticas de Segurança */}
         <div className="mt-12 space-y-6">
-          <h2 className="font-display text-2xl font-bold">Diretrizes para Motoristas e Passageiros</h2>
+          <div className="border-b border-border pb-3">
+            <h2 className="font-display text-2xl font-bold text-foreground">
+              Como cuidar da sua segurança em cada etapa
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Siga estas boas práticas antes, durante e depois de qualquer deslocamento
+              compartilhado.
+            </p>
+          </div>
 
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                <UsersRound size={20} />
+          <div className="grid gap-5 sm:grid-cols-2">
+            {/* 1. Conheça antes de combinar */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-caronaa-primary/15 text-caronaa-primary">
+                <UserCheck size={22} />
               </div>
-              <h3 className="mt-4 font-bold text-base">Identificação Clara</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Compartilhe nome, WhatsApp verificado e detalhes claros do ponto de encontro antes
-                de embarcar.
+              <h3 className="font-display font-bold text-base text-foreground">
+                1. Conheça antes de combinar
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Antes de fechar qualquer trajeto, troque mensagens pelos canais indicados na
+                plataforma. Alinhe expectativas, pergunte sobre o percurso e converse brevemente
+                para ter clareza sobre com quem você compartilhará o carro.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                <MapPin size={20} />
+            {/* 2. Confira o perfil */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-caronaa-primary/15 text-caronaa-primary">
+                <ShieldCheck size={22} />
               </div>
-              <h3 className="mt-4 font-bold text-base">Pontos de Encontro Públicos</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                No Siará Tech Summit, priorize as áreas designadas do Centro de Eventos do Ceará e
-                locais bem iluminados para o embarque e desembarque.
+              <h3 className="font-display font-bold text-base text-foreground">
+                2. Confira o perfil
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Examine as informações disponíveis no aplicativo: nome, validação de canais de
+                contato, modelo do veículo (se motorista), preferências declaradas e avaliações de
+                outros usuários. Quanto mais informações alinhadas, mais tranquila será a viagem.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                <CheckCircle2 size={20} />
+            {/* 3. Confirme origem, destino e horário */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-caronaa-primary/15 text-caronaa-primary">
+                <Clock size={22} />
               </div>
-              <h3 className="mt-4 font-bold text-base">Acordo Prévio e Respeito</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Confirme horário, tempo de tolerância e eventuais divisões justas de combustível
-                diretamente antes do início da viagem.
+              <h3 className="font-display font-bold text-base text-foreground">
+                3. Confirme origem, destino e horário
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Defina com exatidão onde o encontro acontecerá, onde será o desembarque e qual é o
+                tempo máximo de tolerância para atrasos. Evite alterações bruscas de trajeto no meio
+                do caminho sem que ambas as partes concordem antecipadamente.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                <ShieldCheck size={20} />
+            {/* 4. Não compartilhe informações desnecessárias */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-caronaa-primary/15 text-caronaa-primary">
+                <Lock size={22} />
               </div>
-              <h3 className="mt-4 font-bold text-base">Autonomia de Decisão</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Tanto o passageiro quanto o motorista têm total liberdade para aceitar ou recusar
-                uma combinação caso não se sintam confortáveis.
+              <h3 className="font-display font-bold text-base text-foreground">
+                4. Não compartilhe informações desnecessárias
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Para combinar uma carona, são necessários apenas o ponto de encontro e o horário.
+                Nunca divulgue dados bancários confidenciais, senhas, número de documentos sensíveis
+                ou detalhes desnecessários da sua rotina pessoal ou domiciliar.
               </p>
+            </div>
+
+            {/* 5. Combine em local adequado */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-caronaa-primary/15 text-caronaa-primary">
+                <MapPin size={22} />
+              </div>
+              <h3 className="font-display font-bold text-base text-foreground">
+                5. Combine em local adequado
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Marque embarques e desembarques sempre em pontos públicos, movimentados e bem
+                iluminados (como entradas principais de eventos, postos conhecidos, shoppings ou
+                estações de transporte). No STS 2026, priorize os portões e acessos oficiais do
+                Centro de Eventos do Ceará.
+              </p>
+            </div>
+
+            {/* 6. Se algo parecer errado, não continue */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <ShieldAlert size={22} />
+              </div>
+              <h3 className="font-display font-bold text-base text-foreground">
+                6. Se algo parecer errado, não continue
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Você tem autonomia absoluta para desistir ou recusar o embarque a qualquer momento
+                se notar comportamento suspeito, divergência nos dados do condutor/veículo ou
+                simplesmente não se sentir confortável. Respeite sua intuição e comunique
+                cancelamento na plataforma.
+              </p>
+            </div>
+          </div>
+
+          {/* 7. Respeite as regras de trânsito (Largura total) */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-2.5">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-caronaa-primary/15 text-caronaa-primary shrink-0">
+                <Car size={22} />
+              </div>
+              <h3 className="font-display font-bold text-base text-foreground">
+                7. Respeite as regras de trânsito
+              </h3>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              A segurança viária é responsabilidade direta de quem conduz e deve ser exigida por
+              quem pega carona:
+            </p>
+            <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground pt-1">
+              <li className="rounded-xl bg-muted/40 p-3">
+                <strong className="text-foreground block">Cinto de segurança:</strong> Uso
+                obrigatório e individual por todos os passageiros nos bancos dianteiros e traseiros.
+              </li>
+              <li className="rounded-xl bg-muted/40 p-3">
+                <strong className="text-foreground block">Tolerância zero ao álcool:</strong> Nunca
+                dirija ou embarque com alguém que ingeriu bebidas alcoólicas ou substâncias
+                entorpecentes.
+              </li>
+              <li className="rounded-xl bg-muted/40 p-3">
+                <strong className="text-foreground block">Atenção e velocidade:</strong> Não
+                manuseie o celular enquanto dirige e respeite os limites de velocidade das vias
+                urbanas e rodovias.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bloco Obrigatório de Situação de Risco ou Emergência */}
+        <div className="mt-12 rounded-3xl border border-destructive/30 bg-destructive/5 p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+              <PhoneCall size={26} />
+            </div>
+            <div className="space-y-3">
+              <h2 className="font-display text-lg font-bold text-destructive">
+                Situações de Risco ou Emergência
+              </h2>
+              <p className="text-sm font-semibold text-foreground leading-relaxed">
+                &ldquo;Em caso de situação de risco ou emergência, procure imediatamente os serviços
+                públicos de emergência apropriados.&rdquo;
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                A CARONAA não é um canal de socorro policial ou médico. Diante de qualquer ameaça
+                iminente à sua integridade ou de terceiros, acione diretamente as autoridades
+                competentes:
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1 text-xs font-bold">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-card px-3 py-1.5 text-foreground">
+                  <PhoneCall size={14} className="text-destructive" /> Polícia Militar: 190
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-card px-3 py-1.5 text-foreground">
+                  <PhoneCall size={14} className="text-destructive" /> SAMU: 192
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-card px-3 py-1.5 text-foreground">
+                  <PhoneCall size={14} className="text-destructive" /> Corpo de Bombeiros: 193
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-14 rounded-3xl border border-border bg-secondary/50 p-8 text-center sm:p-10">
-          <h2 className="font-display text-2xl font-bold">Faça parte da validação no STS 2026</h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-            Sua participação nos ajuda a desenhar processos cada vez mais seguros e eficientes para
-            toda a comunidade.
-          </p>
-          <div className="mt-6 flex justify-center">
-            <Button asChild variant="strong" size="lg">
-              <Link to="/formulario">
-                🚗 Garantir minha CARONAA no Siará <ArrowUpRight size={16} />
-              </Link>
-            </Button>
+        {/* Links Obrigatórios: Termos, Privacidade, Entrar na CARONAA, Participar da Validação */}
+        <div className="mt-12 rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft space-y-6">
+          <div className="text-center sm:text-left space-y-1">
+            <h2 className="font-display text-xl font-bold text-foreground">
+              Acesso rápido e documentação completa
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Conheça os termos legais da plataforma ou dê o próximo passo na sua jornada com a
+              CARONAA.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Termos de Uso */}
+            <Link
+              to="/termos"
+              className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4 hover:bg-muted/50 hover:border-caronaa-primary/40 transition group"
+            >
+              <div>
+                <p className="font-bold text-sm text-foreground group-hover:text-caronaa-primary-strong transition">
+                  Termos de Uso
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Regras gerais, direitos, deveres e limites da intermediação.
+                </p>
+              </div>
+              <ArrowRight
+                size={18}
+                className="text-muted-foreground group-hover:text-caronaa-primary group-hover:translate-x-1 transition shrink-0 ml-2"
+              />
+            </Link>
+
+            {/* Política de Privacidade */}
+            <Link
+              to="/privacidade"
+              className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4 hover:bg-muted/50 hover:border-caronaa-primary/40 transition group"
+            >
+              <div>
+                <p className="font-bold text-sm text-foreground group-hover:text-caronaa-primary-strong transition">
+                  Política de Privacidade
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Tratamento de dados, conformidade com a LGPD e seus direitos.
+                </p>
+              </div>
+              <ArrowRight
+                size={18}
+                className="text-muted-foreground group-hover:text-caronaa-primary group-hover:translate-x-1 transition shrink-0 ml-2"
+              />
+            </Link>
+
+            {/* Entrar na CARONAA */}
+            <Link
+              to="/auth"
+              className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4 hover:bg-muted/50 hover:border-caronaa-primary/40 transition group"
+            >
+              <div>
+                <p className="font-bold text-sm text-foreground group-hover:text-caronaa-primary-strong transition">
+                  Entrar na CARONAA
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Acesse sua conta ou cadastre-se para compartilhar caminhos.
+                </p>
+              </div>
+              <ArrowRight
+                size={18}
+                className="text-muted-foreground group-hover:text-caronaa-primary group-hover:translate-x-1 transition shrink-0 ml-2"
+              />
+            </Link>
+
+            {/* Participar da validação */}
+            <Link
+              to="/formulario"
+              className="flex items-center justify-between rounded-2xl border border-caronaa-primary/30 bg-caronaa-primary/10 p-4 hover:bg-caronaa-primary/20 transition group"
+            >
+              <div>
+                <p className="font-bold text-sm text-caronaa-dark dark:text-caronaa-primary font-extrabold">
+                  Participar da validação
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Simule trajetos e colabore com a pesquisa no Siará Tech Summit.
+                </p>
+              </div>
+              <ArrowRight
+                size={18}
+                className="text-caronaa-dark dark:text-caronaa-primary group-hover:translate-x-1 transition shrink-0 ml-2"
+              />
+            </Link>
           </div>
         </div>
       </div>

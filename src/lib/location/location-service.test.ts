@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  GooglePlacesProvider,
-  parseAddressComponents,
-  parseSecondaryText,
-} from "./google-places";
+import { GooglePlacesProvider, parseAddressComponents, parseSecondaryText } from "./google-places";
 import {
   isLocationServiceConfigured,
   getMissingLocationConfig,
@@ -18,6 +14,8 @@ describe("Location Service & Google Places Provider", () => {
     process.env = { ...originalEnv };
     delete process.env.GOOGLE_PLACES_API_KEY;
     delete process.env.GOOGLE_MAPS_API_KEY;
+    delete process.env.VITE_GOOGLE_PLACES_API_KEY;
+    delete process.env.VITE_GOOGLE_MAPS_API_KEY;
   });
 
   afterEach(() => {
@@ -45,9 +43,21 @@ describe("Location Service & Google Places Provider", () => {
     it("correctly parses address components from Google Place Details", () => {
       const components = [
         { long_name: "1321", short_name: "1321", types: ["street_number"] },
-        { long_name: "Avenida Washington Soares", short_name: "Av. Washington Soares", types: ["route"] },
-        { long_name: "Edson Queiroz", short_name: "Edson Queiroz", types: ["sublocality", "sublocality_level_1"] },
-        { long_name: "Fortaleza", short_name: "Fortaleza", types: ["administrative_area_level_2", "locality"] },
+        {
+          long_name: "Avenida Washington Soares",
+          short_name: "Av. Washington Soares",
+          types: ["route"],
+        },
+        {
+          long_name: "Edson Queiroz",
+          short_name: "Edson Queiroz",
+          types: ["sublocality", "sublocality_level_1"],
+        },
+        {
+          long_name: "Fortaleza",
+          short_name: "Fortaleza",
+          types: ["administrative_area_level_2", "locality"],
+        },
         { long_name: "Ceará", short_name: "CE", types: ["administrative_area_level_1"] },
         { long_name: "Brasil", short_name: "BR", types: ["country"] },
       ];
@@ -86,7 +96,8 @@ describe("Location Service & Google Places Provider", () => {
         predictions: [
           {
             place_id: "ChIJ_unifor_123",
-            description: "UNIFOR - Universidade de Fortaleza, Edson Queiroz, Fortaleza - CE, Brasil",
+            description:
+              "UNIFOR - Universidade de Fortaleza, Edson Queiroz, Fortaleza - CE, Brasil",
             structured_formatting: {
               main_text: "Universidade de Fortaleza (UNIFOR)",
               secondary_text: "Edson Queiroz, Fortaleza - CE, Brasil",

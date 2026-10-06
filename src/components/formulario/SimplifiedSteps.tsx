@@ -17,7 +17,11 @@ import type {
   PriceRange,
   VehicleType,
 } from "@/lib/formulario/types";
-import { calculateCaronaaFee, calculateDriverNet, MIN_DRIVER_PRICE } from "@/lib/formulario/pricing";
+import {
+  calculateCaronaaFee,
+  calculateDriverNet,
+  MIN_DRIVER_PRICE,
+} from "@/lib/formulario/pricing";
 
 type NavProps = {
   onNext: () => void;
@@ -26,7 +30,12 @@ type NavProps = {
   nextLabel?: string;
 };
 
-export const intentOptions: Array<{ value: CaronaaIntent; label: string; description: string; emoji: string }> = [
+export const intentOptions: Array<{
+  value: CaronaaIntent;
+  label: string;
+  description: string;
+  emoji: string;
+}> = [
   {
     value: "MOTORISTA",
     label: "Oferecer carona",
@@ -177,9 +186,7 @@ function StepShell({
           {title}
         </h2>
 
-        <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {description}
-        </p>
+        <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">{description}</p>
       </div>
 
       {children}
@@ -265,6 +272,345 @@ function ChoiceGrid<T extends string>({
   );
 }
 
+export function RoleStep({
+  intent,
+  onIntentChange,
+  onNext,
+  onBack,
+  stepNumber = 1,
+  totalSteps = 6,
+}: {
+  intent?: CaronaaIntent | undefined;
+  onIntentChange: (value: CaronaaIntent) => void;
+  onNext: () => void;
+  onBack: () => void;
+  stepNumber?: number;
+  totalSteps?: number;
+}) {
+  const canContinue = Boolean(intent);
+
+  return (
+    <StepShell
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      badgeText="Seu Papel"
+      encouragement="Ótimo! Vamos começar entendendo como você pretende participar."
+      title="Como você poderia usar a CARONAA?"
+      description="Estamos conectando pessoas que precisam ir com pessoas que já estão indo pelo mesmo caminho."
+    >
+      <div className="space-y-4">
+        <label className="text-base font-bold text-foreground">Como você deseja participar?</label>
+        <ChoiceGrid
+          value={intent}
+          values={intentOptions}
+          onChange={onIntentChange}
+          ariaLabel="Intenção de uso"
+          columns="grid-cols-1 sm:grid-cols-3"
+        />
+      </div>
+
+      <Nav onNext={onNext} onBack={onBack} canContinue={canContinue} nextLabel="Continuar" />
+    </StepShell>
+  );
+}
+
+export const CEC_DEFAULT_LOCATION: FormLocationDetails = {
+  rawText: "Centro de Eventos do Ceará",
+  formattedAddress: "Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE, 60811-341",
+  neighborhood: "Edson Queiroz",
+  city: "Fortaleza",
+  state: "CE",
+  lat: -3.7638,
+  lng: -38.4815,
+  providerId: "loc_cec",
+};
+
+export function FixedOriginCard({ isDriver = false }: { isDriver?: boolean }) {
+  const originLabel = isDriver ? "De onde você sai?" : "De onde você vai sair?";
+  return (
+    <div className="space-y-1.5" data-testid="fixed-origin-card">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+          <MapPin size={15} className="text-caronaa-primary-strong" />
+          <span>{originLabel}</span>
+          <span className="text-destructive">*</span>
+        </label>
+        <span className="inline-flex items-center gap-1 rounded-full bg-caronaa-primary/10 border border-caronaa-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-caronaa-primary-strong">
+          📍 Ponto Oficial do Evento
+        </span>
+      </div>
+
+      <div className="relative overflow-hidden rounded-xl border border-border/80 bg-muted/30 p-3.5 sm:p-4 transition">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-caronaa-primary/15 text-caronaa-primary-strong border border-caronaa-primary/30">
+              <MapPin size={18} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-foreground">
+                Centro de Eventos do Ceará — Fortaleza, CE
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE
+              </p>
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-background/80 px-2 py-0.5 text-[11px] text-muted-foreground border border-border/50">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>Origem fixa: saída dos participantes do Siará Tech Summit</span>
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="inline-flex items-center gap-1 rounded bg-secondary/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              🔒 Fixo
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function RouteDetailsStep({
+  intent = "PASSAGEIRO",
+  occupation,
+  occupationDetails,
+  originNeighborhood,
+  originLocation: _originLocation,
+  destinationNeighborhood,
+  destinationLocation,
+  departureWindow,
+  onOccupationChange,
+  onOccupationDetailsChange,
+  onOriginNeighborhoodChange,
+  onOriginLocationChange,
+  onDestinationNeighborhoodChange,
+  onDestinationLocationChange,
+  onDepartureWindowChange,
+  onNext,
+  onBack,
+  stepNumber = 2,
+  totalSteps = 6,
+}: {
+  intent?: CaronaaIntent | undefined;
+  occupation?: UserOccupation | undefined;
+  occupationDetails?: string | undefined;
+  originNeighborhood?: string | undefined;
+  originLocation?: FormLocationDetails | undefined;
+  destinationNeighborhood?: string | undefined;
+  destinationLocation?: FormLocationDetails | undefined;
+  departureWindow?: DepartureWindow | undefined;
+  onOccupationChange: (value: UserOccupation) => void;
+  onOccupationDetailsChange?: (value: string) => void;
+  onOriginNeighborhoodChange: (value: string) => void;
+  onOriginLocationChange?: (value: string, details?: FormLocationDetails) => void;
+  onDestinationNeighborhoodChange: (value: string) => void;
+  onDestinationLocationChange?: (value: string, details?: FormLocationDetails) => void;
+  onDepartureWindowChange: (value: DepartureWindow) => void;
+  onNext: () => void;
+  onBack: () => void;
+  stepNumber?: number;
+  totalSteps?: number;
+}) {
+  const isDriver = intent === "MOTORISTA";
+  const destinationLabel = isDriver ? "Para onde você vai?" : "Qual será seu destino?";
+
+  // Garante que o ponto de partida oficial esteja sempre ativo
+  React.useEffect(() => {
+    if (!originNeighborhood || originNeighborhood !== STS_2026_CONFIG.defaultMeetingPoint) {
+      onOriginNeighborhoodChange(STS_2026_CONFIG.defaultMeetingPoint);
+      if (onOriginLocationChange) {
+        onOriginLocationChange(STS_2026_CONFIG.defaultMeetingPoint, CEC_DEFAULT_LOCATION);
+      }
+    }
+  }, [originNeighborhood, onOriginNeighborhoodChange, onOriginLocationChange]);
+
+  const hasOccupationValid =
+    Boolean(occupation) && (occupation !== "OUTRO" || Boolean(occupationDetails?.trim()));
+
+  const canContinue =
+    hasOccupationValid && Boolean(destinationNeighborhood?.trim()) && Boolean(departureWindow);
+
+  return (
+    <StepShell
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      badgeText="Trajeto & Horário"
+      encouragement="Muito bom! Agora vamos entender a sua rota e horários."
+      title="Vamos entender seu caminho"
+      description="Conte sobre sua ocupação e os pontos aproximados do seu deslocamento."
+    >
+      <div className="space-y-6">
+        {/* Ocupação */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">Sua ocupação:</label>
+          <ChoiceGrid
+            value={occupation}
+            values={occupationOptions}
+            onChange={onOccupationChange}
+            ariaLabel="Ocupação ou perfil"
+            columns="sm:grid-cols-2"
+          />
+
+          {occupation === "OUTRO" && onOccupationDetailsChange && (
+            <div className="mt-3 space-y-1.5 animate-in fade-in duration-200">
+              <label
+                htmlFor="occupation-details"
+                className="text-xs font-semibold text-muted-foreground"
+              >
+                Como você se identifica? *
+              </label>
+              <input
+                id="occupation-details"
+                type="text"
+                value={occupationDetails ?? ""}
+                onChange={(e) => onOccupationDetailsChange(e.target.value)}
+                placeholder="Ex.: Pesquisador, Visitante de outro estado, Empreendedor..."
+                className="min-h-11 w-full rounded-xl border bg-background px-3.5 py-2 text-sm outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Origem Fixa Oficial e Destino */}
+        <div className="space-y-4 pt-1">
+          <FixedOriginCard isDriver={isDriver} />
+
+          <LocationAutocomplete
+            id="destination-input"
+            label={destinationLabel}
+            required
+            value={destinationNeighborhood ?? ""}
+            selectedLocation={destinationLocation}
+            placeholder="Ex.: Atacadão Maracanaú, Aldeota, UNIFOR, Messejana..."
+            onChange={(val, details) => {
+              onDestinationNeighborhoodChange(val);
+              if (onDestinationLocationChange) onDestinationLocationChange(val, details);
+            }}
+            helperText="Apenas o bairro ou região aproximada será usado para encontrar trajetos compatíveis."
+          />
+        </div>
+
+        {/* Horário de saída */}
+        <div className="space-y-2 pt-1">
+          <label className="text-sm font-semibold text-foreground">
+            Que horas você pretende sair? (seleção única)
+          </label>
+          <ChoiceGrid
+            value={departureWindow}
+            values={departureOptions}
+            onChange={onDepartureWindowChange}
+            ariaLabel="Janela de horário"
+            columns="grid-cols-1 sm:grid-cols-3"
+          />
+        </div>
+      </div>
+
+      <Nav onNext={onNext} onBack={onBack} canContinue={canContinue} nextLabel="Avançar trajeto" />
+    </StepShell>
+  );
+}
+
+export function EventPresenceStep({
+  eventPresenceDays,
+  eventPresenceCustom,
+  onEventPresenceDaysChange,
+  onEventPresenceCustomChange,
+  onNext,
+  onBack,
+  stepNumber = 3,
+  totalSteps = 6,
+}: {
+  eventPresenceDays?: string[] | undefined;
+  eventPresenceCustom?: string | undefined;
+  onEventPresenceDaysChange?: (value: string[]) => void;
+  onEventPresenceCustomChange?: (value: string) => void;
+  onNext: () => void;
+  onBack: () => void;
+  stepNumber?: number;
+  totalSteps?: number;
+}) {
+  const togglePresenceDay = (val: string) => {
+    if (!onEventPresenceDaysChange) return;
+    const current = eventPresenceDays ?? [];
+    if (current.includes(val)) {
+      onEventPresenceDaysChange(current.filter((item) => item !== val));
+    } else {
+      onEventPresenceDaysChange([...current, val]);
+    }
+  };
+
+  const hasCustomValid =
+    !(eventPresenceDays ?? []).includes("OUTRO") || Boolean(eventPresenceCustom?.trim());
+
+  const canContinue = (eventPresenceDays ?? []).length > 0 && hasCustomValid;
+
+  return (
+    <StepShell
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      badgeText="Dias no STS"
+      encouragement="Quase lá! Vamos alinhar os dias em que você estará presente."
+      title="Quando você estará por aqui?"
+      description={`Selecione os dias em que planeja ir ao ${STS_2026_CONFIG.name} (${STS_2026_CONFIG.datesDescription}). Múltipla seleção livre.`}
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {STS_2026_CONFIG.presenceOptions.map((opt) => {
+            const isChecked = (eventPresenceDays ?? []).includes(opt.value);
+
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => togglePresenceDay(opt.value)}
+                className={[
+                  "flex items-center justify-between rounded-xl border p-3.5 text-left transition",
+                  isChecked
+                    ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30"
+                    : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40",
+                ].join(" ")}
+              >
+                <span className="text-sm font-semibold text-foreground">{opt.label}</span>
+                <div
+                  className={[
+                    "size-4 rounded-md border flex items-center justify-center shrink-0 transition",
+                    isChecked
+                      ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
+                      : "border-muted-foreground/40",
+                  ].join(" ")}
+                >
+                  {isChecked && <Check size={12} className="stroke-[3]" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {(eventPresenceDays ?? []).includes("OUTRO") && onEventPresenceCustomChange && (
+          <div className="mt-3 space-y-1.5 animate-in fade-in duration-200">
+            <label
+              htmlFor="presence-custom"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Conte um pouco mais sobre sua disponibilidade: *
+            </label>
+            <input
+              id="presence-custom"
+              type="text"
+              value={eventPresenceCustom ?? ""}
+              onChange={(e) => onEventPresenceCustomChange(e.target.value)}
+              placeholder="Ex.: Apenas na abertura de manhã, dependendo da programação..."
+              className="min-h-11 w-full rounded-xl border bg-background px-3.5 py-2 text-sm outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
+            />
+          </div>
+        )}
+      </div>
+
+      <Nav onNext={onNext} onBack={onBack} canContinue={canContinue} nextLabel="Continuar" />
+    </StepShell>
+  );
+}
+
 export function ProfileRouteStep({
   intent,
   occupation,
@@ -274,7 +620,7 @@ export function ProfileRouteStep({
   destinationNeighborhood,
   destinationLocation,
   departureWindow,
-  weeklyFrequency,
+  weeklyFrequency: _weeklyFrequency,
   eventPresenceDays,
   eventPresenceCustom,
   onIntentChange,
@@ -285,13 +631,13 @@ export function ProfileRouteStep({
   onDestinationNeighborhoodChange,
   onDestinationLocationChange,
   onDepartureWindowChange,
-  onWeeklyFrequencyChange,
+  onWeeklyFrequencyChange: _onWeeklyFrequencyChange,
   onEventPresenceDaysChange,
   onEventPresenceCustomChange,
   onNext,
   onBack,
   stepNumber = 1,
-  totalSteps = 5,
+  totalSteps = 6,
 }: {
   intent?: CaronaaIntent | undefined;
   occupation?: UserOccupation | undefined;
@@ -312,7 +658,7 @@ export function ProfileRouteStep({
   onDestinationNeighborhoodChange: (value: string) => void;
   onDestinationLocationChange?: (value: string, details?: FormLocationDetails) => void;
   onDepartureWindowChange: (value: DepartureWindow) => void;
-  onWeeklyFrequencyChange: (value: WeeklyFrequency) => void;
+  onWeeklyFrequencyChange?: (value: WeeklyFrequency) => void;
   onEventPresenceDaysChange?: (value: string[]) => void;
   onEventPresenceCustomChange?: (value: string) => void;
   onNext: () => void;
@@ -320,12 +666,10 @@ export function ProfileRouteStep({
   stepNumber?: number;
   totalSteps?: number;
 }) {
-  // Rótulos por papel
   const isDriver = intent === "MOTORISTA";
   const originLabel = isDriver ? "De onde você sai?" : "De onde você vai sair?";
   const destinationLabel = isDriver ? "Para onde você vai?" : "Qual será seu destino?";
 
-  // Preenchimento de atalho para o Centro de Eventos
   const fillMeetingPoint = () => {
     onOriginNeighborhoodChange(STS_2026_CONFIG.defaultMeetingPoint);
     if (onOriginLocationChange) {
@@ -342,7 +686,6 @@ export function ProfileRouteStep({
     }
   };
 
-  // Toggle de dias de presença no evento
   const togglePresenceDay = (val: string) => {
     if (!onEventPresenceDaysChange) return;
     const current = eventPresenceDays ?? [];
@@ -353,17 +696,24 @@ export function ProfileRouteStep({
     }
   };
 
+  // Garante que a origem do Siará Tech Summit seja fixa e consistente
+  React.useEffect(() => {
+    if (!originNeighborhood || originNeighborhood !== STS_2026_CONFIG.defaultMeetingPoint) {
+      onOriginNeighborhoodChange(STS_2026_CONFIG.defaultMeetingPoint);
+      if (onOriginLocationChange) {
+        onOriginLocationChange(STS_2026_CONFIG.defaultMeetingPoint, CEC_DEFAULT_LOCATION);
+      }
+    }
+  }, [originNeighborhood, onOriginNeighborhoodChange, onOriginLocationChange]);
+
   const hasOccupationValid =
-    Boolean(occupation) &&
-    (occupation !== "OUTRO" || Boolean(occupationDetails?.trim()));
+    Boolean(occupation) && (occupation !== "OUTRO" || Boolean(occupationDetails?.trim()));
 
   const canContinue =
     Boolean(intent) &&
     hasOccupationValid &&
-    Boolean(originNeighborhood?.trim()) &&
     Boolean(destinationNeighborhood?.trim()) &&
-    Boolean(departureWindow) &&
-    Boolean(weeklyFrequency);
+    Boolean(departureWindow);
 
   return (
     <StepShell
@@ -375,7 +725,6 @@ export function ProfileRouteStep({
       description="Estamos conectando pessoas que precisam ir com pessoas que já estão indo pelo mesmo caminho."
     >
       <div className="space-y-8">
-        {/* ETAPA 1 — Escolha de Papel */}
         <div className="space-y-3">
           <label className="text-base font-bold text-foreground">
             Como você deseja participar?
@@ -389,22 +738,16 @@ export function ProfileRouteStep({
           />
         </div>
 
-        {/* ETAPA 2 (parcial) — Ocupação, Horário de saída, Origem e Destino simples */}
         <div className="space-y-5 rounded-2xl border border-border bg-card/60 p-5 shadow-xs">
           <div className="border-b border-border pb-3">
-            <h3 className="text-base font-bold text-foreground">
-              Vamos entender seu caminho
-            </h3>
+            <h3 className="text-base font-bold text-foreground">Vamos entender seu caminho</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Conte sobre sua ocupação e os pontos aproximados do seu deslocamento.
             </p>
           </div>
 
-          {/* Ocupação */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground">
-              Sua ocupação:
-            </label>
+            <label className="text-sm font-semibold text-foreground">Sua ocupação:</label>
             <ChoiceGrid
               value={occupation}
               values={occupationOptions}
@@ -415,7 +758,10 @@ export function ProfileRouteStep({
 
             {occupation === "OUTRO" && onOccupationDetailsChange && (
               <div className="mt-3 space-y-1.5 animate-in fade-in duration-200">
-                <label htmlFor="occupation-details" className="text-xs font-semibold text-muted-foreground">
+                <label
+                  htmlFor="occupation-details"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
                   Como você se identifica? *
                 </label>
                 <input
@@ -430,30 +776,8 @@ export function ProfileRouteStep({
             )}
           </div>
 
-          {/* Origem e Destino com autocomplete de localização e atalho */}
           <div className="space-y-4 pt-2">
-            <LocationAutocomplete
-              id="origin-input"
-              label={originLabel}
-              required
-              value={originNeighborhood ?? ""}
-              selectedLocation={originLocation}
-              placeholder="Ex.: Centro de Eventos do Ceará, Aldeota, Benfica..."
-              onChange={(val, details) => {
-                onOriginNeighborhoodChange(val);
-                if (onOriginLocationChange) onOriginLocationChange(val, details);
-              }}
-              shortcutButton={
-                <button
-                  type="button"
-                  onClick={fillMeetingPoint}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-caronaa-primary-strong hover:underline hover:text-caronaa-primary transition"
-                >
-                  <MapPin size={13} />
-                  📍 {STS_2026_CONFIG.defaultMeetingPoint}
-                </button>
-              }
-            />
+            <FixedOriginCard isDriver={isDriver} />
 
             <LocationAutocomplete
               id="destination-input"
@@ -461,7 +785,7 @@ export function ProfileRouteStep({
               required
               value={destinationNeighborhood ?? ""}
               selectedLocation={destinationLocation}
-              placeholder="Ex.: UNIFOR, Aldeota, Messejana, Maracanaú, Eusébio..."
+              placeholder="Ex.: Atacadão Maracanaú, Aldeota, UNIFOR, Messejana..."
               onChange={(val, details) => {
                 onDestinationNeighborhoodChange(val);
                 if (onDestinationLocationChange) onDestinationLocationChange(val, details);
@@ -470,7 +794,6 @@ export function ProfileRouteStep({
             />
           </div>
 
-          {/* Horário de saída */}
           <div className="space-y-2 pt-2">
             <label className="text-sm font-semibold text-foreground">
               Que horas você pretende sair? (seleção única)
@@ -483,30 +806,14 @@ export function ProfileRouteStep({
               columns="grid-cols-1 sm:grid-cols-3"
             />
           </div>
-
-          {/* Frequência semanal (compatibilidade retroativa) */}
-          <div className="space-y-2 pt-2">
-            <label className="text-sm font-semibold text-foreground">
-              Frequência com que costuma fazer esse percurso:
-            </label>
-            <ChoiceGrid
-              value={weeklyFrequency}
-              values={frequencyOptions}
-              onChange={onWeeklyFrequencyChange}
-              ariaLabel="Frequência semanal"
-              columns="sm:grid-cols-2"
-            />
-          </div>
         </div>
 
-        {/* ETAPA 3 — "Quando você estará por aqui?" */}
         <div className="space-y-3 rounded-2xl border border-border bg-card/60 p-5 shadow-xs">
           <div>
-            <h3 className="text-base font-bold text-foreground">
-              Quando você estará por aqui?
-            </h3>
+            <h3 className="text-base font-bold text-foreground">Quando você estará por aqui?</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Selecione os dias em que planeja ir ao {STS_2026_CONFIG.name} ({STS_2026_CONFIG.datesDescription}). Múltipla seleção livre.
+              Selecione os dias em que planeja ir ao {STS_2026_CONFIG.name} (
+              {STS_2026_CONFIG.datesDescription}). Múltipla seleção livre.
             </p>
           </div>
 
@@ -526,9 +833,7 @@ export function ProfileRouteStep({
                       : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40",
                   ].join(" ")}
                 >
-                  <span className="text-sm font-semibold text-foreground">
-                    {opt.label}
-                  </span>
+                  <span className="text-sm font-semibold text-foreground">{opt.label}</span>
                   <div
                     className={[
                       "size-4 rounded-md border flex items-center justify-center shrink-0 transition",
@@ -546,7 +851,10 @@ export function ProfileRouteStep({
 
           {(eventPresenceDays ?? []).includes("OUTRO") && onEventPresenceCustomChange && (
             <div className="mt-3 space-y-1.5 animate-in fade-in duration-200">
-              <label htmlFor="presence-custom" className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="presence-custom"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 Conte um pouco mais sobre sua disponibilidade:
               </label>
               <input
@@ -762,7 +1070,9 @@ export function MainProblemStep({
     >
       <div className="space-y-6">
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">Selecione o problema principal:</label>
+          <label className="text-sm font-bold text-foreground">
+            Selecione o problema principal:
+          </label>
           <ChoiceGrid
             value={mainPainPoint}
             values={selectedPainOptions}
@@ -939,7 +1249,10 @@ export function InterestStep({
             {onDriverPriceChange && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="driver-price" className="text-xs font-semibold text-muted-foreground">
+                  <label
+                    htmlFor="driver-price"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
                     Valor sugerido por passageiro (mínimo R$ {MIN_DRIVER_PRICE.toFixed(2)}):
                   </label>
                   <span className="text-sm font-extrabold text-foreground">
@@ -960,12 +1273,16 @@ export function InterestStep({
 
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
                   <div className="flex justify-between">
-                    <span>Taxa da plataforma (15% em validação):</span>
-                    <span className="font-semibold text-muted-foreground">- R$ {currentFee.toFixed(2)}</span>
+                    <span>Taxa da plataforma (25% em validação):</span>
+                    <span className="font-semibold text-muted-foreground">
+                      - R$ {currentFee.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between font-bold text-foreground">
                     <span>Você recebe líquido por carona:</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">R$ {currentNet.toFixed(2)}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      R$ {currentNet.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -975,16 +1292,21 @@ export function InterestStep({
 
         <div className="rounded-xl border border-muted-foreground/20 bg-muted/30 p-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-            <Shield size={16} className="text-caronaa-primary" />
-            O que faria você confiar?
+            <Shield size={16} className="text-caronaa-primary" />O que faria você confiar?
           </div>
           <p className="text-xs text-muted-foreground">
-            No Siará Tech Summit, priorizamos participantes do ecossistema, verificação de identidade e aprovação mútua antes de qualquer encontro.
+            No Siará Tech Summit, priorizamos participantes do ecossistema, verificação de
+            identidade e aprovação mútua antes de qualquer encontro.
           </p>
         </div>
       </div>
 
-      <Nav onNext={onNext} onBack={onBack} canContinue={canContinue} nextLabel="Avançar para contato" />
+      <Nav
+        onNext={onNext}
+        onBack={onBack}
+        canContinue={canContinue}
+        nextLabel="Avançar para contato"
+      />
     </StepShell>
   );
 }

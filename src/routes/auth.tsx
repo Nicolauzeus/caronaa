@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   Eye,
@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   UserRound,
   UsersRound,
+  CheckCircle2,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -24,9 +25,14 @@ import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.ass
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
+import { getFormConversionDraft, clearFormConversionDraft } from "@/lib/formulario/conversion";
+import { trackFunnelEvent } from "@/lib/funnel-events";
 
 const authSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
+  mode: z.enum(["entrar", "cadastro"]).optional().catch(undefined),
+  submissionId: z.string().optional().catch(undefined),
+  source: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -36,10 +42,10 @@ export const Route = createFileRoute("/auth")({
       { title: "Entrar ou criar conta — CARONAA" },
       {
         name: "description",
-        content: "Entre ou crie sua conta no CARONAA para compartilhar seus caminhos.",
+        content: "Entre ou crie sua conta na CARONAA para compartilhar caminhos e trajetos.",
       },
       { property: "og:title", content: "Entrar ou criar conta — CARONAA" },
-      { property: "og:description", content: "Acesse o CARONAA e compartilhe seus caminhos." },
+      { property: "og:description", content: "Acesse a CARONAA e compartilhe seus caminhos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -51,13 +57,25 @@ function AuthPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState("entrar");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [conversionDraft] = useState(() => getFormConversionDraft());
+  const effectiveSubmissionId = search.submissionId || conversionDraft?.submissionId || null;
+
+  // Detecta se o usuário chegou pelo formulário (via query param ou sessionStorage)
+  const isFromForm = Boolean(
+    search.submissionId ||
+    search.source === "sts2026" ||
+    search.source === "formulario" ||
+    conversionDraft?.submissionId,
+  );
+
+  const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
+  const [name, setName] = useState(() => conversionDraft?.name ?? "");
+  const [email, setEmail] = useState(() => conversionDraft?.email ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [hasTrackedSignupStart, setHasTrackedSignupStart] = useState(false);
 
   const destination =
     search.redirect?.startsWith("/") && !search.redirect.startsWith("//")
@@ -68,6 +86,23 @@ function AuthPage() {
     if (!loading && user) void navigate({ to: destination });
   }, [destination, loading, navigate, user]);
 
+  useEffect(() => {
+    if (effectiveSubmissionId && mode === "cadastro" && !hasTrackedSignupStart) {
+      setHasTrackedSignupStart(true);
+      void trackFunnelEvent({
+        eventName: "signup_started_from_form",
+        submissionId: effectiveSubmissionId,
+        source: conversionDraft?.source || "sts2026",
+        campaign: conversionDraft?.campaign ?? null,
+        campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
+        metadata: {
+          intent: conversionDraft?.intent ?? null,
+          hasPreFilledData: Boolean(conversionDraft?.name || conversionDraft?.email),
+        },
+      });
+    }
+  }, [conversionDraft, effectiveSubmissionId, hasTrackedSignupStart, mode]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -76,16 +111,75 @@ function AuthPage() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin, data: { full_name: name.trim() } },
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: {
+              full_name: name.trim(),
+              whatsapp: conversionDraft?.whatsapp,
+              submission_id: effectiveSubmissionId,
+              initial_intent: conversionDraft?.intent,
+              origin_neighborhood: conversionDraft?.originNeighborhood,
+              destination_neighborhood: conversionDraft?.destinationNeighborhood,
+              departure_window: conversionDraft?.departureWindow,
+            },
+          },
         });
         if (error) throw error;
+
+        if (effectiveSubmissionId) {
+          void trackFunnelEvent({
+            eventName: "signup_completed_from_form",
+            userId: data.user?.id ?? null,
+            submissionId: effectiveSubmissionId,
+            source: conversionDraft?.source || "sts2026",
+            campaign: conversionDraft?.campaign ?? null,
+            campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
+            metadata: {
+              intent: conversionDraft?.intent ?? null,
+              hasSession: Boolean(data.session),
+            },
+          });
+
+          void trackFunnelEvent({
+            eventName: "form_to_account_conversion",
+            userId: data.user?.id ?? null,
+            submissionId: effectiveSubmissionId,
+            source: conversionDraft?.source || "sts2026",
+            campaign: conversionDraft?.campaign ?? null,
+            campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
+            metadata: {
+              conversionType: "signup",
+              intent: conversionDraft?.intent ?? null,
+            },
+          });
+        }
+
+        clearFormConversionDraft();
+
         if (!data.session) {
           setConfirmationSent(true);
           return;
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        if (effectiveSubmissionId) {
+          void trackFunnelEvent({
+            eventName: "form_to_account_conversion",
+            userId: data.user?.id ?? null,
+            submissionId: effectiveSubmissionId,
+            source: conversionDraft?.source || "sts2026",
+            campaign: conversionDraft?.campaign ?? null,
+            campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
+            metadata: {
+              conversionType: "login",
+              intent: conversionDraft?.intent ?? null,
+            },
+          });
+        }
+
+        clearFormConversionDraft();
       }
       await navigate({ to: destination });
     } catch (error) {
@@ -120,21 +214,23 @@ function AuthPage() {
     else toast.success("Enviamos o link para redefinir sua senha.");
   }
 
-  if (confirmationSent)
+  if (confirmationSent) {
     return (
       <AuthFrame>
-        <div className="text-center">
-          <span className="mx-auto flex size-14 items-center justify-center rounded-lg bg-secondary text-primary">
-            <Mail size={26} />
+        <div className="text-center py-4">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-caronaa-primary/20 text-caronaa-primary">
+            <Mail size={28} />
           </span>
-          <h1 className="mt-5 font-display text-2xl font-extrabold">Confirme seu e-mail</h1>
-          <p className="mt-3 leading-relaxed text-muted-foreground">
-            Enviamos um link para <strong className="text-foreground">{email}</strong>. Abra-o para
-            ativar sua conta.
+          <h1 className="mt-5 font-display text-2xl font-extrabold text-foreground">
+            Confirme seu e-mail
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Enviamos um link de ativação para <strong className="text-foreground">{email}</strong>.
+            Abra o e-mail para ativar sua conta na CARONAA.
           </p>
           <Button
             variant="outline"
-            className="mt-6 w-full"
+            className="mt-6 w-full rounded-xl"
             onClick={() => {
               setConfirmationSent(false);
               setMode("entrar");
@@ -145,62 +241,112 @@ function AuthPage() {
         </div>
       </AuthFrame>
     );
+  }
 
   return (
     <AuthFrame>
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-extrabold uppercase text-primary">
-            {mode === "cadastro" ? "VENHA COM A GENTE" : "BEM-VINDO DE VOLTA"}
-          </p>
-          <h1 className="mt-2 font-display text-4xl font-extrabold leading-tight text-foreground md:text-5xl">
-            {mode === "cadastro" ? "Crie sua conta" : "Entre na Caronaa"}
+      {/* Header oficial da experiência CARONAA */}
+      <div className="mb-6 space-y-2">
+        <div className="flex items-center justify-between">
+          <Link to="/" className="inline-block transition hover:opacity-90">
+            <img src={logoAsset.url} alt="CARONAA" className="h-10 sm:h-12 w-auto object-contain" />
+          </Link>
+          <ThemeToggle className="shrink-0 border-border/70 bg-background/70" />
+        </div>
+
+        <div className="pt-2">
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Seu caminho continua aqui.
           </h1>
-          <p className="mt-2 text-base font-medium text-muted-foreground">
-            {mode === "cadastro" ? "Comece a compartilhar caminhos." : "Continue de onde parou."}
+          <p className="text-sm font-medium text-muted-foreground mt-1">
+            Tenha seu perfil pronto para encontrar ou oferecer caronas.
           </p>
         </div>
-        <ThemeToggle className="shrink-0 border-border/70 bg-background/70" />
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="h-13 w-full rounded-lg border-border bg-white text-base font-extrabold shadow-[0_8px_22px_-18px_oklch(0.2_0.03_255_/_35%)] hover:bg-white"
-        onClick={continueWithGoogle}
-        disabled={busy}
+
+      {/* Contexto do Siará Tech Summit quando o usuário veio do formulário */}
+      {isFromForm && (
+        <div className="mb-5 rounded-2xl border border-caronaa-primary/30 bg-caronaa-primary/10 p-3.5 sm:p-4 text-xs sm:text-sm text-foreground flex items-start gap-3 shadow-sm">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-caronaa-primary/20 text-caronaa-primary font-bold">
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <p className="font-bold text-foreground">
+              Você acabou de participar da validação da CARONAA no Siará Tech Summit.
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Seus dados de trajeto foram registrados. Conclua seu cadastro para vincular sua conta.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Seletor de Modo (Tabs acessíveis) */}
+      <div
+        className="grid grid-cols-2 p-1 bg-muted/60 rounded-2xl mb-6 border border-border/60"
+        role="tablist"
+        aria-label="Opções de acesso"
       >
-        <span className="text-lg font-extrabold text-primary">G</span> Continuar com Google
-      </Button>
-      <div className="my-6 flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        ou use seu e-mail
-        <span className="h-px flex-1 bg-border" />
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "entrar"}
+          onClick={() => setMode("entrar")}
+          className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
+            mode === "entrar"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Entrar na CARONAA
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "cadastro"}
+          onClick={() => setMode("cadastro")}
+          className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
+            mode === "cadastro"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Criar minha conta
+        </button>
       </div>
+
+      {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
         {mode === "cadastro" && (
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome completo</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-xs font-semibold text-foreground">
+              Nome completo
+            </Label>
             <div className="relative">
               <UserRound
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
                 size={18}
               />
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-14 rounded-lg border-border bg-auth-field pl-11 text-base font-medium shadow-inner"
+                className="h-12 rounded-xl border-border bg-auth-field pl-10 text-sm font-medium shadow-inner"
+                placeholder="Como prefere ser chamado"
                 autoComplete="name"
                 required
               />
             </div>
           </div>
         )}
-        <div className="space-y-2">
-          <Label htmlFor="email">E-mail</Label>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-xs font-semibold text-foreground">
+            E-mail
+          </Label>
           <div className="relative">
             <Mail
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={18}
             />
             <Input
@@ -208,17 +354,33 @@ function AuthPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-14 rounded-lg border-border bg-auth-field pl-11 text-base font-medium shadow-inner"
+              className="h-12 rounded-xl border-border bg-auth-field pl-10 text-sm font-medium shadow-inner"
+              placeholder="seu@email.com"
               autoComplete="email"
               required
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Senha</Label>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-xs font-semibold text-foreground">
+              Senha
+            </Label>
+            {mode === "entrar" && (
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-xs font-medium text-caronaa-primary-strong hover:text-caronaa-primary"
+                onClick={sendReset}
+              >
+                Esqueci minha senha
+              </Button>
+            )}
+          </div>
           <div className="relative">
             <LockKeyhole
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={18}
             />
             <Input
@@ -226,7 +388,8 @@ function AuthPage() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-14 rounded-lg border-border bg-auth-field px-11 text-base font-medium shadow-inner"
+              className="h-12 rounded-xl border-border bg-auth-field px-10 text-sm font-medium shadow-inner"
+              placeholder={mode === "cadastro" ? "Mínimo de 6 caracteres" : "Sua senha"}
               autoComplete={mode === "cadastro" ? "new-password" : "current-password"}
               minLength={6}
               required
@@ -235,17 +398,18 @@ function AuthPage() {
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1 size-11"
+              className="absolute right-1 top-1 size-10"
               onClick={() => setShowPassword((value) => !value)}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </Button>
           </div>
         </div>
+
         <Button
           type="submit"
-          className="h-14 w-full rounded-lg text-base font-extrabold shadow-[0_18px_30px_-22px_oklch(0.79_0.17_76_/_70%)]"
+          className="h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition mt-2"
           disabled={busy}
         >
           {busy ? (
@@ -254,31 +418,68 @@ function AuthPage() {
             "Criar minha conta"
           ) : (
             <>
-              Entrar na Caronaa <ArrowRight size={18} />
+              Entrar na CARONAA <ArrowRight size={16} />
             </>
           )}
         </Button>
-        {mode === "entrar" && (
-          <Button
-            type="button"
-            variant="link"
-            className="mx-auto flex h-auto p-0 text-sm"
-            onClick={sendReset}
-          >
-            Esqueci minha senha
-          </Button>
-        )}
       </form>
-      <div className="mt-7 border-t border-border pt-5 text-center text-sm font-medium text-muted-foreground">
+
+      {/* Autenticação social configurada */}
+      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        ou continue com
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="h-12 w-full rounded-xl border-border bg-card text-sm font-bold shadow-sm hover:bg-muted"
+        onClick={continueWithGoogle}
+        disabled={busy}
+      >
+        <span className="text-base font-extrabold text-caronaa-primary mr-1">G</span> Continuar com
+        Google
+      </Button>
+
+      {/* Alternância secundária */}
+      <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
         {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
-        <Button
+        <button
           type="button"
-          variant="link"
-          className="h-auto p-0 font-bold"
+          className="font-bold text-foreground underline underline-offset-4 hover:text-caronaa-primary-strong transition ml-1"
           onClick={() => setMode(mode === "entrar" ? "cadastro" : "entrar")}
         >
-          {mode === "entrar" ? "Cadastre-se" : "Entre"}
-        </Button>
+          {mode === "entrar" ? "Criar minha conta" : "Entrar na CARONAA"}
+        </button>
+      </div>
+
+      {/* Links obrigatórios: Termos, Privacidade, Segurança */}
+      <div className="mt-6 border-t border-border/70 pt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <Link
+          to="/termos"
+          className="hover:text-foreground underline underline-offset-4 transition"
+        >
+          Termos de Uso
+        </Link>
+        <span className="text-border" aria-hidden="true">
+          •
+        </span>
+        <Link
+          to="/privacidade"
+          className="hover:text-foreground underline underline-offset-4 transition"
+        >
+          Privacidade
+        </Link>
+        <span className="text-border" aria-hidden="true">
+          •
+        </span>
+        <Link
+          to="/seguranca"
+          className="hover:text-foreground underline underline-offset-4 transition"
+        >
+          Segurança
+        </Link>
       </div>
     </AuthFrame>
   );
@@ -292,10 +493,11 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
   ];
   return (
     <main className="relative grid min-h-screen bg-background lg:grid-cols-[1.14fr_.86fr]">
+      {/* Coluna visual esquerda para desktop */}
       <section className="relative hidden min-h-screen overflow-hidden px-10 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-12">
         <img
           src={desktopBackground.url}
-          alt="Cidade conectada pelos trajetos da Caronaa"
+          alt="Cidade conectada pelos trajetos da CARONAA"
           className="absolute inset-0 size-full object-cover"
         />
         <div className="absolute inset-0 bg-hero-overlay" />
@@ -337,15 +539,14 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
           Juntos chegamos mais longe.
         </p>
       </section>
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fbfaf6] px-5 py-8 md:px-10">
+
+      {/* Coluna de formulário responsiva */}
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fbfaf6] dark:bg-background px-4 py-8 sm:px-8 md:px-10">
         <picture className="absolute inset-0 lg:hidden">
           <img src={mobileBackground.url} alt="" className="size-full object-cover" />
         </picture>
         <div className="absolute inset-0 bg-background/90 backdrop-blur-sm lg:hidden" />
-        <div className="relative z-10 w-full max-w-[620px] rounded-3xl border border-white/70 bg-white/92 p-6 shadow-[0_26px_80px_-46px_oklch(0.19_0.04_255_/_0.34)] md:p-11 xl:p-12">
-          <div className="mb-9">
-            <img src={logoAsset.url} alt="CARONAA" className="h-[58px] w-auto object-contain" />
-          </div>
+        <div className="relative z-10 w-full max-w-[540px] rounded-3xl border border-white/70 dark:border-border/70 bg-card/95 p-6 shadow-xl md:p-10">
           {children}
         </div>
       </section>

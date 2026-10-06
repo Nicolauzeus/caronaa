@@ -13,8 +13,30 @@ const CEARA_BIAS_LOCATION = "-3.7319,-38.5267";
 const CEARA_BIAS_RADIUS_METERS = "150000";
 
 function getApiKey(): string | null {
-  if (typeof process === "undefined" || !process.env) return null;
-  return process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null;
+  const nodeEnv = typeof process !== "undefined" && process.env ? process.env : undefined;
+  const globalEnv = globalThis as Record<string, unknown>;
+  const viteEnv =
+    typeof import.meta !== "undefined" && import.meta.env
+      ? (import.meta.env as Record<string, unknown>)
+      : undefined;
+  const key =
+    nodeEnv?.GOOGLE_PLACES_API_KEY ||
+    nodeEnv?.GOOGLE_MAPS_API_KEY ||
+    nodeEnv?.VITE_GOOGLE_PLACES_API_KEY ||
+    nodeEnv?.VITE_GOOGLE_MAPS_API_KEY ||
+    (typeof globalEnv?.["GOOGLE_PLACES_API_KEY"] === "string"
+      ? (globalEnv["GOOGLE_PLACES_API_KEY"] as string)
+      : null) ||
+    (typeof globalEnv?.["GOOGLE_MAPS_API_KEY"] === "string"
+      ? (globalEnv["GOOGLE_MAPS_API_KEY"] as string)
+      : null) ||
+    (typeof viteEnv?.["VITE_GOOGLE_PLACES_API_KEY"] === "string"
+      ? (viteEnv["VITE_GOOGLE_PLACES_API_KEY"] as string)
+      : null) ||
+    (typeof viteEnv?.["VITE_GOOGLE_MAPS_API_KEY"] === "string"
+      ? (viteEnv["VITE_GOOGLE_MAPS_API_KEY"] as string)
+      : null);
+  return key || null;
 }
 
 interface GooglePrediction {
@@ -216,7 +238,10 @@ export class GooglePlacesProvider implements LocationProvider {
     try {
       const url = new URL(GOOGLE_DETAILS_URL);
       url.searchParams.set("place_id", placeId);
-      url.searchParams.set("fields", "place_id,name,formatted_address,geometry,address_components,types");
+      url.searchParams.set(
+        "fields",
+        "place_id,name,formatted_address,geometry,address_components,types",
+      );
       url.searchParams.set("language", "pt-BR");
       url.searchParams.set("key", apiKey);
 
@@ -259,7 +284,9 @@ export class GooglePlacesProvider implements LocationProvider {
       const suggestion: LocationSuggestion = {
         providerId: res.place_id,
         mainText: res.name || res.formatted_address || "",
-        secondaryText: [components.neighborhood, components.city, components.state].filter(Boolean).join(", "),
+        secondaryText: [components.neighborhood, components.city, components.state]
+          .filter(Boolean)
+          .join(", "),
         formattedAddress: res.formatted_address || res.name || "",
         neighborhood: components.neighborhood,
         city: components.city,
@@ -283,5 +310,48 @@ export class GooglePlacesProvider implements LocationProvider {
         error: err instanceof Error ? err.message : "Erro ao buscar detalhes no Google Places",
       };
     }
+  }
+
+  async geocode(addressOrPlaceId: string): Promise<import("./types").GeocodingResult | null> {
+    if (!this.isConfigured() || !addressOrPlaceId.trim()) return null;
+
+    // Se parecer um place_id (começa com ChIJ ou similar), busca detalhes diretamente
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(addressOrPlaceId.trim())) {
+      const details = await this.getDetails(addressOrPlaceId.trim());
+      if (details.details) {
+        return {
+          rawText: addressOrPlaceId,
+          formattedAddress: details.details.formattedAddress,
+          neighborhood: details.details.neighborhood,
+          city: details.details.city,
+          state: details.details.state,
+          country: details.details.country,
+          lat: details.details.lat,
+          lng: details.details.lng,
+          placeId: details.details.providerId,
+          types: details.details.types,
+        };
+      }
+    }
+
+    const searchRes = await this.search(addressOrPlaceId);
+    if (!searchRes.suggestions || searchRes.suggestions.length === 0) return null;
+
+    const first = searchRes.suggestions[0];
+    const details = await this.getDetails(first.providerId);
+    const item = details.details || first;
+
+    return {
+      rawText: addressOrPlaceId,
+      formattedAddress: item.formattedAddress,
+      neighborhood: item.neighborhood,
+      city: item.city,
+      state: item.state,
+      country: item.country,
+      lat: item.lat,
+      lng: item.lng,
+      placeId: item.providerId,
+      types: item.types,
+    };
   }
 }

@@ -6,6 +6,7 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { RideCard } from "@/components/caronaa/RideCard";
 import { Button } from "@/components/ui/button";
 import { rideService } from "@/mockData";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 export const Route = createFileRoute("/buscar")({
   head: () => ({
     meta: [
@@ -82,30 +83,22 @@ function Buscar() {
         }}
         className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-soft md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end"
       >
-        <label className="text-xs font-bold text-muted-foreground">
-          ORIGEM
-          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
-            <MapPin size={16} className="text-primary" />
-            <input
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              placeholder="De onde?"
-              className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
-            />
-          </div>
-        </label>
-        <label className="text-xs font-bold text-muted-foreground">
-          DESTINO
-          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
-            <MapPin size={16} className="text-primary" />
-            <input
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder="Para onde?"
-              className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
-            />
-          </div>
-        </label>
+        <LocationAutocomplete
+          id="buscar-origem"
+          label="ORIGEM"
+          value={origin}
+          onChange={(val) => setOrigin(val)}
+          placeholder="De onde?"
+          variant="simple"
+        />
+        <LocationAutocomplete
+          id="buscar-destino"
+          label="DESTINO"
+          value={destination}
+          onChange={(val) => setDestination(val)}
+          placeholder="Para onde?"
+          variant="simple"
+        />
         <label className="text-xs font-bold text-muted-foreground">
           DATA
           <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">

@@ -112,9 +112,7 @@ function LandingPage() {
                   size="lg"
                   className="h-14 w-full rounded-2xl px-8 text-base font-extrabold shadow-card sm:w-auto"
                 >
-                  <Link to="/formulario">
-                    🚗 Garantir minha CARONAA no Siará
-                  </Link>
+                  <Link to="/formulario">🚗 Garantir minha CARONAA no Siará</Link>
                 </Button>
 
                 <Button
@@ -146,11 +144,7 @@ function LandingPage() {
               <div className="rounded-3xl border border-border bg-card/80 p-5 shadow-soft backdrop-blur-sm sm:p-6">
                 <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={logoAsset.url}
-                      alt="CARONAA"
-                      className="h-9 w-auto object-contain"
-                    />
+                    <img src={logoAsset.url} alt="CARONAA" className="h-9 w-auto object-contain" />
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-primary">
                         Comunidade Ativa
@@ -183,7 +177,10 @@ function LandingPage() {
       {/* =========================================================================
           SEÇÃO EVENTO: CARONAA no Siará Tech Summit
       ========================================================================= */}
-      <section className="bg-caronaa-dark py-16 text-white sm:py-24">
+      <section
+        id="siara-tech-summit"
+        className="bg-caronaa-dark py-16 text-white sm:py-24 scroll-mt-20"
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             {/* Lado Esquerdo: Imagem / Banner do STS */}
@@ -191,6 +188,8 @@ function LandingPage() {
               <img
                 src={stsBannerAsset}
                 alt="CARONAA Startup Expositora no Siará Tech Summit 2026"
+                loading="lazy"
+                decoding="async"
                 className="h-full max-h-[500px] w-full object-cover object-center"
               />
               <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
@@ -221,8 +220,8 @@ function LandingPage() {
 
               <p className="text-base leading-relaxed text-white/85 sm:text-lg">
                 Estamos levando a CARONAA para o Siará Tech Summit para testar o produto em
-                situações reais. Você poderá se cadastrar, oferecer ou procurar caronas para o evento
-                e nos ajudar a construir a solução.
+                situações reais. Você poderá se cadastrar, oferecer ou procurar caronas para o
+                evento e nos ajudar a construir a solução.
               </p>
 
               <div className="pt-2">
@@ -320,7 +319,8 @@ function LandingPage() {
               Feito para os dois lados do trajeto
             </h2>
             <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-              Aproveite os assentos ociosos do seu carro ou encontre alguém que já vai pelo mesmo caminho.
+              Aproveite os assentos ociosos do seu carro ou encontre alguém que já vai pelo mesmo
+              caminho.
             </p>
           </div>
 
@@ -403,8 +403,8 @@ function LandingPage() {
               Quer fazer parte desde o começo?
             </h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              Preencha nosso formulário do Siará Tech Summit e ajude a validar a mobilidade compartilhada
-              em Fortaleza.
+              Preencha nosso formulário do Siará Tech Summit e ajude a validar a mobilidade
+              compartilhada em Fortaleza.
             </p>
             <div className="mt-6 flex justify-center">
               <Button
@@ -417,33 +417,6 @@ function LandingPage() {
                   🚗 Participar da validação no Siará <ArrowUpRight size={18} />
                 </Link>
               </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SEÇÃO ECOSSISTEMA (Discreta, Sem Dominar a Marca)
-      ========================================================================= */}
-      <section className="border-t border-border bg-card/40 py-12">
-        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Ecossistema e Parcerias
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-12">
-            <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-5 py-3 shadow-subtle">
-              <CaronaaSymbol size={22} className="text-caronaa-primary" />
-              <span className="font-display text-sm font-bold text-foreground">
-                Startup do Unifor Hub
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-5 py-3 shadow-subtle">
-              <span className="size-2 rounded-full bg-event-cyan" />
-              <span className="font-display text-sm font-bold text-foreground">
-                Startup expositora no Siará Tech Summit 2026
-              </span>
             </div>
           </div>
         </div>

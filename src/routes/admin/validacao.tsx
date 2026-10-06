@@ -44,7 +44,8 @@ export const Route = createFileRoute("/admin/validacao")({
       { property: "og:title", content: "ValidaÃ§Ã£o de Mercado â€” AdministraÃ§Ã£o CARONAA" },
       {
         property: "og:description",
-        content: "Acompanhe intenÃ§Ã£o, perfis, deslocamento atual e dores da validaÃ§Ã£o de mercado.",
+        content:
+          "Acompanhe intenÃ§Ã£o, perfis, deslocamento atual e dores da validaÃ§Ã£o de mercado.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -229,7 +230,9 @@ function MarketValidationPage() {
       getFormMetrics(metricFilters),
       getPainAnalysis({ ...metricFilters, sortBy: "frequency" }),
       getFunnelMetrics(metricFilters).catch((caught) => {
-        console.warn(caught instanceof Error ? caught.message : "NÃ£o foi possÃ­vel carregar funil.");
+        console.warn(
+          caught instanceof Error ? caught.message : "NÃ£o foi possÃ­vel carregar funil.",
+        );
         return null;
       }),
       getMainFunnelMetrics(metricFilters, filters.cohortEvent),
@@ -314,9 +317,13 @@ function MarketValidationPage() {
   const painRows = (painAnalysis?.painPoints ?? []).slice(0, 6);
   const exportCsv = async (kind: ValidationExportKind) => {
     setExporting(kind);
-    try { await downloadValidationExport(kind, metricFilters); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "NÃ£o foi possÃ­vel exportar os dados."); }
-    finally { setExporting(null); }
+    try {
+      await downloadValidationExport(kind, metricFilters);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "NÃ£o foi possÃ­vel exportar os dados.");
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -412,20 +419,56 @@ function MarketValidationPage() {
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-foreground">Exportar resultados</p>
-            <p className="text-xs text-muted-foreground">Os CSVs aplicam os filtros globais atuais. A exportaÃ§Ã£o analÃ­tica nÃ£o inclui dados pessoais.</p>
+            <p className="text-xs text-muted-foreground">
+              Os CSVs aplicam os filtros globais atuais. A exportaÃ§Ã£o analÃ­tica nÃ£o inclui dados
+              pessoais.
+            </p>
           </div>
-          <Badge variant="outline" className="w-fit">CSV</Badge>
+          <Badge variant="outline" className="w-fit">
+            CSV
+          </Badge>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {([
-            ["raw_analytics", "Respostas analÃ­ticas"], ["pain_ranking", "Ranking de dores"],
-            ["profile", "Perfil"], ["transport", "Alternativas atuais"], ["costs", "Custos"],
-            ["intent", "IntenÃ§Ã£o de uso"], ["funnel", "Funil"], ["match", "MÃ©tricas de match"],
-          ] as const).map(([kind, label]) => <Button key={kind} type="button" size="sm" variant="outline" disabled={exporting !== null} onClick={() => void exportCsv(kind)}><Download size={14} className="mr-1" />{exporting === kind ? "Exportandoâ€¦" : label}</Button>)}
+          {(
+            [
+              ["raw_analytics", "Respostas analÃ­ticas"],
+              ["pain_ranking", "Ranking de dores"],
+              ["profile", "Perfil"],
+              ["transport", "Alternativas atuais"],
+              ["costs", "Custos"],
+              ["intent", "IntenÃ§Ã£o de uso"],
+              ["funnel", "Funil"],
+              ["match", "MÃ©tricas de match"],
+            ] as const
+          ).map(([kind, label]) => (
+            <Button
+              key={kind}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={exporting !== null}
+              onClick={() => void exportCsv(kind)}
+            >
+              <Download size={14} className="mr-1" />
+              {exporting === kind ? "Exportandoâ€¦" : label}
+            </Button>
+          ))}
         </div>
         <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-2 text-xs text-muted-foreground">Leads contÃ©m nome, telefone e e-mail, quando informados. Acesso exclusivo de administradores autorizados.</p>
-          <Button type="button" size="sm" variant="secondary" disabled={exporting !== null} onClick={() => void exportCsv("leads")}><Download size={14} className="mr-1" />{exporting === "leads" ? "Exportandoâ€¦" : "Exportar leads"}</Button>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Leads contÃ©m nome, telefone e e-mail, quando informados. Acesso exclusivo de
+            administradores autorizados.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={exporting !== null}
+            onClick={() => void exportCsv("leads")}
+          >
+            <Download size={14} className="mr-1" />
+            {exporting === "leads" ? "Exportandoâ€¦" : "Exportar leads"}
+          </Button>
         </div>
       </section>
 
@@ -456,46 +499,105 @@ function MarketValidationPage() {
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <SectionHeader title="RecorrÃªncia" eyebrow="Apenas caronas realizadas" />
-        {isLoading ? <p className="mt-4 text-sm text-muted-foreground">Carregando recorrÃªncia...</p> : retention ? (
+        {isLoading ? (
+          <p className="mt-4 text-sm text-muted-foreground">Carregando recorrÃªncia...</p>
+        ) : retention ? (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <CompactMetric label="repeat_rate_7d" value={formatPercent(retention.repeatRate7d)} detail="voltaram apÃ³s a 1Âª carona em atÃ© 7 dias" />
-            <CompactMetric label="repeat_rate_30d" value={formatPercent(retention.repeatRate30d)} detail="voltaram apÃ³s a 1Âª carona em atÃ© 30 dias" />
+            <CompactMetric
+              label="repeat_rate_7d"
+              value={formatPercent(retention.repeatRate7d)}
+              detail="voltaram apÃ³s a 1Âª carona em atÃ© 7 dias"
+            />
+            <CompactMetric
+              label="repeat_rate_30d"
+              value={formatPercent(retention.repeatRate30d)}
+              detail="voltaram apÃ³s a 1Âª carona em atÃ© 30 dias"
+            />
             <CompactMetric label="2 caronas" value={formatNumber(retention.usersWith2Rides)} />
-            <CompactMetric label="3 ou mais" value={formatNumber(retention.usersWith3OrMoreRides)} />
+            <CompactMetric
+              label="3 ou mais"
+              value={formatNumber(retention.usersWith3OrMoreRides)}
+            />
           </div>
-        ) : <p className="mt-4 text-sm text-muted-foreground">Sem caronas realizadas nos filtros atuais.</p>}
-        {retention ? <div className="mt-5 grid gap-2 text-sm sm:grid-cols-4">
-          <span>1 carona: <strong>{formatNumber(retention.distribution.one)}</strong></span>
-          <span>2 caronas: <strong>{formatNumber(retention.distribution.two)}</strong></span>
-          <span>3â€“5: <strong>{formatNumber(retention.distribution.threeToFive)}</strong></span>
-          <span>6+: <strong>{formatNumber(retention.distribution.sixOrMore)}</strong></span>
-        </div> : null}
-        {retention ? <p className="mt-4 text-xs text-muted-foreground">
-          Por perfil: Passageiro {formatNumber((retention.byProfile.PASSAGEIRO?.one ?? 0) + (retention.byProfile.PASSAGEIRO?.two ?? 0) + (retention.byProfile.PASSAGEIRO?.threeOrMore ?? 0))} Â· Motorista {formatNumber((retention.byProfile.MOTORISTA?.one ?? 0) + (retention.byProfile.MOTORISTA?.two ?? 0) + (retention.byProfile.MOTORISTA?.threeOrMore ?? 0))} Â· Ambos {formatNumber((retention.byProfile.AMBOS?.one ?? 0) + (retention.byProfile.AMBOS?.two ?? 0) + (retention.byProfile.AMBOS?.threeOrMore ?? 0))}
-        </p> : null}
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Sem caronas realizadas nos filtros atuais.
+          </p>
+        )}
+        {retention ? (
+          <div className="mt-5 grid gap-2 text-sm sm:grid-cols-4">
+            <span>
+              1 carona: <strong>{formatNumber(retention.distribution.one)}</strong>
+            </span>
+            <span>
+              2 caronas: <strong>{formatNumber(retention.distribution.two)}</strong>
+            </span>
+            <span>
+              3â€“5: <strong>{formatNumber(retention.distribution.threeToFive)}</strong>
+            </span>
+            <span>
+              6+: <strong>{formatNumber(retention.distribution.sixOrMore)}</strong>
+            </span>
+          </div>
+        ) : null}
+        {retention ? (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Por perfil: Passageiro{" "}
+            {formatNumber(
+              (retention.byProfile.PASSAGEIRO?.one ?? 0) +
+                (retention.byProfile.PASSAGEIRO?.two ?? 0) +
+                (retention.byProfile.PASSAGEIRO?.threeOrMore ?? 0),
+            )}{" "}
+            Â· Motorista{" "}
+            {formatNumber(
+              (retention.byProfile.MOTORISTA?.one ?? 0) +
+                (retention.byProfile.MOTORISTA?.two ?? 0) +
+                (retention.byProfile.MOTORISTA?.threeOrMore ?? 0),
+            )}{" "}
+            Â· Ambos{" "}
+            {formatNumber(
+              (retention.byProfile.AMBOS?.one ?? 0) +
+                (retention.byProfile.AMBOS?.two ?? 0) +
+                (retention.byProfile.AMBOS?.threeOrMore ?? 0),
+            )}
+          </p>
+        ) : null}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <div className="border-b border-border px-5 py-4">
-          <SectionHeader title="Funil principal da CARONAA" eyebrow="Coorte adquirida no perÃ­odo" />
+          <SectionHeader
+            title="Funil principal da CARONAA"
+            eyebrow="Coorte adquirida no perÃ­odo"
+          />
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Select
               value={filters.cohortEvent}
-              onValueChange={(value) => setFilters((current) => ({ ...current, cohortEvent: value as FilterState["cohortEvent"] }))}
+              onValueChange={(value) =>
+                setFilters((current) => ({
+                  ...current,
+                  cohortEvent: value as FilterState["cohortEvent"],
+                }))
+              }
             >
-              <SelectTrigger className="h-9 w-56 border-border bg-background"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 w-56 border-border bg-background">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="landing_view">Coorte: landing_view</SelectItem>
                 <SelectItem value="user_registered">Coorte: user_registered</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Base: {formatNumber(mainFunnel?.cohortSize)} identidades adquiridas no período. Conversão = membros da coorte na etapa ÷ membros da coorte na etapa anterior. Atividade no período é um conceito separado.
+              Base: {formatNumber(mainFunnel?.cohortSize)} identidades adquiridas no período.
+              Conversão = membros da coorte na etapa ÷ membros da coorte na etapa anterior.
+              Atividade no período é um conceito separado.
             </p>
           </div>
           {mainFunnel?.largestDrop ? (
             <p className="mt-2 text-sm text-destructive">
-              Maior queda: entrada em {mainFunnel.largestDrop.label} ({formatPercent(mainFunnel.largestDrop.fromPrevious)} da etapa anterior).
+              Maior queda: entrada em {mainFunnel.largestDrop.label} (
+              {formatPercent(mainFunnel.largestDrop.fromPrevious)} da etapa anterior).
             </p>
           ) : null}
         </div>
@@ -504,17 +606,41 @@ function MarketValidationPage() {
         ) : mainFunnel ? (
           <div className="divide-y divide-border">
             {mainFunnel.stages.map((stage, index) => (
-              <div key={stage.key} className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-8">
+              <div
+                key={stage.key}
+                className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-8"
+              >
                 <div>
-                  <p className="font-semibold text-foreground">{index ? "â†“ " : ""}{stage.label}</p>
-                  <p className="text-xs text-muted-foreground">{index ? `${formatPercent(stage.fromPrevious)} dos usuÃ¡rios da coorte na etapa anterior Â· ${formatPercent(stage.fromStart)} da coorte adquirida` : "Denominador: usuÃ¡rios adquiridos no perÃ­odo selecionado"}</p>
+                  <p className="font-semibold text-foreground">
+                    {index ? "â†“ " : ""}
+                    {stage.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {index
+                      ? `${formatPercent(stage.fromPrevious)} dos usuÃ¡rios da coorte na etapa anterior Â· ${formatPercent(stage.fromStart)} da coorte adquirida`
+                      : "Denominador: usuÃ¡rios adquiridos no perÃ­odo selecionado"}
+                  </p>
                 </div>
-                <p className="text-2xl font-extrabold text-foreground">{stage.count === null ? "N/D" : formatNumber(stage.count)}</p>
-                {index && stage.fromPrevious !== null ? <Badge variant={mainFunnel.largestDrop?.key === stage.key ? "destructive" : "secondary"}>{formatPercent(stage.fromPrevious)}</Badge> : null}
+                <p className="text-2xl font-extrabold text-foreground">
+                  {stage.count === null ? "N/D" : formatNumber(stage.count)}
+                </p>
+                {index && stage.fromPrevious !== null ? (
+                  <Badge
+                    variant={
+                      mainFunnel.largestDrop?.key === stage.key ? "destructive" : "secondary"
+                    }
+                  >
+                    {formatPercent(stage.fromPrevious)}
+                  </Badge>
+                ) : null}
               </div>
             ))}
           </div>
-        ) : <div className="p-5 text-sm text-muted-foreground">Sem dados reais para os filtros atuais.</div>}
+        ) : (
+          <div className="p-5 text-sm text-muted-foreground">
+            Sem dados reais para os filtros atuais.
+          </div>
+        )}
       </section>
 
       <section className="space-y-4">
@@ -664,4 +790,3 @@ function MarketValidationPage() {
     </div>
   );
 }
-

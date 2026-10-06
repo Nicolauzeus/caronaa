@@ -30,7 +30,9 @@ function SurveyDetailPage() {
       })
       .catch((caught) => {
         if (!active) return;
-        setError(caught instanceof Error ? caught.message : "Não foi possível carregar a resposta.");
+        setError(
+          caught instanceof Error ? caught.message : "Não foi possível carregar a resposta.",
+        );
       })
       .finally(() => {
         if (!active) return;
@@ -193,4 +195,3 @@ function SurveyDetailPage() {
     </div>
   );
 }
-
