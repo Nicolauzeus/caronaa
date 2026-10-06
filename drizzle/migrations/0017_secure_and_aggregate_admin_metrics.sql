@@ -689,10 +689,10 @@ RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $
 $$;
 
 REVOKE ALL ON FUNCTION public.get_acquisition_funnel_metrics(timestamptz,timestamptz,text,text,text,text) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_operational_metrics(timestamptz,timestamptz,text,text,text,text,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_retention_metrics(timestamptz,timestamptz,text,text,public.form_tipo_usuario) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_acquisition_funnel_metrics(timestamptz,timestamptz,text,text,text,text) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text,text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_operational_metrics(timestamptz,timestamptz,text,text,text,text,text,text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_retention_metrics(timestamptz,timestamptz,text,text,public.form_tipo_usuario) TO authenticated, service_role;
