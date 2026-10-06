@@ -67,7 +67,10 @@ export interface CaronaaStsFormData {
   originNeighborhood?: string | undefined;
   departureWindow?: DepartureWindow | undefined;
   occupation?: UserOccupation | undefined;
+  occupationDetails?: string | undefined;
   weeklyFrequency?: WeeklyFrequency | undefined;
+  eventPresenceDays?: string[] | undefined;
+  eventPresenceCustom?: string | undefined;
 
   name?: string | undefined;
   whatsapp?: string | undefined;

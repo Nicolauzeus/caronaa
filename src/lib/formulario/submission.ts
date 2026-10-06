@@ -1,4 +1,4 @@
-﻿import type { CaronaaStsFormData } from "./types";
+import type { CaronaaStsFormData } from "./types";
 import { getLeadClassification } from "./classification";
 import { calculateDriverPricing } from "./pricing";
 
@@ -23,7 +23,10 @@ export type CaronaaStsSubmission = {
   originNeighborhood: string | null;
   departureWindow: NonNullable<CaronaaStsFormData["departureWindow"]> | null;
   occupation: CaronaaStsFormData["occupation"] | null;
+  occupationDetails: string | null;
   weeklyFrequency: CaronaaStsFormData["weeklyFrequency"] | null;
+  eventPresenceDays: string[] | null;
+  eventPresenceCustom: string | null;
 
   name: string;
   whatsapp: string;
@@ -130,8 +133,11 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
     departureWindow: data.departureWindow,
 
     occupation: data.occupation ?? null,
+    occupationDetails: cleanString(data.occupationDetails),
 
     weeklyFrequency: data.weeklyFrequency ?? null,
+    eventPresenceDays: data.eventPresenceDays ?? null,
+    eventPresenceCustom: cleanString(data.eventPresenceCustom),
 
     name: data.name.trim(),
 
@@ -206,6 +212,7 @@ const rawPayloadAllowlist = new Set([
   "passengerPriceRange", "passengerCommitment", "vehicleType", "availableSeats",
   "maxDetourMinutes", "driverTrustFactors", "driverPrice", "caronaaFee",
   "driverNetAmount", "familyCarCompanions", "driverInterest", "driverCommitment",
+  "occupationDetails", "eventPresenceDays", "eventPresenceCustom",
 ]);
 
 /** Removes PII and values already stored in dedicated form_submissions columns from new raw payloads. */

@@ -159,19 +159,14 @@ export async function registerFormStart({
     raw_payload: rawPayload,
   };
 
-  try {
-    const { error } = await supabase.from("form_starts").insert(row);
+  const { error } = await supabase.from("form_starts").insert(row);
 
-    if (error) {
-      console.warn(`[FormStart] Não foi possível registrar o início do formulário: ${error.message}`);
-      return;
-    }
+  if (error) {
+    throw new Error(`Não foi possível registrar o início do formulário: ${error.message}`);
+  }
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(deduplicationKey, "1");
-    }
-  } catch (err) {
-    console.warn("[FormStart] Erro inesperado ao registrar início do formulário:", err);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(deduplicationKey, "1");
   }
 }
 

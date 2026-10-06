@@ -26,14 +26,29 @@ import type {
 
 import type { FormStep } from "@/lib/formulario/flow";
 
-import { getNextStep, getPreviousStep, getProgressPercentage } from "@/lib/formulario/flow";
+import {
+  getNextStep,
+  getPreviousStep,
+  getProgressPercentage,
+  getStepIndex,
+  getStepCount,
+} from "@/lib/formulario/flow";
 
 import { caronaaStsFormSchema, validateFormStep } from "@/lib/formulario/schema";
 
 import { prepareSubmission } from "@/lib/formulario/submission";
 import { registerFormStart, saveFormSubmission } from "@/lib/formulario/form-submission-service";
 import { useAuth } from "@/lib/auth-context";
-import { getCampaignAttribution, trackFunnelEvent } from "@/lib/funnel-events";
+import {
+  getCampaignAttribution,
+  trackFunnelEvent,
+  type ClientFunnelEventName,
+} from "@/lib/funnel-events";
+import {
+  loadFormDraft,
+  saveFormDraft,
+  clearFormDraft,
+} from "@/lib/formulario/draft-storage";
 
 export const Route = createFileRoute("/formulario")({
   head: () => ({
@@ -88,10 +103,64 @@ function Formulario() {
   const [stepErrors, setStepErrors] = React.useState<Record<string, string>>({});
 
   const progress = getProgressPercentage(step, data);
+  const stepIdx = getStepIndex(step, data);
+  const totalQuestions = getStepCount(data);
+  const totalSteps = totalQuestions + 1; // +1 para a etapa de contato final
+  const currentStepNumber = step === "CONTACT" ? totalSteps : Math.max(1, stepIdx + 1);
+
+  // Recupera rascunho salvo anteriormente se existir
+  React.useEffect(() => {
+    const draft = loadFormDraft();
+    if (draft) {
+      if (draft.data) {
+        setData((prev) => ({
+          ...prev,
+          ...draft.data,
+          source: prev.source || draft.data.source,
+          campaign: prev.campaign || draft.data.campaign,
+          campaignEvent: prev.campaignEvent || draft.data.campaignEvent,
+        }));
+      }
+      if (draft.step && draft.step !== "SUCCESS") {
+        setStep(draft.step);
+      }
+    }
+  }, []);
+
+  // Persiste rascunho para não perder dados ao consultar termos/políticas
+  React.useEffect(() => {
+    if (step !== "SUCCESS") {
+      saveFormDraft(data, step);
+    }
+  }, [data, step]);
 
   React.useEffect(() => {
     void trackFunnelEvent({ eventName: "landing_view", userId: user?.id ?? null, ...attribution });
   }, [attribution, user?.id]);
+
+  const sendFunnelEvent = React.useCallback(
+    (
+      eventName: ClientFunnelEventName,
+      extraMetadata: Record<string, string | number | boolean | null> = {},
+      stepOverride?: FormStep,
+    ) => {
+      void trackFunnelEvent({
+        eventName,
+        userId: user?.id ?? null,
+        formStep: stepOverride ?? step,
+        submissionId: data.submissionId ?? null,
+        metadata: {
+          role: data.intent ?? null,
+          etapa: stepOverride ?? step,
+          timestamp: Date.now(),
+          submissionId: data.submissionId ?? null,
+          ...extraMetadata,
+        },
+        ...attribution,
+      });
+    },
+    [attribution, data.intent, data.submissionId, step, user?.id],
+  );
 
   function updateData(patch: Partial<CaronaaStsFormData>) {
     setStepErrors((current) => {
@@ -142,6 +211,7 @@ function Formulario() {
     }
 
     updateData({ intent });
+    sendFunnelEvent("form_role_selected", { role: intent });
   }
 
   function goNext() {
@@ -154,6 +224,11 @@ function Formulario() {
       }
     }
     setStepErrors({});
+
+    if (step === "PROFILE_ROUTE") {
+      sendFunnelEvent("form_route_completed");
+    }
+
     const next = getNextStep(step, data);
 
     if (next) {
@@ -191,6 +266,7 @@ function Formulario() {
   }
 
   function restart() {
+    clearFormDraft();
     submissionAttemptIdRef.current = null;
     isSubmittingRef.current = false;
     setData(initialData);
@@ -231,6 +307,8 @@ function Formulario() {
 
       await saveFormSubmission(payload, user?.id ?? null);
 
+      clearFormDraft();
+
       setData((current) => ({
         ...current,
         submissionId: payload.submissionId,
@@ -259,7 +337,7 @@ function Formulario() {
                     <span className="text-xs text-muted-foreground">• Siará Tech Summit</span>
                   </div>
                   <p className="text-xs font-semibold text-muted-foreground">
-                    {progress}% concluído • Etapa {step === "CONTACT" ? "Final" : `${Math.round(progress / 20)}/5`}
+                    {progress}% concluído • Etapa {step === "CONTACT" ? `Final (${totalSteps}/${totalSteps})` : `${currentStepNumber} de ${totalSteps}`}
                   </p>
                 </div>
 
@@ -294,20 +372,39 @@ function Formulario() {
           </div>
         ) : null}
 
-        {step === "INTRO" ? <FormIntro onStart={() => { void registerFormStart({ userId: user?.id ?? null, ...attribution }); void trackFunnelEvent({ eventName: "form_started", userId: user?.id ?? null, ...attribution }); setStep("PROFILE_ROUTE"); }} /> : null}
+        {step === "INTRO" ? (
+          <FormIntro
+            onStart={() => {
+              void registerFormStart({ userId: user?.id ?? null, ...attribution });
+              sendFunnelEvent("form_started", {}, "INTRO");
+              sendFunnelEvent("form_route_started", {}, "PROFILE_ROUTE");
+              setStep("PROFILE_ROUTE");
+            }}
+          />
+        ) : null}
 
         {step === "PROFILE_ROUTE" ? (
           <ProfileRouteStep
             intent={data.intent}
             occupation={data.occupation}
+            occupationDetails={data.occupationDetails}
             originNeighborhood={data.originNeighborhood}
             destinationNeighborhood={data.destinationNeighborhood}
             departureWindow={data.departureWindow}
             weeklyFrequency={data.weeklyFrequency}
+            eventPresenceDays={data.eventPresenceDays}
+            eventPresenceCustom={data.eventPresenceCustom}
+            stepNumber={1}
+            totalSteps={totalSteps}
             onIntentChange={changeIntent}
             onOccupationChange={(value: UserOccupation) =>
               updateData({
                 occupation: value,
+              })
+            }
+            onOccupationDetailsChange={(value) =>
+              updateData({
+                occupationDetails: value,
               })
             }
             onOriginNeighborhoodChange={(value) =>
@@ -330,6 +427,15 @@ function Formulario() {
                 weeklyFrequency: value,
               })
             }
+            onEventPresenceDaysChange={(days) => {
+              updateData({ eventPresenceDays: days });
+              sendFunnelEvent("form_event_presence_completed", { daysCount: days.length });
+            }}
+            onEventPresenceCustomChange={(value) =>
+              updateData({
+                eventPresenceCustom: value,
+              })
+            }
             onNext={goNext}
             onBack={() => setStep("INTRO")}
           />
@@ -337,6 +443,8 @@ function Formulario() {
 
         {step === "CURRENT_PRICE" ? (
           <CurrentPriceStep
+            stepNumber={2}
+            totalSteps={totalSteps}
             currentTransport={data.currentTransport}
             routeCostRange={data.routeCostRange}
             costPeriod={data.costPeriod}
@@ -362,6 +470,8 @@ function Formulario() {
 
         {step === "PROBLEMS" ? (
           <ProblemsStep
+            stepNumber={3}
+            totalSteps={totalSteps}
             value={data.painPoints}
             onChange={(value: PainPointCode[]) =>
               updateData({
@@ -381,6 +491,8 @@ function Formulario() {
 
         {step === "MAIN_PROBLEM" ? (
           <MainProblemStep
+            stepNumber={4}
+            totalSteps={totalSteps}
             painPoints={data.painPoints}
             mainPainPoint={data.mainPainPoint}
             mainPainIntensity={data.mainPainIntensity}
@@ -401,6 +513,8 @@ function Formulario() {
 
         {step === "INTEREST" ? (
           <InterestStep
+            stepNumber={5}
+            totalSteps={totalSteps}
             intent={data.intent}
             passengerInterest={data.passengerInterest}
             driverInterest={data.driverInterest}

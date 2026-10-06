@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 import { MIN_DRIVER_PRICE } from "./pricing";
 
 const intentSchema = z.enum(["MOTORISTA", "PASSAGEIRO", "AMBOS"]);
@@ -93,8 +93,12 @@ const baseSchema = z.object({
   departureWindow: departureWindowSchema,
 
   occupation: occupationSchema,
+  occupationDetails: z.string().trim().max(160, "Descrição muito longa.").optional(),
 
   weeklyFrequency: weeklyFrequencySchema,
+
+  eventPresenceDays: z.array(z.string().trim()).max(10).optional(),
+  eventPresenceCustom: z.string().trim().max(200, "Texto muito longo.").optional(),
 
   name: z.string().trim().min(2, "Informe seu nome.").max(120, "Nome muito longo.").optional(),
 

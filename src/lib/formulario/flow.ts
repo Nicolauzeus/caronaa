@@ -10,79 +10,119 @@ export type FormStep =
   | "CONTACT"
   | "SUCCESS";
 
-const mainSteps: FormStep[] = [
-  "PROFILE_ROUTE",
-  "CURRENT_PRICE",
-  "PROBLEMS",
-  "MAIN_PROBLEM",
-  "INTEREST",
-  "CONTACT",
+export interface StepDefinition {
+  id: FormStep;
+  title: string;
+  badgeText?: string;
+  isEligible: (data: CaronaaStsFormData) => boolean;
+}
+
+export const STEP_DEFINITIONS: StepDefinition[] = [
+  {
+    id: "PROFILE_ROUTE",
+    title: "Como você poderia usar a CARONAA?",
+    badgeText: "Perfil & Trajeto",
+    isEligible: () => true,
+  },
+  {
+    id: "CURRENT_PRICE",
+    title: "Como você faz esse trajeto atualmente?",
+    badgeText: "Transporte & Custos",
+    isEligible: () => true,
+  },
+  {
+    id: "PROBLEMS",
+    title: "Quais problemas você enfrenta no trajeto?",
+    badgeText: "Dificuldades",
+    isEligible: () => true,
+  },
+  {
+    id: "MAIN_PROBLEM",
+    title: "Qual problema mais incomoda você?",
+    badgeText: "Desafio Principal",
+    isEligible: () => true,
+  },
+  {
+    id: "INTEREST",
+    title: "Condições e confiança para usar a CARONAA",
+    badgeText: "Interesse & Confiança",
+    isEligible: () => true,
+  },
+  {
+    id: "CONTACT",
+    title: "Como podemos falar com você?",
+    badgeText: "Contato & Termos",
+    isEligible: () => true,
+  },
 ];
 
+/** Retorna a lista de etapas navegáveis para o preenchimento atual */
+export function getActiveSteps(data: CaronaaStsFormData): FormStep[] {
+  return STEP_DEFINITIONS.filter((step) => step.isEligible(data)).map((step) => step.id);
+}
+
 export function getStepsForIntent(intent?: CaronaaIntent): FormStep[] {
-  return intent ? mainSteps : ["INTRO", "PROFILE_ROUTE"];
+  return getActiveSteps({ intent } as CaronaaStsFormData);
 }
 
 export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
   if (currentStep === "INTRO") return "PROFILE_ROUTE";
-  if (currentStep === "INTEREST") return "CONTACT";
   if (currentStep === "CONTACT") return "SUCCESS";
-  const steps = getStepsForIntent(data.intent);
 
-  const currentIndex = steps.indexOf(currentStep);
+  const active = getActiveSteps(data);
+  const currentIndex = active.indexOf(currentStep);
 
   if (currentIndex === -1) {
-    return null;
+    return active[0] ?? null;
   }
 
-  const nextStep = steps[currentIndex + 1];
-
-  if (!nextStep) {
-    return null;
-  }
-
-  return nextStep;
+  const nextStep = active[currentIndex + 1];
+  return nextStep ?? "CONTACT";
 }
 
 export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData): FormStep | null {
-  if (currentStep === "CONTACT") return "INTEREST";
+  if (currentStep === "INTRO") return null;
   if (currentStep === "SUCCESS") return "CONTACT";
-  const steps = getStepsForIntent(data.intent);
 
-  const currentIndex = steps.indexOf(currentStep);
+  const active = getActiveSteps(data);
+  const currentIndex = active.indexOf(currentStep);
 
   if (currentIndex <= 0) {
-    return null;
+    return "INTRO";
   }
 
-  return steps[currentIndex - 1] ?? null;
+  return active[currentIndex - 1] ?? "INTRO";
 }
 
 export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): number {
-  const steps = getStepsForIntent(data.intent);
-
-  return steps.indexOf(currentStep);
+  const active = getActiveSteps(data);
+  return active.indexOf(currentStep);
 }
 
+/** Retorna o número total N de etapas principais ativas (excluindo contato/sucesso do questionário central) */
 export function getStepCount(data: CaronaaStsFormData): number {
-  return 5;
+  const active = getActiveSteps(data);
+  // As etapas de questionário antes de CONTACT
+  const questionsOnly = active.filter((s) => s !== "CONTACT");
+  return questionsOnly.length || 5;
 }
 
 export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFormData): number {
   if (currentStep === "INTRO" || currentStep === "SUCCESS") {
     return 0;
   }
-  if (currentStep === "CONTACT") return 100;
+  if (currentStep === "CONTACT") {
+    return 100;
+  }
 
-  const mainStepIndex = [
-    "PROFILE_ROUTE",
-    "CURRENT_PRICE",
-    "PROBLEMS",
-    "MAIN_PROBLEM",
-    "INTEREST",
-  ].indexOf(currentStep);
+  const active = getActiveSteps(data).filter((s) => s !== "CONTACT");
+  const total = active.length;
+  if (total === 0) return 0;
 
-  return mainStepIndex >= 0 ? (mainStepIndex + 1) * 20 : 0;
+  const currentIndex = active.indexOf(currentStep);
+  if (currentIndex === -1) return 0;
+
+  return Math.round(((currentIndex + 1) / total) * 100);
 }
 
 export function shouldShowPassengerFlow(intent?: CaronaaIntent): boolean {
