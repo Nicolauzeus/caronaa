@@ -4,10 +4,7 @@ export type UserVerificationType = "UNIFOR" | "STS_2026";
 
 export type UserVerificationStatus = "VERIFIED" | "REVOKED";
 
-export type UserVerificationSource =
-  | "EMAIL_DOMAIN"
-  | "EVENT_FORM"
-  | "ADMIN";
+export type UserVerificationSource = "EMAIL_DOMAIN" | "EVENT_FORM" | "ADMIN";
 
 export type UserVerification = {
   id: string;
@@ -23,9 +20,7 @@ export type UserVerification = {
   updated_at: string;
 };
 
-export function normalizeVerificationEmail(
-  email: string | null | undefined,
-): string | null {
+export function normalizeVerificationEmail(email: string | null | undefined): string | null {
   if (!email) return null;
 
   const normalized = email.trim().toLowerCase();
@@ -33,9 +28,7 @@ export function normalizeVerificationEmail(
   return normalized.length > 0 ? normalized : null;
 }
 
-export function isUniforEmail(
-  email: string | null | undefined,
-): boolean {
+export function isUniforEmail(email: string | null | undefined): boolean {
   const normalized = normalizeVerificationEmail(email);
 
   if (!normalized) return false;
@@ -48,24 +41,14 @@ export function isUniforEmail(
 
   const domain = normalized.slice(atIndex + 1);
 
-  return (
-    domain === "unifor.br" ||
-    domain === "edu.unifor.br"
-  );
+  return domain === "unifor.br" || domain === "edu.unifor.br";
 }
 
-export async function getMyUserVerifications(): Promise<
-  UserVerification[]
-> {
-  const {
-    data: authData,
-    error: authError,
-  } = await supabase.auth.getUser();
+export async function getMyUserVerifications(): Promise<UserVerification[]> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError) {
-    throw new Error(
-      `Não foi possível identificar o usuário autenticado: ${authError.message}`,
-    );
+    throw new Error(`Não foi possível identificar o usuário autenticado: ${authError.message}`);
   }
 
   const user = authData.user;
@@ -74,19 +57,7 @@ export async function getMyUserVerifications(): Promise<
     return [];
   }
 
-  /*
-   * user_verifications ainda não está presente nos tipos
-   * gerados atuais do Supabase deste projeto.
-   *
-   * O cast abaixo é temporário e pode ser removido quando
-   * src/integrations/supabase/types.ts for regenerado.
-   */
-  const client = supabase as any;
-
-  const {
-    data,
-    error,
-  } = await client
+  const { data, error } = await supabase
     .from("user_verifications")
     .select(
       `
@@ -110,32 +81,18 @@ export async function getMyUserVerifications(): Promise<
     });
 
   if (error) {
-    throw new Error(
-      `Não foi possível carregar as verificações do usuário: ${error.message}`,
-    );
+    throw new Error(`Não foi possível carregar as verificações do usuário: ${error.message}`);
   }
 
   return (data ?? []) as UserVerification[];
 }
 
-export async function getUserVerifications(
-  userId: string,
-): Promise<UserVerification[]> {
+export async function getUserVerifications(userId: string): Promise<UserVerification[]> {
   if (!userId) {
     return [];
   }
 
-  /*
-   * A RLS define quem pode consultar registros de terceiros.
-   * Usuário comum só consegue ler as próprias verificações.
-   * Admin consegue consultar todas.
-   */
-  const client = supabase as any;
-
-  const {
-    data,
-    error,
-  } = await client
+  const { data, error } = await supabase
     .from("user_verifications")
     .select(
       `
@@ -159,9 +116,7 @@ export async function getUserVerifications(
     });
 
   if (error) {
-    throw new Error(
-      `Não foi possível carregar as verificações do usuário: ${error.message}`,
-    );
+    throw new Error(`Não foi possível carregar as verificações do usuário: ${error.message}`);
   }
 
   return (data ?? []) as UserVerification[];
@@ -172,15 +127,11 @@ export function hasVerification(
   type: UserVerificationType,
 ): boolean {
   return verifications.some(
-    (verification) =>
-      verification.type === type &&
-      verification.status === "VERIFIED",
+    (verification) => verification.type === type && verification.status === "VERIFIED",
   );
 }
 
-export function getVerificationLabel(
-  type: UserVerificationType,
-): string {
+export function getVerificationLabel(type: UserVerificationType): string {
   switch (type) {
     case "UNIFOR":
       return "UNIFOR";
@@ -193,9 +144,7 @@ export function getVerificationLabel(
   }
 }
 
-export function getVerificationDescription(
-  type: UserVerificationType,
-): string {
+export function getVerificationDescription(type: UserVerificationType): string {
   switch (type) {
     case "UNIFOR":
       return "Vínculo UNIFOR identificado por e-mail institucional confirmado.";

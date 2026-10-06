@@ -84,15 +84,15 @@ describe("pain analysis", () => {
   });
 
   it("sorts by intensity, primary pain and interest", () => {
-    expect(buildPainAnalysisSummary({ submissions, sortBy: "intensity" }).painPoints[0]?.codigoDor).toBe(
-      "DOR_02",
-    );
+    expect(
+      buildPainAnalysisSummary({ submissions, sortBy: "intensity" }).painPoints[0]?.codigoDor,
+    ).toBe("DOR_02");
     expect(
       buildPainAnalysisSummary({ submissions, sortBy: "primaryPain" }).painPoints[0]?.codigoDor,
     ).toBe("DOR_01");
-    expect(buildPainAnalysisSummary({ submissions, sortBy: "interest" }).painPoints[0]?.codigoDor).toBe(
-      "DOR_03",
-    );
+    expect(
+      buildPainAnalysisSummary({ submissions, sortBy: "interest" }).painPoints[0]?.codigoDor,
+    ).toBe("DOR_03");
   });
 
   it("does not emit NaN or divide by zero with an empty sample", () => {

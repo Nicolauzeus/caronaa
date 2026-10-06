@@ -1,9 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { normalizeRideVerification as normalizeVerification, type RideVerification } from "@/lib/ride-verifications";
+import type { Database, Tables } from "@/integrations/supabase/types";
+import {
+  normalizeRideVerification as normalizeVerification,
+  type RideVerification,
+} from "@/lib/ride-verifications";
 export type { RideVerification } from "@/lib/ride-verifications";
+
+type SupabaseAppClient = SupabaseClient<Database>;
 
 export type RideProfile = {
   id: string;
@@ -37,14 +44,17 @@ const searchInput = z.object({
   origin: z.string().trim().max(160).optional(),
   destination: z.string().trim().max(160).optional(),
   rideDate: z.string().date().optional().or(z.literal("")),
-  departureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().or(z.literal("")),
+  departureTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional()
+    .or(z.literal("")),
   passengerCount: z.number().int().min(1).max(6).default(1),
 });
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-
 
 function profileFor(
   userId: string,
@@ -58,14 +68,13 @@ function profileFor(
       typeof profile?.["full_name"] === "string" && profile["full_name"].trim()
         ? profile["full_name"]
         : "Usuário CARONAA",
-    avatarUrl:
-      typeof profile?.["avatar_url"] === "string" ? profile["avatar_url"] : null,
+    avatarUrl: typeof profile?.["avatar_url"] === "string" ? profile["avatar_url"] : null,
     city: typeof profile?.["city"] === "string" ? profile["city"] : null,
     verifications: verifications.get(userId) ?? [],
   };
 }
 
-async function loadProfiles(client: any, userIds: string[]) {
+async function loadProfiles(client: SupabaseAppClient, userIds: string[]) {
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
   const profiles = new Map<string, Record<string, unknown>>();
   const verifications = new Map<string, RideVerification[]>();
@@ -86,15 +95,11 @@ async function loadProfiles(client: any, userIds: string[]) {
 
   const { data: verificationRows, error: verificationError } = await client
     .from("user_verifications")
-    .select(
-      "id, user_id, type, status",
-    )
+    .select("id, user_id, type, status")
     .in("user_id", uniqueIds)
     .eq("status", "VERIFIED");
   if (verificationError) {
-    throw new Error(
-      verificationError.message || "Não foi possível carregar vínculos verificados.",
-    );
+    throw new Error(verificationError.message || "Não foi possível carregar vínculos verificados.");
   }
 
   for (const row of verificationRows ?? []) {
@@ -107,51 +112,49 @@ async function loadProfiles(client: any, userIds: string[]) {
   return { profiles, verifications };
 }
 
-function mapOffer(
-  row: any,
-  profile: RideProfile,
-  viewerUserId: string,
-): RideSummary {
+type OfferRow = Tables<"ride_offers"> | Record<string, unknown>;
+type RequestRow = Tables<"ride_requests"> | Record<string, unknown>;
+type RideRow = Tables<"rides"> | Record<string, unknown>;
+
+function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): RideSummary {
+  const r = row as Record<string, unknown>;
   return {
-    id: String(row.offer_id),
+    id: String(r["offer_id"]),
     kind: "offer",
     role: "available",
-    origin: String(row.origin ?? ""),
-    destination: String(row.destination ?? ""),
-    rideDate: String(row.ride_date ?? ""),
-    departureTime: String(row.departure_time ?? "").slice(0, 5),
-    seats: Number(row.available_seats ?? 0),
-    seatsRemaining: Number(row.seats_remaining ?? 0),
-    status: String(row.status ?? ""),
-    createdAt: String(row.created_at ?? ""),
+    origin: String(r["origin"] ?? ""),
+    destination: String(r["destination"] ?? ""),
+    rideDate: String(r["ride_date"] ?? ""),
+    departureTime: String(r["departure_time"] ?? "").slice(0, 5),
+    seats: Number(r["available_seats"] ?? 0),
+    seatsRemaining: Number(r["seats_remaining"] ?? 0),
+    status: String(r["status"] ?? ""),
+    createdAt: String(r["created_at"] ?? ""),
     rideId: null,
     requestId: null,
-    offerId: String(row.offer_id),
+    offerId: String(r["offer_id"]),
     driver: profile,
     passenger: null,
     viewerUserId,
   };
 }
 
-function mapRequest(
-  row: any,
-  profile: RideProfile,
-  viewerUserId: string,
-): RideSummary {
+function mapRequest(row: RequestRow, profile: RideProfile, viewerUserId: string): RideSummary {
+  const r = row as Record<string, unknown>;
   return {
-    id: String(row.request_id),
+    id: String(r["request_id"]),
     kind: "request",
     role: "passenger",
-    origin: String(row.origin ?? ""),
-    destination: String(row.destination ?? ""),
-    rideDate: String(row.ride_date ?? ""),
-    departureTime: String(row.departure_time ?? "").slice(0, 5),
-    seats: Number(row.passenger_count ?? 0),
+    origin: String(r["origin"] ?? ""),
+    destination: String(r["destination"] ?? ""),
+    rideDate: String(r["ride_date"] ?? ""),
+    departureTime: String(r["departure_time"] ?? "").slice(0, 5),
+    seats: Number(r["passenger_count"] ?? 0),
     seatsRemaining: null,
-    status: String(row.status ?? ""),
-    createdAt: String(row.created_at ?? ""),
+    status: String(r["status"] ?? ""),
+    createdAt: String(r["created_at"] ?? ""),
     rideId: null,
-    requestId: String(row.request_id),
+    requestId: String(r["request_id"]),
     offerId: null,
     driver: null,
     passenger: profile,
@@ -160,62 +163,77 @@ function mapRequest(
 }
 
 function mapRide(
-  ride: any,
-  request: any,
-  offer: any,
+  ride: RideRow,
+  request: RequestRow | undefined,
+  offer: OfferRow | undefined,
   passenger: RideProfile,
   driver: RideProfile,
   viewerUserId: string,
 ): RideSummary {
+  const ri = ride as Record<string, unknown>;
+  const req = request as Record<string, unknown> | undefined;
+  const off = offer as Record<string, unknown> | undefined;
+
   return {
-    id: String(ride.ride_id),
+    id: String(ri["ride_id"]),
     kind: "ride",
-    role: ride.driver_user_id === viewerUserId ? "driver" : "passenger",
-    origin: String(request?.origin ?? offer?.origin ?? ""),
-    destination: String(request?.destination ?? offer?.destination ?? ""),
-    rideDate: String(request?.ride_date ?? offer?.ride_date ?? ""),
-    departureTime: String(request?.departure_time ?? offer?.departure_time ?? "").slice(0, 5),
-    seats: Number(request?.passenger_count ?? offer?.available_seats ?? 0),
+    role: ri["driver_user_id"] === viewerUserId ? "driver" : "passenger",
+    origin: String(req?.["origin"] ?? off?.["origin"] ?? ""),
+    destination: String(req?.["destination"] ?? off?.["destination"] ?? ""),
+    rideDate: String(req?.["ride_date"] ?? off?.["ride_date"] ?? ""),
+    departureTime: String(req?.["departure_time"] ?? off?.["departure_time"] ?? "").slice(0, 5),
+    seats: Number(req?.["passenger_count"] ?? off?.["available_seats"] ?? 0),
     seatsRemaining:
-      typeof offer?.seats_remaining === "number"
-        ? offer.seats_remaining
-        : offer?.seats_remaining
-          ? Number(offer.seats_remaining)
+      typeof off?.["seats_remaining"] === "number"
+        ? (off["seats_remaining"] as number)
+        : off?.["seats_remaining"]
+          ? Number(off["seats_remaining"])
           : null,
-    status: String(ride.status ?? ""),
-    createdAt: String(ride.created_at ?? ""),
-    rideId: String(ride.ride_id),
-    requestId: String(ride.request_id),
-    offerId: String(ride.offer_id),
+    status: String(ri["status"] ?? ""),
+    createdAt: String(ri["created_at"] ?? ""),
+    rideId: String(ri["ride_id"]),
+    requestId: String(ri["request_id"]),
+    offerId: String(ri["offer_id"]),
     driver,
     passenger,
     viewerUserId,
   };
 }
 
-async function getAdminClient() {
+async function getAdminClient(): Promise<SupabaseAppClient> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin as any;
+  return supabaseAdmin as unknown as SupabaseAppClient;
 }
 
-async function discoverOffers(client: any, userId: string, data: z.infer<typeof searchInput>, limit: number) {
+async function discoverOffers(
+  client: SupabaseAppClient,
+  userId: string,
+  data: z.infer<typeof searchInput>,
+  limit: number,
+) {
   const { data: rows, error } = await client.rpc("search_available_ride_offers", {
-    p_origin: data.origin || null,
-    p_destination: data.destination || null,
-    p_ride_date: data.rideDate || null,
-    p_departure_time: data.departureTime || null,
+    p_origin: data.origin || undefined,
+    p_destination: data.destination || undefined,
+    p_ride_date: data.rideDate || undefined,
+    p_departure_time: data.departureTime || undefined,
     p_passenger_count: data.passengerCount,
     p_limit: limit,
   });
   if (error) throw new Error(error.message || "Não foi possível buscar caronas.");
-  return ((rows ?? []) as any[]).map((row) =>
-    mapOffer(row, {
-      id: String(row.user_id),
-      fullName: row.full_name || "Usuário CARONAA",
-      avatarUrl: row.avatar_url ?? null,
-      city: row.city ?? null,
-      verifications: (row.verifications ?? []).map(normalizeVerification).filter(Boolean),
-    }, userId),
+  return (rows ?? []).map((row) =>
+    mapOffer(
+      row,
+      {
+        id: String(row.user_id),
+        fullName: row.full_name || "Usuário CARONAA",
+        avatarUrl: row.avatar_url ?? null,
+        city: row.city ?? null,
+        verifications: (Array.isArray(row.verifications) ? row.verifications : [])
+          .map(normalizeVerification)
+          .filter((v): v is RideVerification => Boolean(v)),
+      },
+      userId,
+    ),
   );
 }
 
@@ -223,19 +241,24 @@ export const searchRideOffers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => searchInput.parse(input))
   .handler(async ({ context, data }) =>
-    discoverOffers(context.supabase, context.userId, data, 30),
+    discoverOffers(context.supabase as unknown as SupabaseAppClient, context.userId, data, 30),
   );
 
 export const getHomeRides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
-    discoverOffers(context.supabase, context.userId, searchInput.parse({}), 3),
+    discoverOffers(
+      context.supabase as unknown as SupabaseAppClient,
+      context.userId,
+      searchInput.parse({}),
+      3,
+    ),
   );
 
 export const getCurrentProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const client = context.supabase as any;
+    const client = context.supabase;
     const { data, error } = await client
       .from("profiles")
       .select("id, full_name, avatar_url, city")
@@ -247,10 +270,7 @@ export const getCurrentProfile = createServerFn({ method: "GET" })
 
     return {
       id: context.userId,
-      fullName:
-        typeof data?.full_name === "string" && data.full_name.trim()
-          ? data.full_name
-          : "",
+      fullName: typeof data?.full_name === "string" && data.full_name.trim() ? data.full_name : "",
       avatarUrl: typeof data?.avatar_url === "string" ? data.avatar_url : null,
       city: typeof data?.city === "string" ? data.city : null,
     };
@@ -295,12 +315,12 @@ export const getMyRides = createServerFn({ method: "GET" })
     }
 
     const requestIds = [
-      ...((rides ?? []) as any[]).map((ride) => String(ride.request_id)),
-      ...((requests ?? []) as any[]).map((request) => String(request.request_id)),
+      ...(rides ?? []).map((ride) => String(ride.request_id)),
+      ...(requests ?? []).map((request) => String(request.request_id)),
     ];
     const offerIds = [
-      ...((rides ?? []) as any[]).map((ride) => String(ride.offer_id)),
-      ...((offers ?? []) as any[]).map((offer) => String(offer.offer_id)),
+      ...(rides ?? []).map((ride) => String(ride.offer_id)),
+      ...(offers ?? []).map((offer) => String(offer.offer_id)),
     ];
 
     const { data: matchedRequests, error: matchedRequestsError } = requestIds.length
@@ -328,38 +348,26 @@ export const getMyRides = createServerFn({ method: "GET" })
     }
 
     const requestById = new Map(
-      ((matchedRequests ?? []) as any[]).map((row) => [
-        String(row.request_id),
-        row,
-      ]),
+      (matchedRequests ?? []).map((row) => [String(row.request_id), row]),
     );
-    const offerById = new Map(
-      ((matchedOffers ?? []) as any[]).map((row) => [
-        String(row.offer_id),
-        row,
-      ]),
-    );
+    const offerById = new Map((matchedOffers ?? []).map((row) => [String(row.offer_id), row]));
 
     const userIds = [
       context.userId,
-      ...((rides ?? []) as any[]).flatMap((ride) => [
+      ...(rides ?? []).flatMap((ride) => [
         String(ride.passenger_user_id),
         String(ride.driver_user_id),
       ]),
     ];
     const { profiles, verifications } = await loadProfiles(client, userIds);
 
-    const matchedRequestIds = new Set(
-      ((rides ?? []) as any[]).map((ride) => String(ride.request_id)),
-    );
-    const matchedOfferIds = new Set(
-      ((rides ?? []) as any[]).map((ride) => String(ride.offer_id)),
-    );
+    const matchedRequestIds = new Set((rides ?? []).map((ride) => String(ride.request_id)));
+    const matchedOfferIds = new Set((rides ?? []).map((ride) => String(ride.offer_id)));
 
     const currentProfile = profileFor(context.userId, profiles, verifications);
 
     const passenger = [
-      ...((rides ?? []) as any[])
+      ...(rides ?? [])
         .filter((ride) => ride.passenger_user_id === context.userId)
         .map((ride) =>
           mapRide(
@@ -371,17 +379,13 @@ export const getMyRides = createServerFn({ method: "GET" })
             context.userId,
           ),
         ),
-      ...((requests ?? []) as any[])
-        .filter(
-          (request) => !matchedRequestIds.has(String(request.request_id)),
-        )
-        .map((request) =>
-          mapRequest(request, currentProfile, context.userId),
-        ),
+      ...(requests ?? [])
+        .filter((request) => !matchedRequestIds.has(String(request.request_id)))
+        .map((request) => mapRequest(request, currentProfile, context.userId)),
     ];
 
     const driver = [
-      ...((rides ?? []) as any[])
+      ...(rides ?? [])
         .filter((ride) => ride.driver_user_id === context.userId)
         .map((ride) =>
           mapRide(
@@ -393,10 +397,8 @@ export const getMyRides = createServerFn({ method: "GET" })
             context.userId,
           ),
         ),
-      ...((offers ?? []) as any[])
-        .filter(
-          (offer) => !matchedOfferIds.has(String(offer.offer_id)),
-        )
+      ...(offers ?? [])
+        .filter((offer) => !matchedOfferIds.has(String(offer.offer_id)))
         .map((offer) => mapOffer(offer, currentProfile, context.userId)),
     ];
 
@@ -406,13 +408,18 @@ export const getMyRides = createServerFn({ method: "GET" })
 export const requestRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ offerId: z.string().uuid(), passengerCount: z.number().int().min(1).max(6).default(1) }).parse(input),
+    z
+      .object({
+        offerId: z.string().uuid(),
+        passengerCount: z.number().int().min(1).max(6).default(1),
+      })
+      .parse(input),
   )
   .handler(async ({ context, data }) => {
-    const { data: requestId, error } = await (context.supabase as any).rpc(
-      "request_available_ride_offer",
-      { p_offer_id: data.offerId, p_passenger_count: data.passengerCount },
-    );
+    const { data: requestId, error } = await context.supabase.rpc("request_available_ride_offer", {
+      p_offer_id: data.offerId,
+      p_passenger_count: data.passengerCount,
+    });
     if (error) throw new Error(error.message || "Não foi possível solicitar a carona.");
     return { requestId };
   });

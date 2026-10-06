@@ -61,7 +61,9 @@ function MinhasCaronas() {
       setPassengerRides(data.passenger);
       setDriverRides(data.driver);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar suas viagens.");
+      setError(
+        loadError instanceof Error ? loadError.message : "Não foi possível carregar suas viagens.",
+      );
     } finally {
       setLoading(false);
     }
@@ -89,12 +91,12 @@ function MinhasCaronas() {
       toast.error(error instanceof Error ? error.message : "Não foi possível publicar o pedido.");
       return;
     }
-      toast.success("Pedido publicado", {
-        description: "Seu trajeto já está disponível para a comunidade.",
-      });
-      setForm(initialForm);
-      void refreshRides();
-    }
+    toast.success("Pedido publicado", {
+      description: "Seu trajeto já está disponível para a comunidade.",
+    });
+    setForm(initialForm);
+    void refreshRides();
+  }
   const items = tab === "pedidos" ? passengerRides : driverRides;
   return (
     <AppShell>
@@ -343,7 +345,9 @@ function initials(name: string) {
   );
 }
 
-function nextActions(status: string): Array<{ label: string; status: RideStatus; variant?: "outline" }> {
+function nextActions(
+  status: string,
+): Array<{ label: string; status: RideStatus; variant?: "outline" }> {
   if (status === "MATCHED") {
     return [
       { label: "Confirmar", status: "CONFIRMED" },
@@ -371,14 +375,9 @@ function nextActions(status: string): Array<{ label: string; status: RideStatus;
 function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise<void> }) {
   const [details, setDetails] = useState(false);
   const [updating, setUpdating] = useState<RideStatus | null>(null);
-  const person =
-    ride.role === "driver"
-      ? ride.passenger
-      : ride.driver ?? ride.passenger;
+  const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
-    ride.role === "driver"
-      ? person?.fullName || "Passageiro"
-      : person?.fullName || "Você";
+    ride.role === "driver" ? person?.fullName || "Passageiro" : person?.fullName || "Você";
   const actions = ride.rideId ? nextActions(ride.status) : [];
 
   async function updateStatus(nextStatus: RideStatus) {
@@ -387,9 +386,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     try {
       const result = await transitionRideStatus(ride.rideId, nextStatus);
       toast.success(
-        result === "AWAITING_OTHER_PARTICIPANT"
-          ? "Confirmação registrada"
-          : "Viagem atualizada",
+        result === "AWAITING_OTHER_PARTICIPANT" ? "Confirmação registrada" : "Viagem atualizada",
         {
           description:
             result === "AWAITING_OTHER_PARTICIPANT"
@@ -446,8 +443,8 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
             <MapPin size={15} /> {ride.origin} → {ride.destination}
           </p>
           <p className="flex items-center gap-2">
-            <UsersRound size={15} />{" "}
-            {ride.seatsRemaining ?? ride.seats} {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
+            <UsersRound size={15} /> {ride.seatsRemaining ?? ride.seats}{" "}
+            {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
           </p>
           <p>
             <CarFront size={15} className="mr-2 inline" />

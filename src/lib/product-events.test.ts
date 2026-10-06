@@ -21,5 +21,4 @@ describe("product event semantics", () => {
     expect(productEventForRide("offer", false)).toBe("RIDE_OFFER_CREATED");
     expect(productEventForRide("request", true)).toBe("RIDE_REPEATED");
   });
-
 });

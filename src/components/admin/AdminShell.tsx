@@ -7,8 +7,10 @@ import {
   ChevronRight,
   FileText,
   Gauge,
+  HeartHandshake,
   LayoutDashboard,
   Menu,
+  MessageSquareHeart,
   Search,
   ShieldCheck,
   Users,
@@ -82,8 +84,18 @@ const navigation = [
     ],
   },
   {
-    title: "Validação",
+    title: "Validação & Pitch",
     items: [
+      {
+        label: "Relacionamentos",
+        to: "/admin/relacionamentos",
+        icon: HeartHandshake,
+      },
+      {
+        label: "Sugestões",
+        to: "/admin/sugestoes",
+        icon: MessageSquareHeart,
+      },
       {
         label: "Oportunidades",
         to: "/admin/oportunidades",
@@ -108,13 +120,7 @@ const navigation = [
   },
 ];
 
-function AdminNav({
-  mobile = false,
-  onNavigate,
-}: {
-  mobile?: boolean;
-  onNavigate?: () => void;
-}) {
+function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -128,42 +134,34 @@ function AdminNav({
           </p>
 
           <div className="space-y-1">
-            {section.items.map(
-              ({ label, to, icon: Icon }) => {
-                const active =
-                  pathname === to ||
-                  pathname.startsWith(`${to}/`);
+            {section.items.map(({ label, to, icon: Icon }) => {
+              const active = pathname === to || pathname.startsWith(`${to}/`);
 
-                return (
-                  <Link
-                    key={to}
-                    to={to}
-                    onClick={onNavigate}
-                    className={cn(
-                      "flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                      mobile ? "min-h-12" : "",
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <Icon size={16} />
-                      {label}
-                    </span>
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    mobile ? "min-h-12" : "",
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon size={16} />
+                    {label}
+                  </span>
 
-                    <ChevronRight
-                      size={14}
-                      className={cn(
-                        active
-                          ? "text-primary-foreground"
-                          : "opacity-60",
-                      )}
-                    />
-                  </Link>
-                );
-              },
-            )}
+                  <ChevronRight
+                    size={14}
+                    className={cn(active ? "text-primary-foreground" : "opacity-60")}
+                  />
+                </Link>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -171,15 +169,10 @@ function AdminNav({
   );
 }
 
-function getMetadataString(
-  metadata: Record<string, unknown> | undefined,
-  key: string,
-) {
+function getMetadataString(metadata: Record<string, unknown> | undefined, key: string) {
   const value = metadata?.[key];
 
-  return typeof value === "string" && value.trim()
-    ? value.trim()
-    : null;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function getInitials(name: string) {
@@ -194,17 +187,11 @@ function getInitials(name: string) {
   return initials || "AD";
 }
 
-export function AdminShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [profile, setProfile] = useState<AdminProfile | null>(
-    null,
-  );
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
 
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -232,10 +219,7 @@ export function AdminShell({
       }
 
       if (error) {
-        console.error(
-          "[AdminShell] Não foi possível carregar o perfil do administrador.",
-          error,
-        );
+        console.error("[AdminShell] Não foi possível carregar o perfil do administrador.", error);
         setProfile(null);
         return;
       }
@@ -264,10 +248,7 @@ export function AdminShell({
 
     return parts
       .map((segment) => segment.replace(/-/g, " "))
-      .map(
-        (segment) =>
-          segment.charAt(0).toUpperCase() + segment.slice(1),
-      )
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
       .join(" / ");
   }, [pathname]);
 
@@ -279,18 +260,8 @@ export function AdminShell({
     }
 
     const metadataName =
-      getMetadataString(
-        user?.user_metadata as
-          | Record<string, unknown>
-          | undefined,
-        "full_name",
-      ) ??
-      getMetadataString(
-        user?.user_metadata as
-          | Record<string, unknown>
-          | undefined,
-        "name",
-      );
+      getMetadataString(user?.user_metadata as Record<string, unknown> | undefined, "full_name") ??
+      getMetadataString(user?.user_metadata as Record<string, unknown> | undefined, "name");
 
     if (metadataName) {
       return metadataName;
@@ -307,40 +278,20 @@ export function AdminShell({
     }
 
     return (
-      getMetadataString(
-        user?.user_metadata as
-          | Record<string, unknown>
-          | undefined,
-        "avatar_url",
-      ) ??
-      getMetadataString(
-        user?.user_metadata as
-          | Record<string, unknown>
-          | undefined,
-        "picture",
-      )
+      getMetadataString(user?.user_metadata as Record<string, unknown> | undefined, "avatar_url") ??
+      getMetadataString(user?.user_metadata as Record<string, unknown> | undefined, "picture")
     );
   }, [profile?.avatar_url, user]);
 
-  const adminInitials = useMemo(
-    () => getInitials(adminName),
-    [adminName],
-  );
+  const adminInitials = useMemo(() => getInitials(adminName), [adminName]);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-[1680px] gap-5 p-3 md:p-5 lg:p-6">
         <aside className="hidden w-[280px] shrink-0 rounded-2xl border border-border bg-card/85 p-4 shadow-soft backdrop-blur-md lg:block">
           <div className="mb-6 flex items-center justify-between gap-3">
-            <Link
-              to="/admin"
-              className="inline-flex items-center gap-3"
-            >
-              <img
-                src={logoAsset.url}
-                alt="CARONAA"
-                className="h-11 w-auto object-contain"
-              />
+            <Link to="/admin" className="inline-flex items-center gap-3">
+              <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
 
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
@@ -361,9 +312,7 @@ export function AdminShell({
               Segurança
             </p>
 
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              Controle administrativo
-            </p>
+            <p className="mt-2 text-sm font-semibold text-foreground">Controle administrativo</p>
 
             <p className="mt-1 text-xs text-muted-foreground">
               Acesso liberado para perfil com autorização ativa.
@@ -391,9 +340,7 @@ export function AdminShell({
                     CARONAA admin
                   </p>
 
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {breadcrumb}
-                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{breadcrumb}</p>
                 </div>
               </div>
 
@@ -419,17 +366,9 @@ export function AdminShell({
                     Ambiente: produção
                   </span>
 
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="hidden sm:inline-flex"
-                  >
+                  <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
                     <Link to="/home">
-                      <ArrowLeft
-                        size={14}
-                        className="mr-1"
-                      />
+                      <ArrowLeft size={14} className="mr-1" />
                       Voltar ao app
                     </Link>
                   </Button>
@@ -444,26 +383,15 @@ export function AdminShell({
 
                   <div className="flex items-center gap-2 rounded-full border border-border bg-background p-1.5">
                     <Avatar className="h-8 w-8">
-                      {adminAvatar ? (
-                        <AvatarImage
-                          src={adminAvatar}
-                          alt={adminName}
-                        />
-                      ) : null}
+                      {adminAvatar ? <AvatarImage src={adminAvatar} alt={adminName} /> : null}
 
-                      <AvatarFallback>
-                        {adminInitials}
-                      </AvatarFallback>
+                      <AvatarFallback>{adminInitials}</AvatarFallback>
                     </Avatar>
 
                     <div className="hidden max-w-[150px] text-left sm:block">
-                      <p className="truncate text-xs font-semibold text-foreground">
-                        {adminName}
-                      </p>
+                      <p className="truncate text-xs font-semibold text-foreground">{adminName}</p>
 
-                      <p className="text-[10px] text-muted-foreground">
-                        Administrador
-                      </p>
+                      <p className="text-[10px] text-muted-foreground">Administrador</p>
                     </div>
                   </div>
                 </div>
@@ -471,9 +399,7 @@ export function AdminShell({
             </div>
           </header>
 
-          <main className="px-0 py-5 md:py-6">
-            {children}
-          </main>
+          <main className="px-0 py-5 md:py-6">{children}</main>
         </div>
       </div>
 
@@ -500,12 +426,10 @@ export function AdminShell({
               </Button>
             </div>
 
-            <AdminNav
-              mobile
-              onNavigate={() => setMobileOpen(false)}
-            />
+            <AdminNav mobile onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       ) : null}
     </div>
-  );}
+  );
+}

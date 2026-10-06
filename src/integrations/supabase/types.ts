@@ -1,1016 +1,971 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.18"
-  }
+    PostgrestVersion: "14.18";
+  };
   public: {
     Tables: {
       form_funnel_events: {
         Row: {
-          anonymous_session_id: string
-          campaign: string | null
-          campaign_event: string
-          created_at: string
-          event_id: string
-          event_name: string
-          event_step: string | null
-          idempotency_key: string
-          source: string
-          user_id: string | null
-        }
+          anonymous_session_id: string;
+          campaign: string | null;
+          campaign_event: string;
+          created_at: string;
+          event_id: string;
+          event_name: string;
+          event_step: string | null;
+          idempotency_key: string;
+          source: string;
+          user_id: string | null;
+        };
         Insert: {
-          anonymous_session_id: string
-          campaign?: string | null
-          campaign_event: string
-          created_at?: string
-          event_id?: string
-          event_name: string
-          event_step?: string | null
-          idempotency_key: string
-          source: string
-          user_id?: string | null
-        }
+          anonymous_session_id: string;
+          campaign?: string | null;
+          campaign_event: string;
+          created_at?: string;
+          event_id?: string;
+          event_name: string;
+          event_step?: string | null;
+          idempotency_key: string;
+          source: string;
+          user_id?: string | null;
+        };
         Update: {
-          anonymous_session_id?: string
-          campaign?: string | null
-          campaign_event?: string
-          created_at?: string
-          event_id?: string
-          event_name?: string
-          event_step?: string | null
-          idempotency_key?: string
-          source?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+          anonymous_session_id?: string;
+          campaign?: string | null;
+          campaign_event?: string;
+          created_at?: string;
+          event_id?: string;
+          event_name?: string;
+          event_step?: string | null;
+          idempotency_key?: string;
+          source?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       form_starts: {
         Row: {
-          anonymous_session_id: string | null
-          campaign: string | null
-          campaign_event: string
-          created_at: string
-          ocupacao: string | null
-          raw_payload: Json
-          source: string
-          start_id: string
-          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"] | null
-          user_id: string | null
-        }
+          anonymous_session_id: string | null;
+          campaign: string | null;
+          campaign_event: string;
+          created_at: string;
+          ocupacao: string | null;
+          raw_payload: Json;
+          source: string;
+          start_id: string;
+          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+          user_id: string | null;
+        };
         Insert: {
-          anonymous_session_id?: string | null
-          campaign?: string | null
-          campaign_event: string
-          created_at?: string
-          ocupacao?: string | null
-          raw_payload?: Json
-          source: string
-          start_id?: string
-          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null
-          user_id?: string | null
-        }
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event: string;
+          created_at?: string;
+          ocupacao?: string | null;
+          raw_payload?: Json;
+          source: string;
+          start_id?: string;
+          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+          user_id?: string | null;
+        };
         Update: {
-          anonymous_session_id?: string | null
-          campaign?: string | null
-          campaign_event?: string
-          created_at?: string
-          ocupacao?: string | null
-          raw_payload?: Json
-          source?: string
-          start_id?: string
-          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event?: string;
+          created_at?: string;
+          ocupacao?: string | null;
+          raw_payload?: Json;
+          source?: string;
+          start_id?: string;
+          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"] | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       form_submission_pain_points: {
         Row: {
-          codigo_dor: Database["public"]["Enums"]["form_dor_codigo"]
-          created_at: string
-          intensidade: number | null
-          principal: boolean
-          selecionada: boolean
-          submission_id: string
-        }
+          codigo_dor: Database["public"]["Enums"]["form_dor_codigo"];
+          created_at: string;
+          intensidade: number | null;
+          principal: boolean;
+          selecionada: boolean;
+          submission_id: string;
+        };
         Insert: {
-          codigo_dor: Database["public"]["Enums"]["form_dor_codigo"]
-          created_at?: string
-          intensidade?: number | null
-          principal?: boolean
-          selecionada?: boolean
-          submission_id: string
-        }
+          codigo_dor: Database["public"]["Enums"]["form_dor_codigo"];
+          created_at?: string;
+          intensidade?: number | null;
+          principal?: boolean;
+          selecionada?: boolean;
+          submission_id: string;
+        };
         Update: {
-          codigo_dor?: Database["public"]["Enums"]["form_dor_codigo"]
-          created_at?: string
-          intensidade?: number | null
-          principal?: boolean
-          selecionada?: boolean
-          submission_id?: string
-        }
+          codigo_dor?: Database["public"]["Enums"]["form_dor_codigo"];
+          created_at?: string;
+          intensidade?: number | null;
+          principal?: boolean;
+          selecionada?: boolean;
+          submission_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "form_submission_pain_points_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
-            referencedRelation: "form_submissions"
-            referencedColumns: ["submission_id"]
+            foreignKeyName: "form_submission_pain_points_submission_id_fkey";
+            columns: ["submission_id"];
+            isOneToOne: false;
+            referencedRelation: "form_submissions";
+            referencedColumns: ["submission_id"];
           },
-        ]
-      }
+        ];
+      };
       form_submissions: {
         Row: {
-          anonymous_session_id: string | null
-          campaign: string | null
-          campaign_event: string
-          consentimento: boolean
-          created_at: string
-          custo_atual_faixa: string | null
-          custo_referencia:
-            | Database["public"]["Enums"]["form_custo_referencia"]
-            | null
-          destino_trajeto: string
-          email: string | null
-          faixa_horario: string | null
-          frequencia_semanal: string | null
-          intencao_motorista:
-            | Database["public"]["Enums"]["form_intencao"]
-            | null
-          intencao_passageiro:
-            | Database["public"]["Enums"]["form_intencao"]
-            | null
-          nome: string
-          ocupacao: string | null
-          origem_trajeto: string | null
-          raw_payload: Json
-          source: string
-          submission_id: string
-          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"]
-          transporte_atual: string | null
-          user_id: string | null
-          whatsapp: string
-        }
+          anonymous_session_id: string | null;
+          campaign: string | null;
+          campaign_event: string;
+          consentimento: boolean;
+          created_at: string;
+          custo_atual_faixa: string | null;
+          custo_referencia: Database["public"]["Enums"]["form_custo_referencia"] | null;
+          destino_trajeto: string;
+          email: string | null;
+          faixa_horario: string | null;
+          frequencia_semanal: string | null;
+          intencao_motorista: Database["public"]["Enums"]["form_intencao"] | null;
+          intencao_passageiro: Database["public"]["Enums"]["form_intencao"] | null;
+          nome: string;
+          ocupacao: string | null;
+          origem_trajeto: string | null;
+          raw_payload: Json;
+          source: string;
+          submission_id: string;
+          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"];
+          transporte_atual: string | null;
+          user_id: string | null;
+          whatsapp: string;
+        };
         Insert: {
-          anonymous_session_id?: string | null
-          campaign?: string | null
-          campaign_event: string
-          consentimento?: boolean
-          created_at?: string
-          custo_atual_faixa?: string | null
-          custo_referencia?:
-            | Database["public"]["Enums"]["form_custo_referencia"]
-            | null
-          destino_trajeto: string
-          email?: string | null
-          faixa_horario?: string | null
-          frequencia_semanal?: string | null
-          intencao_motorista?:
-            | Database["public"]["Enums"]["form_intencao"]
-            | null
-          intencao_passageiro?:
-            | Database["public"]["Enums"]["form_intencao"]
-            | null
-          nome: string
-          ocupacao?: string | null
-          origem_trajeto?: string | null
-          raw_payload?: Json
-          source: string
-          submission_id?: string
-          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"]
-          transporte_atual?: string | null
-          user_id?: string | null
-          whatsapp: string
-        }
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event: string;
+          consentimento?: boolean;
+          created_at?: string;
+          custo_atual_faixa?: string | null;
+          custo_referencia?: Database["public"]["Enums"]["form_custo_referencia"] | null;
+          destino_trajeto: string;
+          email?: string | null;
+          faixa_horario?: string | null;
+          frequencia_semanal?: string | null;
+          intencao_motorista?: Database["public"]["Enums"]["form_intencao"] | null;
+          intencao_passageiro?: Database["public"]["Enums"]["form_intencao"] | null;
+          nome: string;
+          ocupacao?: string | null;
+          origem_trajeto?: string | null;
+          raw_payload?: Json;
+          source: string;
+          submission_id?: string;
+          tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"];
+          transporte_atual?: string | null;
+          user_id?: string | null;
+          whatsapp: string;
+        };
         Update: {
-          anonymous_session_id?: string | null
-          campaign?: string | null
-          campaign_event?: string
-          consentimento?: boolean
-          created_at?: string
-          custo_atual_faixa?: string | null
-          custo_referencia?:
-            | Database["public"]["Enums"]["form_custo_referencia"]
-            | null
-          destino_trajeto?: string
-          email?: string | null
-          faixa_horario?: string | null
-          frequencia_semanal?: string | null
-          intencao_motorista?:
-            | Database["public"]["Enums"]["form_intencao"]
-            | null
-          intencao_passageiro?:
-            | Database["public"]["Enums"]["form_intencao"]
-            | null
-          nome?: string
-          ocupacao?: string | null
-          origem_trajeto?: string | null
-          raw_payload?: Json
-          source?: string
-          submission_id?: string
-          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
-          transporte_atual?: string | null
-          user_id?: string | null
-          whatsapp?: string
-        }
-        Relationships: []
-      }
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event?: string;
+          consentimento?: boolean;
+          created_at?: string;
+          custo_atual_faixa?: string | null;
+          custo_referencia?: Database["public"]["Enums"]["form_custo_referencia"] | null;
+          destino_trajeto?: string;
+          email?: string | null;
+          faixa_horario?: string | null;
+          frequencia_semanal?: string | null;
+          intencao_motorista?: Database["public"]["Enums"]["form_intencao"] | null;
+          intencao_passageiro?: Database["public"]["Enums"]["form_intencao"] | null;
+          nome?: string;
+          ocupacao?: string | null;
+          origem_trajeto?: string | null;
+          raw_payload?: Json;
+          source?: string;
+          submission_id?: string;
+          tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+          transporte_atual?: string | null;
+          user_id?: string | null;
+          whatsapp?: string;
+        };
+        Relationships: [];
+      };
       funnel_events: {
         Row: {
-          anonymous_session_id: string | null
-          campaign: string | null
-          campaign_event: string
-          created_at: string
-          device_category: string | null
-          event_id: string
-          event_name: Database["public"]["Enums"]["funnel_event_name"]
-          form_step: string | null
-          metadata: Json
-          source: string
-          submission_id: string | null
-          trusted_source: boolean
-          user_id: string | null
-        }
+          anonymous_session_id: string | null;
+          campaign: string | null;
+          campaign_event: string;
+          created_at: string;
+          device_category: string | null;
+          event_id: string;
+          event_name: Database["public"]["Enums"]["funnel_event_name"];
+          form_step: string | null;
+          metadata: Json;
+          source: string;
+          submission_id: string | null;
+          trusted_source: boolean;
+          user_id: string | null;
+        };
         Insert: {
-          anonymous_session_id?: string | null
-          campaign?: string | null
-          campaign_event: string
-          created_at?: string
-          device_category?: string | null
-          event_id?: string
-          event_name: Database["public"]["Enums"]["funnel_event_name"]
-          form_step?: string | null
-          metadata?: Json
-          source: string
-          submission_id?: string | null
-          trusted_source?: boolean
-          user_id?: string | null
-        }
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event: string;
+          created_at?: string;
+          device_category?: string | null;
+          event_id?: string;
+          event_name: Database["public"]["Enums"]["funnel_event_name"];
+          form_step?: string | null;
+          metadata?: Json;
+          source: string;
+          submission_id?: string | null;
+          trusted_source?: boolean;
+          user_id?: string | null;
+        };
         Update: {
-          anonymous_session_id?: string | null
-          campaign?: string | null
-          campaign_event?: string
-          created_at?: string
-          device_category?: string | null
-          event_id?: string
-          event_name?: Database["public"]["Enums"]["funnel_event_name"]
-          form_step?: string | null
-          metadata?: Json
-          source?: string
-          submission_id?: string | null
-          trusted_source?: boolean
-          user_id?: string | null
-        }
+          anonymous_session_id?: string | null;
+          campaign?: string | null;
+          campaign_event?: string;
+          created_at?: string;
+          device_category?: string | null;
+          event_id?: string;
+          event_name?: Database["public"]["Enums"]["funnel_event_name"];
+          form_step?: string | null;
+          metadata?: Json;
+          source?: string;
+          submission_id?: string | null;
+          trusted_source?: boolean;
+          user_id?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "funnel_events_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
-            referencedRelation: "form_submissions"
-            referencedColumns: ["submission_id"]
+            foreignKeyName: "funnel_events_submission_id_fkey";
+            columns: ["submission_id"];
+            isOneToOne: false;
+            referencedRelation: "form_submissions";
+            referencedColumns: ["submission_id"];
           },
-        ]
-      }
+        ];
+      };
       payments: {
         Row: {
-          amount: number
-          created_at: string
-          currency: string
-          paid_at: string | null
-          payer_user_id: string
-          payment_id: string
-          provider: string
-          provider_reference: string | null
-          ride_id: string
-          status: Database["public"]["Enums"]["payment_status"]
-          updated_at: string
-        }
+          amount: number;
+          created_at: string;
+          currency: string;
+          paid_at: string | null;
+          payer_user_id: string;
+          payment_id: string;
+          provider: string;
+          provider_reference: string | null;
+          ride_id: string;
+          status: Database["public"]["Enums"]["payment_status"];
+          updated_at: string;
+        };
         Insert: {
-          amount: number
-          created_at?: string
-          currency: string
-          paid_at?: string | null
-          payer_user_id: string
-          payment_id?: string
-          provider: string
-          provider_reference?: string | null
-          ride_id: string
-          status?: Database["public"]["Enums"]["payment_status"]
-          updated_at?: string
-        }
+          amount: number;
+          created_at?: string;
+          currency: string;
+          paid_at?: string | null;
+          payer_user_id: string;
+          payment_id?: string;
+          provider: string;
+          provider_reference?: string | null;
+          ride_id: string;
+          status?: Database["public"]["Enums"]["payment_status"];
+          updated_at?: string;
+        };
         Update: {
-          amount?: number
-          created_at?: string
-          currency?: string
-          paid_at?: string | null
-          payer_user_id?: string
-          payment_id?: string
-          provider?: string
-          provider_reference?: string | null
-          ride_id?: string
-          status?: Database["public"]["Enums"]["payment_status"]
-          updated_at?: string
-        }
+          amount?: number;
+          created_at?: string;
+          currency?: string;
+          paid_at?: string | null;
+          payer_user_id?: string;
+          payment_id?: string;
+          provider?: string;
+          provider_reference?: string | null;
+          ride_id?: string;
+          status?: Database["public"]["Enums"]["payment_status"];
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "payments_ride_id_fkey"
-            columns: ["ride_id"]
-            isOneToOne: false
-            referencedRelation: "rides"
-            referencedColumns: ["ride_id"]
+            foreignKeyName: "payments_ride_id_fkey";
+            columns: ["ride_id"];
+            isOneToOne: false;
+            referencedRelation: "rides";
+            referencedColumns: ["ride_id"];
           },
-        ]
-      }
+        ];
+      };
       product_events: {
         Row: {
-          campaign: string | null
-          created_at: string
-          driver_user_id: string | null
-          event_id: string
-          event_name: Database["public"]["Enums"]["product_event_name"]
-          match_id: string | null
-          metadata: Json
-          offer_id: string | null
-          passenger_user_id: string | null
-          payment_id: string | null
-          request_id: string | null
-          ride_id: string | null
-          source: string | null
-          status: string | null
-          trusted_source: boolean
-          user_id: string
-        }
+          campaign: string | null;
+          created_at: string;
+          driver_user_id: string | null;
+          event_id: string;
+          event_name: Database["public"]["Enums"]["product_event_name"];
+          match_id: string | null;
+          metadata: Json;
+          offer_id: string | null;
+          passenger_user_id: string | null;
+          payment_id: string | null;
+          request_id: string | null;
+          ride_id: string | null;
+          source: string | null;
+          status: string | null;
+          trusted_source: boolean;
+          user_id: string;
+        };
         Insert: {
-          campaign?: string | null
-          created_at?: string
-          driver_user_id?: string | null
-          event_id?: string
-          event_name: Database["public"]["Enums"]["product_event_name"]
-          match_id?: string | null
-          metadata?: Json
-          offer_id?: string | null
-          passenger_user_id?: string | null
-          payment_id?: string | null
-          request_id?: string | null
-          ride_id?: string | null
-          source?: string | null
-          status?: string | null
-          trusted_source?: boolean
-          user_id: string
-        }
+          campaign?: string | null;
+          created_at?: string;
+          driver_user_id?: string | null;
+          event_id?: string;
+          event_name: Database["public"]["Enums"]["product_event_name"];
+          match_id?: string | null;
+          metadata?: Json;
+          offer_id?: string | null;
+          passenger_user_id?: string | null;
+          payment_id?: string | null;
+          request_id?: string | null;
+          ride_id?: string | null;
+          source?: string | null;
+          status?: string | null;
+          trusted_source?: boolean;
+          user_id: string;
+        };
         Update: {
-          campaign?: string | null
-          created_at?: string
-          driver_user_id?: string | null
-          event_id?: string
-          event_name?: Database["public"]["Enums"]["product_event_name"]
-          match_id?: string | null
-          metadata?: Json
-          offer_id?: string | null
-          passenger_user_id?: string | null
-          payment_id?: string | null
-          request_id?: string | null
-          ride_id?: string | null
-          source?: string | null
-          status?: string | null
-          trusted_source?: boolean
-          user_id?: string
-        }
+          campaign?: string | null;
+          created_at?: string;
+          driver_user_id?: string | null;
+          event_id?: string;
+          event_name?: Database["public"]["Enums"]["product_event_name"];
+          match_id?: string | null;
+          metadata?: Json;
+          offer_id?: string | null;
+          passenger_user_id?: string | null;
+          payment_id?: string | null;
+          request_id?: string | null;
+          ride_id?: string | null;
+          source?: string | null;
+          status?: string | null;
+          trusted_source?: boolean;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "product_events_offer_id_fkey"
-            columns: ["offer_id"]
-            isOneToOne: false
-            referencedRelation: "ride_offers"
-            referencedColumns: ["offer_id"]
+            foreignKeyName: "product_events_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "ride_offers";
+            referencedColumns: ["offer_id"];
           },
           {
-            foreignKeyName: "product_events_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["payment_id"]
+            foreignKeyName: "product_events_payment_id_fkey";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["payment_id"];
           },
           {
-            foreignKeyName: "product_events_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "ride_requests"
-            referencedColumns: ["request_id"]
+            foreignKeyName: "product_events_request_id_fkey";
+            columns: ["request_id"];
+            isOneToOne: false;
+            referencedRelation: "ride_requests";
+            referencedColumns: ["request_id"];
           },
-        ]
-      }
+        ];
+      };
       profiles: {
         Row: {
-          avatar_url: string | null
-          city: string | null
-          created_at: string
-          full_name: string
-          id: string
-          updated_at: string
-        }
+          avatar_url: string | null;
+          city: string | null;
+          created_at: string;
+          full_name: string;
+          id: string;
+          updated_at: string;
+        };
         Insert: {
-          avatar_url?: string | null
-          city?: string | null
-          created_at?: string
-          full_name?: string
-          id: string
-          updated_at?: string
-        }
+          avatar_url?: string | null;
+          city?: string | null;
+          created_at?: string;
+          full_name?: string;
+          id: string;
+          updated_at?: string;
+        };
         Update: {
-          avatar_url?: string | null
-          city?: string | null
-          created_at?: string
-          full_name?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
+          avatar_url?: string | null;
+          city?: string | null;
+          created_at?: string;
+          full_name?: string;
+          id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       ride_completion_confirmations: {
         Row: {
-          confirmed_at: string
-          ride_id: string
-          user_id: string
-        }
+          confirmed_at: string;
+          ride_id: string;
+          user_id: string;
+        };
         Insert: {
-          confirmed_at?: string
-          ride_id: string
-          user_id: string
-        }
+          confirmed_at?: string;
+          ride_id: string;
+          user_id: string;
+        };
         Update: {
-          confirmed_at?: string
-          ride_id?: string
-          user_id?: string
-        }
+          confirmed_at?: string;
+          ride_id?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "ride_completion_confirmations_ride_id_fkey"
-            columns: ["ride_id"]
-            isOneToOne: false
-            referencedRelation: "rides"
-            referencedColumns: ["ride_id"]
+            foreignKeyName: "ride_completion_confirmations_ride_id_fkey";
+            columns: ["ride_id"];
+            isOneToOne: false;
+            referencedRelation: "rides";
+            referencedColumns: ["ride_id"];
           },
-        ]
-      }
+        ];
+      };
       ride_matches: {
         Row: {
-          created_at: string
-          driver_user_id: string
-          match_id: string
-          offer_id: string
-          passenger_user_id: string
-          request_id: string
-          ride_id: string | null
-          status: string
-        }
+          created_at: string;
+          driver_user_id: string;
+          match_id: string;
+          offer_id: string;
+          passenger_user_id: string;
+          request_id: string;
+          ride_id: string | null;
+          status: string;
+        };
         Insert: {
-          created_at?: string
-          driver_user_id: string
-          match_id?: string
-          offer_id: string
-          passenger_user_id: string
-          request_id: string
-          ride_id?: string | null
-          status?: string
-        }
+          created_at?: string;
+          driver_user_id: string;
+          match_id?: string;
+          offer_id: string;
+          passenger_user_id: string;
+          request_id: string;
+          ride_id?: string | null;
+          status?: string;
+        };
         Update: {
-          created_at?: string
-          driver_user_id?: string
-          match_id?: string
-          offer_id?: string
-          passenger_user_id?: string
-          request_id?: string
-          ride_id?: string | null
-          status?: string
-        }
+          created_at?: string;
+          driver_user_id?: string;
+          match_id?: string;
+          offer_id?: string;
+          passenger_user_id?: string;
+          request_id?: string;
+          ride_id?: string | null;
+          status?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "ride_matches_offer_id_fkey"
-            columns: ["offer_id"]
-            isOneToOne: false
-            referencedRelation: "ride_offers"
-            referencedColumns: ["offer_id"]
+            foreignKeyName: "ride_matches_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "ride_offers";
+            referencedColumns: ["offer_id"];
           },
           {
-            foreignKeyName: "ride_matches_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: true
-            referencedRelation: "ride_requests"
-            referencedColumns: ["request_id"]
+            foreignKeyName: "ride_matches_request_id_fkey";
+            columns: ["request_id"];
+            isOneToOne: true;
+            referencedRelation: "ride_requests";
+            referencedColumns: ["request_id"];
           },
-        ]
-      }
+        ];
+      };
       ride_offers: {
         Row: {
-          available_seats: number
-          created_at: string
-          departure_time: string
-          destination: string
-          offer_id: string
-          origin: string
-          ride_date: string
-          seats_remaining: number
-          status: string
-          user_id: string
-        }
+          available_seats: number;
+          created_at: string;
+          departure_time: string;
+          destination: string;
+          offer_id: string;
+          origin: string;
+          ride_date: string;
+          seats_remaining: number;
+          status: string;
+          user_id: string;
+        };
         Insert: {
-          available_seats: number
-          created_at?: string
-          departure_time: string
-          destination: string
-          offer_id?: string
-          origin: string
-          ride_date: string
-          seats_remaining: number
-          status?: string
-          user_id: string
-        }
+          available_seats: number;
+          created_at?: string;
+          departure_time: string;
+          destination: string;
+          offer_id?: string;
+          origin: string;
+          ride_date: string;
+          seats_remaining: number;
+          status?: string;
+          user_id: string;
+        };
         Update: {
-          available_seats?: number
-          created_at?: string
-          departure_time?: string
-          destination?: string
-          offer_id?: string
-          origin?: string
-          ride_date?: string
-          seats_remaining?: number
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          available_seats?: number;
+          created_at?: string;
+          departure_time?: string;
+          destination?: string;
+          offer_id?: string;
+          origin?: string;
+          ride_date?: string;
+          seats_remaining?: number;
+          status?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       ride_requests: {
         Row: {
-          created_at: string
-          departure_time: string
-          destination: string
-          origin: string
-          passenger_count: number
-          request_id: string
-          ride_date: string
-          status: string
-          target_offer_id: string | null
-          user_id: string
-        }
+          created_at: string;
+          departure_time: string;
+          destination: string;
+          origin: string;
+          passenger_count: number;
+          request_id: string;
+          ride_date: string;
+          status: string;
+          target_offer_id: string | null;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          departure_time: string
-          destination: string
-          origin: string
-          passenger_count: number
-          request_id?: string
-          ride_date: string
-          status?: string
-          target_offer_id?: string | null
-          user_id: string
-        }
+          created_at?: string;
+          departure_time: string;
+          destination: string;
+          origin: string;
+          passenger_count: number;
+          request_id?: string;
+          ride_date: string;
+          status?: string;
+          target_offer_id?: string | null;
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          departure_time?: string
-          destination?: string
-          origin?: string
-          passenger_count?: number
-          request_id?: string
-          ride_date?: string
-          status?: string
-          target_offer_id?: string | null
-          user_id?: string
-        }
+          created_at?: string;
+          departure_time?: string;
+          destination?: string;
+          origin?: string;
+          passenger_count?: number;
+          request_id?: string;
+          ride_date?: string;
+          status?: string;
+          target_offer_id?: string | null;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "ride_requests_target_offer_id_fkey"
-            columns: ["target_offer_id"]
-            isOneToOne: false
-            referencedRelation: "ride_offers"
-            referencedColumns: ["offer_id"]
+            foreignKeyName: "ride_requests_target_offer_id_fkey";
+            columns: ["target_offer_id"];
+            isOneToOne: false;
+            referencedRelation: "ride_offers";
+            referencedColumns: ["offer_id"];
           },
-        ]
-      }
+        ];
+      };
       ride_status_history: {
         Row: {
-          actor_user_id: string | null
-          created_at: string
-          from_status: string | null
-          history_id: string
-          ride_id: string
-          to_status: string
-        }
+          actor_user_id: string | null;
+          created_at: string;
+          from_status: string | null;
+          history_id: string;
+          ride_id: string;
+          to_status: string;
+        };
         Insert: {
-          actor_user_id?: string | null
-          created_at?: string
-          from_status?: string | null
-          history_id?: string
-          ride_id: string
-          to_status: string
-        }
+          actor_user_id?: string | null;
+          created_at?: string;
+          from_status?: string | null;
+          history_id?: string;
+          ride_id: string;
+          to_status: string;
+        };
         Update: {
-          actor_user_id?: string | null
-          created_at?: string
-          from_status?: string | null
-          history_id?: string
-          ride_id?: string
-          to_status?: string
-        }
+          actor_user_id?: string | null;
+          created_at?: string;
+          from_status?: string | null;
+          history_id?: string;
+          ride_id?: string;
+          to_status?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "ride_status_history_ride_id_fkey"
-            columns: ["ride_id"]
-            isOneToOne: false
-            referencedRelation: "rides"
-            referencedColumns: ["ride_id"]
+            foreignKeyName: "ride_status_history_ride_id_fkey";
+            columns: ["ride_id"];
+            isOneToOne: false;
+            referencedRelation: "rides";
+            referencedColumns: ["ride_id"];
           },
-        ]
-      }
+        ];
+      };
       rides: {
         Row: {
-          completed_at: string | null
-          created_at: string
-          driver_user_id: string
-          match_id: string
-          offer_id: string
-          passenger_user_id: string
-          request_id: string
-          ride_id: string
-          status: string
-          updated_at: string
-        }
+          completed_at: string | null;
+          created_at: string;
+          driver_user_id: string;
+          match_id: string;
+          offer_id: string;
+          passenger_user_id: string;
+          request_id: string;
+          ride_id: string;
+          status: string;
+          updated_at: string;
+        };
         Insert: {
-          completed_at?: string | null
-          created_at?: string
-          driver_user_id: string
-          match_id: string
-          offer_id: string
-          passenger_user_id: string
-          request_id: string
-          ride_id?: string
-          status: string
-          updated_at?: string
-        }
+          completed_at?: string | null;
+          created_at?: string;
+          driver_user_id: string;
+          match_id: string;
+          offer_id: string;
+          passenger_user_id: string;
+          request_id: string;
+          ride_id?: string;
+          status: string;
+          updated_at?: string;
+        };
         Update: {
-          completed_at?: string | null
-          created_at?: string
-          driver_user_id?: string
-          match_id?: string
-          offer_id?: string
-          passenger_user_id?: string
-          request_id?: string
-          ride_id?: string
-          status?: string
-          updated_at?: string
-        }
+          completed_at?: string | null;
+          created_at?: string;
+          driver_user_id?: string;
+          match_id?: string;
+          offer_id?: string;
+          passenger_user_id?: string;
+          request_id?: string;
+          ride_id?: string;
+          status?: string;
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "rides_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: true
-            referencedRelation: "ride_matches"
-            referencedColumns: ["match_id"]
+            foreignKeyName: "rides_match_id_fkey";
+            columns: ["match_id"];
+            isOneToOne: true;
+            referencedRelation: "ride_matches";
+            referencedColumns: ["match_id"];
           },
           {
-            foreignKeyName: "rides_offer_id_fkey"
-            columns: ["offer_id"]
-            isOneToOne: false
-            referencedRelation: "ride_offers"
-            referencedColumns: ["offer_id"]
+            foreignKeyName: "rides_offer_id_fkey";
+            columns: ["offer_id"];
+            isOneToOne: false;
+            referencedRelation: "ride_offers";
+            referencedColumns: ["offer_id"];
           },
           {
-            foreignKeyName: "rides_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "ride_requests"
-            referencedColumns: ["request_id"]
+            foreignKeyName: "rides_request_id_fkey";
+            columns: ["request_id"];
+            isOneToOne: false;
+            referencedRelation: "ride_requests";
+            referencedColumns: ["request_id"];
           },
-        ]
-      }
+        ];
+      };
       teste_backup_caronaa: {
         Row: {
-          criado_em: string
-          email: string | null
-          id: number
-          nome: string
-          observacao: string | null
-          origem: string | null
-        }
+          criado_em: string;
+          email: string | null;
+          id: number;
+          nome: string;
+          observacao: string | null;
+          origem: string | null;
+        };
         Insert: {
-          criado_em?: string
-          email?: string | null
-          id?: number
-          nome: string
-          observacao?: string | null
-          origem?: string | null
-        }
+          criado_em?: string;
+          email?: string | null;
+          id?: number;
+          nome: string;
+          observacao?: string | null;
+          origem?: string | null;
+        };
         Update: {
-          criado_em?: string
-          email?: string | null
-          id?: number
-          nome?: string
-          observacao?: string | null
-          origem?: string | null
-        }
-        Relationships: []
-      }
+          criado_em?: string;
+          email?: string | null;
+          id?: number;
+          nome?: string;
+          observacao?: string | null;
+          origem?: string | null;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
+          created_at: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
+          created_at?: string;
+          id?: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["app_role"];
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       user_verifications: {
         Row: {
-          created_at: string
-          id: string
-          institution_name: string | null
-          source: Database["public"]["Enums"]["user_verification_source"]
-          source_reference_id: string | null
-          status: Database["public"]["Enums"]["user_verification_status"]
-          type: Database["public"]["Enums"]["user_verification_type"]
-          updated_at: string
-          user_id: string
-          verified_at: string | null
-          verified_email: string | null
-        }
+          created_at: string;
+          id: string;
+          institution_name: string | null;
+          source: Database["public"]["Enums"]["user_verification_source"];
+          source_reference_id: string | null;
+          status: Database["public"]["Enums"]["user_verification_status"];
+          type: Database["public"]["Enums"]["user_verification_type"];
+          updated_at: string;
+          user_id: string;
+          verified_at: string | null;
+          verified_email: string | null;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          institution_name?: string | null
-          source: Database["public"]["Enums"]["user_verification_source"]
-          source_reference_id?: string | null
-          status?: Database["public"]["Enums"]["user_verification_status"]
-          type: Database["public"]["Enums"]["user_verification_type"]
-          updated_at?: string
-          user_id: string
-          verified_at?: string | null
-          verified_email?: string | null
-        }
+          created_at?: string;
+          id?: string;
+          institution_name?: string | null;
+          source: Database["public"]["Enums"]["user_verification_source"];
+          source_reference_id?: string | null;
+          status?: Database["public"]["Enums"]["user_verification_status"];
+          type: Database["public"]["Enums"]["user_verification_type"];
+          updated_at?: string;
+          user_id: string;
+          verified_at?: string | null;
+          verified_email?: string | null;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          institution_name?: string | null
-          source?: Database["public"]["Enums"]["user_verification_source"]
-          source_reference_id?: string | null
-          status?: Database["public"]["Enums"]["user_verification_status"]
-          type?: Database["public"]["Enums"]["user_verification_type"]
-          updated_at?: string
-          user_id?: string
-          verified_at?: string | null
-          verified_email?: string | null
-        }
+          created_at?: string;
+          id?: string;
+          institution_name?: string | null;
+          source?: Database["public"]["Enums"]["user_verification_source"];
+          source_reference_id?: string | null;
+          status?: Database["public"]["Enums"]["user_verification_status"];
+          type?: Database["public"]["Enums"]["user_verification_type"];
+          updated_at?: string;
+          user_id?: string;
+          verified_at?: string | null;
+          verified_email?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "user_verifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "user_verifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
-    }
+        ];
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
       create_ride_offer: {
         Args: {
-          p_available_seats: number
-          p_departure_time: string
-          p_destination: string
-          p_origin: string
-          p_ride_date: string
-        }
-        Returns: string
-      }
+          p_available_seats: number;
+          p_departure_time: string;
+          p_destination: string;
+          p_origin: string;
+          p_ride_date: string;
+        };
+        Returns: string;
+      };
       create_ride_request: {
         Args: {
-          p_departure_time: string
-          p_destination: string
-          p_origin: string
-          p_passenger_count: number
-          p_ride_date: string
-        }
-        Returns: string
-      }
+          p_departure_time: string;
+          p_destination: string;
+          p_origin: string;
+          p_passenger_count: number;
+          p_ride_date: string;
+        };
+        Returns: string;
+      };
       get_acquisition_funnel_metrics: {
         Args: {
-          p_campaign?: string
-          p_event?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_profile?: string
-          p_source?: string
-        }
-        Returns: Json
-      }
-      get_admin_users: { Args: { p_user_id?: string }; Returns: Json }
+          p_campaign?: string;
+          p_event?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_profile?: string;
+          p_source?: string;
+        };
+        Returns: Json;
+      };
+      get_admin_users: { Args: { p_user_id?: string }; Returns: Json };
       get_form_funnel_metrics: {
         Args: {
-          p_campaign?: string
-          p_event?: string
-          p_ocupacao?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_source?: string
-          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_event?: string;
+          p_ocupacao?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_source?: string;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+        };
+        Returns: Json;
+      };
       get_form_metrics: {
         Args: {
-          p_campaign?: string
-          p_event?: string
-          p_ocupacao?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_source?: string
-          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_event?: string;
+          p_ocupacao?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_source?: string;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+        };
+        Returns: Json;
+      };
       get_form_pain_analysis: {
         Args: {
-          p_campaign?: string
-          p_event?: string
-          p_frequency_weight?: number
-          p_intensity_weight?: number
-          p_interest_weight?: number
-          p_ocupacao?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_primary_weight?: number
-          p_sort_by?: string
-          p_source?: string
-          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_event?: string;
+          p_frequency_weight?: number;
+          p_intensity_weight?: number;
+          p_interest_weight?: number;
+          p_ocupacao?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_primary_weight?: number;
+          p_sort_by?: string;
+          p_source?: string;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+        };
+        Returns: Json;
+      };
       get_main_funnel_metrics: {
         Args: {
-          p_campaign?: string
-          p_cohort_event?: string
-          p_event?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_profile?: string
-          p_source?: string
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_cohort_event?: string;
+          p_event?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_profile?: string;
+          p_source?: string;
+        };
+        Returns: Json;
+      };
       get_operational_metrics: {
         Args: {
-          p_campaign?: string
-          p_destination?: string
-          p_origin?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_profile?: string
-          p_source?: string
-          p_time_window?: string
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_destination?: string;
+          p_origin?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_profile?: string;
+          p_source?: string;
+          p_time_window?: string;
+        };
+        Returns: Json;
+      };
       get_retention_metrics: {
         Args: {
-          p_campaign?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_source?: string
-          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_source?: string;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+        };
+        Returns: Json;
+      };
       get_strategic_crossings: {
         Args: {
-          p_campaign?: string
-          p_period_end?: string
-          p_period_start?: string
-          p_source?: string
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_source?: string;
+        };
+        Returns: Json;
+      };
       get_validation_export: {
         Args: {
-          p_campaign?: string
-          p_event?: string
-          p_kind: string
-          p_period_end?: string
-          p_period_start?: string
-          p_source?: string
-          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
-        }
-        Returns: Json
-      }
+          p_campaign?: string;
+          p_event?: string;
+          p_kind: string;
+          p_period_end?: string;
+          p_period_start?: string;
+          p_source?: string;
+          p_tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"];
+        };
+        Returns: Json;
+      };
       has_role: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+          _role: Database["public"]["Enums"]["app_role"];
+          _user_id: string;
+        };
+        Returns: boolean;
+      };
       request_available_ride_offer: {
-        Args: { p_offer_id: string; p_passenger_count?: number }
-        Returns: string
-      }
+        Args: { p_offer_id: string; p_passenger_count?: number };
+        Returns: string;
+      };
       search_available_ride_offers: {
         Args: {
-          p_departure_time?: string
-          p_destination?: string
-          p_limit?: number
-          p_origin?: string
-          p_passenger_count?: number
-          p_ride_date?: string
-        }
+          p_departure_time?: string;
+          p_destination?: string;
+          p_limit?: number;
+          p_origin?: string;
+          p_passenger_count?: number;
+          p_ride_date?: string;
+        };
         Returns: {
-          available_seats: number
-          avatar_url: string
-          city: string
-          created_at: string
-          departure_time: string
-          destination: string
-          full_name: string
-          offer_id: string
-          origin: string
-          ride_date: string
-          seats_remaining: number
-          status: string
-          user_id: string
-          verifications: Json
-        }[]
-      }
+          available_seats: number;
+          avatar_url: string;
+          city: string;
+          created_at: string;
+          departure_time: string;
+          destination: string;
+          full_name: string;
+          offer_id: string;
+          origin: string;
+          ride_date: string;
+          seats_remaining: number;
+          status: string;
+          user_id: string;
+          verifications: Json;
+        }[];
+      };
       submit_form_response: {
         Args: {
-          p_anonymous_session_id?: string
-          p_pain_points: Json
-          p_submission: Json
-        }
-        Returns: string
-      }
+          p_anonymous_session_id?: string;
+          p_pain_points: Json;
+          p_submission: Json;
+        };
+        Returns: string;
+      };
       sync_user_verifications: {
-        Args: { _user_id: string }
-        Returns: undefined
-      }
+        Args: { _user_id: string };
+        Returns: undefined;
+      };
       transition_ride_status: {
-        Args: { p_next_status: string; p_ride_id: string }
-        Returns: string
-      }
+        Args: { p_next_status: string; p_ride_id: string };
+        Returns: string;
+      };
       try_match_ride_request: {
-        Args: { p_preferred_offer_id?: string; p_request_id: string }
-        Returns: string
-      }
-    }
+        Args: { p_preferred_offer_id?: string; p_request_id: string };
+        Returns: string;
+      };
+    };
     Enums: {
-      app_role: "admin" | "moderator" | "user"
-      form_custo_referencia: "TRECHO" | "DIA"
-      form_dor_codigo:
-        | "DOR_01"
-        | "DOR_02"
-        | "DOR_03"
-        | "DOR_04"
-        | "DOR_05"
-        | "DOR_06"
-      form_intencao:
-        | "HOJE"
-        | "PROVAVELMENTE"
-        | "TALVEZ"
-        | "PROVAVELMENTE_NAO"
-        | "NAO"
-      form_tipo_usuario: "PASSAGEIRO" | "MOTORISTA" | "AMBOS"
+      app_role: "admin" | "moderator" | "user";
+      form_custo_referencia: "TRECHO" | "DIA";
+      form_dor_codigo: "DOR_01" | "DOR_02" | "DOR_03" | "DOR_04" | "DOR_05" | "DOR_06";
+      form_intencao: "HOJE" | "PROVAVELMENTE" | "TALVEZ" | "PROVAVELMENTE_NAO" | "NAO";
+      form_tipo_usuario: "PASSAGEIRO" | "MOTORISTA" | "AMBOS";
       funnel_event_name:
-        | "landing_view"
-        | "form_started"
-        | "form_step_completed"
-        | "form_completed"
-        | "lead_created"
-      payment_status:
-        | "PENDING"
-        | "PROCESSING"
-        | "PAID"
-        | "FAILED"
-        | "CANCELLED"
-        | "REFUNDED"
+        "landing_view" | "form_started" | "form_step_completed" | "form_completed" | "lead_created";
+      payment_status: "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED";
       product_event_name:
         | "USER_REGISTERED"
         | "RIDE_REQUEST_CREATED"
@@ -1019,154 +974,135 @@ export type Database = {
         | "RIDE_STARTED"
         | "RIDE_COMPLETED"
         | "PAYMENT_COMPLETED"
-        | "RIDE_REPEATED"
-      user_verification_source: "EMAIL_DOMAIN" | "EVENT_FORM" | "ADMIN"
-      user_verification_status: "VERIFIED" | "REVOKED"
-      user_verification_type: "UNIFOR" | "STS_2026"
-    }
+        | "RIDE_REPEATED";
+      user_verification_source: "EMAIL_DOMAIN" | "EVENT_FORM" | "ADMIN";
+      user_verification_status: "VERIFIED" | "REVOKED";
+      user_verification_type: "UNIFOR" | "STS_2026";
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+      [_ in never]: never;
+    };
+  };
+};
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
+      Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
       }
       ? R
       : never
-    : never
+    : never;
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+      Insert: infer I;
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
+        Insert: infer I;
       }
       ? I
       : never
-    : never
+    : never;
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+      Update: infer U;
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
+        Update: infer U;
       }
       ? U
       : never
-    : never
+    : never;
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+    : never;
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+    : never;
 
 export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       form_custo_referencia: ["TRECHO", "DIA"],
-      form_dor_codigo: [
-        "DOR_01",
-        "DOR_02",
-        "DOR_03",
-        "DOR_04",
-        "DOR_05",
-        "DOR_06",
-      ],
-      form_intencao: [
-        "HOJE",
-        "PROVAVELMENTE",
-        "TALVEZ",
-        "PROVAVELMENTE_NAO",
-        "NAO",
-      ],
+      form_dor_codigo: ["DOR_01", "DOR_02", "DOR_03", "DOR_04", "DOR_05", "DOR_06"],
+      form_intencao: ["HOJE", "PROVAVELMENTE", "TALVEZ", "PROVAVELMENTE_NAO", "NAO"],
       form_tipo_usuario: ["PASSAGEIRO", "MOTORISTA", "AMBOS"],
       funnel_event_name: [
         "landing_view",
@@ -1175,14 +1111,7 @@ export const Constants = {
         "form_completed",
         "lead_created",
       ],
-      payment_status: [
-        "PENDING",
-        "PROCESSING",
-        "PAID",
-        "FAILED",
-        "CANCELLED",
-        "REFUNDED",
-      ],
+      payment_status: ["PENDING", "PROCESSING", "PAID", "FAILED", "CANCELLED", "REFUNDED"],
       product_event_name: [
         "USER_REGISTERED",
         "RIDE_REQUEST_CREATED",
@@ -1198,4 +1127,4 @@ export const Constants = {
       user_verification_type: ["UNIFOR", "STS_2026"],
     },
   },
-} as const
+} as const;

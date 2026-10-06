@@ -148,6 +148,13 @@
       "when": 1791261523121,
       "tag": "0020_sync_pending_application_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791307000000,
+      "tag": "0021_create_pitch_relationships",
+      "breakpoints": true
     }
   ]
 }

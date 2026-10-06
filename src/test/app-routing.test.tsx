@@ -14,11 +14,8 @@ describe("CARONAA navigation", () => {
     "/perfil",
     "/formulario",
     "/admin/oportunidades",
-  ])(
-    "matches %s",
-    (path) => {
-      const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-      expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
-    },
-  );
+  ])("matches %s", (path) => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
+  });
 });

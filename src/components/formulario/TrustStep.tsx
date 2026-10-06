@@ -52,7 +52,8 @@ const trustOptions: Array<{
     value: "PARTICIPANTE_STS",
     title: "Saber que está no STS",
     description: "Ter certeza de que a outra pessoa também participa do evento.",
-  },];
+  },
+];
 
 export function TrustStep({ intent, value = [], onChange, onNext, onBack }: TrustStepProps) {
   const isPassenger = intent === "PASSAGEIRO";

@@ -8,7 +8,25 @@ const ATTRIBUTION_STORAGE_PREFIX = "caronaa-campaign-attribution";
 const MAX_ATTRIBUTE_LENGTH = 120;
 
 export type FunnelEventName = Enums<"funnel_event_name">;
-export type ClientFunnelEventName = "landing_view" | "form_started" | "form_step_completed";
+export type ClientFunnelEventName =
+  | "landing_view"
+  | "form_started"
+  | "form_step_completed"
+  | "form_role_selected"
+  | "form_route_started"
+  | "form_route_completed"
+  | "form_event_presence_completed"
+  | "form_driver_interest"
+  | "form_driver_vehicle_selected"
+  | "form_driver_seats_selected"
+  | "form_price_input"
+  | "form_passenger_interest"
+  | "form_passenger_transport_selected"
+  | "form_success"
+  | "account_cta_clicked"
+  | "signup_started_from_form"
+  | "signup_completed_from_form"
+  | "form_to_account_conversion";
 
 export type CampaignAttribution = {
   source: string;
@@ -30,7 +48,12 @@ function canUseBrowserStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
-function eventDeduplicationKey(input: Pick<TrackFunnelEventInput, "eventName" | "source" | "campaign" | "campaignEvent" | "formStep" | "submissionId">) {
+function eventDeduplicationKey(
+  input: Pick<
+    TrackFunnelEventInput,
+    "eventName" | "source" | "campaign" | "campaignEvent" | "formStep" | "submissionId"
+  >,
+) {
   const scope = input.submissionId
     ? `submission:${input.submissionId}`
     : input.formStep
@@ -69,6 +92,7 @@ export function getAnonymousSessionId(): string | null {
 }
 
 function cleanAttributionValue(value: string | null) {
+  // eslint-disable-next-line no-control-regex
   const normalized = value?.replace(/[\u0000-\u001F\u007F]/g, "").trim();
   return normalized ? normalized.slice(0, MAX_ATTRIBUTE_LENGTH) : null;
 }
@@ -81,7 +105,9 @@ function readStoredAttribution(defaultCampaignEvent: string): CampaignAttributio
   if (!canUseBrowserStorage()) return null;
 
   try {
-    const parsed = JSON.parse(window.sessionStorage.getItem(attributionStorageKey(defaultCampaignEvent)) ?? "null") as Partial<CampaignAttribution> | null;
+    const parsed = JSON.parse(
+      window.sessionStorage.getItem(attributionStorageKey(defaultCampaignEvent)) ?? "null",
+    ) as Partial<CampaignAttribution> | null;
     const source = cleanAttributionValue(parsed?.source ?? null);
     const campaignEvent = cleanAttributionValue(parsed?.campaignEvent ?? null);
 
@@ -95,7 +121,10 @@ function readStoredAttribution(defaultCampaignEvent: string): CampaignAttributio
 
 function persistAttribution(attribution: CampaignAttribution, defaultCampaignEvent: string) {
   if (!canUseBrowserStorage()) return;
-  window.sessionStorage.setItem(attributionStorageKey(defaultCampaignEvent), JSON.stringify(attribution));
+  window.sessionStorage.setItem(
+    attributionStorageKey(defaultCampaignEvent),
+    JSON.stringify(attribution),
+  );
 }
 
 export function getCampaignAttribution({
@@ -118,13 +147,16 @@ export function getCampaignAttribution({
     cleanAttributionValue(search.get("src")) ??
     cleanAttributionValue(search.get("source")) ??
     cleanAttributionValue(search.get("utm_source"));
-  const campaignFromQuery = cleanAttributionValue(search.get("campaign")) ?? cleanAttributionValue(search.get("utm_campaign"));
+  const campaignFromQuery =
+    cleanAttributionValue(search.get("campaign")) ??
+    cleanAttributionValue(search.get("utm_campaign"));
   const eventFromQuery =
     cleanAttributionValue(search.get("event")) ??
     cleanAttributionValue(search.get("campaign_event"));
-  const stored = !sourceFromQuery && !campaignFromQuery && !eventFromQuery
-    ? readStoredAttribution(defaultCampaignEvent)
-    : null;
+  const stored =
+    !sourceFromQuery && !campaignFromQuery && !eventFromQuery
+      ? readStoredAttribution(defaultCampaignEvent)
+      : null;
 
   const attribution = {
     source: sourceFromQuery ?? stored?.source ?? defaultSource,
@@ -175,8 +207,21 @@ export async function trackFunnelEvent({
     window.localStorage.setItem(deduplicationKey, "1");
   }
 
+  const isStandardDbEvent = (
+    name: string,
+  ): name is
+    "landing_view" | "form_started" | "form_step_completed" | "form_completed" | "lead_created" => {
+    return [
+      "landing_view",
+      "form_started",
+      "form_step_completed",
+      "form_completed",
+      "lead_created",
+    ].includes(name);
+  };
+
   const row: FunnelEventInsert = {
-    event_name: eventName,
+    event_name: isStandardDbEvent(eventName) ? eventName : "form_step_completed",
     anonymous_session_id: anonymousSessionId,
     user_id: userId,
     source,
@@ -185,7 +230,10 @@ export async function trackFunnelEvent({
     form_step: formStep,
     submission_id: submissionId,
     device_category: getDeviceCategory(),
-    metadata,
+    metadata: {
+      ...metadata,
+      clientEventName: eventName,
+    },
   };
 
   const { error } = await supabase.from("funnel_events").insert(row);
