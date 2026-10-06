@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as FormularioRouteImport } from './routes/formulario'
+import { Route as PitchRouteImport } from './routes/pitch'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
@@ -26,6 +27,8 @@ import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminOportunidadesRouteImport } from './routes/admin/oportunidades'
+import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacionamentos'
+import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
@@ -66,6 +69,11 @@ const ComoFuncionaRoute = ComoFuncionaRouteImport.update({
 const FormularioRoute = FormularioRouteImport.update({
   id: '/formulario',
   path: '/formulario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PitchRoute = PitchRouteImport.update({
+  id: '/pitch',
+  path: '/pitch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -119,6 +127,16 @@ const AdminOportunidadesRoute = AdminOportunidadesRouteImport.update({
   path: '/oportunidades',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRelacionamentosRoute = AdminRelacionamentosRouteImport.update({
+  id: '/relacionamentos',
+  path: '/relacionamentos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSugestoesRoute = AdminSugestoesRouteImport.update({
+  id: '/sugestoes',
+  path: '/sugestoes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
   id: '/validacao',
   path: '/validacao',
@@ -164,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRoute
+  '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
@@ -173,6 +192,8 @@ export interface FileRoutesByFullPath {
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -188,6 +209,7 @@ export interface FileRoutesByTo {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRoute
+  '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
@@ -197,6 +219,8 @@ export interface FileRoutesByTo {
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -215,6 +239,7 @@ export interface FileRoutesById {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRoute
+  '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
@@ -224,6 +249,8 @@ export interface FileRoutesById {
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -242,6 +269,7 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
@@ -251,6 +279,8 @@ export interface FileRouteTypes {
     | '/oferecer'
     | '/perfil'
     | '/admin/oportunidades'
+    | '/admin/relacionamentos'
+    | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
@@ -266,6 +296,7 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
@@ -275,6 +306,8 @@ export interface FileRouteTypes {
     | '/oferecer'
     | '/perfil'
     | '/admin/oportunidades'
+    | '/admin/relacionamentos'
+    | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin'
     | '/admin/usuarios/$id'
@@ -292,6 +325,7 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
@@ -301,6 +335,8 @@ export interface FileRouteTypes {
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
     | '/admin/oportunidades'
+    | '/admin/relacionamentos'
+    | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
@@ -319,6 +355,7 @@ export interface RootRouteChildren {
   BuscarRoute: typeof BuscarRoute
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   FormularioRoute: typeof FormularioRoute
+  PitchRoute: typeof PitchRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SegurancaRoute: typeof SegurancaRoute
@@ -374,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/formulario'
       fullPath: '/formulario'
       preLoaderRoute: typeof FormularioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pitch': {
+      id: '/pitch'
+      path: '/pitch'
+      fullPath: '/pitch'
+      preLoaderRoute: typeof PitchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -444,6 +488,20 @@ declare module '@tanstack/react-router' {
       path: '/oportunidades'
       fullPath: '/admin/oportunidades'
       preLoaderRoute: typeof AdminOportunidadesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/relacionamentos': {
+      id: '/admin/relacionamentos'
+      path: '/relacionamentos'
+      fullPath: '/admin/relacionamentos'
+      preLoaderRoute: typeof AdminRelacionamentosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sugestoes': {
+      id: '/admin/sugestoes'
+      path: '/sugestoes'
+      fullPath: '/admin/sugestoes'
+      preLoaderRoute: typeof AdminSugestoesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/validacao': {
@@ -529,6 +587,8 @@ const AdminValidacaoRouteWithChildren = AdminValidacaoRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminOportunidadesRoute: typeof AdminOportunidadesRoute
+  AdminRelacionamentosRoute: typeof AdminRelacionamentosRoute
+  AdminSugestoesRoute: typeof AdminSugestoesRoute
   AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
@@ -540,6 +600,8 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminOportunidadesRoute: AdminOportunidadesRoute,
+  AdminRelacionamentosRoute: AdminRelacionamentosRoute,
+  AdminSugestoesRoute: AdminSugestoesRoute,
   AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
@@ -559,6 +621,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuscarRoute: BuscarRoute,
   ComoFuncionaRoute: ComoFuncionaRoute,
   FormularioRoute: FormularioRoute,
+  PitchRoute: PitchRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SegurancaRoute: SegurancaRoute,

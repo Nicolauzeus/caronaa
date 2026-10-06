@@ -7,8 +7,10 @@ import {
   ChevronRight,
   FileText,
   Gauge,
+  HeartHandshake,
   LayoutDashboard,
   Menu,
+  MessageSquareHeart,
   Search,
   ShieldCheck,
   Users,
@@ -82,8 +84,18 @@ const navigation = [
     ],
   },
   {
-    title: "Validação",
+    title: "Validação & Pitch",
     items: [
+      {
+        label: "Relacionamentos",
+        to: "/admin/relacionamentos",
+        icon: HeartHandshake,
+      },
+      {
+        label: "Sugestões",
+        to: "/admin/sugestoes",
+        icon: MessageSquareHeart,
+      },
       {
         label: "Oportunidades",
         to: "/admin/oportunidades",
