@@ -1,0 +1,1 @@
+COMMENT ON SCHEMA public IS 'CARONAA application schema managed through versioned migrations';

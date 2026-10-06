@@ -1,4 +1,4 @@
-﻿-- product_events is a business-event log, not a browser telemetry endpoint.
+-- product_events is a business-event log, not a browser telemetry endpoint.
 -- Browser page/form telemetry remains in funnel_events with its privacy-safe RLS policy.
 -- Contact and other column-backed values are stripped server-side before raw persistence.
 -- Replace legacy raw_payload campaign filters with the structured campaign column.
@@ -689,10 +689,10 @@ RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $
 $$;
 
 REVOKE ALL ON FUNCTION public.get_acquisition_funnel_metrics(timestamptz,timestamptz,text,text,text,text) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_operational_metrics(timestamptz,timestamptz,text,text,text,text,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_retention_metrics(timestamptz,timestamptz,text,text,public.form_tipo_usuario) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_acquisition_funnel_metrics(timestamptz,timestamptz,text,text,text,text) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text,text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_main_funnel_metrics(timestamptz,timestamptz,text,text,text,text,text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_operational_metrics(timestamptz,timestamptz,text,text,text,text,text,text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_retention_metrics(timestamptz,timestamptz,text,text,public.form_tipo_usuario) TO authenticated, service_role;
