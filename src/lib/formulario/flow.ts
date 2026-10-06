@@ -3,6 +3,10 @@ import type { CaronaaIntent, CaronaaStsFormData, VehicleType } from "./types";
 export type FormStep =
   | "INTRO"
   | "PROFILE_ROUTE"
+  | "PROPOSAL_TRANSITION"
+  | "DRIVER_FLOW"
+  | "PASSENGER_FLOW"
+  | "BOTH_FLOW"
   | "CURRENT_PRICE"
   | "PROBLEMS"
   | "MAIN_PROBLEM"
@@ -69,6 +73,26 @@ export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): Fo
   if (currentStep === "INTRO") return "PROFILE_ROUTE";
   if (currentStep === "CONTACT") return "SUCCESS";
 
+  if (currentStep === "PROFILE_ROUTE") {
+    return "PROPOSAL_TRANSITION";
+  }
+
+  if (currentStep === "PROPOSAL_TRANSITION") {
+    if (data.intent === "MOTORISTA") return "DRIVER_FLOW";
+    if (data.intent === "PASSAGEIRO") return "PASSENGER_FLOW";
+    if (data.intent === "AMBOS") return "BOTH_FLOW";
+    return "PASSENGER_FLOW";
+  }
+
+  if (
+    currentStep === "DRIVER_FLOW" ||
+    currentStep === "PASSENGER_FLOW" ||
+    currentStep === "BOTH_FLOW" ||
+    currentStep === "INTEREST"
+  ) {
+    return "CONTACT";
+  }
+
   const active = getActiveSteps(data);
   const currentIndex = active.indexOf(currentStep);
 
@@ -84,6 +108,23 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
   if (currentStep === "INTRO") return null;
   if (currentStep === "SUCCESS") return "CONTACT";
 
+  if (currentStep === "PROFILE_ROUTE") return "INTRO";
+  if (currentStep === "PROPOSAL_TRANSITION") return "PROFILE_ROUTE";
+  if (
+    currentStep === "DRIVER_FLOW" ||
+    currentStep === "PASSENGER_FLOW" ||
+    currentStep === "BOTH_FLOW"
+  ) {
+    return "PROPOSAL_TRANSITION";
+  }
+
+  if (currentStep === "CONTACT") {
+    if (data.intent === "MOTORISTA") return "DRIVER_FLOW";
+    if (data.intent === "PASSAGEIRO") return "PASSENGER_FLOW";
+    if (data.intent === "AMBOS") return "BOTH_FLOW";
+    return "INTEREST";
+  }
+
   const active = getActiveSteps(data);
   const currentIndex = active.indexOf(currentStep);
 
@@ -95,6 +136,17 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
 }
 
 export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): number {
+  if (currentStep === "PROFILE_ROUTE") return 0;
+  if (currentStep === "PROPOSAL_TRANSITION") return 1;
+  if (
+    currentStep === "DRIVER_FLOW" ||
+    currentStep === "PASSENGER_FLOW" ||
+    currentStep === "BOTH_FLOW"
+  ) {
+    return 2;
+  }
+  if (currentStep === "CONTACT") return 3;
+
   const active = getActiveSteps(data);
   return active.indexOf(currentStep);
 }
@@ -111,17 +163,29 @@ export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFor
   if (currentStep === "INTRO" || currentStep === "SUCCESS") {
     return 0;
   }
-  if (currentStep === "CONTACT") {
+  if (currentStep === "CONTACT" || currentStep === "INTEREST") {
     return 100;
   }
 
-  const activeQuestions = getActiveSteps(data).filter((s) => s !== "CONTACT" && s !== "PROPOSAL_TRANSITION");
+  if (currentStep === "PROFILE_ROUTE") {
+    return 25;
+  }
+  if (currentStep === "PROPOSAL_TRANSITION") {
+    return 50;
+  }
+  if (
+    currentStep === "DRIVER_FLOW" ||
+    currentStep === "PASSENGER_FLOW" ||
+    currentStep === "BOTH_FLOW"
+  ) {
+    return 75;
+  }
+
+  const activeQuestions = getActiveSteps(data).filter(
+    (s) => s !== "CONTACT" && s !== "PROPOSAL_TRANSITION",
+  );
   const total = activeQuestions.length;
   if (total === 0) return 0;
-
-  if (currentStep === "PROPOSAL_TRANSITION") {
-    return Math.round((1 / total) * 100);
-  }
 
   const currentIndex = activeQuestions.indexOf(currentStep);
   if (currentIndex === -1) return 0;

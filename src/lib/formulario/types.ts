@@ -56,6 +56,15 @@ export type PriceRange =
 
 export type CommitmentLevel = "SIM_HOJE" | "QUERO_VER_MATCH" | "NAO_HOJE";
 
+export type ProposalSense = "POUCO" | "MEDIO" | "ALTO" | "ALTISSIMO";
+export type DriverFutureOffer = "SIM" | "TALVEZ" | "NAO";
+export type DriverGenderPreference = "MASCULINO" | "FEMININO" | "OUTRO";
+export type DriverRealValidation = "COM_CERTEZA" | "TALVEZ" | "APENAS_STS";
+
+export type PassengerIntention = "COM_CERTEZA_HOJE" | "TALVEZ" | "COM_CERTEZA_SEMPRE";
+
+export type DualPriority = "OFERECER" | "PEGAR" | "AMBOS_AVALIAR";
+
 import type { FormLocationDetails } from "@/lib/location/types";
 export type { FormLocationDetails };
 
@@ -94,6 +103,17 @@ export interface CaronaaStsFormData {
   passengerPriceRange?: PriceRange | undefined;
   passengerCommitment?: CommitmentLevel | undefined;
 
+  // Novos campos estruturados do Passageiro
+  passengerTransports?: string[] | undefined;
+  passengerTransportsCustom?: string | undefined;
+  passengerDifficulties?: string[] | undefined;
+  passengerDifficultiesCustom?: string | undefined;
+  passengerGenderPreference?: DriverGenderPreference | undefined;
+  passengerFairPrice?: number | undefined;
+  passengerBarriers?: string[] | undefined;
+  passengerBarriersCustom?: string | undefined;
+  passengerIntention?: PassengerIntention | undefined;
+
   // Motorista
   vehicleType?: VehicleType | undefined;
   availableSeats?: number | undefined;
@@ -105,6 +125,18 @@ export interface CaronaaStsFormData {
   familyCarCompanions?: number | undefined;
   driverInterest?: InterestLevel | undefined;
   driverCommitment?: CommitmentLevel | undefined;
+
+  // Proposta e Validação Motorista
+  proposalSense?: ProposalSense | undefined;
+  driverFutureOffer?: DriverFutureOffer | undefined;
+  driverComfortFactors?: string[] | undefined;
+  driverGenderPreference?: DriverGenderPreference | undefined;
+  driverBarriers?: string[] | undefined;
+  driverBarriersCustom?: string | undefined;
+  driverRealValidation?: DriverRealValidation | undefined;
+
+  // Fluxo "Os Dois" (Dual)
+  dualPriority?: DualPriority | undefined;
 
   // Metadados
   campaignEvent?: string | undefined;

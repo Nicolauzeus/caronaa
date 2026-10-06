@@ -65,6 +65,18 @@ export type CaronaaStsSubmission = {
   driverBarriersCustom: string | null;
   driverRealValidation: CaronaaStsFormData["driverRealValidation"] | null;
 
+  // Novos campos estruturados do Passageiro e Dual
+  passengerTransports: string[] | null;
+  passengerTransportsCustom: string | null;
+  passengerDifficulties: string[] | null;
+  passengerDifficultiesCustom: string | null;
+  passengerGenderPreference: CaronaaStsFormData["passengerGenderPreference"] | null;
+  passengerFairPrice: number | null;
+  passengerBarriers: string[] | null;
+  passengerBarriersCustom: string | null;
+  passengerIntention: CaronaaStsFormData["passengerIntention"] | null;
+  dualPriority: CaronaaStsFormData["dualPriority"] | null;
+
   submissionId: string;
   createdAt: string;
 };
@@ -212,6 +224,17 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
     driverBarriersCustom: cleanString(data.driverBarriersCustom),
     driverRealValidation: data.driverRealValidation ?? null,
 
+    passengerTransports: data.passengerTransports ?? null,
+    passengerTransportsCustom: cleanString(data.passengerTransportsCustom),
+    passengerDifficulties: data.passengerDifficulties ?? null,
+    passengerDifficultiesCustom: cleanString(data.passengerDifficultiesCustom),
+    passengerGenderPreference: data.passengerGenderPreference ?? null,
+    passengerFairPrice: data.passengerFairPrice ?? null,
+    passengerBarriers: data.passengerBarriers ?? null,
+    passengerBarriersCustom: cleanString(data.passengerBarriersCustom),
+    passengerIntention: data.passengerIntention ?? null,
+    dualPriority: data.dualPriority ?? null,
+
     submissionId: data.submissionId ?? createSubmissionId(),
 
     createdAt: data.createdAt ?? new Date().toISOString(),
@@ -219,28 +242,87 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
 }
 
 const duplicatedStructuredFields = new Set([
-  "name", "whatsapp", "email", "destinationNeighborhood", "originNeighborhood",
-  "destinationReference", "intent", "occupation", "weeklyFrequency", "departureWindow",
-  "currentTransport", "routeCostRange", "costPeriod", "campaign", "source", "campaignEvent",
-  "submissionId", "createdAt",
+  "name",
+  "whatsapp",
+  "email",
+  "destinationNeighborhood",
+  "originNeighborhood",
+  "destinationReference",
+  "intent",
+  "occupation",
+  "weeklyFrequency",
+  "departureWindow",
+  "currentTransport",
+  "routeCostRange",
+  "costPeriod",
+  "campaign",
+  "source",
+  "campaignEvent",
+  "submissionId",
+  "createdAt",
 ]);
 
 const rawPayloadAllowlist = new Set([
-  "campaign", "campaignEvent", "leadType", "activationStatus", "wantsToUseToday",
-  "wantsToSeeMatch", "prioritizeForMatching", "passengerCount", "painPoints",
-  "mainPainPoint", "mainPainIntensity", "passengerInterest", "passengerTrustFactors",
-  "passengerPriceRange", "passengerCommitment", "vehicleType", "availableSeats",
-  "maxDetourMinutes", "driverTrustFactors", "driverPrice", "caronaaFee",
-  "driverNetAmount", "familyCarCompanions", "driverInterest", "driverCommitment",
-  "occupationDetails", "eventPresenceDays", "eventPresenceCustom",
-  "originLocation", "destinationLocation",
-  "proposalSense", "driverFutureOffer", "driverComfortFactors", "driverGenderPreference",
-  "driverBarriers", "driverBarriersCustom", "driverRealValidation",
+  "campaign",
+  "campaignEvent",
+  "leadType",
+  "activationStatus",
+  "wantsToUseToday",
+  "wantsToSeeMatch",
+  "prioritizeForMatching",
+  "passengerCount",
+  "painPoints",
+  "mainPainPoint",
+  "mainPainIntensity",
+  "passengerInterest",
+  "passengerTrustFactors",
+  "passengerPriceRange",
+  "passengerCommitment",
+  "vehicleType",
+  "availableSeats",
+  "maxDetourMinutes",
+  "driverTrustFactors",
+  "driverPrice",
+  "caronaaFee",
+  "driverNetAmount",
+  "familyCarCompanions",
+  "driverInterest",
+  "driverCommitment",
+  "occupationDetails",
+  "eventPresenceDays",
+  "eventPresenceCustom",
+  "originLocation",
+  "destinationLocation",
+  "proposalSense",
+  "driverFutureOffer",
+  "driverComfortFactors",
+  "driverGenderPreference",
+  "driverBarriers",
+  "driverBarriersCustom",
+  "driverRealValidation",
+  "passengerTransports",
+  "passengerTransportsCustom",
+  "passengerDifficulties",
+  "passengerDifficultiesCustom",
+  "passengerGenderPreference",
+  "passengerFairPrice",
+  "passengerBarriers",
+  "passengerBarriersCustom",
+  "passengerIntention",
+  "dualPriority",
 ]);
 
 /** Removes PII and values already stored in dedicated form_submissions columns from new raw payloads. */
-export function sanitizeSubmissionRawPayload(payload: CaronaaStsSubmission): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(payload).filter(([key, value]) =>
-    !duplicatedStructuredFields.has(key) && rawPayloadAllowlist.has(key) && value !== null && value !== undefined,
-  ));
+export function sanitizeSubmissionRawPayload(
+  payload: CaronaaStsSubmission,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(payload).filter(
+      ([key, value]) =>
+        !duplicatedStructuredFields.has(key) &&
+        rawPayloadAllowlist.has(key) &&
+        value !== null &&
+        value !== undefined,
+    ),
+  );
 }

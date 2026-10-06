@@ -7,6 +7,8 @@ import { ContactStep } from "@/components/formulario/ContactStep";
 import { FormSuccess } from "@/components/formulario/FormSuccess";
 import { ProposalTransitionStep } from "@/components/formulario/ProposalTransitionStep";
 import { DriverFlow } from "@/components/formulario/DriverFlow";
+import { PassengerFlow } from "@/components/formulario/PassengerFlow";
+import { DualFlow } from "@/components/formulario/DualFlow";
 import {
   CurrentPriceStep,
   InterestStep,
@@ -22,10 +24,13 @@ import type {
   DriverFutureOffer,
   DriverGenderPreference,
   DriverRealValidation,
+  DualPriority,
   InterestLevel,
   PainPointCode,
+  PassengerIntention,
   PassengerTransport,
   ProposalSense,
+  TrustFactor,
   UserOccupation,
   VehicleType,
   WeeklyFrequency,
@@ -51,11 +56,7 @@ import {
   trackFunnelEvent,
   type ClientFunnelEventName,
 } from "@/lib/funnel-events";
-import {
-  loadFormDraft,
-  saveFormDraft,
-  clearFormDraft,
-} from "@/lib/formulario/draft-storage";
+import { loadFormDraft, saveFormDraft, clearFormDraft } from "@/lib/formulario/draft-storage";
 
 export const Route = createFileRoute("/formulario")({
   head: () => ({
@@ -92,7 +93,11 @@ function Formulario() {
   const { user } = useAuth();
   const attribution = React.useMemo(() => getCampaignAttribution(), []);
   const initialData = React.useMemo<CaronaaStsFormData>(
-    () => ({ source: attribution.source, campaign: attribution.campaign, campaignEvent: attribution.campaignEvent }),
+    () => ({
+      source: attribution.source,
+      campaign: attribution.campaign,
+      campaignEvent: attribution.campaignEvent,
+    }),
     [attribution],
   );
 
@@ -110,10 +115,22 @@ function Formulario() {
   const [stepErrors, setStepErrors] = React.useState<Record<string, string>>({});
 
   const progress = getProgressPercentage(step, data);
-  const stepIdx = getStepIndex(step, data);
-  const totalQuestions = getStepCount(data);
-  const totalSteps = totalQuestions + 1; // +1 para a etapa de contato final
-  const currentStepNumber = step === "CONTACT" ? totalSteps : Math.max(1, stepIdx + 1);
+  const isStreamlinedFlow =
+    data.intent === "MOTORISTA" || data.intent === "PASSAGEIRO" || data.intent === "AMBOS";
+  const totalSteps = isStreamlinedFlow ? 4 : getStepCount(data) + 1;
+  const currentStepNumber = isStreamlinedFlow
+    ? step === "CONTACT"
+      ? 4
+      : step === "PROFILE_ROUTE"
+        ? 1
+        : step === "PROPOSAL_TRANSITION"
+          ? 2
+          : step === "DRIVER_FLOW" || step === "PASSENGER_FLOW" || step === "BOTH_FLOW"
+            ? 3
+            : 1
+    : step === "CONTACT"
+      ? totalSteps
+      : Math.max(1, getStepIndex(step, data) + 1);
 
   // Recupera rascunho salvo anteriormente se existir
   React.useEffect(() => {
@@ -268,24 +285,50 @@ function Formulario() {
     [sendFunnelEvent],
   );
 
-  const handleDriverRealValidationChange = React.useCallback(
-    (value: DriverRealValidation) => {
-      const mappedInterest: InterestLevel =
-        value === "COM_CERTEZA" ? "USARIA_HOJE" : value === "TALVEZ" ? "TALVEZ" : "USARIA_HOJE";
-      updateData({
-        driverRealValidation: value,
-        driverInterest: mappedInterest,
-      });
+  const handleDriverRealValidationChange = React.useCallback((value: DriverRealValidation) => {
+    const mappedInterest: InterestLevel =
+      value === "COM_CERTEZA" ? "USARIA_HOJE" : value === "TALVEZ" ? "TALVEZ" : "USARIA_HOJE";
+    updateData({
+      driverRealValidation: value,
+      driverInterest: mappedInterest,
+    });
+  }, []);
+
+  const handlePassengerTransportsChange = React.useCallback(
+    (value: string[]) => {
+      updateData({ passengerTransports: value });
+      sendFunnelEvent("form_passenger_transport_selected", { transportCount: value.length });
     },
-    [],
+    [sendFunnelEvent],
   );
+
+  const handlePassengerIntentionChange = React.useCallback(
+    (value: PassengerIntention) => {
+      const mappedInterest: InterestLevel = value === "TALVEZ" ? "TALVEZ" : "USARIA_HOJE";
+      updateData({
+        passengerIntention: value,
+        passengerInterest: mappedInterest,
+      });
+      sendFunnelEvent("form_passenger_interest", { intention: value });
+    },
+    [sendFunnelEvent],
+  );
+
+  const handleDualPriorityChange = React.useCallback((value: DualPriority) => {
+    updateData({ dualPriority: value });
+  }, []);
 
   function goNext() {
     if (step !== "INTRO" && step !== "SUCCESS") {
       const validation = validateFormStep(step, data as unknown as Record<string, unknown>);
       if (!validation.success) {
         if ("errors" in validation) setStepErrors(validation.errors as Record<string, string>);
-        else setStepErrors(Object.fromEntries(validation.error.issues.map((issue) => [String(issue.path[0]), issue.message])));
+        else
+          setStepErrors(
+            Object.fromEntries(
+              validation.error.issues.map((issue) => [String(issue.path[0]), issue.message]),
+            ),
+          );
         return;
       }
     }
@@ -298,7 +341,12 @@ function Formulario() {
     const next = getNextStep(step, data);
 
     if (next) {
-      void trackFunnelEvent({ eventName: "form_step_completed", userId: user?.id ?? null, ...attribution, formStep: step });
+      void trackFunnelEvent({
+        eventName: "form_step_completed",
+        userId: user?.id ?? null,
+        ...attribution,
+        formStep: step,
+      });
       setStep(next);
       window.scrollTo({
         top: 0,
@@ -326,7 +374,12 @@ function Formulario() {
       return;
     }
     setStepErrors({});
-    void trackFunnelEvent({ eventName: "form_step_completed", userId: user?.id ?? null, ...attribution, formStep: "INTEREST" });
+    void trackFunnelEvent({
+      eventName: "form_step_completed",
+      userId: user?.id ?? null,
+      ...attribution,
+      formStep: "INTEREST",
+    });
     setStep("CONTACT");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -403,7 +456,10 @@ function Formulario() {
                     <span className="text-xs text-muted-foreground">• Siará Tech Summit</span>
                   </div>
                   <p className="text-xs font-semibold text-muted-foreground">
-                    {progress}% concluído • Etapa {step === "CONTACT" ? `Final (${totalSteps}/${totalSteps})` : `${currentStepNumber} de ${totalSteps}`}
+                    {progress}% concluído • Etapa{" "}
+                    {step === "CONTACT"
+                      ? `Final (${totalSteps}/${totalSteps})`
+                      : `${currentStepNumber} de ${totalSteps}`}
                   </p>
                 </div>
 
@@ -433,7 +489,9 @@ function Formulario() {
         {Object.entries(stepErrors).length > 0 ? (
           <div className="mx-auto w-full max-w-2xl space-y-1 px-4 pt-3 sm:px-6" role="alert">
             {Object.entries(stepErrors).map(([field, message]) => (
-              <p key={field} className="text-sm text-destructive">{message}</p>
+              <p key={field} className="text-sm text-destructive">
+                {message}
+              </p>
             ))}
           </div>
         ) : null}
@@ -548,11 +606,107 @@ function Formulario() {
             onAvailableSeatsChange={handleAvailableSeatsChange}
             onDriverFutureOfferChange={(value) => updateData({ driverFutureOffer: value })}
             onDriverComfortFactorsChange={(value) => updateData({ driverComfortFactors: value })}
-            onDriverGenderPreferenceChange={(value) => updateData({ driverGenderPreference: value })}
+            onDriverGenderPreferenceChange={(value) =>
+              updateData({ driverGenderPreference: value })
+            }
             onDriverPriceChange={handleDriverPriceChange}
             onDriverBarriersChange={(value) => updateData({ driverBarriers: value })}
             onDriverBarriersCustomChange={(value) => updateData({ driverBarriersCustom: value })}
             onDriverRealValidationChange={handleDriverRealValidationChange}
+            onNext={goNext}
+            onBack={goBack}
+            stepNumber={currentStepNumber}
+            totalSteps={totalSteps}
+          />
+        ) : null}
+
+        {step === "PASSENGER_FLOW" ? (
+          <PassengerFlow
+            passengerTransports={data.passengerTransports}
+            passengerTransportsCustom={data.passengerTransportsCustom}
+            passengerDifficulties={data.passengerDifficulties}
+            passengerDifficultiesCustom={data.passengerDifficultiesCustom}
+            passengerTrustFactors={data.passengerTrustFactors}
+            passengerGenderPreference={data.passengerGenderPreference}
+            passengerFairPrice={data.passengerFairPrice}
+            passengerBarriers={data.passengerBarriers}
+            passengerBarriersCustom={data.passengerBarriersCustom}
+            passengerIntention={data.passengerIntention}
+            onPassengerTransportsChange={handlePassengerTransportsChange}
+            onPassengerTransportsCustomChange={(value) =>
+              updateData({ passengerTransportsCustom: value })
+            }
+            onPassengerDifficultiesChange={(value) => updateData({ passengerDifficulties: value })}
+            onPassengerDifficultiesCustomChange={(value) =>
+              updateData({ passengerDifficultiesCustom: value })
+            }
+            onPassengerTrustFactorsChange={(value) => updateData({ passengerTrustFactors: value })}
+            onPassengerGenderPreferenceChange={(value) =>
+              updateData({ passengerGenderPreference: value })
+            }
+            onPassengerFairPriceChange={(value) => updateData({ passengerFairPrice: value })}
+            onPassengerBarriersChange={(value) => updateData({ passengerBarriers: value })}
+            onPassengerBarriersCustomChange={(value) =>
+              updateData({ passengerBarriersCustom: value })
+            }
+            onPassengerIntentionChange={handlePassengerIntentionChange}
+            onNext={goNext}
+            onBack={goBack}
+            stepNumber={currentStepNumber}
+            totalSteps={totalSteps}
+          />
+        ) : null}
+
+        {step === "BOTH_FLOW" ? (
+          <DualFlow
+            dualPriority={data.dualPriority}
+            trustFactors={data.passengerTrustFactors}
+            genderPreference={data.passengerGenderPreference}
+            vehicleType={data.vehicleType}
+            availableSeats={data.availableSeats}
+            maxDetourMinutes={data.maxDetourMinutes}
+            driverFutureOffer={data.driverFutureOffer}
+            driverPrice={data.driverPrice}
+            driverBarriers={data.driverBarriers}
+            driverBarriersCustom={data.driverBarriersCustom}
+            driverRealValidation={data.driverRealValidation}
+            passengerTransports={data.passengerTransports}
+            passengerTransportsCustom={data.passengerTransportsCustom}
+            passengerDifficulties={data.passengerDifficulties}
+            passengerDifficultiesCustom={data.passengerDifficultiesCustom}
+            passengerFairPrice={data.passengerFairPrice}
+            passengerBarriers={data.passengerBarriers}
+            passengerBarriersCustom={data.passengerBarriersCustom}
+            passengerIntention={data.passengerIntention}
+            onDualPriorityChange={handleDualPriorityChange}
+            onTrustFactorsChange={(value) => {
+              updateData({ passengerTrustFactors: value, driverTrustFactors: value });
+            }}
+            onGenderPreferenceChange={(value) => {
+              updateData({ passengerGenderPreference: value, driverGenderPreference: value });
+            }}
+            onVehicleTypeChange={handleVehicleTypeChange}
+            onAvailableSeatsChange={handleAvailableSeatsChange}
+            onMaxDetourMinutesChange={(value) => updateData({ maxDetourMinutes: value })}
+            onDriverFutureOfferChange={(value) => updateData({ driverFutureOffer: value })}
+            onDriverPriceChange={handleDriverPriceChange}
+            onDriverBarriersChange={(value) => updateData({ driverBarriers: value })}
+            onDriverBarriersCustomChange={(value) => updateData({ driverBarriersCustom: value })}
+            onDriverRealValidationChange={handleDriverRealValidationChange}
+            onPassengerTransportsChange={handlePassengerTransportsChange}
+            onPassengerTransportsCustomChange={(value) =>
+              updateData({ passengerTransportsCustom: value })
+            }
+            onPassengerDifficultiesChange={(value) => updateData({ passengerDifficulties: value })}
+            onPassengerDifficultiesCustomChange={(value) =>
+              updateData({ passengerDifficultiesCustom: value })
+            }
+            onPassengerFairPriceChange={(value) => updateData({ passengerFairPrice: value })}
+            onPassengerBarriersChange={(value) => updateData({ passengerBarriers: value })}
+            onPassengerBarriersCustomChange={(value) =>
+              updateData({ passengerBarriersCustom: value })
+            }
+            onPassengerIntentionChange={handlePassengerIntentionChange}
             onNext={goNext}
             onBack={goBack}
             stepNumber={currentStepNumber}
