@@ -1,26 +1,11 @@
-import {
-  CalendarClock,
-  CheckCircle2,
-  Mail,
-  MapPin,
-  Shield,
-  UserCog,
-} from "lucide-react";
+import { CalendarClock, CheckCircle2, Mail, MapPin, Shield, UserCog } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  getAdminUsers,
-  type AdminUser,
-} from "@/lib/admin.functions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAdminUsers, type AdminUser } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin/usuarios/$id")({
   loader: async () => {
@@ -124,9 +109,7 @@ function UserDetailPage() {
             Usuário não encontrado
           </p>
 
-          <p className="mt-3 text-muted-foreground">
-            Não há registro para este identificador.
-          </p>
+          <p className="mt-3 text-muted-foreground">Não há registro para este identificador.</p>
         </div>
       </div>
     );
@@ -141,9 +124,7 @@ function UserDetailPage() {
     <div className="space-y-6">
       <div>
         <Button asChild variant="outline" size="sm">
-          <Link to="/admin/usuarios">
-            Voltar para usuários
-          </Link>
+          <Link to="/admin/usuarios">Voltar para usuários</Link>
         </Button>
       </div>
 
@@ -152,11 +133,7 @@ function UserDetailPage() {
           <div className="flex min-w-0 items-center gap-4">
             <Avatar className="h-20 w-20 rounded-2xl">
               {user.avatarUrl ? (
-                <AvatarImage
-                  src={user.avatarUrl}
-                  alt={name}
-                  className="object-cover"
-                />
+                <AvatarImage src={user.avatarUrl} alt={name} className="object-cover" />
               ) : null}
 
               <AvatarFallback className="rounded-2xl text-xl font-bold">
@@ -169,9 +146,7 @@ function UserDetailPage() {
                 {user.id}
               </p>
 
-              <h1 className="mt-2 truncate font-display text-3xl font-extrabold">
-                {name}
-              </h1>
+              <h1 className="mt-2 truncate font-display text-3xl font-extrabold">{name}</h1>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-secondary px-2.5 py-1 text-sm font-medium text-foreground">
@@ -192,13 +167,9 @@ function UserDetailPage() {
           </div>
 
           {hasVerification ? (
-            <VerificationBadges
-              verifications={user.verifications as any}
-            />
+            <VerificationBadges verifications={user.verifications} />
           ) : (
-            <span className="text-sm text-muted-foreground">
-              Sem vínculo verificado
-            </span>
+            <span className="text-sm text-muted-foreground">Sem vínculo verificado</span>
           )}
         </div>
       </div>
@@ -207,16 +178,12 @@ function UserDetailPage() {
         <div className="space-y-6">
           <Card className="border border-border bg-card shadow-soft">
             <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold">
-                Cadastro
-              </CardTitle>
+              <CardTitle className="font-display text-2xl font-extrabold">Cadastro</CardTitle>
             </CardHeader>
 
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-border bg-secondary/30 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  E-mail
-                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">E-mail</p>
 
                 <p className="mt-2 flex items-center gap-2 break-all font-medium">
                   <Mail size={15} className="shrink-0 text-primary" />
@@ -225,9 +192,7 @@ function UserDetailPage() {
               </div>
 
               <div className="rounded-xl border border-border bg-secondary/30 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Cidade
-                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cidade</p>
 
                 <p className="mt-2 flex items-center gap-2 font-medium">
                   <MapPin size={15} className="shrink-0 text-primary" />
@@ -236,15 +201,10 @@ function UserDetailPage() {
               </div>
 
               <div className="rounded-xl border border-border bg-secondary/30 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Cadastro
-                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cadastro</p>
 
                 <p className="mt-2 flex items-center gap-2 font-medium">
-                  <CalendarClock
-                    size={15}
-                    className="shrink-0 text-primary"
-                  />
+                  <CalendarClock size={15} className="shrink-0 text-primary" />
                   {formatDate(user.createdAt)}
                 </p>
               </div>
@@ -255,10 +215,7 @@ function UserDetailPage() {
                 </p>
 
                 <p className="mt-2 flex items-center gap-2 font-medium">
-                  <CalendarClock
-                    size={15}
-                    className="shrink-0 text-primary"
-                  />
+                  <CalendarClock size={15} className="shrink-0 text-primary" />
                   {formatDateTime(user.lastSignInAt)}
                 </p>
               </div>
@@ -283,9 +240,7 @@ function UserDetailPage() {
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="font-semibold text-foreground">
-                            {verification.type === "UNIFOR"
-                              ? "UNIFOR"
-                              : "STS 2026"}
+                            {verification.type === "UNIFOR" ? "UNIFOR" : "STS 2026"}
                           </p>
 
                           <p className="mt-1 text-sm text-muted-foreground">
@@ -296,8 +251,7 @@ function UserDetailPage() {
 
                           {verification.verifiedEmail ? (
                             <p className="mt-2 text-xs text-muted-foreground">
-                              E-mail associado:{" "}
-                              {verification.verifiedEmail}
+                              E-mail associado: {verification.verifiedEmail}
                             </p>
                           ) : null}
                         </div>
@@ -311,13 +265,10 @@ function UserDetailPage() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                  <p className="font-medium text-foreground">
-                    Sem vínculo verificado
-                  </p>
+                  <p className="font-medium text-foreground">Sem vínculo verificado</p>
 
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Este usuário continua podendo usar o CARONAA
-                    normalmente.
+                    Este usuário continua podendo usar o CARONAA normalmente.
                   </p>
                 </div>
               )}
@@ -328,9 +279,7 @@ function UserDetailPage() {
         <div className="space-y-6">
           <Card className="border border-border bg-card shadow-soft">
             <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold">
-                Segurança
-              </CardTitle>
+              <CardTitle className="font-display text-2xl font-extrabold">Segurança</CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-3">
@@ -341,18 +290,13 @@ function UserDetailPage() {
                 </span>
 
                 <span className="text-right font-bold text-foreground">
-                  {user.emailConfirmed
-                    ? "Confirmado"
-                    : "Não confirmado"}
+                  {user.emailConfirmed ? "Confirmado" : "Não confirmado"}
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
                 <span className="flex items-center gap-2 font-medium">
-                  <CheckCircle2
-                    size={15}
-                    className="text-primary"
-                  />
+                  <CheckCircle2 size={15} className="text-primary" />
                   Vínculos
                 </span>
 
@@ -365,9 +309,7 @@ function UserDetailPage() {
 
           <Card className="border border-border bg-card shadow-soft">
             <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold">
-                Acesso
-              </CardTitle>
+              <CardTitle className="font-display text-2xl font-extrabold">Acesso</CardTitle>
             </CardHeader>
 
             <CardContent>
@@ -377,16 +319,13 @@ function UserDetailPage() {
                   Função
                 </span>
 
-                <span className="text-right font-bold text-foreground">
-                  {getRoleLabel(user)}
-                </span>
+                <span className="text-right font-bold text-foreground">{getRoleLabel(user)}</span>
               </div>
 
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                Esta tela exibe somente dados efetivamente persistidos
-                pelo CARONAA. Ações de suspensão, bloqueio ou alteração
-                administrativa não são exibidas enquanto não houver um
-                modelo persistente e auditável para essas operações.
+                Esta tela exibe somente dados efetivamente persistidos pelo CARONAA. Ações de
+                suspensão, bloqueio ou alteração administrativa não são exibidas enquanto não houver
+                um modelo persistente e auditável para essas operações.
               </p>
             </CardContent>
           </Card>
@@ -394,4 +333,4 @@ function UserDetailPage() {
       </div>
     </div>
   );
-}export default UserDetailPage;
+}

@@ -51,7 +51,13 @@ function getStatusLabel(status: string) {
   return labels[status] ?? status;
 }
 
-export function RideCard({ ride, passengerCount = 1 }: { ride: RideSummary; passengerCount?: number }) {
+export function RideCard({
+  ride,
+  passengerCount = 1,
+}: {
+  ride: RideSummary;
+  passengerCount?: number;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [requested, setRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -111,7 +117,8 @@ export function RideCard({ ride, passengerCount = 1 }: { ride: RideSummary; pass
         </span>
         <span className="flex items-center gap-1.5">
           <UsersRound size={14} />
-          {ride.seatsRemaining ?? ride.seats} {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
+          {ride.seatsRemaining ?? ride.seats}{" "}
+          {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
         </span>
       </div>
       {expanded && (

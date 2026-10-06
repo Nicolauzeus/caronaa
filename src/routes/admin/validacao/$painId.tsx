@@ -696,5 +696,3 @@ function PainDetailPage() {
     </div>
   );
 }
-
-export default PainDetailPage;

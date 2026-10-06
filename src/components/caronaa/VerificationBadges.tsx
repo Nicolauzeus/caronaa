@@ -26,19 +26,10 @@ export function VerificationBadges({
   }
 
   return (
-    <div
-      className={[
-        "flex flex-wrap items-center gap-2",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
+    <div className={["flex flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
       {activeVerifications.map((verification) => {
         const label = getVerificationLabel(verification.type);
-        const description = getVerificationDescription(
-          verification.type,
-        );
+        const description = getVerificationDescription(verification.type);
 
         return (
           <Tooltip key={verification.type}>
@@ -51,9 +42,7 @@ export function VerificationBadges({
                   verification.type === "UNIFOR"
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                     : "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-                  compact
-                    ? "px-2 py-0.5 text-[11px]"
-                    : "px-2.5 py-1 text-xs",
+                  compact ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
                 ].join(" ")}
               >
                 <span
@@ -67,14 +56,8 @@ export function VerificationBadges({
               </Badge>
             </TooltipTrigger>
 
-            <TooltipContent
-              side="top"
-              align="center"
-              className="max-w-xs text-center"
-            >
-              <p className="text-xs leading-relaxed">
-                {description}
-              </p>
+            <TooltipContent side="top" align="center" className="max-w-xs text-center">
+              <p className="text-xs leading-relaxed">{description}</p>
             </TooltipContent>
           </Tooltip>
         );

@@ -11,32 +11,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  getAdminUsers,
-  type AdminUser,
-} from "@/lib/admin.functions";
-import {
-  getFormMetrics,
-  type FormMetricsSummary,
-} from "@/lib/formulario/metrics";
-import {
-  getMainFunnelMetrics,
-  type MainFunnelSummary,
-} from "@/lib/main-funnel-metrics";
-import {
-  getOperationalMetrics,
-  type OperationalMetrics,
-} from "@/lib/operational-metrics";
-import {
-  getRetentionMetrics,
-  type RetentionMetrics,
-} from "@/lib/retention-metrics";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAdminUsers, type AdminUser } from "@/lib/admin.functions";
+import { getFormMetrics, type FormMetricsSummary } from "@/lib/formulario/metrics";
+import { getMainFunnelMetrics, type MainFunnelSummary } from "@/lib/main-funnel-metrics";
+import { getOperationalMetrics, type OperationalMetrics } from "@/lib/operational-metrics";
+import { getRetentionMetrics, type RetentionMetrics } from "@/lib/retention-metrics";
 
 export const Route = createFileRoute("/admin/usuarios/")({
   head: () => ({
@@ -110,21 +90,14 @@ function formatPercent(value: number | null | undefined) {
   }).format(value)}%`;
 }
 
-function hasVerification(
-  user: AdminUser,
-  type: "UNIFOR" | "STS_2026",
-) {
+function hasVerification(user: AdminUser, type: "UNIFOR" | "STS_2026") {
   return user.verifications.some(
-    (verification) =>
-      verification.type === type &&
-      verification.status === "VERIFIED",
+    (verification) => verification.type === type && verification.status === "VERIFIED",
   );
 }
 
 function hasAnyVerification(user: AdminUser) {
-  return user.verifications.some(
-    (verification) => verification.status === "VERIFIED",
-  );
+  return user.verifications.some((verification) => verification.status === "VERIFIED");
 }
 
 function getPeriodStart() {
@@ -135,10 +108,7 @@ function getPeriodStart() {
   return date.toISOString();
 }
 
-function getFunnelWidth(
-  count: number | null,
-  cohortSize: number,
-) {
+function getFunnelWidth(count: number | null, cohortSize: number) {
   if (count === null || cohortSize <= 0) {
     return 0;
   }
@@ -147,10 +117,7 @@ function getFunnelWidth(
     return 0;
   }
 
-  return Math.max(
-    4,
-    Math.min(100, (count / cohortSize) * 100),
-  );
+  return Math.max(4, Math.min(100, (count / cohortSize) * 100));
 }
 
 function DashboardPage() {
@@ -164,9 +131,7 @@ function DashboardPage() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [metricsError, setMetricsError] = useState<string | null>(
-    null,
-  );
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -197,45 +162,22 @@ function DashboardPage() {
         return;
       }
 
-      const [
-        formResult,
-        funnelResult,
-        operationalResult,
-        retentionResult,
-      ] = results;
+      const [formResult, funnelResult, operationalResult, retentionResult] = results;
 
       setData({
-        form:
-          formResult.status === "fulfilled"
-            ? formResult.value
-            : null,
-        funnel:
-          funnelResult.status === "fulfilled"
-            ? funnelResult.value
-            : null,
-        operational:
-          operationalResult.status === "fulfilled"
-            ? operationalResult.value
-            : null,
-        retention:
-          retentionResult.status === "fulfilled"
-            ? retentionResult.value
-            : null,
+        form: formResult.status === "fulfilled" ? formResult.value : null,
+        funnel: funnelResult.status === "fulfilled" ? funnelResult.value : null,
+        operational: operationalResult.status === "fulfilled" ? operationalResult.value : null,
+        retention: retentionResult.status === "fulfilled" ? retentionResult.value : null,
       });
 
-      const failures = results.filter(
-        (result) => result.status === "rejected",
-      );
+      const failures = results.filter((result) => result.status === "rejected");
 
       if (failures.length > 0) {
         setMetricsError(
-          `${failures.length} conjunto${
-            failures.length === 1 ? "" : "s"
-          } de métricas não pôde${
+          `${failures.length} conjunto${failures.length === 1 ? "" : "s"} de métricas não pôde${
             failures.length === 1 ? "" : "ram"
-          } ser carregado${
-            failures.length === 1 ? "" : "s"
-          }.`,
+          } ser carregado${failures.length === 1 ? "" : "s"}.`,
         );
       }
 
@@ -248,17 +190,11 @@ function DashboardPage() {
   }, []);
 
   const userMetrics = useMemo(() => {
-    const withVerification = users.filter(
-      hasAnyVerification,
-    ).length;
+    const withVerification = users.filter(hasAnyVerification).length;
 
-    const unifor = users.filter((user) =>
-      hasVerification(user, "UNIFOR"),
-    ).length;
+    const unifor = users.filter((user) => hasVerification(user, "UNIFOR")).length;
 
-    const sts = users.filter((user) =>
-      hasVerification(user, "STS_2026"),
-    ).length;
+    const sts = users.filter((user) => hasVerification(user, "STS_2026")).length;
 
     return {
       total: users.length,
@@ -284,8 +220,7 @@ function DashboardPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Indicadores persistidos do CARONAA. Métricas
-            operacionais consideram os últimos 30 dias.
+            Indicadores persistidos do CARONAA. Métricas operacionais consideram os últimos 30 dias.
           </p>
         </div>
 
@@ -297,8 +232,8 @@ function DashboardPage() {
 
       {metricsError ? (
         <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
-          {metricsError} Os demais indicadores continuam
-          representando somente dados carregados com sucesso.
+          {metricsError} Os demais indicadores continuam representando somente dados carregados com
+          sucesso.
         </div>
       ) : null}
 
@@ -311,9 +246,7 @@ function DashboardPage() {
 
         <MetricCard
           label="Com vínculo"
-          value={formatNumber(
-            userMetrics.withVerification,
-          )}
+          value={formatNumber(userMetrics.withVerification)}
           detail="UNIFOR e/ou STS 2026"
         />
 
@@ -334,9 +267,7 @@ function DashboardPage() {
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
-              <CardTitle className="font-display text-2xl font-extrabold">
-                Funil CARONAA
-              </CardTitle>
+              <CardTitle className="font-display text-2xl font-extrabold">Funil CARONAA</CardTitle>
 
               <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                 Dados persistidos
@@ -346,14 +277,11 @@ function DashboardPage() {
 
           <CardContent>
             {loading ? (
-              <p className="py-8 text-sm text-muted-foreground">
-                Carregando funil...
-              </p>
+              <p className="py-8 text-sm text-muted-foreground">Carregando funil...</p>
             ) : funnelStages.length > 0 ? (
               <div className="space-y-3">
                 {funnelStages.map((step, index) => {
-                  const unavailable =
-                    step.count === null;
+                  const unavailable = step.count === null;
 
                   return (
                     <div key={`${step.key}-${index}`}>
@@ -366,19 +294,13 @@ function DashboardPage() {
                           <div
                             className="h-2 rounded-full bg-primary transition-all"
                             style={{
-                              width: `${getFunnelWidth(
-                                step.count,
-                                data.funnel?.cohortSize ??
-                                  0,
-                              )}%`,
+                              width: `${getFunnelWidth(step.count, data.funnel?.cohortSize ?? 0)}%`,
                             }}
                           />
                         </div>
 
                         <span className="w-20 text-right text-sm font-semibold text-foreground">
-                          {unavailable
-                            ? "N/D"
-                            : formatNumber(step.count)}
+                          {unavailable ? "N/D" : formatNumber(step.count)}
                         </span>
                       </div>
 
@@ -386,13 +308,9 @@ function DashboardPage() {
                         <p className="ml-40 mt-1 pl-3 text-xs text-muted-foreground">
                           {step.unavailableReason}
                         </p>
-                      ) : step.fromPrevious !== null &&
-                        index > 0 ? (
+                      ) : step.fromPrevious !== null && index > 0 ? (
                         <p className="ml-40 mt-1 pl-3 text-xs text-muted-foreground">
-                          {formatPercent(
-                            step.fromPrevious,
-                          )}{" "}
-                          da etapa anterior
+                          {formatPercent(step.fromPrevious)} da etapa anterior
                         </p>
                       ) : null}
                     </div>
@@ -409,9 +327,7 @@ function DashboardPage() {
 
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
-            <CardTitle className="font-display text-2xl font-extrabold">
-              Ações rápidas
-            </CardTitle>
+            <CardTitle className="font-display text-2xl font-extrabold">Ações rápidas</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-2">
@@ -423,10 +339,7 @@ function DashboardPage() {
               >
                 <span>{action.label}</span>
 
-                <ArrowRight
-                  size={16}
-                  className="text-primary"
-                />
+                <ArrowRight size={16} className="text-primary" />
               </Link>
             ))}
           </CardContent>
@@ -436,50 +349,25 @@ function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Solicitações"
-          value={
-            data.operational
-              ? formatNumber(
-                  data.operational.request
-                    .eligibleRequests,
-                )
-              : "N/D"
-          }
+          value={data.operational ? formatNumber(data.operational.request.eligibleRequests) : "N/D"}
           detail="Elegíveis nos últimos 30 dias"
         />
 
         <MetricCard
           label="Ofertas"
-          value={
-            data.operational
-              ? formatNumber(
-                  data.operational.offer.eligibleOffers,
-                )
-              : "N/D"
-          }
+          value={data.operational ? formatNumber(data.operational.offer.eligibleOffers) : "N/D"}
           detail="Elegíveis nos últimos 30 dias"
         />
 
         <MetricCard
           label="Matches"
-          value={
-            data.operational
-              ? formatNumber(
-                  data.operational.match.total,
-                )
-              : "N/D"
-          }
+          value={data.operational ? formatNumber(data.operational.match.total) : "N/D"}
           detail="Criados nos últimos 30 dias"
         />
 
         <MetricCard
           label="Caronas concluídas"
-          value={
-            data.operational
-              ? formatNumber(
-                  data.operational.match.completed,
-                )
-              : "N/D"
-          }
+          value={data.operational ? formatNumber(data.operational.match.completed) : "N/D"}
           detail="Conclusões registradas"
         />
       </div>
@@ -488,10 +376,7 @@ function DashboardPage() {
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-2xl font-extrabold">
-              <Gauge
-                size={19}
-                className="text-primary"
-              />
+              <Gauge size={19} className="text-primary" />
               Oferta e demanda
             </CardTitle>
           </CardHeader>
@@ -505,18 +390,12 @@ function DashboardPage() {
                   </p>
 
                   <p className="mt-2 text-2xl font-extrabold">
-                    {formatNumber(
-                      data.operational.request
-                        .matchedRequests,
-                    )}
+                    {formatNumber(data.operational.request.matchedRequests)}
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatPercent(
-                      data.operational.request
-                        .requestMatchRate,
-                    )}{" "}
-                    das solicitações elegíveis
+                    {formatPercent(data.operational.request.requestMatchRate)} das solicitações
+                    elegíveis
                   </p>
                 </div>
 
@@ -526,18 +405,11 @@ function DashboardPage() {
                   </p>
 
                   <p className="mt-2 text-2xl font-extrabold">
-                    {formatNumber(
-                      data.operational.offer
-                        .utilizedOffers,
-                    )}
+                    {formatNumber(data.operational.offer.utilizedOffers)}
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatPercent(
-                      data.operational.offer
-                        .offerMatchRate,
-                    )}{" "}
-                    das ofertas elegíveis
+                    {formatPercent(data.operational.offer.offerMatchRate)} das ofertas elegíveis
                   </p>
                 </div>
 
@@ -547,18 +419,11 @@ function DashboardPage() {
                   </p>
 
                   <p className="mt-2 text-2xl font-extrabold">
-                    {data.operational.match
-                      .averageMinutesToMatch === null
+                    {data.operational.match.averageMinutesToMatch === null
                       ? "N/D"
-                      : `${new Intl.NumberFormat(
-                          "pt-BR",
-                          {
-                            maximumFractionDigits: 1,
-                          },
-                        ).format(
-                          data.operational.match
-                            .averageMinutesToMatch,
-                        )} min`}
+                      : `${new Intl.NumberFormat("pt-BR", {
+                          maximumFractionDigits: 1,
+                        }).format(data.operational.match.averageMinutesToMatch)} min`}
                   </p>
                 </div>
 
@@ -568,30 +433,21 @@ function DashboardPage() {
                   </p>
 
                   <p className="mt-2 text-2xl font-extrabold">
-                    {formatPercent(
-                      data.operational.seats
-                        .seatFillRate,
-                    )}
+                    {formatPercent(data.operational.seats.seatFillRate)}
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {data.operational.seats
-                      .availableSeats === null
+                    {data.operational.seats.availableSeats === null
                       ? "Capacidade indisponível"
-                      : `${formatNumber(
-                          data.operational.seats
-                            .occupiedSeats,
-                        )} de ${formatNumber(
-                          data.operational.seats
-                            .availableSeats,
+                      : `${formatNumber(data.operational.seats.occupiedSeats)} de ${formatNumber(
+                          data.operational.seats.availableSeats,
                         )} assentos`}
                   </p>
                 </div>
               </div>
             ) : (
               <p className="py-8 text-sm text-muted-foreground">
-                Métricas operacionais indisponíveis no
-                momento.
+                Métricas operacionais indisponíveis no momento.
               </p>
             )}
           </CardContent>
@@ -600,10 +456,7 @@ function DashboardPage() {
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-2xl font-extrabold">
-              <FileText
-                size={19}
-                className="text-primary"
-              />
+              <FileText size={19} className="text-primary" />
               Formulários
             </CardTitle>
           </CardHeader>
@@ -612,58 +465,32 @@ function DashboardPage() {
             {data.form ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-                  <span className="text-sm text-muted-foreground">
-                    Iniciados
-                  </span>
+                  <span className="text-sm text-muted-foreground">Iniciados</span>
 
-                  <strong>
-                    {formatNumber(
-                      data.form.totals.started,
-                    )}
-                  </strong>
+                  <strong>{formatNumber(data.form.totals.started)}</strong>
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-                  <span className="text-sm text-muted-foreground">
-                    Concluídos
-                  </span>
+                  <span className="text-sm text-muted-foreground">Concluídos</span>
 
-                  <strong>
-                    {formatNumber(
-                      data.form.totals.completed,
-                    )}
-                  </strong>
+                  <strong>{formatNumber(data.form.totals.completed)}</strong>
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-                  <span className="text-sm text-muted-foreground">
-                    Leads
-                  </span>
+                  <span className="text-sm text-muted-foreground">Leads</span>
 
-                  <strong>
-                    {formatNumber(
-                      data.form.totals.leads,
-                    )}
-                  </strong>
+                  <strong>{formatNumber(data.form.totals.leads)}</strong>
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-                  <span className="text-sm text-muted-foreground">
-                    Taxa de conclusão
-                  </span>
+                  <span className="text-sm text-muted-foreground">Taxa de conclusão</span>
 
-                  <strong>
-                    {formatPercent(
-                      data.form.totals
-                        .completionRate,
-                    )}
-                  </strong>
+                  <strong>{formatPercent(data.form.totals.completionRate)}</strong>
                 </div>
               </div>
             ) : (
               <p className="py-8 text-sm text-muted-foreground">
-                Métricas dos formulários indisponíveis no
-                momento.
+                Métricas dos formulários indisponíveis no momento.
               </p>
             )}
           </CardContent>
@@ -673,13 +500,9 @@ function DashboardPage() {
       <Card className="border border-border bg-card/85 shadow-soft">
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            <CardTitle className="font-display text-xl font-extrabold">
-              Recorrência
-            </CardTitle>
+            <CardTitle className="font-display text-xl font-extrabold">Recorrência</CardTitle>
 
-            <span className="text-xs text-muted-foreground">
-              Caronas realizadas
-            </span>
+            <span className="text-xs text-muted-foreground">Caronas realizadas</span>
           </div>
         </CardHeader>
 
@@ -689,25 +512,19 @@ function DashboardPage() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <MetricCard
                   label="Retorno em 7 dias"
-                  value={formatPercent(
-                    data.retention.repeatRate7d,
-                  )}
+                  value={formatPercent(data.retention.repeatRate7d)}
                   detail="Após a primeira carona"
                 />
 
                 <MetricCard
                   label="Retorno em 30 dias"
-                  value={formatPercent(
-                    data.retention.repeatRate30d,
-                  )}
+                  value={formatPercent(data.retention.repeatRate30d)}
                   detail="Após a primeira carona"
                 />
 
                 <MetricCard
                   label="1 / 2 caronas"
-                  value={`${formatNumber(
-                    data.retention.distribution.one,
-                  )} / ${formatNumber(
+                  value={`${formatNumber(data.retention.distribution.one)} / ${formatNumber(
                     data.retention.distribution.two,
                   )}`}
                   detail="Usuários por recorrência"
@@ -715,12 +532,8 @@ function DashboardPage() {
 
                 <MetricCard
                   label="3–5 / 6+"
-                  value={`${formatNumber(
-                    data.retention.distribution
-                      .threeToFive,
-                  )} / ${formatNumber(
-                    data.retention.distribution
-                      .sixOrMore,
+                  value={`${formatNumber(data.retention.distribution.threeToFive)} / ${formatNumber(
+                    data.retention.distribution.sixOrMore,
                   )}`}
                   detail="Usuários recorrentes"
                 />
@@ -728,8 +541,7 @@ function DashboardPage() {
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Métricas de recorrência indisponíveis no
-              momento.
+              Métricas de recorrência indisponíveis no momento.
             </p>
           )}
         </CardContent>
@@ -739,10 +551,7 @@ function DashboardPage() {
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-2xl font-extrabold">
-              <ShieldCheck
-                size={19}
-                className="text-primary"
-              />
+              <ShieldCheck size={19} className="text-primary" />
               Vínculos verificados
             </CardTitle>
           </CardHeader>
@@ -750,55 +559,33 @@ function DashboardPage() {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
               <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2
-                  size={15}
-                  className="text-primary"
-                />
+                <CheckCircle2 size={15} className="text-primary" />
                 Com pelo menos um vínculo
               </span>
 
-              <strong>
-                {formatNumber(
-                  userMetrics.withVerification,
-                )}
-              </strong>
+              <strong>{formatNumber(userMetrics.withVerification)}</strong>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-              <span className="text-sm text-muted-foreground">
-                UNIFOR
-              </span>
+              <span className="text-sm text-muted-foreground">UNIFOR</span>
 
-              <strong>
-                {formatNumber(userMetrics.unifor)}
-              </strong>
+              <strong>{formatNumber(userMetrics.unifor)}</strong>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-              <span className="text-sm text-muted-foreground">
-                STS 2026
-              </span>
+              <span className="text-sm text-muted-foreground">STS 2026</span>
 
-              <strong>
-                {formatNumber(userMetrics.sts)}
-              </strong>
+              <strong>{formatNumber(userMetrics.sts)}</strong>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-              <span className="text-sm text-muted-foreground">
-                Sem vínculo verificado
-              </span>
+              <span className="text-sm text-muted-foreground">Sem vínculo verificado</span>
 
-              <strong>
-                {formatNumber(
-                  userMetrics.withoutVerification,
-                )}
-              </strong>
+              <strong>{formatNumber(userMetrics.withoutVerification)}</strong>
             </div>
 
             <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
-              Os selos indicam vínculo ou participação
-              verificados. Eles não representam verificação
+              Os selos indicam vínculo ou participação verificados. Eles não representam verificação
               de identidade civil ou KYC.
             </p>
           </CardContent>
@@ -807,57 +594,35 @@ function DashboardPage() {
         <Card className="border border-border bg-card/85 shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-2xl font-extrabold">
-              <Activity
-                size={19}
-                className="text-primary"
-              />
+              <Activity size={19} className="text-primary" />
               Estado operacional
             </CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-              <span className="text-sm text-muted-foreground">
-                Solicitações sem match
-              </span>
+              <span className="text-sm text-muted-foreground">Solicitações sem match</span>
 
               <strong>
                 {data.operational
-                  ? formatNumber(
-                      data.operational.request
-                        .unmatchedRequests,
-                    )
+                  ? formatNumber(data.operational.request.unmatchedRequests)
                   : "N/D"}
               </strong>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-              <span className="text-sm text-muted-foreground">
-                Ofertas sem utilização
-              </span>
+              <span className="text-sm text-muted-foreground">Ofertas sem utilização</span>
 
               <strong>
-                {data.operational
-                  ? formatNumber(
-                      data.operational.offer
-                        .unmatchedOffers,
-                    )
-                  : "N/D"}
+                {data.operational ? formatNumber(data.operational.offer.unmatchedOffers) : "N/D"}
               </strong>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
-              <span className="text-sm text-muted-foreground">
-                Matches cancelados
-              </span>
+              <span className="text-sm text-muted-foreground">Matches cancelados</span>
 
               <strong>
-                {data.operational
-                  ? formatNumber(
-                      data.operational.match
-                        .cancelled,
-                    )
-                  : "N/D"}
+                {data.operational ? formatNumber(data.operational.match.cancelled) : "N/D"}
               </strong>
             </div>
 
@@ -867,9 +632,7 @@ function DashboardPage() {
                 Usuários cadastrados
               </span>
 
-              <strong>
-                {formatNumber(userMetrics.total)}
-              </strong>
+              <strong>{formatNumber(userMetrics.total)}</strong>
             </div>
           </CardContent>
         </Card>
@@ -877,5 +640,3 @@ function DashboardPage() {
     </div>
   );
 }
-
-export default DashboardPage;

@@ -15,6 +15,7 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { createRideOffer } from "@/lib/ride-matching.functions";
 import { toast } from "sonner";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 export const Route = createFileRoute("/_authenticated/oferecer")({
   head: () => ({
     meta: [
@@ -103,8 +104,8 @@ function Oferecer() {
             </span>
             <h2 className="font-display text-2xl font-extrabold">Carona publicada!</h2>
             <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-              Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas caronas
-              e já pode gerar matches reais com pedidos compatíveis.
+              Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas caronas e
+              já pode gerar matches reais com pedidos compatíveis.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button asChild>
@@ -145,19 +146,23 @@ function Oferecer() {
             </div>
             {step === 1 ? (
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field
+                <LocationAutocomplete
+                  id="oferecer-origem"
                   label="Origem"
                   value={form.origin}
                   onChange={(v) => update("origin", v)}
                   placeholder="Ex.: Aldeota, Fortaleza"
                   required
+                  variant="simple"
                 />
-                <Field
+                <LocationAutocomplete
+                  id="oferecer-destino"
                   label="Destino"
                   value={form.destination}
                   onChange={(v) => update("destination", v)}
-                  placeholder="Ex.: Eusébio"
+                  placeholder="Ex.: Eusébio, UNIFOR, Centro"
                   required
+                  variant="simple"
                 />
                 <Field
                   label="Data"

@@ -43,7 +43,9 @@ function Home() {
       })
       .catch((loadError) => {
         if (!active) return;
-        setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar a home.");
+        setError(
+          loadError instanceof Error ? loadError.message : "Não foi possível carregar a home.",
+        );
       })
       .finally(() => {
         if (active) setLoading(false);

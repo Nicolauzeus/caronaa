@@ -14,14 +14,21 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
+import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as FormularioRouteImport } from './routes/formulario'
+import { Route as PitchRouteImport } from './routes/pitch'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SegurancaRouteImport } from './routes/seguranca'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminOportunidadesRouteImport } from './routes/admin/oportunidades'
+import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacionamentos'
+import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
@@ -54,14 +61,39 @@ const BuscarRoute = BuscarRouteImport.update({
   path: '/buscar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComoFuncionaRoute = ComoFuncionaRouteImport.update({
+  id: '/como-funciona',
+  path: '/como-funciona',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FormularioRoute = FormularioRouteImport.update({
   id: '/formulario',
   path: '/formulario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PitchRoute = PitchRouteImport.update({
+  id: '/pitch',
+  path: '/pitch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SegurancaRoute = SegurancaRouteImport.update({
+  id: '/seguranca',
+  path: '/seguranca',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
@@ -93,6 +125,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminOportunidadesRoute = AdminOportunidadesRouteImport.update({
   id: '/oportunidades',
   path: '/oportunidades',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRelacionamentosRoute = AdminRelacionamentosRouteImport.update({
+  id: '/relacionamentos',
+  path: '/relacionamentos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSugestoesRoute = AdminSugestoesRouteImport.update({
+  id: '/sugestoes',
+  path: '/sugestoes',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
@@ -138,13 +180,20 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
+  '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRoute
+  '/pitch': typeof PitchRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seguranca': typeof SegurancaRoute
+  '/termos': typeof TermosRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -158,13 +207,20 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
+  '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRoute
+  '/pitch': typeof PitchRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seguranca': typeof SegurancaRoute
+  '/termos': typeof TermosRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -181,13 +237,20 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
+  '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRoute
+  '/pitch': typeof PitchRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seguranca': typeof SegurancaRoute
+  '/termos': typeof TermosRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
@@ -204,13 +267,20 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/buscar'
+    | '/como-funciona'
     | '/formulario'
+    | '/pitch'
+    | '/privacidade'
     | '/reset-password'
+    | '/seguranca'
+    | '/termos'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
     | '/admin/oportunidades'
+    | '/admin/relacionamentos'
+    | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
@@ -224,13 +294,20 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/buscar'
+    | '/como-funciona'
     | '/formulario'
+    | '/pitch'
+    | '/privacidade'
     | '/reset-password'
+    | '/seguranca'
+    | '/termos'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
     | '/admin/oportunidades'
+    | '/admin/relacionamentos'
+    | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin'
     | '/admin/usuarios/$id'
@@ -246,13 +323,20 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/buscar'
+    | '/como-funciona'
     | '/formulario'
+    | '/pitch'
+    | '/privacidade'
     | '/reset-password'
+    | '/seguranca'
+    | '/termos'
     | '/_authenticated/home'
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
     | '/admin/oportunidades'
+    | '/admin/relacionamentos'
+    | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
     | '/admin/usuarios/$id'
@@ -269,8 +353,13 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   BuscarRoute: typeof BuscarRoute
+  ComoFuncionaRoute: typeof ComoFuncionaRoute
   FormularioRoute: typeof FormularioRoute
+  PitchRoute: typeof PitchRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SegurancaRoute: typeof SegurancaRoute
+  TermosRoute: typeof TermosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -310,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuscarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/como-funciona': {
+      id: '/como-funciona'
+      path: '/como-funciona'
+      fullPath: '/como-funciona'
+      preLoaderRoute: typeof ComoFuncionaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/formulario': {
       id: '/formulario'
       path: '/formulario'
@@ -317,11 +413,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormularioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pitch': {
+      id: '/pitch'
+      path: '/pitch'
+      fullPath: '/pitch'
+      preLoaderRoute: typeof PitchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seguranca': {
+      id: '/seguranca'
+      path: '/seguranca'
+      fullPath: '/seguranca'
+      preLoaderRoute: typeof SegurancaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/home': {
@@ -364,6 +488,20 @@ declare module '@tanstack/react-router' {
       path: '/oportunidades'
       fullPath: '/admin/oportunidades'
       preLoaderRoute: typeof AdminOportunidadesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/relacionamentos': {
+      id: '/admin/relacionamentos'
+      path: '/relacionamentos'
+      fullPath: '/admin/relacionamentos'
+      preLoaderRoute: typeof AdminRelacionamentosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sugestoes': {
+      id: '/admin/sugestoes'
+      path: '/sugestoes'
+      fullPath: '/admin/sugestoes'
+      preLoaderRoute: typeof AdminSugestoesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/validacao': {
@@ -449,6 +587,8 @@ const AdminValidacaoRouteWithChildren = AdminValidacaoRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminOportunidadesRoute: typeof AdminOportunidadesRoute
+  AdminRelacionamentosRoute: typeof AdminRelacionamentosRoute
+  AdminSugestoesRoute: typeof AdminSugestoesRoute
   AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
@@ -460,6 +600,8 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminOportunidadesRoute: AdminOportunidadesRoute,
+  AdminRelacionamentosRoute: AdminRelacionamentosRoute,
+  AdminSugestoesRoute: AdminSugestoesRoute,
   AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
@@ -477,8 +619,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   BuscarRoute: BuscarRoute,
+  ComoFuncionaRoute: ComoFuncionaRoute,
   FormularioRoute: FormularioRoute,
+  PitchRoute: PitchRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SegurancaRoute: SegurancaRoute,
+  TermosRoute: TermosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

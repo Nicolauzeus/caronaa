@@ -125,8 +125,7 @@ export const painAnalysisFormula = {
   frequencyScore: "percentual da amostra que selecionou a dor",
   intensityScore: "intensidade media / 5 * 100",
   primaryPainScore: "percentual da amostra que marcou a dor como principal",
-  interestScore:
-    "media de interesse convertida para 1-5 e normalizada: (media - 1) / 4 * 100",
+  interestScore: "media de interesse convertida para 1-5 e normalizada: (media - 1) / 4 * 100",
   interestScale,
   weights: defaultWeights,
 } satisfies PainAnalysisFormula;
@@ -236,7 +235,8 @@ export function buildPainAnalysisSummary({
       sampleSize === 0 ? 0 : roundMetric((selectedCount / sampleSize) * 100);
     const principalPercentage =
       sampleSize === 0 ? 0 : roundMetric((principalCount / sampleSize) * 100);
-    const averageIntensity = intensityCount === 0 ? null : roundMetric(intensitySum / intensityCount);
+    const averageIntensity =
+      intensityCount === 0 ? null : roundMetric(intensitySum / intensityCount);
     const averageInterest = interestCount === 0 ? null : roundMetric(interestSum / interestCount);
     const frequencyScore = selectedPercentage;
     const intensityScore = roundMetric(((averageIntensity ?? 0) / 5) * 100);

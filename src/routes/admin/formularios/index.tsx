@@ -1,22 +1,10 @@
-import {
-  ArrowRight,
-  FileText,
-  Users,
-} from "lucide-react";
+import { ArrowRight, FileText, Users } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  getFormMetrics,
-  type FormMetricsSummary,
-} from "@/lib/formulario/metrics";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getFormMetrics, type FormMetricsSummary } from "@/lib/formulario/metrics";
 
 export const Route = createFileRoute("/admin/formularios/")({
   head: () => ({
@@ -26,8 +14,7 @@ export const Route = createFileRoute("/admin/formularios/")({
       },
       {
         name: "description",
-        content:
-          "Acompanhe os formulários de validação do CARONAA.",
+        content: "Acompanhe os formulários de validação do CARONAA.",
       },
       {
         property: "og:title",
@@ -35,8 +22,7 @@ export const Route = createFileRoute("/admin/formularios/")({
       },
       {
         property: "og:description",
-        content:
-          "Acompanhe os formulários de validação do CARONAA.",
+        content: "Acompanhe os formulários de validação do CARONAA.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -123,37 +109,21 @@ function AdminFormsPage() {
         return;
       }
 
-      const [allResult, todayResult, weekResult] =
-        results;
+      const [allResult, todayResult, weekResult] = results;
 
       setData({
-        all:
-          allResult.status === "fulfilled"
-            ? allResult.value
-            : null,
-        today:
-          todayResult.status === "fulfilled"
-            ? todayResult.value
-            : null,
-        last7Days:
-          weekResult.status === "fulfilled"
-            ? weekResult.value
-            : null,
+        all: allResult.status === "fulfilled" ? allResult.value : null,
+        today: todayResult.status === "fulfilled" ? todayResult.value : null,
+        last7Days: weekResult.status === "fulfilled" ? weekResult.value : null,
       });
 
-      const failed = results.filter(
-        (result) => result.status === "rejected",
-      ).length;
+      const failed = results.filter((result) => result.status === "rejected").length;
 
       if (failed > 0) {
         setError(
-          `${failed} conjunto${
-            failed === 1 ? "" : "s"
-          } de métricas não pôde${
+          `${failed} conjunto${failed === 1 ? "" : "s"} de métricas não pôde${
             failed === 1 ? "" : "ram"
-          } ser carregado${
-            failed === 1 ? "" : "s"
-          }.`,
+          } ser carregado${failed === 1 ? "" : "s"}.`,
         );
       }
 
@@ -172,37 +142,25 @@ function AdminFormsPage() {
       return [];
     }
 
-    const total =
-      totals.passageiros +
-      totals.motoristas +
-      totals.ambos;
+    const total = totals.passageiros + totals.motoristas + totals.ambos;
 
     return [
       {
         label: "Passageiros",
         value: totals.passageiros,
-        percentage: profilePercent(
-          totals.passageiros,
-          total,
-        ),
+        percentage: profilePercent(totals.passageiros, total),
         icon: Users,
       },
       {
         label: "Motoristas",
         value: totals.motoristas,
-        percentage: profilePercent(
-          totals.motoristas,
-          total,
-        ),
+        percentage: profilePercent(totals.motoristas, total),
         icon: Users,
       },
       {
         label: "Os dois",
         value: totals.ambos,
-        percentage: profilePercent(
-          totals.ambos,
-          total,
-        ),
+        percentage: profilePercent(totals.ambos, total),
         icon: FileText,
       },
     ];
@@ -235,26 +193,18 @@ function AdminFormsPage() {
     ];
   }, [data.all]);
 
-  const funnelBase = Math.max(
-    1,
-    data.all?.totals.reached ?? 0,
-  );
+  const funnelBase = Math.max(1, data.all?.totals.reached ?? 0);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
-            Validação
-          </p>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">Validação</p>
 
-          <h1 className="mt-2 font-display text-3xl font-extrabold">
-            Formulários
-          </h1>
+          <h1 className="mt-2 font-display text-3xl font-extrabold">Formulários</h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Indicadores reais das respostas e do funil de
-            validação do CARONAA.
+            Indicadores reais das respostas e do funil de validação do CARONAA.
           </p>
         </div>
 
@@ -269,65 +219,34 @@ function AdminFormsPage() {
 
       {error ? (
         <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
-          {error} Os indicadores disponíveis continuam
-          sendo exibidos.
+          {error} Os indicadores disponíveis continuam sendo exibidos.
         </div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Total"
-          value={
-            data.all
-              ? formatNumber(
-                  data.all.totals.completed,
-                )
-              : loading
-                ? "..."
-                : "N/D"
-          }
+          value={data.all ? formatNumber(data.all.totals.completed) : loading ? "..." : "N/D"}
           detail="Respostas concluídas"
         />
 
         <MetricCard
           label="Hoje"
-          value={
-            data.today
-              ? formatNumber(
-                  data.today.totals.completed,
-                )
-              : loading
-                ? "..."
-                : "N/D"
-          }
+          value={data.today ? formatNumber(data.today.totals.completed) : loading ? "..." : "N/D"}
           detail="Concluídas desde 00:00"
         />
 
         <MetricCard
           label="7 dias"
           value={
-            data.last7Days
-              ? formatNumber(
-                  data.last7Days.totals.completed,
-                )
-              : loading
-                ? "..."
-                : "N/D"
+            data.last7Days ? formatNumber(data.last7Days.totals.completed) : loading ? "..." : "N/D"
           }
           detail="Concluídas nos últimos 7 dias"
         />
 
         <MetricCard
           label="Conclusão"
-          value={
-            data.all
-              ? formatPercent(
-                  data.all.totals.completionRate,
-                )
-              : loading
-                ? "..."
-                : "N/D"
-          }
+          value={data.all ? formatPercent(data.all.totals.completionRate) : loading ? "..." : "N/D"}
           detail="Iniciados que concluíram"
         />
       </div>
@@ -342,31 +261,19 @@ function AdminFormsPage() {
 
           <CardContent>
             {loading ? (
-              <p className="py-8 text-sm text-muted-foreground">
-                Carregando métricas...
-              </p>
+              <p className="py-8 text-sm text-muted-foreground">Carregando métricas...</p>
             ) : funnel.length > 0 ? (
               <div className="space-y-4">
                 {funnel.map((item) => {
                   const width =
                     item.value === 0
                       ? 0
-                      : Math.max(
-                          4,
-                          Math.min(
-                            100,
-                            (item.value /
-                              funnelBase) *
-                              100,
-                          ),
-                        );
+                      : Math.max(4, Math.min(100, (item.value / funnelBase) * 100));
 
                   return (
                     <div key={item.label}>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium text-foreground">
-                          {item.label}
-                        </span>
+                        <span className="text-sm font-medium text-foreground">{item.label}</span>
 
                         <span className="text-sm font-bold text-foreground">
                           {formatNumber(item.value)}
@@ -391,11 +298,7 @@ function AdminFormsPage() {
                       Início
                     </p>
 
-                    <p className="mt-2 font-bold">
-                      {formatPercent(
-                        data.all?.totals.startRate,
-                      )}
-                    </p>
+                    <p className="mt-2 font-bold">{formatPercent(data.all?.totals.startRate)}</p>
                   </div>
 
                   <div className="rounded-xl border border-border bg-secondary/30 p-3">
@@ -404,10 +307,7 @@ function AdminFormsPage() {
                     </p>
 
                     <p className="mt-2 font-bold">
-                      {formatPercent(
-                        data.all?.totals
-                          .completionRate,
-                      )}
+                      {formatPercent(data.all?.totals.completionRate)}
                     </p>
                   </div>
 
@@ -416,18 +316,13 @@ function AdminFormsPage() {
                       Lead
                     </p>
 
-                    <p className="mt-2 font-bold">
-                      {formatPercent(
-                        data.all?.totals.leadRate,
-                      )}
-                    </p>
+                    <p className="mt-2 font-bold">{formatPercent(data.all?.totals.leadRate)}</p>
                   </div>
                 </div>
               </div>
             ) : (
               <p className="py-8 text-sm text-muted-foreground">
-                Métricas do formulário indisponíveis no
-                momento.
+                Métricas do formulário indisponíveis no momento.
               </p>
             )}
           </CardContent>
@@ -435,16 +330,12 @@ function AdminFormsPage() {
 
         <Card className="border border-border bg-card shadow-soft">
           <CardHeader>
-            <CardTitle className="font-display text-2xl font-extrabold">
-              Perfil
-            </CardTitle>
+            <CardTitle className="font-display text-2xl font-extrabold">Perfil</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-3">
             {loading ? (
-              <p className="py-8 text-sm text-muted-foreground">
-                Carregando perfis...
-              </p>
+              <p className="py-8 text-sm text-muted-foreground">Carregando perfis...</p>
             ) : profiles.length > 0 ? (
               profiles.map((item) => {
                 const Icon = item.icon;
@@ -456,30 +347,20 @@ function AdminFormsPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="flex items-center gap-2 font-medium text-foreground">
-                        <Icon
-                          size={14}
-                          className="text-primary"
-                        />
+                        <Icon size={14} className="text-primary" />
 
                         {item.label}
                       </span>
 
                       <span className="font-bold text-foreground">
-                        {formatPercent(
-                          item.percentage,
-                        )}
+                        {formatPercent(item.percentage)}
                       </span>
                     </div>
 
                     <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {formatNumber(item.value)}{" "}
-                        respostas
-                      </span>
+                      <span>{formatNumber(item.value)} respostas</span>
 
-                      <span>
-                        do total classificado
-                      </span>
+                      <span>do total classificado</span>
                     </div>
                   </div>
                 );
@@ -495,9 +376,7 @@ function AdminFormsPage() {
 
       <Card className="border border-border bg-card shadow-soft">
         <CardHeader>
-          <CardTitle className="font-display text-xl font-extrabold">
-            Distribuição geral
-          </CardTitle>
+          <CardTitle className="font-display text-xl font-extrabold">Distribuição geral</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -509,9 +388,7 @@ function AdminFormsPage() {
                 </p>
 
                 <p className="mt-2 text-2xl font-extrabold">
-                  {formatNumber(
-                    data.all.totals.reached,
-                  )}
+                  {formatNumber(data.all.totals.reached)}
                 </p>
               </div>
 
@@ -521,9 +398,7 @@ function AdminFormsPage() {
                 </p>
 
                 <p className="mt-2 text-2xl font-extrabold">
-                  {formatNumber(
-                    data.all.totals.started,
-                  )}
+                  {formatNumber(data.all.totals.started)}
                 </p>
               </div>
 
@@ -533,9 +408,7 @@ function AdminFormsPage() {
                 </p>
 
                 <p className="mt-2 text-2xl font-extrabold">
-                  {formatNumber(
-                    data.all.totals.completed,
-                  )}
+                  {formatNumber(data.all.totals.completed)}
                 </p>
               </div>
 
@@ -545,21 +418,15 @@ function AdminFormsPage() {
                 </p>
 
                 <p className="mt-2 text-2xl font-extrabold">
-                  {formatNumber(
-                    data.all.totals.leads,
-                  )}
+                  {formatNumber(data.all.totals.leads)}
                 </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Dados indisponíveis no momento.
-            </p>
+            <p className="text-sm text-muted-foreground">Dados indisponíveis no momento.</p>
           )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-export default AdminFormsPage;

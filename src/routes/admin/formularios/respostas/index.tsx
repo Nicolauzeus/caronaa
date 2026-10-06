@@ -240,5 +240,3 @@ function AdminResponsesPage() {
     </div>
   );
 }
-
-export default AdminResponsesPage;

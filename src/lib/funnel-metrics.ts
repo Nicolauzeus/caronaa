@@ -3,7 +3,8 @@ import type { FormMetricsFilters } from "@/lib/formulario/metrics";
 
 export type FunnelMetricEvent = {
   event_id: string;
-  event_name: "landing_view" | "form_started" | "form_completed" | "lead_created" | "form_step_completed";
+  event_name:
+    "landing_view" | "form_started" | "form_completed" | "lead_created" | "form_step_completed";
   user_id: string | null;
   anonymous_session_id: string | null;
 };
@@ -43,7 +44,10 @@ function eventIdentity(event: FunnelMetricEvent) {
 
 /** Small in-memory reference reducer used to compare the SQL RPC against fixtures. */
 export function buildFunnelMetrics(events: FunnelMetricEvent[]): FunnelMetricsSummary {
-  const buckets = Object.fromEntries(eventOrder.map((name) => [name, new Set<string>()])) as Record<FunnelMetricEvent["event_name"], Set<string>>;
+  const buckets = Object.fromEntries(eventOrder.map((name) => [name, new Set<string>()])) as Record<
+    FunnelMetricEvent["event_name"],
+    Set<string>
+  >;
   for (const event of events) {
     if (eventOrder.includes(event.event_name)) buckets[event.event_name].add(eventIdentity(event));
   }

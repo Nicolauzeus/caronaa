@@ -1,28 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
-import {
-  ArrowRight,
-  Camera,
-  CheckCircle2,
-  Mail,
-  MapPin,
-  ShieldCheck,
-} from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { ArrowRight, Camera, CheckCircle2, Mail, MapPin, ShieldCheck } from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getMyUserVerifications,
-  type UserVerification,
-} from "@/lib/user-verifications";
+import { getMyUserVerifications, type UserVerification } from "@/lib/user-verifications";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/perfil")({
@@ -31,8 +16,7 @@ export const Route = createFileRoute("/_authenticated/perfil")({
       { title: "Meu perfil — CARONAA" },
       {
         name: "description",
-        content:
-          "Gerencie seus dados e verificações no CARONAA.",
+        content: "Gerencie seus dados e verificações no CARONAA.",
       },
     ],
   }),
@@ -54,26 +38,19 @@ function Perfil() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [profile, setProfile] = useState<ProfileData | null>(
-    null,
-  );
+  const [profile, setProfile] = useState<ProfileData | null>(null);
 
   const [email, setEmail] = useState("");
 
-  const [verifications, setVerifications] = useState<
-    UserVerification[]
-  >([]);
+  const [verifications, setVerifications] = useState<UserVerification[]>([]);
 
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
 
   const [photo, setPhoto] = useState<string | null>(null);
-  const [savedPhoto, setSavedPhoto] = useState<string | null>(
-    null,
-  );
+  const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
 
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [photoOpen, setPhotoOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -95,16 +72,12 @@ function Perfil() {
         }
 
         if (!user) {
-          throw new Error(
-            "Não foi possível identificar o usuário autenticado.",
-          );
+          throw new Error("Não foi possível identificar o usuário autenticado.");
         }
 
         const { data, error } = await supabase
           .from("profiles")
-          .select(
-            "id, full_name, avatar_url, city, created_at, updated_at",
-          )
+          .select("id, full_name, avatar_url, city, created_at, updated_at")
           .eq("id", user.id)
           .single();
 
@@ -112,8 +85,7 @@ function Perfil() {
           throw new Error(error.message);
         }
 
-        const verificationRows =
-          await getMyUserVerifications();
+        const verificationRows = await getMyUserVerifications();
 
         if (cancelled) return;
 
@@ -136,10 +108,7 @@ function Perfil() {
         console.error(error);
 
         toast.error("Não foi possível carregar seu perfil.", {
-          description:
-            error instanceof Error
-              ? error.message
-              : "Tente novamente.",
+          description: error instanceof Error ? error.message : "Tente novamente.",
         });
       } finally {
         if (!cancelled) {
@@ -155,23 +124,13 @@ function Perfil() {
     };
   }, []);
 
-  function selectPhoto(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
+  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     if (!file) return;
 
-    if (
-      ![
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-      ].includes(file.type)
-    ) {
-      toast.error(
-        "Escolha uma imagem JPG, PNG ou WEBP.",
-      );
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Escolha uma imagem JPG, PNG ou WEBP.");
 
       event.target.value = "";
 
@@ -203,9 +162,7 @@ function Perfil() {
       }
 
       if (!user) {
-        throw new Error(
-          "Usuário autenticado não encontrado.",
-        );
+        throw new Error("Usuário autenticado não encontrado.");
       }
 
       const extension =
@@ -217,22 +174,18 @@ function Perfil() {
 
       const path = `${user.id}/profile.${extension}`;
 
-      const { error: uploadError } =
-        await supabase.storage
-          .from("avatars")
-          .upload(path, selectedFile, {
-            upsert: true,
-            contentType: selectedFile.type,
-          });
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, selectedFile, {
+          upsert: true,
+          contentType: selectedFile.type,
+        });
 
       if (uploadError) {
         throw new Error(uploadError.message);
       }
 
-      const { data: publicUrlData } =
-        supabase.storage
-          .from("avatars")
-          .getPublicUrl(path);
+      const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(path);
 
       const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
@@ -256,8 +209,7 @@ function Perfil() {
           ? {
               ...current,
               avatar_url: publicUrl,
-              updated_at:
-                new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }
           : current,
       );
@@ -273,23 +225,14 @@ function Perfil() {
     } catch (error) {
       console.error(error);
 
-      toast.error(
-        "Não foi possível atualizar a foto.",
-        {
-          description:
-            error instanceof Error
-              ? error.message
-              : "Tente novamente.",
-        },
-      );
+      toast.error("Não foi possível atualizar a foto.", {
+        description: error instanceof Error ? error.message : "Tente novamente.",
+      });
     }
   }
 
   function cancelPhoto() {
-    if (
-      photo &&
-      photo.startsWith("blob:")
-    ) {
+    if (photo && photo.startsWith("blob:")) {
       URL.revokeObjectURL(photo);
     }
 
@@ -317,24 +260,19 @@ function Perfil() {
       }
 
       if (!user) {
-        throw new Error(
-          "Usuário autenticado não encontrado.",
-        );
+        throw new Error("Usuário autenticado não encontrado.");
       }
 
       const normalizedName = fullName.trim();
       const normalizedCity = city.trim();
 
       if (!normalizedName) {
-        toast.error(
-          "Informe seu nome antes de salvar.",
-        );
+        toast.error("Informe seu nome antes de salvar.");
 
         return;
       }
 
-      const updatedAt =
-        new Date().toISOString();
+      const updatedAt = new Date().toISOString();
 
       const { data, error } = await supabase
         .from("profiles")
@@ -344,38 +282,28 @@ function Perfil() {
           updated_at: updatedAt,
         })
         .eq("id", user.id)
-        .select(
-          "id, full_name, avatar_url, city, created_at, updated_at",
-        )
+        .select("id, full_name, avatar_url, city, created_at, updated_at")
         .single();
 
       if (error) {
         throw new Error(error.message);
       }
 
-      const updatedProfile =
-        data as ProfileData;
+      const updatedProfile = data as ProfileData;
 
       setProfile(updatedProfile);
       setFullName(updatedProfile.full_name);
       setCity(updatedProfile.city ?? "");
 
       toast.success("Perfil salvo.", {
-        description:
-          "Suas informações foram atualizadas.",
+        description: "Suas informações foram atualizadas.",
       });
     } catch (error) {
       console.error(error);
 
-      toast.error(
-        "Não foi possível salvar o perfil.",
-        {
-          description:
-            error instanceof Error
-              ? error.message
-              : "Tente novamente.",
-        },
-      );
+      toast.error("Não foi possível salvar o perfil.", {
+        description: error instanceof Error ? error.message : "Tente novamente.",
+      });
     } finally {
       setSaving(false);
     }
@@ -409,17 +337,14 @@ function Perfil() {
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
           <p className="text-sm text-muted-foreground">
-            Seu usuário está autenticado, mas o
-            perfil não pôde ser carregado.
+            Seu usuário está autenticado, mas o perfil não pôde ser carregado.
           </p>
         </div>
       </AppShell>
     );
   }
 
-  const createdYear = new Date(
-    profile.created_at,
-  ).getFullYear();
+  const createdYear = new Date(profile.created_at).getFullYear();
 
   const initials =
     fullName
@@ -449,9 +374,7 @@ function Perfil() {
                   height={112}
                   className="size-28 rounded-full object-cover ring-4 ring-secondary"
                   style={{
-                    transform: `scale(${
-                      photoOpen ? zoom : 1
-                    })`,
+                    transform: `scale(${photoOpen ? zoom : 1})`,
                   }}
                 />
               ) : (
@@ -462,9 +385,7 @@ function Perfil() {
 
               <button
                 type="button"
-                onClick={() =>
-                  inputRef.current?.click()
-                }
+                onClick={() => inputRef.current?.click()}
                 className="absolute bottom-0 right-0 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft transition-transform hover:scale-105"
                 aria-label="Alterar foto"
               >
@@ -493,9 +414,7 @@ function Perfil() {
 
             <div className="mt-4 flex justify-center">
               {verifications.length > 0 ? (
-                <VerificationBadges
-                  verifications={verifications}
-                />
+                <VerificationBadges verifications={verifications} />
               ) : (
                 <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                   Sem vínculo verificado
@@ -506,25 +425,17 @@ function Perfil() {
 
           <div className="mt-5 grid grid-cols-2 border-t border-border pt-4 text-center">
             <div>
-              <p className="font-display text-xl font-extrabold">
-                {verifications.length}
-              </p>
+              <p className="font-display text-xl font-extrabold">{verifications.length}</p>
 
-              <p className="text-[11px] text-muted-foreground">
-                Verificações
-              </p>
+              <p className="text-[11px] text-muted-foreground">Verificações</p>
             </div>
 
             <div>
               <p className="font-display text-xl font-extrabold">
-                {Number.isFinite(createdYear)
-                  ? createdYear
-                  : "—"}
+                {Number.isFinite(createdYear) ? createdYear : "—"}
               </p>
 
-              <p className="text-[11px] text-muted-foreground">
-                Desde
-              </p>
+              <p className="text-[11px] text-muted-foreground">Desde</p>
             </div>
           </div>
         </aside>
@@ -533,49 +444,27 @@ function Perfil() {
           <div className="rounded-xl border border-border bg-card p-4 shadow-soft md:p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="font-display text-lg font-extrabold">
-                  Dados pessoais
-                </h3>
+                <h3 className="font-display text-lg font-extrabold">Dados pessoais</h3>
 
                 <p className="text-xs text-muted-foreground">
-                  Informações reais associadas à sua
-                  conta CARONAA.
+                  Informações reais associadas à sua conta CARONAA.
                 </p>
               </div>
 
-              <CheckCircle2
-                size={19}
-                className="text-primary"
-              />
+              <CheckCircle2 size={19} className="text-primary" />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field
-                label="Nome"
-                value={fullName}
-                onChange={setFullName}
-                placeholder="Seu nome"
-              />
+              <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome" />
 
-              <Field
-                label="Cidade"
-                value={city}
-                onChange={setCity}
-                placeholder="Ex.: Fortaleza"
-              />
+              <Field label="Cidade" value={city} onChange={setCity} placeholder="Ex.: Fortaleza" />
 
               <div className="md:col-span-2">
-                <Field
-                  label="E-mail"
-                  value={email}
-                  readOnly
-                />
+                <Field label="E-mail" value={email} readOnly />
 
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Mail size={13} />
-                  O e-mail vem da sua conta de
-                  autenticação e não pode ser alterado
-                  por esta tela.
+                  <Mail size={13} />O e-mail vem da sua conta de autenticação e não pode ser
+                  alterado por esta tela.
                 </p>
               </div>
             </div>
@@ -588,34 +477,24 @@ function Perfil() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <h3 className="font-display text-lg font-extrabold">
-                  Vínculos verificados
-                </h3>
+                <h3 className="font-display text-lg font-extrabold">Vínculos verificados</h3>
 
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Os selos mostram vínculos identificados
-                  pelo CARONAA. Eles não representam
+                  Os selos mostram vínculos identificados pelo CARONAA. Eles não representam
                   verificação completa de identidade.
                 </p>
 
                 <div className="mt-4">
                   {verifications.length > 0 ? (
-                    <VerificationBadges
-                      verifications={verifications}
-                    />
+                    <VerificationBadges verifications={verifications} />
                   ) : (
                     <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
-                      <p className="text-sm font-semibold">
-                        Nenhum vínculo verificado ainda
-                      </p>
+                      <p className="text-sm font-semibold">Nenhum vínculo verificado ainda</p>
 
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Contas com e-mail institucional
-                        confirmado da UNIFOR recebem o
-                        selo UNIFOR. Participantes
-                        identificados pelo formulário do
-                        Siará Tech Summit 2026 recebem o
-                        selo STS 2026.
+                        Contas com e-mail institucional confirmado da UNIFOR recebem o selo UNIFOR.
+                        Participantes identificados pelo formulário do Siará Tech Summit 2026
+                        recebem o selo STS 2026.
                       </p>
                     </div>
                   )}
@@ -625,31 +504,21 @@ function Perfil() {
           </div>
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              asChild
-            >
+            <Button variant="outline" asChild>
               <Link to="/minhas-caronas">
                 Ver viagens
                 <ArrowRight size={16} />
               </Link>
             </Button>
 
-            <Button
-              onClick={saveProfile}
-              disabled={saving}
-            >
-              {saving
-                ? "Salvando..."
-                : "Salvar alterações"}
+            <Button onClick={saveProfile} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar alterações"}
             </Button>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck size={14} />
-
-            Seus dados são usados para sua conta e para
-            melhorar a confiança nas conexões.
+            Seus dados são usados para sua conta e para melhorar a confiança nas conexões.
           </div>
         </section>
       </div>
@@ -657,9 +526,7 @@ function Perfil() {
       {photoOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-background p-5 shadow-2xl">
-            <h3 className="font-display text-lg font-extrabold">
-              Ajustar foto
-            </h3>
+            <h3 className="font-display text-lg font-extrabold">Ajustar foto</h3>
 
             <div className="mx-auto mt-5 flex size-56 items-center justify-center overflow-hidden rounded-full border-4 border-primary bg-secondary">
               {photo ? (
@@ -680,33 +547,23 @@ function Perfil() {
 
             <label className="mt-5 block text-xs font-bold text-muted-foreground">
               ZOOM
-
               <input
                 type="range"
                 min="1"
                 max="2.5"
                 step="0.05"
                 value={zoom}
-                onChange={(event) =>
-                  setZoom(
-                    Number(event.target.value),
-                  )
-                }
+                onChange={(event) => setZoom(Number(event.target.value))}
                 className="mt-2 w-full accent-primary"
               />
             </label>
 
             <div className="mt-5 flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={cancelPhoto}
-              >
+              <Button variant="ghost" onClick={cancelPhoto}>
                 Cancelar
               </Button>
 
-              <Button onClick={confirmPhoto}>
-                Confirmar foto
-              </Button>
+              <Button onClick={confirmPhoto}>Confirmar foto</Button>
             </div>
           </div>
         </div>
@@ -737,12 +594,11 @@ function Field({
       <input
         type={type}
         value={value}
-        onChange={(event) =>
-          onChange?.(event.target.value)
-        }
+        onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
         className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15 read-only:cursor-not-allowed read-only:opacity-70"
       />
     </label>
-  );}
+  );
+}

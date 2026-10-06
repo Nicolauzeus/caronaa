@@ -1,4 +1,5 @@
-import { ArrowRight, CarFront, Clock3, Route, UsersRound } from "lucide-react";
+import { ArrowRight, MapPin, Calendar, Clock, Sparkles } from "lucide-react";
+import { BrandLogo, StsBadge, UniforHubBadge } from "@/components/caronaa/BrandElements";
 import desktopArtwork from "@/assets/summitdesktop.png";
 import mobileArtwork from "@/assets/summitmobile.jpeg";
 
@@ -6,16 +7,11 @@ type FormIntroProps = {
   onStart: () => void;
 };
 
-const benefits = [
-  { icon: CarFront, label: "Ofereça lugares no seu carro" },
-  { icon: Route, label: "Encontre alguém no seu caminho" },
-  { icon: UsersRound, label: "Combine uma rota compatível" },
-];
-
 export function FormIntro({ onStart }: FormIntroProps) {
   return (
-    <section className="relative isolate flex min-h-[calc(100svh-4rem)] overflow-hidden bg-[#070a25] text-white">
-      <picture className="absolute inset-0 -z-20">
+    <section className="relative isolate flex min-h-[calc(100svh-4rem)] overflow-hidden bg-caronaa-dark text-white">
+      {/* Background Hero Image */}
+      <picture className="absolute inset-0 -z-20 opacity-35">
         <source media="(min-width: 768px)" srcSet={desktopArtwork} />
         <img
           src={mobileArtwork}
@@ -28,49 +24,105 @@ export function FormIntro({ onStart }: FormIntroProps) {
 
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(5,8,29,0.12)_0%,rgba(5,8,29,0.2)_38%,rgba(5,8,29,0.8)_100%)] md:bg-[linear-gradient(90deg,rgba(5,8,29,0.04)_0%,rgba(5,8,29,0.04)_43%,rgba(5,8,29,0.62)_62%,rgba(5,8,29,0.88)_100%)]"
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19]/85 to-transparent md:bg-gradient-to-r md:from-[#0b0f19] md:via-[#0b0f19]/80 md:to-transparent"
       />
 
-      <div className="mx-auto flex w-full max-w-[1280px] items-center justify-center px-4 py-8 sm:px-6 md:justify-end md:px-10 md:py-12 lg:px-14">
-        <div className="w-full max-w-xl rounded-[2rem] border border-white/15 bg-[#080b28]/75 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8 md:bg-[#080b28]/70 md:p-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-fuchsia-300/30 bg-fuchsia-300/10 px-3.5 py-2 text-xs font-semibold tracking-wide text-white shadow-[0_0_28px_rgba(217,70,239,0.14)] sm:text-sm">
-            <span
-              className="size-2 rounded-full bg-[#20e7ed] shadow-[0_0_12px_#20e7ed]"
-              aria-hidden="true"
-            />
-            Validação ao vivo no Siará Tech Summit 2026
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-center px-4 py-8 sm:px-6 md:py-14">
+        <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0b0f19]/80 p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+          {/* Header Institucional com Hierarquia de Marcas:
+              1. CARONAA = Marca Principal
+              2. Siará Tech Summit = Contexto do evento
+              3. Unifor Hub = Ecossistema da startup
+              4. Sebrae = Realização do evento
+          */}
+          <div className="border-b border-white/10 pb-6 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <BrandLogo size="md" />
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/90 shadow-2xs backdrop-blur-md"
+                  title="Startup incubada/residente no ecossistema de inovação Unifor Hub"
+                >
+                  <span className="size-1.5 rounded-full bg-caronaa-primary shrink-0" />
+                  <span>Startup do Unifor Hub</span>
+                </span>
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 px-3 py-1 text-xs font-semibold text-cyan-300 shadow-2xs backdrop-blur-md"
+                  title="Startup expositora oficial no Siará Tech Summit 2026"
+                >
+                  <span className="relative flex size-1.5 shrink-0">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-pink-500 opacity-60" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-cyan-400" />
+                  </span>
+                  <span>Expositora no Siará Tech Summit 2026</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-end">
+              <span className="text-[10px] font-medium text-white/50 tracking-wider uppercase">
+                Evento realizado pelo Sebrae Ceará
+              </span>
+            </div>
           </div>
 
-          <h1 className="mt-5 font-display text-[2rem] font-extrabold leading-[1.08] tracking-tight sm:mt-6 sm:text-4xl md:text-[2.75rem]">
-            Vai sair do STS hoje?
-            <span className="mt-1 block bg-gradient-to-r from-[#ffe15b] via-[#ffd12d] to-[#ffb928] bg-clip-text text-transparent">
-              Sua carona pode estar aqui.
-            </span>
-          </h1>
+          <div className="mt-6 space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-caronaa-primary/30 bg-caronaa-primary/10 px-3.5 py-1.5 text-xs font-semibold text-caronaa-primary">
+              <Sparkles size={14} />
+              Validação oficial no Siará Tech Summit 2026
+            </div>
 
-          <p className="mt-4 max-w-lg text-sm leading-6 text-white/85 sm:text-base sm:leading-7">
-            A CARONAA conecta quem procura e quem oferece carona com origem, destino e horário
-            compatíveis — para você voltar do evento com mais facilidade.
-          </p>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
+              Garanta sua CARONAA no <span className="text-caronaa-primary">Siará Tech Summit</span>{" "}
+              🚗
+            </h1>
 
-          <ul className="mt-5 grid gap-2.5 text-sm text-white/90 sm:mt-6 sm:grid-cols-1">
-            {benefits.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex items-center gap-3">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-[#ffe15b]/20 bg-[#ffe15b]/10 text-[#ffe15b]">
-                  <Icon size={16} aria-hidden="true" />
-                </span>
-                <span>{label}</span>
-              </li>
-            ))}
-          </ul>
+            <p className="text-base leading-relaxed text-white/80 sm:text-lg">
+              Estamos testando a CARONAA em situações reais. Conte seu trajeto e veja como podemos
+              conectar você a pessoas que vão na mesma direção com conforto e agilidade.
+            </p>
+          </div>
 
-          <div className="mt-6 sm:mt-8">
+          {/* Quick Info Grid */}
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-caronaa-primary/20 text-caronaa-primary">
+                <MapPin size={18} />
+              </span>
+              <div>
+                <p className="text-[11px] font-medium text-white/60">Ponto de encontro</p>
+                <p className="text-xs font-bold text-white">Centro de Eventos do Ceará</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-event-cyan/20 text-event-cyan">
+                <Calendar size={18} />
+              </span>
+              <div>
+                <p className="text-[11px] font-medium text-white/60">Data do evento</p>
+                <p className="text-xs font-bold text-white">07 a 09 de outubro</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-400">
+                <Clock size={18} />
+              </span>
+              <div>
+                <p className="text-[11px] font-medium text-white/60">Tempo estimado</p>
+                <p className="text-xs font-bold text-white">Leva cerca de 1–2 minutos</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Call to Action */}
+          <div className="mt-8 space-y-3">
             <button
               type="button"
               onClick={onStart}
-              className="group inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#ffe15b] to-[#ffc52f] px-5 py-3.5 text-base font-extrabold text-[#19162a] shadow-[0_10px_32px_rgba(255,202,47,0.25)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_38px_rgba(255,202,47,0.38)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#080b28]"
+              className="group inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-caronaa-primary px-6 py-4 text-base font-bold text-caronaa-dark shadow-lg shadow-caronaa-primary/25 transition-all duration-200 hover:bg-caronaa-primary-strong hover:shadow-xl hover:shadow-caronaa-primary/35 hover:-translate-y-0.5"
             >
-              Quero usar a CARONAA hoje
+              Começar minha CARONAA
               <ArrowRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"
@@ -78,13 +130,10 @@ export function FormIntro({ onStart }: FormIntroProps) {
               />
             </button>
 
-            <div className="mt-3 flex items-start justify-center gap-2 text-center text-xs leading-5 text-white/70 sm:text-sm">
-              <Clock3 size={15} className="mt-0.5 shrink-0 text-[#20e7ed]" aria-hidden="true" />
-              <p>
-                Leva cerca de 1 minuto. Seus dados serão usados apenas para tentar encontrar uma
-                carona compatível durante o evento.
-              </p>
-            </div>
+            <p className="text-center text-xs text-white/60">
+              Sem burocracia. Suas informações serão analisadas apenas para buscar combinações
+              compatíveis durante o evento.
+            </p>
           </div>
         </div>
       </div>
