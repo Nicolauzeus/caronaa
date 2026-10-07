@@ -27,15 +27,15 @@ export const createRideRequest = createServerFn({ method: "POST" })
     const { data: requestId, error } = await context.supabase.rpc("create_ride_request", {
       p_origin: data.origin,
       p_destination: data.destination,
-      p_origin_lat: data.originLat ?? null,
-      p_origin_lng: data.originLng ?? null,
-      p_destination_lat: data.destinationLat ?? null,
-      p_destination_lng: data.destinationLng ?? null,
+      p_origin_lat: data.originLat ?? undefined,
+      p_origin_lng: data.originLng ?? undefined,
+      p_destination_lat: data.destinationLat ?? undefined,
+      p_destination_lng: data.destinationLng ?? undefined,
       p_ride_date: data.rideDate,
       p_departure_time: data.departureTime,
       p_passenger_count: data.passengerCount ?? 1,
       p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      p_price: data.price ?? null,
+      p_price: data.price ?? undefined,
     });
     if (error) {
       throw new Error(`Não foi possível criar a solicitação: ${error.message}`);
@@ -50,10 +50,10 @@ export const createRideOffer = createServerFn({ method: "POST" })
     const { data: offerId, error } = await context.supabase.rpc("create_ride_offer", {
       p_origin: data.origin,
       p_destination: data.destination,
-      p_origin_lat: data.originLat ?? null,
-      p_origin_lng: data.originLng ?? null,
-      p_destination_lat: data.destinationLat ?? null,
-      p_destination_lng: data.destinationLng ?? null,
+      p_origin_lat: data.originLat ?? undefined,
+      p_origin_lng: data.originLng ?? undefined,
+      p_destination_lat: data.destinationLat ?? undefined,
+      p_destination_lng: data.destinationLng ?? undefined,
       p_ride_date: data.rideDate,
       p_departure_time: data.departureTime,
       p_available_seats: data.availableSeats ?? 1,

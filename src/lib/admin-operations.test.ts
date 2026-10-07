@@ -36,6 +36,7 @@ function compatibleData(): OperationData & {
         target_offer_id: null,
         time_tolerance_minutes: 15,
         created_at: "2026-01-01",
+        routine_id: null, routine_date: null, routine_override: false, routine_suppressed: false,
       },
     ],
     offers: [
@@ -56,6 +57,7 @@ function compatibleData(): OperationData & {
         status: "available",
         time_tolerance_minutes: 15,
         created_at: "2026-01-01",
+        routine_id: null, routine_date: null, routine_override: false, routine_suppressed: false,
       },
     ],
   };
