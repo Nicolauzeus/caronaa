@@ -26,8 +26,13 @@ import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authen
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminCaronasRouteImport } from './routes/admin/caronas'
+import { Route as AdminMatchingRouteImport } from './routes/admin/matching'
+import { Route as AdminMotoristasRouteImport } from './routes/admin/motoristas'
 import { Route as AdminOportunidadesRouteImport } from './routes/admin/oportunidades'
+import { Route as AdminPassageirosRouteImport } from './routes/admin/passageiros'
 import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacionamentos'
+import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
@@ -122,14 +127,39 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCaronasRoute = AdminCaronasRouteImport.update({
+  id: '/caronas',
+  path: '/caronas',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMatchingRoute = AdminMatchingRouteImport.update({
+  id: '/matching',
+  path: '/matching',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMotoristasRoute = AdminMotoristasRouteImport.update({
+  id: '/motoristas',
+  path: '/motoristas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOportunidadesRoute = AdminOportunidadesRouteImport.update({
   id: '/oportunidades',
   path: '/oportunidades',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPassageirosRoute = AdminPassageirosRouteImport.update({
+  id: '/passageiros',
+  path: '/passageiros',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRelacionamentosRoute = AdminRelacionamentosRouteImport.update({
   id: '/relacionamentos',
   path: '/relacionamentos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSolicitacoesRoute = AdminSolicitacoesRouteImport.update({
+  id: '/solicitacoes',
+  path: '/solicitacoes',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSugestoesRoute = AdminSugestoesRouteImport.update({
@@ -191,8 +221,13 @@ export interface FileRoutesByFullPath {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/caronas': typeof AdminCaronasRoute
+  '/admin/matching': typeof AdminMatchingRoute
+  '/admin/motoristas': typeof AdminMotoristasRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/passageiros': typeof AdminPassageirosRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
@@ -218,8 +253,13 @@ export interface FileRoutesByTo {
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/caronas': typeof AdminCaronasRoute
+  '/admin/matching': typeof AdminMatchingRoute
+  '/admin/motoristas': typeof AdminMotoristasRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/passageiros': typeof AdminPassageirosRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin': typeof AdminIndexRoute
@@ -248,8 +288,13 @@ export interface FileRoutesById {
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/caronas': typeof AdminCaronasRoute
+  '/admin/matching': typeof AdminMatchingRoute
+  '/admin/motoristas': typeof AdminMotoristasRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/passageiros': typeof AdminPassageirosRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
+  '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
@@ -278,8 +323,13 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/caronas'
+    | '/admin/matching'
+    | '/admin/motoristas'
     | '/admin/oportunidades'
+    | '/admin/passageiros'
     | '/admin/relacionamentos'
+    | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
@@ -305,8 +355,13 @@ export interface FileRouteTypes {
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/caronas'
+    | '/admin/matching'
+    | '/admin/motoristas'
     | '/admin/oportunidades'
+    | '/admin/passageiros'
     | '/admin/relacionamentos'
+    | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin'
@@ -334,8 +389,13 @@ export interface FileRouteTypes {
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
+    | '/admin/caronas'
+    | '/admin/matching'
+    | '/admin/motoristas'
     | '/admin/oportunidades'
+    | '/admin/passageiros'
     | '/admin/relacionamentos'
+    | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
@@ -483,6 +543,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/caronas': {
+      id: '/admin/caronas'
+      path: '/caronas'
+      fullPath: '/admin/caronas'
+      preLoaderRoute: typeof AdminCaronasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/matching': {
+      id: '/admin/matching'
+      path: '/matching'
+      fullPath: '/admin/matching'
+      preLoaderRoute: typeof AdminMatchingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/motoristas': {
+      id: '/admin/motoristas'
+      path: '/motoristas'
+      fullPath: '/admin/motoristas'
+      preLoaderRoute: typeof AdminMotoristasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/oportunidades': {
       id: '/admin/oportunidades'
       path: '/oportunidades'
@@ -490,11 +571,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOportunidadesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/passageiros': {
+      id: '/admin/passageiros'
+      path: '/passageiros'
+      fullPath: '/admin/passageiros'
+      preLoaderRoute: typeof AdminPassageirosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/relacionamentos': {
       id: '/admin/relacionamentos'
       path: '/relacionamentos'
       fullPath: '/admin/relacionamentos'
       preLoaderRoute: typeof AdminRelacionamentosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/solicitacoes': {
+      id: '/admin/solicitacoes'
+      path: '/solicitacoes'
+      fullPath: '/admin/solicitacoes'
+      preLoaderRoute: typeof AdminSolicitacoesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/sugestoes': {
@@ -586,8 +681,13 @@ const AdminValidacaoRouteWithChildren = AdminValidacaoRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminCaronasRoute: typeof AdminCaronasRoute
+  AdminMatchingRoute: typeof AdminMatchingRoute
+  AdminMotoristasRoute: typeof AdminMotoristasRoute
   AdminOportunidadesRoute: typeof AdminOportunidadesRoute
+  AdminPassageirosRoute: typeof AdminPassageirosRoute
   AdminRelacionamentosRoute: typeof AdminRelacionamentosRoute
+  AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
   AdminSugestoesRoute: typeof AdminSugestoesRoute
   AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
@@ -599,8 +699,13 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCaronasRoute: AdminCaronasRoute,
+  AdminMatchingRoute: AdminMatchingRoute,
+  AdminMotoristasRoute: AdminMotoristasRoute,
   AdminOportunidadesRoute: AdminOportunidadesRoute,
+  AdminPassageirosRoute: AdminPassageirosRoute,
   AdminRelacionamentosRoute: AdminRelacionamentosRoute,
+  AdminSolicitacoesRoute: AdminSolicitacoesRoute,
   AdminSugestoesRoute: AdminSugestoesRoute,
   AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,

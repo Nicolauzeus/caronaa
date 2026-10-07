@@ -10,11 +10,19 @@ import { toast } from "sonner";
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
-import type { RideStatus } from "@/lib/ride-lifecycle";
+import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
 import { supabase } from "@/integrations/supabase/client";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
+import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
+import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
+import { RideRoutineManager } from "@/components/caronaa/RideRoutineManager";
 import type { FormLocationDetails } from "@/lib/location/types";
+import {
+  TimeToleranceSelector,
+  type TimeToleranceMinutes,
+} from "@/components/caronaa/TimeToleranceSelector";
+import { formatBrl } from "@/lib/ride-cost";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -37,6 +45,7 @@ type FormState = {
   price: string;
   meeting: string;
   notes: string;
+  timeTolerance: TimeToleranceMinutes;
 };
 const initialForm: FormState = {
   origin: "",
@@ -49,12 +58,14 @@ const initialForm: FormState = {
   price: "",
   meeting: "",
   notes: "",
+  timeTolerance: 15,
 };
 
 function MinhasCaronas() {
   const publishRequest = useServerFn(createRideRequest);
   const loadMyRides = useServerFn(getMyRides);
-  const [tab, setTab] = useState<"pedidos" | "disponiveis">("pedidos");
+  const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas">("pedidos");
+  const [mode, setMode] = useState<"point" | "routine">("point");
   const [form, setForm] = useState<FormState>(initialForm);
   const [passengerRides, setPassengerRides] = useState<RideSummary[]>([]);
   const [driverRides, setDriverRides] = useState<RideSummary[]>([]);
@@ -127,6 +138,8 @@ function MinhasCaronas() {
           rideDate: form.date,
           departureTime: form.time,
           passengerCount: Number(form.seats),
+          timeToleranceMinutes: form.timeTolerance,
+          price: form.price ? Number(form.price) : undefined,
         },
       });
     } catch (error) {
@@ -147,127 +160,165 @@ function MinhasCaronas() {
         title="Minhas viagens"
         description="Publique um pedido e acompanhe suas conexões em um só lugar."
       />
-      <form
-        onSubmit={submit}
-        className="rounded-xl border border-border bg-card p-4 shadow-soft md:p-5"
-      >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold">Pedir carona</p>
-            <p className="text-xs text-muted-foreground">
-              Um mapa compartilhado orienta origem e destino.
-            </p>
+      <RideScheduleMode value={mode} onChange={setMode} />
+      {mode === "routine" ? (
+        <RideRoutineForm
+          kind="request"
+          initial={{
+            origin: form.origin,
+            destination: form.destination,
+            originLat: form.originLocation?.lat ?? null,
+            originLng: form.originLocation?.lng ?? null,
+            destinationLat: form.destinationLocation?.lat ?? null,
+            destinationLng: form.destinationLocation?.lng ?? null,
+            departureTime: form.time || "07:30",
+            seats: Number(form.seats),
+            timeToleranceMinutes: form.timeTolerance,
+          }}
+          onSaved={async () => {
+            setMode("point");
+            setTab("rotinas");
+            await refreshRides(false);
+          }}
+        />
+      ) : (
+        <form
+          onSubmit={submit}
+          className="rounded-xl border border-border bg-card p-4 shadow-soft md:p-5"
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold">Pedir carona</p>
+              <p className="text-xs text-muted-foreground">
+                Um mapa compartilhado orienta origem e destino.
+              </p>
+            </div>
+            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold text-primary">
+              A / B
+            </span>
           </div>
-          <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold text-primary">
-            A / B
-          </span>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.1fr]">
-          <LocationAutocomplete
-            id="pedido-origem"
-            label="Origem"
-            value={form.origin}
-            onChange={(v, details) => {
-              setForm((prev) => ({
-                ...prev,
-                origin: details?.formattedAddress || v,
-                originLocation: details,
-              }));
-            }}
-            placeholder="De onde você sai?"
-            required
-            variant="simple"
-          />
-          <LocationAutocomplete
-            id="pedido-destino"
-            label="Destino"
-            value={form.destination}
-            onChange={(v, details) => {
-              setForm((prev) => ({
-                ...prev,
-                destination: details?.formattedAddress || v,
-                destinationLocation: details,
-              }));
-            }}
-            placeholder="Para onde você vai?"
-            required
-            variant="simple"
-          />
-          <div className="lg:row-span-2">
-            <RouteMap
-              origin={form.origin}
-              destination={form.destination}
-              originLocation={form.originLocation}
-              destinationLocation={form.destinationLocation}
-              heightClassName="min-h-48 h-full"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Field
-              label="Data"
-              value={form.date}
-              onChange={(value) => update("date", value)}
-              type="date"
+          <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.1fr]">
+            <LocationAutocomplete
+              id="pedido-origem"
+              label="Origem"
+              value={form.origin}
+              onChange={(v, details) => {
+                setForm((prev) => ({
+                  ...prev,
+                  origin: details?.formattedAddress || v,
+                  originLocation: details,
+                }));
+              }}
+              placeholder="De onde você sai?"
               required
+              variant="simple"
             />
-            <Field
-              label="Horário"
-              value={form.time}
-              onChange={(value) => update("time", value)}
-              type="time"
+            <LocationAutocomplete
+              id="pedido-destino"
+              label="Destino"
+              value={form.destination}
+              onChange={(v, details) => {
+                setForm((prev) => ({
+                  ...prev,
+                  destination: details?.formattedAddress || v,
+                  destinationLocation: details,
+                }));
+              }}
+              placeholder="Para onde você vai?"
               required
+              variant="simple"
             />
-            <Field
-              label="Lugares"
-              value={form.seats}
-              onChange={(value) => update("seats", value)}
-              type="number"
-              required
-            />
-            <Field
-              label="Valor (R$)"
-              value={form.price}
-              onChange={(value) => update("price", value)}
-              type="number"
-              placeholder="0"
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2">
-            <Field
-              label="Ponto de embarque"
-              value={form.meeting}
-              onChange={(value) => update("meeting", value)}
-              placeholder="Ex.: Praça Portugal"
-            />
-            <label className="block text-xs font-bold text-muted-foreground">
-              OBSERVAÇÕES
-              <textarea
-                value={form.notes}
-                onChange={(event) => update("notes", event.target.value)}
-                placeholder="Algum detalhe importante?"
-                rows={2}
-                className="mt-1.5 w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+            <div className="lg:row-span-2">
+              <RouteMap
+                origin={form.origin}
+                destination={form.destination}
+                originLocation={form.originLocation}
+                destinationLocation={form.destinationLocation}
+                heightClassName="min-h-48 h-full"
               />
-            </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field
+                label="Data"
+                value={form.date}
+                onChange={(value) => update("date", value)}
+                type="date"
+                required
+              />
+              <Field
+                label="Horário"
+                value={form.time}
+                onChange={(value) => update("time", value)}
+                type="time"
+                required
+              />
+              <Field
+                label="Lugares"
+                value={form.seats}
+                onChange={(value) => update("seats", value)}
+                type="number"
+                required
+              />
+              <Field
+                label="Valor (R$)"
+                value={form.price}
+                onChange={(value) => update("price", value)}
+                type="number"
+                placeholder="0"
+              />
+            </div>
+            <div className="lg:col-span-2 rounded-lg border border-border/70 bg-muted/15 p-3">
+              <TimeToleranceSelector
+                value={form.timeTolerance}
+                onChange={(val) => setForm((prev) => ({ ...prev, timeTolerance: val }))}
+                baseTime={form.time}
+                label="Tolerância de horário do pedido"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2">
+              <LocationAutocomplete
+                id="pedido-meeting"
+                label="Ponto de embarque"
+                value={form.meeting}
+                onChange={(value, details) => update("meeting", details?.formattedAddress || value)}
+                placeholder="Ex.: Praça Portugal"
+                variant="simple"
+              />
+              <label className="block text-xs font-bold text-muted-foreground">
+                OBSERVAÇÕES
+                <textarea
+                  value={form.notes}
+                  onChange={(event) => update("notes", event.target.value)}
+                  placeholder="Algum detalhe importante?"
+                  rows={2}
+                  className="mt-1.5 w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                />
+              </label>
+            </div>
           </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button type="submit">
-            Publicar pedido <ArrowRight size={16} />
-          </Button>
-        </div>
-      </form>
+          <div className="mt-4 flex justify-end">
+            <Button type="submit">
+              Publicar pedido <ArrowRight size={16} />
+            </Button>
+          </div>
+        </form>
+      )}
       <div className="mt-7 border-b border-border">
-        <div className="flex gap-5">
+        <div className="flex flex-wrap gap-5">
           <Tab active={tab === "pedidos"} onClick={() => setTab("pedidos")}>
             Meus pedidos ({passengerRides.length})
           </Tab>
           <Tab active={tab === "disponiveis"} onClick={() => setTab("disponiveis")}>
             Minhas ofertas ({driverRides.length})
           </Tab>
+          <Tab active={tab === "rotinas"} onClick={() => setTab("rotinas")}>
+            Rotinas
+          </Tab>
         </div>
       </div>
-      {loading ? (
+      {tab === "rotinas" ? (
+        <RideRoutineManager onChanged={() => refreshRides(false)} />
+      ) : loading ? (
         <div className="mt-5 rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
           Carregando suas viagens...
         </div>
@@ -394,45 +445,13 @@ function initials(name: string) {
   );
 }
 
-function nextActions(
-  status: string,
-  role: "driver" | "passenger" | "available",
-): Array<{ label: string; status: RideStatus; variant?: "outline" }> {
-  if (status === "MATCHED") {
-    return [
-      { label: "Confirmar carona", status: "CONFIRMED" },
-      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
-    ];
-  }
-
-  if (status === "CONFIRMED") {
-    if (role === "driver") {
-      return [
-        { label: "Iniciar viagem", status: "IN_PROGRESS" },
-        { label: "Cancelar", status: "CANCELLED", variant: "outline" },
-      ];
-    }
-    // Passageiro já teve a carona confirmada, sem botão redundante de confirmar
-    return [{ label: "Cancelar", status: "CANCELLED", variant: "outline" }];
-  }
-
-  if (status === "IN_PROGRESS") {
-    return [
-      { label: "Concluir viagem", status: "COMPLETED" },
-      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
-    ];
-  }
-
-  return [];
-}
-
 function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise<void> }) {
   const [details, setDetails] = useState(false);
   const [updating, setUpdating] = useState<RideStatus | null>(null);
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
     ride.role === "driver" ? person?.fullName || "Passageiro" : person?.fullName || "Você";
-  const actions = ride.rideId ? nextActions(ride.status, ride.role) : [];
+  const actions = ride.rideId ? getRideNextActions(ride.status, ride.role) : [];
 
   async function updateStatus(nextStatus: RideStatus) {
     if (!ride.rideId) return;
@@ -458,6 +477,9 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
 
   return (
     <article className="card-interactive rounded-xl border border-border bg-card p-4 shadow-soft">
+      <p className="mb-2 text-xs font-semibold text-muted-foreground">
+        {ride.routineId ? "Recorrente" : "Pontual"}
+      </p>
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
           <CalendarDays size={15} className="text-primary" />
@@ -488,6 +510,24 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
           Match criado! Confirme a carona para garantir a viagem.
         </div>
       )}
+
+      <div
+        className="mt-3 rounded-lg border border-border/80 bg-secondary/50 p-3 text-xs space-y-1.5"
+        data-testid="ride-cost-breakdown"
+      >
+        <div className="flex justify-between font-medium text-foreground">
+          <span className="text-muted-foreground">Valor da viagem:</span>
+          <span className="font-bold">{formatBrl(ride.totalPrice)}</span>
+        </div>
+        <div className="flex justify-between text-muted-foreground">
+          <span>Passageiros confirmados:</span>
+          <span className="font-semibold text-foreground">{ride.confirmedPassengers}</span>
+        </div>
+        <div className="flex justify-between font-bold text-primary pt-1.5 border-t border-border/60">
+          <span>Contribuição por passageiro:</span>
+          <span>{formatBrl(ride.passengerContribution)}</span>
+        </div>
+      </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-2">
@@ -538,6 +578,15 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
           ))}
         </div>
       ) : null}
+      {ride.rideId && (
+        <RideSafetyPanel
+          rideId={ride.rideId}
+          role={ride.role}
+          viewerUserId={ride.viewerUserId}
+          status={ride.status}
+          onChanged={onChanged}
+        />
+      )}
     </article>
   );
 }

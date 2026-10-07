@@ -111,6 +111,9 @@ export function RideCard({
         <span className="text-sm text-muted-foreground">Destino</span>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs font-medium text-muted-foreground">
+        {ride.scheduleType && (
+          <span>{ride.scheduleType === "routine" ? "Recorrente" : "Pontual"}</span>
+        )}
         <span className="flex items-center gap-1.5">
           <Clock3 size={14} />
           {formatDate(ride.rideDate)}

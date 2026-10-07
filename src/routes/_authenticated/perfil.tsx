@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyUserVerifications, type UserVerification } from "@/lib/user-verifications";
 import { toast } from "sonner";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 
 export const Route = createFileRoute("/_authenticated/perfil")({
   head: () => ({
@@ -457,7 +458,14 @@ function Perfil() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome" />
 
-              <Field label="Cidade" value={city} onChange={setCity} placeholder="Ex.: Fortaleza" />
+              <LocationAutocomplete
+                id="perfil-cidade"
+                label="Cidade"
+                value={city}
+                onChange={(val, details) => setCity(details?.city || val)}
+                placeholder="Ex.: Fortaleza"
+                variant="simple"
+              />
 
               <div className="md:col-span-2">
                 <Field label="E-mail" value={email} readOnly />

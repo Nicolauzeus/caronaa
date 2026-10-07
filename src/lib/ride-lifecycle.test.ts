@@ -47,6 +47,64 @@ describe("ride lifecycle", () => {
     ).toThrow("participants");
   });
 
+  it("allows cancellation from MATCHED, CONFIRMED, and IN_PROGRESS", () => {
+    expect(transitionRide("MATCHED", "CANCELLED", confirmed)).toBe("CANCELLED");
+    expect(transitionRide("CONFIRMED", "CANCELLED", confirmed)).toBe("CANCELLED");
+    expect(transitionRide("IN_PROGRESS", "CANCELLED", confirmed)).toBe("CANCELLED");
+  });
+
+  it("treats CANCELLED to CANCELLED as idempotent", () => {
+    expect(transitionRide("CANCELLED", "CANCELLED", confirmed)).toBe("CANCELLED");
+  });
+
+  it("rejects transitions once cancelled or completed", () => {
+    expect(() => transitionRide("CANCELLED", "CONFIRMED", confirmed)).toThrow(
+      "Invalid ride transition",
+    );
+    expect(() => transitionRide("COMPLETED", "CANCELLED", confirmed)).toThrow(
+      "Invalid ride transition",
+    );
+  });
+
+  it("provides correct nextActions for driver and passenger without redundant confirmation", async () => {
+    const { getRideNextActions } = await import("./ride-lifecycle");
+
+    // MATCHED: ambos têm Confirmar e Cancelar
+    const matchedDriverActions = getRideNextActions("MATCHED", "driver");
+    expect(matchedDriverActions).toEqual([
+      { label: "Confirmar carona", status: "CONFIRMED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ]);
+
+    const matchedPassengerActions = getRideNextActions("MATCHED", "passenger");
+    expect(matchedPassengerActions).toEqual([
+      { label: "Confirmar carona", status: "CONFIRMED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ]);
+
+    // O inicio exige PIN no painel de seguranca; as acoes comuns permitem cancelar.
+    const confirmedDriverActions = getRideNextActions("CONFIRMED", "driver");
+    expect(confirmedDriverActions).toEqual([
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ]);
+
+    const confirmedPassengerActions = getRideNextActions("CONFIRMED", "passenger");
+    expect(confirmedPassengerActions).toEqual([
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ]);
+
+    // IN_PROGRESS: motorista e passageiro podem concluir ou cancelar
+    const inProgressActions = getRideNextActions("IN_PROGRESS", "driver");
+    expect(inProgressActions).toEqual([
+      { label: "Concluir viagem", status: "COMPLETED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ]);
+
+    // Estados terminais: sem ações
+    expect(getRideNextActions("COMPLETED", "driver")).toEqual([]);
+    expect(getRideNextActions("CANCELLED", "passenger")).toEqual([]);
+  });
+
   it("denies browser insertion of completion/payment domain events and payment writes", () => {
     expect(migration).toContain("'RIDE_COMPLETED', 'PAYMENT_COMPLETED'");
     expect(migration).toContain("REVOKE INSERT, UPDATE, DELETE ON public.rides");

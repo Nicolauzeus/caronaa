@@ -1,4 +1,5 @@
 import type { DepartureWindow } from "@/lib/formulario/types";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 
 type RouteStepProps = {
   destinationNeighborhood?: string | undefined;
@@ -70,41 +71,28 @@ export function RouteStep({
       </div>
 
       <div className="space-y-5">
-        <div className="space-y-2">
-          <label htmlFor="destinationNeighborhood" className="text-sm font-medium">
-            Bairro ou região de destino
-          </label>
+        <LocationAutocomplete
+          id="destinationNeighborhood"
+          label="Bairro ou região de destino"
+          value={destinationNeighborhood ?? ""}
+          onChange={(value, details) =>
+            onDestinationNeighborhoodChange(details?.neighborhood || details?.formattedAddress || value)
+          }
+          placeholder="Ex.: Aldeota, Messejana, Maracanaú..."
+          variant="simple"
+          helperText="Não precisa informar seu endereço residencial."
+        />
 
-          <input
-            id="destinationNeighborhood"
-            type="text"
-            value={destinationNeighborhood ?? ""}
-            onChange={(event) => onDestinationNeighborhoodChange(event.target.value)}
-            placeholder="Ex.: Aldeota, Messejana, Maracanaú..."
-            autoComplete="address-level3"
-            className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-
-          <p className="text-xs leading-5 text-muted-foreground">
-            Não precisa informar seu endereço residencial.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="destinationReference" className="text-sm font-medium">
-            Ponto de referência
-            <span className="ml-1 font-normal text-muted-foreground">opcional</span>
-          </label>
-
-          <input
-            id="destinationReference"
-            type="text"
-            value={destinationReference ?? ""}
-            onChange={(event) => onDestinationReferenceChange(event.target.value)}
-            placeholder="Ex.: Shopping, avenida, praça..."
-            className="min-h-12 w-full rounded-xl border bg-background px-4 py-3 text-base outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
+        <LocationAutocomplete
+          id="destinationReference"
+          label="Ponto de referência (opcional)"
+          value={destinationReference ?? ""}
+          onChange={(value, details) =>
+            onDestinationReferenceChange(details?.formattedAddress || value)
+          }
+          placeholder="Ex.: Próximo ao shopping, terminal, praça..."
+          variant="simple"
+        />
       </div>
 
       <div className="space-y-3">
