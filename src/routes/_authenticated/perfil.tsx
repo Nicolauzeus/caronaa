@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ArrowRight, Camera, CheckCircle2, Mail, MapPin, ShieldCheck } from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
+import { NotificationPreferences } from "@/components/caronaa/NotificationControls";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Button } from "@/components/ui/button";
@@ -363,6 +364,7 @@ function Perfil() {
         description="Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."
       />
 
+      <NotificationPreferences />
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-soft">
           <div className="text-center">

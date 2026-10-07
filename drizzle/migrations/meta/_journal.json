@@ -218,6 +218,20 @@
       "when": 1791316000000,
       "tag": "0030_directional_geographic_matching",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791317000000,
+      "tag": "0031_enable_ride_realtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791318000000,
+      "tag": "0032_canonical_ride_creation_rpcs",
+      "breakpoints": true
     }
   ]
 }

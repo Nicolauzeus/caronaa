@@ -11,7 +11,6 @@ import { createRideRequest } from "@/lib/ride-matching.functions";
 import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
-import { supabase } from "@/integrations/supabase/client";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
 import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
@@ -91,25 +90,9 @@ function MinhasCaronas() {
   useEffect(() => {
     void refreshRides();
 
-    // Inscrição em tempo real para sincronização instantânea de estado entre motorista e passageiro
-    const channel = supabase
-      .channel("minhas-caronas-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => {
-        void refreshRides(false);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "ride_matches" }, () => {
-        void refreshRides(false);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "ride_offers" }, () => {
-        void refreshRides(false);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests" }, () => {
-        void refreshRides(false);
-      })
-      .subscribe();
-
     // Revalidação em foco/visibilidade da janela
     const onFocus = () => void refreshRides(false);
+    window.addEventListener("caronaa:rides-updated", onFocus);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
 
@@ -119,7 +102,7 @@ function MinhasCaronas() {
     }, 4000);
 
     return () => {
-      void supabase.removeChannel(channel);
+      window.removeEventListener("caronaa:rides-updated", onFocus);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
       clearInterval(interval);

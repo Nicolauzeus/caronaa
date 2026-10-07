@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
+import { NotificationControls } from "@/components/caronaa/NotificationControls";
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 
 const authenticatedNav = [
@@ -121,6 +122,7 @@ export function AppShell({
           {/* Área Direita do Header */}
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle className="hidden md:inline-flex" />
+            {user && <NotificationControls />}
 
             {publicPage ? (
               <>

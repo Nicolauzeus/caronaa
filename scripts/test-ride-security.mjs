@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { buildRideRpcRepair } from "./repair-ride-rpcs.mjs";
 import { tmpdir } from "node:os";
+import { userInfo } from "node:os";
 import { join, resolve } from "node:path";
 
 const bin =
@@ -63,9 +65,56 @@ try {
   };
   apply("src/test/ride-security-db-bootstrap.sql");
   for (const file of readdirSync("drizzle/migrations")
-    .filter((name) => /^\d+.*\.sql$/.test(name))
+    .filter(
+      (name) =>
+        /^\d+.*\.sql$/.test(name) &&
+        (!process.argv.includes("--rpc-repair") || Number(name.slice(0, 4)) <= 22),
+    )
     .sort())
     apply(join("drizzle/migrations", file));
+  if (process.argv.includes("--rpc-repair")) {
+    const repair = join(directory, "rpc-repair.sql");
+    writeFileSync(repair, buildRideRpcRepair());
+    apply(repair);
+    // Verify recovery after RPC definitions are missing from an otherwise upgraded schema.
+    run("psql", [
+      "-X",
+      "-h",
+      directory,
+      "-p",
+      "55432",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "DROP FUNCTION public.create_ride_offer(text,text,date,time,integer,integer,double precision,double precision,double precision,double precision,numeric); DROP FUNCTION public.create_ride_request(text,text,date,time,integer,integer,double precision,double precision,double precision,double precision,numeric); DROP FUNCTION public.get_admin_operation_data(); DROP FUNCTION public.refresh_ride_routine_occurrences();",
+    ]);
+    apply(repair);
+    apply(repair);
+    const application = spawnSync(process.execPath, ["scripts/repair-ride-rpcs.mjs", "--apply"], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        LOVABLE_DB_MIGRATION_URL: "postgresql:///postgres",
+        PGHOST: directory,
+        PGPORT: "55432",
+        PGUSER: userInfo().username,
+      },
+    });
+    if (application.error || application.status !== 0) {
+      throw new Error(
+        application.stderr ||
+          application.error?.message ||
+          "Falha na aplicacao via driver PostgreSQL",
+      );
+    }
+    console.log("Aplicacao via driver PostgreSQL validada em banco isolado.");
+    const rpc = apply("src/test/ride-rpc-repair.integration.sql");
+    console.log(
+      `${(rpc.stderr.match(/NOTICE:  PASS:/g) || []).length} verificacoes de recuperacao de RPC passaram em PostgreSQL real.`,
+    );
+  }
   console.log("Migrations aplicadas em PostgreSQL isolado.");
   const result = apply("src/test/ride-security.integration.sql");
   const assertions = (result.stderr.match(/NOTICE:  PASS:/g) || []).length;
@@ -74,6 +123,12 @@ try {
     const routines = apply("src/test/ride-routines.integration.sql");
     console.log(
       `${(routines.stderr.match(/NOTICE:  PASS:/g) || []).length} verificacoes de rotinas passaram em PostgreSQL real.`,
+    );
+  }
+  if (process.argv.includes("--notifications")) {
+    const notifications = apply("src/test/notification-realtime.integration.sql");
+    console.log(
+      `${(notifications.stderr.match(/NOTICE:  PASS:/g) || []).length} verificacoes de Realtime passaram em PostgreSQL real.`,
     );
   }
 } finally {

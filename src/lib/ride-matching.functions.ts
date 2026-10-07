@@ -27,34 +27,18 @@ export const createRideRequest = createServerFn({ method: "POST" })
     const { data: requestId, error } = await context.supabase.rpc("create_ride_request", {
       p_origin: data.origin,
       p_destination: data.destination,
-      p_origin_lat: data.originLat,
-      p_origin_lng: data.originLng,
-      p_destination_lat: data.destinationLat,
-      p_destination_lng: data.destinationLng,
+      p_origin_lat: data.originLat ?? null,
+      p_origin_lng: data.originLng ?? null,
+      p_destination_lat: data.destinationLat ?? null,
+      p_destination_lng: data.destinationLng ?? null,
       p_ride_date: data.rideDate,
       p_departure_time: data.departureTime,
       p_passenger_count: data.passengerCount ?? 1,
       p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      p_price: data.price ?? undefined,
+      p_price: data.price ?? null,
     });
     if (error) {
-      // Fallback para assinaturas sem o parâmetro p_price
-      const retry = await context.supabase.rpc("create_ride_request", {
-        p_origin: data.origin,
-        p_destination: data.destination,
-        p_origin_lat: data.originLat,
-        p_origin_lng: data.originLng,
-        p_destination_lat: data.destinationLat,
-        p_destination_lng: data.destinationLng,
-        p_ride_date: data.rideDate,
-        p_departure_time: data.departureTime,
-        p_passenger_count: data.passengerCount ?? 1,
-        p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      });
-      if (retry.error) {
-        throw new Error(`Não foi possível criar a solicitação: ${retry.error.message}`);
-      }
-      return { requestId: retry.data };
+      throw new Error(`Não foi possível criar a solicitação: ${error.message}`);
     }
     return { requestId };
   });
@@ -66,10 +50,10 @@ export const createRideOffer = createServerFn({ method: "POST" })
     const { data: offerId, error } = await context.supabase.rpc("create_ride_offer", {
       p_origin: data.origin,
       p_destination: data.destination,
-      p_origin_lat: data.originLat,
-      p_origin_lng: data.originLng,
-      p_destination_lat: data.destinationLat,
-      p_destination_lng: data.destinationLng,
+      p_origin_lat: data.originLat ?? null,
+      p_origin_lng: data.originLng ?? null,
+      p_destination_lat: data.destinationLat ?? null,
+      p_destination_lng: data.destinationLng ?? null,
       p_ride_date: data.rideDate,
       p_departure_time: data.departureTime,
       p_available_seats: data.availableSeats ?? 1,
@@ -77,23 +61,7 @@ export const createRideOffer = createServerFn({ method: "POST" })
       p_total_price: data.totalPrice ?? 30,
     });
     if (error) {
-      // Fallback para assinaturas sem o parâmetro p_total_price
-      const retry = await context.supabase.rpc("create_ride_offer", {
-        p_origin: data.origin,
-        p_destination: data.destination,
-        p_origin_lat: data.originLat,
-        p_origin_lng: data.originLng,
-        p_destination_lat: data.destinationLat,
-        p_destination_lng: data.destinationLng,
-        p_ride_date: data.rideDate,
-        p_departure_time: data.departureTime,
-        p_available_seats: data.availableSeats ?? 1,
-        p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      });
-      if (retry.error) {
-        throw new Error(`Não foi possível criar a oferta: ${retry.error.message}`);
-      }
-      return { offerId: retry.data };
+      throw new Error(`Não foi possível criar a oferta: ${error.message}`);
     }
     return { offerId };
   });
