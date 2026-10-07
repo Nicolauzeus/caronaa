@@ -36,7 +36,11 @@ export type PainPointCode =
   | "SEM_GRANDES_DIFICULDADES";
 
 export type InterestLevel =
-  "USARIA_HOJE" | "PROVAVELMENTE_USARIA" | "TALVEZ" | "PROVAVELMENTE_NAO" | "NAO_USARIA";
+  | "USARIA_HOJE"
+  | "PROVAVELMENTE_USARIA"
+  | "TALVEZ"
+  | "PROVAVELMENTE_NAO"
+  | "NAO_USARIA";
 
 export type TrustFactor =
   | "IDENTIDADE_VERIFICADA"
@@ -49,16 +53,26 @@ export type TrustFactor =
   | "PARTICIPANTE_STS"
   | "ROTA_VISIVEL"
   | "COMPARTILHAR_VIAGEM"
+  | "MESMO_GENERO"
   | "OUTRO";
 
 export type PriceRange =
-  "ATE_5" | "5_10" | "10_15" | "15_20" | "ACIMA_20" | "DEPENDE_DISTANCIA" | "GRATUITO";
+  | "ATE_5"
+  | "5_10"
+  | "10_15"
+  | "15_20"
+  | "ACIMA_20"
+  | "DEPENDE_DISTANCIA"
+  | "GRATUITO";
 
 export type CommitmentLevel = "SIM_HOJE" | "QUERO_VER_MATCH" | "NAO_HOJE";
 
 export type ProposalSense = "POUCO" | "MEDIO" | "ALTO" | "ALTISSIMO";
+
 export type DriverFutureOffer = "SIM" | "TALVEZ" | "NAO";
+
 export type DriverGenderPreference = "MASCULINO" | "FEMININO" | "OUTRO";
+
 export type DriverRealValidation = "COM_CERTEZA" | "TALVEZ" | "APENAS_STS";
 
 export type PassengerIntention = "COM_CERTEZA_HOJE" | "TALVEZ" | "COM_CERTEZA_SEMPRE";

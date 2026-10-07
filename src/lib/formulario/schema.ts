@@ -72,6 +72,7 @@ const trustFactorSchema = z.enum([
   "PARTICIPANTE_STS",
   "ROTA_VISIVEL",
   "COMPARTILHAR_VIAGEM",
+  "MESMO_GENERO",
   "OUTRO",
 ]);
 
