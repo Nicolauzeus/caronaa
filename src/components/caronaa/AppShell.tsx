@@ -86,14 +86,6 @@ export function AppShell({
                 Siará Tech Summit
               </Link>
               <Link
-                to="/seguranca"
-                className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
-                  pathname === "/seguranca" ? "bg-secondary text-primary" : "text-muted-foreground"
-                }`}
-              >
-                Segurança
-              </Link>
-              <Link
                 to="/auth"
                 className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                   pathname === "/auth" ? "bg-secondary text-primary" : "text-muted-foreground"
@@ -229,13 +221,6 @@ export function AppShell({
                     className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold text-foreground hover:bg-secondary"
                   >
                     Siará Tech Summit
-                  </Link>
-                  <Link
-                    to="/seguranca"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold text-foreground hover:bg-secondary"
-                  >
-                    Segurança
                   </Link>
                   <Link
                     to="/auth"

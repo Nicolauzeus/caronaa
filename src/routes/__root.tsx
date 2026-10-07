@@ -17,6 +17,7 @@ import { AuthProvider } from "../lib/auth-context";
 import { NotificationProvider } from "@/lib/notification-context";
 import { Toaster } from "@/components/ui/sonner";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import { registerPwa, requestPersistentStorage } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -97,6 +98,8 @@ export const Route = createRootRouteWithContext<{
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      { name: "theme-color", content: "#eab900" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
       {
         name: "viewport",
         content: "width=device-width, initial-scale=1",
@@ -129,6 +132,7 @@ export const Route = createRootRouteWithContext<{
     ],
 
     links: [
+      { rel: "manifest", href: "/manifest.webmanifest" },
       {
         rel: "stylesheet",
         href: appCss,
@@ -140,7 +144,7 @@ export const Route = createRootRouteWithContext<{
       },
       {
         rel: "apple-touch-icon",
-        href: logoAsset.url,
+        href: "/pwa-icon-192.png",
       },
       {
         rel: "preconnect",
@@ -188,6 +192,17 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    void registerPwa();
+    const persist = () => { void requestPersistentStorage(); };
+    window.addEventListener("pointerdown", persist, { once: true });
+    window.addEventListener("keydown", persist, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", persist);
+      window.removeEventListener("keydown", persist);
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
