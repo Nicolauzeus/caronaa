@@ -232,6 +232,13 @@
       "when": 1791318000000,
       "tag": "0032_canonical_ride_creation_rpcs",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791349210089,
+      "tag": "0033_reload_schema_cache",
+      "breakpoints": true
     }
   ]
 }
