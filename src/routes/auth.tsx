@@ -72,6 +72,7 @@ function AuthPage() {
 
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const [name, setName] = useState(() => conversionDraft?.name ?? "");
+  const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
   const [email, setEmail] = useState(() => conversionDraft?.email ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -117,6 +118,7 @@ function AuthPage() {
             emailRedirectTo: window.location.origin,
             data: {
               full_name: name.trim(),
+              gender,
               whatsapp: conversionDraft?.whatsapp,
               submission_id: effectiveSubmissionId,
               initial_intent: conversionDraft?.intent,
@@ -341,6 +343,14 @@ function AuthPage() {
             </div>
           </div>
         )}
+        {mode === "cadastro" && (
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-semibold text-foreground">Gênero</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {[['FEMININO', 'Feminino'], ['MASCULINO', 'Masculino']].map(([value, label]) => <button key={value} type="button" onClick={() => setGender(value as "FEMININO" | "MASCULINO")} className={`h-11 rounded-xl border text-sm font-bold ${gender === value ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card"}`}>{label}</button>)}
+            </div>
+          </fieldset>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">
@@ -412,7 +422,7 @@ function AuthPage() {
         <Button
           type="submit"
           className="h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition mt-2"
-          disabled={busy}
+          disabled={busy || (mode === "cadastro" && !gender)}
         >
           {busy ? (
             "Aguarde..."

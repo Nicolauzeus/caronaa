@@ -32,6 +32,7 @@ type ProfileData = {
   city: string | null;
   created_at: string;
   updated_at: string;
+  gender: "FEMININO" | "MASCULINO" | null;
 };
 
 function Perfil() {
@@ -48,6 +49,7 @@ function Perfil() {
 
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
+  const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
@@ -77,9 +79,9 @@ function Perfil() {
           throw new Error("Não foi possível identificar o usuário autenticado.");
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from("profiles")
-          .select("id, full_name, avatar_url, city, created_at, updated_at")
+          .select("id, full_name, avatar_url, city, gender, created_at, updated_at")
           .eq("id", user.id)
           .single();
 
@@ -99,6 +101,7 @@ function Perfil() {
 
         setFullName(profileData.full_name ?? "");
         setCity(profileData.city ?? "");
+        setGender(profileData.gender ?? "");
 
         setPhoto(profileData.avatar_url);
         setSavedPhoto(profileData.avatar_url);
@@ -276,15 +279,16 @@ function Perfil() {
 
       const updatedAt = new Date().toISOString();
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .update({
           full_name: normalizedName,
           city: normalizedCity || null,
+          gender: gender || null,
           updated_at: updatedAt,
         })
         .eq("id", user.id)
-        .select("id, full_name, avatar_url, city, created_at, updated_at")
+        .select("id, full_name, avatar_url, city, gender, created_at, updated_at")
         .single();
 
       if (error) {
@@ -468,6 +472,13 @@ function Perfil() {
                 placeholder="Ex.: Fortaleza"
                 variant="simple"
               />
+
+              <label className="block text-xs font-bold text-muted-foreground">
+                GÊNERO
+                <select value={gender} onChange={(event) => setGender(event.target.value as "FEMININO" | "MASCULINO" | "")} className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground">
+                  <option value="">Prefiro não informar agora</option><option value="FEMININO">Feminino</option><option value="MASCULINO">Masculino</option>
+                </select>
+              </label>
 
               <div className="md:col-span-2">
                 <Field label="E-mail" value={email} readOnly />

@@ -57,6 +57,7 @@ type OferecerFormState = {
   notes: string;
   price: string;
   timeTolerance: TimeToleranceMinutes;
+  passengerGenderPreference: "ANY" | "FEMININO" | "MASCULINO";
 };
 
 const initial: OferecerFormState = {
@@ -72,6 +73,7 @@ const initial: OferecerFormState = {
   notes: "",
   price: "",
   timeTolerance: 15,
+  passengerGenderPreference: "ANY",
 };
 function Oferecer() {
   const publishOffer = useServerFn(createRideOffer);
@@ -98,6 +100,7 @@ function Oferecer() {
             availableSeats: Number(form.seats),
             timeToleranceMinutes: form.timeTolerance,
             totalPrice: form.price ? Number(form.price) : 30,
+            passengerGenderPreference: form.passengerGenderPreference,
           },
         });
       } catch (error) {
@@ -298,6 +301,12 @@ function Oferecer() {
                       placeholder="Ex.: Honda Fit, prata"
                       required
                     />
+                    <label className="block text-sm font-semibold">
+                      Passageiros aceitos
+                      <select value={form.passengerGenderPreference} onChange={(e) => setForm((prev) => ({ ...prev, passengerGenderPreference: e.target.value as OferecerFormState["passengerGenderPreference"] }))} className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 outline-none focus:ring-2 focus:ring-ring">
+                        <option value="ANY">Todos os gêneros</option><option value="FEMININO">Somente mulheres</option><option value="MASCULINO">Somente homens</option>
+                      </select>
+                    </label>
                     <LocationAutocomplete
                       id="oferecer-meeting"
                       label="Ponto de encontro"

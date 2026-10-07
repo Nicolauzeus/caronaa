@@ -14,7 +14,7 @@ import {
   Sparkles,
   UsersRound,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -28,6 +28,7 @@ import {
 import { CountdownTimer } from "@/components/caronaa/CountdownTimer";
 import stsBannerAsset from "@/assets/brand/sts-banner.png";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [enrollmentCount, setEnrollmentCount] = useState<number | null>(null);
   const attribution = useMemo(
     () => getCampaignAttribution({ defaultSource: "direct", defaultCampaignEvent: "Site" }),
     [],
@@ -78,6 +80,10 @@ function LandingPage() {
   useEffect(() => {
     if (user) void navigate({ to: "/home" });
   }, [navigate, user]);
+
+  useEffect(() => {
+    void (supabase as any).rpc("get_public_enrollment_count").then(({ data }: { data: number | null }) => setEnrollmentCount(data ?? null));
+  }, []);
 
   return (
     <AppShell publicPage>
@@ -131,6 +137,12 @@ function LandingPage() {
                   <Link to="/auth">Já tenho uma conta</Link>
                 </Button>
               </div>
+
+              {enrollmentCount !== null && (
+                <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-bold text-foreground">
+                  <UsersRound size={16} className="text-primary" /> {enrollmentCount} pessoas já estão na CARONAA
+                </p>
+              )}
 
               {/* Contagem Regressiva no Hero */}
               <div className="mt-10 w-full max-w-md pt-2">

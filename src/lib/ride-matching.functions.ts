@@ -17,6 +17,7 @@ const rideInput = z.object({
     .union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)])
     .optional(),
   totalPrice: z.number().finite().min(0).max(1000).optional(),
+  passengerGenderPreference: z.enum(["ANY", "FEMININO", "MASCULINO"]).optional(),
   price: z.number().finite().min(0).max(1000).optional(),
 });
 
@@ -47,7 +48,7 @@ export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
-    const { data: offerId, error } = await context.supabase.rpc("create_ride_offer", {
+    const { data: offerId, error } = await (context.supabase as any).rpc("create_ride_offer", {
       p_origin: data.origin,
       p_destination: data.destination,
       p_origin_lat: data.originLat ?? undefined,
@@ -59,6 +60,7 @@ export const createRideOffer = createServerFn({ method: "POST" })
       p_available_seats: data.availableSeats ?? 1,
       p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
       p_total_price: data.totalPrice ?? 30,
+      p_passenger_gender_preference: data.passengerGenderPreference ?? "ANY",
     });
     if (error) {
       throw new Error(`Não foi possível criar a oferta: ${error.message}`);
