@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -56,6 +56,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const attribution = useMemo(
     () => getCampaignAttribution({ defaultSource: "direct", defaultCampaignEvent: "Site" }),
     [],
@@ -71,6 +72,12 @@ function LandingPage() {
       },
     });
   }, [attribution, user?.id]);
+
+  // OAuth returns to the site root; route authenticated people into the app so
+  // the form-activation check runs for Google sign-ins as well.
+  useEffect(() => {
+    if (user) void navigate({ to: "/home" });
+  }, [navigate, user]);
 
   return (
     <AppShell publicPage>

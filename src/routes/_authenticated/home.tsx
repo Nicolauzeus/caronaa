@@ -8,6 +8,7 @@ import { SearchForm, SectionTitle } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { getCurrentProfile, getHomeRides, type RideSummary } from "@/lib/rides.functions";
+import { FormActivationWelcome } from "@/components/caronaa/FormActivationWelcome";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
@@ -66,6 +67,7 @@ function Home() {
 
   return (
     <AppShell>
+      <FormActivationWelcome />
       <div className="animate-page-in">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
