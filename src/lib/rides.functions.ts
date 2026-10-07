@@ -206,7 +206,7 @@ async function getAdminClient(): Promise<SupabaseAppClient> {
 }
 
 async function discoverOffers(
-  client: SupabaseAppClient,
+  client: any,
   userId: string,
   data: z.infer<typeof searchInput>,
   limit: number,
@@ -220,7 +220,7 @@ async function discoverOffers(
     p_limit: limit,
   });
   if (error) throw new Error(error.message || "Não foi possível buscar caronas.");
-  return (rows ?? []).map((row) =>
+  return (rows ?? []).map((row: any) =>
     mapOffer(
       row,
       {
@@ -241,18 +241,13 @@ export const searchRideOffers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => searchInput.parse(input))
   .handler(async ({ context, data }) =>
-    discoverOffers(context.supabase as unknown as SupabaseAppClient, context.userId, data, 30),
+    discoverOffers(context.supabase, context.userId, data, 30),
   );
 
 export const getHomeRides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
-    discoverOffers(
-      context.supabase as unknown as SupabaseAppClient,
-      context.userId,
-      searchInput.parse({}),
-      3,
-    ),
+    discoverOffers(context.supabase, context.userId, searchInput.parse({}), 3),
   );
 
 export const getCurrentProfile = createServerFn({ method: "GET" })

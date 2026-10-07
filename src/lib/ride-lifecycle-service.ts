@@ -6,6 +6,16 @@ export async function transitionRideStatus(rideId: string, nextStatus: RideStatu
     p_ride_id: rideId,
     p_next_status: nextStatus,
   });
-  if (error) throw new Error(`NÃ£o foi possÃ­vel atualizar o estado da carona: ${error.message}`);
+  if (error) {
+    // Se a carona já estiver no estado solicitado (ex.: confirmação repetida ou concorrente),
+    // trata de forma idempotente sem lançar erro para o usuário
+    if (
+      error.message?.includes(`Invalid ride transition: ${nextStatus} -> ${nextStatus}`) ||
+      (nextStatus === "CONFIRMED" && error.message?.includes("CONFIRMED -> CONFIRMED"))
+    ) {
+      return nextStatus;
+    }
+    throw new Error(`Não foi possível atualizar o estado da carona: ${error.message}`);
+  }
   return data;
 }
