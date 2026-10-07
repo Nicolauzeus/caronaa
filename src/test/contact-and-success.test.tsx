@@ -168,7 +168,7 @@ describe("ContactStep and FormSuccess", () => {
 
   it("renders FormSuccess with MOTORISTA specific messaging and CTAs", () => {
     const mockDriverData: CaronaaStsFormData = {
-      source: "sts2026",
+      source: "sts-2026",
       intent: "MOTORISTA",
       destinationNeighborhood: "Aldeota",
       originNeighborhood: "Centro de Eventos do Ceará",
@@ -208,7 +208,7 @@ describe("ContactStep and FormSuccess", () => {
 
   it("renders FormSuccess with PASSAGEIRO specific messaging and CTAs", () => {
     const mockPassengerData: CaronaaStsFormData = {
-      source: "sts2026",
+      source: "sts-2026",
       intent: "PASSAGEIRO",
       destinationNeighborhood: "Meireles",
       originNeighborhood: "Centro de Eventos do Ceará",
@@ -250,7 +250,7 @@ describe("ContactStep and FormSuccess", () => {
 
   it("renders FormSuccess with AMBOS specific messaging and CTAs", () => {
     const mockDualData: CaronaaStsFormData = {
-      source: "sts2026",
+      source: "sts-2026",
       intent: "AMBOS",
       destinationNeighborhood: "Papicu",
       originNeighborhood: "Centro de Eventos do Ceará",
@@ -286,7 +286,7 @@ describe("ContactStep and FormSuccess", () => {
 
   it("prepares submission with separate structured consents and keeps them in raw_payload for Supabase", () => {
     const formData: CaronaaStsFormData = {
-      source: "sts2026",
+      source: "sts-2026",
       campaign: "evento-sts",
       intent: "PASSAGEIRO",
       destinationNeighborhood: "Aldeota",
@@ -415,7 +415,7 @@ describe("ContactStep and FormSuccess", () => {
     await expect(
       trackFunnelEvent({
         eventName: "form_contact_completed",
-        source: "sts2026",
+        source: "sts-2026",
         campaign: null,
         campaignEvent: "Siará Tech Summit 2026",
         formStep: "CONTACT",
@@ -426,7 +426,7 @@ describe("ContactStep and FormSuccess", () => {
     await expect(
       trackFunnelEvent({
         eventName: "form_terms_accepted",
-        source: "sts2026",
+        source: "sts-2026",
         campaign: null,
         campaignEvent: "Siará Tech Summit 2026",
         formStep: "CONTACT",
@@ -437,7 +437,7 @@ describe("ContactStep and FormSuccess", () => {
     await expect(
       trackFunnelEvent({
         eventName: "form_completed",
-        source: "sts2026",
+        source: "sts-2026",
         campaign: null,
         campaignEvent: "Siará Tech Summit 2026",
         submissionId: "test-sub-123",

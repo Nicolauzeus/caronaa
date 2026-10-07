@@ -1,4 +1,5 @@
 import type { CaronaaStsFormData } from "./types";
+import { normalizeStsSource } from "@/lib/funnel-events";
 
 export const FORM_CONVERSION_STORAGE_KEY = "caronaa-form-conversion-payload";
 
@@ -44,7 +45,7 @@ export function saveFormConversionDraft(data: Partial<CaronaaStsFormData>): void
         dualPriority: data.dualPriority,
         comfortFactors: data.driverComfortFactors,
       },
-      source: data.source,
+      source: normalizeStsSource(data.source),
       campaign: data.campaign,
       campaignEvent: data.campaignEvent,
       timestamp: Date.now(),

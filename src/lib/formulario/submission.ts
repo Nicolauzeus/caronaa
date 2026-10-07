@@ -2,6 +2,7 @@
 import type { CaronaaStsFormData } from "./types";
 import { getLeadClassification } from "./classification";
 import { calculateDriverPricing } from "./pricing";
+import { normalizeStsSource } from "@/lib/funnel-events";
 
 export type CaronaaStsSubmission = {
   source: string;
@@ -137,11 +138,11 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
       : null;
 
   return {
-    source: data.source,
+    source: normalizeStsSource(data.source),
 
     campaign: data.campaign ?? null,
 
-    campaignEvent: data.campaignEvent ?? "SiarÃ¡ Tech Summit 2026",
+    campaignEvent: data.campaignEvent ?? "Siará Tech Summit 2026",
 
     intent: data.intent,
 

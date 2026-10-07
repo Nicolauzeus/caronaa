@@ -59,6 +59,7 @@ import { registerFormStart, saveFormSubmission } from "@/lib/formulario/form-sub
 import { useAuth } from "@/lib/auth-context";
 import {
   getCampaignAttribution,
+  normalizeStsSource,
   trackFunnelEvent,
   type ClientFunnelEventName,
 } from "@/lib/funnel-events";
@@ -151,7 +152,7 @@ function Formulario() {
             ...restored,
             originNeighborhood: "Centro de Eventos do Ceará",
             originLocation: draft.data.originLocation || CEC_DEFAULT_LOCATION,
-            source: prev.source || draft.data.source || "sts_2026",
+            source: normalizeStsSource(prev.source || draft.data.source),
             campaign: prev.campaign || draft.data.campaign || null,
             campaignEvent:
               prev.campaignEvent || draft.data.campaignEvent || "Siará Tech Summit 2026",
@@ -526,6 +527,7 @@ function Formulario() {
       const payload = prepareSubmission({
         ...data,
         ...validation.data,
+        source: "sts-2026",
         campaign: validation.data.campaign ?? null,
         submissionId: submissionAttemptIdRef.current ?? validation.data.submissionId,
         ...(derivedPassengerInterest !== undefined
