@@ -16,6 +16,7 @@ const allowedTransitions: Partial<Record<RideStatus, readonly RideStatus[]>> = {
 };
 
 export function canTransitionRide(from: RideStatus, to: RideStatus): boolean {
+  if (from === "CONFIRMED" && to === "CONFIRMED") return true;
   return allowedTransitions[from]?.includes(to) ?? false;
 }
 
@@ -26,6 +27,7 @@ export function transitionRide(
 ): RideStatus {
   if (!context.hasPersistedMatch) throw new Error("A ride requires a persisted match");
   if (!context.isParticipant) throw new Error("Only ride participants may transition the ride");
+  if (from === "CONFIRMED" && to === "CONFIRMED") return "CONFIRMED";
   if (to === "COMPLETED") {
     if (from === "IN_PROGRESS" && context.confirmedByBoth) return "COMPLETED";
     throw new Error(`Invalid ride transition: ${from} -> ${to}`);

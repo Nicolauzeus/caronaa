@@ -11,6 +11,11 @@ const migration = readFileSync(
 const confirmed = { hasPersistedMatch: true, isParticipant: true, confirmedByBoth: true };
 
 describe("ride lifecycle", () => {
+  it("allows transition from MATCHED to CONFIRMED and idempotent CONFIRMED to CONFIRMED", () => {
+    expect(transitionRide("MATCHED", "CONFIRMED", confirmed)).toBe("CONFIRMED");
+    expect(transitionRide("CONFIRMED", "CONFIRMED", confirmed)).toBe("CONFIRMED");
+  });
+
   it("allows completion only from IN_PROGRESS after both participants confirm", () => {
     expect(transitionRide("IN_PROGRESS", "COMPLETED", confirmed)).toBe("COMPLETED");
     expect(() =>
@@ -52,5 +57,14 @@ describe("ride lifecycle", () => {
       "CREATE TRIGGER ride_status_event AFTER UPDATE OF status ON public.rides",
     );
     expect(migration).toContain("CREATE UNIQUE INDEX product_events_ride_completed_once_idx");
+  });
+
+  it("verifies migration 0022 guarantees idempotent ride status transitions", () => {
+    const migration0022 = readFileSync(
+      resolve(process.cwd(), "drizzle/migrations/0022_idempotent_ride_confirmation.sql"),
+      "utf8",
+    );
+    expect(migration0022).toContain("IF ride_row.status = p_next_status THEN");
+    expect(migration0022).toContain("RETURN p_next_status;");
   });
 });

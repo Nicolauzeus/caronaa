@@ -16,6 +16,9 @@ import { Button } from "@/components/ui/button";
 import { createRideOffer } from "@/lib/ride-matching.functions";
 import { toast } from "sonner";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
+import { RouteMap } from "@/components/caronaa/RouteMap";
+import type { FormLocationDetails } from "@/lib/location/types";
+
 export const Route = createFileRoute("/_authenticated/oferecer")({
   head: () => ({
     meta: [
@@ -35,9 +38,26 @@ export const Route = createFileRoute("/_authenticated/oferecer")({
   }),
   component: Oferecer,
 });
-const initial = {
+
+type OferecerFormState = {
+  origin: string;
+  destination: string;
+  originLocation?: FormLocationDetails;
+  destinationLocation?: FormLocationDetails;
+  date: string;
+  time: string;
+  seats: string;
+  vehicle: string;
+  meeting: string;
+  notes: string;
+  price: string;
+};
+
+const initial: OferecerFormState = {
   origin: "",
   destination: "",
+  originLocation: undefined,
+  destinationLocation: undefined,
   date: "",
   time: "",
   seats: "2",
@@ -49,8 +69,8 @@ const initial = {
 function Oferecer() {
   const publishOffer = useServerFn(createRideOffer);
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState(initial);
-  const update = (key: keyof typeof initial, value: string) =>
+  const [form, setForm] = useState<OferecerFormState>(initial);
+  const update = (key: keyof OferecerFormState, value: string) =>
     setForm((previous) => ({ ...previous, [key]: value }));
   const next = async (e: FormEvent) => {
     e.preventDefault();
@@ -145,38 +165,58 @@ function Oferecer() {
               </div>
             </div>
             {step === 1 ? (
-              <div className="grid gap-5 sm:grid-cols-2">
-                <LocationAutocomplete
-                  id="oferecer-origem"
-                  label="Origem"
-                  value={form.origin}
-                  onChange={(v) => update("origin", v)}
-                  placeholder="Ex.: Aldeota, Fortaleza"
-                  required
-                  variant="simple"
-                />
-                <LocationAutocomplete
-                  id="oferecer-destino"
-                  label="Destino"
-                  value={form.destination}
-                  onChange={(v) => update("destination", v)}
-                  placeholder="Ex.: Eusébio, UNIFOR, Centro"
-                  required
-                  variant="simple"
-                />
-                <Field
-                  label="Data"
-                  value={form.date}
-                  onChange={(v) => update("date", v)}
-                  type="date"
-                  required
-                />
-                <Field
-                  label="Horário de saída"
-                  value={form.time}
-                  onChange={(v) => update("time", v)}
-                  type="time"
-                  required
+              <div className="space-y-6">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <LocationAutocomplete
+                    id="oferecer-origem"
+                    label="Origem"
+                    value={form.origin}
+                    onChange={(v, details) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        origin: details?.formattedAddress || v,
+                        originLocation: details,
+                      }))
+                    }
+                    placeholder="Ex.: Aldeota, Fortaleza"
+                    required
+                    variant="simple"
+                  />
+                  <LocationAutocomplete
+                    id="oferecer-destino"
+                    label="Destino"
+                    value={form.destination}
+                    onChange={(v, details) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        destination: details?.formattedAddress || v,
+                        destinationLocation: details,
+                      }))
+                    }
+                    placeholder="Ex.: Eusébio, UNIFOR, Centro"
+                    required
+                    variant="simple"
+                  />
+                  <Field
+                    label="Data"
+                    value={form.date}
+                    onChange={(v) => update("date", v)}
+                    type="date"
+                    required
+                  />
+                  <Field
+                    label="Horário de saída"
+                    value={form.time}
+                    onChange={(v) => update("time", v)}
+                    type="time"
+                    required
+                  />
+                </div>
+                <RouteMap
+                  origin={form.origin}
+                  destination={form.destination}
+                  originLocation={form.originLocation}
+                  destinationLocation={form.destinationLocation}
                 />
               </div>
             ) : (

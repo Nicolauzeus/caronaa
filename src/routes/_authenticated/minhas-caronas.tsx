@@ -11,6 +11,10 @@ import { createRideRequest } from "@/lib/ride-matching.functions";
 import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import type { RideStatus } from "@/lib/ride-lifecycle";
+import { supabase } from "@/integrations/supabase/client";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
+import { RouteMap } from "@/components/caronaa/RouteMap";
+import type { FormLocationDetails } from "@/lib/location/types";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -25,6 +29,8 @@ export const Route = createFileRoute("/_authenticated/minhas-caronas")({
 type FormState = {
   origin: string;
   destination: string;
+  originLocation?: FormLocationDetails;
+  destinationLocation?: FormLocationDetails;
   date: string;
   time: string;
   seats: string;
@@ -35,6 +41,8 @@ type FormState = {
 const initialForm: FormState = {
   origin: "",
   destination: "",
+  originLocation: undefined,
+  destinationLocation: undefined,
   date: "",
   time: "",
   seats: "1",
@@ -47,14 +55,14 @@ function MinhasCaronas() {
   const publishRequest = useServerFn(createRideRequest);
   const loadMyRides = useServerFn(getMyRides);
   const [tab, setTab] = useState<"pedidos" | "disponiveis">("pedidos");
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState<FormState>(initialForm);
   const [passengerRides, setPassengerRides] = useState<RideSummary[]>([]);
   const [driverRides, setDriverRides] = useState<RideSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function refreshRides() {
-    setLoading(true);
+  async function refreshRides(showLoading = true) {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const data = await loadMyRides();
@@ -65,12 +73,46 @@ function MinhasCaronas() {
         loadError instanceof Error ? loadError.message : "Não foi possível carregar suas viagens.",
       );
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }
 
   useEffect(() => {
     void refreshRides();
+
+    // Inscrição em tempo real para sincronização instantânea de estado entre motorista e passageiro
+    const channel = supabase
+      .channel("minhas-caronas-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => {
+        void refreshRides(false);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_matches" }, () => {
+        void refreshRides(false);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_offers" }, () => {
+        void refreshRides(false);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests" }, () => {
+        void refreshRides(false);
+      })
+      .subscribe();
+
+    // Revalidação em foco/visibilidade da janela
+    const onFocus = () => void refreshRides(false);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+
+    // Polling leve periódico como fallback caso o websocket esteja desconectado
+    const interval = setInterval(() => {
+      void refreshRides(false);
+    }, 4000);
+
+    return () => {
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      clearInterval(interval);
+    };
   }, [loadMyRides]);
 
   const update = (key: keyof FormState, value: string) =>
@@ -121,38 +163,44 @@ function MinhasCaronas() {
           </span>
         </div>
         <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.1fr]">
-          <Field
+          <LocationAutocomplete
+            id="pedido-origem"
             label="Origem"
             value={form.origin}
-            onChange={(value) => update("origin", value)}
+            onChange={(v, details) => {
+              setForm((prev) => ({
+                ...prev,
+                origin: details?.formattedAddress || v,
+                originLocation: details,
+              }));
+            }}
             placeholder="De onde você sai?"
             required
+            variant="simple"
           />
-          <Field
+          <LocationAutocomplete
+            id="pedido-destino"
             label="Destino"
             value={form.destination}
-            onChange={(value) => update("destination", value)}
+            onChange={(v, details) => {
+              setForm((prev) => ({
+                ...prev,
+                destination: details?.formattedAddress || v,
+                destinationLocation: details,
+              }));
+            }}
             placeholder="Para onde você vai?"
             required
+            variant="simple"
           />
-          <div className="relative min-h-40 overflow-hidden rounded-lg border border-border bg-[#dfeadf] lg:row-span-2">
-            <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(28deg,transparent_46%,#fff_47%,#fff_49%,transparent_50%),linear-gradient(110deg,transparent_44%,#fff_45%,#fff_47%,transparent_48%)] [background-size:70px_70px]" />
-            {form.origin && (
-              <span className="absolute left-1/4 top-1/2 flex size-7 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground shadow">
-                A
-              </span>
-            )}
-            {form.destination && (
-              <span className="absolute right-1/4 top-1/3 flex size-7 items-center justify-center rounded-full bg-foreground text-xs font-extrabold text-background shadow">
-                B
-              </span>
-            )}
-            {form.origin && form.destination && (
-              <div className="absolute left-1/4 right-1/4 top-[45%] h-1 rotate-[-12deg] rounded-full bg-primary/80" />
-            )}
-            <span className="absolute bottom-2 left-2 rounded bg-white/85 px-2 py-1 text-[10px] font-bold text-foreground">
-              Mapa do trajeto
-            </span>
+          <div className="lg:row-span-2">
+            <RouteMap
+              origin={form.origin}
+              destination={form.destination}
+              originLocation={form.originLocation}
+              destinationLocation={form.destinationLocation}
+              heightClassName="min-h-48 h-full"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field
@@ -320,10 +368,11 @@ function formatDate(value: string) {
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     open: "Aberto",
-    matched: "Com match",
+    matched: "Match criado",
     available: "Publicada",
     full: "Lotada",
     MATCHED: "Match criado",
+    AWAITING_OTHER_PARTICIPANT: "Aguardando confirmação",
     CONFIRMED: "Confirmada",
     IN_PROGRESS: "Em andamento",
     COMPLETED: "Concluída",
@@ -347,24 +396,29 @@ function initials(name: string) {
 
 function nextActions(
   status: string,
+  role: "driver" | "passenger" | "available",
 ): Array<{ label: string; status: RideStatus; variant?: "outline" }> {
   if (status === "MATCHED") {
     return [
-      { label: "Confirmar", status: "CONFIRMED" },
+      { label: "Confirmar carona", status: "CONFIRMED" },
       { label: "Cancelar", status: "CANCELLED", variant: "outline" },
     ];
   }
 
   if (status === "CONFIRMED") {
-    return [
-      { label: "Iniciar", status: "IN_PROGRESS" },
-      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
-    ];
+    if (role === "driver") {
+      return [
+        { label: "Iniciar viagem", status: "IN_PROGRESS" },
+        { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+      ];
+    }
+    // Passageiro já teve a carona confirmada, sem botão redundante de confirmar
+    return [{ label: "Cancelar", status: "CANCELLED", variant: "outline" }];
   }
 
   if (status === "IN_PROGRESS") {
     return [
-      { label: "Concluir", status: "COMPLETED" },
+      { label: "Concluir viagem", status: "COMPLETED" },
       { label: "Cancelar", status: "CANCELLED", variant: "outline" },
     ];
   }
@@ -378,7 +432,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
     ride.role === "driver" ? person?.fullName || "Passageiro" : person?.fullName || "Você";
-  const actions = ride.rideId ? nextActions(ride.status) : [];
+  const actions = ride.rideId ? nextActions(ride.status, ride.role) : [];
 
   async function updateStatus(nextStatus: RideStatus) {
     if (!ride.rideId) return;
@@ -421,6 +475,20 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
         <Clock3 size={14} /> Saída às {ride.departureTime}
       </p>
+
+      {ride.status === "CONFIRMED" && ride.role === "passenger" && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs font-medium text-primary">
+          <CarFront size={14} className="shrink-0" />
+          <span>Viagem confirmada! Aguardando o motorista iniciar o trajeto.</span>
+        </div>
+      )}
+
+      {ride.status === "MATCHED" && (
+        <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+          Match criado! Confirme a carona para garantir a viagem.
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-2">
           <Avatar className="size-8">
@@ -438,7 +506,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
         </Button>
       </div>
       {details && (
-        <div className="mt-3 space-y-2 rounded-lg bg-secondary p-3 text-sm text-muted-foreground">
+        <div className="mt-3 space-y-3 rounded-lg bg-secondary p-3 text-sm text-muted-foreground">
           <p className="flex items-center gap-2">
             <MapPin size={15} /> {ride.origin} → {ride.destination}
           </p>
@@ -446,10 +514,12 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
             <UsersRound size={15} /> {ride.seatsRemaining ?? ride.seats}{" "}
             {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
           </p>
-          <p>
-            <CarFront size={15} className="mr-2 inline" />
-            Acompanhe aqui os detalhes da viagem.
-          </p>
+          <RouteMap
+            origin={ride.origin}
+            destination={ride.destination}
+            heightClassName="min-h-36"
+            showRouteDetails={false}
+          />
         </div>
       )}
       {actions.length ? (

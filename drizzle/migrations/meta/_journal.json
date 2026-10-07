@@ -155,6 +155,13 @@
       "when": 1791307000000,
       "tag": "0021_create_pitch_relationships",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791308000000,
+      "tag": "0022_idempotent_ride_confirmation",
+      "breakpoints": true
     }
   ]
 }
