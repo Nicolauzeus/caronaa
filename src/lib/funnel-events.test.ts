@@ -25,14 +25,27 @@ describe("form campaign attribution", () => {
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/formulario?utm_campaign=sts2026-pre-evento");
     expect(getCampaignAttribution()).toMatchObject({
-      source: "sts2026",
+      source: "sts-2026",
       campaign: "sts2026-pre-evento",
     });
   });
 
+  it("normalizes legacy STS source variations to sts-2026", () => {
+    window.history.replaceState({}, "", "/formulario?source=sts2026");
+    expect(getCampaignAttribution().source).toBe("sts-2026");
+
+    window.sessionStorage.clear();
+    window.history.replaceState({}, "", "/formulario?source=sts_2026");
+    expect(getCampaignAttribution().source).toBe("sts-2026");
+
+    window.sessionStorage.clear();
+    window.history.replaceState({}, "", "/formulario?src=STS-2026");
+    expect(getCampaignAttribution().source).toBe("sts-2026");
+  });
+
   it("uses the STS form fallback only without a valid parameter", () => {
     expect(getCampaignAttribution()).toEqual({
-      source: "sts2026",
+      source: "sts-2026",
       campaign: null,
       campaignEvent: "Siará Tech Summit 2026",
     });

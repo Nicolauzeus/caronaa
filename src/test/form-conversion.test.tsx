@@ -47,7 +47,7 @@ describe("Form to Account Conversion Flow", () => {
   });
 
   const mockFormData: CaronaaStsFormData = {
-    source: "sts2026",
+    source: "sts-2026",
     campaign: "sts_meta_ads",
     campaignEvent: "Siará Tech Summit 2026",
     submissionId: "sub-12345-sts",

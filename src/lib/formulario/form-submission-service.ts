@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
-import { getAnonymousSessionId } from "@/lib/funnel-events";
+import { getAnonymousSessionId, normalizeStsSource } from "@/lib/funnel-events";
 
 import type { CaronaaStsSubmission } from "./submission";
 import { sanitizeSubmissionRawPayload } from "./submission";
@@ -101,7 +101,7 @@ export function buildFormSubmissionRow(
   return {
     // 1. Colunas padrão da tabela form_submissions (compatibilidade com migração 0013 e insert direto)
     submission_id: payload.submissionId,
-    source: payload.source,
+    source: normalizeStsSource(payload.source),
     campaign: payload.campaign,
     campaign_event: payload.campaignEvent,
     created_at: payload.createdAt,
@@ -209,7 +209,8 @@ export async function registerFormStart({
   ocupacao = null,
   rawPayload = {},
 }: RegisterFormStartInput) {
-  const deduplicationKey = ["caronaa-form-start", source, campaign ?? "", campaignEvent].join(":");
+  const normalizedSource = normalizeStsSource(source);
+  const deduplicationKey = ["caronaa-form-start", normalizedSource, campaign ?? "", campaignEvent].join(":");
 
   if (typeof window !== "undefined" && window.localStorage.getItem(deduplicationKey) === "1") {
     return;
@@ -218,7 +219,7 @@ export async function registerFormStart({
   const row: FormStartInsert = {
     user_id: userId,
     anonymous_session_id: userId ? null : getAnonymousSessionId(),
-    source,
+    source: normalizedSource,
     campaign,
     campaign_event: campaignEvent,
     tipo_usuario: tipoUsuario,

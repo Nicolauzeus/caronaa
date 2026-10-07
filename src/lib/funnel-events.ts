@@ -2,8 +2,19 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Enums, TablesInsert } from "@/integrations/supabase/types";
 
 const ANONYMOUS_SESSION_KEY = "caronaa-anonymous-session-id";
-const DEFAULT_SOURCE = "sts2026";
+export const STS_2026_SOURCE = "sts-2026";
+const DEFAULT_SOURCE = STS_2026_SOURCE;
 const DEFAULT_CAMPAIGN_EVENT = "Siará Tech Summit 2026";
+
+export function normalizeStsSource(source: string | null | undefined): string {
+  if (!source) return STS_2026_SOURCE;
+  const trimmed = source.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "sts2026" || lower === "sts_2026" || lower === "sts-2026") {
+    return STS_2026_SOURCE;
+  }
+  return trimmed;
+}
 const ATTRIBUTION_STORAGE_PREFIX = "caronaa-campaign-attribution";
 const MAX_ATTRIBUTE_LENGTH = 120;
 
@@ -136,7 +147,7 @@ export function getCampaignAttribution({
 } = {}): CampaignAttribution {
   if (typeof window === "undefined") {
     return {
-      source: defaultSource,
+      source: normalizeStsSource(defaultSource),
       campaign: null,
       campaignEvent: defaultCampaignEvent,
     };
@@ -159,7 +170,7 @@ export function getCampaignAttribution({
       : null;
 
   const attribution = {
-    source: sourceFromQuery ?? stored?.source ?? defaultSource,
+    source: normalizeStsSource(sourceFromQuery ?? stored?.source ?? defaultSource),
     campaign: campaignFromQuery ?? stored?.campaign ?? null,
     campaignEvent: eventFromQuery ?? stored?.campaignEvent ?? defaultCampaignEvent,
   };

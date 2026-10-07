@@ -15,7 +15,7 @@ import {
 import type { CaronaaStsFormData } from "@/lib/formulario/types";
 import { StsBadge } from "@/components/caronaa/BrandElements";
 import { useAuth } from "@/lib/auth-context";
-import { trackFunnelEvent } from "@/lib/funnel-events";
+import { normalizeStsSource, trackFunnelEvent } from "@/lib/funnel-events";
 import { saveFormConversionDraft } from "@/lib/formulario/conversion";
 
 const moneyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -123,7 +123,7 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
       eventName: "form_success",
       userId: user?.id ?? null,
       submissionId: data.submissionId ?? null,
-      source: data.source || "sts2026",
+      source: normalizeStsSource(data.source),
       campaign: data.campaign ?? null,
       campaignEvent: data.campaignEvent || "Siará Tech Summit 2026",
       metadata: {
@@ -137,7 +137,7 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
         eventName: "form_to_account_conversion",
         userId: user.id,
         submissionId: data.submissionId ?? null,
-        source: data.source || "sts2026",
+        source: normalizeStsSource(data.source),
         campaign: data.campaign ?? null,
         campaignEvent: data.campaignEvent || "Siará Tech Summit 2026",
         metadata: {
@@ -153,7 +153,7 @@ export function FormSuccess({ data, onRestart }: FormSuccessProps) {
       eventName: "account_cta_clicked",
       userId: user?.id ?? null,
       submissionId: data.submissionId ?? null,
-      source: data.source || "sts2026",
+      source: normalizeStsSource(data.source),
       campaign: data.campaign ?? null,
       campaignEvent: data.campaignEvent || "Siará Tech Summit 2026",
       metadata: {

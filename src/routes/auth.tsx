@@ -26,7 +26,7 @@ import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 import { getFormConversionDraft, clearFormConversionDraft } from "@/lib/formulario/conversion";
-import { trackFunnelEvent } from "@/lib/funnel-events";
+import { normalizeStsSource, trackFunnelEvent } from "@/lib/funnel-events";
 
 const authSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
@@ -63,7 +63,9 @@ function AuthPage() {
   // Detecta se o usuário chegou pelo formulário (via query param ou sessionStorage)
   const isFromForm = Boolean(
     search.submissionId ||
+    search.source === "sts-2026" ||
     search.source === "sts2026" ||
+    search.source === "sts_2026" ||
     search.source === "formulario" ||
     conversionDraft?.submissionId,
   );
@@ -92,7 +94,7 @@ function AuthPage() {
       void trackFunnelEvent({
         eventName: "signup_started_from_form",
         submissionId: effectiveSubmissionId,
-        source: conversionDraft?.source || "sts2026",
+        source: normalizeStsSource(conversionDraft?.source),
         campaign: conversionDraft?.campaign ?? null,
         campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
         metadata: {
@@ -131,7 +133,7 @@ function AuthPage() {
             eventName: "signup_completed_from_form",
             userId: data.user?.id ?? null,
             submissionId: effectiveSubmissionId,
-            source: conversionDraft?.source || "sts2026",
+            source: normalizeStsSource(conversionDraft?.source),
             campaign: conversionDraft?.campaign ?? null,
             campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
             metadata: {
@@ -144,7 +146,7 @@ function AuthPage() {
             eventName: "form_to_account_conversion",
             userId: data.user?.id ?? null,
             submissionId: effectiveSubmissionId,
-            source: conversionDraft?.source || "sts2026",
+            source: normalizeStsSource(conversionDraft?.source),
             campaign: conversionDraft?.campaign ?? null,
             campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
             metadata: {
@@ -169,7 +171,7 @@ function AuthPage() {
             eventName: "form_to_account_conversion",
             userId: data.user?.id ?? null,
             submissionId: effectiveSubmissionId,
-            source: conversionDraft?.source || "sts2026",
+            source: normalizeStsSource(conversionDraft?.source),
             campaign: conversionDraft?.campaign ?? null,
             campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
             metadata: {
