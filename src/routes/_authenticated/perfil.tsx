@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowRight, Camera, CheckCircle2, Mail, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowRight, Camera, CheckCircle2, CircleAlert, Mail, MapPin, ShieldCheck } from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { NotificationPreferences } from "@/components/caronaa/NotificationControls";
@@ -81,7 +81,7 @@ function Perfil() {
 
         const { data, error } = await (supabase as any)
           .from("profiles")
-          .select("id, full_name, avatar_url, city, gender, created_at, updated_at")
+          .select("id, full_name, avatar_url, city, created_at, updated_at")
           .eq("id", user.id)
           .single();
 
@@ -94,6 +94,17 @@ function Perfil() {
         if (cancelled) return;
 
         const profileData = data as ProfileData;
+
+        // A coluna foi adicionada depois do lançamento. Mantém perfis antigos
+        // acessíveis enquanto a migration chega ao ambiente publicado.
+        const { data: genderRow } = await (supabase as any)
+          .from("profiles")
+          .select("gender")
+          .eq("id", user.id)
+          .maybeSingle();
+        profileData.gender = genderRow?.gender === "FEMININO" || genderRow?.gender === "MASCULINO"
+          ? genderRow.gender
+          : null;
 
         setProfile(profileData);
 
@@ -284,11 +295,10 @@ function Perfil() {
         .update({
           full_name: normalizedName,
           city: normalizedCity || null,
-          gender: gender || null,
           updated_at: updatedAt,
         })
         .eq("id", user.id)
-        .select("id, full_name, avatar_url, city, gender, created_at, updated_at")
+        .select("id, full_name, avatar_url, city, created_at, updated_at")
         .single();
 
       if (error) {
@@ -296,6 +306,15 @@ function Perfil() {
       }
 
       const updatedProfile = data as ProfileData;
+
+      if (gender) {
+        const { error: genderError } = await (supabase as any)
+          .from("profiles")
+          .update({ gender })
+          .eq("id", user.id);
+        if (genderError) throw new Error("Não foi possível salvar o gênero. Atualize o banco com a migration mais recente.");
+      }
+      updatedProfile.gender = gender || null;
 
       setProfile(updatedProfile);
       setFullName(updatedProfile.full_name);
@@ -460,6 +479,13 @@ function Perfil() {
 
               <CheckCircle2 size={19} className="text-primary" />
             </div>
+
+            {!gender && (
+              <div className="mb-4 flex gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
+                <CircleAlert className="mt-0.5 shrink-0 text-primary" size={18} />
+                <p><strong>Defina seu gênero.</strong> Essa informação permite respeitar filtros de segurança em caronas exclusivas para mulheres ou homens.</p>
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome" />
