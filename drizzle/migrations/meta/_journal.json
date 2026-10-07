@@ -239,6 +239,13 @@
       "when": 1791349210089,
       "tag": "0033_reload_schema_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791349458028,
+      "tag": "0034_admin_bi_read_grants",
+      "breakpoints": true
     }
   ]
 }
