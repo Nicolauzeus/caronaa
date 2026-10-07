@@ -5,31 +5,60 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * ==========================================================
+ * CARONAA DESIGN SYSTEM
+ * ==========================================================
  *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
+ * Identidade visual:
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ *   DOURADO
+ *   PRETO
+ *   BRANCO
  *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * Cinzas são apenas neutros derivados de preto/branco.
+ * Nada de bege, castanho ou tons terrosos.
+ *
+ * Dourado principal:
+ *   #F5B800
+ *
+ * Preto principal:
+ *   #090909
+ *
+ * Branco:
+ *   #FFFFFF
+ *
+ * Cores semânticas como vermelho podem existir somente
+ * para estados funcionais críticos (erro/perigo).
+ * ==========================================================
  */
 
 @theme inline {
+  /* Fonts */
   --font-sans: "Manrope", sans-serif;
   --font-display: "Manrope", sans-serif;
-  --color-highlight: var(--caronaa-accent);
-  --color-warning: var(--caronaa-warning);
-  --color-caronaa-primary: #ffb000;
-  --color-caronaa-primary-strong: #e89500;
-  --color-caronaa-primary-soft: #fff3d1;
-  --color-caronaa-dark: #0b0f19;
-  --color-event-cyan: #00e5ff;
-  --color-event-cyan-deep: #0891b2;
-  --color-event-magenta: #ec4899;
+
+  /* Brand */
+  --color-highlight: var(--caronaa-gold);
+  --color-warning: var(--caronaa-gold);
+
+  --color-caronaa-primary: var(--caronaa-gold);
+  --color-caronaa-primary-strong: var(--caronaa-gold-strong);
+  --color-caronaa-primary-soft: var(--caronaa-gold-soft);
+
+  --color-caronaa-gold: var(--caronaa-gold);
+  --color-caronaa-black: var(--caronaa-black);
+  --color-caronaa-white: var(--caronaa-white);
+  --color-caronaa-dark: var(--caronaa-black);
+
+  /*
+   * Mantidos por compatibilidade com componentes existentes.
+   * Não introduzem novas cores na identidade.
+   */
+  --color-event-cyan: var(--caronaa-gold);
+  --color-event-cyan-deep: var(--caronaa-gold-strong);
+  --color-event-magenta: var(--foreground);
+
+  /* Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -37,31 +66,44 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Semantic system */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
   --color-ring-offset-background: var(--background);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -70,176 +112,419 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-}
 
-:root {
-  --radius: 0.75rem;
-  --caronaa-primary: #ffb000;
-  --caronaa-primary-strong: #e89500;
-  --caronaa-primary-soft: #fff3d1;
-  --caronaa-secondary: #f4a11d;
-  --caronaa-accent: #ffc400;
-  --caronaa-background: #f8f6f1;
-  --caronaa-surface: #ffffff;
-  --caronaa-surface-elevated: #fffdf8;
-  --caronaa-border: #e8e4da;
-  --caronaa-text: #111827;
-  --caronaa-text-muted: #667085;
-  --caronaa-success: #198754;
-  --caronaa-warning: #d97706;
-  --caronaa-danger: #dc2626;
-  --caronaa-info: #0f766e;
-  --background: oklch(0.977 0.011 85);
-  --foreground: oklch(0.21 0.034 266);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.035 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.035 255);
-  --primary: oklch(0.79 0.171 76.3);
-  --primary-foreground: oklch(0.18 0.04 20);
-  --secondary: oklch(0.966 0.023 82);
-  --secondary-foreground: oklch(0.2 0.035 255);
-  --muted: oklch(0.963 0.01 86);
-  --muted-foreground: oklch(0.52 0.026 265);
-  --accent: oklch(0.97 0.021 82);
-  --accent-foreground: oklch(0.18 0.035 255);
-  --destructive: oklch(0.62 0.217 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.91 0.014 82);
-  --input: oklch(0.91 0.014 82);
-  --ring: oklch(0.74 0.155 70.7);
-  --chart-1: oklch(0.74 0.17 70.7);
-  --chart-2: oklch(0.67 0.12 24);
-  --chart-3: oklch(0.58 0.09 205);
-  --chart-4: oklch(0.82 0.19 90);
-  --chart-5: oklch(0.76 0.18 38);
-  --sidebar: oklch(0.98 0.007 86);
-  --sidebar-foreground: oklch(0.18 0.02 22);
-  --sidebar-primary: oklch(0.74 0.155 70.7);
-  --sidebar-primary-foreground: oklch(0.15 0.02 12);
-  --sidebar-accent: oklch(0.97 0.021 82);
-  --sidebar-accent-foreground: oklch(0.18 0.02 22);
-  --sidebar-border: oklch(0.91 0.014 82);
-  --sidebar-ring: oklch(0.74 0.155 70.7);
-  --auth-field: oklch(0.965 0.018 250);
-}
-
-.dark {
-  --background: oklch(0.16 0.02 26);
-  --foreground: oklch(0.98 0.005 78);
-  --card: oklch(0.21 0.022 25);
-  --card-foreground: oklch(0.98 0.005 78);
-  --popover: oklch(0.21 0.022 25);
-  --popover-foreground: oklch(0.98 0.005 78);
-  --primary: oklch(0.83 0.14 77);
-  --primary-foreground: oklch(0.18 0.015 20);
-  --secondary: oklch(0.27 0.024 27);
-  --secondary-foreground: oklch(0.98 0.005 78);
-  --muted: oklch(0.26 0.019 26);
-  --muted-foreground: oklch(0.72 0.016 25);
-  --accent: oklch(0.28 0.024 27);
-  --accent-foreground: oklch(0.98 0.005 78);
-  --destructive: oklch(0.67 0.2 25);
-  --destructive-foreground: oklch(0.98 0.005 78);
-  --border: oklch(1 0 0 / 11%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.83 0.14 77);
-  --chart-1: oklch(0.75 0.17 76);
-  --chart-2: oklch(0.66 0.12 30);
-  --chart-3: oklch(0.63 0.12 196);
-  --chart-4: oklch(0.74 0.18 88);
-  --chart-5: oklch(0.65 0.2 35);
-  --sidebar: oklch(0.2 0.02 26);
-  --sidebar-foreground: oklch(0.98 0.005 78);
-  --sidebar-primary: oklch(0.83 0.14 77);
-  --sidebar-primary-foreground: oklch(0.18 0.015 20);
-  --sidebar-accent: oklch(0.27 0.024 27);
-  --sidebar-accent-foreground: oklch(0.98 0.005 78);
-  --sidebar-border: oklch(1 0 0 / 11%);
-  --sidebar-ring: oklch(0.83 0.14 77);
-  --auth-field: oklch(0.25 0.022 250);
-}
-
-@theme inline {
   --color-auth-field: var(--auth-field);
 }
+
+/* ==========================================================
+ * LIGHT MODE
+ * ========================================================== */
+
+:root {
+  --radius: 0.8rem;
+
+  /*
+   * Brand primitives
+   *
+   * Gold ≈ #F5B800
+   * Black ≈ #090909
+   * White = #FFFFFF
+   */
+  --caronaa-gold: oklch(0.79 0.17 85);
+  --caronaa-gold-strong: oklch(0.7 0.17 82);
+  --caronaa-gold-hover: oklch(0.75 0.18 84);
+  --caronaa-gold-soft: oklch(0.97 0.045 88);
+
+  --caronaa-black: oklch(0.145 0 0);
+  --caronaa-white: oklch(1 0 0);
+
+  /*
+   * Legacy aliases
+   */
+  --caronaa-primary: var(--caronaa-gold);
+  --caronaa-primary-strong: var(--caronaa-gold-strong);
+  --caronaa-primary-soft: var(--caronaa-gold-soft);
+  --caronaa-secondary: var(--caronaa-black);
+  --caronaa-accent: var(--caronaa-gold);
+
+  /*
+   * Surfaces
+   */
+  --caronaa-background: oklch(0.985 0 0);
+  --caronaa-surface: oklch(1 0 0);
+  --caronaa-surface-elevated: oklch(0.995 0 0);
+
+  /*
+   * Neutral system
+   */
+  --caronaa-border: oklch(0.9 0 0);
+  --caronaa-text: oklch(0.145 0 0);
+  --caronaa-text-muted: oklch(0.48 0 0);
+
+  /*
+   * Functional states
+   * These are not brand colors.
+   */
+  --caronaa-success: oklch(0.58 0.14 145);
+  --caronaa-warning: var(--caronaa-gold);
+  --caronaa-danger: oklch(0.58 0.22 27);
+  --caronaa-info: oklch(0.38 0 0);
+
+  /*
+   * Main semantic tokens
+   */
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.145 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+
+  /*
+   * Gold buttons / actions
+   */
+  --primary: var(--caronaa-gold);
+  --primary-foreground: oklch(0.12 0 0);
+
+  /*
+   * Black secondary actions
+   */
+  --secondary: oklch(0.16 0 0);
+  --secondary-foreground: oklch(1 0 0);
+
+  /*
+   * Neutral surfaces
+   */
+  --muted: oklch(0.955 0 0);
+  --muted-foreground: oklch(0.47 0 0);
+
+  /*
+   * Gold-selection surface
+   */
+  --accent: var(--caronaa-gold-soft);
+  --accent-foreground: oklch(0.15 0 0);
+
+  /*
+   * Destructive remains red only because it communicates danger.
+   */
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+
+  /*
+   * Borders / forms
+   */
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: var(--caronaa-gold);
+
+  /*
+   * Charts remain within the CARONAA palette.
+   */
+  --chart-1: var(--caronaa-gold);
+  --chart-2: var(--caronaa-gold-strong);
+  --chart-3: oklch(0.22 0 0);
+  --chart-4: oklch(0.48 0 0);
+  --chart-5: oklch(0.75 0 0);
+
+  /*
+   * Sidebar
+   */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+
+  --sidebar-primary: var(--caronaa-gold);
+  --sidebar-primary-foreground: oklch(0.12 0 0);
+
+  --sidebar-accent: var(--caronaa-gold-soft);
+  --sidebar-accent-foreground: oklch(0.145 0 0);
+
+  --sidebar-border: oklch(0.91 0 0);
+  --sidebar-ring: var(--caronaa-gold);
+
+  /*
+   * Auth inputs
+   */
+  --auth-field: oklch(0.965 0 0);
+}
+
+/* ==========================================================
+ * DARK MODE
+ * ========================================================== */
+
+.dark {
+  /*
+   * Real black background.
+   * No brown/warm dark tint.
+   */
+  --background: oklch(0.115 0 0);
+  --foreground: oklch(0.97 0 0);
+
+  /*
+   * Cards use progressive neutral blacks.
+   */
+  --card: oklch(0.16 0 0);
+  --card-foreground: oklch(0.97 0 0);
+
+  --popover: oklch(0.16 0 0);
+  --popover-foreground: oklch(0.97 0 0);
+
+  /*
+   * Gold remains the main action color.
+   */
+  --primary: oklch(0.8 0.17 85);
+  --primary-foreground: oklch(0.11 0 0);
+
+  /*
+   * Secondary becomes white / dark contrast.
+   */
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+
+  /*
+   * Gold accent becomes subtle on black.
+   */
+  --accent: oklch(0.22 0.025 85);
+  --accent-foreground: oklch(0.9 0.12 85);
+
+  --destructive: oklch(0.64 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+
+  --ring: oklch(0.8 0.17 85);
+
+  /*
+   * Charts
+   */
+  --chart-1: oklch(0.8 0.17 85);
+  --chart-2: oklch(0.68 0.16 82);
+  --chart-3: oklch(0.92 0 0);
+  --chart-4: oklch(0.62 0 0);
+  --chart-5: oklch(0.36 0 0);
+
+  /*
+   * Sidebar
+   */
+  --sidebar: oklch(0.135 0 0);
+  --sidebar-foreground: oklch(0.97 0 0);
+
+  --sidebar-primary: oklch(0.8 0.17 85);
+  --sidebar-primary-foreground: oklch(0.11 0 0);
+
+  --sidebar-accent: oklch(0.21 0.018 85);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.8 0.17 85);
+
+  --auth-field: oklch(0.19 0 0);
+}
+
+/* ==========================================================
+ * BASE
+ * ========================================================== */
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
+  html {
+    background-color: var(--color-background);
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--caronaa-gold);
+    color: var(--caronaa-black);
   }
 }
 
+/* ==========================================================
+ * CARONAA HERO
+ * ========================================================== */
+
 .bg-hero-overlay {
-  background: linear-gradient(
-    90deg,
-    oklch(0.16 0.035 249 / 92%) 0%,
-    oklch(0.16 0.035 249 / 74%) 42%,
-    oklch(0.16 0.035 249 / 24%) 100%
-  );
+  background:
+    linear-gradient(
+      90deg,
+      oklch(0.08 0 0 / 94%) 0%,
+      oklch(0.08 0 0 / 82%) 34%,
+      oklch(0.08 0 0 / 52%) 62%,
+      oklch(0.08 0 0 / 15%) 100%
+    );
 }
+
+/* Optional golden atmosphere */
+.bg-caronaa-glow {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      oklch(0.8 0.17 85 / 18%),
+      transparent 42%
+    );
+}
+
+/* ==========================================================
+ * SHADOWS
+ * ========================================================== */
+
 .shadow-soft {
-  box-shadow: 0 8px 32px -20px oklch(0.2 0.03 180 / 20%);
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 4%),
+    0 8px 24px -12px oklch(0 0 0 / 14%);
 }
+
 .shadow-card {
-  box-shadow: 0 16px 30px -20px oklch(0.2 0.03 180 / 28%);
+  box-shadow:
+    0 2px 4px oklch(0 0 0 / 4%),
+    0 16px 40px -20px oklch(0 0 0 / 20%);
 }
+
+.dark .shadow-soft {
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 30%),
+    0 10px 30px -12px oklch(0 0 0 / 60%);
+}
+
+.dark .shadow-card {
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 30%),
+    0 18px 45px -18px oklch(0 0 0 / 70%);
+}
+
+/* Gold glow for primary / highlighted objects */
+.shadow-gold {
+  box-shadow:
+    0 8px 28px -12px oklch(0.8 0.17 85 / 42%);
+}
+
+/* ==========================================================
+ * INTERACTIONS
+ * ========================================================== */
+
 .animate-page-in {
-  animation: page-in 220ms ease-out both;
+  animation: page-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
 .card-interactive {
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
-    border-color 180ms ease;
+    border-color 180ms ease,
+    background-color 180ms ease;
 }
+
 .card-interactive:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px -20px oklch(0.18 0.035 255 / 32%);
+  border-color: oklch(0.8 0.17 85 / 45%);
+
+  box-shadow:
+    0 2px 4px oklch(0 0 0 / 4%),
+    0 18px 38px -18px oklch(0 0 0 / 22%);
 }
+
+/*
+ * Generic buttons and links
+ */
 button,
 a {
   transition:
-    transform 180ms ease,
-    background-color 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
 }
+
 button:active,
 a:active {
   transform: scale(0.98);
 }
+
+/* ==========================================================
+ * FOCUS
+ * ========================================================== */
+
+:focus-visible {
+  outline: 2px solid var(--caronaa-gold);
+  outline-offset: 2px;
+}
+
+/* ==========================================================
+ * SCROLLBAR
+ * ========================================================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color:
+    oklch(0.72 0 0)
+    transparent;
+}
+
+.dark * {
+  scrollbar-color:
+    oklch(0.4 0 0)
+    transparent;
+}
+
+/* ==========================================================
+ * ANIMATIONS
+ * ========================================================== */
+
 @keyframes page-in {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
+/* ==========================================================
+ * MOBILE
+ * ========================================================== */
+
 @media (max-width: 767px) {
   .bg-hero-overlay {
-    background: linear-gradient(
-      0deg,
-      oklch(0.16 0.03 188 / 88%) 0%,
-      oklch(0.16 0.03 188 / 25%) 78%
-    );
+    background:
+      linear-gradient(
+        0deg,
+        oklch(0.07 0 0 / 96%) 0%,
+        oklch(0.07 0 0 / 72%) 40%,
+        oklch(0.07 0 0 / 22%) 82%
+      );
   }
 }
+
+/* ==========================================================
+ * ACCESSIBILITY
+ * ========================================================== */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

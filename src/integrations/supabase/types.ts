@@ -511,80 +511,118 @@ export type Database = {
       }
       ride_offers: {
         Row: {
-          available_seats: number
-          created_at: string
-          departure_time: string
-          destination: string
-          offer_id: string
-          origin: string
-          ride_date: string
-          seats_remaining: number
-          status: string
-          user_id: string
-        }
+          total_price: number;
+          routine_id?: string | null;
+          available_seats: number;
+          created_at: string;
+          departure_time: string;
+          destination: string;
+          destination_lat: number | null;
+          destination_lng: number | null;
+          offer_id: string;
+          origin: string;
+          origin_lat: number | null;
+          origin_lng: number | null;
+          ride_date: string;
+          seats_remaining: number;
+          status: string;
+          time_tolerance_minutes: number;
+          user_id: string;
+        };
         Insert: {
-          available_seats: number
-          created_at?: string
-          departure_time: string
-          destination: string
-          offer_id?: string
-          origin: string
-          ride_date: string
-          seats_remaining: number
-          status?: string
-          user_id: string
-        }
+          total_price?: number;
+          available_seats: number;
+          created_at?: string;
+          departure_time: string;
+          destination: string;
+          destination_lat?: number | null;
+          destination_lng?: number | null;
+          offer_id?: string;
+          origin: string;
+          origin_lat?: number | null;
+          origin_lng?: number | null;
+          ride_date: string;
+          seats_remaining: number;
+          status?: string;
+          time_tolerance_minutes?: number;
+          user_id: string;
+        };
         Update: {
-          available_seats?: number
-          created_at?: string
-          departure_time?: string
-          destination?: string
-          offer_id?: string
-          origin?: string
-          ride_date?: string
-          seats_remaining?: number
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          total_price?: number;
+          available_seats?: number;
+          created_at?: string;
+          departure_time?: string;
+          destination?: string;
+          destination_lat?: number | null;
+          destination_lng?: number | null;
+          offer_id?: string;
+          origin?: string;
+          origin_lat?: number | null;
+          origin_lng?: number | null;
+          ride_date?: string;
+          seats_remaining?: number;
+          status?: string;
+          time_tolerance_minutes?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       ride_requests: {
         Row: {
-          created_at: string
-          departure_time: string
-          destination: string
-          origin: string
-          passenger_count: number
-          request_id: string
-          ride_date: string
-          status: string
-          target_offer_id: string | null
-          user_id: string
-        }
+          price: number | null;
+          routine_id?: string | null;
+          created_at: string;
+          departure_time: string;
+          destination: string;
+          destination_lat: number | null;
+          destination_lng: number | null;
+          origin: string;
+          origin_lat: number | null;
+          origin_lng: number | null;
+          passenger_count: number;
+          request_id: string;
+          ride_date: string;
+          status: string;
+          target_offer_id: string | null;
+          time_tolerance_minutes: number;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          departure_time: string
-          destination: string
-          origin: string
-          passenger_count: number
-          request_id?: string
-          ride_date: string
-          status?: string
-          target_offer_id?: string | null
-          user_id: string
-        }
+          price?: number | null;
+          created_at?: string;
+          departure_time: string;
+          destination: string;
+          destination_lat?: number | null;
+          destination_lng?: number | null;
+          origin: string;
+          origin_lat?: number | null;
+          origin_lng?: number | null;
+          passenger_count: number;
+          request_id?: string;
+          ride_date: string;
+          status?: string;
+          target_offer_id?: string | null;
+          time_tolerance_minutes?: number;
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          departure_time?: string
-          destination?: string
-          origin?: string
-          passenger_count?: number
-          request_id?: string
-          ride_date?: string
-          status?: string
-          target_offer_id?: string | null
-          user_id?: string
-        }
+          price?: number | null;
+          created_at?: string;
+          departure_time?: string;
+          destination?: string;
+          destination_lat?: number | null;
+          destination_lng?: number | null;
+          origin?: string;
+          origin_lat?: number | null;
+          origin_lng?: number | null;
+          passenger_count?: number;
+          request_id?: string;
+          ride_date?: string;
+          status?: string;
+          target_offer_id?: string | null;
+          time_tolerance_minutes?: number;
+          user_id?: string;
+        };
         Relationships: [
           {
             foreignKeyName: "ride_requests_target_offer_id_fkey"
@@ -632,6 +670,9 @@ export type Database = {
       }
       rides: {
         Row: {
+          total_price: number
+          passenger_contribution: number
+          boarded_at: string | null
           completed_at: string | null
           created_at: string
           driver_user_id: string
@@ -644,6 +685,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          total_price?: number
+          passenger_contribution?: number
+          boarded_at?: string | null
           completed_at?: string | null
           created_at?: string
           driver_user_id: string
@@ -656,6 +700,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          total_price?: number
+          passenger_contribution?: number
+          boarded_at?: string | null
           completed_at?: string | null
           created_at?: string
           driver_user_id?: string
@@ -794,26 +841,75 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_offer_schedule_types: {
+        Args: { p_offer_ids: string[] };
+        Returns: { offer_id: string; is_recurring: boolean }[];
+      };
+      refresh_ride_routine_occurrences: { Args: Record<PropertyKey, never>; Returns: undefined };
+      get_my_ride_routines: { Args: Record<PropertyKey, never>; Returns: Json };
+      save_ride_routine: { Args: { p_definition: Json; p_routine_id?: string }; Returns: string };
+      set_ride_routine_active: {
+        Args: { p_routine_id: string; p_active: boolean };
+        Returns: undefined;
+      };
+      change_ride_routine_occurrence: {
+        Args: { p_kind: string; p_id: string; p_cancel?: boolean; p_changes?: Json };
+        Returns: undefined;
+      };
+      get_ride_safety: {
+        Args: { p_ride_id: string };
+        Returns: Json;
+      };
+      validate_ride_boarding: {
+        Args: { p_ride_id: string; p_code: string };
+        Returns: string;
+      };
+      update_ride_location: {
+        Args: {
+          p_ride_id: string;
+          p_latitude: number;
+          p_longitude: number;
+          p_accuracy_m: number;
+          p_captured_at: string;
+        };
+        Returns: undefined;
+      };
+      rate_ride: {
+        Args: { p_ride_id: string; p_score: number; p_comment?: string };
+        Returns: undefined;
+      };
       create_ride_offer: {
         Args: {
-          p_available_seats: number
-          p_departure_time: string
-          p_destination: string
-          p_origin: string
-          p_ride_date: string
-        }
-        Returns: string
-      }
+          p_total_price?: number;
+          p_available_seats: number;
+          p_departure_time: string;
+          p_destination: string;
+          p_destination_lat?: number;
+          p_destination_lng?: number;
+          p_origin: string;
+          p_origin_lat?: number;
+          p_origin_lng?: number;
+          p_ride_date: string;
+          p_time_tolerance_minutes?: number;
+        };
+        Returns: string;
+      };
       create_ride_request: {
         Args: {
-          p_departure_time: string
-          p_destination: string
-          p_origin: string
-          p_passenger_count: number
-          p_ride_date: string
-        }
-        Returns: string
-      }
+          p_price?: number;
+          p_departure_time: string;
+          p_destination: string;
+          p_destination_lat?: number;
+          p_destination_lng?: number;
+          p_origin: string;
+          p_origin_lat?: number;
+          p_origin_lng?: number;
+          p_passenger_count: number;
+          p_ride_date: string;
+          p_time_tolerance_minutes?: number;
+        };
+        Returns: string;
+      };
       get_acquisition_funnel_metrics: {
         Args: {
           p_campaign?: string
@@ -936,30 +1032,39 @@ export type Database = {
       }
       search_available_ride_offers: {
         Args: {
-          p_departure_time?: string
-          p_destination?: string
-          p_limit?: number
-          p_origin?: string
-          p_passenger_count?: number
-          p_ride_date?: string
-        }
+          p_departure_time?: string;
+          p_destination?: string;
+          p_destination_lat?: number;
+          p_destination_lng?: number;
+          p_limit?: number;
+          p_origin?: string;
+          p_origin_lat?: number;
+          p_origin_lng?: number;
+          p_passenger_count?: number;
+          p_ride_date?: string;
+          p_time_tolerance_minutes?: number;
+        };
         Returns: {
-          available_seats: number
-          avatar_url: string
-          city: string
-          created_at: string
-          departure_time: string
-          destination: string
-          full_name: string
-          offer_id: string
-          origin: string
-          ride_date: string
-          seats_remaining: number
-          status: string
-          user_id: string
-          verifications: Json
-        }[]
-      }
+          available_seats: number;
+          avatar_url: string;
+          city: string;
+          created_at: string;
+          departure_time: string;
+          destination: string;
+          destination_lat: number | null;
+          destination_lng: number | null;
+          full_name: string;
+          offer_id: string;
+          origin: string;
+          origin_lat: number | null;
+          origin_lng: number | null;
+          ride_date: string;
+          seats_remaining: number;
+          status: string;
+          user_id: string;
+          verifications: Json;
+        }[];
+      };
       submit_form_response: {
         Args: {
           p_anonymous_session_id?: string
@@ -975,6 +1080,10 @@ export type Database = {
       transition_ride_status: {
         Args: { p_next_status: string; p_ride_id: string }
         Returns: string
+      }
+      update_ride_total_cost: {
+        Args: { p_ride_id: string; p_total_price: number }
+        Returns: number
       }
       try_match_ride_request: {
         Args: { p_preferred_offer_id?: string; p_request_id: string }

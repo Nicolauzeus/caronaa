@@ -162,6 +162,62 @@
       "when": 1791308000000,
       "tag": "0022_idempotent_ride_confirmation",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791309000000,
+      "tag": "0023_flexible_time_tolerance_matching",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791310000000,
+      "tag": "0024_geographic_ride_matching",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791311000000,
+      "tag": "0025_admin_operation_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791312000000,
+      "tag": "0026_ride_operational_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791313000000,
+      "tag": "0027_automatic_ride_cost_splitting",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791314000000,
+      "tag": "0028_weekly_ride_routines",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791315000000,
+      "tag": "0029_secure_ride_cost_updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791316000000,
+      "tag": "0030_directional_geographic_matching",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,12 @@ import { createRideOffer } from "@/lib/ride-matching.functions";
 import { toast } from "sonner";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
+import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
 import type { FormLocationDetails } from "@/lib/location/types";
+import {
+  TimeToleranceSelector,
+  type TimeToleranceMinutes,
+} from "@/components/caronaa/TimeToleranceSelector";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
   head: () => ({
@@ -51,6 +56,7 @@ type OferecerFormState = {
   meeting: string;
   notes: string;
   price: string;
+  timeTolerance: TimeToleranceMinutes;
 };
 
 const initial: OferecerFormState = {
@@ -65,10 +71,13 @@ const initial: OferecerFormState = {
   meeting: "",
   notes: "",
   price: "",
+  timeTolerance: 15,
 };
 function Oferecer() {
   const publishOffer = useServerFn(createRideOffer);
   const [step, setStep] = useState(1);
+  const [mode, setMode] = useState<"point" | "routine">("point");
+  const [routineSaved, setRoutineSaved] = useState(false);
   const [form, setForm] = useState<OferecerFormState>(initial);
   const update = (key: keyof OferecerFormState, value: string) =>
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -80,9 +89,15 @@ function Oferecer() {
           data: {
             origin: form.origin,
             destination: form.destination,
+            originLat: form.originLocation?.lat,
+            originLng: form.originLocation?.lng,
+            destinationLat: form.destinationLocation?.lat,
+            destinationLng: form.destinationLocation?.lng,
             rideDate: form.date,
             departureTime: form.time,
             availableSeats: Number(form.seats),
+            timeToleranceMinutes: form.timeTolerance,
+            totalPrice: form.price ? Number(form.price) : 30,
           },
         });
       } catch (error) {
@@ -100,188 +115,234 @@ function Oferecer() {
           title="Ofereça uma carona"
           description="Já vai fazer esse trajeto? Abra espaço para quem está indo na mesma direção."
         />
-        <div className="mb-8 flex items-center gap-3">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="flex flex-1 items-center gap-2">
-              <span
-                className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step >= n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
-              >
-                {step > n ? <Check size={15} /> : n}
-              </span>
-              <span
-                className={`hidden text-xs font-semibold sm:block ${step >= n ? "text-foreground" : "text-muted-foreground"}`}
-              >
-                {["Trajeto", "Detalhes", "Pronto!"][n - 1]}
-              </span>
-              {n < 3 && <span className="ml-auto h-px flex-1 bg-border" />}
-            </div>
-          ))}
-        </div>
-        {step === 3 ? (
-          <div className="rounded-lg border border-border bg-card px-6 py-16 text-center shadow-soft">
-            <span className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-secondary text-primary">
-              <CheckCircle2 size={34} />
-            </span>
-            <h2 className="font-display text-2xl font-extrabold">Carona publicada!</h2>
-            <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-              Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas caronas e
-              já pode gerar matches reais com pedidos compatíveis.
-            </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
+        <RideScheduleMode value={mode} onChange={setMode} />
+        {mode === "routine" ? (
+          routineSaved ? (
+            <div className="space-y-4 border-y border-border py-8">
+              <h2 className="text-xl font-semibold">Rotina ativa</h2>
               <Button asChild>
                 <Link to="/minhas-caronas">
-                  Ver minhas caronas <ArrowRight />
+                  Minhas viagens <ArrowRight size={16} />
                 </Link>
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setForm(initial);
-                  setStep(1);
-                }}
-              >
-                Oferecer outra
+              <Button variant="outline" onClick={() => setRoutineSaved(false)}>
+                Nova rotina
               </Button>
             </div>
-          </div>
+          ) : (
+            <RideRoutineForm
+              kind="offer"
+              initial={{
+                origin: form.origin,
+                destination: form.destination,
+                originLat: form.originLocation?.lat ?? null,
+                originLng: form.originLocation?.lng ?? null,
+                destinationLat: form.destinationLocation?.lat ?? null,
+                destinationLng: form.destinationLocation?.lng ?? null,
+                departureTime: form.time || "07:30",
+                seats: Number(form.seats),
+                totalPrice: form.price ? Number(form.price) : 30,
+                timeToleranceMinutes: form.timeTolerance,
+              }}
+              onSaved={() => setRoutineSaved(true)}
+            />
+          )
         ) : (
-          <form
-            onSubmit={next}
-            className="rounded-lg border border-border bg-card p-5 shadow-soft md:p-8"
-          >
-            <div className="mb-7 flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
-                {step === 1 ? <MapPin /> : <CarFront />}
-              </span>
-              <div>
-                <h2 className="font-display text-xl font-extrabold">
-                  {step === 1 ? "Por onde você vai?" : "Detalhes da sua carona"}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {step === 1
-                    ? "Conte-nos o trajeto e quando pretende sair."
-                    : "Ajude passageiros a conhecer sua viagem."}
-                </p>
-              </div>
-            </div>
-            {step === 1 ? (
-              <div className="space-y-6">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <LocationAutocomplete
-                    id="oferecer-origem"
-                    label="Origem"
-                    value={form.origin}
-                    onChange={(v, details) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        origin: details?.formattedAddress || v,
-                        originLocation: details,
-                      }))
-                    }
-                    placeholder="Ex.: Aldeota, Fortaleza"
-                    required
-                    variant="simple"
-                  />
-                  <LocationAutocomplete
-                    id="oferecer-destino"
-                    label="Destino"
-                    value={form.destination}
-                    onChange={(v, details) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        destination: details?.formattedAddress || v,
-                        destinationLocation: details,
-                      }))
-                    }
-                    placeholder="Ex.: Eusébio, UNIFOR, Centro"
-                    required
-                    variant="simple"
-                  />
-                  <Field
-                    label="Data"
-                    value={form.date}
-                    onChange={(v) => update("date", v)}
-                    type="date"
-                    required
-                  />
-                  <Field
-                    label="Horário de saída"
-                    value={form.time}
-                    onChange={(v) => update("time", v)}
-                    type="time"
-                    required
-                  />
+          <>
+            <div className="mb-8 flex items-center gap-3">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="flex flex-1 items-center gap-2">
+                  <span
+                    className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step >= n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+                  >
+                    {step > n ? <Check size={15} /> : n}
+                  </span>
+                  <span
+                    className={`hidden text-xs font-semibold sm:block ${step >= n ? "text-foreground" : "text-muted-foreground"}`}
+                  >
+                    {["Trajeto", "Detalhes", "Pronto!"][n - 1]}
+                  </span>
+                  {n < 3 && <span className="ml-auto h-px flex-1 bg-border" />}
                 </div>
-                <RouteMap
-                  origin={form.origin}
-                  destination={form.destination}
-                  originLocation={form.originLocation}
-                  destinationLocation={form.destinationLocation}
-                />
+              ))}
+            </div>
+            {step === 3 ? (
+              <div className="rounded-lg border border-border bg-card px-6 py-16 text-center shadow-soft">
+                <span className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-secondary text-primary">
+                  <CheckCircle2 size={34} />
+                </span>
+                <h2 className="font-display text-2xl font-extrabold">Carona publicada!</h2>
+                <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+                  Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas
+                  caronas e já pode gerar matches reais com pedidos compatíveis.
+                </p>
+                <div className="mt-7 flex flex-wrap justify-center gap-3">
+                  <Button asChild>
+                    <Link to="/minhas-caronas">
+                      Ver minhas caronas <ArrowRight />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setForm(initial);
+                      setStep(1);
+                    }}
+                  >
+                    Oferecer outra
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block text-sm font-semibold">
-                  Vagas disponíveis
-                  <select
-                    value={form.seats}
-                    onChange={(e) => update("seats", e.target.value)}
-                    className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option>1</option>
-                    <option>2</option>
-                    <option>3</option>
-                    <option>4</option>
-                  </select>
-                </label>
-                <Field
-                  label="Veículo"
-                  value={form.vehicle}
-                  onChange={(v) => update("vehicle", v)}
-                  placeholder="Ex.: Honda Fit, prata"
-                  required
-                />
-                <Field
-                  label="Ponto de encontro"
-                  value={form.meeting}
-                  onChange={(v) => update("meeting", v)}
-                  placeholder="Ex.: Praça Portugal"
-                  required
-                />
-                <Field
-                  label="Contribuição sugerida (R$)"
-                  value={form.price}
-                  onChange={(v) => update("price", v)}
-                  type="number"
-                  placeholder="Opcional"
-                />
-                <label className="block text-sm font-semibold sm:col-span-2">
-                  Observações
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => update("notes", e.target.value)}
-                    placeholder="Algo mais que os passageiros devem saber?"
-                    rows={3}
-                    className="mt-2 w-full rounded-md border border-input bg-background px-3 py-3 outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </label>
-              </div>
+              <form
+                onSubmit={next}
+                className="rounded-lg border border-border bg-card p-5 shadow-soft md:p-8"
+              >
+                <div className="mb-7 flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
+                    {step === 1 ? <MapPin /> : <CarFront />}
+                  </span>
+                  <div>
+                    <h2 className="font-display text-xl font-extrabold">
+                      {step === 1 ? "Por onde você vai?" : "Detalhes da sua carona"}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {step === 1
+                        ? "Conte-nos o trajeto e quando pretende sair."
+                        : "Ajude passageiros a conhecer sua viagem."}
+                    </p>
+                  </div>
+                </div>
+                {step === 1 ? (
+                  <div className="space-y-6">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <LocationAutocomplete
+                        id="oferecer-origem"
+                        label="Origem"
+                        value={form.origin}
+                        onChange={(v, details) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            origin: details?.formattedAddress || v,
+                            originLocation: details,
+                          }))
+                        }
+                        placeholder="Ex.: Aldeota, Fortaleza"
+                        required
+                        variant="simple"
+                      />
+                      <LocationAutocomplete
+                        id="oferecer-destino"
+                        label="Destino"
+                        value={form.destination}
+                        onChange={(v, details) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            destination: details?.formattedAddress || v,
+                            destinationLocation: details,
+                          }))
+                        }
+                        placeholder="Ex.: Eusébio, UNIFOR, Centro"
+                        required
+                        variant="simple"
+                      />
+                      <Field
+                        label="Data"
+                        value={form.date}
+                        onChange={(v) => update("date", v)}
+                        type="date"
+                        required
+                      />
+                      <Field
+                        label="Horário de saída"
+                        value={form.time}
+                        onChange={(v) => update("time", v)}
+                        type="time"
+                        required
+                      />
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/15 p-3">
+                      <TimeToleranceSelector
+                        value={form.timeTolerance}
+                        onChange={(val) => setForm((prev) => ({ ...prev, timeTolerance: val }))}
+                        baseTime={form.time}
+                        label="Flexibilidade de horário da oferta"
+                      />
+                    </div>
+                    <RouteMap
+                      origin={form.origin}
+                      destination={form.destination}
+                      originLocation={form.originLocation}
+                      destinationLocation={form.destinationLocation}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <label className="block text-sm font-semibold">
+                      Vagas disponíveis
+                      <select
+                        value={form.seats}
+                        onChange={(e) => update("seats", e.target.value)}
+                        className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option>1</option>
+                        <option>2</option>
+                        <option>3</option>
+                        <option>4</option>
+                      </select>
+                    </label>
+                    <Field
+                      label="Veículo"
+                      value={form.vehicle}
+                      onChange={(v) => update("vehicle", v)}
+                      placeholder="Ex.: Honda Fit, prata"
+                      required
+                    />
+                    <LocationAutocomplete
+                      id="oferecer-meeting"
+                      label="Ponto de encontro"
+                      value={form.meeting}
+                      onChange={(v, details) => update("meeting", details?.formattedAddress || v)}
+                      placeholder="Ex.: Praça Portugal"
+                      required
+                      variant="simple"
+                    />
+                    <Field
+                      label="Valor total da viagem (R$)"
+                      value={form.price}
+                      onChange={(v) => update("price", v)}
+                      type="number"
+                      placeholder="30"
+                    />
+                    <label className="block text-sm font-semibold sm:col-span-2">
+                      Observações
+                      <textarea
+                        value={form.notes}
+                        onChange={(e) => update("notes", e.target.value)}
+                        placeholder="Algo mais que os passageiros devem saber?"
+                        rows={3}
+                        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-3 outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </label>
+                  </div>
+                )}
+                <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+                  {step === 2 ? (
+                    <Button type="button" variant="ghost" onClick={() => setStep(1)}>
+                      <ArrowLeft /> Voltar
+                    </Button>
+                  ) : (
+                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CalendarDays size={15} /> Planeje seu trajeto
+                    </span>
+                  )}
+                  <Button type="submit" className="h-11 px-6">
+                    {step === 1 ? "Continuar" : "Publicar carona"} <ArrowRight />
+                  </Button>
+                </div>
+              </form>
             )}
-            <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
-              {step === 2 ? (
-                <Button type="button" variant="ghost" onClick={() => setStep(1)}>
-                  <ArrowLeft /> Voltar
-                </Button>
-              ) : (
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CalendarDays size={15} /> Planeje seu trajeto
-                </span>
-              )}
-              <Button type="submit" className="h-11 px-6">
-                {step === 1 ? "Continuar" : "Publicar carona"} <ArrowRight />
-              </Button>
-            </div>
-          </form>
+          </>
         )}
       </div>
     </AppShell>

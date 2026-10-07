@@ -8,6 +8,11 @@ import { RideCard } from "@/components/caronaa/RideCard";
 import { Button } from "@/components/ui/button";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { searchRideOffers, type RideSummary } from "@/lib/rides.functions";
+import {
+  TimeToleranceSelector,
+  type TimeToleranceMinutes,
+} from "@/components/caronaa/TimeToleranceSelector";
+import type { FormLocationDetails } from "@/lib/location/types";
 
 export const Route = createFileRoute("/buscar")({
   head: () => ({
@@ -32,15 +37,21 @@ function Buscar() {
   const searchOffers = useServerFn(searchRideOffers);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
+  const [originLocation, setOriginLocation] = useState<FormLocationDetails | undefined>();
+  const [destinationLocation, setDestinationLocation] = useState<FormLocationDetails | undefined>();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [passengers, setPassengers] = useState("1");
+  const [timeTolerance, setTimeTolerance] = useState<TimeToleranceMinutes>(15);
   const [submitted, setSubmitted] = useState({
     origin: "",
     destination: "",
     date: "",
     time: "",
     passengers: "1",
+    timeTolerance: 15 as TimeToleranceMinutes,
+    originLocation: undefined as FormLocationDetails | undefined,
+    destinationLocation: undefined as FormLocationDetails | undefined,
   });
   const [matches, setMatches] = useState<RideSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +66,16 @@ function Buscar() {
       setOrigin(from);
       setDestination(to);
       setDate(when);
-      setSubmitted({ origin: from, destination: to, date: when, time: "", passengers: "1" });
+      setSubmitted({
+        origin: from,
+        destination: to,
+        date: when,
+        time: "",
+        passengers: "1",
+        timeTolerance: 15,
+        originLocation: undefined,
+        destinationLocation: undefined,
+      });
     }
   }, []);
 
@@ -67,9 +87,14 @@ function Buscar() {
       data: {
         origin: submitted.origin || undefined,
         destination: submitted.destination || undefined,
+        originLat: submitted.originLocation?.lat,
+        originLng: submitted.originLocation?.lng,
+        destinationLat: submitted.destinationLocation?.lat,
+        destinationLng: submitted.destinationLocation?.lng,
         rideDate: submitted.date || undefined,
         departureTime: submitted.time || undefined,
         passengerCount: Number(submitted.passengers) || 1,
+        timeToleranceMinutes: submitted.timeTolerance,
       },
     })
       .then((data) => {
@@ -101,54 +126,83 @@ function Buscar() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          setSubmitted({ origin, destination, date, time, passengers });
+          setSubmitted({
+            origin,
+            destination,
+            date,
+            time,
+            passengers,
+            timeTolerance,
+            originLocation,
+            destinationLocation,
+          });
         }}
-        className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-soft md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end"
+        className="rounded-lg border border-border bg-card p-4 shadow-soft space-y-4"
       >
-        <LocationAutocomplete
-          id="buscar-origem"
-          label="ORIGEM"
-          value={origin}
-          onChange={(val) => setOrigin(val)}
-          placeholder="De onde?"
-          variant="simple"
-        />
-        <LocationAutocomplete
-          id="buscar-destino"
-          label="DESTINO"
-          value={destination}
-          onChange={(val) => setDestination(val)}
-          placeholder="Para onde?"
-          variant="simple"
-        />
-        <label className="text-xs font-bold text-muted-foreground">
-          DATA
-          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
-            <CalendarDays size={16} className="text-primary" />
-            <input
-              aria-label="Data da viagem"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
-            />
-          </div>
-        </label>
-        <label className="text-xs font-bold text-muted-foreground">
-          HORÁRIO
-          <div className="mt-2 flex h-11 items-center rounded-md border border-input px-3">
-            <input
-              aria-label="Horário aproximado"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-full bg-transparent text-sm text-foreground outline-none"
-            />
-          </div>
-        </label>
-        <Button type="submit" className="h-11">
-          <Search /> Buscar
-        </Button>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end">
+          <LocationAutocomplete
+            id="buscar-origem"
+            label="ORIGEM"
+            value={origin}
+            onChange={(val, details) => {
+              setOrigin(details?.formattedAddress || val);
+              setOriginLocation(details);
+            }}
+            placeholder="De onde?"
+            variant="simple"
+          />
+          <LocationAutocomplete
+            id="buscar-destino"
+            label="DESTINO"
+            value={destination}
+            onChange={(val, details) => {
+              setDestination(details?.formattedAddress || val);
+              setDestinationLocation(details);
+            }}
+            placeholder="Para onde?"
+            variant="simple"
+          />
+          <label className="text-xs font-bold text-muted-foreground">
+            DATA
+            <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3">
+              <CalendarDays size={16} className="text-primary" />
+              <input
+                aria-label="Data da viagem"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none"
+              />
+            </div>
+          </label>
+          <label className="text-xs font-bold text-muted-foreground">
+            HORÁRIO
+            <div className="mt-2 flex h-11 items-center rounded-md border border-input px-3">
+              <input
+                aria-label="Horário aproximado"
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full bg-transparent text-sm text-foreground outline-none"
+              />
+            </div>
+          </label>
+          <Button type="submit" className="h-11">
+            <Search /> Buscar
+          </Button>
+        </div>
+
+        <div className="border-t border-border/60 pt-3">
+          <TimeToleranceSelector
+            value={timeTolerance}
+            onChange={(val) => {
+              setTimeTolerance(val);
+              setSubmitted((prev) => ({ ...prev, timeTolerance: val }));
+            }}
+            baseTime={time}
+            label="Tolerância de horário"
+          />
+        </div>
       </form>
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <SlidersHorizontal size={17} className="mr-1 text-muted-foreground" />
@@ -214,10 +268,21 @@ function Buscar() {
             onClick={() => {
               setOrigin("");
               setDestination("");
+              setOriginLocation(undefined);
+              setDestinationLocation(undefined);
               setDate("");
               setTime("");
               setPassengers("1");
-              setSubmitted({ origin: "", destination: "", date: "", time: "", passengers: "1" });
+              setSubmitted({
+                origin: "",
+                destination: "",
+                date: "",
+                time: "",
+                passengers: "1",
+                timeTolerance: 15,
+                originLocation: undefined,
+                destinationLocation: undefined,
+              });
             }}
           >
             Limpar filtros

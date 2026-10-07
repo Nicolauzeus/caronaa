@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { BrandBadge, BrandLogo, CaronaaSymbol, StsBadge } from "@/components/caronaa/BrandElements";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -657,21 +658,19 @@ export function PitchLandingPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="institution_address" className="text-sm font-semibold">
-                        Endereço detalhado da instituição
-                      </Label>
-                      <div className="relative">
-                        <MapPin className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
-                        <Input
-                          id="institution_address"
-                          placeholder="Ex.: Av. Washington Soares, 1321 - Edson Queiroz, Fortaleza - CE"
-                          className="pl-9"
-                          {...register("institution_address")}
-                        />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        Ajuda nossa equipe a mapear densidade e polos de deslocamento compatíveis.
-                      </p>
+                      <LocationAutocomplete
+                        id="institution_address"
+                        label="Endereço detalhado da instituição"
+                        value={watch("institution_address") || ""}
+                        onChange={(val, details) =>
+                          setValue("institution_address", details?.formattedAddress || val, {
+                            shouldValidate: true,
+                          })
+                        }
+                        placeholder="Ex.: Av. Washington Soares, 1321 - Edson Queiroz, Fortaleza - CE"
+                        variant="simple"
+                        helperText="Ajuda nossa equipe a mapear densidade e polos de deslocamento compatíveis."
+                      />
                     </div>
 
                     <div className="space-y-2 pt-1">

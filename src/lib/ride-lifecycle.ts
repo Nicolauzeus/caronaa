@@ -16,22 +16,66 @@ const allowedTransitions: Partial<Record<RideStatus, readonly RideStatus[]>> = {
 };
 
 export function canTransitionRide(from: RideStatus, to: RideStatus): boolean {
-  if (from === "CONFIRMED" && to === "CONFIRMED") return true;
+  if (from === to && (from === "CONFIRMED" || from === "CANCELLED")) return true;
   return allowedTransitions[from]?.includes(to) ?? false;
 }
 
 export function transitionRide(
   from: RideStatus,
   to: RideStatus,
-  context: { hasPersistedMatch: boolean; isParticipant: boolean; confirmedByBoth?: boolean },
+  context: {
+    hasPersistedMatch: boolean;
+    isParticipant: boolean;
+    confirmedByBoth?: boolean;
+    boardingValidated?: boolean;
+    isDriver?: boolean;
+  },
 ): RideStatus {
   if (!context.hasPersistedMatch) throw new Error("A ride requires a persisted match");
   if (!context.isParticipant) throw new Error("Only ride participants may transition the ride");
-  if (from === "CONFIRMED" && to === "CONFIRMED") return "CONFIRMED";
+  if (from === to && (from === "CONFIRMED" || from === "CANCELLED")) return to;
+  if (to === "IN_PROGRESS" && (!context.boardingValidated || !context.isDriver)) {
+    throw new Error("Driver must validate boarding PIN before starting the ride");
+  }
   if (to === "COMPLETED") {
     if (from === "IN_PROGRESS" && context.confirmedByBoth) return "COMPLETED";
     throw new Error(`Invalid ride transition: ${from} -> ${to}`);
   }
   if (!canTransitionRide(from, to)) throw new Error(`Invalid ride transition: ${from} -> ${to}`);
   return to;
+}
+
+export type RideAction = {
+  label: string;
+  status: RideStatus;
+  variant?: "outline";
+};
+
+export function getRideNextActions(
+  status: string,
+  role: "driver" | "passenger" | "available",
+): RideAction[] {
+  if (status === "MATCHED") {
+    return [
+      { label: "Confirmar carona", status: "CONFIRMED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ];
+  }
+
+  if (status === "CONFIRMED") {
+    if (role === "driver") {
+      return [{ label: "Cancelar", status: "CANCELLED", variant: "outline" }];
+    }
+    // Passageiro já teve a carona confirmada, sem botão redundante de confirmar
+    return [{ label: "Cancelar", status: "CANCELLED", variant: "outline" }];
+  }
+
+  if (status === "IN_PROGRESS") {
+    return [
+      { label: "Concluir viagem", status: "COMPLETED" },
+      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+    ];
+  }
+
+  return [];
 }
