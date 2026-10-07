@@ -9,9 +9,9 @@ type FormIntroProps = {
 
 export function FormIntro({ onStart }: FormIntroProps) {
   return (
-    <section className="relative isolate flex min-h-[calc(100svh-4rem)] overflow-hidden bg-caronaa-dark text-white">
+    <section className="sts-intro relative isolate flex min-h-[calc(100svh-4rem)] overflow-hidden bg-caronaa-dark text-white">
       {/* Background Hero Image */}
-      <picture className="absolute inset-0 -z-20 opacity-35">
+      <picture className="absolute inset-0 -z-20 opacity-80">
         <source media="(min-width: 768px)" srcSet={desktopArtwork} />
         <img
           src={mobileArtwork}
@@ -27,8 +27,8 @@ export function FormIntro({ onStart }: FormIntroProps) {
         className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0b0f19] via-[#0b0f19]/85 to-transparent md:bg-gradient-to-r md:from-[#0b0f19] md:via-[#0b0f19]/80 md:to-transparent"
       />
 
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-center px-4 py-8 sm:px-6 md:py-14">
-        <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0b0f19]/80 p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-start px-5 py-10 sm:px-8 md:py-14">
+        <div className="w-full max-w-2xl py-4 lg:pr-12">
           {/* Header Institucional com Hierarquia de Marcas:
               1. CARONAA = Marca Principal
               2. Siará Tech Summit = Contexto do evento
@@ -37,7 +37,7 @@ export function FormIntro({ onStart }: FormIntroProps) {
           */}
           <div className="border-b border-white/10 pb-6 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <BrandLogo size="md" />
+              <BrandLogo size="md" className="[&_span]:text-white" />
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/90 shadow-2xs backdrop-blur-md"
@@ -84,7 +84,7 @@ export function FormIntro({ onStart }: FormIntroProps) {
 
           {/* Quick Info Grid */}
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+            <div className="flex items-center gap-3 border-t border-white/20 py-4">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-caronaa-primary/20 text-caronaa-primary">
                 <MapPin size={18} />
               </span>
@@ -94,7 +94,7 @@ export function FormIntro({ onStart }: FormIntroProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+            <div className="flex items-center gap-3 border-t border-white/20 py-4">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-event-cyan/20 text-event-cyan">
                 <Calendar size={18} />
               </span>
@@ -104,7 +104,7 @@ export function FormIntro({ onStart }: FormIntroProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+            <div className="flex items-center gap-3 border-t border-white/20 py-4">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-400">
                 <Clock size={18} />
               </span>

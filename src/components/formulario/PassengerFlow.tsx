@@ -711,7 +711,7 @@ export function PassengerFlow({
       </div>
 
       {/* Navegação */}
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-4 border-t border-border">
+      <div className="sts-navigation flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-4 border-t border-border">
         <button
           type="button"
           onClick={onBack}

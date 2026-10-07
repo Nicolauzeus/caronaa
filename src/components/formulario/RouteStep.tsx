@@ -141,7 +141,7 @@ export function RouteStep({
         </p>
       </div>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+      <div className="sts-navigation flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
         <button
           type="button"
           onClick={onBack}

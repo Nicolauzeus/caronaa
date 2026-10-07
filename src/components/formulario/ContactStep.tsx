@@ -103,7 +103,7 @@ export function ContactStep({
         </p>
       </div>
 
-      <div className="space-y-5 rounded-2xl border bg-card p-5 sm:p-6 shadow-sm">
+      <div className="space-y-5 border-t border-border pt-6">
         <div className="space-y-2">
           <label htmlFor="contact-name" className="text-sm font-semibold">
             Como prefere ser chamado? *
@@ -251,7 +251,7 @@ export function ContactStep({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-2">
+      <div className="sts-navigation flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-2">
         <button
           type="button"
           onClick={onBack}

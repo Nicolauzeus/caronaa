@@ -186,7 +186,7 @@ function Formulario() {
         eventName,
         userId: user?.id ?? null,
         formStep: stepOverride ?? step,
-        submissionId: data.submissionId ?? null,
+        submissionId: step === "SUCCESS" ? data.submissionId ?? null : null,
         metadata: {
           role: data.intent ?? null,
           etapa: stepOverride ?? step,
@@ -537,6 +537,10 @@ function Formulario() {
       });
       submissionAttemptIdRef.current = payload.submissionId;
 
+      const attemptData = { ...data, submissionId: payload.submissionId };
+      setData(attemptData);
+      saveFormDraft(attemptData, step);
+
       await saveFormSubmission(payload, user?.id ?? null);
 
       clearFormDraft();
@@ -558,7 +562,7 @@ function Formulario() {
 
   return (
     <AppShell publicPage>
-      <div className="min-h-[calc(100vh-72px)] bg-background">
+      <div className="sts-form min-h-[calc(100vh-72px)] bg-background">
         {step !== "INTRO" && step !== "SUCCESS" ? (
           <InstitutionalHeader
             variant="sticky"

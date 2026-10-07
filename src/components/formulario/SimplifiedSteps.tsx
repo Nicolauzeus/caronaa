@@ -168,7 +168,7 @@ function StepShell({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
+    <section className="sts-step mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-caronaa-primary/30 bg-caronaa-primary/10 px-3 py-1 text-xs font-bold text-caronaa-dark dark:text-caronaa-primary">
@@ -196,7 +196,7 @@ function StepShell({
 
 function Nav({ onNext, onBack, canContinue, nextLabel = "Avançar" }: NavProps) {
   return (
-    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-4 border-t border-border">
+    <div className="sts-navigation flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-4 border-t border-border">
       <button
         type="button"
         onClick={onBack}

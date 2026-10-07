@@ -1,5 +1,6 @@
 import type { CaronaaStsFormData } from "./types";
 import type { FormStep } from "./flow";
+import { ensureUuid, uuidSchema } from "@/lib/uuid";
 
 const DRAFT_STORAGE_KEY = "caronaa-formulario-draft-v1";
 
@@ -14,7 +15,7 @@ export function saveFormDraft(data: Partial<CaronaaStsFormData>, step: FormStep)
 
   try {
     const payload: FormDraftState = {
-      data,
+      data: data.submissionId === undefined ? data : { ...data, submissionId: ensureUuid(data.submissionId) },
       step,
       savedAt: Date.now(),
     };
@@ -42,6 +43,10 @@ export function loadFormDraft(): FormDraftState | null {
       return null;
     }
 
+    if (parsed.data.submissionId !== undefined && !uuidSchema.safeParse(parsed.data.submissionId).success) {
+      parsed.data.submissionId = ensureUuid(parsed.data.submissionId);
+      window.sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(parsed));
+    }
     return parsed;
   } catch (err) {
     console.warn("[DraftStorage] Erro ao carregar rascunho:", err);

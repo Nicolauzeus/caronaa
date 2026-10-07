@@ -34,7 +34,7 @@ export function InstitutionalHeader({
       className={cn(
         "w-full transition-colors",
         variant === "sticky"
-          ? "sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md"
+          ? "sticky top-16 z-30 border-b border-border bg-background/95 backdrop-blur-md"
           : isDark
             ? "border-b border-white/10 bg-[#0b0f19]/90 text-white backdrop-blur-md"
             : "border-b border-border bg-background/95 text-foreground",
@@ -42,7 +42,7 @@ export function InstitutionalHeader({
       )}
       aria-label="Identificação institucional CARONAA e Siará Tech Summit 2026"
     >
-      <div className="mx-auto w-full max-w-2xl px-4 py-2.5 sm:px-6">
+      <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-8">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           {/* HIERARQUIA DE MARCAS:
               1. CARONAA = Marca Principal
@@ -94,15 +94,14 @@ export function InstitutionalHeader({
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-semibold tracking-tight shadow-2xs transition-colors",
                   isDark
-                    ? "border border-cyan-500/30 bg-cyan-950/40 text-cyan-300"
-                    : "border border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+                    ? "border border-white/20 bg-white/5 text-white"
+                    : "border border-border bg-secondary text-foreground",
                 )}
                 title="Participação oficial como startup expositora no Siará Tech Summit 2026"
               >
                 {/* Micro-ponto de pulsação tecnológica com acento magenta e ciano */}
                 <span className="relative flex size-1.5 shrink-0" aria-hidden="true">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-pink-500 opacity-60" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-cyan-400" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-caronaa-primary" />
                 </span>
                 <span>Expositora no Siará Tech Summit 2026</span>
               </span>
@@ -131,11 +130,12 @@ export function InstitutionalHeader({
               </span>
 
               {/* Barra de progresso com identidade CARONAA (amarelo/laranja) e acento ciano na terminação */}
-              <div className="h-2 w-24 sm:w-32 overflow-hidden rounded-full bg-muted ring-1 ring-border shrink-0">
+              <div className="sr-only">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-caronaa-primary via-caronaa-primary-strong to-cyan-400 transition-all duration-300"
+                  className="h-full bg-caronaa-primary transition-all duration-300"
                   style={{ width: `${progress}%` }}
                   role="progressbar"
+                  aria-label="Progresso do formulário"
                   aria-valuenow={progress}
                   aria-valuemin={0}
                   aria-valuemax={100}
@@ -149,10 +149,9 @@ export function InstitutionalHeader({
       {/* Linha de acento sutil do evento na borda inferior:
           Domínio do amarelo CARONAA na base, com sutis toques de ciano e magenta do STS
       */}
-      <div
-        className="h-[2px] w-full bg-gradient-to-r from-caronaa-primary via-caronaa-primary-strong to-cyan-400 opacity-80"
-        aria-hidden="true"
-      />
+      <div className="h-1 w-full bg-muted" aria-hidden="true">
+        <div className="h-full bg-caronaa-primary transition-[width] duration-300 motion-reduce:transition-none" style={{ width: showProgress ? `${progress}%` : "100%" }} />
+      </div>
     </header>
   );
 }
