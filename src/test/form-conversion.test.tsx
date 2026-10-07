@@ -51,7 +51,7 @@ describe("Form to Account Conversion Flow", () => {
     source: "sts-2026",
     campaign: "sts_meta_ads",
     campaignEvent: "Siará Tech Summit 2026",
-    submissionId: "sub-12345-sts",
+    submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
     intent: "MOTORISTA",
     originNeighborhood: "Centro de Eventos do Ceará",
     destinationNeighborhood: "Aldeota",
@@ -72,7 +72,7 @@ describe("Form to Account Conversion Flow", () => {
 
     const stored = getFormConversionDraft();
     expect(stored).not.toBeNull();
-    expect(stored?.submissionId).toBe("sub-12345-sts");
+    expect(stored?.submissionId).toBe("b51c1e71-59d8-4aab-850a-af4a584fc101");
     expect(stored?.name).toBe("Carlos Motorista");
     expect(stored?.whatsapp).toBe("85999998888");
     expect(stored?.email).toBe("carlos@exemplo.com");
@@ -110,7 +110,7 @@ describe("Form to Account Conversion Flow", () => {
       expect.objectContaining({
         eventName: "form_success",
         userId: "user-abc-123",
-        submissionId: "sub-12345-sts",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
       }),
     );
 
@@ -118,7 +118,7 @@ describe("Form to Account Conversion Flow", () => {
       expect.objectContaining({
         eventName: "form_to_account_conversion",
         userId: "user-abc-123",
-        submissionId: "sub-12345-sts",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
         metadata: expect.objectContaining({
           conversionType: "already_authenticated",
         }),
@@ -131,7 +131,7 @@ describe("Form to Account Conversion Flow", () => {
       expect.objectContaining({
         eventName: "account_cta_clicked",
         userId: "user-abc-123",
-        submissionId: "sub-12345-sts",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
         metadata: expect.objectContaining({
           action: "continue_to_app",
         }),
@@ -150,27 +150,27 @@ describe("Form to Account Conversion Flow", () => {
 
     // Verifica que rascunho de conversão foi gravado para consumo da tela /auth
     const stored = getFormConversionDraft();
-    expect(stored?.submissionId).toBe("sub-12345-sts");
+    expect(stored?.submissionId).toBe("b51c1e71-59d8-4aab-850a-af4a584fc101");
     expect(stored?.name).toBe("Carlos Motorista");
 
     // CTA 1: "Quero criar minha conta"
     const signupBtn = screen.getByRole("link", { name: /Quero criar minha conta/i });
     expect(signupBtn).toBeInTheDocument();
     expect(signupBtn.getAttribute("href")).toContain("/auth?mode=cadastro");
-    expect(signupBtn.getAttribute("href")).toContain("submissionId=sub-12345-sts");
+    expect(signupBtn.getAttribute("href")).toContain("submissionId=b51c1e71-59d8-4aab-850a-af4a584fc101");
 
     // CTA 2: "Já tenho uma conta"
     const loginBtn = screen.getByRole("link", { name: /Já tenho uma conta/i });
     expect(loginBtn).toBeInTheDocument();
     expect(loginBtn.getAttribute("href")).toContain("/auth?mode=entrar");
-    expect(loginBtn.getAttribute("href")).toContain("submissionId=sub-12345-sts");
+    expect(loginBtn.getAttribute("href")).toContain("submissionId=b51c1e71-59d8-4aab-850a-af4a584fc101");
 
     // Verifica disparo de form_success com authenticated: false
     expect(trackFunnelEventSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: "form_success",
         userId: null,
-        submissionId: "sub-12345-sts",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
       }),
     );
 
@@ -180,7 +180,7 @@ describe("Form to Account Conversion Flow", () => {
       expect.objectContaining({
         eventName: "account_cta_clicked",
         userId: null,
-        submissionId: "sub-12345-sts",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
         metadata: expect.objectContaining({
           action: "signup",
         }),
@@ -193,7 +193,7 @@ describe("Form to Account Conversion Flow", () => {
       expect.objectContaining({
         eventName: "account_cta_clicked",
         userId: null,
-        submissionId: "sub-12345-sts",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc101",
         metadata: expect.objectContaining({
           action: "login",
         }),

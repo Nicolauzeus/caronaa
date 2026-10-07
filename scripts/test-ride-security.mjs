@@ -131,6 +131,10 @@ try {
       `${(notifications.stderr.match(/NOTICE:  PASS:/g) || []).length} verificacoes de Realtime passaram em PostgreSQL real.`,
     );
   }
+  if (process.argv.includes("--forms")) {
+    const forms = apply("src/test/form-submission-identity.integration.sql");
+    console.log(`${(forms.stderr.match(/NOTICE:  PASS:/g) || []).length} verificacoes de submissao de formulario passaram em PostgreSQL real.`);
+  }
 } finally {
   if (started) run("pg_ctl", ["-D", database, "-m", "fast", "-w", "stop"]);
   rmSync(directory, { recursive: true, force: true });

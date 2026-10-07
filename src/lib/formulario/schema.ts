@@ -1,6 +1,7 @@
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import { z } from "zod";
 import { MIN_DRIVER_PRICE } from "./pricing";
+import { TRUST_FACTORS } from "./types";
 
 const intentSchema = z.enum(["MOTORISTA", "PASSAGEIRO", "AMBOS"], {
   required_error: "Escolha como você deseja participar.",
@@ -61,20 +62,7 @@ const interestLevelSchema = z.enum([
   "NAO_USARIA",
 ]);
 
-const trustFactorSchema = z.enum([
-  "IDENTIDADE_VERIFICADA",
-  "FOTO",
-  "WHATSAPP_VERIFICADO",
-  "PERFIL_CARONAA",
-  "DADOS_VEICULO",
-  "PLACA",
-  "AVALIACOES",
-  "PARTICIPANTE_STS",
-  "ROTA_VISIVEL",
-  "COMPARTILHAR_VIAGEM",
-  "MESMO_GENERO",
-  "OUTRO",
-]);
+export const trustFactorSchema = z.enum(TRUST_FACTORS);
 
 const priceRangeSchema = z.enum([
   "ATE_5",

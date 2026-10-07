@@ -31,7 +31,7 @@ import { normalizeStsSource, trackFunnelEvent } from "@/lib/funnel-events";
 const authSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
   mode: z.enum(["entrar", "cadastro"]).optional().catch(undefined),
-  submissionId: z.string().optional().catch(undefined),
+  submissionId: z.string().uuid().optional(),
   source: z.string().optional().catch(undefined),
 });
 

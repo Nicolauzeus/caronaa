@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ensureUuid, uuidSchema } from "@/lib/uuid";
 import type { Enums, TablesInsert } from "@/integrations/supabase/types";
 
 const ANONYMOUS_SESSION_KEY = "caronaa-anonymous-session-id";
@@ -81,22 +82,13 @@ function eventDeduplicationKey(
   ].join(":");
 }
 
-function createAnonymousSessionId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 export function getAnonymousSessionId(): string | null {
   if (!canUseBrowserStorage()) return null;
 
   const existing = window.localStorage.getItem(ANONYMOUS_SESSION_KEY);
 
-  if (existing) return existing;
-
-  const sessionId = createAnonymousSessionId();
+  const sessionId = ensureUuid(existing);
+  if (sessionId === existing) return existing;
   window.localStorage.setItem(ANONYMOUS_SESSION_KEY, sessionId);
 
   return sessionId;
@@ -200,6 +192,7 @@ export async function trackFunnelEvent({
   submissionId = null,
   metadata = {},
 }: TrackFunnelEventInput) {
+  if (submissionId !== null) uuidSchema.parse(submissionId);
   const anonymousSessionId = userId ? null : getAnonymousSessionId();
 
   if (!userId && !anonymousSessionId) return;

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getCampaignAttribution } from "@/lib/funnel-events";
+import { ensureUuid } from "@/lib/uuid";
 
 export type FunnelEventName =
   "landing_view" | "form_started" | "form_step_completed" | "form_completed" | "lead_created";
@@ -14,9 +15,8 @@ const SESSION_KEY = "caronaa-funnel-session-id";
 
 function sessionId() {
   const existing = window.sessionStorage.getItem(SESSION_KEY);
-  if (existing) return existing;
-
-  const next = crypto.randomUUID();
+  const next = ensureUuid(existing);
+  if (next === existing) return next;
   window.sessionStorage.setItem(SESSION_KEY, next);
   return next;
 }

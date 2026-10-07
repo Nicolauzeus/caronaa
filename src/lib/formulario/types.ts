@@ -42,19 +42,12 @@ export type InterestLevel =
   | "PROVAVELMENTE_NAO"
   | "NAO_USARIA";
 
-export type TrustFactor =
-  | "IDENTIDADE_VERIFICADA"
-  | "FOTO"
-  | "WHATSAPP_VERIFICADO"
-  | "PERFIL_CARONAA"
-  | "DADOS_VEICULO"
-  | "PLACA"
-  | "AVALIACOES"
-  | "PARTICIPANTE_STS"
-  | "ROTA_VISIVEL"
-  | "COMPARTILHAR_VIAGEM"
-  | "MESMO_GENERO"
-  | "OUTRO";
+export const TRUST_FACTORS = [
+  "IDENTIDADE_VERIFICADA", "FOTO", "WHATSAPP_VERIFICADO", "PERFIL_CARONAA",
+  "DADOS_VEICULO", "PLACA", "AVALIACOES", "PARTICIPANTE_STS", "ROTA_VISIVEL",
+  "COMPARTILHAR_VIAGEM", "MESMO_GENERO", "OUTRO",
+] as const;
+export type TrustFactor = (typeof TRUST_FACTORS)[number];
 
 export type PriceRange =
   | "ATE_5"

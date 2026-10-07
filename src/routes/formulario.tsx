@@ -186,7 +186,7 @@ function Formulario() {
         eventName,
         userId: user?.id ?? null,
         formStep: stepOverride ?? step,
-        submissionId: data.submissionId ?? null,
+        submissionId: step === "SUCCESS" ? data.submissionId ?? null : null,
         metadata: {
           role: data.intent ?? null,
           etapa: stepOverride ?? step,
@@ -536,6 +536,10 @@ function Formulario() {
         ...(derivedDriverInterest !== undefined ? { driverInterest: derivedDriverInterest } : {}),
       });
       submissionAttemptIdRef.current = payload.submissionId;
+      // Persist before the request so reloads and network retries reuse the same idempotency key.
+      const attemptData = { ...data, submissionId: payload.submissionId };
+      setData(attemptData);
+      saveFormDraft(attemptData, step);
 
       await saveFormSubmission(payload, user?.id ?? null);
 

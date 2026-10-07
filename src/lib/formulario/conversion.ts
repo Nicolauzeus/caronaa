@@ -1,5 +1,6 @@
 import type { CaronaaStsFormData } from "./types";
 import { normalizeStsSource } from "@/lib/funnel-events";
+import { uuidSchema } from "@/lib/uuid";
 
 export const FORM_CONVERSION_STORAGE_KEY = "caronaa-form-conversion-payload";
 
@@ -30,7 +31,7 @@ export function saveFormConversionDraft(data: Partial<CaronaaStsFormData>): void
 
   try {
     const payload: FormConversionDraft = {
-      submissionId: data.submissionId ?? null,
+      submissionId: uuidSchema.safeParse(data.submissionId).success ? data.submissionId : null,
       name: data.name?.trim(),
       whatsapp: data.whatsapp?.trim(),
       email: data.email?.trim(),
@@ -63,7 +64,13 @@ export function getFormConversionDraft(): FormConversionDraft | null {
   try {
     const item = window.sessionStorage.getItem(FORM_CONVERSION_STORAGE_KEY);
     if (!item) return null;
-    return JSON.parse(item) as FormConversionDraft;
+    const draft = JSON.parse(item) as FormConversionDraft;
+    if (draft.submissionId && !uuidSchema.safeParse(draft.submissionId).success) {
+      // A conversion refers to an existing row: never invent a replacement foreign key.
+      draft.submissionId = null;
+      window.sessionStorage.setItem(FORM_CONVERSION_STORAGE_KEY, JSON.stringify(draft));
+    }
+    return draft;
   } catch {
     return null;
   }

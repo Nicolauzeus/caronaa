@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { uuidSchema } from "@/lib/uuid";
 
 export type FormActivationSubmission = {
   submissionId: string; name: string; email: string | null; whatsapp: string;
@@ -13,6 +14,7 @@ export async function getFormAccountActivation(): Promise<FormActivation> {
 }
 
 export async function confirmFormAccountActivation(submissionId: string, changes: Partial<FormActivationSubmission>) {
+  uuidSchema.parse(submissionId);
   const { data, error } = await (supabase as any).rpc("confirm_form_account_activation", { p_submission_id: submissionId, p_changes: changes });
   if (error) throw new Error(error.message);
   return data as FormActivation;

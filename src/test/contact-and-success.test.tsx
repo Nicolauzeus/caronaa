@@ -440,7 +440,7 @@ describe("ContactStep and FormSuccess", () => {
         source: "sts-2026",
         campaign: null,
         campaignEvent: "Siará Tech Summit 2026",
-        submissionId: "test-sub-123",
+        submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc102",
       }),
     ).resolves.not.toThrow();
   });

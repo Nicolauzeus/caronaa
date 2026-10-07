@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { getAnonymousSessionId, normalizeStsSource } from "@/lib/funnel-events";
+import { uuidSchema } from "@/lib/uuid";
 
 import type { CaronaaStsSubmission } from "./submission";
 import { sanitizeSubmissionRawPayload } from "./submission";
@@ -101,7 +102,7 @@ export function buildFormSubmissionRow(
 
   return {
     // 1. Colunas padrão da tabela form_submissions (compatibilidade com migração 0013 e insert direto)
-    submission_id: payload.submissionId,
+    submission_id: uuidSchema.parse(payload.submissionId),
     source: normalizeStsSource(payload.source),
     campaign: payload.campaign,
     campaign_event: payload.campaignEvent,
@@ -186,6 +187,7 @@ export function assertPainPointIntegrity(rows: FormPainInsert[]) {
 }
 
 export async function saveFormSubmission(payload: CaronaaStsSubmission, userId: string | null) {
+  uuidSchema.parse(payload.submissionId);
   // The RPC obtains auth.uid() itself; a client cannot choose another user_id.
   const painPoints = buildPainPointRows(payload);
   assertPainPointIntegrity(painPoints);

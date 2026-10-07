@@ -3,6 +3,7 @@ import type { CaronaaStsFormData } from "./types";
 import { getLeadClassification } from "./classification";
 import { calculateDriverPricing } from "./pricing";
 import { normalizeStsSource } from "@/lib/funnel-events";
+import { ensureUuid } from "@/lib/uuid";
 
 export type CaronaaStsSubmission = {
   source: string;
@@ -99,14 +100,6 @@ function cleanString(value?: string): string | null {
 
 function normalizeWhatsapp(value: string): string {
   return value.replace(/\D/g, "");
-}
-
-function createSubmissionId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmission {
@@ -277,7 +270,7 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
     passengerIntention: data.passengerIntention ?? null,
     dualPriority: data.dualPriority ?? null,
 
-    submissionId: data.submissionId ?? createSubmissionId(),
+    submissionId: ensureUuid(data.submissionId),
 
     createdAt: data.createdAt ?? new Date().toISOString(),
   };

@@ -67,7 +67,7 @@ describe("Página /auth Redesenhada", () => {
   });
 
   it("exibe o contexto específico quando o usuário chega pelo formulário", () => {
-    mockSearchState = { submissionId: "sub-sts-999" };
+    mockSearchState = { submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc103" };
 
     render(<AuthComponent />);
 
@@ -78,7 +78,7 @@ describe("Página /auth Redesenhada", () => {
 
   it("exibe o contexto do formulário quando detectado via sessionStorage", () => {
     vi.spyOn(conversionModule, "getFormConversionDraft").mockReturnValue({
-      submissionId: "draft-sub-123",
+      submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc104",
       name: "Mariana Teste",
       email: "mariana@exemplo.com",
     });
