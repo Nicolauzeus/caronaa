@@ -167,9 +167,9 @@ export function CountdownToSiare({
           variant="strong"
           className="rounded-xl font-bold w-full sm:w-auto"
         >
-          <Link to="/formulario">
+<StsFormLink to="/formulario">
             Garantir carona <ArrowRight size={14} />
-          </Link>
+          </StsFormLink>
         </Button>
       </div>
     );
@@ -205,9 +205,9 @@ export function CountdownToSiare({
           variant="strong"
           className="rounded-xl font-bold w-full sm:w-auto"
         >
-          <Link to="/formulario">
+<StsFormLink to="/formulario">
             Participar do formulário <ArrowRight size={16} />
-          </Link>
+          </StsFormLink>
         </Button>
       </div>
     );
@@ -283,3 +283,4 @@ export function CountdownToSiare({
 
 // Alias de compatibilidade
 export { CountdownToSiare as CountdownToSiara };
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

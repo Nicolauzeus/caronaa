@@ -364,7 +364,7 @@ function SegurancaPage() {
             </Link>
 
             {/* Participar da validação */}
-            <Link
+<StsFormLink
               to="/formulario"
               className="flex items-center justify-between rounded-2xl border border-caronaa-primary/30 bg-caronaa-primary/10 p-4 hover:bg-caronaa-primary/20 transition group"
             >
@@ -380,10 +380,11 @@ function SegurancaPage() {
                 size={18}
                 className="text-caronaa-dark dark:text-caronaa-primary group-hover:translate-x-1 transition shrink-0 ml-2"
               />
-            </Link>
+            </StsFormLink>
           </div>
         </div>
       </div>
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

@@ -100,9 +100,9 @@ function ComoFuncionaPage() {
             </p>
             <div className="mt-6">
               <Button asChild variant="strong" className="w-full sm:w-auto">
-                <Link to="/formulario">
+<StsFormLink to="/formulario">
                   Oferecer carona no STS <ArrowRight size={16} />
-                </Link>
+                </StsFormLink>
               </Button>
             </div>
           </div>
@@ -118,9 +118,9 @@ function ComoFuncionaPage() {
             </p>
             <div className="mt-6">
               <Button asChild variant="default" className="w-full sm:w-auto">
-                <Link to="/formulario">
+<StsFormLink to="/formulario">
                   Encontrar carona no STS <ArrowRight size={16} />
-                </Link>
+                </StsFormLink>
               </Button>
             </div>
           </div>
@@ -139,9 +139,9 @@ function ComoFuncionaPage() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild variant="strong" size="lg" className="h-12 px-8 font-bold">
-              <Link to="/formulario">
+<StsFormLink to="/formulario">
                 🚗 Garantir minha CARONAA no Siará <ArrowUpRight size={16} />
-              </Link>
+              </StsFormLink>
             </Button>
           </div>
         </div>
@@ -149,3 +149,4 @@ function ComoFuncionaPage() {
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

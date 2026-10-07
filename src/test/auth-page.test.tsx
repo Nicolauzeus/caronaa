@@ -63,7 +63,8 @@ describe("Página /auth Redesenhada", () => {
 
     // Opções nos seletores
     expect(screen.getByRole("tab", { name: /Entrar na CARONAA/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Criar minha conta/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Criar minha conta/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Google/i })).not.toBeInTheDocument();
   });
 
   it("exibe o contexto específico quando o usuário chega pelo formulário", () => {
@@ -91,6 +92,7 @@ describe("Página /auth Redesenhada", () => {
   });
 
   it("solicita somente os dados necessários em modo login e cadastro", () => {
+    mockSearchState = { submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc103" };
     const { container } = render(<AuthComponent />);
 
     // Modo inicial padrão: login
@@ -124,5 +126,18 @@ describe("Página /auth Redesenhada", () => {
       "/privacidade",
     );
     expect(screen.getByRole("link", { name: /Segurança/i })).toHaveAttribute("href", "/seguranca");
+  });
+
+  it("não libera cadastro direto ou apenas pela origem STS", () => {
+    mockSearchState = { mode: "cadastro", source: "sts-2026" };
+    render(<AuthComponent />);
+    expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Criar minha conta/i })).not.toBeInTheDocument();
+  });
+
+  it("preserva cadastro após conclusão do formulário", () => {
+    mockSearchState = { mode: "cadastro", submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc103" };
+    render(<AuthComponent />);
+    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
   });
 });

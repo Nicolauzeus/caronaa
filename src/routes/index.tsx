@@ -125,7 +125,7 @@ function LandingPage() {
                   size="lg"
                   className="h-14 w-full rounded-2xl px-8 text-base font-extrabold shadow-card sm:w-auto"
                 >
-                  <Link to="/formulario">🚗 Garantir minha CARONAA no Siará</Link>
+<StsFormLink to="/formulario">🚗 Garantir minha CARONAA no Siará</StsFormLink>
                 </Button>
 
                 <Button
@@ -250,9 +250,9 @@ function LandingPage() {
                   size="lg"
                   className="h-14 rounded-2xl px-8 text-base font-extrabold shadow-glow-primary"
                 >
-                  <Link to="/formulario">
+<StsFormLink to="/formulario">
                     Quero participar <ArrowRight size={18} />
-                  </Link>
+                  </StsFormLink>
                 </Button>
               </div>
             </div>
@@ -364,9 +364,9 @@ function LandingPage() {
                   size="lg"
                   className="w-full rounded-2xl font-bold sm:w-auto"
                 >
-                  <Link to="/formulario">
+<StsFormLink to="/formulario">
                     Quero oferecer <ArrowRight size={16} />
-                  </Link>
+                  </StsFormLink>
                 </Button>
               </div>
             </div>
@@ -391,9 +391,9 @@ function LandingPage() {
                   size="lg"
                   className="w-full rounded-2xl font-bold sm:w-auto"
                 >
-                  <Link to="/formulario">
+<StsFormLink to="/formulario">
                     Quero encontrar <ArrowRight size={16} />
-                  </Link>
+                  </StsFormLink>
                 </Button>
               </div>
             </div>
@@ -432,9 +432,9 @@ function LandingPage() {
                 size="lg"
                 className="h-14 rounded-2xl px-10 text-base font-extrabold shadow-card"
               >
-                <Link to="/formulario">
+<StsFormLink to="/formulario">
                   🚗 Participar da validação no Siará <ArrowUpRight size={18} />
-                </Link>
+                </StsFormLink>
               </Button>
             </div>
           </div>
@@ -443,3 +443,4 @@ function LandingPage() {
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

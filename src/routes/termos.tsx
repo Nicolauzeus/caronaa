@@ -630,9 +630,9 @@ function TermosPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <Button asChild variant="strong" className="flex-1 sm:flex-none">
-              <Link to="/formulario">
+<StsFormLink to="/formulario">
                 Ir para o formulário STS 2026 <ArrowRight size={16} />
-              </Link>
+              </StsFormLink>
             </Button>
             <Button asChild variant="outline" className="flex-1 sm:flex-none">
               <Link to="/">Voltar ao início</Link>
@@ -643,3 +643,4 @@ function TermosPage() {
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

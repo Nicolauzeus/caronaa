@@ -70,7 +70,10 @@ function AuthPage() {
     conversionDraft?.submissionId,
   );
 
-  const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
+  const canRegister = Boolean(effectiveSubmissionId && isFromForm);
+  const [mode, setMode] = useState<"entrar" | "cadastro">(() =>
+    canRegister ? search.mode ?? "entrar" : "entrar",
+  );
   const [name, setName] = useState(() => conversionDraft?.name ?? "");
   const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
   const [email, setEmail] = useState(() => conversionDraft?.email ?? "");
@@ -111,6 +114,7 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "cadastro") {
+        if (!canRegister) throw new Error("Conclua o formulário STS antes de criar sua conta.");
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -304,7 +308,7 @@ function AuthPage() {
         >
           Entrar na CARONAA
         </button>
-        <button
+        {canRegister && <button
           type="button"
           role="tab"
           aria-selected={mode === "cadastro"}
@@ -316,7 +320,7 @@ function AuthPage() {
           }`}
         >
           Criar minha conta
-        </button>
+        </button>}
       </div>
 
       {/* Formulário - Somente o necessário */}
@@ -437,7 +441,7 @@ function AuthPage() {
       </form>
 
       {/* Autenticação social configurada */}
-      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+      {canRegister && <><div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
         ou continue com
         <span className="h-px flex-1 bg-border" />
@@ -452,10 +456,10 @@ function AuthPage() {
       >
         <span className="text-base font-extrabold text-caronaa-primary mr-1">G</span> Continuar com
         Google
-      </Button>
+      </Button></>}
 
       {/* Alternância secundária */}
-      <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
+      {canRegister && <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
         {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
         <button
           type="button"
@@ -464,7 +468,7 @@ function AuthPage() {
         >
           {mode === "entrar" ? "Criar minha conta" : "Entrar na CARONAA"}
         </button>
-      </div>
+      </div>}
 
       {/* Links obrigatórios: Termos, Privacidade, Segurança */}
       <div className="mt-6 border-t border-border/70 pt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">

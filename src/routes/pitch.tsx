@@ -209,10 +209,10 @@ export function PitchLandingPage() {
                       asChild
                       className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold gap-2 shadow-sm"
                     >
-                      <Link to="/formulario">
+<StsFormLink to="/formulario">
                         Preencher formulário
                         <ArrowRight className="w-4 h-4" />
-                      </Link>
+                      </StsFormLink>
                     </Button>
                     <Button
                       variant="outline"
@@ -825,3 +825,4 @@ export function PitchLandingPage() {
     </div>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

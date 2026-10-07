@@ -124,7 +124,7 @@ export function AppShell({
             <ThemeToggle className="hidden md:inline-flex" />
             {user && <NotificationControls />}
 
-            {publicPage ? (
+            {publicPage ? (!loading && !user &&
               <>
                 {/* CTA Destacado no DESKTOP: 'Encontrar minha CARONAA' */}
                 <Button
@@ -148,11 +148,11 @@ export function AppShell({
             ) : (
               /* Ações da Área Autenticada */
               <>
-                <Button asChild className="hidden h-9 rounded-lg px-4 font-semibold xl:inline-flex">
+                {!loading && !user && <Button asChild className="hidden h-9 rounded-lg px-4 font-semibold xl:inline-flex">
                   <Link to="/formulario">
                     Validação Siará Tech Summit <ArrowUpRight size={16} />
                   </Link>
-                </Button>
+                </Button>}
                 {!loading &&
                   (user ? (
                     <>
@@ -245,13 +245,13 @@ export function AppShell({
                     <LogIn size={18} className="text-caronaa-primary" />
                     Entrar
                   </Link>
-                  <div className="pt-2">
+                  {!loading && !user && <div className="pt-2">
                     <Button asChild variant="strong" className="w-full rounded-xl py-3 font-bold">
                       <Link to="/formulario" onClick={() => setMenuOpen(false)}>
                         Encontrar minha CARONAA
                       </Link>
                     </Button>
-                  </div>
+                  </div>}
                 </>
               ) : (
                 <>
@@ -276,7 +276,7 @@ export function AppShell({
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold hover:bg-secondary"
                     >
-                      <LogIn size={18} /> Entrar ou criar conta
+                      <LogIn size={18} /> Entrar
                     </Link>
                   )}
                 </>
