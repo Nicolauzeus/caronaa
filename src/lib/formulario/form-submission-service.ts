@@ -243,7 +243,8 @@ export async function listFormSubmissions() {
   const { data, error } = await supabase
     .from("form_submissions")
     .select("*, pain_points:form_submission_pain_points(*)")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .abortSignal(AbortSignal.timeout(15000));
 
   if (error) {
     throw new Error(`Não foi possível carregar as respostas: ${error.message}`);
