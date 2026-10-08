@@ -267,6 +267,13 @@
       "when": 1791434893516,
       "tag": "0037_consented_travel_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791434983221,
+      "tag": "0038_harden_travel_preference_snapshots",
+      "breakpoints": true
     }
   ]
 }

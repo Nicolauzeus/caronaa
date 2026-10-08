@@ -1464,6 +1464,13 @@ export type Database = {
       }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
+      get_offer_preference_bonuses: {
+        Args: { p_offer_ids: string[] }
+        Returns: {
+          bonus: number
+          offer_id: string
+        }[]
+      }
       get_offer_schedule_types: {
         Args: { p_offer_ids: string[] }
         Returns: {
