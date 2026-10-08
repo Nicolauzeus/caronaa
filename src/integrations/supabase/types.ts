@@ -1311,22 +1311,40 @@ export type Database = {
         Args: { p_changes?: Json; p_submission_id: string }
         Returns: Json
       }
-      create_ride_offer: {
-        Args: {
-          p_available_seats: number
-          p_departure_time: string
-          p_destination: string
-          p_destination_lat?: number
-          p_destination_lng?: number
-          p_origin: string
-          p_origin_lat?: number
-          p_origin_lng?: number
-          p_ride_date: string
-          p_time_tolerance_minutes?: number
-          p_total_price?: number
-        }
-        Returns: string
-      }
+      create_ride_offer:
+        | {
+            Args: {
+              p_available_seats: number
+              p_departure_time: string
+              p_destination: string
+              p_destination_lat?: number
+              p_destination_lng?: number
+              p_origin: string
+              p_origin_lat?: number
+              p_origin_lng?: number
+              p_ride_date: string
+              p_time_tolerance_minutes?: number
+              p_total_price?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_available_seats: number
+              p_departure_time: string
+              p_destination: string
+              p_destination_lat: number
+              p_destination_lng: number
+              p_origin: string
+              p_origin_lat: number
+              p_origin_lng: number
+              p_passenger_gender_preference: string
+              p_ride_date: string
+              p_time_tolerance_minutes: number
+              p_total_price: number
+            }
+            Returns: string
+          }
       create_ride_request: {
         Args: {
           p_departure_time: string

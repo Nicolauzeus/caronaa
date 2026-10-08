@@ -48,13 +48,13 @@ export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
-    const { data: offerId, error } = await (context.supabase as any).rpc("create_ride_offer", {
+    const { data: offerId, error } = await context.supabase.rpc("create_ride_offer", {
       p_origin: data.origin,
       p_destination: data.destination,
-      p_origin_lat: data.originLat ?? undefined,
-      p_origin_lng: data.originLng ?? undefined,
-      p_destination_lat: data.destinationLat ?? undefined,
-      p_destination_lng: data.destinationLng ?? undefined,
+      p_origin_lat: data.originLat ?? null,
+      p_origin_lng: data.originLng ?? null,
+      p_destination_lat: data.destinationLat ?? null,
+      p_destination_lng: data.destinationLng ?? null,
       p_ride_date: data.rideDate,
       p_departure_time: data.departureTime,
       p_available_seats: data.availableSeats ?? 1,

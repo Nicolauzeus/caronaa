@@ -253,6 +253,13 @@
       "when": 1791419499183,
       "tag": "0035_restore_sts_activation_connection",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791428367588,
+      "tag": "0036_repair_offer_audience_rpc",
+      "breakpoints": true
     }
   ]
 }
