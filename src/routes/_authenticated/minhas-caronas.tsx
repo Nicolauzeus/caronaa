@@ -22,6 +22,8 @@ import {
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
 import { formatBrl } from "@/lib/ride-cost";
+import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
+import type { TravelPreferences } from "@/lib/travel-preferences";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -66,6 +68,7 @@ function MinhasCaronas() {
   const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas">("pedidos");
   const [mode, setMode] = useState<"point" | "routine">("point");
   const [form, setForm] = useState<FormState>(initialForm);
+  const [preferences, setPreferences] = useState<TravelPreferences>();
   const [passengerRides, setPassengerRides] = useState<RideSummary[]>([]);
   const [driverRides, setDriverRides] = useState<RideSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +126,11 @@ function MinhasCaronas() {
           passengerCount: Number(form.seats),
           timeToleranceMinutes: form.timeTolerance,
           price: form.price ? Number(form.price) : undefined,
+          preferences,
+          originLat: form.originLocation?.lat,
+          originLng: form.originLocation?.lng,
+          destinationLat: form.destinationLocation?.lat,
+          destinationLng: form.destinationLocation?.lng,
         },
       });
     } catch (error) {
@@ -284,6 +292,7 @@ function MinhasCaronas() {
               Publicar pedido <ArrowRight size={16} />
             </Button>
           </div>
+          <JourneyPreferences kind="request" onChange={setPreferences} />
         </form>
       )}
       <div className="mt-7 border-b border-border">
