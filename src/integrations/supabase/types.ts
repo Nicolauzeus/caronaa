@@ -88,6 +88,62 @@ export type Database = {
         }
         Relationships: []
       }
+      form_ride_publications: {
+        Row: {
+          created_at: string
+          kind: string
+          offer_id: string | null
+          request_id: string | null
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          offer_id?: string | null
+          request_id?: string | null
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          offer_id?: string | null
+          request_id?: string | null
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_ride_publications_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "ride_offers"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "form_ride_publications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["request_id"]
+          },
+          {
+            foreignKeyName: "form_ride_publications_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["submission_id"]
+          },
+          {
+            foreignKeyName: "form_ride_publications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_starts: {
         Row: {
           anonymous_session_id: string | null
@@ -126,6 +182,45 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      form_submission_account_links: {
+        Row: {
+          confirmed_at: string | null
+          linked_at: string
+          onboarding_completed_at: string | null
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          linked_at?: string
+          onboarding_completed_at?: string | null
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          linked_at?: string
+          onboarding_completed_at?: string | null
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submission_account_links_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "form_submissions"
+            referencedColumns: ["submission_id"]
+          },
+          {
+            foreignKeyName: "form_submission_account_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_submission_pain_points: {
         Row: {
@@ -710,6 +805,7 @@ export type Database = {
           origin: string
           origin_lat: number | null
           origin_lng: number | null
+          passenger_gender_preference: string
           ride_date: string
           routine_date: string | null
           routine_id: string | null
@@ -732,6 +828,7 @@ export type Database = {
           origin: string
           origin_lat?: number | null
           origin_lng?: number | null
+          passenger_gender_preference?: string
           ride_date: string
           routine_date?: string | null
           routine_id?: string | null
@@ -754,6 +851,7 @@ export type Database = {
           origin?: string
           origin_lat?: number | null
           origin_lng?: number | null
+          passenger_gender_preference?: string
           ride_date?: string
           routine_date?: string | null
           routine_id?: string | null
@@ -1209,6 +1307,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      confirm_form_account_activation: {
+        Args: { p_changes?: Json; p_submission_id: string }
+        Returns: Json
+      }
       create_ride_offer: {
         Args: {
           p_available_seats: number
@@ -1269,6 +1371,7 @@ export type Database = {
       }
       get_admin_operation_data: { Args: never; Returns: Json }
       get_admin_users: { Args: { p_user_id?: string }; Returns: Json }
+      get_form_account_activation: { Args: never; Returns: Json }
       get_form_funnel_metrics: {
         Args: {
           p_campaign?: string
@@ -1363,6 +1466,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_sts_ride_seed: { Args: never; Returns: Json }
       get_validation_export: {
         Args: {
           p_campaign?: string
@@ -1412,6 +1516,10 @@ export type Database = {
       materialize_ride_routine: {
         Args: { p_routine_id: string }
         Returns: undefined
+      }
+      publish_sts_ride: {
+        Args: { p_details: Json; p_kind: string; p_submission_id: string }
+        Returns: string
       }
       rate_ride: {
         Args: { p_comment?: string; p_ride_id: string; p_score: number }

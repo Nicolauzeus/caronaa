@@ -246,6 +246,13 @@
       "when": 1791349458028,
       "tag": "0034_admin_bi_read_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791419499183,
+      "tag": "0035_restore_sts_activation_connection",
+      "breakpoints": true
     }
   ]
 }
