@@ -302,6 +302,13 @@
       "when": 1791435559972,
       "tag": "0042_realtime_ride_tracking_and_stages",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791443884410,
+      "tag": "0043_restore_pending_ride_flow_schema",
+      "breakpoints": true
     }
   ]
 }
