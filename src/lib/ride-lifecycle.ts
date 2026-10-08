@@ -34,6 +34,9 @@ export function transitionRide(
   if (!context.hasPersistedMatch) throw new Error("A ride requires a persisted match");
   if (!context.isParticipant) throw new Error("Only ride participants may transition the ride");
   if (from === to && (from === "CONFIRMED" || from === "CANCELLED")) return to;
+  if (from === "MATCHED" && to === "CONFIRMED" && !context.confirmedByBoth) {
+    throw new Error("Both ride participants must accept the match");
+  }
   if (to === "IN_PROGRESS" && (!context.boardingValidated || !context.isDriver)) {
     throw new Error("Driver must validate boarding PIN before starting the ride");
   }
@@ -54,11 +57,18 @@ export type RideAction = {
 export function getRideNextActions(
   status: string,
   role: "driver" | "passenger" | "available",
+  matchAcceptance: { acceptedByViewer?: boolean } = {},
 ): RideAction[] {
   if (status === "MATCHED") {
     return [
-      { label: "Confirmar carona", status: "CONFIRMED" },
-      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+      ...(matchAcceptance.acceptedByViewer
+        ? []
+        : [{ label: "Aceitar combinação", status: "CONFIRMED" as const }]),
+      {
+        label: matchAcceptance.acceptedByViewer ? "Retirar aceite" : "Recusar combinação",
+        status: "CANCELLED",
+        variant: "outline",
+      },
     ];
   }
 

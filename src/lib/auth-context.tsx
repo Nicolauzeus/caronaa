@@ -8,7 +8,7 @@ type AuthContextValue = {
   loading: boolean;
 };
 
-const AuthContext = createContext<AuthContextValue>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextValue>({ user: null, loading: false });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();

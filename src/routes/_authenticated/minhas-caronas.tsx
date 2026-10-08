@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, CalendarDays, CarFront, Clock3, MapPin, Plus, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
@@ -24,13 +24,17 @@ import {
 import { formatBrl } from "@/lib/ride-cost";
 import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
 import type { TravelPreferences } from "@/lib/travel-preferences";
+import { getMatchProposalState } from "@/lib/ride-match-acceptance";
+import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
-    meta: [{ property: "og:title", content: "Minhas viagens — CARONAA" },
-{ property: "og:description", content: "Acompanhe seus pedidos e caronas disponíveis." },
-{ property: "og:type", content: "website" },
-{ name: "twitter:card", content: "summary" },
+    meta: [
+      { property: "og:title", content: "Minhas viagens — CARONAA" },
+      { property: "og:description", content: "Acompanhe seus pedidos e caronas disponíveis." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Minhas viagens — CARONAA" },
       { name: "description", content: "Acompanhe seus pedidos e caronas disponíveis." },
     ],
@@ -66,6 +70,7 @@ const initialForm: FormState = {
 };
 
 function MinhasCaronas() {
+  const { user } = useAuth();
   const publishRequest = useServerFn(createRideRequest);
   const loadMyRides = useServerFn(getMyRides);
   const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas">("pedidos");
@@ -77,21 +82,26 @@ function MinhasCaronas() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function refreshRides(showLoading = true) {
-    if (showLoading) setLoading(true);
-    setError(null);
-    try {
-      const data = await loadMyRides();
-      setPassengerRides(data.passenger);
-      setDriverRides(data.driver);
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error ? loadError.message : "Não foi possível carregar suas viagens.",
-      );
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }
+  const refreshRides = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) setLoading(true);
+      setError(null);
+      try {
+        const data = await loadMyRides();
+        setPassengerRides(data.passenger);
+        setDriverRides(data.driver);
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Não foi possível carregar suas viagens.",
+        );
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [loadMyRides],
+  );
 
   useEffect(() => {
     void refreshRides();
@@ -113,7 +123,89 @@ function MinhasCaronas() {
       document.removeEventListener("visibilitychange", onFocus);
       clearInterval(interval);
     };
-  }, [loadMyRides]);
+  }, [refreshRides]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`ride-proposals:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "ride_notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const notification = payload.new as {
+            notification_id?: string;
+            ride_id?: string;
+            event_name?: string;
+          };
+          if (!notification.ride_id) return;
+          window.dispatchEvent(new Event("caronaa:rides-updated"));
+
+          const eventName = notification.event_name || "MATCH_PROPOSED";
+          let title = "Nova combinação encontrada";
+          let description = "Abra a proposta e aceite ou recuse dentro do prazo.";
+          let actionLabel = "Ver combinação";
+
+          if (eventName === "BOTH_ACCEPTED") {
+            title = "Carona confirmada por ambos!";
+            description = "O acompanhamento em tempo real está liberado.";
+            actionLabel = "Acompanhar";
+          } else if (eventName === "DRIVER_EN_ROUTE") {
+            title = "Motorista a caminho!";
+            description = "O motorista iniciou o trajeto até o ponto de encontro.";
+            actionLabel = "Acompanhar";
+          } else if (eventName === "DRIVER_ARRIVED") {
+            title = "Motorista no ponto de encontro!";
+            description = "O motorista chegou. Prepare seu QR Code ou PIN para o embarque.";
+            actionLabel = "Ver embarque";
+          } else if (eventName === "RIDE_CANCELLED") {
+            title = "Carona cancelada";
+            description = "A viagem foi cancelada pelo outro participante.";
+            actionLabel = "Ver detalhes";
+          } else if (eventName === "RIDE_COMPLETED") {
+            title = "Viagem concluída!";
+            description = "A viagem foi finalizada. Registre sua avaliação.";
+            actionLabel = "Avaliar";
+          }
+
+          toast.info(title, {
+            description,
+            action: {
+              label: actionLabel,
+              onClick: () => {
+                if (notification.notification_id) {
+                  void supabase
+                    .rpc("mark_ride_notification_read", {
+                      p_notification_id: notification.notification_id,
+                    })
+                    .then(({ error }) => {
+                      if (error) toast.error("Não foi possível marcar o aviso como lido.");
+                    });
+                }
+                window.setTimeout(
+                  () =>
+                    document
+                      .getElementById(`ride-${notification.ride_id}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                  150,
+                );
+              },
+            },
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const update = (key: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -417,7 +509,7 @@ function statusLabel(status: string) {
     matched: "Match criado",
     available: "Publicada",
     full: "Lotada",
-    MATCHED: "Match criado",
+    MATCHED: "Combinação encontrada",
     AWAITING_OTHER_PARTICIPANT: "Aguardando confirmação",
     CONFIRMED: "Confirmada",
     IN_PROGRESS: "Em andamento",
@@ -446,19 +538,42 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
     ride.role === "driver" ? person?.fullName || "Passageiro" : person?.fullName || "Você";
-  const actions = ride.rideId ? getRideNextActions(ride.status, ride.role) : [];
+  const acceptedByViewer =
+    ride.role === "driver" ? Boolean(ride.driverAcceptedAt) : Boolean(ride.passengerAcceptedAt);
+  const acceptedByOther =
+    ride.role === "driver" ? Boolean(ride.passengerAcceptedAt) : Boolean(ride.driverAcceptedAt);
+  const proposalState = getMatchProposalState({
+    status: ride.status,
+    role: ride.role === "driver" ? "driver" : "passenger",
+    driverAcceptedAt: ride.driverAcceptedAt,
+    passengerAcceptedAt: ride.passengerAcceptedAt,
+    responseExpiresAt: ride.responseExpiresAt,
+  });
+  const actions = ride.rideId
+    ? getRideNextActions(ride.status, ride.role, { acceptedByViewer })
+    : [];
 
   async function updateStatus(nextStatus: RideStatus) {
     if (!ride.rideId) return;
     setUpdating(nextStatus);
     try {
       const result = await transitionRideStatus(ride.rideId, nextStatus);
+      const waitingForOther = result === "AWAITING_OTHER_PARTICIPANT";
       toast.success(
-        result === "AWAITING_OTHER_PARTICIPANT" ? "Confirmação registrada" : "Viagem atualizada",
+        nextStatus === "CONFIRMED"
+          ? waitingForOther
+            ? "Aceite registrado"
+            : "Carona confirmada pelos dois"
+          : nextStatus === "CANCELLED" && ride.status === "MATCHED"
+            ? "Combinação recusada"
+            : "Viagem atualizada",
         {
-          description:
-            result === "AWAITING_OTHER_PARTICIPANT"
-              ? "A conclusão será efetivada quando a outra pessoa confirmar."
+          description: waitingForOther
+            ? nextStatus === "CONFIRMED"
+              ? "A combinação só fica confirmada quando a outra pessoa também aceitar."
+              : "A conclusão será efetivada quando a outra pessoa confirmar."
+            : nextStatus === "CANCELLED" && ride.status === "MATCHED"
+              ? "As vagas foram liberadas e a busca por outra combinação foi retomada."
               : `Novo status: ${statusLabel(String(result))}.`,
         },
       );
@@ -471,7 +586,10 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   }
 
   return (
-    <article className="card-interactive rounded-xl border border-border bg-card p-4 shadow-soft">
+    <article
+      id={ride.rideId ? `ride-${ride.rideId}` : undefined}
+      className="card-interactive rounded-xl border border-border bg-card p-4 shadow-soft"
+    >
       <p className="mb-2 text-xs font-semibold text-muted-foreground">
         {ride.routineId ? "Recorrente" : "Pontual"}
       </p>
@@ -501,8 +619,23 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       )}
 
       {ride.status === "MATCHED" && (
-        <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-          Match criado! Confirme a carona para garantir a viagem.
+        <div className="mt-3 space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+          <p>
+            {proposalState === "awaiting-other-participant"
+              ? "Você aceitou — aguardando a outra pessoa."
+              : acceptedByOther
+                ? "A outra pessoa aceitou. Falta a sua resposta."
+                : "Combinação encontrada. A viagem só será confirmada após os dois aceitarem."}
+          </p>
+          {ride.responseExpiresAt ? (
+            <p className="font-normal">
+              Responda até{" "}
+              {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(
+                new Date(ride.responseExpiresAt),
+              )}
+              .
+            </p>
+          ) : null}
         </div>
       )}
 

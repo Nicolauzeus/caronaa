@@ -12,6 +12,7 @@ import {
   DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
   areRideLocationsCompatible,
   calculateRideMatchScore,
+  getRideMatchReasons,
   isTimeWithinTolerance,
 } from "@/lib/ride-matching";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
@@ -50,8 +51,12 @@ export type RideSummary = {
   totalPrice: number;
   confirmedPassengers: number;
   passengerContribution: number;
+  driverAcceptedAt?: string | null;
+  passengerAcceptedAt?: string | null;
+  responseExpiresAt?: string | null;
   matchScore?: number;
   preferenceBonus?: number;
+  matchReasons?: string[];
 };
 
 const searchInput = z.object({
@@ -271,6 +276,12 @@ function mapRide(
     totalPrice,
     confirmedPassengers,
     passengerContribution,
+    driverAcceptedAt:
+      typeof ri["driver_accepted_at"] === "string" ? ri["driver_accepted_at"] : null,
+    passengerAcceptedAt:
+      typeof ri["passenger_accepted_at"] === "string" ? ri["passenger_accepted_at"] : null,
+    responseExpiresAt:
+      typeof ri["response_expires_at"] === "string" ? ri["response_expires_at"] : null,
   };
 }
 
@@ -280,7 +291,7 @@ async function getAdminClient(): Promise<SupabaseAppClient> {
 }
 
 async function discoverOffers(
-  client: any,
+  client: SupabaseAppClient,
   userId: string,
   data: z.infer<typeof searchInput>,
   limit: number,
@@ -302,7 +313,7 @@ async function discoverOffers(
     p_time_tolerance_minutes: tolerance,
   });
   if (error) throw new Error(error.message || "Não foi possível buscar caronas.");
-  let resultRows = (rows ?? []) as any[];
+  let resultRows = (rows ?? []) as unknown as Record<string, unknown>[];
   if (data.departureTime) {
     resultRows = resultRows.filter((row) =>
       isTimeWithinTolerance(
@@ -382,28 +393,64 @@ async function discoverOffers(
     for (const item of matches ?? []) bonuses.set(String(item.offer_id), Number(item.bonus));
   }
   return resultRows
-    .map((row: any) => ({
-      row,
-      score: calculateRideMatchScore({
-        request: { origin: data.origin || "", destination: data.destination || "", originCoordinate: coordinateFromInput(data.originLat, data.originLng, data.origin), destinationCoordinate: coordinateFromInput(data.destinationLat, data.destinationLng, data.destination), rideDate: data.rideDate || "", departureTime: data.departureTime || String(row.departure_time ?? "").slice(0, 5), passengerCount: data.passengerCount, userId },
-        offer: { origin: String(row.origin ?? ""), destination: String(row.destination ?? ""), originCoordinate: coordinateFromRow(row, "origin"), destinationCoordinate: coordinateFromRow(row, "destination"), rideDate: String(row.ride_date ?? ""), departureTime: String(row.departure_time ?? "").slice(0, 5), availableSeats: Number(row.available_seats ?? 0), seatsRemaining: Number(row.seats_remaining ?? 0), userId: String(row.user_id ?? "") },
-      }),
-    }))
-    .map((item) => ({ ...item, score: Math.min(100, item.score + (bonuses.get(String(item.row.offer_id)) ?? 0)) }))
+    .map((row) => {
+      const input = {
+        request: {
+          origin: data.origin || "",
+          destination: data.destination || "",
+          originCoordinate: coordinateFromInput(data.originLat, data.originLng, data.origin),
+          destinationCoordinate: coordinateFromInput(
+            data.destinationLat,
+            data.destinationLng,
+            data.destination,
+          ),
+          rideDate: data.rideDate || "",
+          departureTime: data.departureTime || String(row.departure_time ?? "").slice(0, 5),
+          passengerCount: data.passengerCount,
+          userId,
+        },
+        offer: {
+          origin: String(row.origin ?? ""),
+          destination: String(row.destination ?? ""),
+          originCoordinate: coordinateFromRow(row, "origin"),
+          destinationCoordinate: coordinateFromRow(row, "destination"),
+          rideDate: String(row.ride_date ?? ""),
+          departureTime: String(row.departure_time ?? "").slice(0, 5),
+          availableSeats: Number(row.available_seats ?? 0),
+          seatsRemaining: Number(row.seats_remaining ?? 0),
+          userId: String(row.user_id ?? ""),
+        },
+      };
+      const preferenceBonus = bonuses.get(String(row.offer_id)) ?? 0;
+      return {
+        row,
+        input,
+        preferenceBonus,
+        score: calculateRideMatchScore(input, preferenceBonus),
+      };
+    })
     .sort((a, b) => b.score - a.score)
-    .map(({ row, score }: any) => ({ ...mapOffer(
-      row,
-      {
-        id: String(row.user_id),
-        fullName: row.full_name || "Usuário CARONAA",
-        avatarUrl: row.avatar_url ?? null,
-        city: row.city ?? null,
-        verifications: (Array.isArray(row.verifications) ? row.verifications : [])
-          .map(normalizeVerification)
-          .filter((v: RideVerification | null): v is RideVerification => Boolean(v)),
-      },
-      userId,
-    ), matchScore: score, preferenceBonus: bonuses.get(String(row.offer_id)) ?? 0 }));
+    .map(({ row, input, score, preferenceBonus }) => ({
+      ...mapOffer(
+        row as OfferRow,
+        {
+          id: String(row.user_id),
+          fullName:
+            typeof row.full_name === "string" && row.full_name.trim()
+              ? row.full_name
+              : "Usuário CARONAA",
+          avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : null,
+          city: typeof row.city === "string" ? row.city : null,
+          verifications: (Array.isArray(row.verifications) ? row.verifications : [])
+            .map(normalizeVerification)
+            .filter((v: RideVerification | null): v is RideVerification => Boolean(v)),
+        },
+        userId,
+      ),
+      matchScore: score,
+      preferenceBonus,
+      matchReasons: getRideMatchReasons(input, preferenceBonus),
+    }));
 }
 
 export const searchRideOffers = createServerFn({ method: "GET" })
@@ -444,11 +491,14 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { error: routineError } = await context.supabase.rpc("refresh_ride_routine_occurrences");
     if (routineError) throw new Error(routineError.message);
     const client = await getAdminClient();
+    const { error: expiryError } = await client.rpc("expire_ride_match_proposals");
+    if (expiryError)
+      throw new Error(expiryError.message || "Não foi possível atualizar propostas expiradas.");
 
     const { data: rides, error: ridesError } = await client
       .from("rides")
       .select(
-        "ride_id, match_id, request_id, offer_id, passenger_user_id, driver_user_id, status, created_at, updated_at, completed_at, total_price, passenger_contribution",
+        "ride_id, match_id, request_id, offer_id, passenger_user_id, driver_user_id, status, created_at, updated_at, completed_at, total_price, passenger_contribution, passenger_accepted_at, driver_accepted_at, response_expires_at",
       )
       .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
       .order("created_at", { ascending: false });

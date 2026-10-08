@@ -141,7 +141,7 @@ export function MobileAccountDrawer({ signOut }: { signOut: () => Promise<void> 
             className="flex min-h-12 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
           >
             <CarFront size={19} className="text-muted-foreground" />
-            Minhas caronas
+            Minhas viagens
           </Link>
 
           <Link

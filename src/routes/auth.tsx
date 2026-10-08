@@ -77,7 +77,11 @@ function AuthPage() {
     conversionDraft?.submissionId,
   );
 
-  const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
+  const canRegister = Boolean(effectiveSubmissionId);
+  const [mode, setMode] = useState<"entrar" | "cadastro">(() =>
+    canRegister && search.mode === "cadastro" ? "cadastro" : "entrar",
+  );
+  const effectiveMode = canRegister ? mode : "entrar";
   const [name, setName] = useState(() => conversionDraft?.name ?? "");
   const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
   const [email, setEmail] = useState(() => conversionDraft?.email ?? "");
@@ -340,24 +344,26 @@ function AuthPage() {
         >
           Entrar na CARONAA
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "cadastro"}
-          onClick={() => setMode("cadastro")}
-          className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
-            mode === "cadastro"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Criar minha conta
-        </button>
+        {canRegister && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={effectiveMode === "cadastro"}
+            onClick={() => setMode("cadastro")}
+            className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
+              effectiveMode === "cadastro"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Criar minha conta
+          </button>
+        )}
       </div>
 
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
-        {mode === "cadastro" && (
+        {effectiveMode === "cadastro" && (
           <div className="space-y-1.5">
             <Label htmlFor="name" className="text-xs font-semibold text-foreground">
               Nome completo
@@ -379,7 +385,7 @@ function AuthPage() {
             </div>
           </div>
         )}
-        {mode === "cadastro" && (
+        {effectiveMode === "cadastro" && (
           <fieldset className="space-y-2">
             <legend className="text-xs font-semibold text-foreground">Gênero</legend>
             <div className="grid grid-cols-2 gap-2">
@@ -415,7 +421,7 @@ function AuthPage() {
             <Label htmlFor="password" className="text-xs font-semibold text-foreground">
               Senha
             </Label>
-            {mode === "entrar" && (
+            {effectiveMode === "entrar" && (
               <Button
                 type="button"
                 variant="link"
@@ -437,8 +443,8 @@ function AuthPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="h-12 rounded-xl border-border bg-auth-field px-10 text-sm font-medium shadow-inner"
-              placeholder={mode === "cadastro" ? "Mínimo de 6 caracteres" : "Sua senha"}
-              autoComplete={mode === "cadastro" ? "new-password" : "current-password"}
+              placeholder={effectiveMode === "cadastro" ? "Mínimo de 6 caracteres" : "Sua senha"}
+              autoComplete={effectiveMode === "cadastro" ? "new-password" : "current-password"}
               minLength={6}
               required
             />
@@ -458,11 +464,11 @@ function AuthPage() {
         <Button
           type="submit"
           className="h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition mt-2"
-          disabled={busy || (mode === "cadastro" && !gender)}
+          disabled={busy || (effectiveMode === "cadastro" && !gender)}
         >
           {busy ? (
             "Aguarde..."
-          ) : mode === "cadastro" ? (
+          ) : effectiveMode === "cadastro" ? (
             "Criar minha conta"
           ) : (
             <>
@@ -473,34 +479,40 @@ function AuthPage() {
       </form>
 
       {/* Autenticação social configurada */}
-      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        ou continue com
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {canRegister && (
+        <>
+          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            ou continue com
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="h-12 w-full rounded-xl border-border bg-card text-sm font-bold shadow-sm hover:bg-muted"
-        onClick={continueWithGoogle}
-        disabled={busy}
-      >
-        <span className="text-base font-extrabold text-caronaa-primary mr-1">G</span> Continuar com
-        Google
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 w-full rounded-xl border-border bg-card text-sm font-bold shadow-sm hover:bg-muted"
+            onClick={continueWithGoogle}
+            disabled={busy}
+          >
+            <span className="text-base font-extrabold text-caronaa-primary mr-1">G</span> Continuar com
+            Google
+          </Button>
+        </>
+      )}
 
       {/* Alternância secundária */}
-      <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
-        {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
-        <button
-          type="button"
-          className="font-bold text-foreground underline underline-offset-4 hover:text-caronaa-primary-strong transition ml-1"
-          onClick={() => setMode(mode === "entrar" ? "cadastro" : "entrar")}
-        >
-          {mode === "entrar" ? "Criar minha conta" : "Entrar na CARONAA"}
-        </button>
-      </div>
+      {canRegister && (
+        <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
+          {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
+          <button
+            type="button"
+            className="font-bold text-foreground underline underline-offset-4 hover:text-caronaa-primary-strong transition ml-1"
+            onClick={() => setMode(mode === "entrar" ? "cadastro" : "entrar")}
+          >
+            {mode === "entrar" ? "Criar minha conta" : "Entrar na CARONAA"}
+          </button>
+        </div>
+      )}
 
       {/* Links obrigatórios: Termos, Privacidade, Segurança */}
       <div className="mt-6 border-t border-border/70 pt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">

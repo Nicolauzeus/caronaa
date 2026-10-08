@@ -260,7 +260,8 @@ function Buscar() {
           <Search className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-bold">Nenhuma carona encontrada</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tente outro trajeto ou ajuste os filtros.
+            Não encontramos uma oferta dentro dos critérios atuais. Você pode ampliar a tolerância
+            de horário, revisar os endereços escolhidos ou buscar outra data.
           </p>
           <Button
             variant="link"

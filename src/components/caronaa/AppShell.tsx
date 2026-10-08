@@ -91,6 +91,14 @@ export function AppShell({
                 Siará Tech Summit
               </Link>
               <Link
+                to="/seguranca"
+                className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
+                  pathname === "/seguranca" ? "bg-secondary text-primary" : "text-muted-foreground"
+                }`}
+              >
+                Segurança
+              </Link>
+              <Link
                 to="/auth"
                 className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                   pathname === "/auth" ? "bg-secondary text-primary" : "text-muted-foreground"

@@ -35,7 +35,7 @@
 @theme inline {
   /* Fonts */
   --font-sans: "Manrope", sans-serif;
-  --font-display: "Manrope", sans-serif;
+  --font-display: "Sora", sans-serif;
 
   /* Brand */
   --color-highlight: var(--caronaa-gold);
@@ -130,13 +130,13 @@
    * Black ≈ #090909
    * White = #FFFFFF
    */
-  --caronaa-gold: oklch(0.79 0.17 85);
-  --caronaa-gold-strong: oklch(0.7 0.17 82);
-  --caronaa-gold-hover: oklch(0.75 0.18 84);
-  --caronaa-gold-soft: oklch(0.97 0.045 88);
+  --caronaa-gold: #FFBB00;
+  --caronaa-gold-strong: #E5A800;
+  --caronaa-gold-hover: #F2B200;
+  --caronaa-gold-soft: #FFF9E6;
 
-  --caronaa-black: oklch(0.145 0 0);
-  --caronaa-white: oklch(1 0 0);
+  --caronaa-black: #121212;
+  --caronaa-white: #FFFFFF;
 
   /*
    * Legacy aliases
@@ -255,26 +255,28 @@
 
 .dark {
   /*
-   * Real black background.
-   * No brown/warm dark tint.
+   * Real black background #121212 and pure white #FFFFFF
    */
-  --background: oklch(0.115 0 0);
-  --foreground: oklch(0.97 0 0);
+  --background: #121212;
+  --foreground: #FFFFFF;
+
+  --caronaa-black: #121212;
+  --caronaa-white: #FFFFFF;
 
   /*
-   * Cards use progressive neutral blacks.
+   * Cards use progressive neutral darks
    */
-  --card: oklch(0.16 0 0);
-  --card-foreground: oklch(0.97 0 0);
+  --card: #1C1C1C;
+  --card-foreground: #FFFFFF;
 
-  --popover: oklch(0.16 0 0);
-  --popover-foreground: oklch(0.97 0 0);
+  --popover: #1C1C1C;
+  --popover-foreground: #FFFFFF;
 
   /*
-   * Gold remains the main action color.
+   * Gold remains the main action color #FFBB00
    */
-  --primary: oklch(0.8 0.17 85);
-  --primary-foreground: oklch(0.11 0 0);
+  --primary: #FFBB00;
+  --primary-foreground: #121212;
 
   /*
    * Secondary becomes white / dark contrast.
@@ -668,6 +670,25 @@ a:active {
     font-size: 14px;
     line-height: 1.4;
   }
+}
+
+@keyframes routeDash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.animate-route-dash {
+  stroke-dasharray: 6 4;
+  animation: routeDash 1.2s linear infinite;
+}
+
+.card-hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-3px);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,19 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Camera, Loader2, MapPin, QrCode, ShieldCheck, Star } from "lucide-react";
+import { Camera, Loader2, QrCode, ShieldCheck, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { getCurrentRidePosition, type RideSafety } from "@/lib/ride-safety";
+import { type RideSafety } from "@/lib/ride-safety";
 import {
   getRideSafety,
   rateRide,
-  updateRideLocation,
   validateRideBoarding,
 } from "@/lib/ride-safety-service";
 import { RideQrModal } from "./RideQrModal";
 import { RideQrScannerModal } from "./RideQrScannerModal";
+import { RideLiveTracker } from "./RideLiveTracker";
 
 export function RideSafetyPanel({
   rideId,
@@ -32,22 +31,31 @@ export function RideSafetyPanel({
   const [error, setError] = useState("");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [gpsError, setGpsError] = useState("");
   const [score, setScore] = useState(0);
   const [comment, setComment] = useState("");
-  const [clock, setClock] = useState(Date.now());
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrScannerModalOpen, setQrScannerModalOpen] = useState(false);
+
+  const loadSafety = async () => {
+    try {
+      const next = await getRideSafety(rideId);
+      setSafety(next);
+      setError("");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Não foi possível carregar a segurança da viagem.",
+      );
+    }
+  };
+
   useEffect(() => {
     let active = true;
-    const load = async () => {
+    const run = async () => {
       try {
         const next = await getRideSafety(rideId);
         if (active) {
           setSafety(next);
           setError("");
-          setClock(Date.now());
         }
       } catch (e) {
         if (active)
@@ -56,52 +64,20 @@ export function RideSafetyPanel({
           );
       }
     };
-    void load();
-    const timer = window.setInterval(() => void load(), 10000);
+    void run();
+    const timer = window.setInterval(() => void run(), 10000);
+    const onRidesUpdated = () => void run();
+    window.addEventListener("caronaa:rides-updated", onRidesUpdated);
     return () => {
       active = false;
       window.clearInterval(timer);
+      window.removeEventListener("caronaa:rides-updated", onRidesUpdated);
     };
   }, [rideId, status]);
+
   const currentStatus = ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status)
     ? status
     : (safety?.status ?? status);
-  useEffect(() => {
-    if (!sharing || currentStatus !== "IN_PROGRESS") return;
-    let active = true;
-    let pending = false;
-    const publish = async () => {
-      if (pending) return;
-      pending = true;
-      try {
-        const position = await getCurrentRidePosition();
-        if (!active) return;
-        await updateRideLocation(rideId, position);
-        const next = await getRideSafety(rideId);
-        if (active) {
-          setSafety(next);
-          setGpsError("");
-          setClock(Date.now());
-        }
-      } catch (e) {
-        if (active) {
-          setGpsError(e instanceof Error ? e.message : "Não foi possível atualizar a localização.");
-          setSharing(false);
-        }
-      } finally {
-        pending = false;
-      }
-    };
-    void publish();
-    const timer = window.setInterval(() => void publish(), 20000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [sharing, currentStatus, rideId]);
-  useEffect(() => {
-    if (currentStatus !== "IN_PROGRESS") setSharing(false);
-  }, [currentStatus]);
 
   async function board(event: FormEvent) {
     event.preventDefault();
@@ -109,7 +85,7 @@ export function RideSafetyPanel({
     try {
       await validateRideBoarding(rideId, pin);
       setPin("");
-      setSafety(await getRideSafety(rideId));
+      await loadSafety();
       toast.success("Embarque validado. Viagem iniciada.");
       await onChanged();
     } catch (e) {
@@ -118,12 +94,13 @@ export function RideSafetyPanel({
       setBusy(false);
     }
   }
+
   async function rate(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     try {
       await rateRide(rideId, score, comment);
-      setSafety(await getRideSafety(rideId));
+      await loadSafety();
       toast.success("Avaliação registrada.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível registrar a avaliação.");
@@ -131,8 +108,7 @@ export function RideSafetyPanel({
       setBusy(false);
     }
   }
-  const locations = currentStatus === "IN_PROGRESS" ? safety?.locations || [] : [];
-  const location = locations.find((l) => l.userId !== viewerUserId) || locations[0];
+
   return (
     <section
       aria-label="Segurança da viagem"
@@ -142,16 +118,35 @@ export function RideSafetyPanel({
         <ShieldCheck size={16} />
         Segurança da viagem
       </h3>
+
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
+
       {!safety && !error && (
         <p role="status" className="text-xs text-muted-foreground">
           Carregando…
         </p>
       )}
+
+      {/* Acompanhamento em tempo real para viagens confirmadas ou em andamento */}
+      {safety && ["CONFIRMED", "IN_PROGRESS"].includes(currentStatus) && (
+        <RideLiveTracker
+          rideId={rideId}
+          role={role}
+          viewerUserId={viewerUserId}
+          status={currentStatus}
+          safety={safety}
+          onRefresh={async () => {
+            await loadSafety();
+            await onChanged();
+          }}
+        />
+      )}
+
+      {/* Validação de Embarque com QR Code ou PIN para Passageiro */}
       {currentStatus === "CONFIRMED" && role === "passenger" && (
         <div className="space-y-3">
           <Button
@@ -177,6 +172,7 @@ export function RideSafetyPanel({
         </div>
       )}
 
+      {/* Validação de Embarque com QR Code ou PIN para Motorista */}
       {currentStatus === "CONFIRMED" && role === "driver" && (
         <div className="space-y-3">
           <Button
@@ -196,7 +192,10 @@ export function RideSafetyPanel({
           </div>
 
           <form onSubmit={board} className="space-y-2">
-            <label className="block text-xs font-medium text-muted-foreground" htmlFor={`boarding-${rideId}`}>
+            <label
+              className="block text-xs font-medium text-muted-foreground"
+              htmlFor={`boarding-${rideId}`}
+            >
               PIN de 8 dígitos do passageiro
             </label>
             <div className="flex flex-wrap gap-2">
@@ -212,7 +211,12 @@ export function RideSafetyPanel({
                 placeholder="8 dígitos"
                 className="min-w-0 flex-1 basis-32 font-mono h-10"
               />
-              <Button type="submit" size="sm" className="h-10" disabled={busy || pin.length !== 8 || !safety || !!error}>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-10"
+                disabled={busy || pin.length !== 8 || !safety || !!error}
+              >
                 {busy ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
                 Validar PIN
               </Button>
@@ -220,70 +224,13 @@ export function RideSafetyPanel({
           </form>
         </div>
       )}
+
       {safety?.boardedAt && (
         <p className="text-xs text-muted-foreground">
           Embarque validado em {new Date(safety.boardedAt).toLocaleString("pt-BR")}
         </p>
       )}
-      {currentStatus === "IN_PROGRESS" && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <label htmlFor={`tracking-${rideId}`} className="flex items-center gap-2 text-sm">
-              <MapPin size={15} />
-              Compartilhar minha posição
-            </label>
-            <Switch
-              id={`tracking-${rideId}`}
-              checked={sharing}
-              onCheckedChange={(enabled) => {
-                setGpsError("");
-                setSharing(enabled);
-              }}
-            />
-          </div>
-          {gpsError && (
-            <p role="alert" className="text-xs text-destructive">
-              {gpsError}
-            </p>
-          )}
-          {!locations.length && (
-            <p className="text-xs text-muted-foreground">Nenhuma posição recebida nesta viagem.</p>
-          )}
-          {locations.map((l) => (
-            <div key={l.userId} className="text-xs">
-              <p className="font-medium">
-                {l.userId === viewerUserId
-                  ? "Sua posição"
-                  : role === "driver"
-                    ? "Posição do passageiro"
-                    : "Posição do motorista"}
-              </p>
-              <p className="text-muted-foreground">
-                {l.latitude.toFixed(5)}, {l.longitude.toFixed(5)} · precisão ±
-                {Math.round(l.accuracyM)} m
-              </p>
-              <p className="text-muted-foreground">
-                Atualizada às {new Date(l.capturedAt).toLocaleTimeString("pt-BR")}
-                {clock - new Date(l.capturedAt).getTime() > 60000 ? " · posição desatualizada" : ""}
-              </p>
-            </div>
-          ))}
-          {location && (
-            <iframe
-              title="Última posição recebida da viagem"
-              className="h-44 w-full rounded-md border border-border"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.006},${location.latitude - 0.004},${location.longitude + 0.006},${location.latitude + 0.004}&layer=mapnik&marker=${location.latitude},${location.longitude}`}
-            />
-          )}
-          {safety?.completionConfirmed && (
-            <p className="text-xs text-muted-foreground">
-              Sua conclusão foi registrada. Aguardando a outra pessoa confirmar.
-            </p>
-          )}
-        </div>
-      )}
+
       {safety && (
         <div className="text-xs text-muted-foreground">
           <p>
@@ -300,6 +247,8 @@ export function RideSafetyPanel({
           </p>
         </div>
       )}
+
+      {/* Avaliação após término da corrida */}
       {currentStatus === "COMPLETED" &&
         safety &&
         (safety.myRating ? (
@@ -346,11 +295,12 @@ export function RideSafetyPanel({
               maxLength={1000}
             />
             <Button type="submit" size="sm" disabled={busy || score === 0 || !!error}>
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}Enviar
-              avaliação
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
+              Enviar avaliação
             </Button>
           </form>
         ))}
+
       {currentStatus === "COMPLETED" && safety?.receivedRating && (
         <p className="text-sm">
           Avaliação recebida: {safety.receivedRating.score} / 5
@@ -363,11 +313,7 @@ export function RideSafetyPanel({
       )}
 
       {/* Modais de Confirmação por QR Code */}
-      <RideQrModal
-        rideId={rideId}
-        open={qrModalOpen}
-        onOpenChange={setQrModalOpen}
-      />
+      <RideQrModal rideId={rideId} open={qrModalOpen} onOpenChange={setQrModalOpen} />
 
       <RideQrScannerModal
         open={qrScannerModalOpen}

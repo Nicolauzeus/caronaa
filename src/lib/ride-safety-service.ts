@@ -4,7 +4,9 @@ import {
   ridePositionSchema,
   rideRatingSchema,
   rideSafetySchema,
+  transitStageSchema,
   type RidePosition,
+  type TransitStage,
 } from "./ride-safety";
 
 async function unwrap<T>(
@@ -17,11 +19,13 @@ async function unwrap<T>(
   }
   return data;
 }
+
 export async function getRideSafety(rideId: string) {
   return rideSafetySchema.parse(
     await unwrap(supabase.rpc("get_ride_safety", { p_ride_id: rideId })),
   );
 }
+
 export async function validateRideBoarding(rideId: string, pin: string) {
   const result = await unwrap(
     supabase.rpc("validate_ride_boarding", {
@@ -35,6 +39,29 @@ export async function validateRideBoarding(rideId: string, pin: string) {
     throw new Error("Limite de tentativas atingido. Aguarde 5 minutos para tentar novamente.");
   if (result !== "IN_PROGRESS") throw new Error("Não foi possível validar o embarque.");
 }
+
+export async function updateRideTransitStage(
+  rideId: string,
+  stage: "DRIVER_EN_ROUTE" | "AWAITING_BOARDING",
+): Promise<TransitStage> {
+  const validated = transitStageSchema.parse(stage);
+  const result = await unwrap(
+    supabase.rpc("update_ride_transit_stage", {
+      p_ride_id: rideId,
+      p_stage: validated,
+    }),
+  );
+  return result as TransitStage;
+}
+
+export async function revokeRideLocation(rideId: string): Promise<void> {
+  await unwrap(
+    supabase.rpc("revoke_ride_location", {
+      p_ride_id: rideId,
+    }),
+  );
+}
+
 export async function updateRideLocation(rideId: string, input: RidePosition) {
   const position = ridePositionSchema.parse(input);
   await unwrap(
@@ -47,6 +74,7 @@ export async function updateRideLocation(rideId: string, input: RidePosition) {
     }),
   );
 }
+
 export async function rateRide(rideId: string, score: number, comment: string) {
   const rating = rideRatingSchema.parse({ score, comment });
   await unwrap(

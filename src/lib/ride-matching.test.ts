@@ -4,6 +4,7 @@ import {
   DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
   areRideLocationsCompatible,
   calculateRideMatchScore,
+  getRideMatchReasons,
   isRideRequestCompatibleWithOffer,
   type RideCompatibilityInput,
 } from "./ride-matching";
@@ -42,6 +43,29 @@ describe("ride compatibility", () => {
     });
     expect(close).toBeGreaterThan(later);
     expect(close).toBeLessThanOrEqual(100);
+  });
+
+  it("respeita o menor limite de horário entre a busca e a tolerância da oferta", () => {
+    expect(
+      isRideRequestCompatibleWithOffer(
+        {
+          ...compatibleRide,
+          request: { ...compatibleRide.request, departureTime: "08:40" },
+          offer: { ...compatibleRide.offer, timeToleranceMinutes: 5 },
+        },
+        { timeToleranceMinutes: 60 },
+      ),
+    ).toBe(false);
+  });
+
+  it("expõe razões legíveis e avisa quando o score depende de endereços sem coordenadas", () => {
+    expect(getRideMatchReasons(compatibleRide)).toEqual([
+      "Coordenadas ausentes; compatibilidade baseada nos endereços informados",
+      "Horários compatíveis",
+    ]);
+    expect(getRideMatchReasons(compatibleRide, 3)).toContain(
+      "Preferências de conversa ou música semelhantes",
+    );
   });
   it("allows a persisted request when there are enough seats and the users differ", () => {
     expect(isRideRequestCompatibleWithOffer(compatibleRide)).toBe(true);
@@ -316,9 +340,9 @@ describe("ride compatibility", () => {
     });
 
     it("accepts the same origin and destination coordinates", () => {
-      expect(
-        isRideRequestCompatibleWithOffer(geoRide(aldeota, meireles, aldeota, meireles)),
-      ).toBe(true);
+      expect(isRideRequestCompatibleWithOffer(geoRide(aldeota, meireles, aldeota, meireles))).toBe(
+        true,
+      );
     });
 
     it("accepts a nearby origin with a different name inside the configured radius", () => {
@@ -362,16 +386,15 @@ describe("ride compatibility", () => {
 
     it("rejects endpoints outside the configured radius", () => {
       expect(
-        isRideRequestCompatibleWithOffer(
-          geoRide(aldeota, meireles, aldeota, meireles),
-          { originToleranceKm: 0.05 },
-        ),
+        isRideRequestCompatibleWithOffer(geoRide(aldeota, meireles, aldeota, meireles), {
+          originToleranceKm: 0.05,
+        }),
       ).toBe(true);
       expect(
-        isRideRequestCompatibleWithOffer(
-          geoRide(nearbyAldeota, meireles, aldeota, meireles),
-          { originToleranceKm: 0.05, routeToleranceKm: 0.05 },
-        ),
+        isRideRequestCompatibleWithOffer(geoRide(nearbyAldeota, meireles, aldeota, meireles), {
+          originToleranceKm: 0.05,
+          routeToleranceKm: 0.05,
+        }),
       ).toBe(false);
     });
 
@@ -393,9 +416,9 @@ describe("ride compatibility", () => {
     });
 
     it("rejects silent text fallback when only part of the coordinates are present", () => {
-      expect(
-        areRideLocationsCompatible(geoRide(aldeota, undefined, aldeota, meireles)),
-      ).toBe(false);
+      expect(areRideLocationsCompatible(geoRide(aldeota, undefined, aldeota, meireles))).toBe(
+        false,
+      );
     });
 
     it("falls back explicitly to exact route text only when coordinates are absent", () => {
@@ -449,7 +472,9 @@ describe("ride compatibility", () => {
       "utf8",
     );
     expect(migration0024).toContain("ADD COLUMN IF NOT EXISTS origin_lat double precision");
-    expect(migration0024).toContain("CREATE OR REPLACE FUNCTION public.distance_point_to_segment_km");
+    expect(migration0024).toContain(
+      "CREATE OR REPLACE FUNCTION public.distance_point_to_segment_km",
+    );
     expect(migration0024).toContain("CREATE OR REPLACE FUNCTION public.are_ride_routes_compatible");
     expect(migration0024).toContain("tolerance_km double precision DEFAULT 2");
   });

@@ -288,6 +288,20 @@
       "when": 1791435359972,
       "tag": "0040_geographic_preference_match_ranking",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791435459972,
+      "tag": "0041_bilateral_ride_match_acceptance",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791435559972,
+      "tag": "0042_realtime_ride_tracking_and_stages",
+      "breakpoints": true
     }
   ]
 }

@@ -11,8 +11,11 @@ const migration = readFileSync(
 const confirmed = { hasPersistedMatch: true, isParticipant: true, confirmedByBoth: true };
 
 describe("ride lifecycle", () => {
-  it("allows transition from MATCHED to CONFIRMED and idempotent CONFIRMED to CONFIRMED", () => {
+  it("requires both participants to accept before confirming a match", () => {
     expect(transitionRide("MATCHED", "CONFIRMED", confirmed)).toBe("CONFIRMED");
+    expect(() =>
+      transitionRide("MATCHED", "CONFIRMED", { ...confirmed, confirmedByBoth: false }),
+    ).toThrow("Both ride participants must accept");
     expect(transitionRide("CONFIRMED", "CONFIRMED", confirmed)).toBe("CONFIRMED");
   });
 
@@ -69,17 +72,21 @@ describe("ride lifecycle", () => {
   it("provides correct nextActions for driver and passenger without redundant confirmation", async () => {
     const { getRideNextActions } = await import("./ride-lifecycle");
 
-    // MATCHED: ambos têm Confirmar e Cancelar
+    // MATCHED is only a proposal: either participant can accept or decline it.
     const matchedDriverActions = getRideNextActions("MATCHED", "driver");
     expect(matchedDriverActions).toEqual([
-      { label: "Confirmar carona", status: "CONFIRMED" },
-      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+      { label: "Aceitar combinação", status: "CONFIRMED" },
+      { label: "Recusar combinação", status: "CANCELLED", variant: "outline" },
     ]);
 
     const matchedPassengerActions = getRideNextActions("MATCHED", "passenger");
     expect(matchedPassengerActions).toEqual([
-      { label: "Confirmar carona", status: "CONFIRMED" },
-      { label: "Cancelar", status: "CANCELLED", variant: "outline" },
+      { label: "Aceitar combinação", status: "CONFIRMED" },
+      { label: "Recusar combinação", status: "CANCELLED", variant: "outline" },
+    ]);
+
+    expect(getRideNextActions("MATCHED", "passenger", { acceptedByViewer: true })).toEqual([
+      { label: "Retirar aceite", status: "CANCELLED", variant: "outline" },
     ]);
 
     // O inicio exige PIN no painel de seguranca; as acoes comuns permitem cancelar.

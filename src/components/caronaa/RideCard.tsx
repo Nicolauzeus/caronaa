@@ -40,7 +40,7 @@ function getStatusLabel(status: string) {
     full: "Lotada",
     open: "Aberto",
     matched: "Com match",
-    MATCHED: "Match criado",
+    MATCHED: "Combinação encontrada",
     CONFIRMED: "Confirmada",
     IN_PROGRESS: "Em andamento",
     COMPLETED: "Concluída",
@@ -124,7 +124,7 @@ export function RideCard({
           {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
         </span>
         {typeof ride.matchScore === "number" && (
-          <span className="font-semibold text-primary">{ride.matchScore}% compatível</span>
+          <span className="font-semibold text-primary">Adequação {ride.matchScore}/100</span>
         )}
       </div>
       {expanded && (
@@ -133,8 +133,19 @@ export function RideCard({
             <MapPin size={15} /> {ride.origin} → {ride.destination}
           </p>
           <p>Status: {getStatusLabel(ride.status)}</p>
-          {typeof ride.matchScore === "number" && <p>Compatibilidade de trajeto e horário: {ride.matchScore}%</p>}
-          {Boolean(ride.preferenceBonus) && <p>Conversa ou música em comum.</p>}
+          {typeof ride.matchScore === "number" && (
+            <p>
+              Adequação estimada: {ride.matchScore}/100. É um critério de ordenação, não uma
+              probabilidade de sucesso.
+            </p>
+          )}
+          {ride.matchReasons?.length ? (
+            <ul className="list-disc space-y-1 pl-5">
+              {ride.matchReasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       )}
       <div className="mt-4 flex gap-2">

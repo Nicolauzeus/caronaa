@@ -135,11 +135,15 @@ describe("temporal SQL rules with a fixed Fortaleza clock", () => {
   });
 
   it("preserves the complete original allocator except its two temporal predicates", () => {
-    const withoutTemporalGuards = matching.replace(
-      /\n {4}AND \(ride_date \+ departure_time\) AT TIME ZONE 'America\/Fortaleza' >= pg_catalog\.clock_timestamp\(\)/g,
-      "",
+    const withoutTemporalGuards = matching
+      .replace(/\r\n/g, "\n")
+      .replace(
+        /\n {4}AND \(ride_date \+ departure_time\) AT TIME ZONE 'America\/Fortaleza' >= pg_catalog\.clock_timestamp\(\)/g,
+        "",
+      );
+    expect(withoutTemporalGuards).toBe(
+      functionBody(originalMatching, "try_match_ride_request").replace(/\r\n/g, "\n"),
     );
-    expect(withoutTemporalGuards).toBe(functionBody(originalMatching, "try_match_ride_request"));
     expect(matching.match(/pg_catalog\.clock_timestamp\(\)/g)).toHaveLength(2);
   });
 

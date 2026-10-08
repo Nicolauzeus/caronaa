@@ -3,6 +3,22 @@ export type TimeToleranceMinutes = (typeof TIME_TOLERANCE_OPTIONS)[number];
 export const DEFAULT_TIME_TOLERANCE_MINUTES: TimeToleranceMinutes = 15;
 export const DEFAULT_GEOGRAPHIC_TOLERANCE_KM = 2;
 
+export const RIDE_MATCH_SCORE_CONFIG = {
+  maximum: 100,
+  maximumBase: 94,
+  minimum: 0,
+  detourPenaltyPerKm: 5.5,
+  maximumDetourPenalty: 35,
+  pickupPenaltyPerKm: 8,
+  maximumPickupPenalty: 20,
+  timePenaltyPerMinute: 1 / 3,
+  maximumTimePenalty: 20,
+  destinationPenaltyPerKm: 5,
+  maximumDestinationPenalty: 15,
+  missingCoordinatesPenalty: 15,
+  maximumPreferenceBonus: 6,
+} as const;
+
 type Coordinate = {
   lat?: number | null;
   lng?: number | null;
@@ -98,7 +114,10 @@ export function distanceFromPointToSegmentKm(
 
   const t = Math.max(
     0,
-    Math.min(1, ((projectedPoint.x - start.x) * dx + (projectedPoint.y - start.y) * dy) / lengthSquared),
+    Math.min(
+      1,
+      ((projectedPoint.x - start.x) * dx + (projectedPoint.y - start.y) * dy) / lengthSquared,
+    ),
   );
   const nearest = {
     x: start.x + t * dx,
@@ -238,20 +257,99 @@ export function isTimeWithinTolerance(
 }
 
 /** A transparent ordering signal for results that already passed hard compatibility rules. */
-export function calculateRideMatchScore(input: RideCompatibilityInput): number {
-  let score = 100;
+export function calculateRideMatchScore(
+  input: RideCompatibilityInput,
+  preferenceBonus = 0,
+): number {
+  let score = RIDE_MATCH_SCORE_CONFIG.maximumBase;
   const origin = input.request.originCoordinate;
   const destination = input.request.destinationCoordinate;
   const offerOrigin = input.offer.originCoordinate;
   const offerDestination = input.offer.destinationCoordinate;
-  if (isValidCoordinate(origin) && isValidCoordinate(destination) && isValidCoordinate(offerOrigin) && isValidCoordinate(offerDestination)) {
-    const originOffset = Math.min(calculateRideDistanceKm(origin, offerOrigin), distanceFromPointToSegmentKm(origin, offerOrigin, offerDestination));
-    const destinationOffset = Math.min(calculateRideDistanceKm(destination, offerDestination), distanceFromPointToSegmentKm(destination, offerOrigin, offerDestination));
-    score -= Math.min(30, Math.round((originOffset + destinationOffset) * 7));
-  } else score -= 12; // Exact text fallback is useful, but less certain than real coordinates.
-  const timeDifference = timeDifferenceInMinutes(input.request.departureTime, input.offer.departureTime) ?? 60;
-  score -= Math.min(20, Math.round(timeDifference / 3));
-  return Math.max(55, Math.min(100, score));
+  if (
+    isValidCoordinate(origin) &&
+    isValidCoordinate(destination) &&
+    isValidCoordinate(offerOrigin) &&
+    isValidCoordinate(offerDestination)
+  ) {
+    const pickupDistance = calculateRideDistanceKm(offerOrigin, origin);
+    const destinationDistance = calculateRideDistanceKm(destination, offerDestination);
+    const directRouteDistance = calculateRideDistanceKm(offerOrigin, offerDestination);
+    const withPassengerDistance =
+      pickupDistance + calculateRideDistanceKm(origin, destination) + destinationDistance;
+    const estimatedDetour = Math.max(0, withPassengerDistance - directRouteDistance);
+
+    score -= Math.min(
+      RIDE_MATCH_SCORE_CONFIG.maximumDetourPenalty,
+      Math.round(estimatedDetour * RIDE_MATCH_SCORE_CONFIG.detourPenaltyPerKm),
+    );
+    score -= Math.min(
+      RIDE_MATCH_SCORE_CONFIG.maximumPickupPenalty,
+      Math.round(pickupDistance * RIDE_MATCH_SCORE_CONFIG.pickupPenaltyPerKm),
+    );
+    score -= Math.min(
+      RIDE_MATCH_SCORE_CONFIG.maximumDestinationPenalty,
+      Math.round(destinationDistance * RIDE_MATCH_SCORE_CONFIG.destinationPenaltyPerKm),
+    );
+  } else {
+    // Exact text fallback is eligible only when no coordinates exist at all.
+    score -= RIDE_MATCH_SCORE_CONFIG.missingCoordinatesPenalty;
+  }
+  const timeDifference =
+    timeDifferenceInMinutes(input.request.departureTime, input.offer.departureTime) ?? 60;
+  score -= Math.min(
+    RIDE_MATCH_SCORE_CONFIG.maximumTimePenalty,
+    Math.round(timeDifference * RIDE_MATCH_SCORE_CONFIG.timePenaltyPerMinute),
+  );
+  score += Math.max(0, Math.min(RIDE_MATCH_SCORE_CONFIG.maximumPreferenceBonus, preferenceBonus));
+  return Math.max(
+    RIDE_MATCH_SCORE_CONFIG.minimum,
+    Math.min(RIDE_MATCH_SCORE_CONFIG.maximum, score),
+  );
+}
+
+export function getRideMatchReasons(input: RideCompatibilityInput, preferenceBonus = 0): string[] {
+  const reasons: string[] = [];
+  const origin = input.request.originCoordinate;
+  const destination = input.request.destinationCoordinate;
+  const offerOrigin = input.offer.originCoordinate;
+  const offerDestination = input.offer.destinationCoordinate;
+  const hasCoordinates =
+    isValidCoordinate(origin) &&
+    isValidCoordinate(destination) &&
+    isValidCoordinate(offerOrigin) &&
+    isValidCoordinate(offerDestination);
+
+  if (hasCoordinates) {
+    const pickupDistance = calculateRideDistanceKm(offerOrigin, origin);
+    const destinationDistance = calculateRideDistanceKm(destination, offerDestination);
+    const detour = Math.max(
+      0,
+      pickupDistance +
+        calculateRideDistanceKm(origin, destination) +
+        destinationDistance -
+        calculateRideDistanceKm(offerOrigin, offerDestination),
+    );
+    if (detour <= 2) reasons.push("Pouco desvio estimado para o motorista");
+    if (pickupDistance <= 2) reasons.push("Embarque próximo ao início da rota");
+    if (destinationDistance <= 2) reasons.push("Desembarque próximo ao destino");
+  } else {
+    reasons.push("Coordenadas ausentes; compatibilidade baseada nos endereços informados");
+  }
+
+  const requestedTolerance =
+    input.timeToleranceMinutes ??
+    input.request.timeToleranceMinutes ??
+    DEFAULT_TIME_TOLERANCE_MINUTES;
+  const tolerance = Math.min(
+    requestedTolerance,
+    input.offer.timeToleranceMinutes ?? requestedTolerance,
+  );
+  if (isTimeWithinTolerance(input.request.departureTime, input.offer.departureTime, tolerance)) {
+    reasons.push("Horários compatíveis");
+  }
+  if (preferenceBonus > 0) reasons.push("Preferências de conversa ou música semelhantes");
+  return reasons;
 }
 
 /**
@@ -286,11 +384,15 @@ export function isRideRequestCompatibleWithOffer(
     allowTextFallback?: boolean;
   },
 ): boolean {
-  const tolerance =
+  const requestedTolerance =
     options?.timeToleranceMinutes ??
     input.timeToleranceMinutes ??
     input.request.timeToleranceMinutes ??
     DEFAULT_TIME_TOLERANCE_MINUTES;
+  const tolerance = Math.min(
+    requestedTolerance,
+    input.offer.timeToleranceMinutes ?? requestedTolerance,
+  );
 
   const isTimeCompatible = isTimeWithinTolerance(
     input.request.departureTime,

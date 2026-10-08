@@ -99,6 +99,15 @@ export function PublicFooter({ className }: { className?: string }) {
                 </li>
                 <li>
                   <Link
+                    to="/auth"
+                    search={{ mode: "signup" }}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Criar conta
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     to="/termos"
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
