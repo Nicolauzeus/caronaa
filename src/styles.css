@@ -413,6 +413,13 @@
   padding-top: 14px;
   padding-bottom: 14px;
 }
+.admin-workspace .bg-secondary\/30,
+.admin-workspace .bg-secondary\/40 {
+  background: var(--muted);
+}
+.admin-workspace > div > div {
+  min-width: 0;
+}
 
 .shadow-card {
   box-shadow:

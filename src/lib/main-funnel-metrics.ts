@@ -88,6 +88,17 @@ export async function getMainFunnelMetrics(
     p_profile: filters.tipoUsuario ?? null,
     p_cohort_event: cohortEvent,
   });
-  if (error) throw new Error(`NÃƒÂ£o foi possÃƒÂ­vel carregar o funil principal: ${error.message}`);
-  return data as MainFunnelSummary;
+  if (error) throw new Error(`Não foi possível carregar o funil principal: ${error.message}`);
+  const summary = data as MainFunnelSummary;
+  const labels = ["Coorte adquirida", "Cadastros", "Ofertas e solicitações", "Combinações", "Caronas realizadas", "Pagamentos", "Nova carona"];
+  return {
+    ...summary,
+    cohortEvent,
+    cohortSize: summary.cohortSize ?? summary.stages?.[0]?.count ?? 0,
+    stages: (summary.stages ?? []).map((stage, index) => ({
+      ...stage,
+      label: labels[index] ?? stage.label,
+      unavailableReason: index === 5 ? "Pagamento integrado ainda indisponível." : stage.unavailableReason,
+    })),
+  } as MainFunnelSummary;
 }

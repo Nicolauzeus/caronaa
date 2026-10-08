@@ -293,7 +293,7 @@ function DashboardPage() {
                           {step.label}
                         </div>
 
-                        <div className="flex-1 rounded-full bg-secondary px-2 py-1.5">
+                        <div className="min-w-8 flex-1 rounded-full bg-muted px-2 py-1.5">
                           <div
                             className="h-2 rounded-full bg-primary transition-all"
                             style={{
