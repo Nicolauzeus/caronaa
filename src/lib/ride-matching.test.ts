@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
   areRideLocationsCompatible,
+  calculateRideMatchScore,
   isRideRequestCompatibleWithOffer,
   type RideCompatibilityInput,
 } from "./ride-matching";
@@ -33,6 +34,15 @@ const compatibleRide: RideCompatibilityInput = {
 };
 
 describe("ride compatibility", () => {
+  it("ordena melhor uma rota e horário mais próximos sem transformar score em regra de aceite", () => {
+    const close = calculateRideMatchScore(compatibleRide);
+    const later = calculateRideMatchScore({
+      ...compatibleRide,
+      offer: { ...compatibleRide.offer, departureTime: "08:44" },
+    });
+    expect(close).toBeGreaterThan(later);
+    expect(close).toBeLessThanOrEqual(100);
+  });
   it("allows a persisted request when there are enough seats and the users differ", () => {
     expect(isRideRequestCompatibleWithOffer(compatibleRide)).toBe(true);
   });

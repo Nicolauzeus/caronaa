@@ -123,6 +123,9 @@ export function RideCard({
           {ride.seatsRemaining ?? ride.seats}{" "}
           {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
         </span>
+        {typeof ride.matchScore === "number" && (
+          <span className="font-semibold text-primary">{ride.matchScore}% compatível</span>
+        )}
       </div>
       {expanded && (
         <div className="mt-4 space-y-2 rounded-md bg-secondary p-4 text-sm text-secondary-foreground">

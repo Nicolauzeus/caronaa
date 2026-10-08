@@ -237,6 +237,23 @@ export function isTimeWithinTolerance(
   return diff <= toleranceMinutes;
 }
 
+/** A transparent ordering signal for results that already passed hard compatibility rules. */
+export function calculateRideMatchScore(input: RideCompatibilityInput): number {
+  let score = 100;
+  const origin = input.request.originCoordinate;
+  const destination = input.request.destinationCoordinate;
+  const offerOrigin = input.offer.originCoordinate;
+  const offerDestination = input.offer.destinationCoordinate;
+  if (isValidCoordinate(origin) && isValidCoordinate(destination) && isValidCoordinate(offerOrigin) && isValidCoordinate(offerDestination)) {
+    const originOffset = Math.min(calculateRideDistanceKm(origin, offerOrigin), distanceFromPointToSegmentKm(origin, offerOrigin, offerDestination));
+    const destinationOffset = Math.min(calculateRideDistanceKm(destination, offerDestination), distanceFromPointToSegmentKm(destination, offerOrigin, offerDestination));
+    score -= Math.min(30, Math.round((originOffset + destinationOffset) * 7));
+  } else score -= 12; // Exact text fallback is useful, but less certain than real coordinates.
+  const timeDifference = timeDifferenceInMinutes(input.request.departureTime, input.offer.departureTime) ?? 60;
+  score -= Math.min(20, Math.round(timeDifference / 3));
+  return Math.max(55, Math.min(100, score));
+}
+
 /**
  * Retorna os horários inicial e final correspondentes à janela de tolerância para um dado horário base.
  */

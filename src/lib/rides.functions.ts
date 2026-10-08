@@ -11,6 +11,7 @@ import {
 import {
   DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
   areRideLocationsCompatible,
+  calculateRideMatchScore,
   isTimeWithinTolerance,
 } from "@/lib/ride-matching";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
@@ -49,6 +50,7 @@ export type RideSummary = {
   totalPrice: number;
   confirmedPassengers: number;
   passengerContribution: number;
+  matchScore?: number;
 };
 
 const searchInput = z.object({
@@ -369,8 +371,16 @@ async function discoverOffers(
         : row,
     );
   }
-  return resultRows.map((row: any) =>
-    mapOffer(
+  return resultRows
+    .map((row: any) => ({
+      row,
+      score: calculateRideMatchScore({
+        request: { origin: data.origin || "", destination: data.destination || "", originCoordinate: coordinateFromInput(data.originLat, data.originLng, data.origin), destinationCoordinate: coordinateFromInput(data.destinationLat, data.destinationLng, data.destination), rideDate: data.rideDate || "", departureTime: data.departureTime || String(row.departure_time ?? "").slice(0, 5), passengerCount: data.passengerCount, userId },
+        offer: { origin: String(row.origin ?? ""), destination: String(row.destination ?? ""), originCoordinate: coordinateFromRow(row, "origin"), destinationCoordinate: coordinateFromRow(row, "destination"), rideDate: String(row.ride_date ?? ""), departureTime: String(row.departure_time ?? "").slice(0, 5), availableSeats: Number(row.available_seats ?? 0), seatsRemaining: Number(row.seats_remaining ?? 0), userId: String(row.user_id ?? "") },
+      }),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ row, score }: any) => ({ ...mapOffer(
       row,
       {
         id: String(row.user_id),
@@ -382,8 +392,7 @@ async function discoverOffers(
           .filter((v: RideVerification | null): v is RideVerification => Boolean(v)),
       },
       userId,
-    ),
-  );
+    ), matchScore: score }));
 }
 
 export const searchRideOffers = createServerFn({ method: "GET" })
