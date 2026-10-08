@@ -15,6 +15,7 @@ import {
   type RoutineOccurrence,
 } from "@/lib/ride-routines";
 import { changeRoutineOccurrence, saveRideRoutine } from "@/lib/ride-routines-service";
+import { JourneyPreferences } from "./TravelPreferences";
 
 type Props = {
   kind: "offer" | "request";
@@ -199,6 +200,7 @@ export function RideRoutineForm({ kind, initial, routineId, occurrence, onSaved 
         onChange={(value) => update("timeToleranceMinutes", value)}
       />
       <div className="flex justify-end">
+        <JourneyPreferences kind={kind} initial={occurrence?.preferences ?? initial?.preferences} onChange={(value) => update("preferences", value)} />
         <Button type="submit" disabled={busy || (!occurrence && !form.days.length)}>
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
           {occurrence || routineId ? "Salvar alterações" : "Ativar rotina"}

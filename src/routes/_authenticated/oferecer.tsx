@@ -16,6 +16,8 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { createRideOffer } from "@/lib/ride-matching.functions";
 import { toast } from "sonner";
+import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
+import type { TravelPreferences } from "@/lib/travel-preferences";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
 import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
@@ -88,6 +90,7 @@ function Oferecer() {
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"point" | "routine">("point");
   const [routineSaved, setRoutineSaved] = useState(false);
+  const [preferences, setPreferences] = useState<TravelPreferences>();
   const [form, setForm] = useState<OferecerFormState>(() => ({
     ...initial, origin: search.origem ?? "", destination: search.destino ?? "", date: search.data ?? "", time: search.horario ?? "",
     originLocation: search.olat != null && search.olng != null ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng } : undefined,
@@ -113,6 +116,7 @@ function Oferecer() {
             timeToleranceMinutes: form.timeTolerance,
             totalPrice: form.price ? Number(form.price) : 30,
             passengerGenderPreference: form.passengerGenderPreference,
+            preferences,
           },
         });
       } catch (error) {
@@ -319,6 +323,7 @@ function Oferecer() {
                         <option value="ANY">Todos os gêneros</option><option value="FEMININO">Somente mulheres</option><option value="MASCULINO">Somente homens</option>
                       </select>
                     </label>
+                    <JourneyPreferences kind="offer" onChange={setPreferences} />
                     <LocationAutocomplete
                       id="oferecer-meeting"
                       label="Ponto de encontro"

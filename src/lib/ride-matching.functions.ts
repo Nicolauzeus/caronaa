@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { travelPreferencesSchema } from "./travel-preferences";
 
 const rideInput = z.object({
   origin: z.string().trim().min(1).max(160),
@@ -19,24 +20,15 @@ const rideInput = z.object({
   totalPrice: z.number().finite().min(0).max(1000).optional(),
   passengerGenderPreference: z.enum(["ANY", "FEMININO", "MASCULINO"]).optional(),
   price: z.number().finite().min(0).max(1000).optional(),
+  preferences: travelPreferencesSchema.optional(),
 });
 
 export const createRideRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
-    const { data: requestId, error } = await context.supabase.rpc("create_ride_request", {
-      p_origin: data.origin,
-      p_destination: data.destination,
-      p_origin_lat: data.originLat ?? undefined,
-      p_origin_lng: data.originLng ?? undefined,
-      p_destination_lat: data.destinationLat ?? undefined,
-      p_destination_lng: data.destinationLng ?? undefined,
-      p_ride_date: data.rideDate,
-      p_departure_time: data.departureTime,
-      p_passenger_count: data.passengerCount ?? 1,
-      p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      p_price: data.price ?? undefined,
+    const { data: requestId, error } = await context.supabase.rpc("create_preferred_ride", {
+      p_kind: "request", p_details: data, p_preferences: data.preferences,
     });
     if (error) {
       throw new Error(`Não foi possível criar a solicitação: ${error.message}`);
@@ -48,19 +40,8 @@ export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
-    const { data: offerId, error } = await context.supabase.rpc("create_ride_offer", {
-      p_origin: data.origin,
-      p_destination: data.destination,
-      p_origin_lat: data.originLat ?? null,
-      p_origin_lng: data.originLng ?? null,
-      p_destination_lat: data.destinationLat ?? null,
-      p_destination_lng: data.destinationLng ?? null,
-      p_ride_date: data.rideDate,
-      p_departure_time: data.departureTime,
-      p_available_seats: data.availableSeats ?? 1,
-      p_time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      p_total_price: data.totalPrice ?? 30,
-      p_passenger_gender_preference: data.passengerGenderPreference ?? "ANY",
+    const { data: offerId, error } = await context.supabase.rpc("create_preferred_ride", {
+      p_kind: "offer", p_details: data, p_preferences: data.preferences,
     });
     if (error) {
       throw new Error(`Não foi possível criar a oferta: ${error.message}`);

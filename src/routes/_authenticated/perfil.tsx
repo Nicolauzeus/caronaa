@@ -15,6 +15,7 @@ import {
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { NotificationPreferences } from "@/components/caronaa/NotificationControls";
+import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,10 @@ export const Route = createFileRoute("/_authenticated/perfil")({
         name: "description",
         content: "Gerencie seus dados e verificações no CARONAA.",
       },
+      { property: "og:title", content: "Meu perfil — CARONAA" },
+      { property: "og:description", content: "Gerencie seus dados e preferências de viagem no CARONAA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Perfil,

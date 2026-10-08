@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { travelPreferencesSchema } from "./travel-preferences";
 
 export const weekDays = [
   { value: 1, label: "Segunda", short: "Seg" },
@@ -28,6 +29,7 @@ const routeFields = {
   seats: z.number().int().min(1).max(6),
   timeToleranceMinutes: z.union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)]),
   totalPrice: z.number().finite().min(0).max(1000),
+  preferences: travelPreferencesSchema.nullish().transform((value) => value ?? undefined),
 };
 export const routineDefinitionSchema = z
   .object({
