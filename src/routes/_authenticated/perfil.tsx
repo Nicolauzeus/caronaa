@@ -506,6 +506,7 @@ function Perfil() {
       />
 
       <NotificationPreferences />
+      <ProfileTravelPreferences />
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-soft">
           <div className="text-center">

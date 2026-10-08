@@ -10,7 +10,7 @@ export const travelPreferencesSchema = z.object({
 export type TravelPreferences = z.infer<typeof travelPreferencesSchema>;
 export const emptyTravelPreferences = travelPreferencesSchema.parse({});
 export function preferencesCompatible(request: TravelPreferences, offer: TravelPreferences) {
-  return (request.smoking === "any" || offer.smoking === "any" || request.smoking === offer.smoking)
+  return (request.smoking === "any" || request.smoking === offer.smoking)
     && (request.pets !== "yes" || offer.pets === "yes")
     && (request.pets !== "no" || offer.pets !== "yes")
     && request.luggage <= offer.luggage;

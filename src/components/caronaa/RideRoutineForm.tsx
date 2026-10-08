@@ -199,8 +199,8 @@ export function RideRoutineForm({ kind, initial, routineId, occurrence, onSaved 
         baseTime={form.departureTime}
         onChange={(value) => update("timeToleranceMinutes", value)}
       />
+      <JourneyPreferences kind={kind} initial={occurrence?.preferences ?? initial?.preferences} onChange={(value) => update("preferences", value)} />
       <div className="flex justify-end">
-        <JourneyPreferences kind={kind} initial={occurrence?.preferences ?? initial?.preferences} onChange={(value) => update("preferences", value)} />
         <Button type="submit" disabled={busy || (!occurrence && !form.days.length)}>
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
           {occurrence || routineId ? "Salvar alterações" : "Ativar rotina"}
