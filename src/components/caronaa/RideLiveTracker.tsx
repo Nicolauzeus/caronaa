@@ -1,3 +1,4 @@
+import { LiveRideMap } from "./LiveRideMap";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -64,6 +65,12 @@ export function RideLiveTracker({
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [lastLocalUpdate, setLastLocalUpdate] = useState<Date | null>(null);
   const [clock, setClock] = useState(Date.now());
+  const refreshRef = useRef(onRefresh);
+  refreshRef.current = onRefresh;
+  const consentKey = `caronaa:location:${viewerUserId}:${rideId}`;
+  useEffect(() => {
+    setSharing(sessionStorage.getItem(consentKey) === "yes");
+  }, [consentKey]);
   const timerRef = useRef<number | null>(null);
 
   const currentStage: TransitStage =
@@ -103,7 +110,7 @@ export function RideLiveTracker({
         await updateRideLocation(rideId, position);
         setLastLocalUpdate(new Date());
         setGpsError(null);
-        await onRefresh();
+        await refreshRef.current();
       } catch (err) {
         if (!active) return;
         const msg = err instanceof Error ? err.message : "Erro ao capturar GPS.";
@@ -125,11 +132,12 @@ export function RideLiveTracker({
         timerRef.current = null;
       }
     };
-  }, [sharing, status, rideId, onRefresh]);
+  }, [sharing, status, rideId]);
 
   // Se a viagem for cancelada ou finalizada, desativa compartilhamento
   useEffect(() => {
     if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status) && sharing) {
+      sessionStorage.removeItem(consentKey);
       setSharing(false);
     }
   }, [status, sharing]);
@@ -138,17 +146,19 @@ export function RideLiveTracker({
   const handleToggleSharing = async (enabled: boolean) => {
     setGpsError(null);
     if (!enabled) {
+      sessionStorage.removeItem(consentKey);
       setSharing(false);
       try {
         await revokeRideLocation(rideId);
         toast.info("Compartilhamento de localização pausado e dados removidos.");
-        await onRefresh();
+        await refreshRef.current();
       } catch {
-        // Falha silenciosa na revogação
+        setGpsError("Não foi possível remover a última posição. Tente novamente.");
       }
     } else {
+      sessionStorage.setItem(consentKey, "yes");
       setSharing(true);
-      toast.success("Localização ativada. Transmitindo com segurança aos participantes.");
+      toast.info("Autorize a localização no navegador para iniciar o compartilhamento.");
     }
   };
 
@@ -158,7 +168,7 @@ export function RideLiveTracker({
     try {
       await updateRideTransitStage(rideId, nextStage);
       toast.success(`Etapa atualizada: ${TRANSIT_STAGE_LABELS[nextStage]}`);
-      await onRefresh();
+      await refreshRef.current();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível avançar a etapa.");
     } finally {
@@ -276,21 +286,6 @@ export function RideLiveTracker({
     }
     return pts;
   }, [driverLocation, passengerLocation, meetingPointCoords, destinationCoords]);
-
-  // Limites do mapa (bounding box)
-  const mapEmbedUrl = useMemo(() => {
-    if (!activePoints.length) return null;
-    const lats = activePoints.map((p) => p.lat);
-    const lngs = activePoints.map((p) => p.lng);
-    const minLat = Math.min(...lats) - 0.008;
-    const maxLat = Math.max(...lats) + 0.008;
-    const minLng = Math.min(...lngs) - 0.01;
-    const maxLng = Math.max(...lngs) + 0.01;
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLng = (minLng + maxLng) / 2;
-
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${centerLat}%2C${centerLng}`;
-  }, [activePoints]);
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card/60 p-4 shadow-sm">
@@ -413,18 +408,13 @@ export function RideLiveTracker({
 
       {/* 4. Mapa Interativo com Marcadores e Legenda */}
       <div className="relative overflow-hidden rounded-xl border border-border bg-muted/20">
-        {mapEmbedUrl ? (
+        {activePoints.length > 0 ? (
           <div className="relative h-56 w-full">
-            <iframe
-              title="Acompanhamento ao vivo da viagem"
-              src={mapEmbedUrl}
-              className="h-full w-full border-0 contrast-[1.05]"
-              loading="lazy"
-            />
+            <LiveRideMap points={activePoints} />
             {/* Indicador superior ao vivo */}
             <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/60">
               <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Mapa ao vivo</span>
+              <span>{driverLocation || passengerLocation ? "Posições compartilhadas" : "Pontos da viagem"}</span>
             </div>
           </div>
         ) : (
@@ -446,19 +436,19 @@ export function RideLiveTracker({
           </p>
           <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-[#FFBB00] ring-1 ring-black/20" />
+              <span className="size-2.5 rounded-full bg-primary ring-1 ring-border" />
               <span className="font-medium text-foreground">Motorista</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-blue-500 ring-1 ring-black/20" />
+              <span className="size-2.5 rounded-full bg-info ring-1 ring-border" />
               <span className="font-medium text-foreground">Passageiro</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-emerald-500 ring-1 ring-black/20" />
+              <span className="size-2.5 rounded-full bg-success ring-1 ring-border" />
               <span className="font-medium text-foreground">Ponto de Encontro</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-rose-500 ring-1 ring-black/20" />
+              <span className="size-2.5 rounded-full bg-destructive ring-1 ring-border" />
               <span className="font-medium text-foreground">Destino Final</span>
             </div>
           </div>

@@ -15,6 +15,7 @@ import {
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { NotificationPreferences } from "@/components/caronaa/NotificationControls";
+import { DriverPixSettings } from "@/components/caronaa/DriverPix";
 import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
@@ -507,6 +508,7 @@ function Perfil() {
 
       <NotificationPreferences />
       <ProfileTravelPreferences />
+      <DriverPixSettings />
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-soft">
           <div className="text-center">

@@ -416,7 +416,7 @@ function MinhasCaronas() {
       ) : items.length ? (
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           {items.map((item) => (
-            <Trip key={item.id} ride={item} onChanged={refreshRides} />
+            <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
           ))}
         </div>
       ) : (

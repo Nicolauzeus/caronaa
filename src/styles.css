@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -732,3 +733,9 @@ a:active {
     transition-duration: 0.01ms !important;
   }
 }
+
+.ride-live-marker span { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; border:2px solid var(--background); font-weight:800; color:var(--foreground); }
+.ride-marker-driver { background:var(--primary); }
+.ride-marker-passenger { background:var(--info); }
+.ride-marker-meeting { background:var(--success); }
+.ride-marker-destination { background:var(--destructive); }
