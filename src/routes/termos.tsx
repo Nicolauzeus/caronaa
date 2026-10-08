@@ -19,7 +19,10 @@ import {
 
 export const Route = createFileRoute("/termos")({
   head: () => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Termos de Uso — CARONAA" },
+{ property: "og:description", content: "Termos de Uso da CARONAA. Conheça as diretrizes, responsabilidades e limites de atuação da nossa plataforma de caronas colaborativas." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Termos de Uso — CARONAA" },
       {
         name: "description",

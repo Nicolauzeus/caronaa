@@ -27,7 +27,10 @@ import type { TravelPreferences } from "@/lib/travel-preferences";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Minhas viagens — CARONAA" },
+{ property: "og:description", content: "Acompanhe seus pedidos e caronas disponíveis." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Minhas viagens — CARONAA" },
       { name: "description", content: "Acompanhe seus pedidos e caronas disponíveis." },
     ],

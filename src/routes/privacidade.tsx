@@ -20,7 +20,10 @@ import {
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Política de Privacidade — CARONAA" },
+{ property: "og:description", content: "Conheça a Política de Privacidade da CARONAA. Saiba como coletamos, usamos, tratamos e protegemos seus dados em conformidade com a LGPD." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Política de Privacidade — CARONAA" },
       {
         name: "description",

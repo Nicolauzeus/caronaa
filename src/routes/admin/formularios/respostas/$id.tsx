@@ -8,6 +8,10 @@ import {
 } from "@/lib/formulario/form-submission-service";
 
 export const Route = createFileRoute("/admin/formularios/respostas/$id")({
+  head: () => ({ meta: [{ title: "Resposta do formulário — CARONAA" },{ name: "description", content: "Informações e acompanhamento de resposta do formulário." },{ property: "og:title", content: "Resposta do formulário — CARONAA" },
+{ property: "og:description", content: "Informações e acompanhamento de resposta do formulário." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" }] }),
   component: SurveyDetailPage,
 });
 

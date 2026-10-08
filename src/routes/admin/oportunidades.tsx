@@ -7,7 +7,10 @@ import { getStrategicCrossings, type StrategicCrossings } from "@/lib/strategic-
 
 export const Route = createFileRoute("/admin/oportunidades")({
   component: OpportunitiesPage,
-  head: () => ({ meta: [{ title: "Oportunidades — CARONAA" }] }),
+  head: () => ({ meta: [{ name: "description", content: "Informações e acompanhamento de oportunidades." },{ property: "og:title", content: "Oportunidades — CARONAA" },
+{ property: "og:description", content: "Informações e acompanhamento de oportunidades." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },{ title: "Oportunidades — CARONAA" }] }),
 });
 const minimumSample = 30;
 const pains: Record<string, string> = {

@@ -46,7 +46,10 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/sugestoes")({
   head: () => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Sugestões & Perguntas — Administração CARONAA" },
+{ property: "og:description", content: "Acompanhe todas as perguntas e sugestões enviadas através da página do Pitch." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       {
         title: "Sugestões & Perguntas — Administração CARONAA",
       },
