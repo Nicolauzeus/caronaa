@@ -64,7 +64,7 @@ describe("Página /auth Redesenhada", () => {
     // Opções nos seletores
     expect(screen.getByRole("tab", { name: /Entrar na CARONAA/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /Criar minha conta/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Google/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Continuar com Google/i })).toBeInTheDocument();
   });
 
   it("exibe o contexto específico quando o usuário chega pelo formulário", () => {

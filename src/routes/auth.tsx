@@ -206,15 +206,19 @@ function AuthPage() {
 
   async function continueWithGoogle() {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
+    try {
+      const callback = new URL("/auth", window.location.origin);
+      callback.searchParams.set("redirect", destination);
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: callback.href,
+      });
+      if (result.error) throw result.error;
+      // AuthProvider navigates only after the returned session is available.
+    } catch {
       toast.error("Não foi possível entrar com Google. Tente novamente.");
+    } finally {
       setBusy(false);
-      return;
     }
-    if (!result.redirected) await navigate({ to: destination });
   }
 
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -479,7 +483,7 @@ function AuthPage() {
       </form>
 
       {/* Autenticação social configurada */}
-      {canRegister && (
+      {(
         <>
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
