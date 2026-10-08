@@ -34,12 +34,18 @@ import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 import { getFormConversionDraft, clearFormConversionDraft } from "@/lib/formulario/conversion";
 import { normalizeStsSource, trackFunnelEvent } from "@/lib/funnel-events";
+import {
+  checkCearaAccess,
+  regionalAccessMessage,
+  type RegionalAccessResult,
+} from "@/lib/location/regional-access";
 
 const authSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
   mode: z.enum(["entrar", "cadastro"]).optional().catch(undefined),
   submissionId: z.string().optional().catch(undefined),
   source: z.string().optional().catch(undefined),
+  regionCheck: z.enum(["1"]).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -90,6 +96,11 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [hasTrackedSignupStart, setHasTrackedSignupStart] = useState(false);
+  const [regionNotice, setRegionNotice] = useState("");
+  const [regionStatus, setRegionStatus] = useState<"idle" | "checking" | "allowed" | "blocked">(
+    search.regionCheck === "1" ? "checking" : "idle",
+  );
+  const isGoogleCallback = search.regionCheck === "1";
 
   const destination =
     search.redirect?.startsWith("/") && !search.redirect.startsWith("//")
@@ -97,8 +108,28 @@ function AuthPage() {
       : "/home";
 
   useEffect(() => {
-    if (!loading && user) void navigate({ to: destination });
-  }, [destination, loading, navigate, user]);
+    if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
+      void navigate({ to: destination });
+    }
+  }, [destination, isGoogleCallback, loading, navigate, regionStatus, user]);
+
+  useEffect(() => {
+    if (!isGoogleCallback || loading || !user || regionStatus !== "checking") return;
+    let active = true;
+    void checkCearaAccess().then(async (result: RegionalAccessResult) => {
+      if (!active) return;
+      if (!result.allowed) {
+        setRegionNotice(regionalAccessMessage(result.reason));
+        setRegionStatus("blocked");
+        await supabase.auth.signOut();
+        return;
+      }
+      setRegionStatus("allowed");
+    });
+    return () => {
+      active = false;
+    };
+  }, [isGoogleCallback, loading, regionStatus, user]);
 
   useEffect(() => {
     if (effectiveSubmissionId && mode === "cadastro" && !hasTrackedSignupStart) {
@@ -122,6 +153,13 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "cadastro") {
+        const access = await checkCearaAccess();
+        if (!access.allowed) {
+          const message = regionalAccessMessage(access.reason);
+          setRegionNotice(message);
+          toast.error(message);
+          return;
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -206,9 +244,18 @@ function AuthPage() {
 
   async function continueWithGoogle() {
     setBusy(true);
+    setRegionNotice("");
     try {
+      const access = await checkCearaAccess();
+      if (!access.allowed) {
+        const message = regionalAccessMessage(access.reason);
+        setRegionNotice(message);
+        toast.error(message);
+        return;
+      }
       const callback = new URL("/auth", window.location.origin);
       callback.searchParams.set("redirect", destination);
+      callback.searchParams.set("regionCheck", "1");
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: callback.href,
       });
@@ -326,6 +373,22 @@ function AuthPage() {
               Seus dados de trajeto foram registrados. Conclua seu cadastro para vincular sua conta.
             </p>
           </div>
+        </div>
+      )}
+
+      {regionNotice && (
+        <div
+          role="alert"
+          className="mb-5 flex items-start gap-3 rounded-2xl border border-caronaa-primary/40 bg-caronaa-primary/10 p-4 text-sm text-foreground"
+        >
+          <MapPinned className="mt-0.5 shrink-0 text-caronaa-primary" size={20} />
+          <p>{regionNotice}</p>
+        </div>
+      )}
+
+      {isGoogleCallback && user && regionStatus === "checking" && (
+        <div role="status" className="mb-5 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          Confirmando sua localização para continuar...
         </div>
       )}
 
