@@ -1,4 +1,5 @@
 import { GooglePlacesProvider } from "./google-places";
+import { CearaOnlineProvider } from "./ceara-online-provider";
 import { getGeocodingProvider } from "./geocoding-adapter";
 import type {
   GeocodingResult,
@@ -54,4 +55,9 @@ export async function getLocationDetailsService(placeId: string): Promise<Locati
 
 export async function geocodeAddressService(address: string): Promise<GeocodingResult | null> {
   return getGeocodingProvider().geocode(address);
+}
+
+const reverseProvider = new CearaOnlineProvider();
+export async function reverseGeocodeService(lat: number, lng: number) {
+  return reverseProvider.reverse(lat, lng);
 }

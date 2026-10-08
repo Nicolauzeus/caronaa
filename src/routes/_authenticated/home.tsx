@@ -1,167 +1,427 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, CarFront, MapPin, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
-import { RideCard } from "@/components/caronaa/RideCard";
-import { SearchForm, SectionTitle } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth-context";
-import { getCurrentProfile, getHomeRides, type RideSummary } from "@/lib/rides.functions";
-import { FormActivationWelcome } from "@/components/caronaa/FormActivationWelcome";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
+import { StsJourneyActivation } from "@/components/caronaa/StsJourneyActivation";
+import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.functions";
+import { createRideRequest } from "@/lib/ride-matching.functions";
+import type { FormLocationDetails } from "@/lib/location/types";
+import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
+import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
+import { reverseGeocodeServerFn } from "@/lib/location.functions";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
     meta: [
       { title: "Início — CARONAA" },
-      { name: "description", content: "Encontre sugestões de carona no CARONAA." },
+      { name: "description", content: "Peça ou ofereça uma carona pelo seu trajeto." },
     ],
   }),
   component: Home,
 });
 
 function Home() {
-  const { user } = useAuth();
-  const loadProfile = useServerFn(getCurrentProfile);
-  const loadRides = useServerFn(getHomeRides);
-  const [profile, setProfile] = useState<{
-    fullName: string;
-    city: string | null;
-  } | null>(null);
-  const [rides, setRides] = useState<RideSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loadJourneys = useServerFn(getActiveHomeJourneys);
+  const loadRecent = useServerFn(getRecentHomeDestinations);
+  const requestRide = useServerFn(createRideRequest);
+  const reverseGeocode = useServerFn(reverseGeocodeServerFn);
+  const location = useUserLocation();
+  const [originSource, setOriginSource] = useState<
+    "CURRENT_LOCATION" | "MANUAL_ORIGIN" | "FORM_ORIGIN"
+  >("CURRENT_LOCATION");
+  const [resolvedAddress, setResolvedAddress] = useState<FormLocationDetails | null>(null);
+  const [reverseFailed, setReverseFailed] = useState(false);
+  const [formOrigin, setFormOrigin] = useState<FormLocationDetails | null>(null);
+  const receiveFormOrigin = useCallback((value: FormLocationDetails) => setFormOrigin(value), []);
+  const [journeys, setJourneys] = useState<Awaited<ReturnType<typeof loadJourneys>>>([]);
+  const [recent, setRecent] = useState<Awaited<ReturnType<typeof loadRecent>>>([]);
   const [error, setError] = useState<string | null>(null);
-
+  const [role, setRole] = useState<"request" | "offer">("request");
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
+  const [originLocation, setOriginLocation] = useState<FormLocationDetails>();
+  const [destinationLocation, setDestinationLocation] = useState<FormLocationDetails>();
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [count, setCount] = useState("1");
+  const [busy, setBusy] = useState(false);
+  const refresh = useCallback(() => {
+    void loadJourneys()
+      .then(setJourneys)
+      .catch((reason) =>
+        setError("Não foi possível carregar seu trajeto. Você pode continuar criando uma carona."),
+      );
+  }, [loadJourneys]);
+  useEffect(refresh, [refresh]);
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    void Promise.all([loadProfile(), loadRides()])
-      .then(([profileData, rideData]) => {
-        if (!active) return;
-        setProfile(profileData);
-        setRides(rideData);
+    let alive = true;
+    void loadRecent()
+      .then((value) => {
+        if (alive) setRecent(value);
       })
-      .catch((loadError) => {
-        if (!active) return;
-        setError(
-          loadError instanceof Error ? loadError.message : "Não foi possível carregar a home.",
-        );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
+      .catch(() => undefined);
     return () => {
-      active = false;
+      alive = false;
     };
-  }, [loadProfile, loadRides]);
-
-  const firstName = String(
-    profile?.fullName ||
-      user?.user_metadata["full_name"] ||
-      user?.user_metadata["name"] ||
-      user?.email ||
-      "Usuário",
-  ).split(" ")[0];
+  }, [loadRecent]);
+  const active = journeys[0];
+  const point =
+    originLocation ??
+    (active?.origin_lat != null && active.origin_lng != null
+      ? { lat: active.origin_lat, lng: active.origin_lng }
+      : undefined);
+  useEffect(() => {
+    if (!location.addressPosition || originSource !== "CURRENT_LOCATION") return;
+    let alive = true;
+    setResolvedAddress(null);
+    setReverseFailed(false);
+    void reverseGeocode({
+      data: { lat: location.addressPosition.lat, lng: location.addressPosition.lng },
+    })
+      .then((value) => {
+        if (alive) {
+          setResolvedAddress(value);
+          setReverseFailed(!value);
+        }
+      })
+      .catch(() => {
+        if (alive) setReverseFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [location.addressPosition, reverseGeocode, originSource]);
+  useEffect(() => {
+    if (originSource !== "CURRENT_LOCATION" || !location.position) return;
+    const { lat, lng } = location.position;
+    const addressStillNear =
+      resolvedAddress?.lat != null &&
+      resolvedAddress.lng != null &&
+      Math.abs(resolvedAddress.lat - lat) < 0.0003 &&
+      Math.abs(resolvedAddress.lng - lng) < 0.0003;
+    const label = addressStillNear
+      ? resolvedAddress.formattedAddress || "Localização atual"
+      : "Localização atual";
+    setOrigin(label);
+    setOriginLocation({
+      rawText: label,
+      formattedAddress: label,
+      lat,
+      lng,
+      isApproximate: location.position.accuracy > 100,
+    });
+  }, [originSource, location.position, resolvedAddress]);
+  function focusOrigin() {
+    document.getElementById("home-origin")?.focus();
+  }
 
   return (
     <AppShell>
-      <FormActivationWelcome />
-      <div className="animate-page-in">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
-              SUA JORNADA COMEÇA AQUI
-            </p>
-            <h1 className="font-display text-3xl font-extrabold md:text-4xl">
-              Olá, {firstName} 👋
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Para onde vamos hoje?</p>
-          </div>
-          {profile?.city ? (
-            <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-sm font-semibold text-primary">
-              <MapPin size={15} /> {profile.city}
-            </div>
-          ) : null}
-        </div>
-        <SearchForm compact />
-        <div className="mt-6 grid gap-6 lg:grid-cols-[.85fr_1.15fr]">
-          <section>
-            <SectionTitle title="Comece pelo trajeto" link="Buscar" to="/buscar" />
-            <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
-              <p className="text-sm font-bold">Informe origem, destino, data e horário</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                A busca usa ofertas reais disponíveis no CARONAA.
-              </p>
-              <Button asChild className="mt-4" variant="outline" size="sm">
-                <Link to="/buscar">
-                  Buscar carona <ArrowRight size={15} />
-                </Link>
-              </Button>
-            </div>
-          </section>
-          <section>
-            <SectionTitle title="Caronas disponíveis" link="Ver lista" to="/buscar" />
-            <div className="relative min-h-48 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-              <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(28deg,transparent_46%,#fff_47%,#fff_49%,transparent_50%),linear-gradient(110deg,transparent_44%,#fff_45%,#fff_47%,transparent_48%)] [background-size:90px_90px]" />
-              <div className="absolute left-1/2 top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-primary text-primary-foreground shadow-lg">
-                <MapPin size={20} />
+      <div className="mx-auto max-w-4xl">
+        <p className="pb-2 text-xs text-muted-foreground lg:hidden">
+          Use sua localização para definir seu ponto de saída automaticamente.
+        </p>
+        <HomeRideMap
+          userPosition={location.position}
+          origin={point}
+          destination={destinationLocation}
+          originIsCurrent={originSource === "CURRENT_LOCATION" && Boolean(location.position)}
+          following={location.isFollowingUser}
+          recenterVersion={location.recenterVersion}
+          locating={location.locating}
+          onDrag={() => location.setFollowing(false)}
+          onRecenter={location.locate}
+        />
+        <section
+          aria-labelledby="journey-title"
+          className="relative -mx-4 rounded-t-2xl bg-background px-4 pt-5 sm:mx-0 sm:rounded-none sm:px-0 sm:pt-6"
+        >
+          <h1 id="journey-title" className="text-2xl font-extrabold sm:text-3xl">
+            Para onde vamos?
+          </h1>
+          {location.failure && (
+            <div role="alert" className="mt-3 text-sm text-muted-foreground">
+              <p>{locationFailureMessages[location.failure]}</p>
+              <div className="mt-1 flex flex-wrap gap-2">
+                <Button type="button" variant="ghost" onClick={focusOrigin}>
+                  Informar saída
+                </Button>
+                {location.failure !== "UNSUPPORTED" && location.failure !== "INSECURE" && (
+                  <Button type="button" variant="ghost" onClick={location.locate}>
+                    Tentar novamente
+                  </Button>
+                )}
               </div>
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-lg border border-white/70 bg-white/90 px-3 py-2 text-xs shadow-sm">
-                <span className="font-bold">
-                  {loading ? "Carregando..." : `${rides.length} ofertas disponíveis`}
-                </span>
-                <span className="text-muted-foreground">Dados reais</span>
-              </div>
-            </div>
-          </section>
-        </div>
-        <section className="mt-7">
-          <SectionTitle title="Caronas disponíveis" link="Ver todas" to="/buscar" />
-          {loading ? (
-            <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-soft">
-              Carregando caronas disponíveis...
-            </div>
-          ) : error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center text-sm text-destructive">
-              {error}
-            </div>
-          ) : rides.length ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {rides.map((ride) => (
-                <div key={ride.id} className="card-interactive">
-                  <RideCard ride={ride} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <p className="font-bold">Ainda não encontramos caronas disponíveis para você.</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Você pode buscar outro trajeto ou oferecer uma carona.
-              </p>
             </div>
           )}
-        </section>
-        <div className="mt-7 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-secondary text-primary">
-              <Sparkles size={19} />
-            </span>
-            <div>
-              <p className="text-sm font-bold">Compartilhe seu caminho</p>
-              <p className="text-xs text-muted-foreground">
-                Publique uma viagem e encontre pessoas na mesma direção.
-              </p>
-            </div>
+          <div
+            role="group"
+            aria-label="Papel nesta viagem"
+            className="my-5 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+          >
+            {(
+              [
+                ["request", "Pedir carona", UserRound],
+                ["offer", "Oferecer carona", CarFront],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={role === value}
+                onClick={() => setRole(value)}
+                className={`flex min-h-12 items-center justify-center gap-2 rounded-md px-2 text-sm font-semibold ${role === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                <Icon size={18} />
+                {label}
+              </button>
+            ))}
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/oferecer">
-              Oferecer carona <CarFront size={15} />
-            </Link>
-          </Button>
-        </div>
+          <form
+            className="space-y-4"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (role === "offer") {
+                const params = new URLSearchParams({
+                  origem: origin,
+                  destino: destination,
+                  data: date,
+                  horario: time,
+                });
+                if (originLocation?.lat != null && originLocation.lng != null) {
+                  params.set("olat", String(originLocation.lat));
+                  params.set("olng", String(originLocation.lng));
+                }
+                if (destinationLocation?.lat != null && destinationLocation.lng != null) {
+                  params.set("dlat", String(destinationLocation.lat));
+                  params.set("dlng", String(destinationLocation.lng));
+                }
+                window.location.assign(`/oferecer?${params}`);
+                return;
+              }
+              setBusy(true);
+              setError(null);
+              try {
+                await requestRide({
+                  data: {
+                    origin,
+                    destination,
+                    originLat: originLocation?.lat,
+                    originLng: originLocation?.lng,
+                    destinationLat: destinationLocation?.lat,
+                    destinationLng: destinationLocation?.lng,
+                    rideDate: date,
+                    departureTime: time,
+                    passengerCount: Number(count),
+                  },
+                });
+                toast.success("Sua solicitação foi publicada.");
+                refresh();
+              } catch (reason) {
+                setError("Não foi possível pedir a carona. Confira os dados e tente novamente.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <LocationAutocomplete
+              id="home-origin"
+              label="Saída"
+              value={origin}
+              onChange={(text, details) => {
+                setOriginSource("MANUAL_ORIGIN");
+                setOrigin(details?.formattedAddress || text);
+                setOriginLocation(details);
+              }}
+              variant="simple"
+              required
+              placeholder="De onde você sai?"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>
+                {originSource === "CURRENT_LOCATION" && location.position
+                  ? location.position.accuracy > 100
+                    ? "Localização aproximada"
+                    : "Localização atual"
+                  : originSource === "FORM_ORIGIN"
+                    ? "Origem da inscrição STS"
+                    : "Saída escolhida por você"}
+              </span>
+              <details className="relative">
+                <summary className="cursor-pointer py-2 font-semibold text-foreground">
+                  Opções de saída
+                </summary>
+                <div className="absolute right-0 z-20 w-60 rounded-lg border border-border bg-background p-1 shadow-lg">
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm"
+                    onClick={() => {
+                      setOriginSource("CURRENT_LOCATION");
+                      location.locate();
+                    }}
+                  >
+                    <LocateFixed size={16} />
+                    Usar localização atual
+                  </button>
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm"
+                    onClick={() => {
+                      setOriginSource("MANUAL_ORIGIN");
+                      focusOrigin();
+                    }}
+                  >
+                    <MapPin size={16} />
+                    Digitar endereço
+                  </button>
+                  {formOrigin && (
+                    <button
+                      type="button"
+                      className="min-h-11 w-full px-3 text-left text-sm"
+                      onClick={() => {
+                        setOriginSource("FORM_ORIGIN");
+                        setOrigin(formOrigin.formattedAddress || formOrigin.rawText);
+                        setOriginLocation(formOrigin);
+                      }}
+                    >
+                      Usar origem da inscrição STS
+                    </button>
+                  )}
+                </div>
+              </details>
+            </div>
+            {reverseFailed && originSource === "CURRENT_LOCATION" && (
+              <p role="status" className="text-xs text-muted-foreground">
+                Não conseguimos identificar o endereço. Suas coordenadas estão disponíveis; você
+                pode ajustar a saída.
+              </p>
+            )}
+            <LocationAutocomplete
+              id="home-destination"
+              label="Destino"
+              value={destination}
+              onChange={(text, details) => {
+                setDestination(details?.formattedAddress || text);
+                setDestinationLocation(details);
+              }}
+              variant="simple"
+              required
+              placeholder="Para onde você vai?"
+            />
+            {recent.length > 0 && (
+              <div aria-label="Destinos recentes" className="space-y-1">
+                {recent.map((item) => (
+                  <button
+                    key={item.destination}
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setDestination(item.destination);
+                      setDestinationLocation(
+                        item.destination_lat != null && item.destination_lng != null
+                          ? {
+                              rawText: item.destination,
+                              lat: item.destination_lat,
+                              lng: item.destination_lng,
+                            }
+                          : undefined,
+                      );
+                    }}
+                  >
+                    <MapPin size={16} className="shrink-0" />
+                    <span className="truncate">{item.destination}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm font-semibold">
+                Data
+                <input
+                  aria-label="Data da viagem"
+                  required
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="mt-1 h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 font-normal"
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Horário
+                <input
+                  aria-label="Horário de saída"
+                  required
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="mt-1 h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 font-normal"
+                />
+              </label>
+            </div>
+            {role === "request" && (
+              <label className="flex min-h-12 items-center justify-between text-sm font-semibold">
+                Passageiros
+                <select
+                  aria-label="Passageiros"
+                  value={count}
+                  onChange={(e) => setCount(e.target.value)}
+                  className="h-11 rounded-lg border border-input bg-background px-3"
+                >
+                  {[1, 2, 3, 4, 5, 6].map((n) => (
+                    <option key={n}>{n}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <Button type="submit" disabled={busy} className="min-h-12 w-full text-base font-bold">
+              {busy ? "Publicando..." : role === "request" ? "Pedir carona" : "Continuar"}
+              <ArrowRight size={18} />
+            </Button>
+          </form>
+        </section>
+        {active && (
+          <section className="mt-6 border-t border-border py-5" aria-label="Seu trajeto ativo">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold">Seu trajeto ativo</h2>
+              {active.sts && <span className="text-xs text-muted-foreground">STS 26</span>}
+            </div>
+            <p className="mt-3 text-sm font-medium">{active.origin}</p>
+            <ArrowRight size={16} className="my-2 rotate-90 text-primary" />
+            <p className="text-sm font-medium">{active.destination}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {active.ride_date.split("-").reverse().join("/")} ·{" "}
+              {active.departure_time.slice(0, 5)} ·{" "}
+              {active.status === "IN_PROGRESS"
+                ? "Em andamento"
+                : active.status === "CONFIRMED"
+                  ? "Confirmada"
+                  : active.kind === "offer"
+                    ? "Oferta ativa"
+                    : active.status === "matched"
+                      ? "Compatibilidade encontrada"
+                      : "Solicitação ativa"}
+            </p>
+            <Button asChild variant="outline" className="mt-4">
+              <Link to="/minhas-caronas">
+                Ver viagem <ArrowRight size={16} />
+              </Link>
+            </Button>
+          </section>
+        )}
+        <StsJourneyActivation
+          hasActive={Boolean(active)}
+          onPublished={refresh}
+          onOriginAvailable={receiveFormOrigin}
+        />
       </div>
     </AppShell>
   );

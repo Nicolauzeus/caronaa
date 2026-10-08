@@ -7,7 +7,26 @@ import {
   isLocationServiceConfigured,
   getLocationProviderName,
   getMissingLocationConfig,
+  reverseGeocodeService,
 } from "./location/service";
+
+export const reverseGeocodeServerFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        lat: z.number().finite().min(-90).max(90),
+        lng: z.number().finite().min(-180).max(180),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      return await reverseGeocodeService(data.lat, data.lng);
+    } catch (error) {
+      console.warn("[Location] Reverse geocoding unavailable", error);
+      return null;
+    }
+  });
 
 const searchQuerySchema = z.object({
   query: z.string().max(200),

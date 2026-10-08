@@ -1,12 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowRight, Camera, CheckCircle2, CircleAlert, Mail, MapPin, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  CheckCircle2,
+  CircleAlert,
+  Image as ImageIcon,
+  Loader2,
+  Mail,
+  MapPin,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { NotificationPreferences } from "@/components/caronaa/NotificationControls";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyUserVerifications, type UserVerification } from "@/lib/user-verifications";
 import { toast } from "sonner";
@@ -36,10 +54,13 @@ type ProfileData = {
 };
 
 function Perfil() {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
@@ -58,6 +79,12 @@ function Perfil() {
 
   const [photoOpen, setPhotoOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("editPhoto=true")) {
+      setAvatarSheetOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,11 +172,17 @@ function Perfil() {
 
     if (!file) return;
 
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Escolha uma imagem JPG, PNG ou WEBP.");
-
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedMimeTypes.includes(file.type)) {
+      toast.error("Formato inválido. Escolha uma imagem JPG, PNG ou WEBP.");
       event.target.value = "";
+      return;
+    }
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Arquivo muito grande. O limite máximo permitido é de 5MB.");
+      event.target.value = "";
       return;
     }
 
@@ -159,6 +192,7 @@ function Perfil() {
     setPhoto(previewUrl);
     setZoom(1);
     setPhotoOpen(true);
+    setAvatarSheetOpen(false);
   }
 
   async function confirmPhoto() {
@@ -167,7 +201,15 @@ function Perfil() {
       return;
     }
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      toast.error("A foto excede o limite máximo permitido de 5MB.");
+      return;
+    }
+
     try {
+      setUploadStatus("uploading");
+
       const {
         data: { user },
         error: userError,
@@ -181,14 +223,15 @@ function Perfil() {
         throw new Error("Usuário autenticado não encontrado.");
       }
 
-      const extension =
-        selectedFile.type === "image/png"
-          ? "png"
-          : selectedFile.type === "image/webp"
-            ? "webp"
-            : "jpg";
+      const extensionMap: Record<string, string> = {
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/jpeg": "jpg",
+      };
 
-      const path = `${user.id}/profile.${extension}`;
+      const extension = extensionMap[selectedFile.type] || "jpg";
+      const fileUuid = crypto.randomUUID();
+      const path = `${user.id}/${fileUuid}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
@@ -205,7 +248,7 @@ function Perfil() {
 
       const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
-      const { error: profileError } = await supabase
+      const { error: profileError } = await (supabase as any)
         .from("profiles")
         .update({
           avatar_url: publicUrl,
@@ -216,6 +259,14 @@ function Perfil() {
       if (profileError) {
         throw new Error(profileError.message);
       }
+
+      // Atualiza os metadados de autenticação para que AppShell e Drawer reflitam imediatamente sem logout
+      await supabase.auth.updateUser({
+        data: {
+          avatar_url: publicUrl,
+          picture: publicUrl,
+        },
+      });
 
       setPhoto(publicUrl);
       setSavedPhoto(publicUrl);
@@ -232,16 +283,79 @@ function Perfil() {
 
       setSelectedFile(null);
       setPhotoOpen(false);
+      setUploadStatus("success");
 
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
 
-      toast.success("Foto atualizada.");
+      toast.success("Foto de perfil atualizada com sucesso.");
     } catch (error) {
       console.error(error);
+      setUploadStatus("error");
 
       toast.error("Não foi possível atualizar a foto.", {
+        description: error instanceof Error ? error.message : "Tente novamente.",
+      });
+    }
+  }
+
+  async function removePhoto() {
+    try {
+      setUploadStatus("uploading");
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("Usuário autenticado não encontrado.");
+      }
+
+      const { error: profileError } = await (supabase as any)
+        .from("profiles")
+        .update({
+          avatar_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (profileError) {
+        throw new Error(profileError.message);
+      }
+
+      await supabase.auth.updateUser({
+        data: {
+          avatar_url: null,
+          picture: null,
+        },
+      });
+
+      setPhoto(null);
+      setSavedPhoto(null);
+
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              avatar_url: null,
+              updated_at: new Date().toISOString(),
+            }
+          : current,
+      );
+
+      setAvatarSheetOpen(false);
+      setUploadStatus("success");
+
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+
+      toast.success("Foto de perfil removida.");
+    } catch (error) {
+      console.error(error);
+      setUploadStatus("error");
+
+      toast.error("Não foi possível remover a foto.", {
         description: error instanceof Error ? error.message : "Tente novamente.",
       });
     }
@@ -257,9 +371,8 @@ function Perfil() {
     setPhotoOpen(false);
     setZoom(1);
 
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
   async function saveProfile() {
@@ -392,36 +505,51 @@ function Perfil() {
         <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-soft">
           <div className="text-center">
             <div className="relative mx-auto size-28">
-              {photo ? (
-                <img
-                  src={photo}
-                  alt="Foto de perfil"
-                  width={112}
-                  height={112}
-                  className="size-28 rounded-full object-cover ring-4 ring-secondary"
-                  style={{
-                    transform: `scale(${photoOpen ? zoom : 1})`,
-                  }}
-                />
-              ) : (
-                <div className="flex size-28 items-center justify-center rounded-full bg-secondary font-display text-3xl font-extrabold text-primary ring-4 ring-secondary">
-                  {initials}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setAvatarSheetOpen(true)}
+                className="group relative block size-28 rounded-full focus:outline-none focus:ring-4 focus:ring-primary/20"
+                aria-label="Abrir opções de foto de perfil"
+              >
+                {photo ? (
+                  <img
+                    src={photo}
+                    alt="Foto de perfil"
+                    width={112}
+                    height={112}
+                    className="size-28 rounded-full object-cover ring-4 ring-secondary transition-opacity group-hover:opacity-90"
+                    style={{
+                      transform: `scale(${photoOpen ? zoom : 1})`,
+                    }}
+                  />
+                ) : (
+                  <div className="flex size-28 items-center justify-center rounded-full bg-secondary font-display text-3xl font-extrabold text-primary ring-4 ring-secondary transition-opacity group-hover:opacity-90">
+                    {initials}
+                  </div>
+                )}
+              </button>
 
               <button
                 type="button"
-                onClick={() => inputRef.current?.click()}
-                className="absolute bottom-0 right-0 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft transition-transform hover:scale-105"
-                aria-label="Alterar foto"
+                onClick={() => setAvatarSheetOpen(true)}
+                className="absolute bottom-0 right-0 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft transition-transform hover:scale-105 active:scale-95"
+                aria-label="Alterar foto de perfil"
               >
                 <Camera size={17} />
               </button>
 
               <input
-                ref={inputRef}
+                ref={galleryInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                onChange={selectPhoto}
+                className="sr-only"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="user"
                 onChange={selectPhoto}
                 className="sr-only"
               />
@@ -606,15 +734,104 @@ function Perfil() {
             </label>
 
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="ghost" onClick={cancelPhoto}>
+              <Button
+                variant="ghost"
+                onClick={cancelPhoto}
+                disabled={uploadStatus === "uploading"}
+              >
                 Cancelar
               </Button>
 
-              <Button onClick={confirmPhoto}>Confirmar foto</Button>
+              <Button
+                onClick={confirmPhoto}
+                disabled={uploadStatus === "uploading"}
+              >
+                {uploadStatus === "uploading" ? (
+                  <>
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Confirmar foto"
+                )}
+              </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Bottom Sheet Mobile para opções do Avatar */}
+      <Sheet open={avatarSheetOpen} onOpenChange={setAvatarSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-t border-border bg-card px-6 pb-8 pt-6 shadow-2xl">
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-lg font-extrabold text-foreground">
+              Foto de perfil
+            </SheetTitle>
+            <SheetDescription className="text-xs text-muted-foreground">
+              Escolha uma imagem JPG, PNG ou WEBP de até 5MB.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-13 w-full justify-start gap-3 rounded-2xl border-border bg-background text-sm font-bold text-foreground hover:bg-muted shadow-sm"
+              onClick={() => {
+                setAvatarSheetOpen(false);
+                cameraInputRef.current?.click();
+              }}
+              disabled={uploadStatus === "uploading"}
+            >
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                <Camera size={18} />
+              </div>
+              Tirar foto
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="h-13 w-full justify-start gap-3 rounded-2xl border-border bg-background text-sm font-bold text-foreground hover:bg-muted shadow-sm"
+              onClick={() => {
+                setAvatarSheetOpen(false);
+                galleryInputRef.current?.click();
+              }}
+              disabled={uploadStatus === "uploading"}
+            >
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                <ImageIcon size={18} />
+              </div>
+              Escolher da galeria
+            </Button>
+
+            {photo && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-13 w-full justify-start gap-3 rounded-2xl text-sm font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={removePhoto}
+                disabled={uploadStatus === "uploading"}
+              >
+                <div className="flex size-9 items-center justify-center rounded-xl bg-destructive/15 text-destructive">
+                  <Trash2 size={18} />
+                </div>
+                Remover foto
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="mt-2 h-11 w-full rounded-2xl text-xs font-semibold text-muted-foreground hover:text-foreground"
+              onClick={() => setAvatarSheetOpen(false)}
+              disabled={uploadStatus === "uploading"}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </AppShell>
   );
 }

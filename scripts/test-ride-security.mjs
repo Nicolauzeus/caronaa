@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { buildRideRpcRepair } from "./repair-ride-rpcs.mjs";
+import { buildStsRpcRepair } from "./repair-sts-rpcs.mjs";
 import { tmpdir } from "node:os";
 import { userInfo } from "node:os";
 import { join, resolve } from "node:path";
@@ -68,6 +69,7 @@ try {
     .filter(
       (name) =>
         /^\d+.*\.sql$/.test(name) &&
+        (!process.argv.includes("--sts") || !name.startsWith("0037_")) &&
         (!process.argv.includes("--rpc-repair") || Number(name.slice(0, 4)) <= 22),
     )
     .sort())
@@ -119,6 +121,17 @@ try {
   const result = apply("src/test/ride-security.integration.sql");
   const assertions = (result.stderr.match(/NOTICE:  PASS:/g) || []).length;
   console.log(`${assertions} verificacoes de seguranca passaram em PostgreSQL real.`);
+  if (process.argv.includes("--sts")) {
+    const repair = join(directory, "sts-repair.sql");
+    writeFileSync(repair, buildStsRpcRepair());
+    apply(repair);
+    run("psql", ["-X", "-h", directory, "-p", "55432", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", "DROP FUNCTION public.get_sts_ride_seed(); DROP FUNCTION public.publish_sts_ride(uuid,text,jsonb);"]);
+    apply(repair);
+    apply(repair);
+    console.log("Reparo STS validado após remoção das RPCs e aplicação repetida.");
+    const sts = apply("src/test/sts-publication.integration.sql");
+    console.log(`${(sts.stderr.match(/NOTICE:  PASS:/g) || []).length} verificacoes STS passaram em PostgreSQL real.`);
+  }
   if (process.argv.includes("--routines")) {
     const routines = apply("src/test/ride-routines.integration.sql");
     console.log(

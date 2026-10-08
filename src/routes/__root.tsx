@@ -18,6 +18,7 @@ import { NotificationProvider } from "@/lib/notification-context";
 import { Toaster } from "@/components/ui/sonner";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { registerPwa, requestPersistentStorage } from "@/lib/pwa";
+import { PwaInstallNotice } from "@/components/caronaa/PwaInstallNotice";
 
 function NotFoundComponent() {
   return (
@@ -211,6 +212,7 @@ function RootComponent() {
           <NotificationProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
+          <PwaInstallNotice />
 
           <Toaster richColors position="top-center" />
           </NotificationProvider>

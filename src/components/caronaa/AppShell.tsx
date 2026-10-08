@@ -19,6 +19,7 @@ import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 import { NotificationControls } from "@/components/caronaa/NotificationControls";
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
+import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 
 const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
@@ -63,7 +64,11 @@ export function AppShell({
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
-          <Brand />
+          <div className={!publicPage && user ? "hidden lg:block" : ""}><Brand /></div>
+          {!publicPage && user && <Link to="/perfil" className="flex min-w-0 items-center gap-3 lg:hidden">
+            {typeof (user.user_metadata.avatar_url || user.user_metadata.picture) === "string" ? <img src={user.user_metadata.avatar_url || user.user_metadata.picture} alt="" className="size-10 shrink-0 rounded-full object-cover"/> : <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><UserRound size={20}/></span>}
+            <span className="truncate text-base font-bold">Olá, {String(user.user_metadata.full_name || user.user_metadata.name || user.email?.split("@")[0] || "você").split(" ")[0]}!</span>
+          </Link>}
 
           {/* Navegação DESKTOP para Páginas Públicas */}
           {publicPage ? (
@@ -114,7 +119,7 @@ export function AppShell({
           {/* Área Direita do Header */}
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle className="hidden md:inline-flex" />
-            {user && <NotificationControls />}
+            {user && <div className="hidden lg:block"><NotificationControls /></div>}
 
             {publicPage ? (!loading && !user &&
               <>
@@ -186,7 +191,7 @@ export function AppShell({
             )}
 
             {/* Botão de Menu para MOBILE */}
-            <Button
+            {!publicPage ? <MobileAccountDrawer signOut={signOut}/> : <Button
               variant="ghost"
               size="icon"
               className="h-9 w-9 rounded-lg lg:hidden"
@@ -194,12 +199,12 @@ export function AppShell({
               onClick={() => setMenuOpen((value) => !value)}
             >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </Button>
+            </Button>}
           </div>
         </div>
 
         {/* Menu Gaveta MOBILE */}
-        {menuOpen && (
+        {menuOpen && publicPage && (
           <nav
             className="absolute left-0 right-0 top-full z-50 border-b border-border bg-background px-4 py-4 shadow-xl lg:hidden animate-in fade-in slide-in-from-top-2 duration-150"
             aria-label="Menu de navegação mobile"
@@ -276,7 +281,7 @@ export function AppShell({
         className={
           publicPage
             ? "flex-1"
-            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-24 pt-6 sm:px-5 md:px-8 md:pb-12 md:pt-8"
+            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 md:pb-12 md:pt-8"
         }
       >
         {children}
@@ -285,28 +290,6 @@ export function AppShell({
       {/* Rodapé Público Consistente em Todas as Páginas Públicas */}
       {publicPage && <PublicFooter />}
 
-      {/* Barra Inferior Fixa para Mobile na Área Autenticada */}
-      {!publicPage && (
-        <nav
-          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
-          aria-label="Navegação inferior"
-        >
-          <div className="mx-auto grid h-16 max-w-md grid-cols-3 items-center">
-            {authenticatedNav.map(({ to, label, icon: Icon }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`flex h-full flex-col items-center justify-center gap-1 text-[10px] font-semibold leading-tight transition-colors ${
-                  pathname === to ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <Icon size={20} strokeWidth={pathname === to ? 2.5 : 1.8} />
-                <span>{label}</span>
-              </Link>
-            ))}
-          </div>
-        </nav>
-      )}
     </div>
   );
 }

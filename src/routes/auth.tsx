@@ -16,6 +16,13 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Brand } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
@@ -210,16 +217,45 @@ function AuthPage() {
     if (!result.redirected) await navigate({ to: destination });
   }
 
-  async function sendReset() {
-    if (!email) {
-      toast.error("Informe seu e-mail primeiro.");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+
+  function openForgotPassword() {
+    setForgotEmail(email || "");
+    setForgotSuccess(false);
+    setForgotOpen(true);
+  }
+
+  async function handleSendReset(e?: FormEvent) {
+    if (e) e.preventDefault();
+    const targetEmail = (forgotEmail || email).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes("@")) {
+      toast.error("Informe um endereço de e-mail válido.");
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) toast.error(authErrorMessage(error));
-    else toast.success("Enviamos o link para redefinir sua senha.");
+
+    setForgotBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error && error.message.toLowerCase().includes("rate limit")) {
+        toast.error("Muitas tentativas. Aguarde alguns instantes antes de tentar novamente.");
+        return;
+      }
+
+      // Resposta neutra estrita conforme especificação de segurança (não confirmar se o email existe)
+      setForgotSuccess(true);
+      toast.success("Se existir uma conta com este e-mail, enviaremos as instruções.");
+    } catch {
+      setForgotSuccess(true);
+      toast.success("Se existir uma conta com este e-mail, enviaremos as instruções.");
+    } finally {
+      setForgotBusy(false);
+    }
   }
 
   if (confirmationSent) {
@@ -388,7 +424,7 @@ function AuthPage() {
                 type="button"
                 variant="link"
                 className="h-auto p-0 text-xs font-medium text-caronaa-primary-strong hover:text-caronaa-primary"
-                onClick={sendReset}
+                onClick={openForgotPassword}
               >
                 Esqueci minha senha
               </Button>
@@ -497,6 +533,81 @@ function AuthPage() {
           Segurança
         </Link>
       </div>
+
+      {/* Modal discreto: Esqueci minha senha */}
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent className="max-w-md rounded-2xl bg-card p-6 shadow-2xl">
+          <DialogHeader className="text-left space-y-1">
+            <DialogTitle className="font-display text-xl font-extrabold text-foreground">
+              Esqueci minha senha
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Digite o e-mail associado à sua conta CARONAA para receber as orientações de redefinição.
+            </DialogDescription>
+          </DialogHeader>
+
+          {forgotSuccess ? (
+            <div className="mt-4 space-y-4 text-left">
+              <div className="rounded-xl border border-primary/30 bg-primary/10 p-3.5 text-xs text-foreground">
+                <p className="font-semibold text-foreground">Instruções enviadas</p>
+                <p className="text-muted-foreground mt-0.5">
+                  Se existir uma conta com este e-mail, enviaremos as instruções para definir uma nova senha.
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+                onClick={() => setForgotOpen(false)}
+              >
+                Entendido
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSendReset} className="mt-4 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="forgot-email" className="text-xs font-semibold text-foreground">
+                  Seu e-mail
+                </Label>
+                <div className="relative">
+                  <Mail
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    size={17}
+                  />
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    autoComplete="email"
+                    className="h-11 rounded-xl border-border bg-auth-field pl-10 text-sm font-medium shadow-inner"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-xl text-xs text-muted-foreground"
+                  onClick={() => setForgotOpen(false)}
+                  disabled={forgotBusy}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="rounded-xl bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90"
+                  disabled={forgotBusy}
+                >
+                  {forgotBusy ? "Enviando..." : "Enviar instruções"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </AuthFrame>
   );
 }

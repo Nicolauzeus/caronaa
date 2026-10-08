@@ -231,7 +231,8 @@ describe("Public Navigation & Institutional Footer", () => {
         screen.queryByRole("contentinfo", { name: "Rodapé institucional CARONAA" }),
       ).not.toBeInTheDocument();
       expect(screen.getByRole("navigation", { name: "Navegação principal" })).toBeInTheDocument();
-      expect(screen.getByRole("navigation", { name: "Navegação inferior" })).toBeInTheDocument();
+      expect(screen.queryByRole("navigation", { name: "Navegação inferior" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
     });
   });
 });

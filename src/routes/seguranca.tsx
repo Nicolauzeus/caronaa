@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { BrandBadge, StsBadge } from "@/components/caronaa/BrandElements";
 import { Button } from "@/components/ui/button";
+import { ChangePasswordForm } from "@/components/caronaa/ChangePasswordForm";
+import { useAuth } from "@/lib/auth-context";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -35,9 +37,14 @@ export const Route = createFileRoute("/seguranca")({
 });
 
 function SegurancaPage() {
+  const { user } = useAuth();
+
   return (
-    <AppShell publicPage>
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-14">
+    <AppShell publicPage={!user}>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-14 space-y-8">
+        {/* Bloco de Alterar Senha para Usuário Autenticado */}
+        {user && <ChangePasswordForm id="alterar-senha" />}
+
         {/* Cabeçalho */}
         <div className="space-y-4 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">

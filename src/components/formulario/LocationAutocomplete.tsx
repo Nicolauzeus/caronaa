@@ -88,6 +88,11 @@ export function LocationAutocomplete({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestRequestIdRef = useRef<number>(0);
 
+  useEffect(() => () => {
+    latestRequestIdRef.current += 1;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+  }, []);
+
   // Sincroniza query local com valor externo se alterado
   useEffect(() => {
     setQuery(value);
@@ -257,6 +262,8 @@ export function LocationAutocomplete({
   };
 
   const handleSelectSuggestion = async (sug: LocationSuggestion) => {
+    latestRequestIdRef.current += 1;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setIsOpen(false);
     setIsLoading(true);
 
@@ -307,6 +314,9 @@ export function LocationAutocomplete({
   };
 
   const handleClear = () => {
+    latestRequestIdRef.current += 1;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    setIsLoading(false);
     setQuery("");
     onChange("", undefined);
     setSuggestions([]);

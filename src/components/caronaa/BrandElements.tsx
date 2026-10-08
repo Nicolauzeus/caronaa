@@ -1,80 +1,24 @@
 import { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Sparkles, MapPin, CheckCircle2 } from "lucide-react";
+import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
-/**
- * Ícone vetorial oficial do símbolo CARONAA (Pino de localização com arco "C").
- * Baseado na identidade visual da marca.
- */
-export function CaronaaSymbol({
-  className,
-  size = 24,
-  color = "currentColor",
-}: {
+export function CaronaaSymbol({ className, size = 24 }: {
   className?: string;
   size?: number;
   color?: string;
 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn("shrink-0", className)}
-      aria-hidden="true"
-    >
-      {/* Pino exterior com terminação aberta à direita */}
-      <path
-        d="M50 92C32 75 22 58 22 42C22 26.5 34.5 14 50 14C65.5 14 78 26.5 78 42C78 45.5 77.2 49 75.8 52"
-        stroke={color}
-        strokeWidth="7"
-        strokeLinecap="round"
-      />
-      {/* Arco interior em formato de "C" */}
-      <path
-        d="M68 34C63.5 28.5 57 25 50 25C38.5 25 29 34.5 29 46C29 57.5 38.5 67 50 67C57 67 63.5 63.5 68 58"
-        stroke={color}
-        strokeWidth="7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  return <img src={logoAsset.url} alt="" aria-hidden="true"
+    width={size} height={size} className={cn("shrink-0 object-contain", className)} />;
 }
 
-/**
- * Logotipo oficial CARONAA
- */
-export function BrandLogo({
-  size = "md",
-  className,
-}: {
+export function BrandLogo({ size = "md", className }: {
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const sizeClasses = {
-    sm: "h-8",
-    md: "h-11",
-    lg: "h-16",
-  }[size];
-
-  return (
-    <div className={cn("inline-flex items-center gap-2", className)}>
-      <CaronaaSymbol
-        size={size === "sm" ? 22 : size === "md" ? 30 : 40}
-        className="text-caronaa-primary"
-      />
-      <span
-        className={cn(
-          "font-display font-extrabold tracking-tight text-foreground",
-          size === "sm" ? "text-lg" : size === "md" ? "text-2xl" : "text-3xl",
-        )}
-      >
-        CARONAA
-      </span>
-    </div>
-  );
+  const height = { sm: "h-8", md: "h-11", lg: "h-16" }[size];
+  return <img src={logoAsset.url} alt="CARONAA"
+    className={cn("w-auto shrink-0 object-contain", height, className)} />;
 }
 
 export function StsBadge({ className }: { className?: string }) {

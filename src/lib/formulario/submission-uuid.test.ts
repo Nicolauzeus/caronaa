@@ -39,12 +39,13 @@ describe("UUID da conclusão do formulário", () => {
 
   it("envia o mesmo UUID válido no payload e na coluna do banco", () => {
     const payload = prepareSubmission({
+      source: "sts-2026",
       intent: "PASSAGEIRO", destinationNeighborhood: "Aldeota",
       departureWindow: "19_20", name: "Participante", whatsapp: "85999999999",
       submissionId: "1791411382447-pvn37gce0g",
     });
     expect(uuidSchema.safeParse(payload.submissionId).success).toBe(true);
-    expect(buildFormSubmissionRow(payload, null).submission_id).toBe(payload.submissionId);
+    expect(buildFormSubmissionRow(payload).submission_id).toBe(payload.submissionId);
   });
 
   it("falha explicitamente quando não existe criptografia segura", () => {

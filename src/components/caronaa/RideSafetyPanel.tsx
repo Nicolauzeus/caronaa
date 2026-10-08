@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Loader2, MapPin, ShieldCheck, Star } from "lucide-react";
+import { Camera, Loader2, MapPin, QrCode, ShieldCheck, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import {
   updateRideLocation,
   validateRideBoarding,
 } from "@/lib/ride-safety-service";
+import { RideQrModal } from "./RideQrModal";
+import { RideQrScannerModal } from "./RideQrScannerModal";
 
 export function RideSafetyPanel({
   rideId,
@@ -35,6 +37,8 @@ export function RideSafetyPanel({
   const [score, setScore] = useState(0);
   const [comment, setComment] = useState("");
   const [clock, setClock] = useState(Date.now());
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrScannerModalOpen, setQrScannerModalOpen] = useState(false);
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -148,39 +152,73 @@ export function RideSafetyPanel({
           Carregando…
         </p>
       )}
-      {currentStatus === "CONFIRMED" && role === "passenger" && safety?.pin && (
-        <div>
-          <p className="text-xs text-muted-foreground">PIN de embarque</p>
-          <p className="mt-1 font-mono text-2xl font-bold tracking-widest">{safety.pin}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Informe ao motorista quando estiver no veículo.
-          </p>
+      {currentStatus === "CONFIRMED" && role === "passenger" && (
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={() => setQrScannerModalOpen(true)}
+            className="h-12 w-full gap-2 rounded-xl bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90"
+          >
+            <Camera size={17} />
+            Ler QR Code para confirmar
+          </Button>
+
+          {safety?.pin && (
+            <div className="rounded-xl border border-border/70 bg-muted/30 p-3 text-center">
+              <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
+                Código PIN alternativo
+              </p>
+              <p className="mt-0.5 font-mono text-xl font-bold tracking-widest">{safety.pin}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Informe ao motorista se não conseguir escanear o QR.
+              </p>
+            </div>
+          )}
         </div>
       )}
+
       {currentStatus === "CONFIRMED" && role === "driver" && (
-        <form onSubmit={board} className="space-y-2">
-          <label className="block text-sm" htmlFor={`boarding-${rideId}`}>
-            PIN do passageiro
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <Input
-              id={`boarding-${rideId}`}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              inputMode="numeric"
-              autoComplete="off"
-              pattern="[0-9]{8}"
-              maxLength={8}
-              required
-              placeholder="8 dígitos"
-              className="min-w-0 flex-1 basis-32 font-mono"
-            />
-            <Button type="submit" disabled={busy || pin.length !== 8 || !safety || !!error}>
-              {busy ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
-              Validar e iniciar
-            </Button>
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={() => setQrModalOpen(true)}
+            className="h-12 w-full gap-2 rounded-xl bg-primary text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90"
+          >
+            <QrCode size={17} />
+            Mostrar QR da viagem
+          </Button>
+
+          <div className="relative flex items-center justify-center py-1">
+            <span className="absolute inset-x-0 h-px bg-border" />
+            <span className="relative bg-card px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              ou valide por PIN digitado
+            </span>
           </div>
-        </form>
+
+          <form onSubmit={board} className="space-y-2">
+            <label className="block text-xs font-medium text-muted-foreground" htmlFor={`boarding-${rideId}`}>
+              PIN de 8 dígitos do passageiro
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                id={`boarding-${rideId}`}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                inputMode="numeric"
+                autoComplete="off"
+                pattern="[0-9]{8}"
+                maxLength={8}
+                required
+                placeholder="8 dígitos"
+                className="min-w-0 flex-1 basis-32 font-mono h-10"
+              />
+              <Button type="submit" size="sm" className="h-10" disabled={busy || pin.length !== 8 || !safety || !!error}>
+                {busy ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+                Validar PIN
+              </Button>
+            </div>
+          </form>
+        </div>
       )}
       {safety?.boardedAt && (
         <p className="text-xs text-muted-foreground">
@@ -323,6 +361,19 @@ export function RideSafetyPanel({
           )}
         </p>
       )}
+
+      {/* Modais de Confirmação por QR Code */}
+      <RideQrModal
+        rideId={rideId}
+        open={qrModalOpen}
+        onOpenChange={setQrModalOpen}
+      />
+
+      <RideQrScannerModal
+        open={qrScannerModalOpen}
+        onOpenChange={setQrScannerModalOpen}
+        onConfirmed={onChanged}
+      />
     </section>
   );
 }

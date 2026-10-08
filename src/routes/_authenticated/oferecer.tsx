@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
+import { z } from "zod";
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,6 +26,12 @@ import {
 } from "@/components/caronaa/TimeToleranceSelector";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
+  validateSearch: z.object({
+    origem: z.string().max(160).optional(), destino: z.string().max(160).optional(),
+    data: z.string().optional(), horario: z.string().optional(),
+    olat: z.coerce.number().min(-90).max(90).optional(), olng: z.coerce.number().min(-180).max(180).optional(),
+    dlat: z.coerce.number().min(-90).max(90).optional(), dlng: z.coerce.number().min(-180).max(180).optional(),
+  }),
   head: () => ({
     meta: [
       { title: "Oferecer carona — CARONAA" },
@@ -76,11 +83,16 @@ const initial: OferecerFormState = {
   passengerGenderPreference: "ANY",
 };
 function Oferecer() {
+  const search = Route.useSearch();
   const publishOffer = useServerFn(createRideOffer);
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"point" | "routine">("point");
   const [routineSaved, setRoutineSaved] = useState(false);
-  const [form, setForm] = useState<OferecerFormState>(initial);
+  const [form, setForm] = useState<OferecerFormState>(() => ({
+    ...initial, origin: search.origem ?? "", destination: search.destino ?? "", date: search.data ?? "", time: search.horario ?? "",
+    originLocation: search.olat != null && search.olng != null ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng } : undefined,
+    destinationLocation: search.dlat != null && search.dlng != null ? { rawText: search.destino ?? "", lat: search.dlat, lng: search.dlng } : undefined,
+  }));
   const update = (key: keyof OferecerFormState, value: string) =>
     setForm((previous) => ({ ...previous, [key]: value }));
   const next = async (e: FormEvent) => {

@@ -79,6 +79,22 @@ export class CearaOnlineProvider implements LocationProvider {
     return true;
   }
 
+  async reverse(lat: number, lng: number): Promise<import("./types").FormLocationDetails | null> {
+    const url = new URL("https://photon.komoot.io/reverse");
+    url.searchParams.set("lat", String(lat));
+    url.searchParams.set("lon", String(lng));
+    const response = await fetch(url, { signal: AbortSignal.timeout(4000), headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`Photon reverse returned ${response.status}`);
+    const data = await response.json() as { features?: PhotonFeature[] };
+    const props = data.features?.[0]?.properties;
+    if (!props) return null;
+    const neighborhood = props.district || props.locality;
+    const label = [props.street || props.name, props.housenumber, neighborhood, props.city, props.state].filter(Boolean).join(", ");
+    if (!label) return null;
+    // Keep the GPS coordinates, not the provider's nearest building centroid.
+    return { rawText: label, formattedAddress: label, lat, lng, neighborhood, city: props.city, state: props.state, country: props.country };
+  }
+
   async search(query: string): Promise<LocationSearchResponse> {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
