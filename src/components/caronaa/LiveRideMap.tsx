@@ -29,6 +29,6 @@ export function LiveRideMap({points}:{points:LiveMapPoint[]}) {
     });
     if(next.length)map.current.fitBounds(L.latLngBounds(next.map(p=>[p.lat,p.lng] as [number,number])),{padding:[32,32],maxZoom:16});
   }
-  useEffect(()=>{void import('leaflet').then(L=>draw(L,points));},[points]);
+  useEffect(()=>{let active=true;void import('leaflet').then(L=>{if(active)draw(L,points);});return ()=>{active=false;};},[points]);
   return <div ref={container} className="h-64 w-full" role="img" aria-label={`Mapa da viagem: ${points.map(p=>p.title).join(', ')}`} />;
 }

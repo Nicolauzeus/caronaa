@@ -692,7 +692,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       )}
       {actions.length ? (
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          {actions.map((action) => (
+          {actions.filter((action) => action.status !== "COMPLETED").map((action) => (
             <Button
               key={action.status}
               type="button"
