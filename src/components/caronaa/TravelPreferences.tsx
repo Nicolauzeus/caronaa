@@ -17,13 +17,13 @@ export function TravelPreferenceFields({ value, onChange, kind }: {
     <legend className="mb-3 text-sm font-semibold">Preferências de viagem</legend>
     <div className="grid gap-3 sm:grid-cols-2">
       {options.map(({ key, label, items }) => <label key={key} className="text-sm font-medium">{label}
-        <select value={value[key]} onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+        <select aria-label={label} value={value[key]} onChange={(e) => onChange({ ...value, [key]: e.target.value })}
           className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-foreground">
           {items.map(([id, text]) => <option key={id} value={id}>{text}</option>)}
         </select>
       </label>)}
       <label className="text-sm font-medium">{kind === "offer" ? "Espaço para malas" : "Malas que vou levar"}
-        <select value={value.luggage} onChange={(e) => onChange({ ...value, luggage: Number(e.target.value) })}
+        <select aria-label={kind === "offer" ? "Espaço para malas" : "Malas que vou levar"} value={value.luggage} onChange={(e) => onChange({ ...value, luggage: Number(e.target.value) })}
           className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-foreground">
           {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n === 0 ? "Nenhuma" : `${n} ${n === 1 ? "mala" : "malas"}`}</option>)}
         </select>
