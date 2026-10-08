@@ -281,6 +281,13 @@
       "when": 1791435233154,
       "tag": "0039_atomic_audience_and_preference_matching",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791435359972,
+      "tag": "0040_geographic_preference_match_ranking",
+      "breakpoints": true
     }
   ]
 }

@@ -1647,6 +1647,21 @@ export type Database = {
         Returns: string
       }
       travel_preference_bonus: { Args: { o: Json; q: Json }; Returns: number }
+      travel_route_score: {
+        Args: {
+          odlat: number
+          odlng: number
+          oolat: number
+          oolng: number
+          ot: string
+          qdlat: number
+          qdlng: number
+          qolat: number
+          qolng: number
+          qt: string
+        }
+        Returns: number
+      }
       try_match_ride_request: {
         Args: { p_preferred_offer_id?: string; p_request_id: string }
         Returns: string
