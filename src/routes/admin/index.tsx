@@ -12,6 +12,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
+import { AttentionQueue } from "@/components/admin/AttentionQueue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminUsers, type AdminUser } from "@/lib/admin.functions";
 import { getFormMetrics, type FormMetricsSummary } from "@/lib/formulario/metrics";
@@ -217,11 +218,11 @@ function DashboardPage() {
           </p>
 
           <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight md:text-4xl">
-            Visão geral da operação
+            Central de operação
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Indicadores persistidos do CARONAA. Métricas operacionais consideram os últimos 30 dias.
+            Pendências de hoje e resultados dos últimos 30 dias.
           </p>
         </div>
 
@@ -238,6 +239,7 @@ function DashboardPage() {
         </div>
       ) : null}
 
+      <AttentionQueue />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Usuários"
@@ -291,7 +293,7 @@ function DashboardPage() {
                           {step.label}
                         </div>
 
-                        <div className="flex-1 rounded-full bg-secondary px-2 py-1.5">
+                        <div className="min-w-8 flex-1 rounded-full bg-muted px-2 py-1.5">
                           <div
                             className="h-2 rounded-full bg-primary transition-all"
                             style={{

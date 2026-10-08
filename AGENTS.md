@@ -19,3 +19,4 @@
 - Serve user-supplied brand images through Lovable Assets and import their pointer files.
 - Link STS responses through authenticated database functions and verified account identities, with publication ownership enforced in the database; this prevents claiming another person's response.
 - Snapshot consented travel preferences in database triggers and enforce compatibility in the allocator; UI overrides use authenticated transactional creation to avoid matching before preferences are saved.
+- Keep admin attention counts sourced from the existing authorized operation service and navigation matching exclusive; this avoids invented indicators and ambiguous active sections.

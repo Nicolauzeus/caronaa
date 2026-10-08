@@ -793,9 +793,54 @@ export type Database = {
           {
             foreignKeyName: "ride_matches_request_id_fkey"
             columns: ["request_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "ride_requests"
             referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      ride_notifications: {
+        Row: {
+          created_at: string
+          event_name: string
+          match_id: string
+          notification_id: string
+          read_at: string | null
+          ride_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          match_id: string
+          notification_id?: string
+          read_at?: string | null
+          ride_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          match_id?: string
+          notification_id?: string
+          read_at?: string | null
+          ride_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_notifications_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "ride_matches"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "ride_notifications_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["ride_id"]
           },
         ]
       }
@@ -1116,45 +1161,57 @@ export type Database = {
           boarded_at: string | null
           completed_at: string | null
           created_at: string
+          driver_accepted_at: string | null
           driver_user_id: string
           match_id: string
           offer_id: string
+          passenger_accepted_at: string | null
           passenger_contribution: number
           passenger_user_id: string
           request_id: string
+          response_expires_at: string
           ride_id: string
           status: string
           total_price: number
+          transit_stage: string
           updated_at: string
         }
         Insert: {
           boarded_at?: string | null
           completed_at?: string | null
           created_at?: string
+          driver_accepted_at?: string | null
           driver_user_id: string
           match_id: string
           offer_id: string
+          passenger_accepted_at?: string | null
           passenger_contribution?: number
           passenger_user_id: string
           request_id: string
+          response_expires_at?: string
           ride_id?: string
           status: string
           total_price?: number
+          transit_stage?: string
           updated_at?: string
         }
         Update: {
           boarded_at?: string | null
           completed_at?: string | null
           created_at?: string
+          driver_accepted_at?: string | null
           driver_user_id?: string
           match_id?: string
           offer_id?: string
+          passenger_accepted_at?: string | null
           passenger_contribution?: number
           passenger_user_id?: string
           request_id?: string
+          response_expires_at?: string
           ride_id?: string
           status?: string
           total_price?: number
+          transit_stage?: string
           updated_at?: string
         }
         Relationships: [
@@ -1395,6 +1452,7 @@ export type Database = {
         }
         Returns: number
       }
+      expire_ride_match_proposals: { Args: never; Returns: number }
       get_acquisition_funnel_metrics: {
         Args: {
           p_campaign?: string
@@ -1558,6 +1616,10 @@ export type Database = {
         Args: { p_ride_id: string }
         Returns: undefined
       }
+      mark_ride_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
       materialize_ride_routine: {
         Args: { p_routine_id: string }
         Returns: undefined
@@ -1579,6 +1641,11 @@ export type Database = {
         Args: { p_offer_id: string; p_passenger_count?: number }
         Returns: string
       }
+      respond_to_ride_match: {
+        Args: { p_response: string; p_ride_id: string }
+        Returns: string
+      }
+      revoke_ride_location: { Args: { p_ride_id: string }; Returns: undefined }
       ride_preferences_compatible: {
         Args: { o: Json; q: Json }
         Returns: boolean
@@ -1679,6 +1746,10 @@ export type Database = {
       update_ride_total_cost: {
         Args: { p_ride_id: string; p_total_price: number }
         Returns: number
+      }
+      update_ride_transit_stage: {
+        Args: { p_ride_id: string; p_stage: string }
+        Returns: string
       }
       validate_ride_boarding: {
         Args: { p_code: string; p_ride_id: string }
