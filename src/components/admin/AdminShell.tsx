@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   ArrowLeft,
-  Bell,
   Building2,
   ChevronRight,
   FileText,
@@ -37,7 +36,7 @@ const navigation = [
     title: "Visão Geral",
     items: [
       {
-        label: "Dashboard",
+        label: "Visão geral",
         to: "/admin",
         icon: LayoutDashboard,
       },
@@ -57,7 +56,7 @@ const navigation = [
         icon: FileText,
       },
       {
-        label: "Matching",
+        label: "Combinações",
         to: "/admin/matching",
         icon: Activity,
       },
@@ -120,22 +119,22 @@ const navigation = [
   },
 ];
 
-function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean; onNavigate?: () => void; query?: string }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
 
   return (
     <nav className="space-y-6" aria-label="Admin navigation">
-      {navigation.map((section) => (
+      {navigation.map((section) => ({ ...section, items: section.items.filter((item) => item.label.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) })).filter((section) => section.items.length).map((section) => (
         <div key={section.title}>
-          <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground/80">
+          <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-normal text-muted-foreground/80">
             {section.title}
           </p>
 
           <div className="space-y-1">
             {section.items.map(({ label, to, icon: Icon }) => {
-              const active = pathname === to || pathname.startsWith(`${to}/`);
+              const active = pathname === to || (to !== "/admin" && pathname.startsWith(`${to}/`) && !navigation.flatMap((group) => group.items).some((item) => item.to !== to && item.to.startsWith(`${to}/`) && (pathname === item.to || pathname.startsWith(`${item.to}/`))));
 
               return (
                 <Link
@@ -143,7 +142,7 @@ function AdminNav({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
                   to={to}
                   onClick={onNavigate}
                   className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    "flex items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                     active
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -191,6 +190,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [navQuery, setNavQuery] = useState("");
   const [profile, setProfile] = useState<AdminProfile | null>(null);
 
   const pathname = useRouterState({
@@ -286,29 +286,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const adminInitials = useMemo(() => getInitials(adminName), [adminName]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-[1680px] gap-5 p-3 md:p-5 lg:p-6">
-        <aside className="hidden w-[280px] shrink-0 rounded-2xl border border-border bg-card/85 p-4 shadow-soft backdrop-blur-md lg:block">
+    <div className="admin-workspace min-h-screen bg-background">
+      <div className="mx-auto flex max-w-[1680px] gap-6 p-3 md:p-5 lg:p-6">
+        <aside className="hidden w-[240px] shrink-0 border-r border-border bg-background pr-5 py-3 lg:block">
           <div className="mb-6 flex items-center justify-between gap-3">
             <Link to="/admin" className="inline-flex items-center gap-3">
               <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
 
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
-                  Admin Center
+                <p className="text-[10px] font-bold uppercase tracking-normal text-muted-foreground">
+                  Administração
                 </p>
               </div>
             </Link>
 
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-              live
-            </span>
+
           </div>
 
-          <AdminNav />
+          <AdminNav query={navQuery} />
 
           <div className="mt-8 rounded-xl border border-border bg-secondary/40 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+            <p className="text-[10px] font-bold uppercase tracking-normal text-muted-foreground">
               Segurança
             </p>
 
@@ -321,7 +319,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex-1">
-          <header className="rounded-2xl border border-border bg-card/80 px-4 py-3 shadow-soft backdrop-blur-md md:px-5">
+          <header className="border-b border-border bg-background px-1 py-3 md:px-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-3">
                 <Button
@@ -352,8 +350,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   />
 
                   <Input
-                    aria-label="Busca global administrativa"
-                    placeholder="Buscar usuário, carona ou protocolo"
+                    aria-label="Buscar seção administrativa"
+                    placeholder="Buscar seção do painel"
+                    value={navQuery}
+                    onChange={(event) => { setNavQuery(event.target.value); if (window.innerWidth < 1024) setMobileOpen(true); }}
                     className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
                   />
                 </div>
@@ -361,25 +361,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
 
-                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-2.5 py-1.5 text-[11px] font-semibold text-foreground">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    Ambiente: produção
-                  </span>
-
                   <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
                     <Link to="/home">
                       <ArrowLeft size={14} className="mr-1" />
                       Voltar ao app
                     </Link>
                   </Button>
-
-                  <button
-                    type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label="Notificações administrativas"
-                  >
-                    <Bell size={16} />
-                  </button>
 
                   <div className="flex items-center gap-2 rounded-full border border-border bg-background p-1.5">
                     <Avatar className="h-8 w-8">
@@ -405,7 +392,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm lg:hidden">
-          <div className="h-full w-[82%] max-w-xs border-r border-border bg-card p-4 shadow-soft">
+          <div className="h-full overflow-y-auto w-[82%] max-w-xs border-r border-border bg-card p-4 shadow-soft">
             <div className="mb-5 flex items-center justify-between">
               <Link
                 to="/admin"
@@ -426,7 +413,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Button>
             </div>
 
-            <AdminNav mobile onNavigate={() => setMobileOpen(false)} />
+            <Input aria-label="Buscar seção no menu" placeholder="Buscar seção" value={navQuery} onChange={(event) => setNavQuery(event.target.value)} className="mb-4" />
+            <AdminNav mobile query={navQuery} onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       ) : null}

@@ -17,10 +17,10 @@ export function MetricCard({
   positive?: boolean;
 }) {
   return (
-    <Card className="border border-border bg-card/80 shadow-soft">
+    <Card className="rounded-lg border border-border bg-card shadow-none border-t-2 border-t-primary">
       <CardContent className="p-4 sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-normal text-muted-foreground">
             {label}
           </p>
           {trend ? (
@@ -39,7 +39,7 @@ export function MetricCard({
         </div>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+            <p className="font-display text-3xl font-extrabold tracking-normal text-foreground">
               {value}
             </p>
             {detail ? <p className="mt-2 text-xs text-muted-foreground">{detail}</p> : null}

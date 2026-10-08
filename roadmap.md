@@ -15,3 +15,5 @@
 14. [x] Restore STS account linking and first-publication functions in the active database; authenticated home loads without the missing-function error (publication with a linked response remains unverified).
 15. [x] Repair offer/request runtime failures, preserve audience preference, and verify publication and readback through the UI.
 16. [x] Persist consented travel preferences, snapshot/override on offers, requests and routines; enforce hard rules and rank soft preferences in the database; verified 51 unit tests, 11 isolated database assertions, profile persistence, offer publication and authenticated readback.
+
+17. [ ] Refresh admin hierarchy, navigation and truthful controls; repair current build blockers and verify signed-in essential flows.
