@@ -17,3 +17,4 @@
 
 - Use database roles for administrator access; the first registration receives admin atomically, while later registrations receive user.
 - Serve user-supplied brand images through Lovable Assets and import their pointer files.
+- Link STS responses through authenticated database functions and verified account identities, with publication ownership enforced in the database; this prevents claiming another person's response.
