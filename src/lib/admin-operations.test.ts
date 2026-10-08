@@ -158,6 +158,7 @@ describe("administrative people", () => {
       passenger_accepted_at: "2026-01-01T00:00:00Z",
       response_expires_at: "2026-01-02T00:00:00Z",
       boarded_at: null,
+      transit_stage: "CONFIRMED",
       match_id: "match",
       request_id: "request",
       offer_id: "offer",
