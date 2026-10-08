@@ -7,6 +7,8 @@ import { AppShell } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { StsJourneyActivation } from "@/components/caronaa/StsJourneyActivation";
+import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
+import type { TravelPreferences } from "@/lib/travel-preferences";
 import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.functions";
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -19,6 +21,10 @@ export const Route = createFileRoute("/_authenticated/home")({
     meta: [
       { title: "Início — CARONAA" },
       { name: "description", content: "Peça ou ofereça uma carona pelo seu trajeto." },
+      { property: "og:title", content: "Início — CARONAA" },
+      { property: "og:description", content: "Peça ou ofereça uma carona pelo seu trajeto." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Home,
@@ -49,6 +55,7 @@ function Home() {
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [preferences, setPreferences] = useState<TravelPreferences>();
   const refresh = useCallback(() => {
     void loadJourneys()
       .then(setJourneys)
@@ -217,6 +224,7 @@ function Home() {
                     rideDate: date,
                     departureTime: time,
                     passengerCount: Number(count),
+                    preferences,
                   },
                 });
                 toast.success("Sua solicitação foi publicada.");
@@ -382,6 +390,7 @@ function Home() {
                 {error}
               </p>
             )}
+            {role === "request" && <JourneyPreferences kind="request" onChange={setPreferences} />}
             <Button type="submit" disabled={busy} className="min-h-12 w-full text-base font-bold">
               {busy ? "Publicando..." : role === "request" ? "Pedir carona" : "Continuar"}
               <ArrowRight size={18} />

@@ -24,7 +24,10 @@ import {
 
 export const Route = createFileRoute("/seguranca")({
   head: () => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Segurança começa antes da carona — CARONAA" },
+{ property: "og:description", content: "Diretrizes e mecanismos da CARONAA para tomada de decisões conscientes e seguras no compartilhamento de trajetos." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Segurança começa antes da carona — CARONAA" },
       {
         name: "description",

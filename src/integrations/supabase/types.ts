@@ -624,6 +624,8 @@ export type Database = {
           full_name: string
           gender: string | null
           id: string
+          travel_preferences: Json
+          travel_preferences_consented_at: string | null
           updated_at: string
         }
         Insert: {
@@ -633,6 +635,8 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id: string
+          travel_preferences?: Json
+          travel_preferences_consented_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -642,6 +646,8 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id?: string
+          travel_preferences?: Json
+          travel_preferences_consented_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -815,6 +821,7 @@ export type Database = {
           status: string
           time_tolerance_minutes: number
           total_price: number
+          travel_preferences: Json | null
           user_id: string
         }
         Insert: {
@@ -838,6 +845,7 @@ export type Database = {
           status?: string
           time_tolerance_minutes?: number
           total_price?: number
+          travel_preferences?: Json | null
           user_id: string
         }
         Update: {
@@ -861,6 +869,7 @@ export type Database = {
           status?: string
           time_tolerance_minutes?: number
           total_price?: number
+          travel_preferences?: Json | null
           user_id?: string
         }
         Relationships: [
@@ -929,6 +938,7 @@ export type Database = {
           status: string
           target_offer_id: string | null
           time_tolerance_minutes: number
+          travel_preferences: Json | null
           user_id: string
         }
         Insert: {
@@ -951,6 +961,7 @@ export type Database = {
           status?: string
           target_offer_id?: string | null
           time_tolerance_minutes?: number
+          travel_preferences?: Json | null
           user_id: string
         }
         Update: {
@@ -973,6 +984,7 @@ export type Database = {
           status?: string
           target_offer_id?: string | null
           time_tolerance_minutes?: number
+          travel_preferences?: Json | null
           user_id?: string
         }
         Relationships: [
@@ -1012,6 +1024,7 @@ export type Database = {
           start_date: string
           time_tolerance_minutes: number
           total_price: number
+          travel_preferences: Json | null
           updated_at: string
           user_id: string
         }
@@ -1034,6 +1047,7 @@ export type Database = {
           start_date: string
           time_tolerance_minutes?: number
           total_price?: number
+          travel_preferences?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -1056,6 +1070,7 @@ export type Database = {
           start_date?: string
           time_tolerance_minutes?: number
           total_price?: number
+          travel_preferences?: Json | null
           updated_at?: string
           user_id?: string
         }
@@ -1311,6 +1326,10 @@ export type Database = {
         Args: { p_changes?: Json; p_submission_id: string }
         Returns: Json
       }
+      create_preferred_ride: {
+        Args: { p_details: Json; p_kind: string; p_preferences?: Json }
+        Returns: string
+      }
       create_ride_offer:
         | {
             Args: {
@@ -1444,6 +1463,14 @@ export type Database = {
         Returns: Json
       }
       get_my_ride_routines: { Args: never; Returns: Json }
+      get_my_travel_preferences: { Args: never; Returns: Json }
+      get_offer_preference_bonuses: {
+        Args: { p_offer_ids: string[] }
+        Returns: {
+          bonus: number
+          offer_id: string
+        }[]
+      }
       get_offer_schedule_types: {
         Args: { p_offer_ids: string[] }
         Returns: {
@@ -1552,6 +1579,14 @@ export type Database = {
         Args: { p_offer_id: string; p_passenger_count?: number }
         Returns: string
       }
+      ride_preferences_compatible: {
+        Args: { o: Json; q: Json }
+        Returns: boolean
+      }
+      save_my_travel_preferences: {
+        Args: { p_consent: boolean; p_preferences: Json }
+        Returns: undefined
+      }
       save_ride_routine: {
         Args: { p_definition: Json; p_routine_id?: string }
         Returns: string
@@ -1611,6 +1646,22 @@ export type Database = {
         Args: { p_next_status: string; p_ride_id: string }
         Returns: string
       }
+      travel_preference_bonus: { Args: { o: Json; q: Json }; Returns: number }
+      travel_route_score: {
+        Args: {
+          odlat: number
+          odlng: number
+          oolat: number
+          oolng: number
+          ot: string
+          qdlat: number
+          qdlng: number
+          qolat: number
+          qolng: number
+          qt: string
+        }
+        Returns: number
+      }
       try_match_ride_request: {
         Args: { p_preferred_offer_id?: string; p_request_id: string }
         Returns: string
@@ -1633,6 +1684,7 @@ export type Database = {
         Args: { p_code: string; p_ride_id: string }
         Returns: string
       }
+      validate_travel_preferences: { Args: { p: Json }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

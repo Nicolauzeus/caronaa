@@ -21,6 +21,7 @@ function compatibleData(): OperationData & {
     requests: [
       {
         request_id: "request",
+        travel_preferences: null,
         price: null,
         user_id: "passenger",
         origin: "Aldeota",
@@ -42,6 +43,7 @@ function compatibleData(): OperationData & {
     offers: [
       {
         offer_id: "offer",
+        travel_preferences: null,
         passenger_gender_preference: "ANY",
         total_price: 30,
         user_id: "driver",

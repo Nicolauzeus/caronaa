@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminUsers, type AdminUser } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin/usuarios/$id")({
+  head: () => ({ meta: [{ title: "Detalhes do usuário — CARONAA" },{ name: "description", content: "Informações e acompanhamento de detalhes do usuário." },{ property: "og:title", content: "Detalhes do usuário — CARONAA" },
+{ property: "og:description", content: "Informações e acompanhamento de detalhes do usuário." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" }] }),
   loader: async () => {
     return getAdminUsers();
   },

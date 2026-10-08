@@ -20,7 +20,10 @@ import type { Enums } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/admin/validacao/$painId")({
   head: ({ params }) => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Detalhes da validação — CARONAA" },
+{ property: "og:description", content: "Análise detalhada de dor da validação de mercado do CARONAA." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: `${params.painId} — Validação de Mercado CARONAA` },
       {
         name: "description",

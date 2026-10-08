@@ -15,7 +15,10 @@ import {
 
 export const Route = createFileRoute("/como-funciona")({
   head: () => ({
-    meta: [
+    meta: [{ property: "og:title", content: "Como Funciona — CARONAA" },
+{ property: "og:description", content: "Entenda como a CARONAA conecta motoristas e passageiros de rotas afins em um ambiente comunitário de teste." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Como Funciona — CARONAA" },
       {
         name: "description",

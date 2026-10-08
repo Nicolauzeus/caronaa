@@ -13,4 +13,5 @@
 12. [ ] Replace driver price ranges with a custom per-passenger price (minimum R$ 3,50), showing the 15% CARONAA fee and net payout.
 13. [ ] Remove familiarity/family-based matching prompts and keep objective safety criteria only.
 14. [x] Restore STS account linking and first-publication functions in the active database; authenticated home loads without the missing-function error (publication with a linked response remains unverified).
-15. [ ] Repair offer/request runtime failures, preserve audience preference, and verify publication and readback through the UI.
+15. [x] Repair offer/request runtime failures, preserve audience preference, and verify publication and readback through the UI.
+16. [x] Persist consented travel preferences, snapshot/override on offers, requests and routines; enforce hard rules and rank soft preferences in the database; verified 51 unit tests, 11 isolated database assertions, profile persistence, offer publication and authenticated readback.

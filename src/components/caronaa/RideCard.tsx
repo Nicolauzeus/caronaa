@@ -133,6 +133,8 @@ export function RideCard({
             <MapPin size={15} /> {ride.origin} → {ride.destination}
           </p>
           <p>Status: {getStatusLabel(ride.status)}</p>
+          {typeof ride.matchScore === "number" && <p>Compatibilidade de trajeto e horário: {ride.matchScore}%</p>}
+          {Boolean(ride.preferenceBonus) && <p>Conversa ou música em comum.</p>}
         </div>
       )}
       <div className="mt-4 flex gap-2">

@@ -51,6 +51,7 @@ export type RideSummary = {
   confirmedPassengers: number;
   passengerContribution: number;
   matchScore?: number;
+  preferenceBonus?: number;
 };
 
 const searchInput = z.object({
@@ -298,6 +299,7 @@ async function discoverOffers(
     p_departure_time: data.departureTime || undefined,
     p_passenger_count: data.passengerCount,
     p_limit: limit,
+    p_time_tolerance_minutes: tolerance,
   });
   if (error) throw new Error(error.message || "Não foi possível buscar caronas.");
   let resultRows = (rows ?? []) as any[];
@@ -305,7 +307,7 @@ async function discoverOffers(
     resultRows = resultRows.filter((row) =>
       isTimeWithinTolerance(
         String(row.departure_time ?? "").slice(0, 5),
-        data.departureTime!,
+        data.departureTime ?? "",
         tolerance,
       ),
     );
@@ -371,6 +373,14 @@ async function discoverOffers(
         : row,
     );
   }
+  const bonuses = new Map<string, number>();
+  if (resultRows.length) {
+    const { data: matches, error: bonusError } = await client.rpc("get_offer_preference_bonuses", {
+      p_offer_ids: resultRows.map((row) => String(row.offer_id)),
+    });
+    if (bonusError) throw new Error(bonusError.message);
+    for (const item of matches ?? []) bonuses.set(String(item.offer_id), Number(item.bonus));
+  }
   return resultRows
     .map((row: any) => ({
       row,
@@ -379,6 +389,7 @@ async function discoverOffers(
         offer: { origin: String(row.origin ?? ""), destination: String(row.destination ?? ""), originCoordinate: coordinateFromRow(row, "origin"), destinationCoordinate: coordinateFromRow(row, "destination"), rideDate: String(row.ride_date ?? ""), departureTime: String(row.departure_time ?? "").slice(0, 5), availableSeats: Number(row.available_seats ?? 0), seatsRemaining: Number(row.seats_remaining ?? 0), userId: String(row.user_id ?? "") },
       }),
     }))
+    .map((item) => ({ ...item, score: Math.min(100, item.score + (bonuses.get(String(item.row.offer_id)) ?? 0)) }))
     .sort((a, b) => b.score - a.score)
     .map(({ row, score }: any) => ({ ...mapOffer(
       row,
@@ -392,7 +403,7 @@ async function discoverOffers(
           .filter((v: RideVerification | null): v is RideVerification => Boolean(v)),
       },
       userId,
-    ), matchScore: score }));
+    ), matchScore: score, preferenceBonus: bonuses.get(String(row.offer_id)) ?? 0 }));
 }
 
 export const searchRideOffers = createServerFn({ method: "GET" })
