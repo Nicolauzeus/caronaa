@@ -22,6 +22,7 @@ export function RideQrModal({
 
   async function loadToken() {
     setLoading(true);
+    setQrData(null);
     try {
       const data = await generateRideQrToken(rideId);
       setQrData(data);
@@ -47,7 +48,7 @@ export function RideQrModal({
 
   // Renderiza o QR Code no Canvas assim que o token estiver disponível
   useEffect(() => {
-    if (!qrData || !canvasRef.current) return;
+    if (loading || !qrData || !canvasRef.current) return;
 
     const payload = `caronaa:ride-confirm:${qrData.token}`;
     void QRCode.toCanvas(canvasRef.current, payload, {
@@ -58,7 +59,7 @@ export function RideQrModal({
         light: "#FFFFFF",
       },
     });
-  }, [qrData]);
+  }, [qrData, loading]);
 
   // Countdown timer
   useEffect(() => {
