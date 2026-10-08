@@ -17,3 +17,4 @@
 16. [x] Persist consented travel preferences, snapshot/override on offers, requests and routines; enforce hard rules and rank soft preferences in the database; verified 51 unit tests, 11 isolated database assertions, profile persistence, offer publication and authenticated readback.
 
 17. [x] Refresh admin priorities, exclusive navigation and working section search; restore pending ride schema and generated types. Signed-in admin/home/offer/my-rides pages load, navigation search verified, 67 focused tests pass. New publication and bilateral acceptance were not re-exercised end-to-end in this task.
+18. [ ] Repair boarding QR, preserve consented location sharing and map markers, clarify bilateral completion, add private driver Pix settings and completed-ride QR.
