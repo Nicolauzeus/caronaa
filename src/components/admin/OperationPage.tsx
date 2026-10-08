@@ -45,7 +45,7 @@ type Kind = "caronas" | "solicitacoes" | "matching" | "motoristas" | "passageiro
 const titles: Record<Kind, string> = {
   caronas: "Caronas",
   solicitacoes: "Solicitações",
-  matching: "Matching",
+  matching: "Combinações",
   motoristas: "Motoristas",
   passageiros: "Passageiros",
 };
@@ -146,11 +146,13 @@ export function OperationPage({ kind }: { kind: Kind }) {
   const [note, setNote] = useState("");
   const [document, setDocument] = useState(false);
   const [vehicle, setVehicle] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   async function reload() {
     setLoading(true);
     setError("");
     try {
       setData(await loadAdminOperations());
+      setUpdatedAt(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível carregar os dados.");
     } finally {
@@ -164,6 +166,7 @@ export function OperationPage({ kind }: { kind: Kind }) {
         const next = await loadAdminOperations();
         if (active) {
           setData(next);
+          setUpdatedAt(new Date());
           setError("");
         }
       } catch (e) {
@@ -493,7 +496,11 @@ export function OperationPage({ kind }: { kind: Kind }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{titles[kind]}</h1>
+        <div>
+          <p className="mb-1 text-xs font-semibold text-muted-foreground">OPERAÇÃO / CARONAA</p>
+          <h1 className="font-display text-3xl font-bold">{titles[kind]}</h1>
+          <p className="mt-2 text-xs text-muted-foreground">{updatedAt ? `Atualizado às ${updatedAt.toLocaleTimeString("pt-BR")} · atualização a cada 30 s` : "Aguardando dados"}</p>
+        </div>
         <Button
           variant="outline"
           size="icon"
@@ -607,10 +614,10 @@ export function OperationPage({ kind }: { kind: Kind }) {
                         )}
                         {kind === "solicitacoes" && row.status === "open" && (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Tentar match"
-                            aria-label="Tentar match"
+                            variant="outline"
+                            size="sm"
+                            title="Buscar combinação"
+                            aria-label="Buscar combinação"
                             disabled={busy}
                             onClick={() =>
                               void run(
@@ -621,7 +628,7 @@ export function OperationPage({ kind }: { kind: Kind }) {
                               )
                             }
                           >
-                            <Zap size={16} />
+                            <Zap size={16} className="mr-1" /> Buscar
                           </Button>
                         )}
                       </div>
@@ -667,10 +674,10 @@ export function OperationPage({ kind }: { kind: Kind }) {
           </div>
           {kind === "matching" && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Sugestões de match</h2>
+              <h2 className="text-lg font-semibold">Combinações sugeridas</h2>
               {!suggestions.length ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma oferta compatível com os pedidos pendentes.
+                  Nenhuma sugestão para os pedidos pendentes e filtros atuais. Confira datas, horários, vagas e trajetos em Caronas e Solicitações; a confirmação também valida os requisitos obrigatórios.
                 </p>
               ) : (
                 <div className="overflow-x-auto">

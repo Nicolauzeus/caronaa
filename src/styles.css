@@ -390,6 +390,30 @@
     0 8px 24px -12px oklch(0 0 0 / 14%);
 }
 
+/* Administrative workspace: restrained surfaces and readable data density. */
+.admin-workspace {
+  letter-spacing: 0;
+}
+.admin-workspace main > div {
+  min-width: 0;
+}
+.admin-workspace .tracking-tight,
+.admin-workspace [class*="tracking-["] {
+  letter-spacing: 0;
+}
+.admin-workspace main [data-slot="card"] {
+  border-radius: 8px;
+  box-shadow: none;
+}
+.admin-workspace table th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-workspace table td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
 .shadow-card {
   box-shadow:
     0 2px 4px oklch(0 0 0 / 4%),
