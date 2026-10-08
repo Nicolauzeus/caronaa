@@ -35,21 +35,11 @@ export function extractQrToken(rawContent: string): string {
 }
 
 export async function generateRideQrToken(rideId: string): Promise<RideQrData> {
-  const { data, error } = await (supabase as any).rpc("generate_ride_qr_token", {
+  const { data, error } = await supabase.rpc("generate_ride_qr_token", {
     p_ride_id: rideId,
   });
 
   if (error) {
-    // Se a RPC não foi instalada no ambiente local/preview, fornece fallback seguro
-    if (error.message.includes("function") && error.message.includes("does not exist")) {
-      const fallbackToken = `${crypto.randomUUID().replace(/-/g, "")}${Date.now().toString(16)}`;
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-      return {
-        token: fallbackToken,
-        expiresAt,
-        rideId,
-      };
-    }
     throw new Error(error.message);
   }
 
@@ -62,7 +52,7 @@ export async function confirmRideByQr(rawTokenOrPayload: string): Promise<Confir
     throw new Error("Código ou QR Code inválido.");
   }
 
-  const { data, error } = await (supabase as any).rpc("confirm_ride_by_qr", {
+  const { data, error } = await supabase.rpc("confirm_ride_by_qr", {
     p_token: token,
   });
 
@@ -78,21 +68,9 @@ export async function confirmRideByQr(rawTokenOrPayload: string): Promise<Confir
     if (msg.includes("autorizado") || msg.includes("not authorized")) {
       throw new Error("Você não é o passageiro autorizado para esta carona.");
     }
-    if (msg.includes("function") && msg.includes("does not exist")) {
-      // Fallback em ambiente local para testes visuais
-      return {
-        confirmed: true,
-        rideId: "mock-ride",
-        driverName: "Motorista CARONAA",
-        vehicleModel: "Onix",
-        vehiclePlate: "•••• A1B2",
-        destination: "Destino confirmado",
-        departureTime: "Horário combinado",
-      };
-    }
     throw new Error(error.message || "QR lido, mas não conseguimos confirmar a viagem. Tente novamente.");
   }
 
-  return data as ConfirmedRideDetails;
+  return data as unknown as ConfirmedRideDetails;
 }
 

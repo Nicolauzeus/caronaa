@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -91,6 +92,8 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--ride-passenger);
+  --color-success: var(--caronaa-success);
 
   --color-border: var(--border);
   --color-input: var(--input);
@@ -169,6 +172,7 @@
   --caronaa-warning: var(--caronaa-gold);
   --caronaa-danger: oklch(0.58 0.22 27);
   --caronaa-info: oklch(0.38 0 0);
+  --ride-passenger: #3B82F6;
 
   /*
    * Main semantic tokens
@@ -732,3 +736,9 @@ a:active {
     transition-duration: 0.01ms !important;
   }
 }
+
+.ride-live-marker span { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; border:2px solid var(--background); font-weight:800; color:var(--foreground); }
+.ride-marker-driver { background:var(--primary); }
+.ride-marker-passenger { background:var(--ride-passenger); color:var(--caronaa-white); }
+.ride-marker-meeting { background:var(--caronaa-success); color:var(--caronaa-white); }
+.ride-marker-destination { background:var(--destructive); }

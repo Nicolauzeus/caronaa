@@ -12,6 +12,8 @@ import {
 } from "@/lib/ride-safety-service";
 import { RideQrModal } from "./RideQrModal";
 import { RideQrScannerModal } from "./RideQrScannerModal";
+import { CompletedRidePix } from "./DriverPix";
+import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { RideLiveTracker } from "./RideLiveTracker";
 
 export function RideSafetyPanel({
@@ -145,6 +147,24 @@ export function RideSafetyPanel({
           }}
         />
       )}
+
+      {currentStatus === "IN_PROGRESS" && safety && (
+        <div className="space-y-2">
+          {safety.completionConfirmed ? <p role="status" className="text-sm font-semibold">Sua chegada foi confirmada. Aguardando a outra pessoa concluir.</p> : (
+            <Button disabled={busy} onClick={async () => {
+              setBusy(true);
+              try {
+                const result = await transitionRideStatus(rideId, "COMPLETED");
+                toast.success(result === "AWAITING_OTHER_PARTICIPANT" ? "Chegada confirmada. Aguardando a outra pessoa." : "Viagem concluída.");
+                await loadSafety();
+                await onChanged();
+              } catch(e) { toast.error(e instanceof Error ? e.message : "Não foi possível concluir."); }
+              finally { setBusy(false); }
+            }}>Confirmar chegada ao destino</Button>
+          )}
+        </div>
+      )}
+      {currentStatus === "COMPLETED" && <CompletedRidePix rideId={rideId} />}
 
       {/* Validação de Embarque com QR Code ou PIN para Passageiro */}
       {currentStatus === "CONFIRMED" && role === "passenger" && (

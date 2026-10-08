@@ -416,7 +416,7 @@ function MinhasCaronas() {
       ) : items.length ? (
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           {items.map((item) => (
-            <Trip key={item.id} ride={item} onChanged={refreshRides} />
+            <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
           ))}
         </div>
       ) : (
@@ -692,7 +692,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       )}
       {actions.length ? (
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          {actions.map((action) => (
+          {actions.filter((action) => action.status !== "COMPLETED").map((action) => (
             <Button
               key={action.status}
               type="button"

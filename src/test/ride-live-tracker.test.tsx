@@ -47,6 +47,7 @@ const mockSafety: RideSafety = {
 describe("RideLiveTracker Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   it("renders the 5 stages of the ride tracking stepper", () => {
@@ -80,7 +81,7 @@ describe("RideLiveTracker Component", () => {
       />,
     );
 
-    const legend = screen.getByText("Legenda do percurso").parentElement!;
+    const legend = screen.getByText("Legenda do percurso").parentElement;
     expect(legend).toBeInTheDocument();
     expect(screen.getAllByText("Motorista").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Passageiro").length).toBeGreaterThanOrEqual(1);
@@ -178,5 +179,17 @@ describe("RideLiveTracker Component", () => {
     await waitFor(() => {
       expect(rideSafetyService.revokeRideLocation).toHaveBeenCalledWith("ride-test-1");
     });
+  });
+  it("restores only explicit consent for the same user and ride", () => {
+    sessionStorage.setItem('caronaa:location:driver-id-123:ride-test-1','yes');
+    render(<RideLiveTracker rideId="ride-test-1" role="driver" viewerUserId="driver-id-123" status="CONFIRMED" safety={mockSafety} onRefresh={vi.fn()} />);
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked','true');
+  });
+  it("keeps location enabled when the refresh callback changes", () => {
+    const props={rideId:'ride-test-1',role:'driver' as const,viewerUserId:'driver-id-123',status:'CONFIRMED',safety:mockSafety};
+    const {rerender}=render(<RideLiveTracker {...props} onRefresh={vi.fn()} />);
+    fireEvent.click(screen.getByRole('switch'));
+    rerender(<RideLiveTracker {...props} onRefresh={vi.fn()} />);
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked','true');
   });
 });
