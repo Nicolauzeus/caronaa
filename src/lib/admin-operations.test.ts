@@ -42,6 +42,7 @@ function compatibleData(): OperationData & {
     offers: [
       {
         offer_id: "offer",
+        passenger_gender_preference: "ANY",
         total_price: 30,
         user_id: "driver",
         origin: "Meireles",
