@@ -309,6 +309,13 @@
       "when": 1791443884410,
       "tag": "0043_restore_pending_ride_flow_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791445436119,
+      "tag": "0044_repair_boarding_qr_and_private_pix",
+      "breakpoints": true
     }
   ]
 }

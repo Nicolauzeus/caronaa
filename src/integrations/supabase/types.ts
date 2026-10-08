@@ -49,6 +49,32 @@ export type Database = {
           },
         ]
       }
+      driver_pix_settings: {
+        Row: {
+          pix_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          pix_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          pix_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_pix_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_funnel_events: {
         Row: {
           anonymous_session_id: string
@@ -927,6 +953,35 @@ export type Database = {
           },
         ]
       }
+      ride_qr_tokens: {
+        Row: {
+          consumed_at: string | null
+          expires_at: string
+          ride_id: string
+          token: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          expires_at?: string
+          ride_id: string
+          token?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          expires_at?: string
+          ride_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_qr_tokens_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["ride_id"]
+          },
+        ]
+      }
       ride_ratings: {
         Row: {
           comment: string
@@ -1383,6 +1438,7 @@ export type Database = {
         Args: { p_changes?: Json; p_submission_id: string }
         Returns: Json
       }
+      confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
       create_preferred_ride: {
         Args: { p_details: Json; p_kind: string; p_preferences?: Json }
         Returns: string
@@ -1453,6 +1509,7 @@ export type Database = {
         Returns: number
       }
       expire_ride_match_proposals: { Args: never; Returns: number }
+      generate_ride_qr_token: { Args: { p_ride_id: string }; Returns: Json }
       get_acquisition_funnel_metrics: {
         Args: {
           p_campaign?: string
@@ -1520,6 +1577,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_my_pix_key: { Args: never; Returns: string }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
       get_offer_preference_bonuses: {
@@ -1559,6 +1617,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_ride_pix: { Args: { p_ride_id: string }; Returns: Json }
       get_ride_safety: { Args: { p_ride_id: string }; Returns: Json }
       get_strategic_crossings: {
         Args: {
@@ -1650,6 +1709,7 @@ export type Database = {
         Args: { o: Json; q: Json }
         Returns: boolean
       }
+      save_my_pix_key: { Args: { p_key: string }; Returns: undefined }
       save_my_travel_preferences: {
         Args: { p_consent: boolean; p_preferences: Json }
         Returns: undefined
