@@ -938,6 +938,7 @@ export type Database = {
           time_tolerance_minutes: number
           total_price: number
           travel_preferences: Json | null
+          updated_at: string
           user_id: string
           vehicle_description: string | null
         }
@@ -972,6 +973,7 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id: string
           vehicle_description?: string | null
         }
@@ -1006,6 +1008,7 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id?: string
           vehicle_description?: string | null
         }
@@ -1117,6 +1120,7 @@ export type Database = {
           target_offer_id: string | null
           time_tolerance_minutes: number
           travel_preferences: Json | null
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -1145,6 +1149,7 @@ export type Database = {
           target_offer_id?: string | null
           time_tolerance_minutes?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -1173,6 +1178,7 @@ export type Database = {
           target_offer_id?: string | null
           time_tolerance_minutes?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
