@@ -64,9 +64,11 @@ export const occupationOptions: Array<{ value: UserOccupation; label: string }> 
 ];
 
 export const departureOptions: Array<{ value: DepartureWindow; label: string }> = [
-  { value: "ANTES_18", label: "17h – 19h" },
-  { value: "19_20", label: "19h – 21h" },
-  { value: "21_22", label: "21h – 22h (encerramento)" },
+  { value: "18_19", label: "18h" },
+  { value: "19_20", label: "19h" },
+  { value: "20_21", label: "20h" },
+  { value: "21_22", label: "21h" },
+  { value: "APOS_22", label: "22h" },
 ];
 
 export const legacyDepartureOptions: Array<{ value: DepartureWindow; label: string }> = [
@@ -278,7 +280,7 @@ export function RoleStep({
   onNext,
   onBack,
   stepNumber = 1,
-  totalSteps = 6,
+  totalSteps = 5,
 }: {
   intent?: CaronaaIntent | undefined;
   onIntentChange: (value: CaronaaIntent) => void;
@@ -290,27 +292,60 @@ export function RoleStep({
   const canContinue = Boolean(intent);
 
   return (
-    <StepShell
-      stepNumber={stepNumber}
-      totalSteps={totalSteps}
-      badgeText="Seu Papel"
-      encouragement="Ótimo! Vamos começar entendendo como você pretende participar."
-      title="Como você poderia usar a CARONAA?"
-      description="Estamos conectando pessoas que precisam ir com pessoas que já estão indo pelo mesmo caminho."
-    >
-      <div className="space-y-4">
-        <label className="text-base font-bold text-foreground">Como você deseja participar?</label>
-        <ChoiceGrid
-          value={intent}
-          values={intentOptions}
-          onChange={onIntentChange}
-          ariaLabel="Intenção de uso"
-          columns="grid-cols-1 sm:grid-cols-3"
-        />
+    <div className="flex h-full w-full flex-col justify-between">
+      <div className="mx-auto w-full max-w-2xl px-4 py-4 sm:px-6">
+        <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-caronaa-primary/30 bg-caronaa-primary/10 px-3 py-1 text-xs font-semibold text-caronaa-dark dark:text-caronaa-primary">
+          <Sparkles size={13} className="text-caronaa-primary" />
+          Etapa {stepNumber} de {totalSteps} • Seu Papel
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+              Como você poderia usar a CARONAA?
+            </h2>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Estamos conectando pessoas que precisam ir com pessoas que já estão indo pelo mesmo caminho.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Como você deseja participar hoje?
+            </label>
+            <ChoiceGrid
+              value={intent}
+              values={intentOptions}
+              onChange={onIntentChange}
+              ariaLabel="Intenção de uso"
+              columns="grid-cols-1 sm:grid-cols-3"
+            />
+          </div>
+        </div>
       </div>
 
-      <Nav onNext={onNext} onBack={onBack} canContinue={canContinue} nextLabel="Continuar" />
-    </StepShell>
+      {/* Static/Pinned Bottom Navigation */}
+      <div className="shrink-0 border-t border-border bg-background/95 p-4 backdrop-blur-sm sm:px-6">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent"
+          >
+            Voltar
+          </button>
+
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={!canContinue}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-caronaa-primary px-7 py-2.5 text-sm font-bold text-caronaa-dark shadow-md transition hover:bg-caronaa-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Continuar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -389,7 +424,7 @@ export function RouteDetailsStep({
   onNext,
   onBack,
   stepNumber = 2,
-  totalSteps = 6,
+  totalSteps = 5,
 }: {
   intent?: CaronaaIntent | undefined;
   occupation?: UserOccupation | undefined;
@@ -411,6 +446,7 @@ export function RouteDetailsStep({
   stepNumber?: number;
   totalSteps?: number;
 }) {
+  const [subStep, setSubStep] = React.useState<number>(1);
   const isDriver = intent === "MOTORISTA";
   const destinationLabel = isDriver ? "Para onde você vai?" : "Qual será seu destino?";
 
@@ -427,86 +463,161 @@ export function RouteDetailsStep({
   const hasOccupationValid =
     Boolean(occupation) && (occupation !== "OUTRO" || Boolean(occupationDetails?.trim()));
 
-  const canContinue =
-    hasOccupationValid && Boolean(destinationNeighborhood?.trim()) && Boolean(departureWindow);
+  const canContinueSubStep1 = hasOccupationValid;
+  const canContinueSubStep2 = Boolean(destinationNeighborhood?.trim()) && Boolean(departureWindow);
+
+  function handleNextSubStep() {
+    if (subStep === 1 && canContinueSubStep1) {
+      setSubStep(2);
+    } else if (subStep === 2 && canContinueSubStep2) {
+      onNext();
+    }
+  }
+
+  function handleBackSubStep() {
+    if (subStep > 1) {
+      setSubStep((prev) => prev - 1);
+    } else {
+      onBack();
+    }
+  }
 
   return (
-    <StepShell
-      stepNumber={stepNumber}
-      totalSteps={totalSteps}
-      badgeText="Trajeto & Horário"
-      encouragement="Muito bom! Agora vamos entender a sua rota e horários."
-      title="Vamos entender seu caminho"
-      description="Conte sobre sua ocupação e os pontos aproximados do seu deslocamento."
-    >
-      <div className="space-y-6">
-        {/* Ocupação */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">Sua ocupação:</label>
-          <ChoiceGrid
-            value={occupation}
-            values={occupationOptions}
-            onChange={onOccupationChange}
-            ariaLabel="Ocupação ou perfil"
-            columns="sm:grid-cols-2"
-          />
-
-          {occupation === "OUTRO" && onOccupationDetailsChange && (
-            <div className="mt-3 space-y-1.5 animate-in fade-in duration-200">
-              <label
-                htmlFor="occupation-details"
-                className="text-xs font-semibold text-muted-foreground"
-              >
-                Como você se identifica? *
-              </label>
-              <input
-                id="occupation-details"
-                type="text"
-                value={occupationDetails ?? ""}
-                onChange={(e) => onOccupationDetailsChange(e.target.value)}
-                placeholder="Ex.: Pesquisador, Visitante de outro estado, Empreendedor..."
-                className="min-h-11 w-full rounded-xl border bg-background px-3.5 py-2 text-sm outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
+    <div className="flex h-full w-full flex-col justify-between">
+      <div className="mx-auto w-full max-w-2xl px-4 py-4 sm:px-6">
+        {/* Sub-step Indicator */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-caronaa-primary/30 bg-caronaa-primary/10 px-3 py-1 text-xs font-semibold text-caronaa-dark dark:text-caronaa-primary">
+            <Sparkles size={13} className="text-caronaa-primary" />
+            Etapa {stepNumber} de {totalSteps} • Trajeto & Horário ({subStep}/2)
+          </div>
+          <div className="flex gap-1.5">
+            {[1, 2].map((s) => (
+              <div
+                key={s}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  s === subStep
+                    ? "bg-caronaa-primary w-8"
+                    : s < subStep
+                      ? "bg-caronaa-primary/60 w-6"
+                      : "bg-muted w-6"
+                }`}
               />
+            ))}
+          </div>
+        </div>
+
+        {/* SUBSTEP 1: Ocupação */}
+        {subStep === 1 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Qual é a sua ocupação principal?
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                Isso ajuda a entender a rotina de quem compartilha a rota.
+              </p>
             </div>
-          )}
-        </div>
 
-        {/* Origem Fixa Oficial e Destino */}
-        <div className="space-y-4 pt-1">
-          <FixedOriginCard isDriver={isDriver} />
+            <div className="space-y-3">
+              <ChoiceGrid
+                value={occupation}
+                values={occupationOptions}
+                onChange={onOccupationChange}
+                ariaLabel="Ocupação ou perfil"
+                columns="grid-cols-1 sm:grid-cols-2"
+              />
 
-          <LocationAutocomplete
-            id="destination-input"
-            label={destinationLabel}
-            required
-            value={destinationNeighborhood ?? ""}
-            selectedLocation={destinationLocation}
-            placeholder="Ex.: Atacadão Maracanaú, Aldeota, UNIFOR, Messejana..."
-            onChange={(val, details) => {
-              onDestinationNeighborhoodChange(val);
-              if (onDestinationLocationChange) onDestinationLocationChange(val, details);
-            }}
-            helperText="Apenas o bairro ou região aproximada será usado para encontrar trajetos compatíveis."
-          />
-        </div>
+              {occupation === "OUTRO" && onOccupationDetailsChange && (
+                <div className="mt-3 space-y-1.5 animate-in fade-in duration-200">
+                  <label
+                    htmlFor="occupation-details"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Como você se identifica? *
+                  </label>
+                  <input
+                    id="occupation-details"
+                    type="text"
+                    value={occupationDetails ?? ""}
+                    onChange={(e) => onOccupationDetailsChange(e.target.value)}
+                    placeholder="Ex.: Pesquisador, Visitante de outro estado, Empreendedor..."
+                    className="min-h-11 w-full rounded-xl border bg-background px-3.5 py-2 text-sm outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-        {/* Horário de saída */}
-        <div className="space-y-2 pt-1">
-          <label className="text-sm font-semibold text-foreground">
-            Que horas você pretende sair? (seleção única)
-          </label>
-          <ChoiceGrid
-            value={departureWindow}
-            values={departureOptions}
-            onChange={onDepartureWindowChange}
-            ariaLabel="Janela de horário"
-            columns="grid-cols-1 sm:grid-cols-3"
-          />
-        </div>
+        {/* SUBSTEP 2: Destino & Horário de saída */}
+        {subStep === 2 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Para onde você vai e que horas?
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                Ponto de saída oficial e horário para encontrar caronas compatíveis.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <FixedOriginCard isDriver={isDriver} />
+
+              <LocationAutocomplete
+                id="destination-input"
+                label={destinationLabel}
+                required
+                value={destinationNeighborhood ?? ""}
+                selectedLocation={destinationLocation}
+                placeholder="Ex.: Atacadão Maracanaú, Aldeota, UNIFOR, Messejana..."
+                onChange={(val, details) => {
+                  onDestinationNeighborhoodChange(val);
+                  if (onDestinationLocationChange) onDestinationLocationChange(val, details);
+                }}
+                helperText="Apenas o bairro ou região aproximada será usado para encontrar trajetos compatíveis."
+              />
+
+              <div className="space-y-1.5 pt-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Que horas você pretende sair? (horários de hoje)
+                </label>
+                <ChoiceGrid
+                  value={departureWindow}
+                  values={departureOptions}
+                  onChange={onDepartureWindowChange}
+                  ariaLabel="Janela de horário"
+                  columns="grid-cols-5"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <Nav onNext={onNext} onBack={onBack} canContinue={canContinue} nextLabel="Avançar trajeto" />
-    </StepShell>
+      {/* Static/Pinned Bottom Navigation */}
+      <div className="shrink-0 border-t border-border bg-background/95 p-4 backdrop-blur-sm sm:px-6">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleBackSubStep}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent"
+          >
+            Voltar
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNextSubStep}
+            disabled={subStep === 1 ? !canContinueSubStep1 : !canContinueSubStep2}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-caronaa-primary px-7 py-2.5 text-sm font-bold text-caronaa-dark shadow-md transition hover:bg-caronaa-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {subStep === 2 ? "Avançar trajeto" : "Continuar"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -803,7 +914,7 @@ export function ProfileRouteStep({
               values={departureOptions}
               onChange={onDepartureWindowChange}
               ariaLabel="Janela de horário"
-              columns="grid-cols-1 sm:grid-cols-3"
+              columns="grid-cols-2 sm:grid-cols-5"
             />
           </div>
         </div>
@@ -1273,7 +1384,7 @@ export function InterestStep({
 
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
                   <div className="flex justify-between">
-                    <span>Taxa da plataforma (25% em validação):</span>
+                    <span>Taxa da plataforma (15% em validação):</span>
                     <span className="font-semibold text-muted-foreground">
                       - R$ {currentFee.toFixed(2)}
                     </span>

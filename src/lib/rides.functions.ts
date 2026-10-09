@@ -360,8 +360,13 @@ function mapRide(
 }
 
 async function getAdminClient(): Promise<SupabaseAppClient> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin as unknown as SupabaseAppClient;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return supabaseAdmin as unknown as SupabaseAppClient;
+  } catch {
+    const { supabase } = await import("@/integrations/supabase/client");
+    return supabase as unknown as SupabaseAppClient;
+  }
 }
 
 async function discoverOffers(
@@ -570,10 +575,11 @@ export const getMyRides = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { error: routineError } = await context.supabase.rpc("refresh_ride_routine_occurrences");
     if (routineError) throw new Error(routineError.message);
-    const client = await getAdminClient();
+    const client = context.supabase;
     const { error: expiryError } = await client.rpc("expire_ride_match_proposals");
-    if (expiryError)
-      throw new Error(expiryError.message || "Não foi possível atualizar propostas expiradas.");
+    if (expiryError) {
+      console.warn("Could not expire ride match proposals:", expiryError.message);
+    }
 
     const { data: rides, error: ridesError } = await client
       .from("rides")
