@@ -64,11 +64,11 @@ describe("ContactStep and FormSuccess", () => {
       />,
     );
 
-    // Labels e campos
+    // Labels e campos (Sub-etapa 1)
     expect(screen.getByLabelText(/Como prefere ser chamado\? \*/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/WhatsApp para contato \*/i)).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/E-mail institucional ou pessoal \(opcional\)/i),
+      screen.getByLabelText(/E-mail institucional \/ pessoal \(opcional\)/i),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Comentário ou sugestão \*/i)).toBeInTheDocument();
 
@@ -78,38 +78,11 @@ describe("ContactStep and FormSuccess", () => {
     );
     expect(feedbackInput).toBeInTheDocument();
 
-    // Seção "Antes de continuar" e checkboxes
-    expect(screen.getByText(/Antes de continuar/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Li e concordo com os Termos de Uso/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Concordo com a Política de Privacidade/i)).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/Aceito receber pesquisas de validação e novidades/i),
-    ).toBeInTheDocument();
+    // Botão continuar desabilitado inicialmente
+    const continueBtn = screen.getByRole("button", { name: /Continuar/i });
+    expect(continueBtn).toBeDisabled();
 
-    // Links de termos, privacidade e segurança com target="_blank"
-    const termosLink = screen.getByRole("link", { name: /Termos de Uso/i });
-    expect(termosLink).toHaveAttribute("target", "_blank");
-    expect(termosLink).toHaveAttribute("href", "/termos");
-
-    const privacidadeLink = screen.getByRole("link", { name: /Política de Privacidade/i });
-    expect(privacidadeLink).toHaveAttribute("target", "_blank");
-    expect(privacidadeLink).toHaveAttribute("href", "/privacidade");
-
-    const segurancaLink = screen.getByRole("link", { name: /Segurança e responsabilidades/i });
-    expect(segurancaLink).toHaveAttribute("target", "_blank");
-    expect(segurancaLink).toHaveAttribute("href", "/seguranca");
-
-    // Bloco transparência
-    expect(screen.getByText(/Transparência e responsabilidade:/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Nenhuma carona é garantida antecipadamente nem iniciada automaticamente/i),
-    ).toBeInTheDocument();
-
-    // Botão desabilitado inicialmente
-    const submitBtn = screen.getByRole("button", { name: /Concluir e procurar combinação/i });
-    expect(submitBtn).toBeDisabled();
-
-    // Re-renderizar com dados completos válidos
+    // Re-renderizar com dados completos válidos para sub-etapa 1
     rerender(
       <ContactStep
         name="Maria Clara"
@@ -132,6 +105,30 @@ describe("ContactStep and FormSuccess", () => {
       />,
     );
 
+    expect(continueBtn).not.toBeDisabled();
+    fireEvent.click(continueBtn);
+
+    // Sub-etapa 2: Termos e consentimento
+    expect(screen.getByText(/Antes de continuar/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Li e concordo com os Termos de Uso/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Concordo com a Política de Privacidade/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Aceito receber pesquisas de validação e novidades/i),
+    ).toBeInTheDocument();
+
+    // Links de termos e privacidade com target="_blank"
+    const termosLink = screen.getByRole("link", { name: /Termos de Uso/i });
+    expect(termosLink).toHaveAttribute("target", "_blank");
+    expect(termosLink).toHaveAttribute("href", "/termos");
+
+    const privacidadeLink = screen.getByRole("link", { name: /Política de Privacidade/i });
+    expect(privacidadeLink).toHaveAttribute("target", "_blank");
+    expect(privacidadeLink).toHaveAttribute("href", "/privacidade");
+
+    // Bloco transparência
+    expect(screen.getByText(/Transparência e responsabilidade:/i)).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole("button", { name: /Concluir e procurar combinação/i });
     expect(submitBtn).not.toBeDisabled();
     fireEvent.click(submitBtn);
     expect(nextCalled).toBe(true);

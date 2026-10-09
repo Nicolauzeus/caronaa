@@ -39,12 +39,6 @@ export const STEP_DEFINITIONS: StepDefinition[] = [
     isEligible: () => true,
   },
   {
-    id: "EVENT_PRESENCE",
-    title: "Quando você estará por aqui?",
-    badgeText: "Dias no STS",
-    isEligible: () => true,
-  },
-  {
     id: "PROPOSAL_TRANSITION",
     title: "Como funciona a CARONAA",
     badgeText: "Proposta",
@@ -94,7 +88,7 @@ export function getNextStep(currentStep: FormStep, data: CaronaaStsFormData): Fo
   }
 
   if (currentStep === "ROUTE_DETAILS") {
-    return "EVENT_PRESENCE";
+    return "PROPOSAL_TRANSITION";
   }
 
   if (currentStep === "EVENT_PRESENCE") {
@@ -140,7 +134,7 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
   if (currentStep === "PROFILE_ROUTE") return "INTRO";
   if (currentStep === "ROUTE_DETAILS") return "ROLE_SELECTION";
   if (currentStep === "EVENT_PRESENCE") return "ROUTE_DETAILS";
-  if (currentStep === "PROPOSAL_TRANSITION") return "EVENT_PRESENCE";
+  if (currentStep === "PROPOSAL_TRANSITION") return "ROUTE_DETAILS";
 
   if (
     currentStep === "DRIVER_FLOW" ||
@@ -170,16 +164,15 @@ export function getPreviousStep(currentStep: FormStep, data: CaronaaStsFormData)
 export function getStepIndex(currentStep: FormStep, data: CaronaaStsFormData): number {
   if (currentStep === "ROLE_SELECTION" || currentStep === "PROFILE_ROUTE") return 1;
   if (currentStep === "ROUTE_DETAILS") return 2;
-  if (currentStep === "EVENT_PRESENCE") return 3;
-  if (currentStep === "PROPOSAL_TRANSITION") return 4;
+  if (currentStep === "PROPOSAL_TRANSITION") return 3;
   if (
     currentStep === "DRIVER_FLOW" ||
     currentStep === "PASSENGER_FLOW" ||
     currentStep === "BOTH_FLOW"
   ) {
-    return 5;
+    return 4;
   }
-  if (currentStep === "CONTACT") return 6;
+  if (currentStep === "CONTACT") return 5;
 
   const active = getActiveSteps(data);
   const idx = active.indexOf(currentStep);
@@ -196,23 +189,23 @@ export function getProgressPercentage(currentStep: FormStep, data: CaronaaStsFor
     return 0;
   }
   if (currentStep === "ROLE_SELECTION" || currentStep === "PROFILE_ROUTE") {
-    return 17;
+    return 20;
   }
   if (currentStep === "ROUTE_DETAILS") {
-    return 33;
+    return 40;
   }
   if (currentStep === "EVENT_PRESENCE") {
-    return 50;
+    return 40;
   }
   if (currentStep === "PROPOSAL_TRANSITION") {
-    return 67;
+    return 60;
   }
   if (
     currentStep === "DRIVER_FLOW" ||
     currentStep === "PASSENGER_FLOW" ||
     currentStep === "BOTH_FLOW"
   ) {
-    return 83;
+    return 80;
   }
   if (currentStep === "CONTACT" || currentStep === "INTEREST") {
     return 100;

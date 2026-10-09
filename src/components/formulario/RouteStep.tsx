@@ -18,28 +18,24 @@ const departureOptions: Array<{
   description?: string;
 }> = [
   {
-    value: "ANTES_18",
-    label: "Antes das 18h",
-  },
-  {
     value: "18_19",
-    label: "18h – 19h",
+    label: "18h",
   },
   {
     value: "19_20",
-    label: "19h – 20h",
+    label: "19h",
   },
   {
     value: "20_21",
-    label: "20h – 21h",
+    label: "20h",
   },
   {
     value: "21_22",
-    label: "21h – 22h",
+    label: "21h",
   },
   {
     value: "APOS_22",
-    label: "Depois das 22h",
+    label: "22h",
   },
 ];
 

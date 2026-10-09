@@ -161,7 +161,7 @@ function DriverPriceStep({
           </div>
 
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-muted-foreground">Taxa CARONAA 25%</dt>
+            <dt className="text-muted-foreground">Taxa CARONAA 15%</dt>
             <dd className="font-semibold text-destructive">
               - {pricing ? formatMoney(pricing.caronaaFee) : "R$ 0,00"}
             </dd>
@@ -194,7 +194,7 @@ function PriceStepShell({
 
   const description = isPassenger
     ? "Imagine que encontramos hoje alguém saindo do STS, em horário parecido, e indo para perto do seu destino."
-    : "Informe o valor exato cobrado de cada passageiro. A CARONAA retém 25% e mostra quanto fica líquido para você.";
+    : "Informe o valor exato cobrado de cada passageiro. A CARONAA retém 15% e mostra quanto fica líquido para você.";
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">

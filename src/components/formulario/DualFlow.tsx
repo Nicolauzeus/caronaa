@@ -3,10 +3,10 @@ import React from "react";
 import {
   Sparkles,
   Check,
-  ShieldAlert,
   Info,
-  Lock,
   AlertTriangle,
+  Car,
+  User,
   ArrowRightLeft,
 } from "lucide-react";
 import type {
@@ -18,12 +18,15 @@ import type {
   TrustFactor,
   VehicleType,
 } from "@/lib/formulario/types";
+import {
+  calculateCaronaaFee,
+  calculateDriverNet,
+  MIN_DRIVER_PRICE,
+} from "@/lib/formulario/pricing";
 
-const MIN_DRIVER_PRICE = 3.5;
 const MAX_DRIVER_PRICE = 25.0;
 const MIN_PASSENGER_PRICE = 3.5;
 const MAX_PASSENGER_PRICE = 25.0;
-const PLATFORM_FEE_RATE = 0.25;
 
 type DualFlowProps = {
   dualPriority?: DualPriority | undefined;
@@ -172,15 +175,6 @@ const vehicleOptions: Array<{
 
 const seatOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-const driverBarrierOptions = [
-  { id: "PONTO_ENCONTRO", label: "Dificuldade de combinar o ponto exato de encontro no evento" },
-  { id: "ATRASO", label: "Receio de que a outra pessoa se atrase no horário combinado" },
-  { id: "CANCELAMENTO", label: "Receio de cancelamento de última hora" },
-  { id: "DESVIO_ROTA", label: "Preocupação com desvios que aumentem muito o tempo de viagem" },
-  { id: "PAGAMENTO", label: "Dúvida sobre a compensação e taxa de serviço" },
-  { id: "OUTRA", label: "Outra questão" },
-];
-
 const driverRealValidationOptions: Array<{
   value: DriverRealValidation;
   label: string;
@@ -204,35 +198,6 @@ const driverRealValidationOptions: Array<{
   },
 ];
 
-const transportOptions = [
-  { value: "UBER_99", icon: "🚗", label: "Aplicativos (Uber / 99)" },
-  { value: "ONIBUS", icon: "🚌", label: "Ônibus convencional" },
-  { value: "METRO_VLT", icon: "🚆", label: "Metrô / VLT" },
-  { value: "CARRO_PROPRIO", icon: "🚘", label: "Carro próprio" },
-  { value: "MOTO_PROPRIA", icon: "🏍️", label: "Moto própria" },
-  { value: "CARONA", icon: "👥", label: "Carona com colegas" },
-  { value: "COMBINACAO", icon: "🔄", label: "Combinação de transportes" },
-  { value: "OUTRO", icon: "📍", label: "Outro modo" },
-];
-
-const difficultyOptions = [
-  { id: "DOR_01", label: "Dificuldade de encontrar transporte rápido e direto para essa rota." },
-  { id: "DOR_02", label: "Transporte público lotado ou desconfortável nos horários de pico." },
-  { id: "DOR_03", label: "Preços muito elevados de corridas por aplicativo na saída do evento." },
-  { id: "DOR_04", label: "Demora excessiva para voltar para casa após palestras e oficinas." },
-  { id: "DOR_06", label: "Receio de segurança ao combinar viagens com pessoas desconhecidas." },
-  { id: "OUTRA", label: "Outra dificuldade no deslocamento." },
-];
-
-const passengerBarrierOptions = [
-  { id: "HORARIO", label: "Incerteza sobre o horário exato de saída do evento" },
-  { id: "SEGURANCA", label: "Receio de segurança ao entrar no carro de um desconhecido" },
-  { id: "PONTO_ENCONTRO", label: "Dificuldade de localizar o ponto de encontro combinado" },
-  { id: "CANCELAMENTO", label: "Receio de cancelamento de última hora por parte do motorista" },
-  { id: "PAGAMENTO", label: "Dúvida sobre a forma de pagamento ou divisão da compensação" },
-  { id: "OUTRA", label: "Outra questão" },
-];
-
 const passengerIntentionOptions: Array<{
   value: PassengerIntention;
   label: string;
@@ -254,6 +219,8 @@ const passengerIntentionOptions: Array<{
     description: "Quero usar no Siará Tech Summit e também na minha rotina regular.",
   },
 ];
+
+const pricePresets = [5, 10, 15, 20, 25];
 
 export function DualFlow({
   dualPriority,
@@ -294,11 +261,36 @@ export function DualFlow({
   onPassengerIntentionChange,
   onNext,
   onBack,
-  stepNumber = 3,
-  totalSteps = 4,
+  stepNumber = 4,
+  totalSteps = 5,
 }: DualFlowProps) {
-  // Controle de preço motorista
+  const [subStep, setSubStep] = React.useState<number>(1);
+
+  // Inicialização de preços padrões
   const currentDriverPrice = driverPrice !== undefined ? driverPrice : 10;
+  const currentPassengerPrice = passengerFairPrice !== undefined ? passengerFairPrice : 10;
+
+  React.useEffect(() => {
+    if (driverPrice === undefined) {
+      onDriverPriceChange(10);
+    }
+  }, [driverPrice, onDriverPriceChange]);
+
+  React.useEffect(() => {
+    if (passengerFairPrice === undefined) {
+      onPassengerFairPriceChange(10);
+    }
+  }, [passengerFairPrice, onPassengerFairPriceChange]);
+
+  const isMoto = vehicleType === "MOTO";
+
+  React.useEffect(() => {
+    if (isMoto && availableSeats !== 1) {
+      onAvailableSeatsChange(1);
+    }
+  }, [isMoto, availableSeats, onAvailableSeatsChange]);
+
+  // Preço Motorista
   const [driverRawCents, setDriverRawCents] = React.useState<string>(() =>
     Math.round(currentDriverPrice * 100).toString(),
   );
@@ -317,14 +309,18 @@ export function DualFlow({
     }
   }
 
-  const numericDriverPrice = driverRawCents ? parseInt(driverRawCents, 10) / 100 : 0;
+  function handleDriverPricePreset(preset: number) {
+    onDriverPriceChange(preset);
+    setDriverRawCents(Math.round(preset * 100).toString());
+  }
+
+  const numericDriverPrice = driverRawCents ? parseInt(driverRawCents, 10) / 100 : 10;
   const isDriverPriceValid =
     numericDriverPrice >= MIN_DRIVER_PRICE && numericDriverPrice <= MAX_DRIVER_PRICE;
-  const currentFee = numericDriverPrice * PLATFORM_FEE_RATE;
-  const currentNet = numericDriverPrice - currentFee;
+  const currentFee = isDriverPriceValid ? calculateCaronaaFee(numericDriverPrice) : 0;
+  const currentNet = isDriverPriceValid ? calculateDriverNet(numericDriverPrice) : 0;
 
-  // Controle de preço passageiro
-  const currentPassengerPrice = passengerFairPrice !== undefined ? passengerFairPrice : 10;
+  // Preço Passageiro
   const [passengerRawCents, setPassengerRawCents] = React.useState<string>(() =>
     Math.round(currentPassengerPrice * 100).toString(),
   );
@@ -343,12 +339,17 @@ export function DualFlow({
     }
   }
 
-  const numericPassengerPrice = passengerRawCents ? parseInt(passengerRawCents, 10) / 100 : 0;
+  function handlePassengerPricePreset(preset: number) {
+    onPassengerFairPriceChange(preset);
+    setPassengerRawCents(Math.round(preset * 100).toString());
+  }
+
+  const numericPassengerPrice = passengerRawCents ? parseInt(passengerRawCents, 10) / 100 : 10;
   const isPassengerPriceValid =
     numericPassengerPrice >= MIN_PASSENGER_PRICE && numericPassengerPrice <= MAX_PASSENGER_PRICE;
 
-  // Toggle helpers
-  function toggleTrustFactor(id: TrustFactor) {
+  // Toggles
+  function toggleTrust(id: TrustFactor) {
     if (trustFactors.includes(id)) {
       onTrustFactorsChange(trustFactors.filter((item) => item !== id));
       if (id === "MESMO_GENERO") {
@@ -359,757 +360,371 @@ export function DualFlow({
     }
   }
 
-  function toggleDriverBarrier(id: string) {
-    const next = driverBarriers.includes(id)
-      ? driverBarriers.filter((item) => item !== id)
-      : [...driverBarriers, id];
-    onDriverBarriersChange(next);
+  // Validações por sub-etapa
+  const canContinueSubStep1 =
+    Boolean(dualPriority) && (dualPriority === "PEGAR" || (Boolean(vehicleType) && availableSeats !== undefined));
+  const canContinueSubStep2 = true;
+  const canContinueSubStep3 = isDriverPriceValid && isPassengerPriceValid;
+  const canContinueSubStep4 = Boolean(driverRealValidation) || Boolean(passengerIntention);
+
+  function handleNextSubStep() {
+    if (subStep === 1 && canContinueSubStep1) {
+      setSubStep(2);
+    } else if (subStep === 2 && canContinueSubStep2) {
+      setSubStep(3);
+    } else if (subStep === 3 && canContinueSubStep3) {
+      setSubStep(4);
+    } else if (subStep === 4 && canContinueSubStep4) {
+      onNext();
+    }
   }
 
-  function togglePassengerTransport(val: string) {
-    const next = passengerTransports.includes(val)
-      ? passengerTransports.filter((item) => item !== val)
-      : [...passengerTransports, val];
-    onPassengerTransportsChange(next);
+  function handleBackSubStep() {
+    if (subStep > 1) {
+      setSubStep((prev) => prev - 1);
+    } else {
+      onBack();
+    }
   }
-
-  function togglePassengerDifficulty(id: string) {
-    const next = passengerDifficulties.includes(id)
-      ? passengerDifficulties.filter((item) => item !== id)
-      : [...passengerDifficulties, id];
-    onPassengerDifficultiesChange(next);
-  }
-
-  function togglePassengerBarrier(id: string) {
-    const next = passengerBarriers.includes(id)
-      ? passengerBarriers.filter((item) => item !== id)
-      : [...passengerBarriers, id];
-    onPassengerBarriersChange(next);
-  }
-
-  // Validações
-  const isDriverBarrierCustomValid =
-    !driverBarriers.includes("OUTRA") || Boolean(driverBarriersCustom?.trim());
-  const isPassengerTransportCustomValid =
-    !passengerTransports.includes("OUTRO") || Boolean(passengerTransportsCustom?.trim());
-  const isPassengerDifficultyCustomValid =
-    !passengerDifficulties.includes("OUTRA") || Boolean(passengerDifficultiesCustom?.trim());
-  const isPassengerBarrierCustomValid =
-    !passengerBarriers.includes("OUTRA") || Boolean(passengerBarriersCustom?.trim());
-
-  const isDriverValid =
-    Boolean(vehicleType) &&
-    availableSeats !== undefined &&
-    isDriverPriceValid &&
-    isDriverBarrierCustomValid &&
-    Boolean(driverRealValidation) &&
-    (availableSeats > 0 || Boolean(driverFutureOffer));
-
-  const isPassengerValid =
-    passengerTransports.length > 0 &&
-    isPassengerTransportCustomValid &&
-    passengerDifficulties.length > 0 &&
-    isPassengerDifficultyCustomValid &&
-    isPassengerPriceValid &&
-    isPassengerBarrierCustomValid &&
-    Boolean(passengerIntention);
-
-  const canContinue = Boolean(dualPriority) && isDriverValid && isPassengerValid;
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
-      {/* Header com badge */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-caronaa-primary/30 bg-caronaa-primary/10 px-3 py-1 text-xs font-bold text-caronaa-dark dark:text-caronaa-primary">
-            Etapa {stepNumber} de {totalSteps} • Oferecer e Pegar Carona
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-            <ArrowRightLeft size={13} />
-            Perfil flexível (os dois)
-          </span>
-        </div>
-
-        <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl text-foreground">
-          Como você quer participar da CARONAA?
-        </h2>
-
-        <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Como você topa tanto oferecer quanto pegar carona, já aproveitamos seu caminho e
-          precisamos apenas entender suas preferências para cada possibilidade.
-        </p>
-      </div>
-
-      {/* BLOCO 1: PERGUNTA INICIAL OBRIGATÓRIA — PRIORIDADE */}
-      <div className="space-y-3 rounded-2xl border-2 border-caronaa-primary/30 bg-card/60 p-5 shadow-xs">
-        <div className="space-y-1">
-          <label className="text-base font-bold text-foreground">
-            Hoje, qual dessas possibilidades é mais importante para você? *
-          </label>
-          <p className="text-xs text-muted-foreground">
-            Isso ajuda nossa equipe a priorizar seu contato e mapear as combinações ideais.
-          </p>
-        </div>
-
-        <div
-          className="grid gap-2.5 sm:grid-cols-3"
-          role="radiogroup"
-          aria-label="Prioridade entre oferecer e pegar"
-        >
-          {priorityOptions.map((opt) => {
-            const isSelected = dualPriority === opt.value;
-
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                onClick={() => onDualPriorityChange(opt.value)}
-                className={[
-                  "flex flex-col items-start rounded-xl border p-3.5 text-left transition relative",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-caronaa-primary",
-                  isSelected
-                    ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary/20 shadow-xs"
-                    : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40",
-                ].join(" ")}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{opt.icon}</span>
-                    <span className="font-bold text-xs sm:text-sm text-foreground">
-                      {opt.label}
-                    </span>
-                  </div>
-                  {isSelected && (
-                    <span className="size-4 rounded-full bg-caronaa-primary flex items-center justify-center text-caronaa-dark shrink-0">
-                      <Check size={11} className="stroke-[3]" />
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] leading-relaxed text-muted-foreground mt-2">
-                  {opt.description}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* BLOCO 2: CONFIANÇA UNIFICADA (REUTILIZADA, SEM DUPLICIDADE) */}
-      <div className="space-y-4 rounded-2xl border border-border bg-card/60 p-5 shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-caronaa-dark dark:text-caronaa-primary font-bold text-xs uppercase tracking-wide">
-            <Sparkles size={14} />
-            Confiança e Segurança Unificada
+    <div className="flex h-full w-full flex-col justify-between">
+      <div className="mx-auto w-full max-w-2xl px-4 py-4 sm:px-6">
+        {/* Sub-step Indicator */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-caronaa-primary/30 bg-caronaa-primary/10 px-3 py-1 text-xs font-semibold text-caronaa-dark dark:text-caronaa-primary">
+            <ArrowRightLeft size={13} className="text-caronaa-primary" />
+            Etapa {stepNumber} de {totalSteps} • Perfil Duplo ({subStep}/4)
           </div>
-          <label className="text-base font-bold text-foreground block">
-            O que traria confiança para você compartilhar o trajeto?
-          </label>
-          <p className="text-xs text-muted-foreground">
-            Essas preferências valem para quando você estiver oferecendo ou pegando carona.
-          </p>
+          <div className="flex gap-1.5">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={`h-1.5 w-6 rounded-full transition-all duration-300 ${
+                  s === subStep
+                    ? "bg-caronaa-primary w-8"
+                    : s < subStep
+                      ? "bg-caronaa-primary/60"
+                      : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          {sharedTrustOptions.map((opt) => {
-            const isChecked = trustFactors.includes(opt.id);
+        {/* SUBSTEP 1: Prioridade de hoje & Veículo */}
+        {subStep === 1 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Qual é a sua prioridade hoje?
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                Você pode atuar como motorista ou passageiro dependendo das caronas disponíveis.
+              </p>
+            </div>
 
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => toggleTrustFactor(opt.id)}
-                className={[
-                  "flex items-start justify-between rounded-xl border p-3.5 text-left transition",
-                  isChecked
-                    ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30 shadow-xs"
-                    : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40",
-                ].join(" ")}
-              >
-                <div className="min-w-0 pr-2">
-                  <span className="font-bold text-xs sm:text-sm text-foreground block">
-                    {opt.label}
-                  </span>
-                  <span className="text-[11px] leading-relaxed text-muted-foreground mt-0.5 block">
-                    {opt.description}
-                  </span>
-                </div>
-                <div
-                  className={[
-                    "size-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition",
-                    isChecked
-                      ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
-                      : "border-muted-foreground/40",
-                  ].join(" ")}
-                >
-                  {isChecked && <Check size={11} className="stroke-[3]" />}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Preferência de gênero opcional */}
-        {trustFactors.includes("MESMO_GENERO") && (
-          <div className="rounded-xl border border-border bg-accent/20 p-4 space-y-3 animate-in fade-in duration-200">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-foreground block">
-                Qual gênero você gostaria de considerar? (Opcional)
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {[
-                  { value: "FEMININO" as DriverGenderPreference, label: "Feminino" },
-                  { value: "MASCULINO" as DriverGenderPreference, label: "Masculino" },
-                  {
-                    value: "OUTRO" as DriverGenderPreference,
-                    label: "Outro / Prefiro não informar",
-                  },
-                ].map((g) => (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              {priorityOptions.map((opt) => {
+                const isSelected = dualPriority === opt.value;
+                return (
                   <button
-                    key={g.value}
+                    key={opt.value}
                     type="button"
-                    onClick={() => onGenderPreferenceChange(g.value)}
-                    className={[
-                      "rounded-xl border p-2.5 text-xs font-bold transition text-center",
-                      genderPreference === g.value
-                        ? "border-caronaa-primary bg-caronaa-primary/20 text-caronaa-dark dark:text-caronaa-primary ring-1 ring-caronaa-primary/40"
-                        : "border-border bg-card hover:bg-accent/40",
-                    ].join(" ")}
+                    onClick={() => onDualPriorityChange(opt.value)}
+                    className={`flex flex-col items-start rounded-xl border p-3.5 text-left transition-all ${
+                      isSelected
+                        ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary shadow-sm"
+                        : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40"
+                    }`}
                   >
-                    {g.label}
+                    <span className="text-2xl mb-1.5">{opt.icon}</span>
+                    <span className="text-sm font-semibold">{opt.label}</span>
+                    <span className="text-xs text-muted-foreground mt-0.5">{opt.description}</span>
                   </button>
-                ))}
+                );
+              })}
+            </div>
+
+            {dualPriority !== "PEGAR" && (
+              <div className="space-y-3 border-t border-border pt-3">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Seu veículo disponível hoje
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {vehicleOptions.map((opt) => {
+                    const isSelected = vehicleType === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => onVehicleTypeChange(opt.value)}
+                        className={`flex flex-col items-center rounded-xl border p-2.5 text-center transition-all ${
+                          isSelected
+                            ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary font-medium shadow-sm"
+                            : "border-border bg-card hover:border-caronaa-primary/40"
+                        }`}
+                      >
+                        <span className="text-xl mb-1">{opt.icon}</span>
+                        <span className="text-xs font-semibold">{opt.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {vehicleType && (
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <label className="text-xs font-semibold text-foreground">
+                      Vagas disponíveis no veículo:
+                    </label>
+                    {isMoto ? (
+                      <p className="mt-1 text-xs font-semibold text-caronaa-primary">
+                        🏍️ 1 vaga exclusiva para passageiro com capacete
+                      </p>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {seatOptions.map((seats) => (
+                          <button
+                            key={seats}
+                            type="button"
+                            onClick={() => onAvailableSeatsChange(seats)}
+                            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-bold transition-all ${
+                              availableSeats === seats
+                                ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark ring-2 ring-caronaa-primary"
+                                : "border-border bg-background hover:border-caronaa-primary/50"
+                            }`}
+                          >
+                            {seats}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SUBSTEP 2: Fatores de Confiança & Segurança */}
+        {subStep === 2 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                O que te dá mais segurança e confiança?
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                Selecione os fatores mais importantes para você em uma carona no evento.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {sharedTrustOptions.map((opt) => {
+                const isSelected = trustFactors.includes(opt.id);
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => toggleTrust(opt.id)}
+                    className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all ${
+                      isSelected
+                        ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary"
+                        : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40"
+                    }`}
+                  >
+                    <div
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                        isSelected
+                          ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
+                          : "border-muted-foreground/40 bg-background"
+                      }`}
+                    >
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold leading-tight">{opt.label}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        {opt.description}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {trustFactors.includes("MESMO_GENERO") && (
+              <div className="rounded-xl border border-caronaa-primary/30 bg-caronaa-primary/5 p-3">
+                <label className="text-xs font-semibold text-foreground">
+                  Qual é a sua preferência de gênero?
+                </label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onGenderPreferenceChange("MULHERES")}
+                    className={`rounded-lg border p-2 text-xs font-medium transition-all ${
+                      genderPreference === "MULHERES"
+                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark font-bold"
+                        : "border-border bg-background"
+                    }`}
+                  >
+                    Apenas mulheres
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onGenderPreferenceChange("HOMENS")}
+                    className={`rounded-lg border p-2 text-xs font-medium transition-all ${
+                      genderPreference === "HOMENS"
+                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark font-bold"
+                        : "border-border bg-background"
+                    }`}
+                  >
+                    Apenas homens
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SUBSTEP 3: Compensação & Contribuição Justa */}
+        {subStep === 3 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Compensação justa por passageiro
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                A CARONAA sugere valores justos para ajuda de custo em combustível e trajeto.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-caronaa-primary/30 bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Valor sugerido</span>
+                  <div className="text-2xl font-black text-caronaa-dark dark:text-caronaa-primary">
+                    R$ {numericDriverPrice.toFixed(2).replace(".", ",")}
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  {pricePresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        handleDriverPricePreset(preset);
+                        handlePassengerPricePreset(preset);
+                      }}
+                      className={`h-8 px-2.5 rounded-lg border text-xs font-bold transition-all ${
+                        numericDriverPrice === preset
+                          ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
+                          : "border-border bg-background hover:bg-accent"
+                      }`}
+                    >
+                      R$ {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-muted/40 p-3 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Taxa da plataforma (15%):</span>
+                  <p className="font-semibold text-foreground">
+                    R$ {currentFee.toFixed(2).replace(".", ",")}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Repasse ao motorista:</span>
+                  <p className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    R$ {currentNet.toFixed(2).replace(".", ",")}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 rounded-lg bg-background/80 p-2.5 border border-border/60">
-              <Lock size={14} className="text-muted-foreground shrink-0 mt-0.5" />
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                <strong>Dado pessoal confidencial:</strong> Esta preferência é protegida e visa
-                exclusivamente seu conforto pessoal.
-              </p>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground flex items-start gap-2">
+              <Info size={16} className="mt-0.5 text-caronaa-primary shrink-0" />
+              <span>
+                O valor padrão pré-selecionado é de <strong>R$ 10,00</strong>. Você pode ajustá-lo livremente entre R$ 3,50 e R$ 25,00.
+              </span>
             </div>
           </div>
         )}
 
-        {/* Aviso de segurança e avaliações */}
-        <div className="rounded-xl border border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/20 p-4 space-y-1.5">
-          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-xs sm:text-sm">
-            <ShieldAlert size={17} className="text-amber-600 dark:text-amber-400 shrink-0" />
-            Aviso de transparência e segurança
-          </div>
-          <p className="text-xs text-amber-800 dark:text-amber-300/90 leading-relaxed">
-            Novos participantes podem não ter avaliações prévias na plataforma, e avaliações
-            positivas não constituem garantia absoluta de segurança. Sempre embarque nos pontos de
-            encontro oficiais sinalizados e compartilhe sua viagem.
-          </p>
-        </div>
-      </div>
-
-      {/* BLOCO 3: QUANDO VOCÊ FOR MOTORISTA (ESPECÍFICO) */}
-      <div className="space-y-6 rounded-2xl border border-border bg-card/60 p-5 shadow-xs">
-        <div className="space-y-1 border-b border-border pb-3">
-          <div className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
-            🚗 Para quando você for motorista
-          </div>
-          <h3 className="text-lg font-extrabold text-foreground">Detalhes para oferecer lugares</h3>
-          <p className="text-xs text-muted-foreground">
-            Defina seu veículo, capacidade e compensação esperada.
-          </p>
-        </div>
-
-        {/* Veículo */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            Qual veículo você tem disponível? *
-          </label>
-          <div
-            className="grid gap-2.5 sm:grid-cols-3"
-            role="radiogroup"
-            aria-label="Veículo motorista"
-          >
-            {vehicleOptions.map((opt) => {
-              const isSelected = vehicleType === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => onVehicleTypeChange(opt.value)}
-                  className={[
-                    "flex flex-col items-start rounded-xl border p-3 text-left transition",
-                    isSelected
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <span className="text-xl">{opt.icon}</span>
-                  <span className="mt-1 font-bold text-xs text-foreground">{opt.title}</span>
-                  <span className="text-[11px] text-muted-foreground mt-0.5">
-                    {opt.description}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {vehicleType === "MOTO" && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/20 p-3.5 space-y-1 mt-2">
-              <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300 font-bold text-xs">
-                <AlertTriangle size={15} className="text-amber-600 shrink-0" />
-                Alerta de segurança e conformidade legal
-              </div>
-              <p className="text-[11px] text-amber-800 dark:text-amber-300/90 leading-relaxed">
-                O transporte de passageiro em moto exige capacete adequado e conformidade com o CTB.
+        {/* SUBSTEP 4: Validação Real para Hoje */}
+        {subStep === 4 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Validação real para o Siará Tech Summit
+              </h2>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                Se encontrarmos alguém compatível na saída do evento hoje, você aceitaria?
               </p>
             </div>
-          )}
-        </div>
 
-        {/* Vagas disponíveis */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground block">
-            Vagas disponíveis para oferecer: *
-          </label>
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Vagas disponíveis">
-            {seatOptions.map((seats) => {
-              const isSelected = availableSeats === seats;
-              return (
-                <button
-                  key={seats}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => onAvailableSeatsChange(seats)}
-                  className={[
-                    "size-10 rounded-xl border text-xs font-bold transition flex items-center justify-center",
-                    isSelected
-                      ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark shadow-xs"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  {seats === 10 ? "10+" : seats}
-                </button>
-              );
-            })}
-          </div>
-
-          {availableSeats === 0 && (
-            <div className="rounded-xl border border-border bg-accent/30 p-3.5 space-y-2 mt-2">
-              <p className="text-xs text-foreground font-semibold">
-                Sem lugares livres hoje? Você poderia oferecer carona em outro momento? *
-              </p>
-              <div className="flex gap-2">
-                {[
-                  { value: "SIM" as DriverFutureOffer, label: "Sim, em outro dia" },
-                  { value: "TALVEZ" as DriverFutureOffer, label: "Talvez" },
-                  { value: "NAO" as DriverFutureOffer, label: "Não pretendo" },
-                ].map((opt) => (
+            <div className="space-y-2">
+              {driverRealValidationOptions.map((opt) => {
+                const isSelected = driverRealValidation === opt.value;
+                return (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => onDriverFutureOfferChange(opt.value)}
-                    className={[
-                      "rounded-lg border px-3 py-1.5 text-xs font-bold transition",
-                      driverFutureOffer === opt.value
-                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
-                        : "border-border bg-card hover:bg-accent/40",
-                    ].join(" ")}
+                    onClick={() => onDriverRealValidationChange(opt.value)}
+                    className={`flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                      isSelected
+                        ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary font-medium"
+                        : "border-border bg-card hover:border-caronaa-primary/40 hover:bg-accent/40"
+                    }`}
                   >
-                    {opt.label}
+                    <div
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                        isSelected
+                          ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
+                          : "border-muted-foreground/40 bg-background"
+                      }`}
+                    >
+                      {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-caronaa-dark" />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold sm:text-sm">{opt.label}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{opt.description}</div>
+                    </div>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )}
-        </div>
-
-        {/* Compensação motorista */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold text-foreground block">
-            Compensação esperada por passageiro: *
-          </label>
-          <div className="relative flex items-center">
-            <span className="absolute left-3.5 text-sm font-extrabold text-muted-foreground">
-              R$
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={
-                numericDriverPrice > 0
-                  ? numericDriverPrice.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })
-                  : ""
-              }
-              onChange={handleDriverPriceInputChange}
-              placeholder="0,00"
-              className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-bold outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
-            />
           </div>
-
-          {isDriverPriceValid && (
-            <div className="rounded-xl border border-border bg-accent/20 p-3 text-xs space-y-1">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Compensação informada:</span>
-                <span className="font-bold text-foreground">
-                  R$ {numericDriverPrice.toFixed(2).replace(".", ",")}
-                </span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Taxa da plataforma (25% em validação):</span>
-                <span>- R$ {currentFee.toFixed(2).replace(".", ",")}</span>
-              </div>
-              <div className="flex justify-between border-t border-border pt-1 font-bold text-foreground">
-                <span>Você recebe líquido:</span>
-                <span className="text-emerald-600 font-extrabold">
-                  R$ {currentNet.toFixed(2).replace(".", ",")}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Barreiras motorista */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            O que mais te faria hesitar em oferecer carona?
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {driverBarrierOptions.map((opt) => {
-              const isChecked = driverBarriers.includes(opt.id);
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => toggleDriverBarrier(opt.id)}
-                  className={[
-                    "flex items-center justify-between rounded-xl border p-2.5 text-left transition",
-                    isChecked
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <span className="text-xs font-semibold text-foreground pr-2">{opt.label}</span>
-                  <div
-                    className={[
-                      "size-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                      isChecked
-                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
-                        : "border-muted-foreground/40",
-                    ].join(" ")}
-                  >
-                    {isChecked && <Check size={11} className="stroke-[3]" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {driverBarriers.includes("OUTRA") && (
-            <div className="pt-1">
-              <input
-                type="text"
-                value={driverBarriersCustom}
-                onChange={(e) => onDriverBarriersCustomChange(e.target.value)}
-                placeholder="Descreva sua dúvida para oferecer carona... *"
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-caronaa-primary"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Validação real motorista */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            Se houver alguém compatível com o seu trajeto hoje, você ofereceria carona? *
-          </label>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {driverRealValidationOptions.map((opt) => {
-              const isSelected = driverRealValidation === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => onDriverRealValidationChange(opt.value)}
-                  className={[
-                    "flex flex-col items-start rounded-xl border p-3 text-left transition",
-                    isSelected
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary/20"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <span className="font-bold text-xs text-foreground">{opt.label}</span>
-                    {isSelected && (
-                      <span className="size-3.5 rounded-full bg-caronaa-primary flex items-center justify-center text-caronaa-dark shrink-0">
-                        <Check size={9} className="stroke-[3]" />
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground mt-1">{opt.description}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* BLOCO 4: QUANDO VOCÊ FOR PASSAGEIRO (ESPECÍFICO) */}
-      <div className="space-y-6 rounded-2xl border border-border bg-card/60 p-5 shadow-xs">
-        <div className="space-y-1 border-b border-border pb-3">
-          <div className="inline-flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-300">
-            🙋 Para quando você for passageiro
-          </div>
-          <h3 className="text-lg font-extrabold text-foreground">Detalhes para pegar carona</h3>
-          <p className="text-xs text-muted-foreground">
-            Defina como se desloca, dificuldades e quanto considera justo pagar.
-          </p>
-        </div>
+      {/* Static/Pinned Bottom Navigation */}
+      <div className="shrink-0 border-t border-border bg-background/95 p-4 backdrop-blur-sm sm:px-6">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleBackSubStep}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent"
+          >
+            Voltar
+          </button>
 
-        {/* Como se desloca hoje */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            Como costuma se deslocar hoje para trajetos como esse? *
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {transportOptions.map((opt) => {
-              const isChecked = passengerTransports.includes(opt.value);
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => togglePassengerTransport(opt.value)}
-                  className={[
-                    "flex items-center justify-between rounded-xl border p-2.5 text-left transition",
-                    isChecked
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{opt.icon}</span>
-                    <span className="font-bold text-xs text-foreground">{opt.label}</span>
-                  </div>
-                  <div
-                    className={[
-                      "size-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                      isChecked
-                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
-                        : "border-muted-foreground/40",
-                    ].join(" ")}
-                  >
-                    {isChecked && <Check size={11} className="stroke-[3]" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {passengerTransports.includes("OUTRO") && (
-            <div className="pt-1">
-              <input
-                type="text"
-                value={passengerTransportsCustom}
-                onChange={(e) => onPassengerTransportsCustomChange(e.target.value)}
-                placeholder="Especifique seu transporte atual... *"
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-caronaa-primary"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Maior dificuldade */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            Maiores dificuldades que enfrenta no deslocamento: *
-          </label>
-          <div className="grid gap-2">
-            {difficultyOptions.map((opt) => {
-              const isChecked = passengerDifficulties.includes(opt.id);
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => togglePassengerDifficulty(opt.id)}
-                  className={[
-                    "flex items-center justify-between rounded-xl border p-2.5 text-left transition",
-                    isChecked
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <span className="text-xs font-semibold text-foreground pr-2">{opt.label}</span>
-                  <div
-                    className={[
-                      "size-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                      isChecked
-                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
-                        : "border-muted-foreground/40",
-                    ].join(" ")}
-                  >
-                    {isChecked && <Check size={11} className="stroke-[3]" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {passengerDifficulties.includes("OUTRA") && (
-            <div className="pt-1">
-              <input
-                type="text"
-                value={passengerDifficultiesCustom}
-                onChange={(e) => onPassengerDifficultiesCustomChange(e.target.value)}
-                placeholder="Descreva sua dificuldade no deslocamento... *"
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-caronaa-primary"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Valor justo passageiro */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold text-foreground block">
-            Quanto você consideraria justo pagar pelo trajeto? *
-          </label>
-          <div className="relative flex items-center">
-            <span className="absolute left-3.5 text-sm font-extrabold text-muted-foreground">
-              R$
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={
-                numericPassengerPrice > 0
-                  ? numericPassengerPrice.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })
-                  : ""
-              }
-              onChange={handlePassengerPriceInputChange}
-              placeholder="0,00"
-              className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-bold outline-none transition focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
-            />
-          </div>
-
-          <div className="rounded-xl border border-muted-foreground/20 bg-muted/20 p-2.5 flex items-start gap-2">
-            <Info size={14} className="text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              R$ 3,50 é nossa referência mínima para validação e o valor final pode variar conforme
-              o percurso e ponto de encontro combinado.
-            </p>
-          </div>
-        </div>
-
-        {/* Barreiras passageiro */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            O que mais te faria hesitar em pegar carona?
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {passengerBarrierOptions.map((opt) => {
-              const isChecked = passengerBarriers.includes(opt.id);
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => togglePassengerBarrier(opt.id)}
-                  className={[
-                    "flex items-center justify-between rounded-xl border p-2.5 text-left transition",
-                    isChecked
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-1 ring-caronaa-primary/30"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <span className="text-xs font-semibold text-foreground pr-2">{opt.label}</span>
-                  <div
-                    className={[
-                      "size-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                      isChecked
-                        ? "border-caronaa-primary bg-caronaa-primary text-caronaa-dark"
-                        : "border-muted-foreground/40",
-                    ].join(" ")}
-                  >
-                    {isChecked && <Check size={11} className="stroke-[3]" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {passengerBarriers.includes("OUTRA") && (
-            <div className="pt-1">
-              <input
-                type="text"
-                value={passengerBarriersCustom}
-                onChange={(e) => onPassengerBarriersCustomChange(e.target.value)}
-                placeholder="Descreva sua dúvida para pegar carona... *"
-                className="min-h-10 w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-caronaa-primary"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Intenção passageiro */}
-        <div className="space-y-2.5">
-          <label className="text-sm font-bold text-foreground block">
-            Se houver alguém compatível com o seu trajeto hoje, você pegaria essa carona? *
-          </label>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {passengerIntentionOptions.map((opt) => {
-              const isSelected = passengerIntention === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => onPassengerIntentionChange(opt.value)}
-                  className={[
-                    "flex flex-col items-start rounded-xl border p-3 text-left transition",
-                    isSelected
-                      ? "border-caronaa-primary bg-caronaa-primary/10 ring-2 ring-caronaa-primary/20"
-                      : "border-border bg-card hover:bg-accent/40",
-                  ].join(" ")}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <span className="font-bold text-xs text-foreground">{opt.label}</span>
-                    {isSelected && (
-                      <span className="size-3.5 rounded-full bg-caronaa-primary flex items-center justify-center text-caronaa-dark shrink-0">
-                        <Check size={9} className="stroke-[3]" />
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground mt-1">{opt.description}</span>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={handleNextSubStep}
+            disabled={
+              (subStep === 1 && !canContinueSubStep1) ||
+              (subStep === 2 && !canContinueSubStep2) ||
+              (subStep === 3 && !canContinueSubStep3) ||
+              (subStep === 4 && !canContinueSubStep4)
+            }
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-caronaa-primary px-7 py-2.5 text-sm font-bold text-caronaa-dark shadow-md transition hover:bg-caronaa-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {subStep === 4 ? "Avançar para contato" : "Continuar"}
+          </button>
         </div>
       </div>
-
-      {/* Navegação */}
-      <div className="sts-navigation flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-4 border-t border-border">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent"
-        >
-          Voltar
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!canContinue}
-          className="inline-flex min-h-12 items-center justify-center rounded-xl bg-caronaa-primary px-7 py-2.5 text-base font-bold text-caronaa-dark transition hover:bg-caronaa-primary-strong shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Continuar
-        </button>
-      </div>
-    </section>
+    </div>
   );
 }
