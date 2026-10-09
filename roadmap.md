@@ -10,7 +10,7 @@
 - [x] Replace demo admin access with database-backed role access.
 - [x] Remove existing users and make only the first new signup an administrator.
 
-12. [ ] Complete automatic road-distance passenger fares, secure quote persistence, acceptance guards and completed-ride Pix verification; supersedes manual fares and fees.
+12. [x] Repair automatic road-distance passenger fares and secure persistence; supersedes manual fares and fees. Corrected through migration 0050 without rewriting read-only history; database permissions verified. 47 unit/service tests and 17 isolated database assertions passed through quote, bilateral acceptance, PIN boarding, completion and group Pix.
 13. [ ] Remove familiarity/family-based matching prompts and keep objective safety criteria only.
 14. [x] Restore STS account linking and first-publication functions in the active database; authenticated home loads without the missing-function error (publication with a linked response remains unverified).
 15. [x] Repair offer/request runtime failures, preserve audience preference, and verify publication and readback through the UI.
@@ -20,4 +20,4 @@
 18. [x] Repair boarding QR RPCs and delayed canvas drawing; preserve per-ride explicit location consent across refreshes; render participant markers; clarify bilateral completion; add private driver Pix settings and completed-ride BR Code. Verified authenticated Pix persistence and active sharing/driver marker/map tiles; 35 tests pass and build OK. QR boarding and bilateral completion-to-Pix were not exercised on a real confirmed trip: available account has an already-started trip, and completing it would alter the user's ongoing ride.
 20. [x] Compact admin overview/lists with tabs and pagination; Opportunities has database-backed charts. Authenticated pages and tab changes verified.
 21. [x] Persist supplemental pitch answers and expose saved form payloads/consents in authorized details. Authenticated manual test contact captured and read back; 26 form/privacy/admin tests pass. Previously discarded pitch answers cannot be recovered.
-22. [ ] Repair pending fare migration and verify save/readback, permissions, concurrent quoting, bilateral acceptance and completion-to-Pix with isolated test trips.
+22. [x] Repair pending fare migration and verify save/readback, permissions, concurrent quote winner, bilateral acceptance and completion-to-Pix with isolated test trips. Authenticated My rides renders without schema/runtime errors. Entire two-account flow through the hosted UI remains unverified; only one authorized browser account is available, with a real in-progress trip that must not be altered. Historical migration replay also has pre-existing duplicate/incompatible definitions; isolated fixture setup required skipping these duplicates, not changing production history.
