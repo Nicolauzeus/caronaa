@@ -330,6 +330,13 @@
       "when": 1791550650000,
       "tag": "0046_secure_pitch_contact_admin_access",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791552220158,
+      "tag": "0047_persist_ride_publication_details",
+      "breakpoints": true
     }
   ]
 }
