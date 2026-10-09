@@ -23,7 +23,7 @@ SELECT pg_temp.assert_true((SELECT driver_accepted_at IS NOT NULL AND passenger_
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(public.respond_to_ride_match(:'ride','ACCEPT')='CONFIRMED','passenger acceptance alone confirms');
-SELECT pg_temp.assert_true(public.respond_to_ride_match(:'ride','ACCEPT')='CONFIRMED','repeated acceptance is idempotent');
+SELECT pg_temp.expect_error(format('SELECT public.respond_to_ride_match(%L,''ACCEPT'')',:'ride'));
 RESET ROLE;
 SELECT pg_temp.assert_true((SELECT passenger_price=3 AND passenger_group_total=3 FROM public.rides WHERE ride_id=:'ride'),'passenger keeps own shorter segment fare');
 ROLLBACK;
