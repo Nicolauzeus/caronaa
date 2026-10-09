@@ -1,3 +1,4 @@
+import { SavedAnswers } from "@/components/admin/SavedAnswers";
 import { ListPagination } from "@/components/admin/ListPagination";
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import {
@@ -1056,6 +1057,8 @@ export function AdminRelacionamentosPage() {
                 </Select>
               </div>
 
+              <section className="space-y-3 border-t border-border pt-3"><h3 className="font-semibold">Autorizações</h3><p>Contato: {selectedContact.consent_contact ? "Autorizado" : "Não autorizado"}</p><p>Atualizações: {selectedContact.consent_newsletter ? "Autorizadas" : "Não autorizadas"}</p></section>
+              <details className="border-t border-border pt-3"><summary className="cursor-pointer font-semibold">Respostas completas do cadastro</summary><div className="mt-3"><SavedAnswers value={selectedContact.raw_payload}/></div></details>
               {/* Internal Team Notes */}
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">

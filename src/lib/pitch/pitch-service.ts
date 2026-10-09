@@ -131,6 +131,7 @@ export async function savePitchContact(
         suggestion_status: newContact.suggestion_status,
         notes: newContact.notes,
         source: newContact.source,
+        raw_payload: newContact.raw_payload,
       })
       .select()
       .maybeSingle();

@@ -74,6 +74,7 @@ export function AdminSugestoesPage() {
     try {
       setLoading(true);
       const res = await getPitchContacts();
+      if (res.error) throw new Error(res.error);
       setContacts(res.data);
     } catch {
       toast.error("Erro ao carregar sugestões.");
@@ -92,7 +93,8 @@ export function AdminSugestoesPage() {
     );
 
     try {
-      await updatePitchSuggestionStatus(id, newStatus);
+      const result = await updatePitchSuggestionStatus(id, newStatus);
+      if (!result.success) throw new Error(result.error);
       toast.success(`Status da sugestão atualizado para "${SUGGESTION_STATUS_LABELS[newStatus]}"`);
     } catch {
       toast.error("Erro ao atualizar status da sugestão.");
@@ -186,33 +188,33 @@ export function AdminSugestoesPage() {
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <MetricCard
-          title="Total Sugestões"
+          label="Total Sugestões"
           value={metrics.total}
-          subtitle="Recebidas no pitch"
+          sublabel="Recebidas no pitch"
           icon={<MessageSquareHeart className="w-4 h-4 text-primary" />}
         />
         <MetricCard
-          title="Novas"
+          label="Novas"
           value={metrics.novas}
-          subtitle="Aguardando leitura"
+          sublabel="Aguardando leitura"
           icon={<MessageSquare className="w-4 h-4 text-emerald-500" />}
         />
         <MetricCard
-          title="Em Análise"
+          label="Em Análise"
           value={metrics.emAnalise}
-          subtitle="Em discussão de produto"
+          sublabel="Em discussão de produto"
           icon={<MessageSquare className="w-4 h-4 text-amber-500" />}
         />
         <MetricCard
-          title="Respondidas"
+          label="Respondidas"
           value={metrics.respondidas}
-          subtitle="Contato realizado"
+          sublabel="Contato realizado"
           icon={<CheckCircle2 className="w-4 h-4 text-blue-500" />}
         />
         <MetricCard
-          title="Arquivadas"
+          label="Arquivadas"
           value={metrics.arquivadas}
-          subtitle="Histórico"
+          sublabel="Histórico"
           icon={<Archive className="w-4 h-4 text-muted-foreground" />}
         />
       </div>
@@ -319,7 +321,7 @@ export function AdminSugestoesPage() {
                 <CardContent className="space-y-4 pt-0">
                   {/* The Message Box */}
                   <div className="p-4 bg-muted/60 rounded-xl border border-border text-foreground font-normal text-sm leading-relaxed whitespace-pre-wrap">
-                    "{item.message}"
+                    <details><summary className="cursor-pointer line-clamp-2">{item.message}</summary><p className="mt-3 whitespace-pre-wrap">{item.message}</p></details>
                   </div>
 
                   {/* Metadata footer with quick status and contact action */}
