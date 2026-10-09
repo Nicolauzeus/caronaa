@@ -1,9 +1,9 @@
 /**
- * Centralized ride cost and automatic splitting logic for CARONAA.
+ * Automatic passenger fares, plus legacy helpers for historical ride costs.
  *
  * Rules:
- * - Driver defines (or system defaults) the total ride cost (in BRL).
- * - Total cost is strictly divided equally among confirmed passengers.
+ * - New fares use each passenger's road distance, not a driver-defined total.
+ * - Equal-split helpers below are legacy compatibility utilities only.
  * - All calculations are normalized to cents to prevent floating point inaccuracies.
  * - If confirmed passengers is 0, passenger contribution is 0 (prevents division by zero/NaN/Infinity).
  * - Price updates are permitted strictly before ride confirmation (e.g. status MATCHED).

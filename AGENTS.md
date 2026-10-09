@@ -26,3 +26,4 @@
 - Keep the shared Relationships page outside route modules and import it from both admin URLs; this preserves automatic route splitting without cross-route component imports.
 
 - Keep admin analytical sections tabbed and lists paginated, and render saved supplemental form answers only within authorized detail views; this keeps the workspace compact without discarding captured content.
+- Authorize fare reads through the participant client before privileged persistence, and return the saved quote; this prevents unauthorized access and divergent results under concurrent quoting.
