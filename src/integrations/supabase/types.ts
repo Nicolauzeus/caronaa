@@ -435,6 +435,42 @@ export type Database = {
           },
         ]
       }
+      offer_route_quotes: {
+        Row: {
+          created_at: string
+          destination: string
+          distance_km: number
+          expires_at: string
+          origin: string
+          passenger_price: number
+          quote_id: string
+          tariff_reference: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destination: string
+          distance_km: number
+          expires_at?: string
+          origin: string
+          passenger_price: number
+          quote_id?: string
+          tariff_reference: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destination?: string
+          distance_km?: number
+          expires_at?: string
+          origin?: string
+          passenger_price?: number
+          quote_id?: string
+          tariff_reference?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -872,6 +908,7 @@ export type Database = {
       }
       ride_offers: {
         Row: {
+          accepts_quoted_fares: boolean
           available_seats: number
           created_at: string
           departure_time: string
@@ -888,7 +925,10 @@ export type Database = {
           origin_lat: number | null
           origin_lng: number | null
           passenger_gender_preference: string
+          passenger_price: number | null
           ride_date: string
+          route_distance_km: number | null
+          route_quote_id: string | null
           routine_date: string | null
           routine_id: string | null
           routine_override: boolean
@@ -902,6 +942,7 @@ export type Database = {
           vehicle_description: string | null
         }
         Insert: {
+          accepts_quoted_fares?: boolean
           available_seats: number
           created_at?: string
           departure_time: string
@@ -918,7 +959,10 @@ export type Database = {
           origin_lat?: number | null
           origin_lng?: number | null
           passenger_gender_preference?: string
+          passenger_price?: number | null
           ride_date: string
+          route_distance_km?: number | null
+          route_quote_id?: string | null
           routine_date?: string | null
           routine_id?: string | null
           routine_override?: boolean
@@ -932,6 +976,7 @@ export type Database = {
           vehicle_description?: string | null
         }
         Update: {
+          accepts_quoted_fares?: boolean
           available_seats?: number
           created_at?: string
           departure_time?: string
@@ -948,7 +993,10 @@ export type Database = {
           origin_lat?: number | null
           origin_lng?: number | null
           passenger_gender_preference?: string
+          passenger_price?: number | null
           ride_date?: string
+          route_distance_km?: number | null
+          route_quote_id?: string | null
           routine_date?: string | null
           routine_id?: string | null
           routine_override?: boolean
@@ -962,6 +1010,13 @@ export type Database = {
           vehicle_description?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ride_offers_route_quote_id_fkey"
+            columns: ["route_quote_id"]
+            isOneToOne: false
+            referencedRelation: "offer_route_quotes"
+            referencedColumns: ["quote_id"]
+          },
           {
             foreignKeyName: "ride_offers_routine_id_fkey"
             columns: ["routine_id"]
@@ -1737,6 +1792,10 @@ export type Database = {
           p_tariff_reference: string
         }
         Returns: boolean
+      }
+      publish_priced_offer: {
+        Args: { p_details: Json; p_preferences?: Json; p_quote_id: string }
+        Returns: string
       }
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
