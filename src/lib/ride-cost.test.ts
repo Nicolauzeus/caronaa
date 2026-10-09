@@ -267,16 +267,16 @@ describe("automatic ride cost splitting", () => {
 
   it("requires a trusted server quote and blocks acceptance until it is persisted", () => {
     const migration = readFileSync(
-      resolve(process.cwd(), "drizzle/migrations/0049_distance_based_ride_pricing.sql"),
+      resolve(process.cwd(), "drizzle/migrations/0050_repair_secure_road_fare_quotes.sql"),
       "utf8",
     );
     const quoteService = readFileSync(
       resolve(process.cwd(), "src/lib/ride-pricing.functions.ts"),
       "utf8",
     );
-    expect(migration).toContain("coalesce(auth.role(), '') <> 'service_role'");
-    expect(migration).toContain("round(p_route_distance_km * 600 / 11, 2) <> p_passenger_price");
-    expect(migration).toContain("p_response = ''ACCEPT''");
+    expect(migration).toContain("coalesce(auth.role(),'') <> 'service_role'");
+    expect(migration).toContain("round(p_route_distance_km * 6 / 11,2) <> p_passenger_price");
+    expect(migration).toContain("NEW.passenger_accepted_at IS DISTINCT FROM OLD.passenger_accepted_at");
     expect(migration).toContain("route_distance_km IS NULL");
     expect(quoteService).toContain('z.object({ rideId: z.string().uuid() })');
     expect(quoteService).toContain('geocodeAddressService(request.origin)');
