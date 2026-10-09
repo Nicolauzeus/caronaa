@@ -1,3 +1,4 @@
+import { ListPagination } from "@/components/admin/ListPagination";
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -63,6 +64,7 @@ export const Route = createFileRoute("/admin/sugestoes")({
 });
 
 export function AdminSugestoesPage() {
+  const [page, setPage] = useState(0);
   const [contacts, setContacts] = useState<PitchContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -72,6 +74,7 @@ export function AdminSugestoesPage() {
     try {
       setLoading(true);
       const res = await getPitchContacts();
+      if (res.error) throw new Error(res.error);
       setContacts(res.data);
     } catch {
       toast.error("Erro ao carregar sugestões.");
@@ -90,7 +93,8 @@ export function AdminSugestoesPage() {
     );
 
     try {
-      await updatePitchSuggestionStatus(id, newStatus);
+      const result = await updatePitchSuggestionStatus(id, newStatus);
+      if (!result.success) throw new Error(result.error);
       toast.success(`Status da sugestão atualizado para "${SUGGESTION_STATUS_LABELS[newStatus]}"`);
     } catch {
       toast.error("Erro ao atualizar status da sugestão.");
@@ -129,6 +133,8 @@ export function AdminSugestoesPage() {
     });
   }, [contacts, statusFilter, search]);
 
+  useEffect(() => setPage(0), [filtered]);
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / 8) - 1));
   const getStatusBadge = (status: PitchSuggestionStatus) => {
     switch (status) {
       case "NOVA":
@@ -182,34 +188,29 @@ export function AdminSugestoesPage() {
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <MetricCard
-          title="Total Sugestões"
-          value={metrics.total}
-          subtitle="Recebidas no pitch"
-          icon={<MessageSquareHeart className="w-4 h-4 text-primary" />}
+          label="Total Sugestões"
+          value={String(metrics.total)}
+          detail="Recebidas no pitch"
         />
         <MetricCard
-          title="Novas"
-          value={metrics.novas}
-          subtitle="Aguardando leitura"
-          icon={<MessageSquare className="w-4 h-4 text-emerald-500" />}
+          label="Novas"
+          value={String(metrics.novas)}
+          detail="Aguardando leitura"
         />
         <MetricCard
-          title="Em Análise"
-          value={metrics.emAnalise}
-          subtitle="Em discussão de produto"
-          icon={<MessageSquare className="w-4 h-4 text-amber-500" />}
+          label="Em Análise"
+          value={String(metrics.emAnalise)}
+          detail="Em discussão de produto"
         />
         <MetricCard
-          title="Respondidas"
-          value={metrics.respondidas}
-          subtitle="Contato realizado"
-          icon={<CheckCircle2 className="w-4 h-4 text-blue-500" />}
+          label="Respondidas"
+          value={String(metrics.respondidas)}
+          detail="Contato realizado"
         />
         <MetricCard
-          title="Arquivadas"
-          value={metrics.arquivadas}
-          subtitle="Histórico"
-          icon={<Archive className="w-4 h-4 text-muted-foreground" />}
+          label="Arquivadas"
+          value={String(metrics.arquivadas)}
+          detail="Histórico"
         />
       </div>
 
@@ -260,7 +261,7 @@ export function AdminSugestoesPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filtered.map((item) => {
+          {filtered.slice(currentPage * 8, (currentPage + 1) * 8).map((item) => {
             const cleanPhone = normalizePhoneNumber(item.whatsapp);
             const waLink = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
               `Olá ${item.name}! Agradecemos por compartilhar sua mensagem com a equipe da CARONAA durante o Siará Tech Summit.`,
@@ -315,7 +316,7 @@ export function AdminSugestoesPage() {
                 <CardContent className="space-y-4 pt-0">
                   {/* The Message Box */}
                   <div className="p-4 bg-muted/60 rounded-xl border border-border text-foreground font-normal text-sm leading-relaxed whitespace-pre-wrap">
-                    "{item.message}"
+                    <details><summary className="cursor-pointer line-clamp-2">{item.message}</summary><p className="mt-3 whitespace-pre-wrap">{item.message}</p></details>
                   </div>
 
                   {/* Metadata footer with quick status and contact action */}
@@ -386,6 +387,7 @@ export function AdminSugestoesPage() {
           })}
         </div>
       )}
+      <ListPagination page={currentPage} total={filtered.length} pageSize={8} onChange={setPage} />
     </div>
   );
 }

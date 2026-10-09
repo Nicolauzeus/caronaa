@@ -3,6 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EvidenceChart } from "@/components/admin/EvidenceChart";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ListPagination } from "@/components/admin/ListPagination";
+import { MetricCard } from "@/components/admin/MetricCard";
 import { getStrategicCrossings, type StrategicCrossings } from "@/lib/strategic-crossings";
 
 export const Route = createFileRoute("/admin/oportunidades")({
@@ -12,211 +16,27 @@ export const Route = createFileRoute("/admin/oportunidades")({
 { property: "og:type", content: "website" },
 { name: "twitter:card", content: "summary" },{ title: "Oportunidades — CARONAA" }] }),
 });
-const minimumSample = 30;
-const pains: Record<string, string> = {
-  DOR_01: "Acesso a opção adequada",
-  DOR_02: "Lotação e desconforto",
-  DOR_03: "Preço elevado",
-  DOR_04: "Tempo e complexidade",
-  DOR_05: "Vagas em carros",
-  DOR_06: "Confiança",
-};
-const profiles: Record<string, string> = {
-  PASSAGEIRO: "Passageiros",
-  MOTORISTA: "Motoristas",
-  AMBOS: "Ambos",
-};
-const number = (value: number | null) =>
-  value === null
-    ? "N/D"
-    : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value);
-
-function Sample({ count }: { count: number }) {
-  const adequate = count >= minimumSample;
-  return (
-    <Badge
-      variant={adequate ? "secondary" : "outline"}
-      className={
-        adequate ? "bg-emerald-500/10 text-emerald-700" : "border-amber-500/40 text-amber-700"
-      }
-    >
-      {count} respostas · {adequate ? "amostra adequada" : "amostra pequena"}
-    </Badge>
-  );
-}
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Card className="border border-border bg-card/85 shadow-soft">
-      <CardHeader>
-        <CardTitle className="font-display text-xl font-extrabold">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">{children}</CardContent>
-    </Card>
-  );
-}
-function Evidence({ children }: { children: React.ReactNode }) {
-  return (
-    <ul className="mt-3 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">{children}</ul>
-  );
-}
-
+const pains: Record<string,string> = {DOR_01:"Acesso",DOR_02:"Conforto",DOR_03:"Preço",DOR_04:"Tempo",DOR_05:"Vagas",DOR_06:"Confiança"};
+const profiles: Record<string,string> = {PASSAGEIRO:"Passageiros",MOTORISTA:"Motoristas",AMBOS:"Ambos"};
 function OpportunitiesPage() {
-  const [data, setData] = useState<StrategicCrossings | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    void getStrategicCrossings()
-      .then(setData)
-      .catch(() => setFailed(true));
-  }, []);
-  if (failed)
-    return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive">
-        <AlertCircle className="mr-2 inline" size={16} />
-        Não foi possível carregar as oportunidades.
-      </div>
-    );
-  if (!data)
-    return (
-      <div className="flex min-h-56 items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="animate-spin" size={18} />
-        Carregando métricas reais…
-      </div>
-    );
-  const gaps = data.supplyDemandByRoute.filter((item) => item.requestGap > 0);
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
-            Decisão baseada em dados
-          </p>
-          <h1 className="mt-2 font-display text-3xl font-extrabold">Oportunidades</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Rankings calculados de respostas e eventos reais. Match não é contabilizado como carona
-            realizada.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs text-muted-foreground">
-          <BarChart3 size={15} />
-          Amostra mínima: {minimumSample}
-        </div>
-      </div>
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800">
-        Amostras menores que {minimumSample} são sinais exploratórios, não conclusões isoladas.
-      </div>
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Panel title="1. Dores prioritárias">
-          {data.painIntent.map((item, index) => (
-            <div
-              key={item.painCode}
-              className="rounded-xl border border-border bg-secondary/25 p-4"
-            >
-              <div className="flex flex-wrap justify-between gap-2">
-                <strong>
-                  {index + 1}. {pains[item.painCode] ?? item.painCode}
-                </strong>
-                <Sample count={item.respondents} />
-              </div>
-              <Evidence>
-                <li>
-                  Intensidade média:{" "}
-                  <b className="text-foreground">{number(item.averageIntensity)}/5</b>
-                </li>
-                <li>
-                  Intenção média: <b className="text-foreground">{number(item.averageIntent)}/5</b>
-                </li>
-              </Evidence>
-            </div>
-          ))}
-        </Panel>
-        <Panel title="2. Públicos prioritários">
-          {data.profilePainAndIntent.map((item, index) => (
-            <div key={item.profile} className="rounded-xl border border-border bg-secondary/25 p-4">
-              <div className="flex flex-wrap justify-between gap-2">
-                <strong>
-                  {index + 1}. {profiles[item.profile] ?? item.profile}
-                </strong>
-                <Sample count={item.respondents} />
-              </div>
-              <Evidence>
-                <li>
-                  Intensidade média:{" "}
-                  <b className="text-foreground">{number(item.averagePainIntensity)}/5</b>
-                </li>
-                <li>
-                  Intenção média: <b className="text-foreground">{number(item.averageIntent)}/5</b>
-                </li>
-              </Evidence>
-            </div>
-          ))}
-        </Panel>
-        <Panel title="3. Rotas prioritárias">
-          {data.routesWithStrongPain.map((item, index) => (
-            <div
-              key={`${item.origin}-${item.destination}`}
-              className="rounded-xl border border-border bg-secondary/25 p-4"
-            >
-              <div className="flex flex-wrap justify-between gap-2">
-                <strong>
-                  {index + 1}. {item.origin} → {item.destination}
-                </strong>
-                <Sample count={item.strongPainRespondents} />
-              </div>
-              <Evidence>
-                <li>
-                  Dores fortes: <b className="text-foreground">{item.strongPainRespondents}</b>
-                </li>
-                <li>
-                  Intensidade média:{" "}
-                  <b className="text-foreground">{number(item.averagePainIntensity)}/5</b>
-                </li>
-              </Evidence>
-            </div>
-          ))}
-        </Panel>
-        <Panel title="4. Horários prioritários">
-          {data.demandByTime.map((item, index) => (
-            <div
-              key={item.timeWindow ?? "unknown"}
-              className="flex items-center justify-between rounded-xl border border-border bg-secondary/25 p-4"
-            >
-              <strong>
-                {index + 1}. {item.timeWindow ?? "Não informado"}
-              </strong>
-              <Sample count={item.respondents} />
-            </div>
-          ))}
-        </Panel>
-        <Panel title="5. Regiões com maior demanda sem oferta">
-          {gaps.length ? (
-            gaps.map((item, index) => (
-              <div
-                key={`${item.origin}-${item.destination}-${item.timeWindow}`}
-                className="rounded-xl border border-border bg-secondary/25 p-4"
-              >
-                <strong>
-                  {index + 1}. {item.origin} → {item.destination} · {item.timeWindow}
-                </strong>
-                <Evidence>
-                  <li>
-                    Solicitações: <b className="text-foreground">{item.requests}</b>
-                  </li>
-                  <li>
-                    Ofertas: <b className="text-foreground">{item.offers}</b>
-                  </li>
-                  <li>
-                    Saldo sem oferta: <b className="text-foreground">{item.requestGap}</b>
-                  </li>
-                </Evidence>
-              </div>
-            ))
-          ) : (
-            <p className="py-6 text-sm text-muted-foreground">
-              Não há desequilíbrio de demanda sem oferta nos dados atuais.
-            </p>
-          )}
-        </Panel>
-      </div>
-    </div>
-  );
+ const [data,setData]=useState<StrategicCrossings|null>(null);
+ const [failed,setFailed]=useState(false);
+ const [page,setPage]=useState(0);
+ useEffect(()=>{let active=true;void getStrategicCrossings().then(d=>{if(active)setData(d);}).catch(()=>{if(active)setFailed(true);});return ()=>{active=false;};},[]);
+ if(failed)return <p role="alert" className="py-8 text-destructive">Não foi possível carregar as oportunidades.</p>;
+ if(!data)return <p role="status" className="flex items-center gap-2 py-12 text-muted-foreground"><Loader2 size={18} className="animate-spin"/>Carregando oportunidades…</p>;
+ const gaps=data.supplyDemandByRoute.filter(r=>r.requestGap>0);
+ const demand=data.demandByTime.map(r=>({name:r.timeWindow??"Não informado",count:r.respondents}));
+ const pain=data.painIntent.map(r=>({name:pains[r.painCode]??r.painCode,intensity:r.averageIntensity,intent:r.averageIntent}));
+ const audiences=data.profilePainAndIntent.map(r=>({name:profiles[r.profile]??r.profile,count:r.respondents}));
+ const total=data.profilePainAndIntent.reduce((sum,r)=>sum+r.respondents,0);
+ return <div className="space-y-5">
+ <header><p className="text-xs text-muted-foreground">VALIDAÇÃO / CARONAA</p><h1 className="mt-1 font-display text-3xl font-bold">Oportunidades</h1><p className="mt-2 text-sm text-muted-foreground">Respostas registradas e equilíbrio entre oferta e demanda.</p></header>
+ <div className="grid grid-cols-2 gap-3 xl:grid-cols-4"><MetricCard label="Respostas por perfil" value={String(total)}/><MetricCard label="Rotas com dores fortes" value={String(data.routesWithStrongPain.length)}/><MetricCard label="Rotas com déficit" value={String(gaps.length)}/><MetricCard label="Pedidos sem oferta" value={String(gaps.reduce((sum,r)=>sum+r.requestGap,0))}/></div>
+ <p className="border-l-2 border-primary pl-3 text-xs text-muted-foreground">Grupos com menos de 30 respostas são exploratórios; médias ausentes não são zero.</p>
+ <Tabs defaultValue="demand" onValueChange={()=>setPage(0)}><TabsList className="flex h-auto flex-wrap"><TabsTrigger value="demand">Demanda</TabsTrigger><TabsTrigger value="audience">Públicos e dores</TabsTrigger><TabsTrigger value="routes">Rotas prioritárias</TabsTrigger></TabsList>
+ <TabsContent value="demand" className="space-y-5"><div className="grid gap-6 xl:grid-cols-2"><EvidenceChart title="Demanda por horário" rows={demand.slice(0,8)} series={[{key:"count",label:"Respostas"}]}/><EvidenceChart title="Oferta × demanda — maiores déficits" rows={[...gaps].sort((a,b)=>b.requestGap-a.requestGap).slice(0,6).map((r,i)=>({name:`Rota ${i+1}`,requests:r.requests,offers:r.offers}))} series={[{key:"requests",label:"Pedidos"},{key:"offers",label:"Ofertas"}]}/></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-border text-muted-foreground"><tr><th className="py-3">Trajeto / horário</th><th>Pedidos</th><th>Ofertas</th><th>Déficit</th></tr></thead><tbody>{[...gaps].sort((a,b)=>b.requestGap-a.requestGap).slice(page*8,(page+1)*8).map((r,i)=><tr key={`${r.origin}-${r.destination}-${r.timeWindow}`} className="border-b border-border"><td className="max-w-md py-3 pr-4 break-words"><span className="text-xs text-muted-foreground">Rota {page*8+i+1} · {r.timeWindow}</span><p>{r.origin} → {r.destination}</p></td><td>{r.requests}</td><td>{r.offers}</td><td className="font-semibold">{r.requestGap}</td></tr>)}</tbody></table>{!gaps.length&&<p className="py-8 text-muted-foreground">Não há déficit de oferta registrado.</p>}</div><ListPagination page={page} total={gaps.length} onChange={setPage}/></TabsContent>
+ <TabsContent value="audience"><div className="grid gap-6 xl:grid-cols-2"><EvidenceChart title="Respostas por público" rows={audiences} series={[{key:"count",label:"Respostas"}]}/><EvidenceChart title="Dores e intenção — médias de 1 a 5" rows={pain} series={[{key:"intensity",label:"Intensidade"},{key:"intent",label:"Intenção"}]}/></div><div className="mt-5 flex flex-wrap gap-3">{data.painIntent.map(r=><Badge key={r.painCode} variant="outline">{pains[r.painCode]}: {r.respondents} respostas</Badge>)}</div></TabsContent>
+ <TabsContent value="routes"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-border text-muted-foreground"><tr><th className="py-3">Trajeto</th><th>Respostas com dor forte</th><th>Intensidade média</th></tr></thead><tbody>{data.routesWithStrongPain.slice(page*8,(page+1)*8).map(r=><tr key={`${r.origin}-${r.destination}`} className="border-b border-border"><td className="max-w-md break-words py-3 pr-4">{r.origin} → {r.destination}</td><td>{r.strongPainRespondents}</td><td>{r.averagePainIntensity==null?"N/D":r.averagePainIntensity.toLocaleString("pt-BR",{maximumFractionDigits:1})}</td></tr>)}</tbody></table>{!data.routesWithStrongPain.length&&<p className="py-8 text-muted-foreground">Ainda não há rotas com dores fortes registradas.</p>}</div><ListPagination page={Math.min(page,Math.max(0,Math.ceil(data.routesWithStrongPain.length/8)-1))} total={data.routesWithStrongPain.length} onChange={setPage}/></TabsContent>
+ </Tabs></div>;
 }

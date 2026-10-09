@@ -1,3 +1,6 @@
+import { SavedAnswers } from "@/components/admin/SavedAnswers";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Link } from "@tanstack/react-router";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -94,6 +97,8 @@ function SurveyDetailPage() {
         </div>
       </div>
 
+      <Link to="/admin/formularios/respostas" className="text-sm text-primary">← Todas as respostas</Link>
+      <Tabs defaultValue="summary"><TabsList className="flex h-auto flex-wrap"><TabsTrigger value="summary">Resumo</TabsTrigger><TabsTrigger value="survey">Trajeto e pesquisa</TabsTrigger><TabsTrigger value="complete">Respostas completas</TabsTrigger></TabsList><TabsContent value="summary">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border border-border bg-card shadow-soft">
           <CardHeader>
@@ -146,6 +151,7 @@ function SurveyDetailPage() {
         </Card>
       </div>
 
+      </TabsContent><TabsContent value="survey">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border border-border bg-card shadow-soft">
           <CardHeader>
@@ -196,6 +202,7 @@ function SurveyDetailPage() {
           </CardContent>
         </Card>
       </div>
+      </TabsContent><TabsContent value="complete" className="space-y-4"><h2 className="font-display text-lg font-semibold">Conteúdo adicional salvo</h2><p className="text-sm text-muted-foreground">Autorização de envio: {response.consentimento ? "Sim" : "Não"}</p><SavedAnswers value={response.raw_payload}/></TabsContent></Tabs>
     </div>
   );
 }

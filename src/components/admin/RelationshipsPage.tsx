@@ -1,3 +1,5 @@
+import { SavedAnswers } from "@/components/admin/SavedAnswers";
+import { ListPagination } from "@/components/admin/ListPagination";
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import {
   Building2,
@@ -65,6 +67,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function AdminRelacionamentosPage() {
+  const [page, setPage] = useState(0);
   const [contacts, setContacts] = useState<PitchContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -253,6 +256,8 @@ export function AdminRelacionamentosPage() {
     });
   }, [contacts, interestFilter, statusFilter, search]);
 
+  useEffect(() => setPage(0), [filteredContacts]);
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(filteredContacts.length / 8) - 1));
   const getInterestBadge = (interest: PitchInterest) => {
     switch (interest) {
       case "INVESTIDOR":
@@ -513,7 +518,7 @@ export function AdminRelacionamentosPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredContacts.map((contact) => {
+          {filteredContacts.slice(currentPage * 8, (currentPage + 1) * 8).map((contact) => {
             const cleanPhone = normalizePhoneNumber(contact.whatsapp || "");
             const waLink = `https://wa.me/55${cleanPhone}`;
 
@@ -643,6 +648,7 @@ export function AdminRelacionamentosPage() {
         </div>
       )}
 
+      <ListPagination page={currentPage} total={filteredContacts.length} pageSize={8} onChange={setPage} />
       {/* Dialog: Create Manual Contact */}
       <Dialog open={isNewContactOpen} onOpenChange={setIsNewContactOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -829,7 +835,7 @@ export function AdminRelacionamentosPage() {
                   <Select
                     value={newContactForm.institution_type || "EMPRESA"}
                     onValueChange={(val) =>
-                      setNewContactForm((prev) => ({ ...prev, institution_type: val }))
+                      setNewContactForm((prev) => ({ ...prev, institution_type: val as PitchContactFormData["institution_type"] }))
                     }
                   >
                     <SelectTrigger>
@@ -1051,6 +1057,8 @@ export function AdminRelacionamentosPage() {
                 </Select>
               </div>
 
+              <section className="space-y-3 border-t border-border pt-3"><h3 className="font-semibold">Autorizações</h3><p>Contato: {selectedContact.consent_contact ? "Autorizado" : "Não autorizado"}</p><p>Atualizações: {selectedContact.consent_newsletter ? "Autorizadas" : "Não autorizadas"}</p></section>
+              <details className="border-t border-border pt-3"><summary className="cursor-pointer font-semibold">Respostas completas do cadastro</summary><div className="mt-3"><SavedAnswers value={selectedContact.raw_payload}/></div></details>
               {/* Internal Team Notes */}
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">

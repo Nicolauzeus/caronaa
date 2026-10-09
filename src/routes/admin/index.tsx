@@ -12,6 +12,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttentionQueue } from "@/components/admin/AttentionQueue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminUsers, type AdminUser } from "@/lib/admin.functions";
@@ -240,6 +241,7 @@ function DashboardPage() {
       ) : null}
 
       <AttentionQueue />
+      <Tabs defaultValue="overview"><TabsList className="flex h-auto flex-wrap"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="results">Resultados</TabsTrigger><TabsTrigger value="people">Pessoas e recorrência</TabsTrigger></TabsList><TabsContent value="overview" className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Usuários"
@@ -349,6 +351,7 @@ function DashboardPage() {
         </Card>
       </div>
 
+      </TabsContent><TabsContent value="results" className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Solicitações"
@@ -496,6 +499,7 @@ function DashboardPage() {
         </Card>
       </div>
 
+      </TabsContent><TabsContent value="people" className="space-y-5">
       <Card className="border border-border bg-card/85 shadow-soft">
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
@@ -631,6 +635,7 @@ function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      </TabsContent></Tabs>
     </div>
   );
 }

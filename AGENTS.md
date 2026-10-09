@@ -24,3 +24,5 @@
 - Use dynamically imported Leaflet for participant markers and preserve per-ride consent across non-loading refreshes; this avoids SSR browser imports and tracking resets.
 
 - Keep the shared Relationships page outside route modules and import it from both admin URLs; this preserves automatic route splitting without cross-route component imports.
+
+- Keep admin analytical sections tabbed and lists paginated, and render saved supplemental form answers only within authorized detail views; this keeps the workspace compact without discarding captured content.

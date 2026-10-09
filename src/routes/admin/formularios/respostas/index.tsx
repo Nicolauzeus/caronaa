@@ -1,3 +1,4 @@
+import { ListPagination } from "@/components/admin/ListPagination";
 import { Download, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -67,6 +68,7 @@ function exportCsv(rows: FormSubmissionRow[]) {
 }
 
 function AdminResponsesPage() {
+  const [page, setPage] = useState(0);
   const [source, setSource] = useState("all");
   const [query, setQuery] = useState("");
   const [responses, setResponses] = useState<FormSubmissionRow[]>([]);
@@ -120,6 +122,8 @@ function AdminResponsesPage() {
     });
   }, [responses, source, query]);
 
+  useEffect(() => setPage(0), [rows]);
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(rows.length / 12) - 1));
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -200,7 +204,7 @@ function AdminResponsesPage() {
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => (
+                rows.slice(currentPage * 12, (currentPage + 1) * 12).map((row) => (
                   <tr
                     key={row.submission_id}
                     className="border-t border-border text-sm text-foreground hover:bg-secondary/30"
@@ -237,6 +241,7 @@ function AdminResponsesPage() {
           </table>
         </div>
       </div>
+      <ListPagination page={currentPage} total={rows.length} pageSize={12} onChange={setPage} />
     </div>
   );
 }
