@@ -911,7 +911,6 @@ export type Database = {
           accepts_quoted_fares: boolean
           available_seats: number
           created_at: string
-          updated_at: string
           departure_time: string
           destination: string
           destination_lat: number | null
@@ -946,7 +945,6 @@ export type Database = {
           accepts_quoted_fares?: boolean
           available_seats: number
           created_at?: string
-          updated_at?: string
           departure_time: string
           destination: string
           destination_lat?: number | null
@@ -981,7 +979,6 @@ export type Database = {
           accepts_quoted_fares?: boolean
           available_seats?: number
           created_at?: string
-          updated_at?: string
           departure_time?: string
           destination?: string
           destination_lat?: number | null
@@ -1096,7 +1093,6 @@ export type Database = {
       ride_requests: {
         Row: {
           created_at: string
-          updated_at: string
           departure_time: string
           destination: string
           destination_lat: number | null
@@ -1125,7 +1121,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          updated_at?: string
           departure_time: string
           destination: string
           destination_lat?: number | null
@@ -1154,7 +1149,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          updated_at?: string
           departure_time?: string
           destination?: string
           destination_lat?: number | null
