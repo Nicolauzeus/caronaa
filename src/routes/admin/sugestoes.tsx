@@ -190,27 +190,27 @@ export function AdminSugestoesPage() {
         <MetricCard
           label="Total Sugestões"
           value={String(metrics.total)}
-          sublabel="Recebidas no pitch"
+          detail="Recebidas no pitch"
         />
         <MetricCard
           label="Novas"
           value={String(metrics.novas)}
-          sublabel="Aguardando leitura"
+          detail="Aguardando leitura"
         />
         <MetricCard
           label="Em Análise"
           value={String(metrics.emAnalise)}
-          sublabel="Em discussão de produto"
+          detail="Em discussão de produto"
         />
         <MetricCard
           label="Respondidas"
           value={String(metrics.respondidas)}
-          sublabel="Contato realizado"
+          detail="Contato realizado"
         />
         <MetricCard
           label="Arquivadas"
           value={String(metrics.arquivadas)}
-          sublabel="Histórico"
+          detail="Histórico"
         />
       </div>
 
