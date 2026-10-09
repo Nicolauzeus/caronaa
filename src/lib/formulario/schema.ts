@@ -550,7 +550,7 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
       add("vehicleType", "Selecione o veículo com o qual pretende se deslocar.");
     if (value["availableSeats"] === undefined || value["availableSeats"] === null)
       add("availableSeats", "Informe o número de lugares disponíveis (0 a 10).");
-    const price = Number(value["driverPrice"]);
+    const price = Number(value["driverPrice"] ?? 10);
     if (isNaN(price) || price < 3.5 || price > 25.0) {
       add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 25,00.");
     }
@@ -591,7 +591,7 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
     ) {
       add("passengerDifficultiesCustom", "Descreva sua principal dificuldade.");
     }
-    const fairPrice = Number(value["passengerFairPrice"]);
+    const fairPrice = Number(value["passengerFairPrice"] ?? 10);
     if (isNaN(fairPrice) || fairPrice < 3.5 || fairPrice > 25.0) {
       add("passengerFairPrice", "O valor justo a pagar deve ser entre R$ 3,50 e R$ 25,00.");
     }
@@ -616,7 +616,7 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
       add("vehicleType", "Selecione o veículo com o qual pretende se deslocar.");
     if (value["availableSeats"] === undefined || value["availableSeats"] === null)
       add("availableSeats", "Informe o número de lugares disponíveis (0 a 10).");
-    const dPrice = Number(value["driverPrice"]);
+    const dPrice = Number(value["driverPrice"] ?? 10);
     if (isNaN(dPrice) || dPrice < 3.5 || dPrice > 25.0) {
       add("driverPrice", "O valor por passageiro deve ser entre R$ 3,50 e R$ 25,00.");
     }
@@ -657,7 +657,7 @@ export function validateFormStep(step: FormValidationStep, data: Record<string, 
     ) {
       add("passengerDifficultiesCustom", "Descreva sua principal dificuldade.");
     }
-    const pPrice = Number(value["passengerFairPrice"]);
+    const pPrice = Number(value["passengerFairPrice"] ?? 10);
     if (isNaN(pPrice) || pPrice < 3.5 || pPrice > 25.0) {
       add("passengerFairPrice", "O valor justo a pagar deve ser entre R$ 3,50 e R$ 25,00.");
     }

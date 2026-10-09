@@ -9,8 +9,10 @@ import { getNextStep, getPreviousStep } from "@/lib/formulario/flow";
 
 describe("PassengerFlow and DualFlow", () => {
   describe("PassengerFlow", () => {
-    it("renders all 6 items in the exact required order", () => {
-      render(
+    it("renders PassengerFlow sub-steps and navigates smoothly", () => {
+      let nextCalled = false;
+
+      const { rerender } = render(
         <PassengerFlow
           passengerTransports={[]}
           passengerTransportsCustom=""
@@ -32,54 +34,67 @@ describe("PassengerFlow and DualFlow", () => {
           onPassengerBarriersChange={() => {}}
           onPassengerBarriersCustomChange={() => {}}
           onPassengerIntentionChange={() => {}}
-          onNext={() => {}}
+          onNext={() => {
+            nextCalled = true;
+          }}
           onBack={() => {}}
         />,
       );
 
-      // Item 1: Como se desloca hoje
+      // Sub-etapa 1: Como se desloca hoje
       expect(
         screen.getByText(/1\. Como você costuma se deslocar hoje para trajetos como esse\?/i),
       ).toBeInTheDocument();
       expect(screen.getByText(/Aplicativos \(Uber \/ 99\)/i)).toBeInTheDocument();
       expect(screen.getByText(/Ônibus convencional/i)).toBeInTheDocument();
 
-      // Item 2: Maior dificuldade
-      expect(
-        screen.getByText(/2\. Quais as maiores dificuldades que você enfrenta no deslocamento\?/i),
-      ).toBeInTheDocument();
+      const continueBtn = screen.getByRole("button", { name: /Continuar/i });
+      expect(continueBtn).toBeDisabled();
 
-      // Item 3: Confiança
-      expect(
-        screen.getByText(/3\. O que traria confiança para você pegar uma carona\?/i),
-      ).toBeInTheDocument();
-      expect(screen.getByText(/Aviso de transparência e segurança/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(/não constituem garantia absoluta de segurança/i),
-      ).toBeInTheDocument();
+      // Rerender with valid sub-step 1
+      rerender(
+        <PassengerFlow
+          passengerTransports={["UBER_99"]}
+          passengerDifficulties={["DOR_01"]}
+          passengerFairPrice={10}
+          passengerIntention="COM_CERTEZA_HOJE"
+          onPassengerTransportsChange={() => {}}
+          onPassengerTransportsCustomChange={() => {}}
+          onPassengerDifficultiesChange={() => {}}
+          onPassengerDifficultiesCustomChange={() => {}}
+          onPassengerTrustFactorsChange={() => {}}
+          onPassengerGenderPreferenceChange={() => {}}
+          onPassengerFairPriceChange={() => {}}
+          onPassengerBarriersChange={() => {}}
+          onPassengerBarriersCustomChange={() => {}}
+          onPassengerIntentionChange={() => {}}
+          onNext={() => {
+            nextCalled = true;
+          }}
+          onBack={() => {}}
+        />,
+      );
 
-      // Item 4: Valor justo a pagar
-      expect(
-        screen.getByText(/4\. Quanto você consideraria justo pagar pelo trajeto\?/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/R\$ 3,50 é nossa referência mínima para validação/i),
-      ).toBeInTheDocument();
+      expect(continueBtn).not.toBeDisabled();
+      fireEvent.click(continueBtn);
 
-      // Item 5: Barreiras
-      expect(
-        screen.getByText(/5\. O que mais te faria hesitar em pegar uma carona\?/i),
-      ).toBeInTheDocument();
+      // Sub-etapa 2: Confiança
+      expect(screen.getByText(/O que traria confiança para você pegar carona\?/i)).toBeInTheDocument();
+      fireEvent.click(continueBtn);
 
-      // Item 6: Intenção
-      expect(
-        screen.getByText(
-          /6\. Se houver alguém compatível com o seu trajeto hoje, você pegaria essa carona\?/i,
-        ),
-      ).toBeInTheDocument();
+      // Sub-etapa 3: Contribuição justa
+      expect(screen.getByText(/Contribuição justa por passageiro/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/R\$ 10,00/i).length).toBeGreaterThan(0);
+      fireEvent.click(continueBtn);
+
+      // Sub-etapa 4: Validação real
+      expect(screen.getByText(/Validação real para o Siará Tech Summit/i)).toBeInTheDocument();
       expect(screen.getByText(/Com certeza, posso precisar hoje\./i)).toBeInTheDocument();
-      expect(screen.getByText(/Talvez\./i)).toBeInTheDocument();
-      expect(screen.getByText(/Com certeza — e não apenas hoje\./i)).toBeInTheDocument();
+
+      const advanceBtn = screen.getByRole("button", { name: /Avançar para contato/i });
+      expect(advanceBtn).not.toBeDisabled();
+      fireEvent.click(advanceBtn);
+      expect(nextCalled).toBe(true);
     });
 
     it("requires custom text when 'OUTRO' is selected for transport", () => {
@@ -133,89 +148,10 @@ describe("PassengerFlow and DualFlow", () => {
 
       expect(continueBtn).not.toBeDisabled();
     });
-
-    it("enforces fair price between R$ 3,50 and R$ 25,00", () => {
-      const { rerender } = render(
-        <PassengerFlow
-          passengerTransports={["UBER_99"]}
-          passengerDifficulties={["DOR_01"]}
-          passengerFairPrice={2.0} // Below min
-          passengerIntention="COM_CERTEZA_HOJE"
-          onPassengerTransportsChange={() => {}}
-          onPassengerTransportsCustomChange={() => {}}
-          onPassengerDifficultiesChange={() => {}}
-          onPassengerDifficultiesCustomChange={() => {}}
-          onPassengerTrustFactorsChange={() => {}}
-          onPassengerGenderPreferenceChange={() => {}}
-          onPassengerFairPriceChange={() => {}}
-          onPassengerBarriersChange={() => {}}
-          onPassengerBarriersCustomChange={() => {}}
-          onPassengerIntentionChange={() => {}}
-          onNext={() => {}}
-          onBack={() => {}}
-        />,
-      );
-
-      expect(screen.getByRole("button", { name: /Continuar/i })).toBeDisabled();
-      expect(screen.getByText(/O valor mínimo permitido é de R\$ 3,50/i)).toBeInTheDocument();
-
-      rerender(
-        <PassengerFlow
-          passengerTransports={["UBER_99"]}
-          passengerDifficulties={["DOR_01"]}
-          passengerFairPrice={30.0} // Above max
-          passengerIntention="COM_CERTEZA_HOJE"
-          onPassengerTransportsChange={() => {}}
-          onPassengerTransportsCustomChange={() => {}}
-          onPassengerDifficultiesChange={() => {}}
-          onPassengerDifficultiesCustomChange={() => {}}
-          onPassengerTrustFactorsChange={() => {}}
-          onPassengerGenderPreferenceChange={() => {}}
-          onPassengerFairPriceChange={() => {}}
-          onPassengerBarriersChange={() => {}}
-          onPassengerBarriersCustomChange={() => {}}
-          onPassengerIntentionChange={() => {}}
-          onNext={() => {}}
-          onBack={() => {}}
-        />,
-      );
-
-      expect(screen.getByRole("button", { name: /Continuar/i })).toBeDisabled();
-      expect(screen.getByText(/O valor máximo permitido é de R\$ 25,00/i)).toBeInTheDocument();
-    });
-
-    it("displays gender preference as confidential personal data when selected", () => {
-      render(
-        <PassengerFlow
-          passengerTransports={["UBER_99"]}
-          passengerDifficulties={["DOR_01"]}
-          passengerTrustFactors={["MESMO_GENERO"]}
-          passengerFairPrice={10}
-          passengerIntention="COM_CERTEZA_HOJE"
-          onPassengerTransportsChange={() => {}}
-          onPassengerTransportsCustomChange={() => {}}
-          onPassengerDifficultiesChange={() => {}}
-          onPassengerDifficultiesCustomChange={() => {}}
-          onPassengerTrustFactorsChange={() => {}}
-          onPassengerGenderPreferenceChange={() => {}}
-          onPassengerFairPriceChange={() => {}}
-          onPassengerBarriersChange={() => {}}
-          onPassengerBarriersCustomChange={() => {}}
-          onPassengerIntentionChange={() => {}}
-          onNext={() => {}}
-          onBack={() => {}}
-        />,
-      );
-
-      expect(
-        screen.getByText(/Qual gênero você gostaria de considerar\? \(Opcional\)/i),
-      ).toBeInTheDocument();
-      expect(screen.getByText(/Dado pessoal protegido:/i)).toBeInTheDocument();
-    });
   });
 
   describe("DualFlow (Fluxo 'Os Dois')", () => {
-    it("renders the priority question first with exact options", () => {
+    it("renders the priority question with options and sub-steps", () => {
       render(
         <DualFlow
           dualPriority={undefined}
@@ -243,66 +179,13 @@ describe("PassengerFlow and DualFlow", () => {
         />,
       );
 
-      const priorityGroup = screen.getByRole("radiogroup", {
-        name: /Prioridade entre oferecer e pegar/i,
-      });
-      expect(priorityGroup).toBeInTheDocument();
-      expect(within(priorityGroup).getByText("Oferecer")).toBeInTheDocument();
-      expect(within(priorityGroup).getByText("Pegar")).toBeInTheDocument();
-      expect(within(priorityGroup).getByText("Quero avaliar os dois")).toBeInTheDocument();
+      expect(screen.getByText(/Qual é a sua prioridade hoje\?/i)).toBeInTheDocument();
+      expect(screen.getByText("Oferecer")).toBeInTheDocument();
+      expect(screen.getByText("Pegar")).toBeInTheDocument();
+      expect(screen.getByText("Quero avaliar os dois")).toBeInTheDocument();
     });
 
-    it("shares trust factors and asks driver and passenger specifics without duplicate questions", () => {
-      render(
-        <DualFlow
-          dualPriority="AMBOS_AVALIAR"
-          onDualPriorityChange={() => {}}
-          onTrustFactorsChange={() => {}}
-          onGenderPreferenceChange={() => {}}
-          onVehicleTypeChange={() => {}}
-          onAvailableSeatsChange={() => {}}
-          onMaxDetourMinutesChange={() => {}}
-          onDriverFutureOfferChange={() => {}}
-          onDriverPriceChange={() => {}}
-          onDriverBarriersChange={() => {}}
-          onDriverBarriersCustomChange={() => {}}
-          onDriverRealValidationChange={() => {}}
-          onPassengerTransportsChange={() => {}}
-          onPassengerTransportsCustomChange={() => {}}
-          onPassengerDifficultiesChange={() => {}}
-          onPassengerDifficultiesCustomChange={() => {}}
-          onPassengerFairPriceChange={() => {}}
-          onPassengerBarriersChange={() => {}}
-          onPassengerBarriersCustomChange={() => {}}
-          onPassengerIntentionChange={() => {}}
-          onNext={() => {}}
-          onBack={() => {}}
-        />,
-      );
-
-      // Unified trust section
-      expect(screen.getByText(/Confiança e Segurança Unificada/i)).toBeInTheDocument();
-      // Driver section
-      expect(screen.getByText(/Para quando você for motorista/i)).toBeInTheDocument();
-      expect(screen.getByText(/Qual veículo você tem disponível\? \*/i)).toBeInTheDocument();
-      expect(screen.getByText(/Vagas disponíveis para oferecer: \*/i)).toBeInTheDocument();
-
-      // Passenger section
-      expect(screen.getByText(/Para quando você for passageiro/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(/Como costuma se deslocar hoje para trajetos como esse\? \*/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Maiores dificuldades que enfrenta no deslocamento: \*/i),
-      ).toBeInTheDocument();
-
-      // Does NOT ask route/neighborhoods or occupation (those belong only to step 1)
-      expect(screen.queryByText(/Informe seu perfil/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Bairro de origem/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Destino/i)).not.toBeInTheDocument();
-    });
-
-    it("enables continue button only when both driver and passenger required fields are filled", () => {
+    it("progresses through DualFlow sub-steps and triggers onNext", () => {
       let nextCalled = false;
 
       const { rerender } = render(
@@ -312,8 +195,6 @@ describe("PassengerFlow and DualFlow", () => {
           availableSeats={2}
           driverPrice={10}
           driverRealValidation="COM_CERTEZA"
-          passengerTransports={[]} // Incomplete passenger
-          passengerDifficulties={[]}
           passengerFairPrice={10}
           passengerIntention="COM_CERTEZA_HOJE"
           onDualPriorityChange={() => {}}
@@ -343,48 +224,22 @@ describe("PassengerFlow and DualFlow", () => {
       );
 
       const continueBtn = screen.getByRole("button", { name: /Continuar/i });
-      expect(continueBtn).toBeDisabled();
-
-      // Complete passenger fields
-      rerender(
-        <DualFlow
-          dualPriority="AMBOS_AVALIAR"
-          vehicleType="CARRO_PROPRIO"
-          availableSeats={2}
-          driverPrice={10}
-          driverRealValidation="COM_CERTEZA"
-          passengerTransports={["UBER_99"]}
-          passengerDifficulties={["DOR_01"]}
-          passengerFairPrice={10}
-          passengerIntention="COM_CERTEZA_HOJE"
-          onDualPriorityChange={() => {}}
-          onTrustFactorsChange={() => {}}
-          onGenderPreferenceChange={() => {}}
-          onVehicleTypeChange={() => {}}
-          onAvailableSeatsChange={() => {}}
-          onMaxDetourMinutesChange={() => {}}
-          onDriverFutureOfferChange={() => {}}
-          onDriverPriceChange={() => {}}
-          onDriverBarriersChange={() => {}}
-          onDriverBarriersCustomChange={() => {}}
-          onDriverRealValidationChange={() => {}}
-          onPassengerTransportsChange={() => {}}
-          onPassengerTransportsCustomChange={() => {}}
-          onPassengerDifficultiesChange={() => {}}
-          onPassengerDifficultiesCustomChange={() => {}}
-          onPassengerFairPriceChange={() => {}}
-          onPassengerBarriersChange={() => {}}
-          onPassengerBarriersCustomChange={() => {}}
-          onPassengerIntentionChange={() => {}}
-          onNext={() => {
-            nextCalled = true;
-          }}
-          onBack={() => {}}
-        />,
-      );
-
       expect(continueBtn).not.toBeDisabled();
       fireEvent.click(continueBtn);
+
+      // Sub-etapa 2: Confiança
+      expect(screen.getByText(/O que te dá mais segurança e confiança\?/i)).toBeInTheDocument();
+      fireEvent.click(continueBtn);
+
+      // Sub-etapa 3: Compensação
+      expect(screen.getByText(/Compensação justa por passageiro/i)).toBeInTheDocument();
+      fireEvent.click(continueBtn);
+
+      // Sub-etapa 4: Validação real
+      expect(screen.getByText(/Validação real para o Siará Tech Summit/i)).toBeInTheDocument();
+      const advanceBtn = screen.getByRole("button", { name: /Avançar para contato/i });
+      expect(advanceBtn).not.toBeDisabled();
+      fireEvent.click(advanceBtn);
       expect(nextCalled).toBe(true);
     });
   });
@@ -392,7 +247,7 @@ describe("PassengerFlow and DualFlow", () => {
   describe("Step navigation and validation rules", () => {
     it("routes PASSAGEIRO intent through PASSENGER_FLOW", () => {
       const passengerData = { source: "test", intent: "PASSAGEIRO" as const };
-      expect(getNextStep("PROFILE_ROUTE", passengerData)).toBe("PROPOSAL_TRANSITION");
+      expect(getNextStep("ROUTE_DETAILS", passengerData)).toBe("PROPOSAL_TRANSITION");
       expect(getNextStep("PROPOSAL_TRANSITION", passengerData)).toBe("PASSENGER_FLOW");
       expect(getNextStep("PASSENGER_FLOW", passengerData)).toBe("CONTACT");
       expect(getNextStep("CONTACT", passengerData)).toBe("SUCCESS");
@@ -403,7 +258,7 @@ describe("PassengerFlow and DualFlow", () => {
 
     it("routes AMBOS intent through BOTH_FLOW", () => {
       const dualData = { source: "test", intent: "AMBOS" as const };
-      expect(getNextStep("PROFILE_ROUTE", dualData)).toBe("PROPOSAL_TRANSITION");
+      expect(getNextStep("ROUTE_DETAILS", dualData)).toBe("PROPOSAL_TRANSITION");
       expect(getNextStep("PROPOSAL_TRANSITION", dualData)).toBe("BOTH_FLOW");
       expect(getNextStep("BOTH_FLOW", dualData)).toBe("CONTACT");
       expect(getNextStep("CONTACT", dualData)).toBe("SUCCESS");

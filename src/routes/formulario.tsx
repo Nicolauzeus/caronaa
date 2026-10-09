@@ -106,6 +106,9 @@ function Formulario() {
       campaignEvent: attribution.campaignEvent,
       originNeighborhood: "Centro de Eventos do Ceará",
       originLocation: CEC_DEFAULT_LOCATION,
+      eventPresenceDays: ["HOJE_STS"],
+      driverPrice: 10,
+      passengerFairPrice: 10,
     }),
     [attribution],
   );
@@ -124,7 +127,7 @@ function Formulario() {
   const [stepErrors, setStepErrors] = React.useState<Record<string, string>>({});
 
   const progress = getProgressPercentage(step, data);
-  const totalSteps = 6;
+  const totalSteps = 5;
   const currentStepNumber = getStepIndex(step, data);
 
   // Recupera rascunho salvo anteriormente se existir
@@ -254,13 +257,18 @@ function Formulario() {
 
     if (intent === "MOTORISTA") {
       clearPassengerData();
-    }
-
-    if (intent === "PASSAGEIRO") {
+      updateData({ intent, driverPrice: data.driverPrice ?? 10 });
+    } else if (intent === "PASSAGEIRO") {
       clearDriverData();
+      updateData({ intent, passengerFairPrice: data.passengerFairPrice ?? 10 });
+    } else {
+      updateData({
+        intent,
+        driverPrice: data.driverPrice ?? 10,
+        passengerFairPrice: data.passengerFairPrice ?? 10,
+      });
     }
 
-    updateData({ intent });
     sendFunnelEvent("form_role_selected", { role: intent });
   }
 
@@ -284,7 +292,11 @@ function Formulario() {
 
   const handleVehicleTypeChange = React.useCallback(
     (value: VehicleType) => {
-      updateData({ vehicleType: value });
+      if (value === "MOTO") {
+        updateData({ vehicleType: value, availableSeats: 1 });
+      } else {
+        updateData({ vehicleType: value });
+      }
       sendFunnelEvent("form_driver_vehicle_selected", { vehicle: value });
     },
     [sendFunnelEvent],
@@ -560,53 +572,10 @@ function Formulario() {
     }
   }
 
-  return (
-    <AppShell publicPage>
-      <div className="sts-form min-h-[calc(100vh-72px)] bg-background">
-        {step !== "INTRO" && step !== "SUCCESS" ? (
-          <InstitutionalHeader
-            variant="sticky"
-            showProgress
-            progress={progress}
-            currentStep={currentStepNumber}
-            totalSteps={totalSteps}
-            isFinalStep={step === "CONTACT"}
-          />
-        ) : null}
-
-        {submitError ? (
-          <div className="mx-auto w-full max-w-2xl px-4 pt-4 sm:px-6">
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start justify-between gap-2">
-              <p className="text-sm font-medium text-destructive">
-                {submitError.toLowerCase().includes("required")
-                  ? "Por favor, revise os dados antes de continuar."
-                  : submitError}
-              </p>
-              <button
-                type="button"
-                onClick={() => setSubmitError(null)}
-                className="text-destructive/70 hover:text-destructive text-xs font-semibold px-2 py-1"
-                aria-label="Fechar mensagem de erro"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {Object.entries(stepErrors).length > 0 ? (
-          <div className="mx-auto w-full max-w-2xl space-y-1 px-4 pt-3 sm:px-6" role="alert">
-            {Object.entries(stepErrors).map(([field, message]) => (
-              <p key={field} className="text-sm text-destructive">
-                {message.toLowerCase().includes("required")
-                  ? "Preencha este campo obrigatório."
-                  : message}
-              </p>
-            ))}
-          </div>
-        ) : null}
-
-        {step === "INTRO" ? (
+  if (step === "INTRO") {
+    return (
+      <AppShell publicPage>
+        <div className="sts-form min-h-[calc(100vh-72px)] bg-background">
           <FormIntro
             onStart={() => {
               void registerFormStart({ userId: user?.id ?? null, ...attribution });
@@ -615,8 +584,65 @@ function Formulario() {
               setStep("ROLE_SELECTION");
             }}
           />
-        ) : null}
+        </div>
+      </AppShell>
+    );
+  }
 
+  if (step === "SUCCESS") {
+    return (
+      <AppShell publicPage>
+        <div className="sts-form min-h-[calc(100vh-72px)] bg-background">
+          <FormSuccess data={data} onRestart={restart} />
+        </div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col bg-background text-foreground overflow-hidden select-none sm:select-auto">
+      <InstitutionalHeader
+        variant="light"
+        showProgress
+        progress={progress}
+        currentStep={currentStepNumber}
+        totalSteps={totalSteps}
+        isFinalStep={step === "CONTACT"}
+      />
+
+      {submitError ? (
+        <div className="mx-auto w-full max-w-2xl px-4 pt-2 sm:px-6 shrink-0">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 flex items-start justify-between gap-2">
+            <p className="text-xs font-medium text-destructive">
+              {submitError.toLowerCase().includes("required")
+                ? "Por favor, revise os dados antes de continuar."
+                : submitError}
+            </p>
+            <button
+              type="button"
+              onClick={() => setSubmitError(null)}
+              className="text-destructive/70 hover:text-destructive text-xs font-semibold px-2 py-0.5"
+              aria-label="Fechar mensagem de erro"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {Object.entries(stepErrors).length > 0 ? (
+        <div className="mx-auto w-full max-w-2xl space-y-1 px-4 pt-2 sm:px-6 shrink-0" role="alert">
+          {Object.entries(stepErrors).map(([field, message]) => (
+            <p key={field} className="text-xs text-destructive font-medium">
+              {message.toLowerCase().includes("required")
+                ? "Preencha este campo obrigatório."
+                : message}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      <main className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col justify-between">
         {step === "ROLE_SELECTION" ? (
           <RoleStep
             intent={data.intent}
@@ -682,98 +708,6 @@ function Formulario() {
           />
         ) : null}
 
-        {step === "EVENT_PRESENCE" ? (
-          <EventPresenceStep
-            eventPresenceDays={data.eventPresenceDays}
-            eventPresenceCustom={data.eventPresenceCustom}
-            stepNumber={3}
-            totalSteps={totalSteps}
-            onEventPresenceDaysChange={(days) => {
-              updateData({ eventPresenceDays: days });
-              sendFunnelEvent("form_event_presence_completed", { daysCount: days.length });
-            }}
-            onEventPresenceCustomChange={(value) =>
-              updateData({
-                eventPresenceCustom: value,
-              })
-            }
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "PROFILE_ROUTE" ? (
-          <ProfileRouteStep
-            intent={data.intent}
-            occupation={data.occupation}
-            occupationDetails={data.occupationDetails}
-            originNeighborhood={data.originNeighborhood}
-            originLocation={data.originLocation}
-            destinationNeighborhood={data.destinationNeighborhood}
-            destinationLocation={data.destinationLocation}
-            departureWindow={data.departureWindow}
-            weeklyFrequency={data.weeklyFrequency}
-            eventPresenceDays={data.eventPresenceDays}
-            eventPresenceCustom={data.eventPresenceCustom}
-            stepNumber={1}
-            totalSteps={totalSteps}
-            onIntentChange={changeIntent}
-            onOccupationChange={(value: UserOccupation) =>
-              updateData({
-                occupation: value,
-              })
-            }
-            onOccupationDetailsChange={(value) =>
-              updateData({
-                occupationDetails: value,
-              })
-            }
-            onOriginNeighborhoodChange={(value) =>
-              updateData({
-                originNeighborhood: value,
-              })
-            }
-            onOriginLocationChange={(value, details) =>
-              updateData({
-                originNeighborhood: value,
-                originLocation: details,
-              })
-            }
-            onDestinationNeighborhoodChange={(value) =>
-              updateData({
-                destinationNeighborhood: value,
-              })
-            }
-            onDestinationLocationChange={(value, details) =>
-              updateData({
-                destinationNeighborhood: value,
-                destinationLocation: details,
-              })
-            }
-            onDepartureWindowChange={(value: DepartureWindow) =>
-              updateData({
-                departureWindow: value,
-              })
-            }
-            onWeeklyFrequencyChange={(value: WeeklyFrequency) =>
-              updateData({
-                weeklyFrequency: value,
-              })
-            }
-            onEventPresenceDaysChange={(days) => {
-              updateData({ eventPresenceDays: days });
-              sendFunnelEvent("form_event_presence_completed", { daysCount: days.length });
-            }}
-            onEventPresenceCustomChange={(value) =>
-              updateData({
-                eventPresenceCustom: value,
-              })
-            }
-            onNext={goNext}
-            onBack={() => setStep("INTRO")}
-          />
-        ) : null}
-
         {step === "PROPOSAL_TRANSITION" ? (
           <ProposalTransitionStep
             intent={data.intent}
@@ -781,7 +715,7 @@ function Formulario() {
             onProposalSenseChange={handleProposalSenseChange}
             onNext={goNext}
             onBack={goBack}
-            stepNumber={currentStepNumber}
+            stepNumber={3}
             totalSteps={totalSteps}
           />
         ) : null}
@@ -810,7 +744,7 @@ function Formulario() {
             onDriverRealValidationChange={handleDriverRealValidationChange}
             onNext={goNext}
             onBack={goBack}
-            stepNumber={currentStepNumber}
+            stepNumber={4}
             totalSteps={totalSteps}
           />
         ) : null}
@@ -847,7 +781,7 @@ function Formulario() {
             onPassengerIntentionChange={handlePassengerIntentionChange}
             onNext={goNext}
             onBack={goBack}
-            stepNumber={currentStepNumber}
+            stepNumber={4}
             totalSteps={totalSteps}
           />
         ) : null}
@@ -904,112 +838,8 @@ function Formulario() {
             onPassengerIntentionChange={handlePassengerIntentionChange}
             onNext={goNext}
             onBack={goBack}
-            stepNumber={currentStepNumber}
-            totalSteps={totalSteps}
-          />
-        ) : null}
-
-        {step === "CURRENT_PRICE" ? (
-          <CurrentPriceStep
-            stepNumber={2}
-            totalSteps={totalSteps}
-            currentTransport={data.currentTransport}
-            routeCostRange={data.routeCostRange}
-            costPeriod={data.costPeriod}
-            onCurrentTransportChange={(value: PassengerTransport) =>
-              updateData({
-                currentTransport: value,
-              })
-            }
-            onRouteCostRangeChange={(value) =>
-              updateData({
-                routeCostRange: value,
-              })
-            }
-            onCostPeriodChange={(value) =>
-              updateData({
-                costPeriod: value,
-              })
-            }
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "PROBLEMS" ? (
-          <ProblemsStep
-            stepNumber={3}
-            totalSteps={totalSteps}
-            value={data.painPoints}
-            onChange={(value: PainPointCode[]) =>
-              updateData({
-                painPoints: value,
-                mainPainPoint: value.includes(data.mainPainPoint as PainPointCode)
-                  ? data.mainPainPoint
-                  : undefined,
-                mainPainIntensity: value.includes(data.mainPainPoint as PainPointCode)
-                  ? data.mainPainIntensity
-                  : undefined,
-              })
-            }
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "MAIN_PROBLEM" ? (
-          <MainProblemStep
             stepNumber={4}
             totalSteps={totalSteps}
-            painPoints={data.painPoints}
-            mainPainPoint={data.mainPainPoint}
-            mainPainIntensity={data.mainPainIntensity}
-            onMainPainPointChange={(value: PainPointCode) =>
-              updateData({
-                mainPainPoint: value,
-              })
-            }
-            onMainPainIntensityChange={(value) =>
-              updateData({
-                mainPainIntensity: value,
-              })
-            }
-            onNext={goNext}
-            onBack={goBack}
-          />
-        ) : null}
-
-        {step === "INTEREST" ? (
-          <InterestStep
-            stepNumber={5}
-            totalSteps={totalSteps}
-            intent={data.intent}
-            passengerInterest={data.passengerInterest}
-            driverInterest={data.driverInterest}
-            passengerPriceRange={data.passengerPriceRange}
-            driverPrice={data.driverPrice}
-            onPassengerInterestChange={(value: InterestLevel) =>
-              updateData({
-                passengerInterest: value,
-              })
-            }
-            onDriverInterestChange={(value: InterestLevel) =>
-              updateData({
-                driverInterest: value,
-              })
-            }
-            onPassengerPriceRangeChange={(value) =>
-              updateData({
-                passengerPriceRange: value,
-              })
-            }
-            onDriverPriceChange={(value) =>
-              updateData({
-                driverPrice: value,
-              })
-            }
-            onNext={openContact}
-            onBack={goBack}
           />
         ) : null}
 
@@ -1064,19 +894,16 @@ function Formulario() {
             onBack={goBack}
           />
         ) : null}
+      </main>
 
-        {isSubmitting ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-            <div className="rounded-2xl border bg-card px-6 py-5 shadow-lg">
-              <p className="text-sm font-medium">Preparando sua participação...</p>
-
-              <p className="mt-1 text-xs text-muted-foreground">Só um instante.</p>
-            </div>
+      {isSubmitting ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="rounded-2xl border bg-card px-6 py-5 shadow-lg">
+            <p className="text-sm font-medium">Preparando sua participação...</p>
+            <p className="mt-1 text-xs text-muted-foreground">Só um instante.</p>
           </div>
-        ) : null}
-
-        {step === "SUCCESS" ? <FormSuccess data={data} onRestart={restart} /> : null}
-      </div>
-    </AppShell>
+        </div>
+      ) : null}
+    </div>
   );
 }

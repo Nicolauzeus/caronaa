@@ -112,8 +112,8 @@ describe("Formulario Flow Components", () => {
     expect(screen.queryByText(/2 a 3 vezes por semana/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Apenas nos dias do STS/i)).not.toBeInTheDocument();
 
-    const nextBtn = screen.getByRole("button", { name: /Avançar trajeto/i });
-    expect(nextBtn).toBeDisabled();
+    const continueBtn = screen.getByRole("button", { name: /Continuar/i });
+    expect(continueBtn).toBeDisabled();
 
     // Rerender with valid occupation, locations, departureWindow
     rerender(
@@ -132,10 +132,15 @@ describe("Formulario Flow Components", () => {
         }}
         onBack={() => {}}
         stepNumber={2}
-        totalSteps={6}
+        totalSteps={5}
       />,
     );
 
+    expect(continueBtn).not.toBeDisabled();
+    fireEvent.click(continueBtn);
+
+    // Sub-step 2
+    const nextBtn = screen.getByRole("button", { name: /Avançar trajeto/i });
     expect(nextBtn).not.toBeDisabled();
     fireEvent.click(nextBtn);
     expect(nextCalled).toBe(true);
@@ -169,7 +174,7 @@ describe("Formulario Flow Components", () => {
     expect(nextCalled).toBe(true);
   });
 
-  it("tests modular multi-step navigation flow across the 6 steps", () => {
+  it("tests modular multi-step navigation flow across the 5 steps", () => {
     const driverData = { source: "test", intent: "MOTORISTA" as const };
     const passengerData = { source: "test", intent: "PASSAGEIRO" as const };
     const dualData = { source: "test", intent: "AMBOS" as const };
@@ -177,40 +182,35 @@ describe("Formulario Flow Components", () => {
     // Step 1: ROLE_SELECTION
     expect(getNextStep("INTRO", driverData)).toBe("ROLE_SELECTION");
     expect(getStepIndex("ROLE_SELECTION", driverData)).toBe(1);
-    expect(getProgressPercentage("ROLE_SELECTION", driverData)).toBe(17);
+    expect(getProgressPercentage("ROLE_SELECTION", driverData)).toBe(20);
 
     // Step 2: ROUTE_DETAILS
     expect(getNextStep("ROLE_SELECTION", driverData)).toBe("ROUTE_DETAILS");
     expect(getPreviousStep("ROUTE_DETAILS", driverData)).toBe("ROLE_SELECTION");
     expect(getStepIndex("ROUTE_DETAILS", driverData)).toBe(2);
-    expect(getProgressPercentage("ROUTE_DETAILS", driverData)).toBe(33);
+    expect(getProgressPercentage("ROUTE_DETAILS", driverData)).toBe(40);
 
-    // Step 3: EVENT_PRESENCE
-    expect(getNextStep("ROUTE_DETAILS", driverData)).toBe("EVENT_PRESENCE");
-    expect(getPreviousStep("EVENT_PRESENCE", driverData)).toBe("ROUTE_DETAILS");
-    expect(getStepIndex("EVENT_PRESENCE", driverData)).toBe(3);
-    expect(getProgressPercentage("EVENT_PRESENCE", driverData)).toBe(50);
+    // Step 3: PROPOSAL_TRANSITION
+    expect(getNextStep("ROUTE_DETAILS", driverData)).toBe("PROPOSAL_TRANSITION");
+    expect(getPreviousStep("PROPOSAL_TRANSITION", driverData)).toBe("ROUTE_DETAILS");
+    expect(getStepIndex("PROPOSAL_TRANSITION", driverData)).toBe(3);
+    expect(getProgressPercentage("PROPOSAL_TRANSITION", driverData)).toBe(60);
 
-    // Step 4: PROPOSAL_TRANSITION
-    expect(getNextStep("EVENT_PRESENCE", driverData)).toBe("PROPOSAL_TRANSITION");
-    expect(getPreviousStep("PROPOSAL_TRANSITION", driverData)).toBe("EVENT_PRESENCE");
-    expect(getStepIndex("PROPOSAL_TRANSITION", driverData)).toBe(4);
-    expect(getProgressPercentage("PROPOSAL_TRANSITION", driverData)).toBe(67);
-
-    // Step 5: Profile specific
+    // Step 4: Profile specific
     expect(getNextStep("PROPOSAL_TRANSITION", driverData)).toBe("DRIVER_FLOW");
     expect(getNextStep("PROPOSAL_TRANSITION", passengerData)).toBe("PASSENGER_FLOW");
     expect(getNextStep("PROPOSAL_TRANSITION", dualData)).toBe("BOTH_FLOW");
 
-    expect(getStepIndex("DRIVER_FLOW", driverData)).toBe(5);
-    expect(getStepIndex("PASSENGER_FLOW", passengerData)).toBe(5);
-    expect(getStepIndex("BOTH_FLOW", dualData)).toBe(5);
+    expect(getStepIndex("DRIVER_FLOW", driverData)).toBe(4);
+    expect(getStepIndex("PASSENGER_FLOW", passengerData)).toBe(4);
+    expect(getStepIndex("BOTH_FLOW", dualData)).toBe(4);
+    expect(getProgressPercentage("DRIVER_FLOW", driverData)).toBe(80);
 
-    // Step 6: CONTACT
+    // Step 5: CONTACT
     expect(getNextStep("DRIVER_FLOW", driverData)).toBe("CONTACT");
     expect(getNextStep("PASSENGER_FLOW", passengerData)).toBe("CONTACT");
     expect(getNextStep("BOTH_FLOW", dualData)).toBe("CONTACT");
-    expect(getStepIndex("CONTACT", driverData)).toBe(6);
+    expect(getStepIndex("CONTACT", driverData)).toBe(5);
     expect(getProgressPercentage("CONTACT", driverData)).toBe(100);
 
     // Finish to SUCCESS
