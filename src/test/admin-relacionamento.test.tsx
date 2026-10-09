@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AdminRelacionamentosPage } from "@/routes/admin/relacionamentos";
+import { AdminRelacionamentosPage } from "@/components/admin/RelationshipsPage";
 import { Route as SingularRoute } from "@/routes/admin/relacionamento";
 import { Route as PluralRoute } from "@/routes/admin/relacionamentos";
 import * as pitchService from "@/lib/pitch/pitch-service";
