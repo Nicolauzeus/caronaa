@@ -4,14 +4,16 @@ import type { RideStatus } from "./ride-lifecycle";
 export async function transitionRideStatus(rideId: string, nextStatus: RideStatus) {
   if (nextStatus === "IN_PROGRESS")
     throw new Error("Valide o PIN de embarque para iniciar a viagem.");
-  const rpc = supabase.rpc as unknown as (
+  const client = supabase as unknown as {
+    rpc: (
     name: string,
     args: Record<string, string>,
-  ) => Promise<{ data: string | null; error: { message: string } | null }>;
+    ) => Promise<{ data: string | null; error: { message: string } | null }>;
+  };
   const { data, error } =
     nextStatus === "CONFIRMED"
-      ? await rpc("respond_to_ride_match", { p_ride_id: rideId, p_response: "ACCEPT" })
-      : await rpc("transition_ride_status", { p_ride_id: rideId, p_next_status: nextStatus });
+      ? await client.rpc("respond_to_ride_match", { p_ride_id: rideId, p_response: "ACCEPT" })
+      : await client.rpc("transition_ride_status", { p_ride_id: rideId, p_next_status: nextStatus });
   if (error) {
     throw new Error(`Não foi possível atualizar o estado da carona: ${error.message}`);
   }

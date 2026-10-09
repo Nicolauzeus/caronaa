@@ -655,6 +655,7 @@ function initials(name: string) {
 function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise<void> }) {
   const [details, setDetails] = useState(false);
   const [updating, setUpdating] = useState<RideStatus | null>(null);
+  const updateInFlight = useRef(false);
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
     ride.role === "driver" ? person?.fullName || "Passageiro" : person?.fullName || "Você";
@@ -674,7 +675,8 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     : [];
 
   async function updateStatus(nextStatus: RideStatus) {
-    if (!ride.rideId) return;
+    if (!ride.rideId || updateInFlight.current) return;
+    updateInFlight.current = true;
     setUpdating(nextStatus);
     try {
       const result = await transitionRideStatus(ride.rideId, nextStatus);
@@ -701,6 +703,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a viagem.");
     } finally {
+      updateInFlight.current = false;
       setUpdating(null);
     }
   }
