@@ -337,6 +337,13 @@
       "when": 1791552220158,
       "tag": "0047_persist_ride_publication_details",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791552823153,
+      "tag": "0048_complete_authorized_admin_form_answers",
+      "breakpoints": true
     }
   ]
 }
