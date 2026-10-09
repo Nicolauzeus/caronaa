@@ -878,11 +878,6 @@ export type Database = {
           destination: string
           destination_lat: number | null
           destination_lng: number | null
-          idempotency_key: string | null
-          meeting_lat: number | null
-          meeting_lng: number | null
-          meeting_point: string | null
-          notes: string | null
           offer_id: string
           origin: string
           origin_lat: number | null
@@ -898,7 +893,6 @@ export type Database = {
           time_tolerance_minutes: number
           total_price: number
           travel_preferences: Json | null
-          vehicle_description: string | null
           user_id: string
         }
         Insert: {
@@ -908,11 +902,6 @@ export type Database = {
           destination: string
           destination_lat?: number | null
           destination_lng?: number | null
-          idempotency_key?: string | null
-          meeting_lat?: number | null
-          meeting_lng?: number | null
-          meeting_point?: string | null
-          notes?: string | null
           offer_id?: string
           origin: string
           origin_lat?: number | null
@@ -928,7 +917,6 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
-          vehicle_description?: string | null
           user_id: string
         }
         Update: {
@@ -938,11 +926,6 @@ export type Database = {
           destination?: string
           destination_lat?: number | null
           destination_lng?: number | null
-          idempotency_key?: string | null
-          meeting_lat?: number | null
-          meeting_lng?: number | null
-          meeting_point?: string | null
-          notes?: string | null
           offer_id?: string
           origin?: string
           origin_lat?: number | null
@@ -958,7 +941,6 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
-          vehicle_description?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1042,16 +1024,11 @@ export type Database = {
           destination: string
           destination_lat: number | null
           destination_lng: number | null
-          idempotency_key: string | null
-          notes: string | null
           origin: string
           origin_lat: number | null
           origin_lng: number | null
           passenger_count: number
           price: number | null
-          pickup_lat: number | null
-          pickup_lng: number | null
-          pickup_point: string | null
           request_id: string
           ride_date: string
           routine_date: string | null
@@ -1070,16 +1047,11 @@ export type Database = {
           destination: string
           destination_lat?: number | null
           destination_lng?: number | null
-          idempotency_key?: string | null
-          notes?: string | null
           origin: string
           origin_lat?: number | null
           origin_lng?: number | null
           passenger_count: number
           price?: number | null
-          pickup_lat?: number | null
-          pickup_lng?: number | null
-          pickup_point?: string | null
           request_id?: string
           ride_date: string
           routine_date?: string | null
@@ -1098,16 +1070,11 @@ export type Database = {
           destination?: string
           destination_lat?: number | null
           destination_lng?: number | null
-          idempotency_key?: string | null
-          notes?: string | null
           origin?: string
           origin_lat?: number | null
           origin_lng?: number | null
           passenger_count?: number
           price?: number | null
-          pickup_lat?: number | null
-          pickup_lng?: number | null
-          pickup_point?: string | null
           request_id?: string
           ride_date?: string
           routine_date?: string | null
