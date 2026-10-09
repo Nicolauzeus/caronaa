@@ -653,16 +653,18 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const quoteRide = useServerFn(calculateRideQuote);
   const autoQuoteAttempted = useRef<string | null>(null);
+  const quoteDependencies = useRef({ quoteRide, onChanged });
+  quoteDependencies.current = { quoteRide, onChanged };
   useEffect(() => {
     if (ride.status !== "MATCHED" || !ride.rideId || ride.routeDistanceKm != null || autoQuoteAttempted.current === ride.rideId) return;
     autoQuoteAttempted.current = ride.rideId;
     let active = true;
     setQuoting(true);
-    void quoteRide({ data: { rideId: ride.rideId } }).then(() => { if (active) return onChanged(); })
+    void quoteDependencies.current.quoteRide({ data: { rideId: ride.rideId } }).then(async () => { if (active) await quoteDependencies.current.onChanged(); })
       .catch(error => { if (active) setQuoteError(error instanceof Error ? error.message : "Não foi possível calcular o preço."); })
       .finally(() => { if (active) setQuoting(false); });
     return () => { active = false; };
-  }, [ride.rideId, ride.status, ride.routeDistanceKm, quoteRide, onChanged]);
+  }, [ride.rideId, ride.status, ride.routeDistanceKm]);
   const updateInFlight = useRef(false);
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =

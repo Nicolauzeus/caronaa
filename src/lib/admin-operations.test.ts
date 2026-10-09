@@ -51,6 +51,10 @@ function compatibleData(): OperationData & {
     offers: [
       {
         offer_id: "offer",
+        accepts_quoted_fares: false,
+        route_quote_id: null,
+        passenger_price: null,
+        route_distance_km: null,
         idempotency_key: null,
         meeting_lat: null,
         meeting_lng: null,
