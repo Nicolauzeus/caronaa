@@ -6,6 +6,7 @@ export const CEARA_ONLY_MESSAGE =
 export type RegionalAccessResult =
   | { allowed: true }
   | { allowed: false; reason: "OUTSIDE_CEARA" | "LOCATION_UNAVAILABLE" };
+type RegionalAccessFailure = Extract<RegionalAccessResult, { allowed: false }>;
 
 type Position = { latitude: number; longitude: number; accuracy: number };
 
@@ -53,7 +54,7 @@ export async function checkCearaAccess(): Promise<RegionalAccessResult> {
   }
 }
 
-export function regionalAccessMessage(reason: RegionalAccessResult["reason"]): string {
+export function regionalAccessMessage(reason: RegionalAccessFailure["reason"]): string {
   if (reason === "OUTSIDE_CEARA") return CEARA_ONLY_MESSAGE;
   return `Não foi possível confirmar sua localização. Ative a localização do dispositivo e tente novamente. ${CEARA_ONLY_MESSAGE}`;
 }

@@ -134,7 +134,22 @@ function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean
 
           <div className="space-y-1">
             {section.items.map(({ label, to, icon: Icon }) => {
-              const active = pathname === to || (to !== "/admin" && pathname.startsWith(`${to}/`) && !navigation.flatMap((group) => group.items).some((item) => item.to !== to && item.to.startsWith(`${to}/`) && (pathname === item.to || pathname.startsWith(`${item.to}/`))));
+              const isRelacionamentos =
+                (to === "/admin/relacionamentos" || to === "/admin/relacionamento") &&
+                (pathname === "/admin/relacionamentos" || pathname === "/admin/relacionamento");
+              const active =
+                isRelacionamentos ||
+                pathname === to ||
+                (to !== "/admin" &&
+                  pathname.startsWith(`${to}/`) &&
+                  !navigation
+                    .flatMap((group) => group.items)
+                    .some(
+                      (item) =>
+                        item.to !== to &&
+                        item.to.startsWith(`${to}/`) &&
+                        (pathname === item.to || pathname.startsWith(`${item.to}/`)),
+                    ));
 
               return (
                 <Link

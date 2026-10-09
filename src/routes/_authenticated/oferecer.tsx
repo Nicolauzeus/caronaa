@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -58,6 +58,7 @@ type OferecerFormState = {
   destination: string;
   originLocation?: FormLocationDetails;
   destinationLocation?: FormLocationDetails;
+  meetingLocation?: FormLocationDetails;
   date: string;
   time: string;
   seats: string;
@@ -90,6 +91,10 @@ function Oferecer() {
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"point" | "routine">("point");
   const [routineSaved, setRoutineSaved] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
+  const publishingRef = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const [form, setForm] = useState<OferecerFormState>(() => ({
     ...initial, origin: search.origem ?? "", destination: search.destino ?? "", date: search.data ?? "", time: search.horario ?? "",
@@ -101,8 +106,11 @@ function Oferecer() {
   const next = async (e: FormEvent) => {
     e.preventDefault();
     if (step === 2) {
+      if (publishingRef.current) return;
+      publishingRef.current = true;
+      setPublishing(true);
       try {
-        await publishOffer({
+        const result = await publishOffer({
           data: {
             origin: form.origin,
             destination: form.destination,
@@ -117,12 +125,23 @@ function Oferecer() {
             totalPrice: form.price ? Number(form.price) : 30,
             passengerGenderPreference: form.passengerGenderPreference,
             preferences,
+            idempotencyKey,
+            vehicleDescription: form.vehicle,
+            meetingPoint: form.meeting,
+            meetingLat: form.meetingLocation?.lat,
+            meetingLng: form.meetingLocation?.lng,
+            notes: form.notes,
           },
         });
+        setPublishedOfferId(result.offerId);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Não foi possível publicar a oferta.");
         return;
+      } finally {
+        publishingRef.current = false;
+        setPublishing(false);
       }
+      setIdempotencyKey(crypto.randomUUID());
       setStep(3);
     } else setStep(2);
   };
@@ -140,7 +159,10 @@ function Oferecer() {
             <div className="space-y-4 border-y border-border py-8">
               <h2 className="text-xl font-semibold">Rotina ativa</h2>
               <Button asChild>
-                <Link to="/minhas-caronas">
+                  <Link
+                    to="/minhas-caronas"
+                    hash={publishedOfferId ? `ride-${publishedOfferId}` : undefined}
+                  >
                   Minhas viagens <ArrowRight size={16} />
                 </Link>
               </Button>
@@ -328,7 +350,13 @@ function Oferecer() {
                       id="oferecer-meeting"
                       label="Ponto de encontro"
                       value={form.meeting}
-                      onChange={(v, details) => update("meeting", details?.formattedAddress || v)}
+                      onChange={(v, details) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          meeting: details?.formattedAddress || v,
+                          meetingLocation: details,
+                        }))
+                      }
                       placeholder="Ex.: Praça Portugal"
                       required
                       variant="simple"
@@ -362,8 +390,8 @@ function Oferecer() {
                       <CalendarDays size={15} /> Planeje seu trajeto
                     </span>
                   )}
-                  <Button type="submit" className="h-11 px-6">
-                    {step === 1 ? "Continuar" : "Publicar carona"} <ArrowRight />
+                  <Button type="submit" className="h-11 px-6" disabled={step === 2 && publishing}>
+                    {step === 1 ? "Continuar" : publishing ? "Publicando..." : "Publicar carona"} <ArrowRight />
                   </Button>
                 </div>
               </form>

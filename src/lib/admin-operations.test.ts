@@ -21,6 +21,11 @@ function compatibleData(): OperationData & {
     requests: [
       {
         request_id: "request",
+        idempotency_key: null,
+        notes: null,
+        pickup_lat: null,
+        pickup_lng: null,
+        pickup_point: null,
         travel_preferences: null,
         price: null,
         user_id: "passenger",
@@ -46,6 +51,12 @@ function compatibleData(): OperationData & {
     offers: [
       {
         offer_id: "offer",
+        idempotency_key: null,
+        meeting_lat: null,
+        meeting_lng: null,
+        meeting_point: null,
+        notes: null,
+        vehicle_description: null,
         travel_preferences: null,
         passenger_gender_preference: "ANY",
         total_price: 30,

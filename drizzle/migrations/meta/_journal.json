@@ -316,6 +316,20 @@
       "when": 1791445436119,
       "tag": "0044_repair_boarding_qr_and_private_pix",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791550050000,
+      "tag": "0045_persist_ride_publication_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791550650000,
+      "tag": "0046_secure_pitch_contact_admin_access",
+      "breakpoints": true
     }
   ]
 }

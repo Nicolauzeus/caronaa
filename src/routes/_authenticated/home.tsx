@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,8 @@ function Home() {
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const requestSubmitting = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const refresh = useCallback(() => {
     void loadJourneys()
@@ -76,6 +78,26 @@ function Home() {
     };
   }, [loadRecent]);
   const active = journeys[0];
+  const activeIsCurrent = Boolean(
+    active &&
+      active.status !== "CANCELLED" &&
+      active.status !== "COMPLETED" &&
+      (active.status === "IN_PROGRESS" ||
+        new Date(`${active.ride_date}T${active.departure_time.slice(0, 8)}-03:00`).getTime() > Date.now()),
+  );
+  const activeNextStep = !active
+    ? ""
+    : active.status === "IN_PROGRESS"
+      ? "Acompanhar viagem"
+      : active.status === "CONFIRMED"
+        ? "Ver embarque e acompanhar"
+        : active.status === "COMPLETED"
+          ? "Ver resumo e Pix"
+        : active.status === "MATCHED" || active.status === "matched"
+          ? "Ver combinaÃ§Ã£o"
+          : active.kind === "offer"
+            ? "Ver oferta"
+            : "Ver pedido";
   const point =
     originLocation ??
     (active?.origin_lat != null && active.origin_lng != null
@@ -210,6 +232,8 @@ function Home() {
                 window.location.assign(`/oferecer?${params}`);
                 return;
               }
+              if (requestSubmitting.current) return;
+              requestSubmitting.current = true;
               setBusy(true);
               setError(null);
               try {
@@ -225,13 +249,16 @@ function Home() {
                     departureTime: time,
                     passengerCount: Number(count),
                     preferences,
+                    idempotencyKey,
                   },
                 });
                 toast.success("Sua solicitação foi publicada.");
+                setIdempotencyKey(crypto.randomUUID());
                 refresh();
               } catch (reason) {
                 setError("Não foi possível pedir a carona. Confira os dados e tente novamente.");
               } finally {
+                requestSubmitting.current = false;
                 setBusy(false);
               }
             }}
@@ -400,7 +427,9 @@ function Home() {
         {active && (
           <section className="mt-6 border-t border-border py-5" aria-label="Seu trajeto ativo">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold">Seu trajeto ativo</h2>
+              <h2 className="text-base font-bold">
+                {activeIsCurrent ? "Sua carona atual" : "Sua última publicação"}
+              </h2>
               {active.sts && <span className="text-xs text-muted-foreground">STS 26</span>}
             </div>
             <p className="mt-3 text-sm font-medium">{active.origin}</p>
@@ -411,17 +440,28 @@ function Home() {
               {active.departure_time.slice(0, 5)} ·{" "}
               {active.status === "IN_PROGRESS"
                 ? "Em andamento"
-                : active.status === "CONFIRMED"
+              : active.status === "CONFIRMED"
                   ? "Confirmada"
-                  : active.kind === "offer"
+                  : active.status === "COMPLETED"
+                    ? "Concluída"
+                    : active.status === "CANCELLED"
+                      ? "Cancelada"
+                      : active.status === "NO_SHOW"
+                        ? "Não compareceu"
+                        : active.kind === "offer"
                     ? "Oferta ativa"
                     : active.status === "matched"
                       ? "Compatibilidade encontrada"
                       : "Solicitação ativa"}
             </p>
+            {!activeIsCurrent && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Esta publicação está encerrada e não representa uma viagem ativa.
+              </p>
+            )}
             <Button asChild variant="outline" className="mt-4">
-              <Link to="/minhas-caronas">
-                Ver viagem <ArrowRight size={16} />
+              <Link to="/minhas-caronas" hash={`ride-${active.id}`}>
+                {activeNextStep} <ArrowRight size={16} />
               </Link>
             </Button>
           </section>

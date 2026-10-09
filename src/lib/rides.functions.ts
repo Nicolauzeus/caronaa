@@ -57,6 +57,11 @@ export type RideSummary = {
   matchScore?: number;
   preferenceBonus?: number;
   matchReasons?: string[];
+  vehicleDescription?: string | null;
+  meetingPoint?: string | null;
+  meetingLat?: number | null;
+  meetingLng?: number | null;
+  notes?: string | null;
 };
 
 const searchInput = z.object({
@@ -194,6 +199,11 @@ function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): Ri
     totalPrice,
     confirmedPassengers: 0,
     passengerContribution: totalPrice,
+    vehicleDescription: typeof r["vehicle_description"] === "string" ? r["vehicle_description"] : null,
+    meetingPoint: typeof r["meeting_point"] === "string" ? r["meeting_point"] : null,
+    meetingLat: typeof r["meeting_lat"] === "number" ? r["meeting_lat"] : null,
+    meetingLng: typeof r["meeting_lng"] === "number" ? r["meeting_lng"] : null,
+    notes: typeof r["notes"] === "string" ? r["notes"] : null,
   };
 }
 
@@ -222,6 +232,10 @@ function mapRequest(row: RequestRow, profile: RideProfile, viewerUserId: string)
     totalPrice: price,
     confirmedPassengers: 1,
     passengerContribution: price,
+    meetingPoint: typeof r["pickup_point"] === "string" ? r["pickup_point"] : null,
+    meetingLat: typeof r["pickup_lat"] === "number" ? r["pickup_lat"] : null,
+    meetingLng: typeof r["pickup_lng"] === "number" ? r["pickup_lng"] : null,
+    notes: typeof r["notes"] === "string" ? r["notes"] : null,
   };
 }
 
@@ -282,6 +296,32 @@ function mapRide(
       typeof ri["passenger_accepted_at"] === "string" ? ri["passenger_accepted_at"] : null,
     responseExpiresAt:
       typeof ri["response_expires_at"] === "string" ? ri["response_expires_at"] : null,
+    vehicleDescription:
+      typeof off?.["vehicle_description"] === "string" ? off["vehicle_description"] : null,
+    meetingPoint:
+      typeof req?.["pickup_point"] === "string"
+        ? req["pickup_point"]
+        : typeof off?.["meeting_point"] === "string"
+          ? off["meeting_point"]
+          : null,
+    meetingLat:
+      typeof req?.["pickup_lat"] === "number"
+        ? req["pickup_lat"]
+        : typeof off?.["meeting_lat"] === "number"
+          ? off["meeting_lat"]
+          : null,
+    meetingLng:
+      typeof req?.["pickup_lng"] === "number"
+        ? req["pickup_lng"]
+        : typeof off?.["meeting_lng"] === "number"
+          ? off["meeting_lng"]
+          : null,
+    notes:
+      typeof req?.["notes"] === "string"
+        ? req["notes"]
+        : typeof off?.["notes"] === "string"
+          ? off["notes"]
+          : null,
   };
 }
 
@@ -509,7 +549,7 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { data: requests, error: requestsError } = await client
       .from("ride_requests")
       .select(
-        "request_id, user_id, origin, destination, ride_date, departure_time, passenger_count, status, created_at, price, routine_id",
+        "request_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, pickup_point, pickup_lat, pickup_lng, notes, idempotency_key, ride_date, departure_time, passenger_count, status, created_at, price, routine_id",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
@@ -520,7 +560,7 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { data: offers, error: offersError } = await client
       .from("ride_offers")
       .select(
-        "offer_id, user_id, origin, destination, ride_date, departure_time, available_seats, seats_remaining, status, created_at, total_price, routine_id",
+        "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, vehicle_description, meeting_point, meeting_lat, meeting_lng, notes, idempotency_key, ride_date, departure_time, available_seats, seats_remaining, status, created_at, total_price, routine_id",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
@@ -541,7 +581,7 @@ export const getMyRides = createServerFn({ method: "GET" })
       ? await client
           .from("ride_requests")
           .select(
-            "request_id, user_id, origin, destination, ride_date, departure_time, passenger_count, status, created_at, price, routine_id",
+            "request_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, pickup_point, pickup_lat, pickup_lng, notes, idempotency_key, ride_date, departure_time, passenger_count, status, created_at, price, routine_id",
           )
           .in("request_id", [...new Set(requestIds)])
       : { data: [], error: null };
@@ -553,7 +593,7 @@ export const getMyRides = createServerFn({ method: "GET" })
       ? await client
           .from("ride_offers")
           .select(
-            "offer_id, user_id, origin, destination, ride_date, departure_time, available_seats, seats_remaining, status, created_at, total_price, routine_id",
+            "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, vehicle_description, meeting_point, meeting_lat, meeting_lng, notes, idempotency_key, ride_date, departure_time, available_seats, seats_remaining, status, created_at, total_price, routine_id",
           )
           .in("offer_id", [...new Set(offerIds)])
       : { data: [], error: null };
@@ -588,8 +628,11 @@ export const getMyRides = createServerFn({ method: "GET" })
     ];
     const { profiles, verifications } = await loadProfiles(client, userIds);
 
-    const matchedRequestIds = new Set((rides ?? []).map((ride) => String(ride.request_id)));
-    const matchedOfferIds = new Set((rides ?? []).map((ride) => String(ride.offer_id)));
+    const activeRideLinks = (rides ?? []).filter(
+      (ride) => !["CANCELLED", "NO_SHOW"].includes(String(ride.status)),
+    );
+    const matchedRequestIds = new Set(activeRideLinks.map((ride) => String(ride.request_id)));
+    const matchedOfferIds = new Set(activeRideLinks.map((ride) => String(ride.offer_id)));
 
     const currentProfile = profileFor(context.userId, profiles, verifications);
 

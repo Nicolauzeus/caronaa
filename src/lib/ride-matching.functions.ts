@@ -21,6 +21,16 @@ const rideInput = z.object({
   passengerGenderPreference: z.enum(["ANY", "FEMININO", "MASCULINO"]).optional(),
   price: z.number().finite().min(0).max(1000).optional(),
   preferences: travelPreferencesSchema.optional(),
+  idempotencyKey: z.string().uuid(),
+  vehicleDescription: z.string().trim().max(160).optional(),
+  meetingPoint: z.string().trim().max(200).optional(),
+  meetingLat: z.number().finite().min(-90).max(90).optional(),
+  meetingLng: z.number().finite().min(-180).max(180).optional(),
+  notes: z.string().trim().max(500).optional(),
+}).superRefine((data, context) => {
+  if ((data.meetingLat == null) !== (data.meetingLng == null)) {
+    context.addIssue({ code: "custom", message: "Informe as duas coordenadas do ponto de encontro." });
+  }
 });
 
 export const createRideRequest = createServerFn({ method: "POST" })
@@ -40,6 +50,9 @@ export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
+    if (!data.vehicleDescription?.trim() || !data.meetingPoint?.trim()) {
+      throw new Error("Informe o veículo e o ponto de encontro antes de publicar a oferta.");
+    }
     const { data: offerId, error } = await context.supabase.rpc("create_preferred_ride", {
       p_kind: "offer", p_details: data, p_preferences: data.preferences,
     });

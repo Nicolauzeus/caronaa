@@ -66,10 +66,10 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       context.supabase
         .from("rides")
         .select(
-          "ride_id,offer_id,request_id,status,ride_requests(origin,destination,ride_date,departure_time,origin_lat,origin_lng,destination_lat,destination_lng)",
+          "ride_id,offer_id,request_id,driver_user_id,passenger_user_id,passenger_accepted_at,driver_accepted_at,status,ride_requests(origin,destination,ride_date,departure_time,origin_lat,origin_lng,destination_lat,destination_lng)",
         )
         .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
-        .in("status", ["CONFIRMED", "IN_PROGRESS"])
+        .in("status", ["MATCHED", "CONFIRMED", "IN_PROGRESS"])
         .order("updated_at", { ascending: false })
         .limit(5),
     ]);
@@ -77,7 +77,7 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       throw new Error(offers.error?.message || requests.error?.message || rides.error?.message);
     const sourceIds = new Set((sources.data ?? []).flatMap((s) => [s.request_id, s.offer_id]));
     const activeRideIds = new Set((rides.data ?? []).flatMap((r) => [r.request_id, r.offer_id]));
-    return [
+    const currentJourneys = [
       ...(rides.data ?? []).flatMap((r) =>
         r.ride_requests
           ? [
@@ -86,6 +86,10 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
                 id: r.ride_id,
                 status: r.status,
                 kind: "ride" as const,
+                acceptedByViewer:
+                  r.driver_user_id === context.userId
+                    ? Boolean(r.driver_accepted_at)
+                    : Boolean(r.passenger_accepted_at),
                 sts: sourceIds.has(r.request_id) || sourceIds.has(r.offer_id),
               },
             ]
@@ -114,6 +118,57 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       .sort(
         (a, b) =>
           Number(b.status === "IN_PROGRESS") - Number(a.status === "IN_PROGRESS") ||
-          `${a.ride_date} ${a.departure_time}`.localeCompare(`${b.ride_date} ${b.departure_time}`),
+              `${a.ride_date} ${a.departure_time}`.localeCompare(`${b.ride_date} ${b.departure_time}`),
       );
+    if (currentJourneys.length) return currentJourneys;
+
+    const [lastRequest, lastOffer, lastRide] = await Promise.all([
+      context.supabase
+        .from("ride_requests")
+        .select("request_id,origin,destination,origin_lat,origin_lng,ride_date,departure_time,status,created_at")
+        .eq("user_id", context.userId)
+        .order("created_at", { ascending: false })
+        .limit(1),
+      context.supabase
+        .from("ride_offers")
+        .select("offer_id,origin,destination,origin_lat,origin_lng,ride_date,departure_time,status,created_at")
+        .eq("user_id", context.userId)
+        .order("created_at", { ascending: false })
+        .limit(1),
+      context.supabase
+        .from("rides")
+        .select("ride_id,status,updated_at,ride_requests(origin,destination,origin_lat,origin_lng,ride_date,departure_time),ride_offers(origin,destination,origin_lat,origin_lng,ride_date,departure_time)")
+        .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
+        .order("updated_at", { ascending: false })
+        .limit(1),
+    ]);
+    if (lastRequest.error || lastOffer.error || lastRide.error) return [];
+    const latest = [
+      ...(lastRequest.data ?? []).map((r) => ({
+        ...r,
+        id: r.request_id,
+        kind: "request" as const,
+        sts: sourceIds.has(r.request_id),
+      })),
+      ...(lastOffer.data ?? []).map((r) => ({
+        ...r,
+        id: r.offer_id,
+        kind: "offer" as const,
+        sts: sourceIds.has(r.offer_id),
+      })),
+      ...(lastRide.data ?? []).flatMap((r) => {
+        const route = r.ride_requests ?? r.ride_offers;
+        return route
+          ? [{
+              ...route,
+              created_at: r.updated_at,
+              id: r.ride_id,
+              status: r.status,
+              kind: "ride" as const,
+              sts: false,
+            }]
+          : [];
+      }),
+    ];
+    return latest.sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 1);
   });

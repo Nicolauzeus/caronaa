@@ -8,15 +8,17 @@ import {
   Download,
   ExternalLink,
   Eye,
-  Filter,
   HeartHandshake,
   Mail,
   MapPin,
   MessageSquare,
   Phone,
+  Plus,
   RefreshCw,
   Search,
   Users,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -24,7 +26,7 @@ import { toast } from "sonner";
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -48,6 +51,7 @@ import {
   INVESTOR_UPDATE_LABELS,
   PARTNERSHIP_TYPE_LABELS,
   PitchContact,
+  PitchContactFormData,
   PitchContactStatus,
   PitchInterest,
 } from "@/lib/pitch/types";
@@ -55,16 +59,22 @@ import {
   exportPitchContactsToCsv,
   getPitchContacts,
   normalizePhoneNumber,
+  savePitchContact,
   updatePitchContactNotes,
   updatePitchContactStatus,
 } from "@/lib/pitch/pitch-service";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/relacionamentos")({
   head: () => ({
-    meta: [{ property: "og:title", content: "Relacionamentos & Pitch — Administração CARONAA" },
-{ property: "og:description", content: "Gestão de contatos, possíveis investidores e parceiros do Pitch STS 2026." },
-{ property: "og:type", content: "website" },
-{ name: "twitter:card", content: "summary" },
+    meta: [
+      { property: "og:title", content: "Relacionamentos & Pitch — Administração CARONAA" },
+      {
+        property: "og:description",
+        content: "Gestão de contatos, possíveis investidores e parceiros do Pitch STS 2026.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         title: "Relacionamentos & Pitch — Administração CARONAA",
       },
@@ -80,6 +90,7 @@ export const Route = createFileRoute("/admin/relacionamentos")({
 export function AdminRelacionamentosPage() {
   const [contacts, setContacts] = useState<PitchContact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [interestFilter, setInterestFilter] = useState<string>("TODOS");
   const [statusFilter, setStatusFilter] = useState<string>("TODOS");
@@ -89,12 +100,33 @@ export function AdminRelacionamentosPage() {
   const [editingNotes, setEditingNotes] = useState<string>("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
+  // New manual contact creation dialog
+  const [isNewContactOpen, setIsNewContactOpen] = useState(false);
+  const [isSavingNewContact, setIsSavingNewContact] = useState(false);
+  const [newContactForm, setNewContactForm] = useState<PitchContactFormData>({
+    interest: "PARCEIRO",
+    name: "",
+    whatsapp: "",
+    phone: "",
+    same_phone_whatsapp: true,
+    email: "",
+    institution_name: "",
+    institution_type: "EMPRESA",
+    institution_address: "",
+    partnership_type: "TESTAR_INSTITUICAO",
+    investor_update_preference: "DURANTE_VALIDACAO",
+    message: "",
+    consent_contact: false,
+    consent_newsletter: false,
+  });
+
   const fetchContacts = async () => {
     try {
       setLoading(true);
       const res = await getPitchContacts();
-      setContacts(res.data);
-    } catch (err) {
+      setContacts(res.data || []);
+      setLoadError(res.error || null);
+    } catch {
       toast.error("Erro ao carregar contatos de relacionamento.");
     } finally {
       setLoading(false);
@@ -106,15 +138,23 @@ export function AdminRelacionamentosPage() {
   }, []);
 
   const handleStatusChange = async (id: string, newStatus: PitchContactStatus) => {
+    const previousStatus = contacts.find((contact) => contact.id === id)?.status;
     setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
     if (selectedContact && selectedContact.id === id) {
       setSelectedContact((prev) => (prev ? { ...prev, status: newStatus } : null));
     }
 
     try {
-      await updatePitchContactStatus(id, newStatus);
+      const result = await updatePitchContactStatus(id, newStatus);
+      if (!result.success) throw new Error(result.error);
       toast.success(`Status atualizado para "${CONTACT_STATUS_LABELS[newStatus]}"`);
     } catch {
+      if (previousStatus) {
+        setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, status: previousStatus } : c)));
+        if (selectedContact?.id === id) {
+          setSelectedContact((prev) => (prev ? { ...prev, status: previousStatus } : null));
+        }
+      }
       toast.error("Erro ao atualizar status.");
     }
   };
@@ -128,7 +168,8 @@ export function AdminRelacionamentosPage() {
     if (!selectedContact) return;
     try {
       setIsSavingNotes(true);
-      await updatePitchContactNotes(selectedContact.id, editingNotes);
+      const result = await updatePitchContactNotes(selectedContact.id, editingNotes);
+      if (!result.success) throw new Error(result.error);
       setContacts((prev) =>
         prev.map((c) => (c.id === selectedContact.id ? { ...c, notes: editingNotes } : c)),
       );
@@ -141,22 +182,70 @@ export function AdminRelacionamentosPage() {
     }
   };
 
+  const handleCreateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContactForm.name.trim() || !newContactForm.whatsapp.trim()) {
+      toast.error("Informe pelo menos o nome e o WhatsApp do contato.");
+      return;
+    }
+
+    try {
+      setIsSavingNewContact(true);
+      const res = await savePitchContact({
+        ...newContactForm,
+        source: "admin_manual",
+        message: newContactForm.message.trim() || "Contato cadastrado manualmente no painel administrativo.",
+      });
+
+      if (res.success && res.data) {
+        toast.success("Contato cadastrado com sucesso!");
+        setIsNewContactOpen(false);
+        setNewContactForm({
+          interest: "PARCEIRO",
+          name: "",
+          whatsapp: "",
+          phone: "",
+          same_phone_whatsapp: true,
+          email: "",
+          institution_name: "",
+          institution_type: "EMPRESA",
+          institution_address: "",
+          partnership_type: "TESTAR_INSTITUICAO",
+          investor_update_preference: "DURANTE_VALIDACAO",
+          message: "",
+          consent_contact: false,
+          consent_newsletter: false,
+        });
+        await fetchContacts();
+      } else {
+        toast.error("Não foi possível salvar o contato.");
+      }
+    } catch {
+      toast.error("Erro ao cadastrar contato.");
+    } finally {
+      setIsSavingNewContact(false);
+    }
+  };
+
   // Metrics calculation
   const metrics = useMemo(() => {
-    const total = contacts.length;
-    const investors = contacts.filter((c) => c.interest === "INVESTIDOR").length;
-    const partners = contacts.filter((c) => c.interest === "PARCEIRO").length;
-    const both = contacts.filter((c) => c.interest === "AMBOS").length;
-    const newContacts = contacts.filter((c) => c.status === "NOVO").length;
-    const inFollowUp = contacts.filter((c) => c.status === "EM_ACOMPANHAMENTO").length;
-    const converted = contacts.filter((c) => c.status === "CONVERTIDO").length;
+    const list = contacts || [];
+    const total = list.length;
+    const investors = list.filter((c) => c.interest === "INVESTIDOR").length;
+    const partners = list.filter((c) => c.interest === "PARCEIRO").length;
+    const both = list.filter((c) => c.interest === "AMBOS").length;
+    const newContacts = list.filter((c) => c.status === "NOVO").length;
+    const inFollowUp = list.filter((c) => c.status === "EM_ACOMPANHAMENTO").length;
+    const converted = list.filter((c) => c.status === "CONVERTIDO").length;
 
     return { total, investors, partners, both, newContacts, inFollowUp, converted };
   }, [contacts]);
 
-  // Filtered contacts list
+  // Filtered contacts list with defensive checks
   const filteredContacts = useMemo(() => {
-    return contacts.filter((contact) => {
+    const list = contacts || [];
+    return list.filter((contact) => {
+      if (!contact) return false;
       if (interestFilter !== "TODOS" && contact.interest !== interestFilter) {
         return false;
       }
@@ -165,21 +254,20 @@ export function AdminRelacionamentosPage() {
       }
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const matchesName = contact.name.toLowerCase().includes(q);
-        const matchesWa = contact.whatsapp.includes(q);
-        const matchesPhone = contact.phone ? contact.phone.includes(q) : false;
-        const matchesEmail = contact.email ? contact.email.toLowerCase().includes(q) : false;
-        const matchesInst = contact.institution_name
-          ? contact.institution_name.toLowerCase().includes(q)
-          : false;
-        const matchesMsg = contact.message.toLowerCase().includes(q);
+        const name = (contact.name || "").toLowerCase();
+        const wa = contact.whatsapp || "";
+        const phone = contact.phone || "";
+        const email = (contact.email || "").toLowerCase();
+        const inst = (contact.institution_name || "").toLowerCase();
+        const msg = (contact.message || "").toLowerCase();
+
         if (
-          !matchesName &&
-          !matchesWa &&
-          !matchesPhone &&
-          !matchesEmail &&
-          !matchesInst &&
-          !matchesMsg
+          !name.includes(q) &&
+          !wa.includes(q) &&
+          !phone.includes(q) &&
+          !email.includes(q) &&
+          !inst.includes(q) &&
+          !msg.includes(q)
         ) {
           return false;
         }
@@ -205,6 +293,7 @@ export function AdminRelacionamentosPage() {
           </Badge>
         );
       case "AMBOS":
+      default:
         return (
           <Badge className="bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30 gap-1 font-medium">
             <HeartHandshake className="w-3 h-3" />
@@ -244,6 +333,7 @@ export function AdminRelacionamentosPage() {
           </Badge>
         );
       case "ARQUIVADO":
+      default:
         return (
           <Badge variant="outline" className="text-muted-foreground">
             Arquivado
@@ -266,7 +356,17 @@ export function AdminRelacionamentosPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setIsNewContactOpen(true)}
+            className="gap-1.5 bg-primary text-primary-foreground font-semibold"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Contato
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -279,11 +379,11 @@ export function AdminRelacionamentosPage() {
           </Button>
 
           <Button
-            variant="default"
+            variant="secondary"
             size="sm"
             onClick={() => exportPitchContactsToCsv(filteredContacts)}
             disabled={filteredContacts.length === 0}
-            className="gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold"
+            className="gap-2 font-medium"
           >
             <Download className="w-4 h-4" />
             Exportar CSV ({filteredContacts.length})
@@ -294,48 +394,54 @@ export function AdminRelacionamentosPage() {
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <MetricCard
-          title="Total Contatos"
-          value={metrics.total}
-          subtitle="Captados no pitch"
-          icon={<Users className="w-4 h-4 text-primary" />}
+          label="Total Contatos"
+          value={String(metrics.total)}
+          detail="Captados no pitch"
         />
         <MetricCard
-          title="Investidores"
-          value={metrics.investors}
-          subtitle="Interesse capital"
-          icon={<Coins className="w-4 h-4 text-amber-500" />}
+          label="Investidores"
+          value={String(metrics.investors)}
+          detail="Interesse capital"
         />
         <MetricCard
-          title="Parceiros"
-          value={metrics.partners}
-          subtitle="Empresas / Univ."
-          icon={<Building2 className="w-4 h-4 text-blue-500" />}
+          label="Parceiros"
+          value={String(metrics.partners)}
+          detail="Empresas / Univ."
         />
         <MetricCard
-          title="Ambos"
-          value={metrics.both}
-          subtitle="Investidor + Parceiro"
-          icon={<HeartHandshake className="w-4 h-4 text-purple-500" />}
+          label="Ambos"
+          value={String(metrics.both)}
+          detail="Investidor + Parceiro"
         />
         <MetricCard
-          title="Novos"
-          value={metrics.newContacts}
-          subtitle="Aguardando contato"
-          icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+          label="Novos"
+          value={String(metrics.newContacts)}
+          detail="Aguardando contato"
         />
         <MetricCard
-          title="Em Acompanhamento"
-          value={metrics.inFollowUp}
-          subtitle="Em conversa"
-          icon={<MessageSquare className="w-4 h-4 text-amber-500" />}
+          label="Em Acompanhamento"
+          value={String(metrics.inFollowUp)}
+          detail="Em conversa"
         />
         <MetricCard
-          title="Convertidos"
-          value={metrics.converted}
-          subtitle="Parceria / Avance"
-          icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+          label="Convertidos"
+          value={String(metrics.converted)}
+          detail="Parceria / Avance"
         />
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-200"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Dados do servidor indisponíveis</p>
+            <p className="mt-1">{loadError} Os dados locais exibidos podem estar desatualizados.</p>
+          </div>
+        </div>
+      )}
 
       {/* Filters Bar */}
       <Card>
@@ -348,6 +454,15 @@ export function AdminRelacionamentosPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap gap-2.5">
@@ -386,37 +501,56 @@ export function AdminRelacionamentosPage() {
 
       {/* Contacts List / Cards */}
       {loading ? (
-        <div className="p-12 text-center text-muted-foreground animate-pulse">
-          Carregando contatos captados no pitch...
+        <div className="p-12 text-center text-muted-foreground animate-pulse rounded-xl border border-border bg-card">
+          Carregando contatos de relacionamento...
         </div>
       ) : filteredContacts.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center space-y-2">
+          <CardContent className="p-12 text-center space-y-3">
             <Users className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
             <h3 className="font-semibold text-foreground">Nenhum contato encontrado</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Nenhum contato corresponde aos filtros selecionados. Novos formulários enviados na
-              página do Pitch aparecerão automaticamente aqui.
+              página do Pitch ou cadastrados manualmente aparecerão aqui.
             </p>
+            <div className="flex justify-center gap-2 pt-2">
+              {(search || interestFilter !== "TODOS" || statusFilter !== "TODOS") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setInterestFilter("TODOS");
+                    setStatusFilter("TODOS");
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              )}
+              <Button size="sm" onClick={() => setIsNewContactOpen(true)}>
+                <Plus className="w-4 h-4 mr-1" />
+                Cadastrar Contato
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {filteredContacts.map((contact) => {
-            const cleanPhone = normalizePhoneNumber(contact.whatsapp);
+            const cleanPhone = normalizePhoneNumber(contact.whatsapp || "");
             const waLink = `https://wa.me/55${cleanPhone}`;
 
             return (
               <Card
                 key={contact.id}
-                className="hover:border-amber-500/40 transition-colors duration-200"
+                className="hover:border-primary/40 transition-colors duration-200"
               >
                 <CardContent className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   {/* Info Column */}
                   <div className="space-y-2 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold text-base text-foreground truncate">
-                        {contact.name}
+                        {contact.name || "Sem nome"}
                       </span>
                       {getInterestBadge(contact.interest)}
                       {getStatusBadge(contact.status)}
@@ -450,10 +584,12 @@ export function AdminRelacionamentosPage() {
 
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(contact.created_at).toLocaleString("pt-BR", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
+                        {contact.created_at
+                          ? new Date(contact.created_at).toLocaleString("pt-BR", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          : "Data não informada"}
                       </span>
                     </div>
 
@@ -464,7 +600,7 @@ export function AdminRelacionamentosPage() {
                         <span>Instituição: {contact.institution_name}</span>
                         {contact.institution_type && (
                           <span className="text-muted-foreground">
-                            ({INSTITUTION_TYPE_LABELS[contact.institution_type]})
+                            ({INSTITUTION_TYPE_LABELS[contact.institution_type] || contact.institution_type})
                           </span>
                         )}
                       </div>
@@ -473,7 +609,7 @@ export function AdminRelacionamentosPage() {
                     {/* Message Preview */}
                     <div className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/60 line-clamp-2">
                       <span className="font-semibold text-foreground">Mensagem:</span>{" "}
-                      {contact.message}
+                      {contact.message || "Sem mensagem"}
                     </div>
                   </div>
 
@@ -530,6 +666,239 @@ export function AdminRelacionamentosPage() {
         </div>
       )}
 
+      {/* Dialog: Create Manual Contact */}
+      <Dialog open={isNewContactOpen} onOpenChange={setIsNewContactOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handleCreateContact}>
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold">Cadastrar Novo Contato</DialogTitle>
+              <DialogDescription>
+                Adicione um potencial parceiro ou investidor captado presencialmente ou por outros canais.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3.5 py-3 text-sm">
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-name">Nome completo *</Label>
+                <Input
+                  id="contact-name"
+                  required
+                  placeholder="Ex.: Mariana Costa"
+                  value={newContactForm.name}
+                  onChange={(e) =>
+                    setNewContactForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-wa">WhatsApp com DDD *</Label>
+                  <Input
+                    id="contact-wa"
+                    required
+                    placeholder="(85) 99999-9999"
+                    value={newContactForm.whatsapp}
+                    onChange={(e) =>
+                      setNewContactForm((prev) => ({ ...prev, whatsapp: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-email">E-mail (opcional)</Label>
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    placeholder="mariana@empresa.com"
+                    value={newContactForm.email || ""}
+                    onChange={(e) =>
+                      setNewContactForm((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {(newContactForm.interest === "INVESTIDOR" || newContactForm.interest === "AMBOS") && (
+                <div className="space-y-1.5">
+                  <Label>Preferência de atualização do investidor</Label>
+                  <Select
+                    value={newContactForm.investor_update_preference || ""}
+                    onValueChange={(val) =>
+                      setNewContactForm((prev) => ({
+                        ...prev,
+                        investor_update_preference: val as PitchContactFormData["investor_update_preference"],
+                      }))
+                    }
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione uma preferência" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(INVESTOR_UPDATE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {(newContactForm.interest === "PARCEIRO" || newContactForm.interest === "AMBOS") && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Objetivo da parceria</Label>
+                    <Select
+                      value={newContactForm.partnership_type || ""}
+                      onValueChange={(val) =>
+                        setNewContactForm((prev) => ({
+                          ...prev,
+                          partnership_type: val as PitchContactFormData["partnership_type"],
+                        }))
+                      }
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione o interesse de parceria" /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PARTNERSHIP_TYPE_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {newContactForm.partnership_type === "OUTRO" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="contact-partnership-custom">Outro objetivo</Label>
+                      <Input
+                        id="contact-partnership-custom"
+                        value={newContactForm.partnership_type_custom || ""}
+                        onChange={(event) =>
+                          setNewContactForm((prev) => ({ ...prev, partnership_type_custom: event.target.value }))
+                        }
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="contact-address">Endereço da instituição (opcional)</Label>
+                    <Input
+                      id="contact-address"
+                      value={newContactForm.institution_address || ""}
+                      onChange={(event) =>
+                        setNewContactForm((prev) => ({ ...prev, institution_address: event.target.value }))
+                      }
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Tipo de Interesse</Label>
+                <Select
+                  value={newContactForm.interest}
+                  onValueChange={(val) =>
+                    setNewContactForm((prev) => ({ ...prev, interest: val as PitchInterest }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PARCEIRO">Parceiro (Empresa / Universidade)</SelectItem>
+                    <SelectItem value="INVESTIDOR">Investidor</SelectItem>
+                    <SelectItem value="AMBOS">Investidor + Parceiro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 rounded-lg border border-border p-3">
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={newContactForm.consent_contact}
+                    onChange={(event) =>
+                      setNewContactForm((prev) => ({ ...prev, consent_contact: event.target.checked }))
+                    }
+                    className="mt-1"
+                  />
+                  <span>O contato autorizou que a equipe fale com ele sobre esta conversa.</span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={newContactForm.consent_newsletter}
+                    onChange={(event) =>
+                      setNewContactForm((prev) => ({ ...prev, consent_newsletter: event.target.checked }))
+                    }
+                    className="mt-1"
+                  />
+                  <span>O contato autorizou receber atualizações da CARONAA.</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-institution">Instituição / Empresa</Label>
+                  <Input
+                    id="contact-institution"
+                    placeholder="Ex.: Grupo M. Dias Branco"
+                    value={newContactForm.institution_name || ""}
+                    onChange={(e) =>
+                      setNewContactForm((prev) => ({
+                        ...prev,
+                        institution_name: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Tipo da Instituição</Label>
+                  <Select
+                    value={newContactForm.institution_type || "EMPRESA"}
+                    onValueChange={(val) =>
+                      setNewContactForm((prev) => ({ ...prev, institution_type: val }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EMPRESA">Empresa</SelectItem>
+                      <SelectItem value="UNIVERSIDADE">Universidade</SelectItem>
+                      <SelectItem value="INSTITUICAO">Instituição Pública</SelectItem>
+                      <SelectItem value="COMUNIDADE">Comunidade / Hub</SelectItem>
+                      <SelectItem value="OUTRO">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-msg">Anotações / Contexto da Conversa</Label>
+                <Textarea
+                  id="contact-msg"
+                  rows={3}
+                  placeholder="Detalhes sobre a conversa, necessidades de mobilidade ou proposta de parceria..."
+                  value={newContactForm.message}
+                  onChange={(e) =>
+                    setNewContactForm((prev) => ({ ...prev, message: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsNewContactOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSavingNewContact}>
+                {isSavingNewContact ? "Salvando..." : "Salvar Contato"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Details & Team Notes Dialog */}
       <Dialog
         open={Boolean(selectedContact)}
@@ -544,7 +913,10 @@ export function AdminRelacionamentosPage() {
               </div>
               <DialogTitle className="text-xl font-bold">{selectedContact.name}</DialogTitle>
               <DialogDescription>
-                Cadastrado em {new Date(selectedContact.created_at).toLocaleString("pt-BR")}
+                Cadastrado em{" "}
+                {selectedContact.created_at
+                  ? new Date(selectedContact.created_at).toLocaleString("pt-BR")
+                  : "Data não informada"}
               </DialogDescription>
             </DialogHeader>
 
@@ -556,7 +928,7 @@ export function AdminRelacionamentosPage() {
                     WhatsApp:
                   </span>
                   <a
-                    href={`https://wa.me/55${normalizePhoneNumber(selectedContact.whatsapp)}`}
+                    href={`https://wa.me/55${normalizePhoneNumber(selectedContact.whatsapp || "")}`}
                     target="_blank"
                     rel="noreferrer"
                     className="font-medium text-emerald-600 flex items-center gap-1 hover:underline"
@@ -586,7 +958,7 @@ export function AdminRelacionamentosPage() {
                   <span className="text-xs font-semibold text-muted-foreground block">
                     Origem do Cadastro:
                   </span>
-                  <span className="font-medium">{selectedContact.source}</span>
+                  <span className="font-medium">{selectedContact.source || "Pitch STS"}</span>
                 </div>
               </div>
 
@@ -604,7 +976,8 @@ export function AdminRelacionamentosPage() {
                     </span>
                     <p className="font-medium text-foreground">
                       {selectedContact.investor_update_preference
-                        ? INVESTOR_UPDATE_LABELS[selectedContact.investor_update_preference]
+                        ? INVESTOR_UPDATE_LABELS[selectedContact.investor_update_preference] ||
+                          selectedContact.investor_update_preference
                         : "Não informado"}
                     </p>
                   </div>
@@ -630,7 +1003,8 @@ export function AdminRelacionamentosPage() {
                       <span className="text-xs text-muted-foreground block">Tipo:</span>
                       <p className="font-medium text-foreground">
                         {selectedContact.institution_type
-                          ? INSTITUTION_TYPE_LABELS[selectedContact.institution_type]
+                          ? INSTITUTION_TYPE_LABELS[selectedContact.institution_type] ||
+                            selectedContact.institution_type
                           : "N/D"}
                       </p>
                     </div>
@@ -652,7 +1026,8 @@ export function AdminRelacionamentosPage() {
                     </span>
                     <p className="font-medium text-foreground">
                       {selectedContact.partnership_type
-                        ? PARTNERSHIP_TYPE_LABELS[selectedContact.partnership_type]
+                        ? PARTNERSHIP_TYPE_LABELS[selectedContact.partnership_type] ||
+                          selectedContact.partnership_type
                         : "N/D"}
                     </p>
                     {selectedContact.partnership_type === "OUTRO" &&
@@ -671,7 +1046,7 @@ export function AdminRelacionamentosPage() {
                   Mensagem / Pergunta / Sugestão enviada:
                 </span>
                 <div className="p-3 bg-muted rounded-lg text-foreground whitespace-pre-wrap leading-relaxed">
-                  {selectedContact.message}
+                  {selectedContact.message || "Sem mensagem"}
                 </div>
               </div>
 
@@ -722,7 +1097,7 @@ export function AdminRelacionamentosPage() {
               <Button
                 onClick={handleSaveNotes}
                 disabled={isSavingNotes}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold"
+                className="bg-primary text-primary-foreground font-semibold"
               >
                 {isSavingNotes ? "Salvando..." : "Salvar Anotações"}
               </Button>

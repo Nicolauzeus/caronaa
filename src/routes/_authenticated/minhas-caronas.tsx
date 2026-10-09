@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, CalendarDays, CarFront, Clock3, MapPin, Plus, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
@@ -47,6 +47,7 @@ type FormState = {
   destination: string;
   originLocation?: FormLocationDetails;
   destinationLocation?: FormLocationDetails;
+  meetingLocation?: FormLocationDetails;
   date: string;
   time: string;
   seats: string;
@@ -60,6 +61,7 @@ const initialForm: FormState = {
   destination: "",
   originLocation: undefined,
   destinationLocation: undefined,
+  meetingLocation: undefined,
   date: "",
   time: "",
   seats: "1",
@@ -81,6 +83,10 @@ function MinhasCaronas() {
   const [driverRides, setDriverRides] = useState<RideSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const publishingRef = useRef(false);
+  const hashHandled = useRef(false);
 
   const refreshRides = useCallback(
     async (showLoading = true) => {
@@ -124,6 +130,24 @@ function MinhasCaronas() {
       clearInterval(interval);
     };
   }, [refreshRides]);
+
+  useEffect(() => {
+    if (hashHandled.current || !window.location.hash.startsWith("#ride-")) return;
+    const targetId = window.location.hash.slice("#ride-".length);
+    const isDriverRide = driverRides.some(
+      (ride) => ride.id === targetId || ride.rideId === targetId,
+    );
+    const isPassengerRide = passengerRides.some(
+      (ride) => ride.id === targetId || ride.rideId === targetId,
+    );
+    if (!isDriverRide && !isPassengerRide) return;
+    hashHandled.current = true;
+    setTab(isDriverRide ? "disponiveis" : "pedidos");
+    window.setTimeout(
+      () => document.getElementById(`ride-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      150,
+    );
+  }, [driverRides, passengerRides]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -209,8 +233,51 @@ function MinhasCaronas() {
 
   const update = (key: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const allPublications = [...passengerRides, ...driverRides].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+  const hasFutureDeparture = (ride: RideSummary) =>
+    new Date(`${ride.rideDate}T${ride.departureTime}:00-03:00`).getTime() > Date.now();
+  const currentRide =
+    allPublications.find((ride) => ride.status === "IN_PROGRESS") ??
+    allPublications.find((ride) => ride.status === "CONFIRMED" && hasFutureDeparture(ride)) ??
+    allPublications.find((ride) => ride.status === "MATCHED" && hasFutureDeparture(ride)) ??
+    allPublications.find(
+      (ride) => ["open", "matched", "available", "full"].includes(ride.status) && hasFutureDeparture(ride),
+    ) ??
+    allPublications[0];
+  const currentRideIsActive = Boolean(
+    currentRide &&
+      !["CANCELLED", "NO_SHOW", "COMPLETED"].includes(currentRide.status) &&
+      (currentRide.status === "IN_PROGRESS" ||
+        new Date(`${currentRide.rideDate}T${currentRide.departureTime}:00-03:00`).getTime() >
+          Date.now()),
+  );
+  const currentRideAction = !currentRide
+    ? ""
+    : currentRide.status === "IN_PROGRESS"
+      ? "Acompanhar viagem"
+      : currentRide.status === "CONFIRMED"
+        ? "Ver embarque e acompanhar"
+        : currentRide.status === "MATCHED"
+          ? currentRide.role === "driver"
+            ? currentRide.driverAcceptedAt
+              ? "Aguardando a outra pessoa"
+              : "Ver combinação"
+            : currentRide.passengerAcceptedAt
+              ? "Aguardando a outra pessoa"
+              : "Ver combinação"
+          : currentRide.status === "COMPLETED"
+            ? "Ver resumo e Pix"
+            : currentRide.kind === "offer"
+              ? "Ver oferta"
+              : "Ver pedido";
+
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (publishingRef.current) return;
+    publishingRef.current = true;
+    setPublishing(true);
     try {
       await publishRequest({
         data: {
@@ -222,6 +289,11 @@ function MinhasCaronas() {
           timeToleranceMinutes: form.timeTolerance,
           price: form.price ? Number(form.price) : undefined,
           preferences,
+          idempotencyKey,
+          meetingPoint: form.meeting,
+          meetingLat: form.meetingLocation?.lat,
+          meetingLng: form.meetingLocation?.lng,
+          notes: form.notes,
           originLat: form.originLocation?.lat,
           originLng: form.originLocation?.lng,
           destinationLat: form.destinationLocation?.lat,
@@ -231,7 +303,11 @@ function MinhasCaronas() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível publicar o pedido.");
       return;
+    } finally {
+      publishingRef.current = false;
+      setPublishing(false);
     }
+    setIdempotencyKey(crypto.randomUUID());
     toast.success("Pedido publicado", {
       description: "Seu trajeto já está disponível para a comunidade.",
     });
@@ -246,6 +322,44 @@ function MinhasCaronas() {
         title="Minhas viagens"
         description="Publique um pedido e acompanhe suas conexões em um só lugar."
       />
+      {currentRide && (
+        <section
+          aria-label="Sua carona atual"
+          className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-soft"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                {currentRideIsActive ? "Sua carona atual" : "Sua última publicação"}
+              </p>
+              <p className="mt-2 font-bold">{currentRide.origin} → {currentRide.destination}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatDate(currentRide.rideDate)} · {currentRide.departureTime} · {statusLabel(currentRide.status)}
+              </p>
+              {!currentRideIsActive && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Esta publicação está encerrada e não representa uma viagem ativa.
+                </p>
+              )}
+            </div>
+            {currentRideAction && (
+              <Button
+                type="button"
+                variant={currentRideAction === "Aguardando a outra pessoa" ? "outline" : "default"}
+                onClick={() => {
+                  setTab(currentRide.role === "driver" || currentRide.kind === "offer" ? "disponiveis" : "pedidos");
+                  window.setTimeout(
+                    () => document.getElementById(`ride-${currentRide.rideId ?? currentRide.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                    150,
+                  );
+                }}
+              >
+                {currentRideAction}
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
       <RideScheduleMode value={mode} onChange={setMode} />
       {mode === "routine" ? (
         <RideRoutineForm
@@ -366,7 +480,13 @@ function MinhasCaronas() {
                 id="pedido-meeting"
                 label="Ponto de embarque"
                 value={form.meeting}
-                onChange={(value, details) => update("meeting", details?.formattedAddress || value)}
+                onChange={(value, details) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    meeting: details?.formattedAddress || value,
+                    meetingLocation: details,
+                  }))
+                }
                 placeholder="Ex.: Praça Portugal"
                 variant="simple"
               />
@@ -383,8 +503,8 @@ function MinhasCaronas() {
             </div>
           </div>
           <div className="mt-4 flex justify-end">
-            <Button type="submit">
-              Publicar pedido <ArrowRight size={16} />
+            <Button type="submit" disabled={publishing}>
+              {publishing ? "Publicando..." : "Publicar pedido"} <ArrowRight size={16} />
             </Button>
           </div>
           <JourneyPreferences kind="request" onChange={setPreferences} />
@@ -587,7 +707,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
 
   return (
     <article
-      id={ride.rideId ? `ride-${ride.rideId}` : undefined}
+      id={`ride-${ride.rideId ?? ride.id}`}
       className="card-interactive rounded-xl border border-border bg-card p-4 shadow-soft"
     >
       <p className="mb-2 text-xs font-semibold text-muted-foreground">
@@ -682,6 +802,9 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
             <UsersRound size={15} /> {ride.seatsRemaining ?? ride.seats}{" "}
             {(ride.seatsRemaining ?? ride.seats) === 1 ? "vaga" : "vagas"}
           </p>
+          {ride.vehicleDescription && <p>VeÃ­culo: {ride.vehicleDescription}</p>}
+          {ride.meetingPoint && <p>Ponto de encontro/embarque: {ride.meetingPoint}</p>}
+          {ride.notes && <p>ObservaÃ§Ãµes: {ride.notes}</p>}
           <RouteMap
             origin={ride.origin}
             destination={ride.destination}

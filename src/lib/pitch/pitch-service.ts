@@ -104,12 +104,9 @@ export async function savePitchContact(
     status: "NOVO",
     suggestion_status: "NOVA",
     notes: null,
-    source: "pitch_sts_2026",
+    source: formData.source || "pitch_sts_2026",
     raw_payload: { ...formData },
   };
-
-  // Always keep local backup
-  saveLocalBackup(newContact);
 
   try {
     const { data, error } = await getPitchTable()
@@ -140,16 +137,19 @@ export async function savePitchContact(
 
     if (error) {
       console.warn(
-        "Supabase insert on pitch_contacts returned error, using local resilient record:",
+        "Supabase insert on pitch_contacts failed:",
         error,
       );
-      return { success: true, data: newContact };
+      return { success: false, error: error.message || "Não foi possível salvar no servidor." };
     }
 
     return { success: true, data: (data as PitchContact) || newContact };
   } catch (err: unknown) {
     console.warn("Exception during savePitchContact:", err);
-    return { success: true, data: newContact };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Não foi possível salvar no servidor.",
+    };
   }
 }
 
@@ -160,6 +160,7 @@ export async function getPitchContacts(
   filters?: PitchFilterOptions,
 ): Promise<{ data: PitchContact[]; error?: string }> {
   let contacts: PitchContact[] = [];
+  let remoteError: string | undefined;
 
   try {
     const { data, error } = await getPitchTable()
@@ -169,9 +170,11 @@ export async function getPitchContacts(
     if (!error && Array.isArray(data)) {
       contacts = data as PitchContact[];
     } else {
+      remoteError = error?.message || "Não foi possível carregar os contatos do servidor.";
       contacts = getLocalBackup();
     }
-  } catch {
+  } catch (error) {
+    remoteError = error instanceof Error ? error.message : "Falha ao carregar contatos do servidor.";
     contacts = getLocalBackup();
   }
 
@@ -212,7 +215,7 @@ export async function getPitchContacts(
     }
   }
 
-  return { data: contacts };
+  return { data: contacts, error: remoteError };
 }
 
 /**
@@ -222,17 +225,17 @@ export async function updatePitchContactStatus(
   id: string,
   status: PitchContactStatus,
 ): Promise<{ success: boolean; error?: string }> {
-  updateLocalBackup(id, { status });
-
   try {
     const { error } = await getPitchTable().update({ status }).eq("id", id);
 
     if (error) {
       console.warn("Could not update remote pitch contact status:", error);
+      return { success: false, error: error.message || "Não foi possível atualizar o status." };
     }
+    updateLocalBackup(id, { status });
     return { success: true };
-  } catch {
-    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Falha ao atualizar status." };
   }
 }
 
@@ -243,17 +246,17 @@ export async function updatePitchSuggestionStatus(
   id: string,
   suggestion_status: PitchSuggestionStatus,
 ): Promise<{ success: boolean; error?: string }> {
-  updateLocalBackup(id, { suggestion_status });
-
   try {
     const { error } = await getPitchTable().update({ suggestion_status }).eq("id", id);
 
     if (error) {
       console.warn("Could not update remote pitch suggestion status:", error);
+      return { success: false, error: error.message || "Não foi possível atualizar o status." };
     }
+    updateLocalBackup(id, { suggestion_status });
     return { success: true };
-  } catch {
-    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Falha ao atualizar status." };
   }
 }
 
@@ -264,17 +267,17 @@ export async function updatePitchContactNotes(
   id: string,
   notes: string,
 ): Promise<{ success: boolean; error?: string }> {
-  updateLocalBackup(id, { notes });
-
   try {
     const { error } = await getPitchTable().update({ notes }).eq("id", id);
 
     if (error) {
       console.warn("Could not update remote pitch contact notes:", error);
+      return { success: false, error: error.message || "Não foi possível salvar as anotações." };
     }
+    updateLocalBackup(id, { notes });
     return { success: true };
-  } catch {
-    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Falha ao salvar anotações." };
   }
 }
 

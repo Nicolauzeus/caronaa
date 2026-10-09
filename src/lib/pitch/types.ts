@@ -35,10 +35,11 @@ export interface PitchContact {
   suggestion_status: PitchSuggestionStatus;
   notes: string | null;
   source: string;
-  raw_payload?: Record<string, unknown>;
+  raw_payload?: Record<string, unknown> | null;
 }
 
 export interface PitchContactFormData {
+  source?: string;
   interest: PitchInterest;
   name: string;
   whatsapp: string;

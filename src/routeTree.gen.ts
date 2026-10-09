@@ -31,6 +31,7 @@ import { Route as AdminMatchingRouteImport } from './routes/admin/matching'
 import { Route as AdminMotoristasRouteImport } from './routes/admin/motoristas'
 import { Route as AdminOportunidadesRouteImport } from './routes/admin/oportunidades'
 import { Route as AdminPassageirosRouteImport } from './routes/admin/passageiros'
+import { Route as AdminRelacionamentoRouteImport } from './routes/admin/relacionamento'
 import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacionamentos'
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
@@ -154,6 +155,11 @@ const AdminPassageirosRoute = AdminPassageirosRouteImport.update({
   path: '/passageiros',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRelacionamentoRoute = AdminRelacionamentoRouteImport.update({
+  id: '/relacionamento',
+  path: '/relacionamento',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRelacionamentosRoute = AdminRelacionamentosRouteImport.update({
   id: '/relacionamentos',
   path: '/relacionamentos',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/admin/motoristas': typeof AdminMotoristasRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
   '/admin/passageiros': typeof AdminPassageirosRoute
+  '/admin/relacionamento': typeof AdminRelacionamentoRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/admin/motoristas': typeof AdminMotoristasRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
   '/admin/passageiros': typeof AdminPassageirosRoute
+  '/admin/relacionamento': typeof AdminRelacionamentoRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
@@ -309,6 +317,7 @@ export interface FileRoutesById {
   '/admin/motoristas': typeof AdminMotoristasRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
   '/admin/passageiros': typeof AdminPassageirosRoute
+  '/admin/relacionamento': typeof AdminRelacionamentoRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/admin/motoristas'
     | '/admin/oportunidades'
     | '/admin/passageiros'
+    | '/admin/relacionamento'
     | '/admin/relacionamentos'
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/admin/motoristas'
     | '/admin/oportunidades'
     | '/admin/passageiros'
+    | '/admin/relacionamento'
     | '/admin/relacionamentos'
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/admin/motoristas'
     | '/admin/oportunidades'
     | '/admin/passageiros'
+    | '/admin/relacionamento'
     | '/admin/relacionamentos'
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
@@ -604,6 +616,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPassageirosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/relacionamento': {
+      id: '/admin/relacionamento'
+      path: '/relacionamento'
+      fullPath: '/admin/relacionamento'
+      preLoaderRoute: typeof AdminRelacionamentoRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/relacionamentos': {
       id: '/admin/relacionamentos'
       path: '/relacionamentos'
@@ -726,6 +745,7 @@ interface AdminRouteChildren {
   AdminMotoristasRoute: typeof AdminMotoristasRoute
   AdminOportunidadesRoute: typeof AdminOportunidadesRoute
   AdminPassageirosRoute: typeof AdminPassageirosRoute
+  AdminRelacionamentoRoute: typeof AdminRelacionamentoRoute
   AdminRelacionamentosRoute: typeof AdminRelacionamentosRoute
   AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
   AdminSugestoesRoute: typeof AdminSugestoesRoute
@@ -744,6 +764,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMotoristasRoute: AdminMotoristasRoute,
   AdminOportunidadesRoute: AdminOportunidadesRoute,
   AdminPassageirosRoute: AdminPassageirosRoute,
+  AdminRelacionamentoRoute: AdminRelacionamentoRoute,
   AdminRelacionamentosRoute: AdminRelacionamentosRoute,
   AdminSolicitacoesRoute: AdminSolicitacoesRoute,
   AdminSugestoesRoute: AdminSugestoesRoute,
