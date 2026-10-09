@@ -365,6 +365,13 @@
       "when": 1791567436608,
       "tag": "0051_priced_offer_publication_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791567487533,
+      "tag": "0052_available_offer_price_metadata",
+      "breakpoints": true
     }
   ]
 }

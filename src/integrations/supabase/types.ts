@@ -1687,6 +1687,14 @@ export type Database = {
           offer_id: string
         }[]
       }
+      get_offer_publication_prices: {
+        Args: { p_offer_ids: string[] }
+        Returns: {
+          offer_id: string
+          passenger_price: number
+          route_distance_km: number
+        }[]
+      }
       get_offer_schedule_types: {
         Args: { p_offer_ids: string[] }
         Returns: {
