@@ -1,3 +1,4 @@
+import { ListPagination } from "@/components/admin/ListPagination";
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -63,6 +64,7 @@ export const Route = createFileRoute("/admin/sugestoes")({
 });
 
 export function AdminSugestoesPage() {
+  const [page, setPage] = useState(0);
   const [contacts, setContacts] = useState<PitchContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -129,6 +131,8 @@ export function AdminSugestoesPage() {
     });
   }, [contacts, statusFilter, search]);
 
+  useEffect(() => setPage(0), [filtered]);
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / 8) - 1));
   const getStatusBadge = (status: PitchSuggestionStatus) => {
     switch (status) {
       case "NOVA":
@@ -260,7 +264,7 @@ export function AdminSugestoesPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filtered.map((item) => {
+          {filtered.slice(currentPage * 8, (currentPage + 1) * 8).map((item) => {
             const cleanPhone = normalizePhoneNumber(item.whatsapp);
             const waLink = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
               `Olá ${item.name}! Agradecemos por compartilhar sua mensagem com a equipe da CARONAA durante o Siará Tech Summit.`,
@@ -386,6 +390,7 @@ export function AdminSugestoesPage() {
           })}
         </div>
       )}
+      <ListPagination page={currentPage} total={filtered.length} pageSize={8} onChange={setPage} />
     </div>
   );
 }
