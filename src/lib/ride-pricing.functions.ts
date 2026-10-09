@@ -15,6 +15,16 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideIdInput.parse(input))
   .handler(async ({ context, data }) => {
+    const participantClient = context.supabase as unknown as { from: (table: string) => AdminQuery };
+    const { data: ride, error: rideError } = await participantClient
+      .from("rides")
+      .select("ride_id, request_id, passenger_user_id, driver_user_id, status, passenger_accepted_at, driver_accepted_at, response_expires_at, route_distance_km, passenger_price, passenger_group_total, tariff_reference")
+      .eq("ride_id", data.rideId)
+      .maybeSingle();
+    if (rideError || !ride) throw new Error("Combinação não encontrada.");
+    if (![ride.passenger_user_id, ride.driver_user_id].map(String).includes(context.userId)) {
+      throw new Error("Você não pode consultar o preço desta combinação.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const admin = supabaseAdmin as unknown as {
       from: (table: string) => AdminQuery;
@@ -23,15 +33,6 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
         error: { message: string } | null;
       }>;
     };
-    const { data: ride, error: rideError } = await admin
-      .from("rides")
-      .select("ride_id, request_id, passenger_user_id, driver_user_id, status, passenger_accepted_at, driver_accepted_at, route_distance_km, passenger_price, passenger_group_total, tariff_reference")
-      .eq("ride_id", data.rideId)
-      .maybeSingle();
-    if (rideError || !ride) throw new Error("Combinação não encontrada.");
-    if (![ride.passenger_user_id, ride.driver_user_id].map(String).includes(context.userId)) {
-      throw new Error("Você não pode consultar o preço desta combinação.");
-    }
     if (ride.route_distance_km != null && ride.passenger_price != null && ride.passenger_group_total != null) {
       return {
         distanceKm: Number(ride.route_distance_km),
@@ -42,6 +43,9 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
     }
     if (ride.status !== "MATCHED" || ride.passenger_accepted_at || ride.driver_accepted_at) {
       throw new Error("Só é possível calcular o preço de uma proposta pendente de aceite.");
+    }
+    if (typeof ride.response_expires_at !== "string" || Date.parse(ride.response_expires_at) <= Date.now()) {
+      throw new Error("Esta combinação expirou. Procure uma nova combinação.");
     }
 
     const { data: request, error: requestError } = await admin
@@ -85,14 +89,14 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
       p_group_total: groupTotal,
       p_tariff_reference: PASSENGER_TARIFF.reference,
     });
-    if (persistError) {
-      // Concurrent quote attempts are idempotent: return the quote that won.
-      const { data: current } = await admin
+    // Always return the persisted winner, including when the RPC returns false
+    // because another participant saved a quote concurrently.
+    const { data: current, error: readError } = await participantClient
         .from("rides")
         .select("route_distance_km, passenger_price, passenger_group_total, tariff_reference")
         .eq("ride_id", data.rideId)
         .maybeSingle();
-      if (current?.route_distance_km != null && current.passenger_price != null && current.passenger_group_total != null) {
+      if (!readError && current?.route_distance_km != null && current.passenger_price != null && current.passenger_group_total != null) {
         return {
           distanceKm: Number(current.route_distance_km),
           pricePerPassenger: Number(current.passenger_price),
@@ -100,7 +104,6 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
           tariffReference: String(current.tariff_reference ?? PASSENGER_TARIFF.reference),
         };
       }
-      throw new Error(persistError.message || "Não foi possível salvar a cotação.");
-    }
-    return { distanceKm, pricePerPassenger, groupTotal, tariffReference: PASSENGER_TARIFF.reference };
+    console.error("Ride quote persistence failed", { rideId: data.rideId, message: persistError?.message ?? readError?.message });
+    throw new Error("Não foi possível salvar e confirmar o preço. Tente novamente.");
   });

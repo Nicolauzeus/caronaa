@@ -1728,6 +1728,16 @@ export type Database = {
         Args: { p_routine_id: string }
         Returns: undefined
       }
+      persist_ride_route_quote: {
+        Args: {
+          p_group_total: number
+          p_passenger_price: number
+          p_ride_id: string
+          p_route_distance_km: number
+          p_tariff_reference: string
+        }
+        Returns: boolean
+      }
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
         Returns: string
