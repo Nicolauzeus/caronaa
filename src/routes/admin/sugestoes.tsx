@@ -189,33 +189,28 @@ export function AdminSugestoesPage() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <MetricCard
           label="Total Sugestões"
-          value={metrics.total}
+          value={String(metrics.total)}
           sublabel="Recebidas no pitch"
-          icon={<MessageSquareHeart className="w-4 h-4 text-primary" />}
         />
         <MetricCard
           label="Novas"
-          value={metrics.novas}
+          value={String(metrics.novas)}
           sublabel="Aguardando leitura"
-          icon={<MessageSquare className="w-4 h-4 text-emerald-500" />}
         />
         <MetricCard
           label="Em Análise"
-          value={metrics.emAnalise}
+          value={String(metrics.emAnalise)}
           sublabel="Em discussão de produto"
-          icon={<MessageSquare className="w-4 h-4 text-amber-500" />}
         />
         <MetricCard
           label="Respondidas"
-          value={metrics.respondidas}
+          value={String(metrics.respondidas)}
           sublabel="Contato realizado"
-          icon={<CheckCircle2 className="w-4 h-4 text-blue-500" />}
         />
         <MetricCard
           label="Arquivadas"
-          value={metrics.arquivadas}
+          value={String(metrics.arquivadas)}
           sublabel="Histórico"
-          icon={<Archive className="w-4 h-4 text-muted-foreground" />}
         />
       </div>
 

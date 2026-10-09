@@ -835,7 +835,7 @@ export function AdminRelacionamentosPage() {
                   <Select
                     value={newContactForm.institution_type || "EMPRESA"}
                     onValueChange={(val) =>
-                      setNewContactForm((prev) => ({ ...prev, institution_type: val }))
+                      setNewContactForm((prev) => ({ ...prev, institution_type: val as PitchContactFormData["institution_type"] }))
                     }
                   >
                     <SelectTrigger>

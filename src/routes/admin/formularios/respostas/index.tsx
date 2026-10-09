@@ -40,7 +40,7 @@ function exportCsv(rows: FormSubmissionRow[]) {
   ];
   const csv = [header.join(",")]
     .concat(
-      rows.slice(currentPage * 12, (currentPage + 1) * 12).map((row) =>
+      rows.map((row) =>
         [
           row.submission_id,
           row.nome,
