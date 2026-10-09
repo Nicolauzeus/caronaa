@@ -37,10 +37,12 @@ SELECT pg_temp.expect_error(format('SELECT public.respond_to_ride_match(%L,''ACC
 SELECT set_config('request.jwt.claim.sub',:'driver',true);
 SELECT pg_temp.assert_true(public.respond_to_ride_match(:'ride','ACCEPT')='CONFIRMED','second acceptance confirms');
 SELECT public.save_my_pix_key('fare-driver@example.test');
-SELECT public.generate_ride_qr_token(:'ride')->>'token' AS token \gset
 SELECT set_config('request.jwt.claim.sub',:'passenger',true);
 SELECT pg_temp.expect_error(format('SELECT public.get_ride_pix(%L)',:'ride'),'conclusão');
-SELECT public.confirm_ride_by_qr(:'token');
+SELECT public.get_ride_safety(:'ride')->>'pin' AS pin \gset
+SELECT set_config('request.jwt.claim.sub',:'driver',true);
+SELECT pg_temp.assert_true(public.validate_ride_boarding(:'ride',:'pin')='IN_PROGRESS','PIN validates boarding');
+SELECT set_config('request.jwt.claim.sub',:'passenger',true);
 SELECT pg_temp.assert_true(public.transition_ride_status(:'ride','COMPLETED')='AWAITING_OTHER_PARTICIPANT','first completion waits');
 SELECT set_config('request.jwt.claim.sub',:'driver',true);
 SELECT pg_temp.assert_true(public.transition_ride_status(:'ride','COMPLETED')='COMPLETED','bilateral completion');
