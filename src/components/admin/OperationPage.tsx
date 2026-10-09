@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MetricCard } from "./MetricCard";
+import { SavedAnswers } from "./SavedAnswers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -253,6 +254,9 @@ export function OperationPage({ kind }: { kind: Kind }) {
             ["Trajeto", trip(o)],
             ["Partida", time(o)],
             ["Vagas disponíveis", String(o.seats_remaining)],
+            ["Veículo", o.vehicle_description || "Não informado"],
+            ["Ponto de encontro", o.meeting_point || "Não informado"],
+            ["Observações", o.notes || "Não informadas"],
             ["Oferta", o.offer_id],
             ...rides.map(
               (r) =>
@@ -299,6 +303,8 @@ export function OperationPage({ kind }: { kind: Kind }) {
           ["Trajeto", trip(r)],
           ["Partida", time(r)],
           ["Assentos", String(r.passenger_count)],
+          ["Ponto de embarque", r.pickup_point || "Não informado"],
+          ["Observações", r.notes || "Não informadas"],
           ["Tolerância", `${r.time_tolerance_minutes ?? 15} minutos`],
           ["Pedido", r.request_id],
         ],
@@ -747,6 +753,13 @@ export function OperationPage({ kind }: { kind: Kind }) {
               </div>
             ))}
           </dl>
+          {selected && data?.forms.filter((form) => form.user_id === selected.personId || form.submission_id === selected.id).map((form) => (
+            <details key={form.submission_id} className="border-t border-border pt-3">
+              <summary className="cursor-pointer text-sm font-semibold">Respostas do formulário · {date(form.created_at)}</summary>
+              <p className="my-3 text-xs text-muted-foreground">Autorização de envio: {form.consentimento ? "Sim" : "Não"}</p>
+              <SavedAnswers value={form.raw_payload} />
+            </details>
+          ))}
           {selected?.personId && (
             <a
               className="text-sm text-primary underline"

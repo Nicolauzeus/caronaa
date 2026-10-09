@@ -18,5 +18,5 @@
 
 17. [x] Refresh admin priorities, exclusive navigation and working section search; restore pending ride schema and generated types. Signed-in admin/home/offer/my-rides pages load, navigation search verified, 67 focused tests pass. New publication and bilateral acceptance were not re-exercised end-to-end in this task.
 18. [x] Repair boarding QR RPCs and delayed canvas drawing; preserve per-ride explicit location consent across refreshes; render participant markers; clarify bilateral completion; add private driver Pix settings and completed-ride BR Code. Verified authenticated Pix persistence and active sharing/driver marker/map tiles; 35 tests pass and build OK. QR boarding and bilateral completion-to-Pix were not exercised on a real confirmed trip: available account has an already-started trip, and completing it would alter the user's ongoing ride.
-20. [ ] Compact admin overview/lists and organize Opportunities with real charts.
-21. [ ] Verify form capture and expose complete saved responses to authorized administrators.
+20. [x] Compact admin overview/lists with tabs and pagination; Opportunities has database-backed charts. Authenticated pages and tab changes verified.
+21. [x] Persist supplemental pitch answers and expose saved form payloads/consents in authorized details. Authenticated manual test contact captured and read back; 26 form/privacy/admin tests pass. Previously discarded pitch answers cannot be recovered.

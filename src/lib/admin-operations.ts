@@ -24,6 +24,8 @@ export type OperationData = {
     vehicleType: string | null;
     availableSeats: string | null;
     driverPrice: string | null;
+    raw_payload?: unknown;
+    consentimento?: boolean;
   }[];
   reviews: {
     user_id: string;
