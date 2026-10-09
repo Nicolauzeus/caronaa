@@ -18,7 +18,9 @@ describe("canonical ride creation RPC contract", () => {
   it("never retries a failed creation with a less complete payload", () => {
     const isPreferred = service.includes("create_preferred_ride");
     if (isPreferred) {
-      expect(service.match(/\.rpc\("create_preferred_ride"/g)).toHaveLength(2);
+      expect(service.match(/\.rpc\("create_preferred_ride"/g)).toHaveLength(1);
+      expect(service.match(/\.rpc\("publish_priced_offer"/g)).toHaveLength(1);
+      expect(service).not.toMatch(/\.rpc\("create_ride_(?:request|offer)"/);
     } else {
       expect(service.match(/\.rpc\("create_ride_request"/g)).toHaveLength(1);
       expect(service.match(/\.rpc\("create_ride_offer"/g)).toHaveLength(1);
