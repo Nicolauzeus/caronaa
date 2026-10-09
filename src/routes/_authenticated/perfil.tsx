@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
-import { NotificationPreferences } from "@/components/caronaa/NotificationControls";
+import { NotificationControls, NotificationPreferences } from "@/components/caronaa/NotificationControls";
 import { DriverPixSettings } from "@/components/caronaa/DriverPix";
 import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
@@ -506,6 +506,13 @@ function Perfil() {
         description="Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."
       />
 
+      <section className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft" aria-label="Notificações de carona">
+        <div>
+          <h2 className="text-sm font-semibold">Combinações e notificações</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Acompanhe novos matches e atualizações das suas viagens.</p>
+        </div>
+        <NotificationControls />
+      </section>
       <NotificationPreferences />
       <ProfileTravelPreferences />
       <DriverPixSettings />
