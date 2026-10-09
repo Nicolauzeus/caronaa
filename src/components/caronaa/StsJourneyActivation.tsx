@@ -107,7 +107,6 @@ export function StsJourneyActivation({
     rideDate: "Data",
     departureTime: "Horário exato",
     count: draft?.kind === "offer" ? "Vagas" : "Passageiros",
-    price: draft?.kind === "offer" ? "Valor total da viagem (R$)" : "Valor por passageiro (R$)",
   };
   return (
     <section className="border-t border-border py-5" aria-label="Trajeto do formulário STS">
@@ -171,6 +170,9 @@ export function StsJourneyActivation({
                   }
                 }}
               >
+                <p className="text-sm text-muted-foreground sm:col-span-2">
+                  O preço da publicação será calculado automaticamente pela distância rodoviária do trecho, consultada no serviço público OSRM. Respostas de pesquisa sobre gastos continuam preservadas separadamente.
+                </p>
                 <div
                   role="group"
                   aria-label="Papel do trajeto STS"
@@ -212,29 +214,16 @@ export function StsJourneyActivation({
                           ? "date"
                           : key === "departureTime"
                             ? "time"
-                            : key === "count" || key === "price"
+                          : key === "count"
                               ? "number"
                               : "text"
                       }
                       min={
-                        key === "count"
-                          ? 1
-                          : key === "price"
-                            ? 0
-                            : key === "rideDate"
-                              ? "2026-10-07"
-                              : undefined
+                        key === "count" ? 1 : key === "rideDate" ? "2026-10-07" : undefined
                       }
                       max={
-                        key === "count"
-                          ? 6
-                          : key === "price"
-                            ? 1000
-                            : key === "rideDate"
-                              ? "2026-10-09"
-                              : undefined
+                        key === "count" ? 6 : key === "rideDate" ? "2026-10-09" : undefined
                       }
-                      step={key === "price" ? "0.01" : undefined}
                       value={draft.details[key as keyof typeof draft.details] ?? ""}
                       onChange={(event) =>
                         setDraft({
@@ -247,7 +236,7 @@ export function StsJourneyActivation({
                                 ? { destinationLat: undefined, destinationLng: undefined }
                                 : {}),
                             [key]:
-                              key === "count" || key === "price"
+                              key === "count"
                                 ? event.target.value === ""
                                   ? undefined
                                   : Number(event.target.value)

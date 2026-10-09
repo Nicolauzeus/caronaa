@@ -45,7 +45,7 @@ export const getStsRideDraft = createServerFn({ method: "POST" })
       const { data: id, error: publishError } = await client.rpc("publish_sts_ride", {
         p_submission_id: draft.submissionId,
         p_kind: kind,
-        p_details: draft.details,
+        p_details: { ...draft.details, price: 0 },
       });
       if (!publishError) return { ...draft, alternate, publicationId: String(id) };
       if (!publishError.message.includes("already have an active")) throw stsError(publishError);
@@ -68,7 +68,7 @@ export const publishStsRide = createServerFn({ method: "POST" })
     const { data: id, error } = await (context.supabase as SupabaseClient).rpc("publish_sts_ride", {
       p_submission_id: data.submissionId,
       p_kind: data.kind,
-      p_details: data.details,
+      p_details: { ...data.details, price: 0 },
     });
     if (error) throw stsError(error);
     return { publicationId: String(id) };

@@ -28,6 +28,33 @@ export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** CARONAA passenger tariff: R$ 6.00 for every 11 road kilometres. */
+export const PASSENGER_TARIFF = {
+  amountCents: 600,
+  distanceKm: 11,
+  reference: "caronaa-km-6-per-11-v1",
+} as const;
+
+export function calculatePassengerFare(distanceKm: number): number {
+  if (typeof distanceKm !== "number" || !Number.isFinite(distanceKm) || distanceKm <= 0) {
+    throw new Error("A distância rodoviária deve ser maior que zero.");
+  }
+
+  // Keep the full routing distance; round only the final amount to cents.
+  return Math.round((distanceKm * PASSENGER_TARIFF.amountCents) / PASSENGER_TARIFF.distanceKm) / 100;
+}
+
+export function sumConfirmedGroupFares(
+  rides: ReadonlyArray<{ status: string; groupTotal: number | null | undefined }>,
+): number {
+  const cents = rides.reduce((sum, ride) => {
+    if (!["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(ride.status)) return sum;
+    if (ride.groupTotal == null || !Number.isFinite(ride.groupTotal) || ride.groupTotal < 0) return sum;
+    return sum + toCents(ride.groupTotal);
+  }, 0);
+  return fromCents(cents);
+}
+
 export function toCents(value: number): number {
   return Math.round(value * 100);
 }

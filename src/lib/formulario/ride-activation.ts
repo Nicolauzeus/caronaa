@@ -6,7 +6,6 @@ export const publicationDetailsSchema = z.object({
   rideDate: z.string().date(),
   departureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   count: z.number().int().min(1).max(6),
-  price: z.number().finite().min(0).max(1000),
   audience: z.enum(["ANY", "FEMININO", "MASCULINO"]).optional(),
   originLat: z.number().finite().min(-90).max(90).optional(),
   originLng: z.number().finite().min(-180).max(180).optional(),
@@ -59,7 +58,6 @@ export function prepareStsRideDraft(
   now = new Date(),
 ): StsRideDraft {
   const raw = seed.raw;
-  const price = kind === "request" ? raw.passengerFairPrice : raw.totalPrice;
   const count = kind === "request" ? raw.passengerCount : raw.availableSeats;
   const details: Partial<PublicationDetails> = {
     origin: seed.origin?.trim() || undefined,
@@ -67,7 +65,6 @@ export function prepareStsRideDraft(
     rideDate: eventDate(seed),
     departureTime: typeof raw.departureTime === "string" ? raw.departureTime : undefined,
     count: typeof count === "number" ? count : undefined,
-    price: typeof price === "number" ? price : undefined,
     audience:
       kind === "offer" && ["ANY", "FEMININO", "MASCULINO"].includes(String(raw.audience))
         ? (raw.audience as PublicationDetails["audience"])

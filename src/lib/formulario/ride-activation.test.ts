@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareStsRideDraft, type StsRideSeed } from "./ride-activation";
+import { prepareStsRideDraft, publicationDetailsSchema, type StsRideSeed } from "./ride-activation";
 
 const now = new Date("2026-10-07T12:00:00-03:00");
 const seed: StsRideSeed = {
@@ -16,17 +16,29 @@ const seed: StsRideSeed = {
   },
 };
 describe("Conversão STS para publicação", () => {
-  it("prepara passageiro completo sem inventar campos", () => {
+  it("ignora preço do browser; o payload de formulário não carrega tarifa", () => {
+    const details = publicationDetailsSchema.parse({
+      origin: "Centro",
+      destination: "Aldeota",
+      rideDate: "2026-10-08",
+      departureTime: "20:00",
+      count: 1,
+      price: 999,
+    });
+    expect(details).not.toHaveProperty("price");
+  });
+  it("prepara passageiro sem converter gasto de pesquisa em preço da carona", () => {
     const draft = prepareStsRideDraft(seed, "request", now);
     expect(draft.classification).toBe("sufficient");
     expect(draft.details).toMatchObject({
       rideDate: "2026-10-08",
       departureTime: "20:00",
       count: 1,
-      price: 10,
     });
+    expect(seed.raw.passengerFairPrice).toBe(10);
+    expect(draft.details).not.toHaveProperty("price");
   });
-  it("prepara motorista quando o valor total e a preferência são explícitos", () => {
+  it("prepara motorista sem exigir um preço manual", () => {
     expect(
       prepareStsRideDraft(
         {
@@ -54,7 +66,8 @@ describe("Conversão STS para publicação", () => {
       now,
     );
     expect(draft.classification).toBe("partial");
-    expect(draft.missing).toEqual(expect.arrayContaining(["departureTime", "price", "audience"]));
+    expect(draft.missing).toEqual(expect.arrayContaining(["departureTime", "audience"]));
+    expect(draft.missing).not.toContain("price");
   });
   it("não escolhe um dia quando existem vários", () => {
     expect(

@@ -16,6 +16,7 @@ import {
   isTimeWithinTolerance,
 } from "@/lib/ride-matching";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
+import { sumConfirmedGroupFares } from "@/lib/ride-cost";
 export type { RideVerification } from "@/lib/ride-verifications";
 
 type SupabaseAppClient = SupabaseClient<Database>;
@@ -51,6 +52,11 @@ export type RideSummary = {
   totalPrice: number;
   confirmedPassengers: number;
   passengerContribution: number;
+  routeDistanceKm?: number | null;
+  pricePerPassenger?: number | null;
+  groupTotal?: number | null;
+  tariffReference?: string | null;
+  driverConfirmedTotal?: number | null;
   driverAcceptedAt?: string | null;
   passengerAcceptedAt?: string | null;
   responseExpiresAt?: string | null;
@@ -247,6 +253,7 @@ function mapRide(
   driver: RideProfile,
   viewerUserId: string,
   confirmedPassengersCount = 1,
+  confirmedFareTotal = 0,
 ): RideSummary {
   const ri = ride as Record<string, unknown>;
   const req = request as Record<string, unknown> | undefined;
@@ -261,6 +268,14 @@ function mapRide(
       : ri["passenger_contribution"] !== undefined && ri["passenger_contribution"] !== null
         ? Number(ri["passenger_contribution"])
         : Math.round((totalPrice / confirmedPassengers) * 100) / 100;
+  const quotedPriceValue = ri["passenger_price"];
+  const parsedQuotedPrice = quotedPriceValue == null ? null : Number(quotedPriceValue);
+  const quotedPrice = parsedQuotedPrice != null && Number.isFinite(parsedQuotedPrice) ? parsedQuotedPrice : null;
+  const quotedGroupValue = ri["passenger_group_total"];
+  const parsedQuotedGroup = quotedGroupValue == null ? null : Number(quotedGroupValue);
+  const quotedGroupTotal = parsedQuotedGroup != null && Number.isFinite(parsedQuotedGroup) ? parsedQuotedGroup : null;
+  const routeDistanceValue = ri["route_distance_km"];
+  const parsedRouteDistance = routeDistanceValue == null ? null : Number(routeDistanceValue);
 
   return {
     id: String(ri["ride_id"]),
@@ -290,6 +305,11 @@ function mapRide(
     totalPrice,
     confirmedPassengers,
     passengerContribution,
+    routeDistanceKm: parsedRouteDistance != null && Number.isFinite(parsedRouteDistance) ? parsedRouteDistance : null,
+    pricePerPassenger: quotedPrice,
+    groupTotal: quotedGroupTotal,
+    tariffReference: typeof ri["tariff_reference"] === "string" ? ri["tariff_reference"] : null,
+    driverConfirmedTotal: ri["driver_user_id"] === viewerUserId ? confirmedFareTotal : null,
     driverAcceptedAt:
       typeof ri["driver_accepted_at"] === "string" ? ri["driver_accepted_at"] : null,
     passengerAcceptedAt:
@@ -538,7 +558,7 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { data: rides, error: ridesError } = await client
       .from("rides")
       .select(
-        "ride_id, match_id, request_id, offer_id, passenger_user_id, driver_user_id, status, created_at, updated_at, completed_at, total_price, passenger_contribution, passenger_accepted_at, driver_accepted_at, response_expires_at",
+        "ride_id, match_id, request_id, offer_id, passenger_user_id, driver_user_id, status, created_at, updated_at, completed_at, total_price, passenger_contribution, passenger_accepted_at, driver_accepted_at, response_expires_at, route_distance_km, passenger_price, passenger_group_total, tariff_reference",
       )
       .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
       .order("created_at", { ascending: false });
@@ -608,6 +628,7 @@ export const getMyRides = createServerFn({ method: "GET" })
 
     // Calcula total de passageiros confirmados/ativos por oferta
     const confirmedCountByOffer = new Map<string, number>();
+    const confirmedFaresByOffer = new Map<string, Array<{ status: string; groupTotal: number | null }>>();
     for (const r of rides ?? []) {
       if (r.status !== "CANCELLED") {
         const offId = String(r.offer_id);
@@ -617,7 +638,18 @@ export const getMyRides = createServerFn({ method: "GET" })
         );
         confirmedCountByOffer.set(offId, (confirmedCountByOffer.get(offId) ?? 0) + count);
       }
+      const fareRows = confirmedFaresByOffer.get(String(r.offer_id)) ?? [];
+      const rawTotal = (r as unknown as Record<string, unknown>)["passenger_group_total"];
+      const parsedGroupTotal = rawTotal == null ? null : Number(rawTotal);
+      fareRows.push({
+        status: String(r.status),
+        groupTotal: parsedGroupTotal != null && Number.isFinite(parsedGroupTotal) ? parsedGroupTotal : null,
+      });
+      confirmedFaresByOffer.set(String(r.offer_id), fareRows);
     }
+    const confirmedFareTotalByOffer = new Map(
+      [...confirmedFaresByOffer.entries()].map(([offerId, fareRows]) => [offerId, sumConfirmedGroupFares(fareRows)]),
+    );
 
     const userIds = [
       context.userId,
@@ -648,6 +680,7 @@ export const getMyRides = createServerFn({ method: "GET" })
             profileFor(String(ride.driver_user_id), profiles, verifications),
             context.userId,
             confirmedCountByOffer.get(String(ride.offer_id)) ?? 1,
+            confirmedFareTotalByOffer.get(String(ride.offer_id)) ?? 0,
           ),
         ),
       ...(requests ?? [])
@@ -667,6 +700,7 @@ export const getMyRides = createServerFn({ method: "GET" })
             currentProfile,
             context.userId,
             confirmedCountByOffer.get(String(ride.offer_id)) ?? 1,
+            confirmedFareTotalByOffer.get(String(ride.offer_id)) ?? 0,
           ),
         ),
       ...(offers ?? [])

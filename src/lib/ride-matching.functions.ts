@@ -17,9 +17,7 @@ const rideInput = z.object({
   timeToleranceMinutes: z
     .union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)])
     .optional(),
-  totalPrice: z.number().finite().min(0).max(1000).optional(),
   passengerGenderPreference: z.enum(["ANY", "FEMININO", "MASCULINO"]).optional(),
-  price: z.number().finite().min(0).max(1000).optional(),
   preferences: travelPreferencesSchema.optional(),
   idempotencyKey: z.string().uuid(),
   vehicleDescription: z.string().trim().max(160).optional(),
@@ -45,7 +43,6 @@ export const createRideRequest = createServerFn({ method: "POST" })
     }
     return { requestId };
   });
-
 export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
@@ -54,29 +51,10 @@ export const createRideOffer = createServerFn({ method: "POST" })
       throw new Error("Informe o veículo e o ponto de encontro antes de publicar a oferta.");
     }
     const { data: offerId, error } = await context.supabase.rpc("create_preferred_ride", {
-      p_kind: "offer", p_details: data, p_preferences: data.preferences,
+      p_kind: "offer", p_details: { ...data, totalPrice: 0 }, p_preferences: data.preferences,
     });
     if (error) {
       throw new Error(`Não foi possível criar a oferta: ${error.message}`);
     }
     return { offerId };
-  });
-
-const updateRideTotalCostInput = z.object({
-  rideId: z.string().uuid(),
-  totalPrice: z.number().finite().min(0).max(10000),
-});
-
-export const updateRideTotalCost = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => updateRideTotalCostInput.parse(input))
-  .handler(async ({ context, data }) => {
-    const { data: result, error } = await context.supabase.rpc("update_ride_total_cost", {
-      p_ride_id: data.rideId,
-      p_total_price: data.totalPrice,
-    });
-    if (error) {
-      throw new Error(`Não foi possível atualizar o valor da carona: ${error.message}`);
-    }
-    return { totalPrice: Number(result) };
   });

@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   calculateRideCostSplit,
+  calculatePassengerFare,
+  sumConfirmedGroupFares,
   recalculateCostAfterPassengerChange,
   validateRideCostUpdate,
   canUpdateRideCost,
@@ -10,6 +12,44 @@ import {
   toCents,
   fromCents,
 } from "./ride-cost";
+
+describe("preço proporcional por distância rodoviária", () => {
+  it.each([
+    [5.5, 3],
+    [11, 6],
+    [16.5, 9],
+    [22, 12],
+    [44, 24],
+  ])("calcula corretamente o preço proporcional", (distanceKm, expectedFare) => {
+    expect(calculatePassengerFare(distanceKm)).toBe(expectedFare);
+  });
+
+  it("arredonda apenas o resultado final para centavos", () => {
+    expect(calculatePassengerFare(1)).toBe(0.55);
+    expect(calculatePassengerFare(1.01)).toBe(0.55);
+    expect(calculatePassengerFare(1.02)).toBe(0.56);
+  });
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejeita distância inválida (%s)",
+    (distanceKm) => expect(() => calculatePassengerFare(distanceKm)).toThrow("distância rodoviária"),
+  );
+});
+
+describe("total previsto do motorista", () => {
+  it("soma somente grupo de viagens confirmadas e mantém outros grupos ao cancelar um", () => {
+    expect(sumConfirmedGroupFares([
+      { status: "MATCHED", groupTotal: 20 },
+      { status: "CONFIRMED", groupTotal: 6 },
+      { status: "CANCELLED", groupTotal: 12 },
+      { status: "NO_SHOW", groupTotal: 9 },
+    ])).toBe(6);
+    expect(sumConfirmedGroupFares([
+      { status: "CONFIRMED", groupTotal: 6 },
+      { status: "CONFIRMED", groupTotal: 3.01 },
+    ])).toBe(9.01);
+  });
+});
 
 describe("automatic ride cost splitting", () => {
   it("calculates cost split correctly for 1 passenger", () => {
@@ -223,5 +263,25 @@ describe("automatic ride cost splitting", () => {
     expect(migration).toContain(
       "PERFORM public.recalculate_ride_cost_split(ride_row.offer_id);",
     );
+  });
+
+  it("requires a trusted server quote and blocks acceptance until it is persisted", () => {
+    const migration = readFileSync(
+      resolve(process.cwd(), "drizzle/migrations/0049_distance_based_ride_pricing.sql"),
+      "utf8",
+    );
+    const quoteService = readFileSync(
+      resolve(process.cwd(), "src/lib/ride-pricing.functions.ts"),
+      "utf8",
+    );
+    expect(migration).toContain("coalesce(auth.role(), '') <> 'service_role'");
+    expect(migration).toContain("round(p_route_distance_km * 600 / 11, 2) <> p_passenger_price");
+    expect(migration).toContain("p_response = ''ACCEPT''");
+    expect(migration).toContain("route_distance_km IS NULL");
+    expect(quoteService).toContain('z.object({ rideId: z.string().uuid() })');
+    expect(quoteService).toContain('geocodeAddressService(request.origin)');
+    expect(quoteService).toContain("getDrivingDistanceKm(");
+    expect(quoteService).not.toContain("data.distanceKm");
+    expect(quoteService).not.toContain("data.price");
   });
 });

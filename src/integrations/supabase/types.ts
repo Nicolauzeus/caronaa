@@ -1255,11 +1255,15 @@ export type Database = {
           offer_id: string
           passenger_accepted_at: string | null
           passenger_contribution: number
+          passenger_group_total: number | null
+          passenger_price: number | null
           passenger_user_id: string
           request_id: string
+          route_distance_km: number | null
           response_expires_at: string
           ride_id: string
           status: string
+          tariff_reference: string | null
           total_price: number
           transit_stage: string
           updated_at: string
@@ -1274,11 +1278,15 @@ export type Database = {
           offer_id: string
           passenger_accepted_at?: string | null
           passenger_contribution?: number
+          passenger_group_total?: number | null
+          passenger_price?: number | null
           passenger_user_id: string
           request_id: string
+          route_distance_km?: number | null
           response_expires_at?: string
           ride_id?: string
           status: string
+          tariff_reference?: string | null
           total_price?: number
           transit_stage?: string
           updated_at?: string
@@ -1293,11 +1301,15 @@ export type Database = {
           offer_id?: string
           passenger_accepted_at?: string | null
           passenger_contribution?: number
+          passenger_group_total?: number | null
+          passenger_price?: number | null
           passenger_user_id?: string
           request_id?: string
+          route_distance_km?: number | null
           response_expires_at?: string
           ride_id?: string
           status?: string
+          tariff_reference?: string | null
           total_price?: number
           transit_stage?: string
           updated_at?: string
@@ -1719,6 +1731,16 @@ export type Database = {
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
         Returns: string
+      }
+      persist_ride_route_quote: {
+        Args: {
+          p_group_total: number
+          p_passenger_price: number
+          p_ride_id: string
+          p_route_distance_km: number
+          p_tariff_reference: string
+        }
+        Returns: boolean
       }
       rate_ride: {
         Args: { p_comment?: string; p_ride_id: string; p_score: number }

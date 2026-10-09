@@ -40,7 +40,7 @@ export function RideRoutineForm({ kind, initial, routineId, occurrence, onSaved 
     endDate: null,
     seats: kind === "offer" ? 2 : 1,
     timeToleranceMinutes: 15,
-    totalPrice: 30,
+    totalPrice: 0,
     active: true,
     ...initial,
     ...occurrence,
@@ -179,21 +179,10 @@ export function RideRoutineForm({ kind, initial, routineId, occurrence, onSaved 
             onChange={(event) => update("seats", Number(event.target.value))}
           />
         </label>
-        {kind === "offer" && (
-          <label className="space-y-2 text-sm font-medium">
-            <span className="block">Valor total (R$)</span>
-            <Input
-              type="number"
-              min={0}
-              max={1000}
-              step="0.01"
-              required
-              value={form.totalPrice}
-              onChange={(event) => update("totalPrice", Number(event.target.value))}
-            />
-          </label>
-        )}
       </div>
+      <p className="text-sm text-muted-foreground">
+        O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas do trecho.
+      </p>
       <TimeToleranceSelector
         value={form.timeToleranceMinutes}
         baseTime={form.departureTime}

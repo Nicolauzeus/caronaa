@@ -65,7 +65,6 @@ type OferecerFormState = {
   vehicle: string;
   meeting: string;
   notes: string;
-  price: string;
   timeTolerance: TimeToleranceMinutes;
   passengerGenderPreference: "ANY" | "FEMININO" | "MASCULINO";
 };
@@ -81,7 +80,6 @@ const initial: OferecerFormState = {
   vehicle: "",
   meeting: "",
   notes: "",
-  price: "",
   timeTolerance: 15,
   passengerGenderPreference: "ANY",
 };
@@ -122,7 +120,6 @@ function Oferecer() {
             departureTime: form.time,
             availableSeats: Number(form.seats),
             timeToleranceMinutes: form.timeTolerance,
-            totalPrice: form.price ? Number(form.price) : 30,
             passengerGenderPreference: form.passengerGenderPreference,
             preferences,
             idempotencyKey,
@@ -182,7 +179,7 @@ function Oferecer() {
                 destinationLng: form.destinationLocation?.lng ?? null,
                 departureTime: form.time || "07:30",
                 seats: Number(form.seats),
-                totalPrice: form.price ? Number(form.price) : 30,
+                totalPrice: 0,
                 timeToleranceMinutes: form.timeTolerance,
               }}
               onSaved={() => setRoutineSaved(true)}
@@ -361,13 +358,9 @@ function Oferecer() {
                       required
                       variant="simple"
                     />
-                    <Field
-                      label="Valor total da viagem (R$)"
-                      value={form.price}
-                      onChange={(v) => update("price", v)}
-                      type="number"
-                      placeholder="30"
-                    />
+                    <p className="text-sm text-muted-foreground sm:col-span-2">
+                      O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas do trecho.
+                    </p>
                     <label className="block text-sm font-semibold sm:col-span-2">
                       Observações
                       <textarea

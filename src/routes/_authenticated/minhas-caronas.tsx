@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { createRideRequest } from "@/lib/ride-matching.functions";
+import { calculateRideQuote } from "@/lib/ride-pricing.functions";
 import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
@@ -51,7 +52,6 @@ type FormState = {
   date: string;
   time: string;
   seats: string;
-  price: string;
   meeting: string;
   notes: string;
   timeTolerance: TimeToleranceMinutes;
@@ -65,7 +65,6 @@ const initialForm: FormState = {
   date: "",
   time: "",
   seats: "1",
-  price: "",
   meeting: "",
   notes: "",
   timeTolerance: 15,
@@ -287,7 +286,6 @@ function MinhasCaronas() {
           departureTime: form.time,
           passengerCount: Number(form.seats),
           timeToleranceMinutes: form.timeTolerance,
-          price: form.price ? Number(form.price) : undefined,
           preferences,
           idempotencyKey,
           meetingPoint: form.meeting,
@@ -459,13 +457,9 @@ function MinhasCaronas() {
                 type="number"
                 required
               />
-              <Field
-                label="Valor (R$)"
-                value={form.price}
-                onChange={(value) => update("price", value)}
-                type="number"
-                placeholder="0"
-              />
+              <p className="col-span-2 self-center text-xs text-muted-foreground sm:col-span-4">
+                O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas do trecho.
+              </p>
             </div>
             <div className="lg:col-span-2 rounded-lg border border-border/70 bg-muted/15 p-3">
               <TimeToleranceSelector
@@ -655,6 +649,9 @@ function initials(name: string) {
 function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise<void> }) {
   const [details, setDetails] = useState(false);
   const [updating, setUpdating] = useState<RideStatus | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const quoteRide = useServerFn(calculateRideQuote);
   const updateInFlight = useRef(false);
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
@@ -705,6 +702,23 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     } finally {
       updateInFlight.current = false;
       setUpdating(null);
+    }
+  }
+
+  async function calculateQuote() {
+    if (!ride.rideId || quoting) return;
+    setQuoting(true);
+    setQuoteError(null);
+    try {
+      await quoteRide({ data: { rideId: ride.rideId } });
+      toast.success("Preço do trecho calculado.");
+      await onChanged();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível calcular o preço.";
+      setQuoteError(message);
+      toast.error(message);
+    } finally {
+      setQuoting(false);
     }
   }
 
@@ -762,23 +776,30 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
         </div>
       )}
 
-      <div
-        className="mt-3 rounded-lg border border-border/80 bg-secondary/50 p-3 text-xs space-y-1.5"
-        data-testid="ride-cost-breakdown"
-      >
-        <div className="flex justify-between font-medium text-foreground">
-          <span className="text-muted-foreground">Valor da viagem:</span>
-          <span className="font-bold">{formatBrl(ride.totalPrice)}</span>
+      {ride.pricePerPassenger != null && ride.groupTotal != null && ride.routeDistanceKm != null ? (
+        <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5" data-testid="ride-cost-breakdown">
+          <div className="flex justify-between text-muted-foreground"><span>Distância rodoviária do trecho:</span><span className="font-semibold text-foreground">{ride.routeDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} km</span></div>
+          <div className="flex justify-between font-bold text-primary"><span>Preço por passageiro:</span><span>{formatBrl(ride.pricePerPassenger)}</span></div>
+          {ride.seats > 1 && <div className="flex justify-between font-medium text-foreground"><span>Total do grupo ({ride.seats} pessoas):</span><span>{formatBrl(ride.groupTotal)}</span></div>}
+          {ride.role === "driver" && ride.driverConfirmedTotal != null && (
+            <div className="flex justify-between border-t border-border/60 pt-1.5 font-semibold text-foreground">
+              <span>Total previsto confirmado para o motorista:</span><span>{formatBrl(ride.driverConfirmedTotal)}</span>
+            </div>
+          )}
+          <p className="border-t border-border/60 pt-1.5 text-muted-foreground">Preço automático: R$ 6 a cada 11 km, proporcional ao seu trecho.</p>
         </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Passageiros confirmados:</span>
-          <span className="font-semibold text-foreground">{ride.confirmedPassengers}</span>
+      ) : ride.status === "MATCHED" ? (
+        <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-300">
+          <p>{quoteError || "Calcule o preço do trecho rodoviário antes de aceitar. O serviço público OSRM consulta as coordenadas do trecho; o preço só aparece após uma rota válida."}</p>
+          <Button type="button" size="sm" className="mt-2" variant="outline" disabled={quoting} onClick={() => void calculateQuote()}>
+            {quoting ? "Calculando percurso…" : quoteError ? "Tentar novamente" : "Calcular preço"}
+          </Button>
         </div>
-        <div className="flex justify-between font-bold text-primary pt-1.5 border-t border-border/60">
-          <span>Contribuição por passageiro:</span>
-          <span>{formatBrl(ride.passengerContribution)}</span>
+      ) : ride.status !== "CANCELLED" && ride.status !== "NO_SHOW" ? (
+        <div className="mt-3 rounded-lg border border-border/80 bg-secondary/50 p-3 text-xs space-y-1.5" data-testid="ride-cost-breakdown">
+          <div className="flex justify-between text-muted-foreground"><span>Preço histórico por passageiro:</span><span className="font-bold text-foreground">{formatBrl(ride.passengerContribution)}</span></div>
         </div>
-      </div>
+      ) : null}
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-2">
@@ -818,7 +839,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       )}
       {actions.length ? (
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          {actions.filter((action) => action.status !== "COMPLETED").map((action) => (
+          {actions.filter((action) => action.status !== "COMPLETED" && !(ride.status === "MATCHED" && ride.pricePerPassenger == null && action.status === "CONFIRMED")).map((action) => (
             <Button
               key={action.status}
               type="button"
