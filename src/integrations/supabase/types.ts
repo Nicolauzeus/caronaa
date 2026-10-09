@@ -911,7 +911,6 @@ export type Database = {
           accepts_quoted_fares: boolean
           available_seats: number
           created_at: string
-          updated_at: string
           departure_time: string
           destination: string
           destination_lat: number | null
@@ -939,6 +938,7 @@ export type Database = {
           time_tolerance_minutes: number
           total_price: number
           travel_preferences: Json | null
+          updated_at: string
           user_id: string
           vehicle_description: string | null
         }
@@ -946,7 +946,6 @@ export type Database = {
           accepts_quoted_fares?: boolean
           available_seats: number
           created_at?: string
-          updated_at?: string
           departure_time: string
           destination: string
           destination_lat?: number | null
@@ -974,6 +973,7 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id: string
           vehicle_description?: string | null
         }
@@ -981,7 +981,6 @@ export type Database = {
           accepts_quoted_fares?: boolean
           available_seats?: number
           created_at?: string
-          updated_at?: string
           departure_time?: string
           destination?: string
           destination_lat?: number | null
@@ -1009,6 +1008,7 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id?: string
           vehicle_description?: string | null
         }
@@ -1096,7 +1096,6 @@ export type Database = {
       ride_requests: {
         Row: {
           created_at: string
-          updated_at: string
           departure_time: string
           destination: string
           destination_lat: number | null
@@ -1121,11 +1120,11 @@ export type Database = {
           target_offer_id: string | null
           time_tolerance_minutes: number
           travel_preferences: Json | null
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          updated_at?: string
           departure_time: string
           destination: string
           destination_lat?: number | null
@@ -1150,11 +1149,11 @@ export type Database = {
           target_offer_id?: string | null
           time_tolerance_minutes?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          updated_at?: string
           departure_time?: string
           destination?: string
           destination_lat?: number | null
@@ -1179,6 +1178,7 @@ export type Database = {
           target_offer_id?: string | null
           time_tolerance_minutes?: number
           travel_preferences?: Json | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
