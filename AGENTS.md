@@ -22,3 +22,5 @@
 - Keep admin attention counts sourced from the existing authorized operation service and navigation matching exclusive; this avoids invented indicators and ambiguous active sections.
 - Store Pix keys separately behind authenticated owner/participant RPCs and generate BR Code only for completed rides; this prevents public profile queries exposing payment identifiers and does not imply payment settlement.
 - Use dynamically imported Leaflet for participant markers and preserve per-ride consent across non-loading refreshes; this avoids SSR browser imports and tracking resets.
+
+- Keep the shared Relationships page outside route modules and import it from both admin URLs; this preserves automatic route splitting without cross-route component imports.

@@ -898,8 +898,8 @@ export type Database = {
           time_tolerance_minutes: number
           total_price: number
           travel_preferences: Json | null
-          vehicle_description: string | null
           user_id: string
+          vehicle_description: string | null
         }
         Insert: {
           available_seats: number
@@ -928,8 +928,8 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
-          vehicle_description?: string | null
           user_id: string
+          vehicle_description?: string | null
         }
         Update: {
           available_seats?: number
@@ -958,8 +958,8 @@ export type Database = {
           time_tolerance_minutes?: number
           total_price?: number
           travel_preferences?: Json | null
-          vehicle_description?: string | null
           user_id?: string
+          vehicle_description?: string | null
         }
         Relationships: [
           {
@@ -1048,10 +1048,10 @@ export type Database = {
           origin_lat: number | null
           origin_lng: number | null
           passenger_count: number
-          price: number | null
           pickup_lat: number | null
           pickup_lng: number | null
           pickup_point: string | null
+          price: number | null
           request_id: string
           ride_date: string
           routine_date: string | null
@@ -1076,10 +1076,10 @@ export type Database = {
           origin_lat?: number | null
           origin_lng?: number | null
           passenger_count: number
-          price?: number | null
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_point?: string | null
+          price?: number | null
           request_id?: string
           ride_date: string
           routine_date?: string | null
@@ -1104,10 +1104,10 @@ export type Database = {
           origin_lat?: number | null
           origin_lng?: number | null
           passenger_count?: number
-          price?: number | null
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_point?: string | null
+          price?: number | null
           request_id?: string
           ride_date?: string
           routine_date?: string | null
