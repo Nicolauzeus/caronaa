@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { requestRideOffer, type RideSummary } from "@/lib/rides.functions";
 import { toast } from "sonner";
+import { formatBrl } from "@/lib/ride-cost";
 
 function formatDate(value: string) {
   const date = new Date(`${value}T00:00:00`);
@@ -127,6 +128,11 @@ export function RideCard({
           <span className="font-semibold text-primary">Adequação {ride.matchScore}/100</span>
         )}
       </div>
+      {ride.pricePerPassenger != null && ride.routeDistanceKm != null && <div className="mt-4 border-t border-border pt-3">
+        <p className="font-bold text-primary">{formatBrl(ride.pricePerPassenger)} por passageiro</p>
+        <p className="text-xs text-muted-foreground">Percurso completo · {ride.routeDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km</p>
+        <p className="text-xs text-muted-foreground">Seu trecho será calculado antes da confirmação.</p>
+      </div>}
       {expanded && (
         <div className="mt-4 space-y-2 rounded-md bg-secondary p-4 text-sm text-secondary-foreground">
           <p className="flex items-center gap-2">

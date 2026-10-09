@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -20,6 +20,7 @@ import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
 import type { TravelPreferences } from "@/lib/travel-preferences";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
+import { OfferFarePreview, type OfferQuote } from "@/components/caronaa/OfferFarePreview";
 import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
 import type { FormLocationDetails } from "@/lib/location/types";
 import {
@@ -94,6 +95,8 @@ function Oferecer() {
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
+  const [quote, setQuote] = useState<OfferQuote | null>(null);
+  const receiveQuote = useCallback((value: OfferQuote | null) => setQuote(value), []);
   const [form, setForm] = useState<OferecerFormState>(() => ({
     ...initial, origin: search.origem ?? "", destination: search.destino ?? "", date: search.data ?? "", time: search.horario ?? "",
     originLocation: search.olat != null && search.olng != null ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng } : undefined,
@@ -104,6 +107,9 @@ function Oferecer() {
   const next = async (e: FormEvent) => {
     e.preventDefault();
     if (step === 2) {
+      if (!quote || quote.origin !== form.origin || quote.destination !== form.destination) {
+        toast.error("Aguarde o preço do percurso antes de publicar."); return;
+      }
       if (publishingRef.current) return;
       publishingRef.current = true;
       setPublishing(true);
@@ -111,6 +117,7 @@ function Oferecer() {
         const result = await publishOffer({
           data: {
             origin: form.origin,
+            quoteId: quote.quoteId,
             destination: form.destination,
             originLat: form.originLocation?.lat,
             originLng: form.originLocation?.lng,
@@ -212,7 +219,7 @@ function Oferecer() {
                 <h2 className="font-display text-2xl font-extrabold">Carona publicada!</h2>
                 <p className="mx-auto mt-3 max-w-md text-muted-foreground">
                   Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas
-                  caronas e já pode gerar matches reais com pedidos compatíveis.
+                    caronas. Passageiros compatíveis podem confirmar sem novo aceite seu.
                 </p>
                 <div className="mt-7 flex flex-wrap justify-center gap-3">
                   <Button asChild>
@@ -358,9 +365,7 @@ function Oferecer() {
                       required
                       variant="simple"
                     />
-                    <p className="text-sm text-muted-foreground sm:col-span-2">
-                      O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas do trecho.
-                    </p>
+                    <p className="text-sm text-muted-foreground sm:col-span-2">Ao publicar, você aceita os passageiros compatíveis e o preço automático de seus trechos.</p>
                     <label className="block text-sm font-semibold sm:col-span-2">
                       Observações
                       <textarea
@@ -373,6 +378,7 @@ function Oferecer() {
                     </label>
                   </div>
                 )}
+                <div className="mt-5"><OfferFarePreview origin={form.origin} destination={form.destination} onQuote={receiveQuote} /></div>
                 <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
                   {step === 2 ? (
                     <Button type="button" variant="ghost" onClick={() => setStep(1)}>
@@ -383,7 +389,7 @@ function Oferecer() {
                       <CalendarDays size={15} /> Planeje seu trajeto
                     </span>
                   )}
-                  <Button type="submit" className="h-11 px-6" disabled={step === 2 && publishing}>
+                  <Button type="submit" className="h-11 px-6" disabled={step === 2 && (publishing || !quote || quote.origin !== form.origin || quote.destination !== form.destination)}>
                     {step === 1 ? "Continuar" : publishing ? "Publicando..." : "Publicar carona"} <ArrowRight />
                   </Button>
                 </div>

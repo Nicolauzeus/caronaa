@@ -205,6 +205,8 @@ function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): Ri
     totalPrice,
     confirmedPassengers: 0,
     passengerContribution: totalPrice,
+    routeDistanceKm: r["route_distance_km"] == null ? null : Number(r["route_distance_km"]),
+    pricePerPassenger: r["passenger_price"] == null ? null : Number(r["passenger_price"]),
     vehicleDescription: typeof r["vehicle_description"] === "string" ? r["vehicle_description"] : null,
     meetingPoint: typeof r["meeting_point"] === "string" ? r["meeting_point"] : null,
     meetingLat: typeof r["meeting_lat"] === "number" ? r["meeting_lat"] : null,
@@ -446,6 +448,12 @@ async function discoverOffers(
   }
   const bonuses = new Map<string, number>();
   if (resultRows.length) {
+    const { data: prices, error: priceError } = await client.rpc("get_offer_publication_prices", {
+      p_offer_ids: resultRows.map(row => String(row.offer_id)),
+    });
+    if (priceError) throw new Error("Não foi possível carregar os preços das ofertas.");
+    const priceMap = new Map((prices ?? []).map(row => [row.offer_id, row]));
+    resultRows = resultRows.map(row => ({ ...row, ...priceMap.get(String(row.offer_id)) }));
     const { data: matches, error: bonusError } = await client.rpc("get_offer_preference_bonuses", {
       p_offer_ids: resultRows.map((row) => String(row.offer_id)),
     });
