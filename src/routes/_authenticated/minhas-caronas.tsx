@@ -652,6 +652,17 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   const [quoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const quoteRide = useServerFn(calculateRideQuote);
+  const autoQuoteAttempted = useRef<string | null>(null);
+  useEffect(() => {
+    if (ride.status !== "MATCHED" || !ride.rideId || ride.routeDistanceKm != null || autoQuoteAttempted.current === ride.rideId) return;
+    autoQuoteAttempted.current = ride.rideId;
+    let active = true;
+    setQuoting(true);
+    void quoteRide({ data: { rideId: ride.rideId } }).then(() => { if (active) return onChanged(); })
+      .catch(error => { if (active) setQuoteError(error instanceof Error ? error.message : "Não foi possível calcular o preço."); })
+      .finally(() => { if (active) setQuoting(false); });
+    return () => { active = false; };
+  }, [ride.rideId, ride.status, ride.routeDistanceKm, quoteRide, onChanged]);
   const updateInFlight = useRef(false);
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
   const name =
@@ -682,7 +693,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
         nextStatus === "CONFIRMED"
           ? waitingForOther
             ? "Aceite registrado"
-            : "Carona confirmada pelos dois"
+             : "Carona confirmada"
           : nextStatus === "CANCELLED" && ride.status === "MATCHED"
             ? "Combinação recusada"
             : "Viagem atualizada",
@@ -761,7 +772,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
             {proposalState === "awaiting-other-participant"
               ? "Você aceitou — aguardando a outra pessoa."
               : acceptedByOther
-                ? "A outra pessoa aceitou. Falta a sua resposta."
+                ? ride.role === "passenger" ? "Motorista já aceitou. Confira o preço e confirme sua carona." : "Passageiro aceitou. Falta a sua resposta."
                 : "Combinação encontrada. A viagem só será confirmada após os dois aceitarem."}
           </p>
           {ride.responseExpiresAt ? (
@@ -790,9 +801,9 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
         </div>
       ) : ride.status === "MATCHED" ? (
         <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-300">
-          <p>{quoteError || "Calcule o preço do trecho rodoviário antes de aceitar. O serviço público OSRM consulta as coordenadas do trecho; o preço só aparece após uma rota válida."}</p>
+          <p>{quoteError || "Calculando automaticamente o preço do seu trecho…"}</p>
           <Button type="button" size="sm" className="mt-2" variant="outline" disabled={quoting} onClick={() => void calculateQuote()}>
-            {quoting ? "Calculando percurso…" : quoteError ? "Tentar novamente" : "Calcular preço"}
+            {quoting ? "Calculando percurso…" : "Tentar novamente"}
           </Button>
         </div>
       ) : ride.status !== "CANCELLED" && ride.status !== "NO_SHOW" ? (

@@ -25,6 +25,7 @@ const rideInput = z.object({
   meetingLat: z.number().finite().min(-90).max(90).optional(),
   meetingLng: z.number().finite().min(-180).max(180).optional(),
   notes: z.string().trim().max(500).optional(),
+  quoteId: z.string().uuid().optional(),
 }).superRefine((data, context) => {
   if ((data.meetingLat == null) !== (data.meetingLng == null)) {
     context.addIssue({ code: "custom", message: "Informe as duas coordenadas do ponto de encontro." });
@@ -50,8 +51,9 @@ export const createRideOffer = createServerFn({ method: "POST" })
     if (!data.vehicleDescription?.trim() || !data.meetingPoint?.trim()) {
       throw new Error("Informe o veículo e o ponto de encontro antes de publicar a oferta.");
     }
-    const { data: offerId, error } = await context.supabase.rpc("create_preferred_ride", {
-      p_kind: "offer", p_details: { ...data, totalPrice: 0 }, p_preferences: data.preferences,
+    if (!data.quoteId) throw new Error("Aguarde o preço do percurso antes de publicar.");
+    const { data: offerId, error } = await context.supabase.rpc("publish_priced_offer", {
+      p_quote_id: data.quoteId, p_details: { ...data, totalPrice: 0 }, p_preferences: data.preferences,
     });
     if (error) {
       throw new Error(`Não foi possível criar a oferta: ${error.message}`);
