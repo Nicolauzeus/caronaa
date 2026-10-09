@@ -17,6 +17,8 @@ import {
 } from "@/lib/ride-matching";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
 import { sumConfirmedGroupFares } from "@/lib/ride-cost";
+import { canViewRideCounterpartProfile } from "@/lib/ride-profile-access";
+import { compareRideRecency } from "@/lib/ride-order";
 export type { RideVerification } from "@/lib/ride-verifications";
 
 type SupabaseAppClient = SupabaseClient<Database>;
@@ -41,6 +43,7 @@ export type RideSummary = {
   seatsRemaining: number | null;
   status: string;
   createdAt: string;
+  updatedAt: string;
   rideId: string | null;
   requestId: string | null;
   offerId: string | null;
@@ -196,6 +199,7 @@ function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): Ri
     seatsRemaining: Number(r["seats_remaining"] ?? 0),
     status: String(r["status"] ?? ""),
     createdAt: String(r["created_at"] ?? ""),
+    updatedAt: String(r["updated_at"] ?? r["created_at"] ?? ""),
     rideId: null,
     requestId: null,
     offerId: String(r["offer_id"]),
@@ -207,7 +211,8 @@ function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): Ri
     passengerContribution: totalPrice,
     routeDistanceKm: r["route_distance_km"] == null ? null : Number(r["route_distance_km"]),
     pricePerPassenger: r["passenger_price"] == null ? null : Number(r["passenger_price"]),
-    vehicleDescription: typeof r["vehicle_description"] === "string" ? r["vehicle_description"] : null,
+    vehicleDescription:
+      typeof r["vehicle_description"] === "string" ? r["vehicle_description"] : null,
     meetingPoint: typeof r["meeting_point"] === "string" ? r["meeting_point"] : null,
     meetingLat: typeof r["meeting_lat"] === "number" ? r["meeting_lat"] : null,
     meetingLng: typeof r["meeting_lng"] === "number" ? r["meeting_lng"] : null,
@@ -231,6 +236,7 @@ function mapRequest(row: RequestRow, profile: RideProfile, viewerUserId: string)
     seatsRemaining: null,
     status: String(r["status"] ?? ""),
     createdAt: String(r["created_at"] ?? ""),
+    updatedAt: String(r["updated_at"] ?? r["created_at"] ?? ""),
     rideId: null,
     requestId: String(r["request_id"]),
     offerId: null,
@@ -272,10 +278,12 @@ function mapRide(
         : Math.round((totalPrice / confirmedPassengers) * 100) / 100;
   const quotedPriceValue = ri["passenger_price"];
   const parsedQuotedPrice = quotedPriceValue == null ? null : Number(quotedPriceValue);
-  const quotedPrice = parsedQuotedPrice != null && Number.isFinite(parsedQuotedPrice) ? parsedQuotedPrice : null;
+  const quotedPrice =
+    parsedQuotedPrice != null && Number.isFinite(parsedQuotedPrice) ? parsedQuotedPrice : null;
   const quotedGroupValue = ri["passenger_group_total"];
   const parsedQuotedGroup = quotedGroupValue == null ? null : Number(quotedGroupValue);
-  const quotedGroupTotal = parsedQuotedGroup != null && Number.isFinite(parsedQuotedGroup) ? parsedQuotedGroup : null;
+  const quotedGroupTotal =
+    parsedQuotedGroup != null && Number.isFinite(parsedQuotedGroup) ? parsedQuotedGroup : null;
   const routeDistanceValue = ri["route_distance_km"];
   const parsedRouteDistance = routeDistanceValue == null ? null : Number(routeDistanceValue);
 
@@ -298,6 +306,7 @@ function mapRide(
           : null,
     status,
     createdAt: String(ri["created_at"] ?? ""),
+    updatedAt: String(ri["updated_at"] ?? ri["created_at"] ?? ""),
     rideId: String(ri["ride_id"]),
     requestId: String(ri["request_id"]),
     offerId: String(ri["offer_id"]),
@@ -307,7 +316,10 @@ function mapRide(
     totalPrice,
     confirmedPassengers,
     passengerContribution,
-    routeDistanceKm: parsedRouteDistance != null && Number.isFinite(parsedRouteDistance) ? parsedRouteDistance : null,
+    routeDistanceKm:
+      parsedRouteDistance != null && Number.isFinite(parsedRouteDistance)
+        ? parsedRouteDistance
+        : null,
     pricePerPassenger: quotedPrice,
     groupTotal: quotedGroupTotal,
     tariffReference: typeof ri["tariff_reference"] === "string" ? ri["tariff_reference"] : null,
@@ -449,11 +461,11 @@ async function discoverOffers(
   const bonuses = new Map<string, number>();
   if (resultRows.length) {
     const { data: prices, error: priceError } = await client.rpc("get_offer_publication_prices", {
-      p_offer_ids: resultRows.map(row => String(row.offer_id)),
+      p_offer_ids: resultRows.map((row) => String(row.offer_id)),
     });
     if (priceError) throw new Error("Não foi possível carregar os preços das ofertas.");
-    const priceMap = new Map((prices ?? []).map(row => [row.offer_id, row]));
-    resultRows = resultRows.map(row => ({ ...row, ...priceMap.get(String(row.offer_id)) }));
+    const priceMap = new Map((prices ?? []).map((row) => [row.offer_id, row]));
+    resultRows = resultRows.map((row) => ({ ...row, ...priceMap.get(String(row.offer_id)) }));
     const { data: matches, error: bonusError } = await client.rpc("get_offer_preference_bonuses", {
       p_offer_ids: resultRows.map((row) => String(row.offer_id)),
     });
@@ -577,9 +589,10 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { data: requests, error: requestsError } = await client
       .from("ride_requests")
       .select(
-        "request_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, pickup_point, pickup_lat, pickup_lng, notes, idempotency_key, ride_date, departure_time, passenger_count, status, created_at, price, routine_id",
+        "request_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, pickup_point, pickup_lat, pickup_lng, notes, idempotency_key, ride_date, departure_time, passenger_count, status, created_at, updated_at, price, routine_id",
       )
       .eq("user_id", context.userId)
+      .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false });
     if (requestsError) {
       throw new Error(requestsError.message || "Não foi possível carregar seus pedidos.");
@@ -588,9 +601,10 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { data: offers, error: offersError } = await client
       .from("ride_offers")
       .select(
-        "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, vehicle_description, meeting_point, meeting_lat, meeting_lng, notes, idempotency_key, ride_date, departure_time, available_seats, seats_remaining, status, created_at, total_price, routine_id",
+        "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, vehicle_description, meeting_point, meeting_lat, meeting_lng, notes, idempotency_key, ride_date, departure_time, available_seats, seats_remaining, status, created_at, updated_at, total_price, route_distance_km, passenger_price, accepts_quoted_fares, routine_id",
       )
       .eq("user_id", context.userId)
+      .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false });
     if (offersError) {
       throw new Error(offersError.message || "Não foi possível carregar suas ofertas.");
@@ -609,7 +623,7 @@ export const getMyRides = createServerFn({ method: "GET" })
       ? await client
           .from("ride_requests")
           .select(
-            "request_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, pickup_point, pickup_lat, pickup_lng, notes, idempotency_key, ride_date, departure_time, passenger_count, status, created_at, price, routine_id",
+            "request_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, pickup_point, pickup_lat, pickup_lng, notes, idempotency_key, ride_date, departure_time, passenger_count, status, created_at, updated_at, price, routine_id",
           )
           .in("request_id", [...new Set(requestIds)])
       : { data: [], error: null };
@@ -621,7 +635,7 @@ export const getMyRides = createServerFn({ method: "GET" })
       ? await client
           .from("ride_offers")
           .select(
-            "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, vehicle_description, meeting_point, meeting_lat, meeting_lng, notes, idempotency_key, ride_date, departure_time, available_seats, seats_remaining, status, created_at, total_price, routine_id",
+            "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, vehicle_description, meeting_point, meeting_lat, meeting_lng, notes, idempotency_key, ride_date, departure_time, available_seats, seats_remaining, status, created_at, updated_at, total_price, route_distance_km, passenger_price, accepts_quoted_fares, routine_id",
           )
           .in("offer_id", [...new Set(offerIds)])
       : { data: [], error: null };
@@ -636,7 +650,10 @@ export const getMyRides = createServerFn({ method: "GET" })
 
     // Calcula total de passageiros confirmados/ativos por oferta
     const confirmedCountByOffer = new Map<string, number>();
-    const confirmedFaresByOffer = new Map<string, Array<{ status: string; groupTotal: number | null }>>();
+    const confirmedFaresByOffer = new Map<
+      string,
+      Array<{ status: string; groupTotal: number | null }>
+    >();
     for (const r of rides ?? []) {
       if (r.status !== "CANCELLED") {
         const offId = String(r.offer_id);
@@ -651,12 +668,16 @@ export const getMyRides = createServerFn({ method: "GET" })
       const parsedGroupTotal = rawTotal == null ? null : Number(rawTotal);
       fareRows.push({
         status: String(r.status),
-        groupTotal: parsedGroupTotal != null && Number.isFinite(parsedGroupTotal) ? parsedGroupTotal : null,
+        groupTotal:
+          parsedGroupTotal != null && Number.isFinite(parsedGroupTotal) ? parsedGroupTotal : null,
       });
       confirmedFaresByOffer.set(String(r.offer_id), fareRows);
     }
     const confirmedFareTotalByOffer = new Map(
-      [...confirmedFaresByOffer.entries()].map(([offerId, fareRows]) => [offerId, sumConfirmedGroupFares(fareRows)]),
+      [...confirmedFaresByOffer.entries()].map(([offerId, fareRows]) => [
+        offerId,
+        sumConfirmedGroupFares(fareRows),
+      ]),
     );
 
     const userIds = [
@@ -716,7 +737,10 @@ export const getMyRides = createServerFn({ method: "GET" })
         .map((offer) => mapOffer(offer, currentProfile, context.userId)),
     ];
 
-    return { passenger, driver };
+    return {
+      passenger: passenger.sort(compareRideRecency),
+      driver: driver.sort(compareRideRecency),
+    };
   });
 
 export const requestRideOffer = createServerFn({ method: "POST" })
@@ -736,4 +760,80 @@ export const requestRideOffer = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message || "Não foi possível solicitar a carona.");
     return { requestId };
+  });
+
+const rideParticipantProfileInput = z.object({
+  rideId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
+
+/** Dados de perfil são liberados apenas entre participantes de uma mesma combinação. */
+export const getRideParticipantProfile = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => rideParticipantProfileInput.parse(input))
+  .handler(async ({ context, data }) => {
+    const client = await getAdminClient();
+    const { data: ride, error: rideError } = await client
+      .from("rides")
+      .select("passenger_user_id, driver_user_id, offer_id")
+      .eq("ride_id", data.rideId)
+      .maybeSingle();
+    if (rideError || !ride) throw new Error("Combinação não encontrada.");
+    const passengerId = String(ride.passenger_user_id);
+    const driverId = String(ride.driver_user_id);
+    const otherParticipantId = context.userId === passengerId ? driverId : passengerId;
+    if (
+      !canViewRideCounterpartProfile({
+        callerId: context.userId,
+        targetId: data.userId,
+        passengerId,
+        driverId,
+      })
+    ) {
+      throw new Error("Este perfil só pode ser visto pela outra pessoa desta combinação.");
+    }
+
+    const [profileResult, verificationResult, ratingResult, offerResult] = await Promise.all([
+      client
+        .from("profiles")
+        .select("id, full_name, avatar_url, city, created_at")
+        .eq("id", otherParticipantId)
+        .maybeSingle(),
+      client
+        .from("user_verifications")
+        .select("id, user_id, type, status")
+        .eq("user_id", otherParticipantId)
+        .eq("status", "VERIFIED"),
+      client.from("ride_ratings").select("score").eq("rated_user_id", otherParticipantId),
+      client
+        .from("ride_offers")
+        .select("vehicle_description")
+        .eq("offer_id", String(ride.offer_id))
+        .maybeSingle(),
+    ]);
+    if (profileResult.error || !profileResult.data)
+      throw new Error("Não foi possível carregar este perfil.");
+    if (verificationResult.error || ratingResult.error || offerResult.error) {
+      throw new Error("Não foi possível carregar os dados de apresentação deste perfil.");
+    }
+    const scores = (ratingResult.data ?? [])
+      .map((row) => Number(row.score))
+      .filter(Number.isFinite);
+    const verifications = (verificationResult.data ?? [])
+      .map((row) => normalizeVerification(row))
+      .filter((row): row is RideVerification => Boolean(row));
+    return {
+      id: otherParticipantId,
+      fullName: String(profileResult.data.full_name || "Usuário CARONAA"),
+      avatarUrl: profileResult.data.avatar_url,
+      city: profileResult.data.city,
+      memberSince: profileResult.data.created_at,
+      verifications,
+      averageRating: scores.length
+        ? Math.round((scores.reduce((sum, score) => sum + score, 0) / scores.length) * 100) / 100
+        : null,
+      ratingCount: scores.length,
+      vehicleDescription:
+        otherParticipantId === driverId ? (offerResult.data?.vehicle_description ?? null) : null,
+    };
   });

@@ -57,11 +57,12 @@ export type RideAction = {
 export function getRideNextActions(
   status: string,
   role: "driver" | "passenger" | "available",
-  matchAcceptance: { acceptedByViewer?: boolean } = {},
+  matchAcceptance: { acceptedByViewer?: boolean; acceptedByOther?: boolean } = {},
 ): RideAction[] {
   if (status === "MATCHED") {
     return [
-      ...(matchAcceptance.acceptedByViewer
+      ...(matchAcceptance.acceptedByViewer ||
+      (role === "driver" && !matchAcceptance.acceptedByOther)
         ? []
         : [{ label: "Aceitar combinação", status: "CONFIRMED" as const }]),
       {

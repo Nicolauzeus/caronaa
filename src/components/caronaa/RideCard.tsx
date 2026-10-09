@@ -85,7 +85,7 @@ export function RideCard({
   }
 
   return (
-    <article className="rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-card md:p-6">
+    <article className="rounded-lg border border-border bg-card p-3 transition-shadow hover:shadow-card sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar className="size-11 shrink-0">
@@ -103,15 +103,15 @@ export function RideCard({
           {getStatusLabel(ride.status)}
         </span>
       </div>
-      <div className="relative ml-1 mt-6 grid grid-cols-[20px_1fr_auto] gap-x-2 gap-y-4 before:absolute before:left-[5px] before:top-4 before:bottom-4 before:w-px before:bg-border">
+      <div className="relative ml-1 mt-3 grid grid-cols-[20px_minmax(0,1fr)_auto] gap-x-2 gap-y-2 before:absolute before:left-[5px] before:top-3 before:bottom-3 before:w-px before:bg-border">
         <span className="relative z-10 mt-1 size-2.5 rounded-full border-[3px] border-primary bg-card" />
-        <p className="font-bold">{ride.origin}</p>
-        <span className="font-bold">{ride.departureTime}</span>
+        <p className="line-clamp-2 break-words text-sm font-bold">{ride.origin}</p>
+        <span className="text-xs font-semibold">{ride.departureTime}</span>
         <span className="relative z-10 mt-1 size-2.5 rounded-full bg-primary" />
-        <p className="font-bold">{ride.destination}</p>
+        <p className="line-clamp-2 break-words text-sm font-bold">{ride.destination}</p>
         <span className="text-sm text-muted-foreground">Destino</span>
       </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs font-medium text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2.5 text-xs font-medium text-muted-foreground">
         {ride.scheduleType && (
           <span>{ride.scheduleType === "routine" ? "Recorrente" : "Pontual"}</span>
         )}
@@ -128,13 +128,22 @@ export function RideCard({
           <span className="font-semibold text-primary">Adequação {ride.matchScore}/100</span>
         )}
       </div>
-      {ride.pricePerPassenger != null && ride.routeDistanceKm != null && <div className="mt-4 border-t border-border pt-3">
-        <p className="font-bold text-primary">{formatBrl(ride.pricePerPassenger)} por passageiro</p>
-        <p className="text-xs text-muted-foreground">Percurso completo · {ride.routeDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km</p>
-        <p className="text-xs text-muted-foreground">Seu trecho será calculado antes da confirmação.</p>
-      </div>}
+      {ride.pricePerPassenger != null && ride.routeDistanceKm != null && (
+        <div className="mt-2.5 border-t border-border pt-2">
+          <p className="font-bold text-primary">
+            {formatBrl(ride.pricePerPassenger)} por passageiro
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Percurso completo ·{" "}
+            {ride.routeDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Seu trecho será calculado antes da confirmação.
+          </p>
+        </div>
+      )}
       {expanded && (
-        <div className="mt-4 space-y-2 rounded-md bg-secondary p-4 text-sm text-secondary-foreground">
+        <div className="mt-3 space-y-2 rounded-md bg-secondary p-3 text-sm text-secondary-foreground">
           <p className="flex items-center gap-2">
             <MapPin size={15} /> {ride.origin} → {ride.destination}
           </p>
@@ -154,7 +163,7 @@ export function RideCard({
           ) : null}
         </div>
       )}
-      <div className="mt-4 flex gap-2">
+      <div className="mt-3 flex gap-2">
         <Button
           type="button"
           variant="outline"

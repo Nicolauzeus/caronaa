@@ -47,6 +47,7 @@ describe("account-scoped ride notifications", () => {
       ["ride_offers", "user_id"],
       ["rides", "driver_user_id"],
       ["rides", "passenger_user_id"],
+      ["ride_notifications", "user_id"],
       ["ride_matches", "driver_user_id"],
       ["ride_matches", "passenger_user_id"],
     ]);
@@ -59,8 +60,58 @@ describe("account-scoped ride notifications", () => {
       "Carona encontrada",
     );
   });
-  it.each(["CONFIRMED", "IN_PROGRESS", "CANCELLED", "COMPLETED"])(
-    "notifies each participant of %s",
+  it("notifies each participant when the ride starts", () => {
+    for (const userId of ["driver", "passenger"]) {
+      expect(
+        createRideAlert(
+          "rides",
+          "UPDATE",
+          { ...participants, status: "IN_PROGRESS" },
+          { status: "CONFIRMED" },
+          userId,
+        ),
+      ).not.toBeNull();
+    }
+  });
+  it.each([
+    "PASSENGER_ACCEPTED",
+    "RIDE_CONFIRMED",
+    "PROPOSAL_EXPIRED",
+    "RIDE_CANCELLED",
+    "RIDE_COMPLETED",
+  ])("maps persisted event %s to one account-scoped alert", (eventName) => {
+    const alert = createRideAlert(
+      "ride_notifications",
+      "INSERT",
+      {
+        ...participants,
+        notification_id: "notification",
+        user_id: "driver",
+        event_name: eventName,
+      },
+      {},
+      "driver",
+    );
+    expect(alert).not.toBeNull();
+    expect(alert?.notificationId).toBe("notification");
+    expect(alert?.rideId).toBe("ride");
+    expect(
+      createRideAlert(
+        "ride_notifications",
+        "INSERT",
+        {
+          ...participants,
+          notification_id: "notification",
+          user_id: "driver",
+          event_name: eventName,
+        },
+        {},
+        "outsider",
+      ),
+    ).toBeNull();
+  });
+  it.each(["CONFIRMED", "CANCELLED", "COMPLETED"])(
+    "leaves persisted lifecycle notice %s to the notification row and avoids duplicate alerts",
     (status) => {
       for (const userId of ["driver", "passenger"]) {
         const alert = createRideAlert(
@@ -70,8 +121,7 @@ describe("account-scoped ride notifications", () => {
           { status: "MATCHED" },
           userId,
         );
-        expect(alert).not.toBeNull();
-        expect(alert?.sound).toBe(status === "CANCELLED" ? "cancelled" : "confirmed");
+        expect(alert).toBeNull();
       }
     },
   );
@@ -95,9 +145,11 @@ describe("account-scoped ride notifications", () => {
     ).toBeNull();
   });
   it("uses a stable id for replay deduplication and never stores PIN/GPS", () => {
-    const row = { ...participants, status: "CONFIRMED", pin: "secret", latitude: 12 };
-    const first = createRideAlert("rides", "UPDATE", row, {}, "driver");
-    expect(createRideAlert("rides", "UPDATE", row, {}, "driver")?.id).toBe(first?.id);
+    const row = { ...participants, status: "IN_PROGRESS", pin: "secret", latitude: 12 };
+    const first = createRideAlert("rides", "UPDATE", row, { status: "CONFIRMED" }, "driver");
+    expect(createRideAlert("rides", "UPDATE", row, { status: "CONFIRMED" }, "driver")?.id).toBe(
+      first?.id,
+    );
     expect(JSON.stringify(first)).not.toContain("secret");
     expect(first).not.toHaveProperty("latitude");
   });
@@ -105,8 +157,8 @@ describe("account-scoped ride notifications", () => {
     const alert = createRideAlert(
       "rides",
       "UPDATE",
-      { ...participants, status: "CONFIRMED" },
-      {},
+      { ...participants, status: "IN_PROGRESS" },
+      { status: "CONFIRMED" },
       "driver",
     )!;
     localStorage.setItem(

@@ -40,6 +40,7 @@ import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formul
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
 import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
+import { Route as AuthenticatedPerfilViagemRideIdUserIdRouteImport } from './routes/_authenticated/perfil-viagem.$rideId.$userId'
 import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
 import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -200,6 +201,12 @@ const AdminValidacaoPainIdRoute = AdminValidacaoPainIdRouteImport.update({
   path: '/$painId',
   getParentRoute: () => AdminValidacaoRoute,
 } as any)
+const AuthenticatedPerfilViagemRideIdUserIdRoute =
+  AuthenticatedPerfilViagemRideIdUserIdRouteImport.update({
+    id: '/perfil-viagem/$rideId/$userId',
+    path: '/perfil-viagem/$rideId/$userId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AdminFormulariosRespostasIndexRoute =
   AdminFormulariosRespostasIndexRouteImport.update({
     id: '/formularios/respostas/',
@@ -254,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
+  '/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -289,6 +297,7 @@ export interface FileRoutesByTo {
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
+  '/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -327,6 +336,7 @@ export interface FileRoutesById {
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
+  '/_authenticated/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
   '/admin/formularios/respostas/$id': typeof AdminFormulariosRespostasIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/admin/validacao/$painId'
     | '/admin/formularios/'
     | '/admin/usuarios/'
+    | '/perfil-viagem/$rideId/$userId'
     | '/admin/formularios/respostas/$id'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/admin/validacao/$painId'
     | '/admin/formularios'
     | '/admin/usuarios'
+    | '/perfil-viagem/$rideId/$userId'
     | '/admin/formularios/respostas/$id'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -437,6 +449,7 @@ export interface FileRouteTypes {
     | '/admin/validacao/$painId'
     | '/admin/formularios/'
     | '/admin/usuarios/'
+    | '/_authenticated/perfil-viagem/$rideId/$userId'
     | '/admin/formularios/respostas/$id'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminValidacaoPainIdRouteImport
       parentRoute: typeof AdminValidacaoRoute
     }
+    '/_authenticated/perfil-viagem/$rideId/$userId': {
+      id: '/_authenticated/perfil-viagem/$rideId/$userId'
+      path: '/perfil-viagem/$rideId/$userId'
+      fullPath: '/perfil-viagem/$rideId/$userId'
+      preLoaderRoute: typeof AuthenticatedPerfilViagemRideIdUserIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/admin/formularios/respostas/': {
       id: '/admin/formularios/respostas/'
       path: '/formularios/respostas'
@@ -715,6 +735,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
   AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+  AuthenticatedPerfilViagemRideIdUserIdRoute: typeof AuthenticatedPerfilViagemRideIdUserIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -722,6 +743,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+  AuthenticatedPerfilViagemRideIdUserIdRoute:
+    AuthenticatedPerfilViagemRideIdUserIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

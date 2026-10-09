@@ -2,6 +2,8 @@ import type { NotificationSound } from "./notification-sound";
 
 export type RideAlert = {
   id: string;
+  rideId?: string;
+  notificationId?: string;
   title: string;
   description: string;
   sound: NotificationSound;
@@ -14,6 +16,7 @@ export const REALTIME_SCOPES = [
   ["ride_offers", "user_id"],
   ["rides", "driver_user_id"],
   ["rides", "passenger_user_id"],
+  ["ride_notifications", "user_id"],
   ["ride_matches", "driver_user_id"],
   ["ride_matches", "passenger_user_id"],
 ] as const;
@@ -53,10 +56,7 @@ export function createRideAlert(
       sound = "confirmed";
     } else if (status !== oldStatus) {
       const messages: Record<string, [string, NotificationSound]> = {
-        CONFIRMED: ["Carona confirmada", "confirmed"],
         IN_PROGRESS: ["Viagem iniciada", "confirmed"],
-        CANCELLED: ["Carona cancelada", "cancelled"],
-        COMPLETED: ["Viagem concluída", "confirmed"],
       };
       const message = messages[status];
       if (!message) return null;
@@ -74,10 +74,18 @@ export function createRideAlert(
       title = "Nova combinação encontrada";
       description = "Abra a proposta e responda dentro do prazo.";
       sound = "request";
-    } else if (eventName === "BOTH_ACCEPTED") {
+    } else if (eventName === "PASSENGER_ACCEPTED") {
+      title = "Passageiro aceitou a combinação";
+      description = "Confira o trajeto e o preço e confirme ou recuse a proposta.";
+      sound = "request";
+    } else if (eventName === "RIDE_CONFIRMED" || eventName === "BOTH_ACCEPTED") {
       title = "Carona confirmada por ambos";
       description = "O acompanhamento em tempo real está liberado.";
       sound = "confirmed";
+    } else if (eventName === "PROPOSAL_EXPIRED") {
+      title = "O prazo da combinação terminou";
+      description = "A reserva foi liberada. Confira seus pedidos para acompanhar uma nova busca.";
+      sound = "cancelled";
     } else if (eventName === "DRIVER_EN_ROUTE") {
       title = "Motorista a caminho";
       description = "O motorista está a caminho do ponto de encontro.";
@@ -114,6 +122,10 @@ export function createRideAlert(
 
   return {
     id: `${table}:${id}:${stateToken}`,
+    ...(typeof row["ride_id"] === "string" ? { rideId: row["ride_id"] } : {}),
+    ...(table === "ride_notifications" && typeof row["notification_id"] === "string"
+      ? { notificationId: row["notification_id"] }
+      : {}),
     title,
     description,
     sound,

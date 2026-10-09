@@ -15,6 +15,7 @@ import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
 import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
+import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
 import { RideRoutineManager } from "@/components/caronaa/RideRoutineManager";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -25,9 +26,7 @@ import {
 import { formatBrl } from "@/lib/ride-cost";
 import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
 import type { TravelPreferences } from "@/lib/travel-preferences";
-import { getMatchProposalState } from "@/lib/ride-match-acceptance";
-import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/integrations/supabase/client";
+import { compareRideRecency } from "@/lib/ride-order";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   head: () => ({
@@ -71,7 +70,6 @@ const initialForm: FormState = {
 };
 
 function MinhasCaronas() {
-  const { user } = useAuth();
   const publishRequest = useServerFn(createRideRequest);
   const loadMyRides = useServerFn(getMyRides);
   const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas">("pedidos");
@@ -143,98 +141,17 @@ function MinhasCaronas() {
     hashHandled.current = true;
     setTab(isDriverRide ? "disponiveis" : "pedidos");
     window.setTimeout(
-      () => document.getElementById(`ride-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      () =>
+        document
+          .getElementById(`ride-${targetId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
       150,
     );
   }, [driverRides, passengerRides]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel(`ride-proposals:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "ride_notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const notification = payload.new as {
-            notification_id?: string;
-            ride_id?: string;
-            event_name?: string;
-          };
-          if (!notification.ride_id) return;
-          window.dispatchEvent(new Event("caronaa:rides-updated"));
-
-          const eventName = notification.event_name || "MATCH_PROPOSED";
-          let title = "Nova combinação encontrada";
-          let description = "Abra a proposta e aceite ou recuse dentro do prazo.";
-          let actionLabel = "Ver combinação";
-
-          if (eventName === "BOTH_ACCEPTED") {
-            title = "Carona confirmada por ambos!";
-            description = "O acompanhamento em tempo real está liberado.";
-            actionLabel = "Acompanhar";
-          } else if (eventName === "DRIVER_EN_ROUTE") {
-            title = "Motorista a caminho!";
-            description = "O motorista iniciou o trajeto até o ponto de encontro.";
-            actionLabel = "Acompanhar";
-          } else if (eventName === "DRIVER_ARRIVED") {
-            title = "Motorista no ponto de encontro!";
-            description = "O motorista chegou. Prepare seu QR Code ou PIN para o embarque.";
-            actionLabel = "Ver embarque";
-          } else if (eventName === "RIDE_CANCELLED") {
-            title = "Carona cancelada";
-            description = "A viagem foi cancelada pelo outro participante.";
-            actionLabel = "Ver detalhes";
-          } else if (eventName === "RIDE_COMPLETED") {
-            title = "Viagem concluída!";
-            description = "A viagem foi finalizada. Registre sua avaliação.";
-            actionLabel = "Avaliar";
-          }
-
-          toast.info(title, {
-            description,
-            action: {
-              label: actionLabel,
-              onClick: () => {
-                if (notification.notification_id) {
-                  void supabase
-                    .rpc("mark_ride_notification_read", {
-                      p_notification_id: notification.notification_id,
-                    })
-                    .then(({ error }) => {
-                      if (error) toast.error("Não foi possível marcar o aviso como lido.");
-                    });
-                }
-                window.setTimeout(
-                  () =>
-                    document
-                      .getElementById(`ride-${notification.ride_id}`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                  150,
-                );
-              },
-            },
-          });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
-
   const update = (key: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
-  const allPublications = [...passengerRides, ...driverRides].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
+  const allPublications = [...passengerRides, ...driverRides].sort(compareRideRecency);
   const hasFutureDeparture = (ride: RideSummary) =>
     new Date(`${ride.rideDate}T${ride.departureTime}:00-03:00`).getTime() > Date.now();
   const currentRide =
@@ -242,15 +159,16 @@ function MinhasCaronas() {
     allPublications.find((ride) => ride.status === "CONFIRMED" && hasFutureDeparture(ride)) ??
     allPublications.find((ride) => ride.status === "MATCHED" && hasFutureDeparture(ride)) ??
     allPublications.find(
-      (ride) => ["open", "matched", "available", "full"].includes(ride.status) && hasFutureDeparture(ride),
+      (ride) =>
+        ["open", "matched", "available", "full"].includes(ride.status) && hasFutureDeparture(ride),
     ) ??
     allPublications[0];
   const currentRideIsActive = Boolean(
     currentRide &&
-      !["CANCELLED", "NO_SHOW", "COMPLETED"].includes(currentRide.status) &&
-      (currentRide.status === "IN_PROGRESS" ||
-        new Date(`${currentRide.rideDate}T${currentRide.departureTime}:00-03:00`).getTime() >
-          Date.now()),
+    !["CANCELLED", "NO_SHOW", "COMPLETED"].includes(currentRide.status) &&
+    (currentRide.status === "IN_PROGRESS" ||
+      new Date(`${currentRide.rideDate}T${currentRide.departureTime}:00-03:00`).getTime() >
+        Date.now()),
   );
   const currentRideAction = !currentRide
     ? ""
@@ -260,12 +178,14 @@ function MinhasCaronas() {
         ? "Ver embarque e acompanhar"
         : currentRide.status === "MATCHED"
           ? currentRide.role === "driver"
-            ? currentRide.driverAcceptedAt
-              ? "Aguardando a outra pessoa"
-              : "Ver combinação"
+            ? currentRide.passengerAcceptedAt
+              ? currentRide.driverAcceptedAt
+                ? "Aguardando atualização"
+                : "Confirmar combinação"
+              : "Aguardando aceite do passageiro"
             : currentRide.passengerAcceptedAt
-              ? "Aguardando a outra pessoa"
-              : "Ver combinação"
+              ? "Aguardando confirmação do motorista"
+              : "Aceitar combinação"
           : currentRide.status === "COMPLETED"
             ? "Ver resumo e Pix"
             : currentRide.kind === "offer"
@@ -313,6 +233,12 @@ function MinhasCaronas() {
     void refreshRides();
   }
   const items = tab === "pedidos" ? passengerRides : driverRides;
+  const activeItems = items.filter((ride) =>
+    ["open", "available", "full", "matched", "MATCHED", "CONFIRMED", "IN_PROGRESS"].includes(
+      ride.status,
+    ),
+  );
+  const historyItems = items.filter((ride) => !activeItems.includes(ride));
   return (
     <AppShell>
       <PageHeading
@@ -330,9 +256,12 @@ function MinhasCaronas() {
               <p className="text-xs font-bold uppercase tracking-wide text-primary">
                 {currentRideIsActive ? "Sua carona atual" : "Sua última publicação"}
               </p>
-              <p className="mt-2 font-bold">{currentRide.origin} → {currentRide.destination}</p>
+              <p className="mt-2 font-bold">
+                {currentRide.origin} → {currentRide.destination}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {formatDate(currentRide.rideDate)} · {currentRide.departureTime} · {statusLabel(currentRide.status)}
+                {formatDate(currentRide.rideDate)} · {currentRide.departureTime} ·{" "}
+                {statusLabel(currentRide.status)}
               </p>
               {!currentRideIsActive && (
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -343,11 +272,18 @@ function MinhasCaronas() {
             {currentRideAction && (
               <Button
                 type="button"
-                variant={currentRideAction === "Aguardando a outra pessoa" ? "outline" : "default"}
+                variant={currentRideAction.startsWith("Aguardando") ? "outline" : "default"}
                 onClick={() => {
-                  setTab(currentRide.role === "driver" || currentRide.kind === "offer" ? "disponiveis" : "pedidos");
+                  setTab(
+                    currentRide.role === "driver" || currentRide.kind === "offer"
+                      ? "disponiveis"
+                      : "pedidos",
+                  );
                   window.setTimeout(
-                    () => document.getElementById(`ride-${currentRide.rideId ?? currentRide.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                    () =>
+                      document
+                        .getElementById(`ride-${currentRide.rideId ?? currentRide.id}`)
+                        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
                     150,
                   );
                 }}
@@ -458,7 +394,9 @@ function MinhasCaronas() {
                 required
               />
               <p className="col-span-2 self-center text-xs text-muted-foreground sm:col-span-4">
-                O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas do trecho.
+                O preço será calculado automaticamente para cada passageiro, conforme a distância
+                rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas
+                do trecho.
               </p>
             </div>
             <div className="lg:col-span-2 rounded-lg border border-border/70 bg-muted/15 p-3">
@@ -528,10 +466,36 @@ function MinhasCaronas() {
           {error}
         </div>
       ) : items.length ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {items.map((item) => (
-            <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
-          ))}
+        <div className="mt-5 space-y-6">
+          <section aria-label="Publicações ativas">
+            <h2 className="mb-2 text-sm font-bold">
+              Ativas e aguardando combinação ({activeItems.length})
+            </h2>
+            {activeItems.length ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {activeItems.map((item) => (
+                  <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                Nenhuma publicação ativa. Seus pedidos abertos após cancelamento aparecem aqui
+                novamente.
+              </p>
+            )}
+          </section>
+          {historyItems.length ? (
+            <details className="rounded-lg border border-border bg-card p-3">
+              <summary className="cursor-pointer text-sm font-semibold">
+                Histórico ({historyItems.length})
+              </summary>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {historyItems.map((item) => (
+                  <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : (
         <div className="mt-5 rounded-lg border border-dashed border-border p-8 text-center">
@@ -656,14 +620,33 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   const quoteDependencies = useRef({ quoteRide, onChanged });
   quoteDependencies.current = { quoteRide, onChanged };
   useEffect(() => {
-    if (ride.status !== "MATCHED" || !ride.rideId || ride.routeDistanceKm != null || autoQuoteAttempted.current === ride.rideId) return;
+    if (
+      ride.status !== "MATCHED" ||
+      !ride.rideId ||
+      ride.routeDistanceKm != null ||
+      autoQuoteAttempted.current === ride.rideId
+    )
+      return;
     autoQuoteAttempted.current = ride.rideId;
     let active = true;
     setQuoting(true);
-    void quoteDependencies.current.quoteRide({ data: { rideId: ride.rideId } }).then(async () => { if (active) await quoteDependencies.current.onChanged(); })
-      .catch(error => { if (active) setQuoteError(error instanceof Error ? error.message : "Não foi possível calcular o preço."); })
-      .finally(() => { if (active) setQuoting(false); });
-    return () => { active = false; };
+    void quoteDependencies.current
+      .quoteRide({ data: { rideId: ride.rideId } })
+      .then(async () => {
+        if (active) await quoteDependencies.current.onChanged();
+      })
+      .catch((error) => {
+        if (active)
+          setQuoteError(
+            error instanceof Error ? error.message : "Não foi possível calcular o preço.",
+          );
+      })
+      .finally(() => {
+        if (active) setQuoting(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [ride.rideId, ride.status, ride.routeDistanceKm]);
   const updateInFlight = useRef(false);
   const person = ride.role === "driver" ? ride.passenger : (ride.driver ?? ride.passenger);
@@ -673,15 +656,8 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     ride.role === "driver" ? Boolean(ride.driverAcceptedAt) : Boolean(ride.passengerAcceptedAt);
   const acceptedByOther =
     ride.role === "driver" ? Boolean(ride.passengerAcceptedAt) : Boolean(ride.driverAcceptedAt);
-  const proposalState = getMatchProposalState({
-    status: ride.status,
-    role: ride.role === "driver" ? "driver" : "passenger",
-    driverAcceptedAt: ride.driverAcceptedAt,
-    passengerAcceptedAt: ride.passengerAcceptedAt,
-    responseExpiresAt: ride.responseExpiresAt,
-  });
   const actions = ride.rideId
-    ? getRideNextActions(ride.status, ride.role, { acceptedByViewer })
+    ? getRideNextActions(ride.status, ride.role, { acceptedByViewer, acceptedByOther })
     : [];
 
   async function updateStatus(nextStatus: RideStatus) {
@@ -691,24 +667,26 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     try {
       const result = await transitionRideStatus(ride.rideId, nextStatus);
       const waitingForOther = result === "AWAITING_OTHER_PARTICIPANT";
-      toast.success(
-        nextStatus === "CONFIRMED"
-          ? waitingForOther
+      if (result !== "CONFIRMED") {
+        toast.success(
+          nextStatus === "CONFIRMED"
             ? "Aceite registrado"
-             : "Carona confirmada"
-          : nextStatus === "CANCELLED" && ride.status === "MATCHED"
-            ? "Combinação recusada"
-            : "Viagem atualizada",
-        {
-          description: waitingForOther
-            ? nextStatus === "CONFIRMED"
-              ? "A combinação só fica confirmada quando a outra pessoa também aceitar."
-              : "A conclusão será efetivada quando a outra pessoa confirmar."
             : nextStatus === "CANCELLED" && ride.status === "MATCHED"
-              ? "As vagas foram liberadas e a busca por outra combinação foi retomada."
-              : `Novo status: ${statusLabel(String(result))}.`,
-        },
-      );
+              ? "Combinação recusada"
+              : "Viagem atualizada",
+          {
+            description: waitingForOther
+              ? nextStatus === "CONFIRMED"
+                ? ride.role === "passenger"
+                  ? "O motorista foi notificado e precisa confirmar a combinação."
+                  : "A combinação só fica confirmada após o aceite do passageiro."
+                : "A conclusão será efetivada quando a outra pessoa confirmar."
+              : nextStatus === "CANCELLED" && ride.status === "MATCHED"
+                ? "As vagas foram liberadas e a busca por outra combinação foi retomada."
+                : `Novo status: ${statusLabel(String(result))}.`,
+          },
+        );
+      }
       await onChanged();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a viagem.");
@@ -738,11 +716,8 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
   return (
     <article
       id={`ride-${ride.rideId ?? ride.id}`}
-      className="card-interactive rounded-xl border border-border bg-card p-4 shadow-soft"
+      className="card-interactive rounded-xl border border-border bg-card p-3 shadow-soft sm:p-4"
     >
-      <p className="mb-2 text-xs font-semibold text-muted-foreground">
-        {ride.routineId ? "Recorrente" : "Pontual"}
-      </p>
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
           <CalendarDays size={15} className="text-primary" />
@@ -752,30 +727,34 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
           {statusLabel(ride.status)}
         </span>
       </div>
-      <div className="mt-4 flex items-center gap-3 text-lg font-extrabold">
-        <span>{ride.origin}</span>
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm font-bold leading-snug sm:text-base">
+        <span className="line-clamp-2 break-words">{ride.origin}</span>
         <ArrowRight size={16} className="shrink-0 text-primary" />
-        <span>{ride.destination}</span>
+        <span className="line-clamp-2 break-words">{ride.destination}</span>
       </div>
-      <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+      <p className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
         <Clock3 size={14} /> Saída às {ride.departureTime}
       </p>
 
       {ride.status === "CONFIRMED" && ride.role === "passenger" && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs font-medium text-primary">
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2 text-xs font-medium text-primary">
           <CarFront size={14} className="shrink-0" />
           <span>Viagem confirmada! Aguardando o motorista iniciar o trajeto.</span>
         </div>
       )}
 
       {ride.status === "MATCHED" && (
-        <div className="mt-3 space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+        <div className="mt-2 space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs font-medium text-amber-700 dark:text-amber-400">
           <p>
-            {proposalState === "awaiting-other-participant"
-              ? "Você aceitou — aguardando a outra pessoa."
-              : acceptedByOther
-                ? ride.role === "passenger" ? "Motorista já aceitou. Confira o preço e confirme sua carona." : "Passageiro aceitou. Falta a sua resposta."
-                : "Combinação encontrada. A viagem só será confirmada após os dois aceitarem."}
+            {ride.role === "passenger"
+              ? acceptedByViewer
+                ? "Você aceitou — aguardando confirmação do motorista."
+                : "Combinação encontrada. Aceite primeiro para solicitar a confirmação do motorista."
+              : acceptedByViewer
+                ? "Você confirmou — aguardando a atualização da viagem."
+                : acceptedByOther
+                  ? "O passageiro aceitou. Sua confirmação é necessária para confirmar a viagem."
+                  : "Aguardando o aceite do passageiro. Você poderá confirmar em seguida."}
           </p>
           {ride.responseExpiresAt ? (
             <p className="font-normal">
@@ -790,44 +769,99 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       )}
 
       {ride.pricePerPassenger != null && ride.groupTotal != null && ride.routeDistanceKm != null ? (
-        <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5" data-testid="ride-cost-breakdown">
-          <div className="flex justify-between text-muted-foreground"><span>Distância rodoviária do trecho:</span><span className="font-semibold text-foreground">{ride.routeDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} km</span></div>
-          <div className="flex justify-between font-bold text-primary"><span>Preço por passageiro:</span><span>{formatBrl(ride.pricePerPassenger)}</span></div>
-          {ride.seats > 1 && <div className="flex justify-between font-medium text-foreground"><span>Total do grupo ({ride.seats} pessoas):</span><span>{formatBrl(ride.groupTotal)}</span></div>}
-          {ride.role === "driver" && ride.driverConfirmedTotal != null && (
-            <div className="flex justify-between border-t border-border/60 pt-1.5 font-semibold text-foreground">
-              <span>Total previsto confirmado para o motorista:</span><span>{formatBrl(ride.driverConfirmedTotal)}</span>
+        <div
+          className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs space-y-1"
+          data-testid="ride-cost-breakdown"
+        >
+          <div className="flex justify-between text-muted-foreground">
+            <span>Distância rodoviária do trecho:</span>
+            <span className="font-semibold text-foreground">
+              {ride.routeDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} km
+            </span>
+          </div>
+          <div className="flex justify-between font-bold text-primary">
+            <span>Preço por passageiro:</span>
+            <span>{formatBrl(ride.pricePerPassenger)}</span>
+          </div>
+          {ride.seats > 1 && (
+            <div className="flex justify-between font-medium text-foreground">
+              <span>Total do grupo ({ride.seats} pessoas):</span>
+              <span>{formatBrl(ride.groupTotal)}</span>
             </div>
           )}
-          <p className="border-t border-border/60 pt-1.5 text-muted-foreground">Preço automático: R$ 6 a cada 11 km, proporcional ao seu trecho.</p>
+          {ride.role === "driver" && ride.driverConfirmedTotal != null && (
+            <div className="flex justify-between border-t border-border/60 pt-1.5 font-semibold text-foreground">
+              <span>Total previsto confirmado para o motorista:</span>
+              <span>{formatBrl(ride.driverConfirmedTotal)}</span>
+            </div>
+          )}
+          <p className="border-t border-border/60 pt-1.5 text-muted-foreground">
+            Preço automático: R$ 6 a cada 11 km, proporcional ao seu trecho.
+          </p>
         </div>
       ) : ride.status === "MATCHED" ? (
         <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-300">
           <p>{quoteError || "Calculando automaticamente o preço do seu trecho…"}</p>
-          <Button type="button" size="sm" className="mt-2" variant="outline" disabled={quoting} onClick={() => void calculateQuote()}>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2"
+            variant="outline"
+            disabled={quoting}
+            onClick={() => void calculateQuote()}
+          >
             {quoting ? "Calculando percurso…" : "Tentar novamente"}
           </Button>
         </div>
       ) : ride.status !== "CANCELLED" && ride.status !== "NO_SHOW" ? (
-        <div className="mt-3 rounded-lg border border-border/80 bg-secondary/50 p-3 text-xs space-y-1.5" data-testid="ride-cost-breakdown">
-          <div className="flex justify-between text-muted-foreground"><span>Preço histórico por passageiro:</span><span className="font-bold text-foreground">{formatBrl(ride.passengerContribution)}</span></div>
+        <div
+          className="mt-3 rounded-lg border border-border/80 bg-secondary/50 p-3 text-xs space-y-1.5"
+          data-testid="ride-cost-breakdown"
+        >
+          <div className="flex justify-between text-muted-foreground">
+            <span>Preço histórico por passageiro:</span>
+            <span className="font-bold text-foreground">
+              {formatBrl(ride.passengerContribution)}
+            </span>
+          </div>
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-        <div className="flex items-center gap-2">
-          <Avatar className="size-8">
-            {person?.avatarUrl ? (
-              <AvatarImage src={person.avatarUrl} alt={name} className="object-cover" />
-            ) : null}
-            <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm font-semibold">
-            {ride.role === "driver" ? `Passageiro: ${name}` : name}
-          </span>
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => setDetails((value) => !value)}>
-          {details ? "Ocultar" : "Detalhes"} <ArrowRight size={15} />
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2.5">
+        {person?.id && ride.rideId ? (
+          <Link
+            to="/perfil-viagem/$rideId/$userId"
+            params={{ rideId: ride.rideId, userId: person.id }}
+            className="flex min-w-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Ver perfil de ${name}`}
+          >
+            <Avatar className="size-8 shrink-0">
+              {person.avatarUrl ? (
+                <AvatarImage src={person.avatarUrl} alt={name} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
+            </Avatar>
+            <span className="min-w-0">
+              <span className="block max-w-44 truncate text-xs font-semibold sm:text-sm">
+                {ride.role === "driver" ? `Passageiro: ${name}` : name}
+              </span>
+              {person.verifications.length ? (
+                <VerificationBadges verifications={person.verifications} compact />
+              ) : (
+                <span className="text-[11px] text-muted-foreground">Ver perfil e avaliações</span>
+              )}
+            </span>
+          </Link>
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground">{name}</span>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 shrink-0 px-2 text-xs"
+          onClick={() => setDetails((value) => !value)}
+        >
+          {details ? "Fechar" : "Detalhes"} <ArrowRight size={14} />
         </Button>
       </div>
       {details && (
@@ -852,18 +886,28 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
       )}
       {actions.length ? (
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          {actions.filter((action) => action.status !== "COMPLETED" && !(ride.status === "MATCHED" && ride.pricePerPassenger == null && action.status === "CONFIRMED")).map((action) => (
-            <Button
-              key={action.status}
-              type="button"
-              size="sm"
-              variant={action.variant}
-              disabled={updating !== null}
-              onClick={() => void updateStatus(action.status)}
-            >
-              {updating === action.status ? "Atualizando..." : action.label}
-            </Button>
-          ))}
+          {actions
+            .filter(
+              (action) =>
+                action.status !== "COMPLETED" &&
+                !(
+                  ride.status === "MATCHED" &&
+                  ride.pricePerPassenger == null &&
+                  action.status === "CONFIRMED"
+                ),
+            )
+            .map((action) => (
+              <Button
+                key={action.status}
+                type="button"
+                size="sm"
+                variant={action.variant}
+                disabled={updating !== null}
+                onClick={() => void updateStatus(action.status)}
+              >
+                {updating === action.status ? "Atualizando..." : action.label}
+              </Button>
+            ))}
         </div>
       ) : null}
       {ride.rideId && (

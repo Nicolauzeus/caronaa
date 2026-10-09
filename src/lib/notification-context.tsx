@@ -119,7 +119,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               action: {
                 label: "Ver caronas",
                 onClick: () => {
-                  window.location.assign("/minhas-caronas");
+                  if (alert.notificationId) {
+                    void supabase
+                      .rpc("mark_ride_notification_read", {
+                        p_notification_id: alert.notificationId,
+                      })
+                      .then(({ error }) => {
+                        if (error) toast.error("Não foi possível marcar o aviso como lido.");
+                      });
+                  }
+                  const destination = alert.rideId
+                    ? `/minhas-caronas#ride-${alert.rideId}`
+                    : "/minhas-caronas";
+                  window.location.assign(destination);
                 },
               },
             });

@@ -85,7 +85,12 @@ describe("secure discovery migration contracts (not database integration)", () =
     expect(discovery).not.toContain("getAdminClient");
     expect(discovery).toContain('client.rpc("search_available_ride_offers"');
     expect(discovery.match(/discoverOffers\(context.supabase/g)).toHaveLength(2);
-    const request = functions.slice(functions.indexOf("export const requestRideOffer"));
+    const requestStart = functions.indexOf("export const requestRideOffer");
+    const profileStart = functions.indexOf("const rideParticipantProfileInput", requestStart);
+    const request = functions.slice(
+      requestStart,
+      profileStart > requestStart ? profileStart : undefined,
+    );
     expect(request).toContain('"request_available_ride_offer"');
     expect(request).not.toContain(".from(");
   });

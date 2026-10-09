@@ -71,10 +71,17 @@ describe("ride lifecycle", () => {
 
   it("provides correct nextActions for driver and passenger without redundant confirmation", async () => {
     const { getRideNextActions } = await import("./ride-lifecycle");
+    const bilateralAcceptance = readFileSync(
+      resolve(process.cwd(), "drizzle/migrations/0053_passenger_first_match_acceptance.sql"),
+      "utf8",
+    );
 
-    // MATCHED is only a proposal: either participant can accept or decline it.
+    // Passenger must accept first. Driver may only act after that acceptance.
     const matchedDriverActions = getRideNextActions("MATCHED", "driver");
     expect(matchedDriverActions).toEqual([
+      { label: "Recusar combinação", status: "CANCELLED", variant: "outline" },
+    ]);
+    expect(getRideNextActions("MATCHED", "driver", { acceptedByOther: true })).toEqual([
       { label: "Aceitar combinação", status: "CONFIRMED" },
       { label: "Recusar combinação", status: "CANCELLED", variant: "outline" },
     ]);
@@ -88,6 +95,17 @@ describe("ride lifecycle", () => {
     expect(getRideNextActions("MATCHED", "passenger", { acceptedByViewer: true })).toEqual([
       { label: "Retirar aceite", status: "CANCELLED", variant: "outline" },
     ]);
+    expect(bilateralAcceptance).toContain(
+      "DROP TRIGGER IF EXISTS a_accept_published_offer_fare ON public.rides",
+    );
+    expect(bilateralAcceptance).toContain(
+      "IF caller = r.driver_user_id AND r.passenger_accepted_at IS NULL THEN",
+    );
+    expect(bilateralAcceptance).toContain("PASSENGER_ACCEPTED");
+    expect(bilateralAcceptance).toContain("RIDE_CONFIRMED");
+    expect(bilateralAcceptance).toContain("PROPOSAL_EXPIRED");
+    expect(bilateralAcceptance).toContain("'DRIVER_EN_ROUTE', 'DRIVER_ARRIVED'");
+    expect(bilateralAcceptance).toContain("SET status = 'CANCELLED', transit_stage = 'CANCELLED'");
 
     // O inicio exige PIN no painel de seguranca; as acoes comuns permitem cancelar.
     const confirmedDriverActions = getRideNextActions("CONFIRMED", "driver");

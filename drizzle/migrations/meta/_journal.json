@@ -372,6 +372,20 @@
       "when": 1791567487533,
       "tag": "0052_available_offer_price_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1791570589811,
+      "tag": "0053_passenger_first_match_acceptance",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791570810507,
+      "tag": "0054_ride_publication_modified_at",
+      "breakpoints": true
     }
   ]
 }
