@@ -351,6 +351,13 @@
       "when": 1791558973547,
       "tag": "0049_distance_based_ride_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791566471677,
+      "tag": "0050_repair_secure_road_fare_quotes",
+      "breakpoints": true
     }
   ]
 }
