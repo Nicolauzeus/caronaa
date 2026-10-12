@@ -689,6 +689,7 @@ export type Database = {
           travel_preferences: Json
           travel_preferences_consented_at: string | null
           updated_at: string
+          vehicle_description: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -700,6 +701,7 @@ export type Database = {
           travel_preferences?: Json
           travel_preferences_consented_at?: string | null
           updated_at?: string
+          vehicle_description?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -711,6 +713,7 @@ export type Database = {
           travel_preferences?: Json
           travel_preferences_consented_at?: string | null
           updated_at?: string
+          vehicle_description?: string | null
         }
         Relationships: []
       }

@@ -400,6 +400,13 @@
       "when": 1791776864385,
       "tag": "0056_profile_default_vehicle",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1791782496109,
+      "tag": "0057_repair_profile_default_vehicle",
+      "breakpoints": true
     }
   ]
 }
