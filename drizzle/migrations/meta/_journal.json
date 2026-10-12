@@ -407,6 +407,13 @@
       "when": 1791782496109,
       "tag": "0057_repair_profile_default_vehicle",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1791841259106,
+      "tag": "0058_0058_repair_priced_segments_and_start_guard",
+      "breakpoints": true
     }
   ]
 }
