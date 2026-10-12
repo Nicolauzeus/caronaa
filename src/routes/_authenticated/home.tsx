@@ -13,6 +13,7 @@ import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.fun
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
+import { RequestFarePreview } from "@/components/caronaa/RequestFarePreview";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 
@@ -411,6 +412,13 @@ function Home() {
                   ))}
                 </select>
               </label>
+            )}
+            {role === "request" && (
+              <RequestFarePreview
+                origin={origin}
+                destination={destination}
+                passengerCount={Number(count)}
+              />
             )}
             {error && (
               <p role="alert" className="text-sm text-destructive">

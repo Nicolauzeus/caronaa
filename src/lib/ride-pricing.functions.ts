@@ -5,11 +5,61 @@ import { calculatePassengerFare, PASSENGER_TARIFF } from "./ride-cost";
 import { getDrivingDistanceKm } from "./road-routing";
 
 const rideIdInput = z.object({ rideId: z.string().uuid() });
+const routeInput = z.object({
+  origin: z.string().trim().min(1).max(160),
+  destination: z.string().trim().min(1).max(160),
+});
 type AdminQuery = {
   select(columns: string): AdminQuery;
   eq(column: string, value: unknown): AdminQuery;
   maybeSingle(): Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
 };
+
+/** Informational estimate for a passenger before publishing a request. The
+ * persisted quote is recalculated server-side after matching and before accept.
+ */
+export const previewRequestFare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => routeInput.parse(input))
+  .handler(async ({ data }) => {
+    const { geocodeAddressService } = await import("./location/service");
+    const [origin, destination] = await Promise.all([
+      geocodeAddressService(data.origin),
+      geocodeAddressService(data.destination),
+    ]);
+    if (
+      !origin ||
+      !destination ||
+      origin.isApproximate === true ||
+      destination.isApproximate === true ||
+      typeof origin.lat !== "number" ||
+      !Number.isFinite(origin.lat) ||
+      typeof origin.lng !== "number" ||
+      !Number.isFinite(origin.lng) ||
+      typeof destination.lat !== "number" ||
+      !Number.isFinite(destination.lat) ||
+      typeof destination.lng !== "number" ||
+      !Number.isFinite(destination.lng)
+    ) {
+      throw new Error("Revise os endereços para estimar o preço do trecho.");
+    }
+
+    let distanceKm: number;
+    try {
+      distanceKm = await getDrivingDistanceKm(
+        { lat: origin.lat, lng: origin.lng },
+        { lat: destination.lat, lng: destination.lng },
+      );
+    } catch {
+      throw new Error("Não foi possível estimar o preço agora. Tente novamente.");
+    }
+
+    return {
+      distanceKm,
+      pricePerPassenger: calculatePassengerFare(distanceKm),
+      tariffReference: PASSENGER_TARIFF.reference,
+    };
+  });
 
 export const calculateRideQuote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -11,7 +11,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: {
 } }));
 vi.mock("./location/service", () => ({ geocodeAddressService: mocks.geocode }));
 vi.mock("./road-routing", () => ({ getDrivingDistanceKm: mocks.route }));
-import { calculateRideQuote } from "./ride-pricing.functions";
+import { calculateRideQuote, previewRequestFare } from "./ride-pricing.functions";
 
 function query(read: typeof mocks.participantRead) {
   const chain = { select: () => chain, eq: () => chain, maybeSingle: read };
@@ -20,6 +20,7 @@ function query(read: typeof mocks.participantRead) {
 const ride = { ride_id: "r", request_id: "q", passenger_user_id: "p", driver_user_id: "d", status: "MATCHED", response_expires_at: "2099-01-01T00:00:00Z" };
 const saved = { route_distance_km: 11, passenger_price: 6, passenger_group_total: 12, tariff_reference: "caronaa-km-6-per-11-v1" };
 const invoke = calculateRideQuote as unknown as (input: unknown) => Promise<unknown>;
+const invokePreview = previewRequestFare as unknown as (input: unknown) => Promise<unknown>;
 const input = { context: { userId: "p", supabase: { from: () => query(mocks.participantRead) } }, data: { rideId: "r" } };
 beforeEach(() => {
   vi.resetAllMocks();
@@ -56,5 +57,34 @@ describe("trusted quote persistence", () => {
     mocks.participantRead.mockReset().mockResolvedValue({ data: { ...ride, status: "COMPLETED" }, error: null });
     await expect(invoke(input)).rejects.toThrow("pendente de aceite");
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("passenger fare estimate before requesting a ride", () => {
+  const previewInput = {
+    context: { userId: "p", supabase: {} },
+    data: { origin: "Rua A, Fortaleza", destination: "Rua B, Fortaleza" },
+  };
+
+  it("calculates an informational per-passenger fare from road distance without persisting it", async () => {
+    mocks.route.mockResolvedValue(11);
+    await expect(invokePreview(previewInput)).resolves.toMatchObject({
+      distanceKm: 11,
+      pricePerPassenger: 6,
+      tariffReference: "caronaa-km-6-per-11-v1",
+    });
+    expect(mocks.geocode).toHaveBeenCalledTimes(2);
+    expect(mocks.route).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.adminRead).not.toHaveBeenCalled();
+  });
+
+  it("does not estimate when an address is approximate or road routing fails", async () => {
+    mocks.geocode.mockResolvedValue({ lat: -3.7, lng: -38.5, isApproximate: true });
+    await expect(invokePreview(previewInput)).rejects.toThrow("Revise os endereços");
+
+    mocks.geocode.mockResolvedValue({ lat: -3.7, lng: -38.5, isApproximate: false });
+    mocks.route.mockRejectedValue(new Error("routing unavailable"));
+    await expect(invokePreview(previewInput)).rejects.toThrow("estimar o preço");
   });
 });
