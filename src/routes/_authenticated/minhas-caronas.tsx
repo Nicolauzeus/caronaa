@@ -7,7 +7,7 @@ import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { calculateRideQuote } from "@/lib/ride-pricing.functions";
+import { calculateOfferRemainingPotential, calculateRideQuote } from "@/lib/ride-pricing.functions";
 import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
@@ -15,6 +15,7 @@ import { RouteMap } from "@/components/caronaa/RouteMap";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { RideRoutineManager } from "@/components/caronaa/RideRoutineManager";
 import { formatBrl } from "@/lib/ride-cost";
+import { shouldRecalculateRoadEstimate, type RoadEstimateLocation } from "@/lib/ride-potential";
 import { compareRideRecency } from "@/lib/ride-order";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
@@ -410,10 +411,14 @@ function DriverOfferSummary({ rides }: { rides: RideSummary[] }) {
         )}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Previsto dos confirmados:{" "}
+        Valor combinado com passageiros:{" "}
         <strong className="text-foreground">{formatBrl(confirmedTotal)}</strong> · não representa
         pagamento recebido.
       </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Recebido: não verificável automaticamente sem integração de confirmação do pagamento.
+      </p>
+      <RemainingPotential offerId={offer.offerId} freeSeats={offer.seatsRemaining ?? 0} />
       <Button asChild className="mt-4 w-full sm:w-auto">
         <Link to="/minha-carona/$offerId" params={{ offerId: offer.offerId }}>
           {waitingDriver
@@ -427,6 +432,176 @@ function DriverOfferSummary({ rides }: { rides: RideSummary[] }) {
         </Link>
       </Button>
     </article>
+  );
+}
+
+type RemainingPotentialQuote = {
+  distanceKm: number;
+  freeSeats: number;
+  pricePerPassenger: number;
+  potentialTotal: number;
+  calculatedAt: string;
+};
+
+function RemainingPotential({ offerId, freeSeats }: { offerId: string; freeSeats: number }) {
+  const calculate = useServerFn(calculateOfferRemainingPotential);
+  const [sharingLocation, setSharingLocation] = useState(false);
+  const [estimate, setEstimate] = useState<RemainingPotentialQuote | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const watchId = useRef<number | null>(null);
+  const inFlight = useRef(false);
+  const lastSent = useRef<RoadEstimateLocation | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (watchId.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const pauseWhenHidden = () => {
+      if (!document.hidden || watchId.current === null) return;
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+      setSharingLocation(false);
+    };
+    document.addEventListener("visibilitychange", pauseWhenHidden);
+    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
+  }, []);
+
+  function stopLocationUpdates() {
+    if (watchId.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId.current);
+    }
+    watchId.current = null;
+    setSharingLocation(false);
+  }
+
+  function startLocationUpdates() {
+    if (!navigator.geolocation) {
+      setError("Este navegador não disponibiliza localização.");
+      return;
+    }
+    setError(null);
+    setSharingLocation(true);
+    watchId.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const current: RoadEstimateLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          capturedAt: Date.now(),
+        };
+        if (current.accuracy > 200) {
+          setError("A localização está imprecisa. A última estimativa foi mantida.");
+          return;
+        }
+        // Recalculate a new road route after a meaningful movement and a
+        // minimum interval; GPS jitter is never accumulated as trip distance.
+        if (inFlight.current || !shouldRecalculateRoadEstimate(lastSent.current, current)) {
+          return;
+        }
+        // Throttle failed as well as successful route calls to avoid repeatedly
+        // sending the same precise location if the routing service is down.
+        lastSent.current = current;
+        inFlight.current = true;
+        setError(null);
+        void calculate({
+          data: {
+            offerId,
+            latitude: current.latitude,
+            longitude: current.longitude,
+          },
+        })
+          .then((result) => {
+            setEstimate(result);
+          })
+          .catch((reason) => {
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Não foi possível atualizar a estimativa; a última foi mantida.",
+            );
+          })
+          .finally(() => {
+            inFlight.current = false;
+          });
+      },
+      (reason) => {
+        setError(
+          reason.code === reason.PERMISSION_DENIED
+            ? "Localização não autorizada. A última estimativa foi mantida."
+            : "Não foi possível obter a localização. A última estimativa foi mantida.",
+        );
+        stopLocationUpdates();
+      },
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 12_000 },
+    );
+  }
+
+  const stale = !estimate || now - Date.parse(estimate.calculatedAt) > 120_000;
+  const potential = Math.round((estimate?.pricePerPassenger ?? 0) * freeSeats * 100) / 100;
+
+  return (
+    <section
+      className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3"
+      aria-label="Potencial adicional nas vagas livres"
+    >
+      <p className="text-xs font-semibold">Potencial adicional nas vagas livres</p>
+      {estimate ? (
+        <p className="mt-1 text-sm">
+          {freeSeats} vaga(s) livre(s) ·{" "}
+          {estimate.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km restantes ·
+          até <strong>{formatBrl(potential)}</strong>
+          <span className="block text-xs text-muted-foreground">
+            Estimativa pela rota rodoviária ·{" "}
+            {stale ? "última posição desatualizada" : "posição atualizada"} · não é valor combinado
+            nem recebido.
+          </span>
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Autorize a localização para estimar o percurso rodoviário restante e o potencial das vagas
+          livres.
+        </p>
+      )}
+      {error && (
+        <p role="status" className="mt-1 text-xs text-amber-700">
+          {error}
+        </p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-2"
+        onClick={sharingLocation ? stopLocationUpdates : startLocationUpdates}
+      >
+        {sharingLocation
+          ? "Parar atualização"
+          : estimate
+            ? "Atualizar com localização"
+            : "Autorizar localização"}
+      </Button>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Enquanto ativada, as coordenadas são enviadas ao serviço público OSRM para calcular a rota.
+        A CARONAA não as armazena; atualizações param quando esta tela fica em segundo plano.
+      </p>
+      {freeSeats > 0 && (
+        <p className="mt-2 text-xs font-medium text-primary">
+          Ainda há {freeSeats} vaga(s) livres. Compartilhe sua oferta para mais pessoas encontrarem
+          esse trajeto.
+        </p>
+      )}
+    </section>
   );
 }
 

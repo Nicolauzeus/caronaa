@@ -394,6 +394,7 @@ function Oferecer() {
                     <OfferFarePreview
                       origin={form.origin}
                       destination={form.destination}
+                      seats={Number(form.seats)}
                       onQuote={receiveQuote}
                     />
                     <details>

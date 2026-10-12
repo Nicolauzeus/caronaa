@@ -2,12 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { calculatePassengerFare, PASSENGER_TARIFF } from "./ride-cost";
+import { calculateFreeSeatPotential } from "./ride-potential";
 import { getDrivingDistanceKm } from "./road-routing";
 
 const rideIdInput = z.object({ rideId: z.string().uuid() });
 const routeInput = z.object({
   origin: z.string().trim().min(1).max(160),
   destination: z.string().trim().min(1).max(160),
+});
+const remainingPotentialInput = z.object({
+  offerId: z.string().uuid(),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
 });
 type AdminQuery = {
   select(columns: string): AdminQuery;
@@ -94,6 +100,71 @@ export const previewRequestFare = createServerFn({ method: "POST" })
       expiresAt: quote.expires_at,
       distanceKm,
       pricePerPassenger: calculatePassengerFare(distanceKm),
+      tariffReference: PASSENGER_TARIFF.reference,
+    };
+  });
+
+/**
+ * Recalculates the possible fare for remaining free seats from a driver-authorized
+ * current location to the destination. Coordinates are transient inputs: only
+ * the authenticated owner may request this calculation and we never persist GPS.
+ */
+export const calculateOfferRemainingPotential = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => remainingPotentialInput.parse(input))
+  .handler(async ({ context, data }) => {
+    const client = context.supabase as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (
+            column: string,
+            value: unknown,
+          ) => {
+            maybeSingle: () => Promise<{
+              data: Record<string, unknown> | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+    const { data: offer, error } = await client
+      .from("ride_offers")
+      .select("offer_id, user_id, destination_lat, destination_lng, seats_remaining, status")
+      .eq("offer_id", data.offerId)
+      .maybeSingle();
+    if (error || !offer || offer.user_id !== context.userId) {
+      throw new Error("Esta publicação não foi encontrada.");
+    }
+    if (!["available", "full"].includes(String(offer.status))) {
+      throw new Error("Esta publicação não está ativa para novas solicitações.");
+    }
+    const destinationLat = Number(offer.destination_lat);
+    const destinationLng = Number(offer.destination_lng);
+    const freeSeats = Number(offer.seats_remaining);
+    if (!Number.isFinite(destinationLat) || !Number.isFinite(destinationLng)) {
+      throw new Error(
+        "O destino não tem coordenadas confiáveis para calcular o percurso restante.",
+      );
+    }
+    if (!Number.isInteger(freeSeats) || freeSeats < 0) {
+      throw new Error("Não foi possível confirmar quantas vagas estão livres.");
+    }
+    let distanceKm: number;
+    try {
+      distanceKm = await getDrivingDistanceKm(
+        { lat: data.latitude, lng: data.longitude },
+        { lat: destinationLat, lng: destinationLng },
+      );
+    } catch {
+      throw new Error(
+        "Não foi possível recalcular o percurso rodoviário restante. A estimativa anterior foi mantida.",
+      );
+    }
+    const potential = calculateFreeSeatPotential(distanceKm, freeSeats);
+    return {
+      ...potential,
+      calculatedAt: new Date().toISOString(),
       tariffReference: PASSENGER_TARIFF.reference,
     };
   });
