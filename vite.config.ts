@@ -23,7 +23,12 @@ const publicConnection = {
 };
 const publicConnectionDefines: Record<string, string> = {};
 for (const [key, value] of Object.entries(publicConnection)) {
-  if (!value) throw new Error(`CARONAA build configuration missing: ${key}`);
+  if (!value) {
+    // Some build environments (e.g. publish pipeline) inject these later;
+    // warn instead of failing the whole build.
+    console.warn(`[caronaa] build configuration missing: ${key}`);
+    continue;
+  }
   publicConnectionDefines[`import.meta.env.${key}`] = JSON.stringify(value);
 }
 
