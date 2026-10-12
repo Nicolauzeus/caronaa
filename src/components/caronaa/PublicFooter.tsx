@@ -36,14 +36,6 @@ export function PublicFooter({ className }: { className?: string }) {
                 />
                 <span>Startup do Unifor Hub</span>
               </div>
-
-              <div
-                className="inline-flex items-center gap-1.5 rounded-full border border-event-cyan/30 bg-background px-3 py-1 text-xs font-semibold text-foreground shadow-2xs"
-                title="Startup expositora oficial no Siará Tech Summit 2026"
-              >
-                <span className="size-2 rounded-full bg-event-cyan shrink-0" aria-hidden="true" />
-                <span>Expositora no Siará Tech Summit 2026</span>
-              </div>
             </div>
           </div>
 
@@ -61,15 +53,6 @@ export function PublicFooter({ className }: { className?: string }) {
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
                     Como funciona
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/"
-                    hash="siara-tech-summit"
-                    className="text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    Siará Tech Summit
                   </Link>
                 </li>
                 <li>
@@ -100,7 +83,7 @@ export function PublicFooter({ className }: { className?: string }) {
                 <li>
                   <Link
                     to="/auth"
-                    search={{ mode: "signup" }}
+                    search={{ mode: "cadastro" }}
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
                     Criar conta

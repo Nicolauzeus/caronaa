@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
-import { StsJourneyActivation } from "@/components/caronaa/StsJourneyActivation";
 import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
 import type { TravelPreferences } from "@/lib/travel-preferences";
 import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.functions";
@@ -37,13 +36,11 @@ function Home() {
   const requestRide = useServerFn(createRideRequest);
   const reverseGeocode = useServerFn(reverseGeocodeServerFn);
   const location = useUserLocation();
-  const [originSource, setOriginSource] = useState<
-    "CURRENT_LOCATION" | "MANUAL_ORIGIN" | "FORM_ORIGIN"
-  >("CURRENT_LOCATION");
+  const [originSource, setOriginSource] = useState<"CURRENT_LOCATION" | "MANUAL_ORIGIN">(
+    "CURRENT_LOCATION",
+  );
   const [resolvedAddress, setResolvedAddress] = useState<FormLocationDetails | null>(null);
   const [reverseFailed, setReverseFailed] = useState(false);
-  const [formOrigin, setFormOrigin] = useState<FormLocationDetails | null>(null);
-  const receiveFormOrigin = useCallback((value: FormLocationDetails) => setFormOrigin(value), []);
   const [journeys, setJourneys] = useState<Awaited<ReturnType<typeof loadJourneys>>>([]);
   const [recent, setRecent] = useState<Awaited<ReturnType<typeof loadRecent>>>([]);
   const [error, setError] = useState<string | null>(null);
@@ -369,9 +366,7 @@ function Home() {
                   ? location.position.accuracy > 100
                     ? "Localização aproximada"
                     : "Localização atual"
-                  : originSource === "FORM_ORIGIN"
-                    ? "Origem da inscrição STS"
-                    : "Saída escolhida por você"}
+                  : "Saída escolhida por você"}
               </span>
               <details className="relative">
                 <summary className="cursor-pointer py-2 font-semibold text-foreground">
@@ -400,19 +395,6 @@ function Home() {
                     <MapPin size={16} />
                     Digitar endereço
                   </button>
-                  {formOrigin && (
-                    <button
-                      type="button"
-                      className="min-h-11 w-full px-3 text-left text-sm"
-                      onClick={() => {
-                        setOriginSource("FORM_ORIGIN");
-                        setOrigin(formOrigin.formattedAddress || formOrigin.rawText);
-                        setOriginLocation(formOrigin);
-                      }}
-                    >
-                      Usar origem da inscrição STS
-                    </button>
-                  )}
                 </div>
               </details>
             </div>
@@ -526,7 +508,6 @@ function Home() {
               <h2 className="text-base font-bold">
                 {activeIsCurrent ? "Sua carona atual" : "Sua última publicação"}
               </h2>
-              {active.sts && <span className="text-xs text-muted-foreground">STS 26</span>}
             </div>
             <p className="mt-3 text-sm font-medium">{active.origin}</p>
             <ArrowRight size={16} className="my-2 rotate-90 text-primary" />
@@ -562,11 +543,6 @@ function Home() {
             </Button>
           </section>
         */}
-        <StsJourneyActivation
-          hasActive={Boolean(active)}
-          onPublished={refresh}
-          onOriginAvailable={receiveFormOrigin}
-        />
       </div>
     </AppShell>
   );

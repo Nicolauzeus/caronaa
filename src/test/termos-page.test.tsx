@@ -40,7 +40,7 @@ describe("Página Pública /termos (Termos de Uso da CARONAA)", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: /Termos de Uso da CARONAA/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/sts_2026_v1/i)).toBeInTheDocument();
+    expect(screen.getByText(/caronaa_2026_v1/i)).toBeInTheDocument();
   });
 
   it("exibe o destaque obrigatório da versão inicial/validação em situações reais", () => {
@@ -123,12 +123,12 @@ describe("Página Pública /termos (Termos de Uso da CARONAA)", () => {
     }
   });
 
-  it("possui links de navegação para o formulário e retorno", () => {
+  it("possui links de cadastro e retorno", () => {
     render(<TermosComponent />);
 
-    expect(screen.getByRole("link", { name: /Ir para o formulário STS 2026/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Criar conta na CARONAA/i })).toHaveAttribute(
       "href",
-      "/formulario",
+      "/auth",
     );
     expect(screen.getByRole("link", { name: /Voltar ao início/i })).toHaveAttribute("href", "/");
   });

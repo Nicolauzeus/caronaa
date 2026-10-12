@@ -80,11 +80,11 @@ describe("Public Navigation & Institutional Footer", () => {
       ).toBeInTheDocument();
     });
 
-    it("exibe badges institucionais de ecossistema e evento", () => {
+    it("exibe afiliação ativa do ecossistema", () => {
       renderWithClient(<PublicFooter />);
 
       expect(screen.getByText("Startup do Unifor Hub")).toBeInTheDocument();
-      expect(screen.getByText("Expositora no Siará Tech Summit 2026")).toBeInTheDocument();
+      expect(screen.queryByText(/Siará Tech Summit/i)).not.toBeInTheDocument();
     });
 
     it("renderiza todos os links obrigatórios sem inventar redes sociais", () => {
@@ -98,10 +98,7 @@ describe("Public Navigation & Institutional Footer", () => {
         "href",
         "/como-funciona",
       );
-      expect(screen.getByRole("link", { name: "Siará Tech Summit" })).toHaveAttribute(
-        "href",
-        "/#siara-tech-summit",
-      );
+      expect(screen.queryByRole("link", { name: /Siará Tech Summit/i })).not.toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Termos de Uso" })).toHaveAttribute(
         "href",
         "/termos",
@@ -114,7 +111,7 @@ describe("Public Navigation & Institutional Footer", () => {
       expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/auth");
       expect(screen.getByRole("link", { name: "Criar conta" })).toHaveAttribute(
         "href",
-        "/auth?mode=signup",
+        "/auth?mode=cadastro",
       );
 
       // Não inventa redes sociais falsas (Instagram, Twitter, LinkedIn, Facebook, WhatsApp, etc)
@@ -155,9 +152,9 @@ describe("Public Navigation & Institutional Footer", () => {
       expect(screen.getByRole("navigation", { name: "Navegação institucional" })).toHaveTextContent(
         "Como funciona",
       );
-      expect(screen.getByRole("navigation", { name: "Navegação institucional" })).toHaveTextContent(
-        "Siará Tech Summit",
-      );
+      expect(
+        screen.getByRole("navigation", { name: "Navegação institucional" }),
+      ).not.toHaveTextContent("Siará Tech Summit");
       expect(screen.getByRole("navigation", { name: "Navegação institucional" })).toHaveTextContent(
         "Segurança",
       );
@@ -168,20 +165,19 @@ describe("Public Navigation & Institutional Footer", () => {
       // CTA destacado no desktop
       const desktopCta = screen.getByRole("link", { name: "Encontrar minha CARONAA" });
       expect(desktopCta).toBeInTheDocument();
-      expect(desktopCta).toHaveAttribute("href", "/formulario");
+      expect(desktopCta).toHaveAttribute("href", "/auth?mode=cadastro");
     });
 
-    it("renderiza o CTA mobile 'Participar' e abre o menu gaveta com as opções necessárias", () => {
+    it("renderiza o CTA mobile de cadastro e abre o menu gaveta", () => {
       renderWithClient(
         <AppShell publicPage={true}>
           <div>Conteúdo da página</div>
         </AppShell>,
       );
 
-      // CTA Mobile 'Participar'
       const mobileCta = screen.getByRole("link", { name: "Participar" });
       expect(mobileCta).toBeInTheDocument();
-      expect(mobileCta).toHaveAttribute("href", "/formulario");
+      expect(mobileCta).toHaveAttribute("href", "/auth?mode=cadastro");
 
       // Botão de menu mobile
       const menuButton = screen.getByRole("button", { name: /Abrir menu/i });
@@ -195,7 +191,7 @@ describe("Public Navigation & Institutional Footer", () => {
 
       // Links no menu mobile
       expect(mobileDrawer).toHaveTextContent("Como funciona");
-      expect(mobileDrawer).toHaveTextContent("Siará Tech Summit");
+      expect(mobileDrawer).not.toHaveTextContent("Siará Tech Summit");
       expect(mobileDrawer).toHaveTextContent("Entrar");
 
       // Fechar menu ao clicar no botão
@@ -231,7 +227,9 @@ describe("Public Navigation & Institutional Footer", () => {
         screen.queryByRole("contentinfo", { name: "Rodapé institucional CARONAA" }),
       ).not.toBeInTheDocument();
       expect(screen.getByRole("navigation", { name: "Navegação principal" })).toBeInTheDocument();
-      expect(screen.queryByRole("navigation", { name: "Navegação inferior" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("navigation", { name: "Navegação inferior" }),
+      ).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
     });
   });

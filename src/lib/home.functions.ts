@@ -37,7 +37,7 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       month: "2-digit",
       day: "2-digit",
     }).format(new Date());
-    const [offers, requests, sources, rides] = await Promise.all([
+    const [offers, requests, rides] = await Promise.all([
       context.supabase
         .from("ride_offers")
         .select(
@@ -58,11 +58,6 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
         .gte("ride_date", today)
         .order("ride_date")
         .limit(10),
-      // Read-only ownership policy on the source linkage table.
-      (context.supabase as import("@supabase/supabase-js").SupabaseClient)
-        .from("form_ride_publications")
-        .select("request_id,offer_id")
-        .eq("user_id", context.userId),
       context.supabase
         .from("rides")
         .select(
@@ -75,7 +70,6 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
     ]);
     if (offers.error || requests.error || rides.error)
       throw new Error(offers.error?.message || requests.error?.message || rides.error?.message);
-    const sourceIds = new Set((sources.data ?? []).flatMap((s) => [s.request_id, s.offer_id]));
     const activeRideIds = new Set((rides.data ?? []).flatMap((r) => [r.request_id, r.offer_id]));
     const currentJourneys = [
       ...(rides.data ?? []).flatMap((r) =>
@@ -106,7 +100,6 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
                   r.driver_user_id === context.userId
                     ? Boolean(r.driver_accepted_at)
                     : Boolean(r.passenger_accepted_at),
-                sts: sourceIds.has(r.request_id) || sourceIds.has(r.offer_id),
               },
             ]
           : [],
@@ -115,13 +108,11 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
         ...r,
         id: r.offer_id,
         kind: "offer" as const,
-        sts: sourceIds.has(r.offer_id),
       })),
       ...(requests.data ?? []).map((r) => ({
         ...r,
         id: r.request_id,
         kind: "request" as const,
-        sts: sourceIds.has(r.request_id),
       })),
     ]
       .filter(
@@ -170,7 +161,6 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
         ...r,
         id: r.request_id,
         kind: "request" as const,
-        sts: sourceIds.has(r.request_id),
       })),
       ...(lastOffer.data ?? []).map((r) => ({
         ...r,
@@ -179,7 +169,6 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
         role: "driver" as const,
         pendingCount: 0,
         kind: "offer" as const,
-        sts: sourceIds.has(r.offer_id),
       })),
       ...(lastRide.data ?? []).flatMap((r) => {
         const route = r.ride_requests ?? r.ride_offers;

@@ -14,9 +14,9 @@ import type { CaronaaStsFormData } from "@/lib/formulario/types";
 describe("Selo STS 2026 - Padronização do identificador oficial e fluxo de verificação", () => {
   it("padroniza o identificador oficial para sts-2026", () => {
     expect(STS_2026_SOURCE).toBe("sts-2026");
-    expect(normalizeStsSource(undefined)).toBe("sts-2026");
-    expect(normalizeStsSource(null)).toBe("sts-2026");
-    expect(normalizeStsSource("")).toBe("sts-2026");
+    expect(normalizeStsSource(undefined)).toBe("direct");
+    expect(normalizeStsSource(null)).toBe("direct");
+    expect(normalizeStsSource("")).toBe("direct");
   });
 
   it("substitui variações legadas (sts2026, sts_2026, STS-2026) por sts-2026", () => {
@@ -115,4 +115,3 @@ describe("Selo STS 2026 - Padronização do identificador oficial e fluxo de ver
     expect(getVerificationDescription("UNIFOR")).toContain("UNIFOR");
   });
 });
-

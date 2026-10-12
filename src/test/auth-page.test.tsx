@@ -63,32 +63,8 @@ describe("Página /auth Redesenhada", () => {
 
     // Opções nos seletores
     expect(screen.getByRole("tab", { name: /Entrar na CARONAA/i })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: /Criar minha conta/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Criar minha conta/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continuar com Google/i })).toBeInTheDocument();
-  });
-
-  it("exibe o contexto específico quando o usuário chega pelo formulário", () => {
-    mockSearchState = { submissionId: "sub-sts-999" };
-
-    render(<AuthComponent />);
-
-    expect(
-      screen.getByText(/Você acabou de participar da validação da CARONAA no Siará Tech Summit\./i),
-    ).toBeInTheDocument();
-  });
-
-  it("exibe o contexto do formulário quando detectado via sessionStorage", () => {
-    vi.spyOn(conversionModule, "getFormConversionDraft").mockReturnValue({
-      submissionId: "draft-sub-123",
-      name: "Mariana Teste",
-      email: "mariana@exemplo.com",
-    });
-
-    render(<AuthComponent />);
-
-    expect(
-      screen.getByText(/Você acabou de participar da validação da CARONAA no Siará Tech Summit\./i),
-    ).toBeInTheDocument();
   });
 
   it("solicita somente os dados necessários em modo login e cadastro", () => {
@@ -128,11 +104,11 @@ describe("Página /auth Redesenhada", () => {
     expect(screen.getByRole("link", { name: /Segurança/i })).toHaveAttribute("href", "/seguranca");
   });
 
-  it("não libera cadastro direto ou apenas pela origem STS", () => {
-    mockSearchState = { mode: "cadastro", source: "sts-2026" };
+  it("permite iniciar cadastro sem submissão de evento", () => {
+    mockSearchState = { mode: "cadastro" };
     render(<AuthComponent />);
-    expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: /Criar minha conta/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Criar minha conta/i })).toBeInTheDocument();
   });
 
   it("preserva cadastro após conclusão do formulário", () => {

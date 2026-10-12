@@ -7,7 +7,7 @@ export const Route = createFileRoute("/admin/relacionamentos")({
       { property: "og:title", content: "Relacionamentos & Pitch — Administração CARONAA" },
       {
         property: "og:description",
-        content: "Gestão de contatos, possíveis investidores e parceiros do Pitch STS 2026.",
+        content: "Gestão de contatos, possíveis investidores e parceiros da CARONAA.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -16,10 +16,9 @@ export const Route = createFileRoute("/admin/relacionamentos")({
       },
       {
         name: "description",
-        content: "Gestão de contatos, possíveis investidores e parceiros do Pitch STS 2026.",
+        content: "Gestão de contatos, possíveis investidores e parceiros da CARONAA.",
       },
     ],
   }),
   component: AdminRelacionamentosPage,
 });
-

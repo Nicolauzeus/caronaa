@@ -414,6 +414,13 @@
       "when": 1791841259106,
       "tag": "0058_0058_repair_priced_segments_and_start_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791845369229,
+      "tag": "0059_disable_retired_sts_ride_rpc",
+      "breakpoints": true
     }
   ]
 }

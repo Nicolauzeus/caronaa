@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   UserRound,
   UsersRound,
-  CheckCircle2,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -32,8 +31,6 @@ import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.ass
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
-import { getFormConversionDraft, clearFormConversionDraft } from "@/lib/formulario/conversion";
-import { normalizeStsSource, trackFunnelEvent } from "@/lib/funnel-events";
 import {
   checkCearaAccess,
   regionalAccessMessage,
@@ -70,32 +67,15 @@ function AuthPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { user, loading } = useAuth();
-  const [conversionDraft] = useState(() => getFormConversionDraft());
-  const effectiveSubmissionId = search.submissionId || conversionDraft?.submissionId || null;
-
-  // Detecta se o usuário chegou pelo formulário (via query param ou sessionStorage)
-  const isFromForm = Boolean(
-    search.submissionId ||
-    search.source === "sts-2026" ||
-    search.source === "sts2026" ||
-    search.source === "sts_2026" ||
-    search.source === "formulario" ||
-    conversionDraft?.submissionId,
-  );
-
-  const canRegister = Boolean(effectiveSubmissionId);
-  const [mode, setMode] = useState<"entrar" | "cadastro">(() =>
-    canRegister && search.mode === "cadastro" ? "cadastro" : "entrar",
-  );
-  const effectiveMode = canRegister ? mode : "entrar";
-  const [name, setName] = useState(() => conversionDraft?.name ?? "");
+  const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
+  const effectiveMode = mode;
+  const [name, setName] = useState("");
   const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
-  const [email, setEmail] = useState(() => conversionDraft?.email ?? "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
-  const [hasTrackedSignupStart, setHasTrackedSignupStart] = useState(false);
   const [regionNotice, setRegionNotice] = useState("");
   const [regionStatus, setRegionStatus] = useState<"idle" | "checking" | "allowed" | "blocked">(
     search.regionCheck === "1" ? "checking" : "idle",
@@ -131,23 +111,6 @@ function AuthPage() {
     };
   }, [isGoogleCallback, loading, regionStatus, user]);
 
-  useEffect(() => {
-    if (effectiveSubmissionId && mode === "cadastro" && !hasTrackedSignupStart) {
-      setHasTrackedSignupStart(true);
-      void trackFunnelEvent({
-        eventName: "signup_started_from_form",
-        submissionId: effectiveSubmissionId,
-        source: normalizeStsSource(conversionDraft?.source),
-        campaign: conversionDraft?.campaign ?? null,
-        campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
-        metadata: {
-          intent: conversionDraft?.intent ?? null,
-          hasPreFilledData: Boolean(conversionDraft?.name || conversionDraft?.email),
-        },
-      });
-    }
-  }, [conversionDraft, effectiveSubmissionId, hasTrackedSignupStart, mode]);
-
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -168,71 +131,18 @@ function AuthPage() {
             data: {
               full_name: name.trim(),
               gender,
-              whatsapp: conversionDraft?.whatsapp,
-              submission_id: effectiveSubmissionId,
-              initial_intent: conversionDraft?.intent,
-              origin_neighborhood: conversionDraft?.originNeighborhood,
-              destination_neighborhood: conversionDraft?.destinationNeighborhood,
-              departure_window: conversionDraft?.departureWindow,
             },
           },
         });
         if (error) throw error;
-
-        if (effectiveSubmissionId) {
-          void trackFunnelEvent({
-            eventName: "signup_completed_from_form",
-            userId: data.user?.id ?? null,
-            submissionId: effectiveSubmissionId,
-            source: normalizeStsSource(conversionDraft?.source),
-            campaign: conversionDraft?.campaign ?? null,
-            campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
-            metadata: {
-              intent: conversionDraft?.intent ?? null,
-              hasSession: Boolean(data.session),
-            },
-          });
-
-          void trackFunnelEvent({
-            eventName: "form_to_account_conversion",
-            userId: data.user?.id ?? null,
-            submissionId: effectiveSubmissionId,
-            source: normalizeStsSource(conversionDraft?.source),
-            campaign: conversionDraft?.campaign ?? null,
-            campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
-            metadata: {
-              conversionType: "signup",
-              intent: conversionDraft?.intent ?? null,
-            },
-          });
-        }
-
-        clearFormConversionDraft();
 
         if (!data.session) {
           setConfirmationSent(true);
           return;
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        if (effectiveSubmissionId) {
-          void trackFunnelEvent({
-            eventName: "form_to_account_conversion",
-            userId: data.user?.id ?? null,
-            submissionId: effectiveSubmissionId,
-            source: normalizeStsSource(conversionDraft?.source),
-            campaign: conversionDraft?.campaign ?? null,
-            campaignEvent: conversionDraft?.campaignEvent || "Siará Tech Summit 2026",
-            metadata: {
-              conversionType: "login",
-              intent: conversionDraft?.intent ?? null,
-            },
-          });
-        }
-
-        clearFormConversionDraft();
       }
       await navigate({ to: destination });
     } catch (error) {
@@ -359,23 +269,6 @@ function AuthPage() {
         </div>
       </div>
 
-      {/* Contexto do Siará Tech Summit quando o usuário veio do formulário */}
-      {isFromForm && (
-        <div className="mb-5 rounded-2xl border border-caronaa-primary/30 bg-caronaa-primary/10 p-3.5 sm:p-4 text-xs sm:text-sm text-foreground flex items-start gap-3 shadow-sm">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-caronaa-primary/20 text-caronaa-primary font-bold">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <p className="font-bold text-foreground">
-              Você acabou de participar da validação da CARONAA no Siará Tech Summit.
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Seus dados de trajeto foram registrados. Conclua seu cadastro para vincular sua conta.
-            </p>
-          </div>
-        </div>
-      )}
-
       {regionNotice && (
         <div
           role="alert"
@@ -387,7 +280,10 @@ function AuthPage() {
       )}
 
       {isGoogleCallback && user && regionStatus === "checking" && (
-        <div role="status" className="mb-5 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+        <div
+          role="status"
+          className="mb-5 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground"
+        >
           Confirmando sua localização para continuar...
         </div>
       )}
@@ -411,7 +307,7 @@ function AuthPage() {
         >
           Entrar na CARONAA
         </button>
-        {canRegister && (
+        {
           <button
             type="button"
             role="tab"
@@ -425,7 +321,7 @@ function AuthPage() {
           >
             Criar minha conta
           </button>
-        )}
+        }
       </div>
 
       {/* Formulário - Somente o necessário */}
@@ -456,7 +352,19 @@ function AuthPage() {
           <fieldset className="space-y-2">
             <legend className="text-xs font-semibold text-foreground">Gênero</legend>
             <div className="grid grid-cols-2 gap-2">
-              {[['FEMININO', 'Feminino'], ['MASCULINO', 'Masculino']].map(([value, label]) => <button key={value} type="button" onClick={() => setGender(value as "FEMININO" | "MASCULINO")} className={`h-11 rounded-xl border text-sm font-bold ${gender === value ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card"}`}>{label}</button>)}
+              {[
+                ["FEMININO", "Feminino"],
+                ["MASCULINO", "Masculino"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setGender(value as "FEMININO" | "MASCULINO")}
+                  className={`h-11 rounded-xl border text-sm font-bold ${gender === value ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card"}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </fieldset>
         )}
@@ -546,7 +454,7 @@ function AuthPage() {
       </form>
 
       {/* Autenticação social configurada */}
-      {(
+      {
         <>
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
@@ -561,14 +469,14 @@ function AuthPage() {
             onClick={continueWithGoogle}
             disabled={busy}
           >
-            <span className="text-base font-extrabold text-caronaa-primary mr-1">G</span> Continuar com
-            Google
+            <span className="text-base font-extrabold text-caronaa-primary mr-1">G</span> Continuar
+            com Google
           </Button>
         </>
-      )}
+      }
 
       {/* Alternância secundária */}
-      {canRegister && (
+      {
         <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
           {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
           <button
@@ -579,7 +487,7 @@ function AuthPage() {
             {mode === "entrar" ? "Criar minha conta" : "Entrar na CARONAA"}
           </button>
         </div>
-      )}
+      }
 
       {/* Links obrigatórios: Termos, Privacidade, Segurança */}
       <div className="mt-6 border-t border-border/70 pt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
@@ -617,7 +525,8 @@ function AuthPage() {
               Esqueci minha senha
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Digite o e-mail associado à sua conta CARONAA para receber as orientações de redefinição.
+              Digite o e-mail associado à sua conta CARONAA para receber as orientações de
+              redefinição.
             </DialogDescription>
           </DialogHeader>
 
@@ -626,7 +535,8 @@ function AuthPage() {
               <div className="rounded-xl border border-primary/30 bg-primary/10 p-3.5 text-xs text-foreground">
                 <p className="font-semibold text-foreground">Instruções enviadas</p>
                 <p className="text-muted-foreground mt-0.5">
-                  Se existir uma conta com este e-mail, enviaremos as instruções para definir uma nova senha.
+                  Se existir uma conta com este e-mail, enviaremos as instruções para definir uma
+                  nova senha.
                 </p>
               </div>
               <Button

@@ -31,12 +31,9 @@ import {
   CaronaaSymbol,
   InstitutionalPartnershipStrip,
 } from "@/components/caronaa/BrandElements";
-import { CountdownTimer } from "@/components/caronaa/CountdownTimer";
-import stsBannerAsset from "@/assets/brand/sts-banner.png";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import caronaaHeroAsset from "@/assets/caronaa-hero.jpg";
 import { supabase } from "@/integrations/supabase/client";
-import { StsFormLink } from "@/components/caronaa/StsFormLink";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -109,12 +106,6 @@ function LandingPage() {
           <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
             {/* Coluna 1: Tipografia Editorial, Badge e CTAs */}
             <div className="flex flex-col items-start text-left">
-              {/* Badge Oficial do STS e Inovação */}
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-secondary/80 px-4 py-1.5 text-xs font-bold text-foreground shadow-xs backdrop-blur-md">
-                <span className="size-2 rounded-full bg-primary animate-pulse" />
-                <span>Startup expositora no Siará Tech Summit 2026</span>
-              </div>
-
               {/* Título Curto & Editorial (Sora) */}
               <h1 className="font-display text-4xl font-black tracking-tight text-foreground sm:text-5xl lg:text-6xl lg:leading-[1.1]">
                 Conecte quem precisa ir com quem já está indo.
@@ -122,8 +113,9 @@ function LandingPage() {
 
               {/* Mensagem Clara de Benefício (Manrope) */}
               <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A CARONAA aproxima rotas de quem busca carona com motoristas que têm assentos disponíveis.
-                Divida custos de deslocamento, diminua o estresse do trânsito e viaje em companhia na sua comunidade.
+                A CARONAA aproxima rotas de quem busca carona com motoristas que têm assentos
+                disponíveis. Divida custos de deslocamento, diminua o estresse do trânsito e viaje
+                em companhia na sua comunidade.
               </p>
 
               {/* Ações Hero: Pedir carona & Oferecer carona */}
@@ -134,9 +126,9 @@ function LandingPage() {
                   size="lg"
                   className="h-14 w-full rounded-2xl px-8 text-base font-extrabold shadow-card card-hover-lift sm:w-auto"
                 >
-                  <StsFormLink to="/formulario">
+                  <Link to="/auth" search={{ mode: "cadastro" }}>
                     🙋 Pedir carona <ArrowRight size={18} className="ml-1" />
-                  </StsFormLink>
+                  </Link>
                 </Button>
 
                 <Button
@@ -145,9 +137,9 @@ function LandingPage() {
                   size="lg"
                   className="h-14 w-full rounded-2xl border-border/90 bg-card px-8 text-base font-bold shadow-soft card-hover-lift sm:w-auto"
                 >
-                  <StsFormLink to="/formulario">
+                  <Link to="/auth" search={{ mode: "cadastro" }}>
                     🚗 Oferecer carona
-                  </StsFormLink>
+                  </Link>
                 </Button>
               </div>
 
@@ -161,14 +153,10 @@ function LandingPage() {
                 </Link>
                 {enrollmentCount !== null && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 font-bold text-foreground">
-                    <UsersRound size={14} className="text-primary" /> {enrollmentCount} pessoas já cadastradas
+                    <UsersRound size={14} className="text-primary" /> {enrollmentCount} pessoas já
+                    cadastradas
                   </span>
                 )}
-              </div>
-
-              {/* Contagem Regressiva para o STS no Hero */}
-              <div className="mt-8 w-full max-w-md pt-2 border-t border-border/60">
-                <CountdownTimer />
               </div>
             </div>
 
@@ -196,10 +184,18 @@ function LandingPage() {
                 <div className="absolute bottom-4 left-4 right-4 rounded-2xl bg-black/75 p-4 backdrop-blur-md border border-white/10 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <img src={logoAsset.url} alt="CARONAA" className="h-6 w-auto object-contain brightness-0 invert" />
+                      <img
+                        src={logoAsset.url}
+                        alt="CARONAA"
+                        className="h-6 w-auto object-contain brightness-0 invert"
+                      />
                       <div>
-                        <p className="text-xs font-bold leading-tight">Rotas inteligentes em Fortaleza</p>
-                        <p className="text-[11px] text-white/70">Assentos livres encontram passageiros</p>
+                        <p className="text-xs font-bold leading-tight">
+                          Rotas inteligentes em Fortaleza
+                        </p>
+                        <p className="text-[11px] text-white/70">
+                          Assentos livres encontram passageiros
+                        </p>
                       </div>
                     </div>
                     <span className="flex size-2 rounded-full bg-primary animate-ping" />
@@ -249,9 +245,7 @@ function LandingPage() {
                       <p className="text-[10px] font-bold tracking-wider text-primary uppercase">
                         Destino compartilhado
                       </p>
-                      <p className="text-sm font-bold text-foreground truncate">
-                        Centro de Eventos do Ceará • STS 2026
-                      </p>
+                      <p className="text-sm font-bold text-foreground truncate">Fortaleza, Ceará</p>
                     </div>
                   </div>
                 </div>
@@ -277,7 +271,8 @@ function LandingPage() {
               Como funciona a CARONAA
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Desenvolvemos um ciclo previsível e seguro para que você viaje com tranquilidade do início ao fim.
+              Desenvolvemos um ciclo previsível e seguro para que você viaje com tranquilidade do
+              início ao fim.
             </p>
           </div>
 
@@ -364,7 +359,8 @@ function LandingPage() {
               Experiência de combinação e rastreamento
             </h2>
             <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-              Veja como motoristas e passageiros visualizam a compatibilidade de rotas e acompanham o percurso em tempo real.
+              Veja como motoristas e passageiros visualizam a compatibilidade de rotas e acompanham
+              o percurso em tempo real.
             </p>
           </div>
 
@@ -403,14 +399,20 @@ function LandingPage() {
                     </div>
                     <div className="flex justify-between items-center text-muted-foreground">
                       <span>Horário previsto:</span>
-                      <strong className="text-foreground">Hoje às 08:30 (±15 min tolerância)</strong>
+                      <strong className="text-foreground">
+                        Hoje às 08:30 (±15 min tolerância)
+                      </strong>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground">Contribuição calculada</p>
-                      <p className="text-base font-extrabold text-foreground">R$ 6,50 por passageiro</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground">
+                        Contribuição calculada
+                      </p>
+                      <p className="text-base font-extrabold text-foreground">
+                        R$ 6,50 por passageiro
+                      </p>
                     </div>
                     <span className="text-xs font-bold text-primary">Economia mútua</span>
                   </div>
@@ -419,7 +421,8 @@ function LandingPage() {
 
               <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 size={14} className="text-success" /> Proposta pronta para aceite bilateral
+                  <CheckCircle2 size={14} className="text-success" /> Proposta pronta para aceite
+                  bilateral
                 </span>
                 <span className="font-semibold text-foreground">Simulação ilustrativa</span>
               </div>
@@ -451,7 +454,9 @@ function LandingPage() {
                   {/* Etapas do Ciclo */}
                   <div className="grid grid-cols-5 gap-1 text-center font-bold text-[10px]">
                     <div className="rounded bg-muted py-1.5 text-muted-foreground">Confirmada</div>
-                    <div className="rounded bg-primary text-primary-foreground py-1.5">A caminho</div>
+                    <div className="rounded bg-primary text-primary-foreground py-1.5">
+                      A caminho
+                    </div>
                     <div className="rounded bg-muted py-1.5 text-muted-foreground">Embarque</div>
                     <div className="rounded bg-muted py-1.5 text-muted-foreground">Em viagem</div>
                     <div className="rounded bg-muted py-1.5 text-muted-foreground">Concluída</div>
@@ -490,7 +495,8 @@ function LandingPage() {
 
               <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-primary" /> Localização autorizada explicitamente
+                  <ShieldCheck size={14} className="text-primary" /> Localização autorizada
+                  explicitamente
                 </span>
                 <span className="font-semibold text-foreground">Simulação ilustrativa</span>
               </div>
@@ -525,7 +531,8 @@ function LandingPage() {
                 Divisão transparente de custos
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Combustível e estacionamento são rateados de forma justa e automática pelo sistema entre os participantes da viagem, sem surpresas.
+                Combustível e estacionamento são rateados de forma justa e automática pelo sistema
+                entre os participantes da viagem, sem surpresas.
               </p>
             </div>
 
@@ -537,7 +544,8 @@ function LandingPage() {
                 Menos trânsito e vagas ocupadas
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Cada carro com assentos ocupados representa menos um veículo congestionando avenidas e disputando vagas em polos universitários e eventos.
+                Cada carro com assentos ocupados representa menos um veículo congestionando avenidas
+                e disputando vagas em polos universitários e eventos.
               </p>
             </div>
 
@@ -549,7 +557,8 @@ function LandingPage() {
                 Conexão entre pessoas reais
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Transforme tempo ocioso e rotas solitárias em oportunidades de convivência segura com pessoas da sua própria comunidade ou faculdade.
+                Transforme tempo ocioso e rotas solitárias em oportunidades de convivência segura
+                com pessoas da sua própria comunidade ou faculdade.
               </p>
             </div>
           </div>
@@ -569,7 +578,8 @@ function LandingPage() {
               Segurança e privacidade em primeiro lugar
             </h2>
             <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-              Estrutura técnica desenhada para resguardar a identidade e a localização de cada participante.
+              Estrutura técnica desenhada para resguardar a identidade e a localização de cada
+              participante.
             </p>
           </div>
 
@@ -578,23 +588,30 @@ function LandingPage() {
               <UserCheck2 className="size-6 text-primary" />
               <h3 className="font-display text-base font-bold text-foreground">Aceite bilateral</h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                A carona só é confirmada após aprovação explícita de motorista e passageiro. Você decide se a combinação faz sentido.
+                A carona só é confirmada após aprovação explícita de motorista e passageiro. Você
+                decide se a combinação faz sentido.
               </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-3">
               <QrCode className="size-6 text-primary" />
-              <h3 className="font-display text-base font-bold text-foreground">PIN e QR de embarque</h3>
+              <h3 className="font-display text-base font-bold text-foreground">
+                PIN e QR de embarque
+              </h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                O trajeto só inicia no sistema quando o código de segurança do passageiro é validado no momento do encontro físico.
+                O trajeto só inicia no sistema quando o código de segurança do passageiro é validado
+                no momento do encontro físico.
               </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-3">
               <Lock className="size-6 text-primary" />
-              <h3 className="font-display text-base font-bold text-foreground">Localização restrita</h3>
+              <h3 className="font-display text-base font-bold text-foreground">
+                Localização restrita
+              </h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                A posição nunca é pública. Somente participantes autenticados daquela viagem ativa têm acesso temporário às coordenadas.
+                A posição nunca é pública. Somente participantes autenticados daquela viagem ativa
+                têm acesso temporário às coordenadas.
               </p>
             </div>
 
@@ -602,7 +619,8 @@ function LandingPage() {
               <FileCheck2 className="size-6 text-primary" />
               <h3 className="font-display text-base font-bold text-foreground">Limpeza imediata</h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Ao concluir, cancelar ou revogar o compartilhamento, os dados de geolocalização são imediatamente removidos do banco.
+                Ao concluir, cancelar ou revogar o compartilhamento, os dados de geolocalização são
+                imediatamente removidos do banco.
               </p>
             </div>
           </div>
@@ -619,72 +637,6 @@ function LandingPage() {
       </section>
 
       {/* =========================================================================
-          6. SEÇÃO EVENTO: CARONAA no Siará Tech Summit
-      ========================================================================= */}
-      <section
-        id="siara-tech-summit"
-        className="bg-caronaa-dark py-16 text-white sm:py-24 scroll-mt-20 border-b border-border/40"
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-            {/* Lado Esquerdo: Banner Oficial do STS */}
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl">
-              <img
-                src={stsBannerAsset}
-                alt="CARONAA Startup Expositora no Siará Tech Summit 2026"
-                loading="lazy"
-                decoding="async"
-                className="h-full max-h-[480px] w-full object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-4 left-4 right-4 rounded-2xl bg-black/70 p-4 backdrop-blur-md border border-white/15">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">
-                  07 a 09 OUT • Centro de Eventos do Ceará
-                </p>
-                <p className="mt-1 text-sm font-semibold text-white">
-                  Venha conhecer a CARONAA no nosso stand expositor e participe dos testes ao vivo!
-                </p>
-              </div>
-            </div>
-
-            {/* Lado Direito: Conteúdo e CTA */}
-            <div className="flex flex-col items-start space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-white/10 px-3.5 py-1.5 text-xs font-bold text-primary backdrop-blur-md">
-                <Sparkles size={14} />
-                <span>Validação em Situações Reais</span>
-              </div>
-
-              <h2 className="font-display text-3xl font-black text-white sm:text-5xl">
-                CARONAA no Siará Tech Summit
-              </h2>
-
-              <p className="text-lg font-bold text-primary">
-                De 07 a 09 de outubro | Centro de Eventos do Ceará
-              </p>
-
-              <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-                Estamos levando a CARONAA para o maior evento de tecnologia e inovação do Ceará.
-                Cadastre seu trajeto para o evento, ofereça ou solicite caronas e colabore diretamente com a construção de uma mobilidade melhor.
-              </p>
-
-              <div className="pt-2">
-                <Button
-                  asChild
-                  variant="strong"
-                  size="lg"
-                  className="h-14 rounded-2xl px-8 text-base font-extrabold shadow-card card-hover-lift"
-                >
-                  <StsFormLink to="/formulario">
-                    Quero participar da validação <ArrowRight size={18} className="ml-1" />
-                  </StsFormLink>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
           7. CHAMADA FINAL EDITORIAL PARA COMEÇAR
       ========================================================================= */}
       <section className="bg-background py-16 sm:py-24">
@@ -696,14 +648,12 @@ function LandingPage() {
           </h2>
 
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Seja oferecendo um lugar vazio no carro ou encontrando alguém que já vai pelo mesmo caminho,
-            a CARONAA foi feita para tornar sua rota mais conectada, econômica e tranquila.
+            Seja oferecendo um lugar vazio no carro ou encontrando alguém que já vai pelo mesmo
+            caminho, a CARONAA foi feita para tornar sua rota mais conectada, econômica e tranquila.
           </p>
 
           <div className="mt-8 rounded-3xl border border-border bg-card p-8 shadow-soft sm:p-10 card-hover-lift">
-            <h3 className="font-display text-2xl font-bold text-foreground">
-              Comece agora mesmo
-            </h3>
+            <h3 className="font-display text-2xl font-bold text-foreground">Comece agora mesmo</h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
               Preencha seu trajeto e descubra combinações compatíveis na sua rota.
             </p>
@@ -715,9 +665,9 @@ function LandingPage() {
                 size="lg"
                 className="h-14 w-full sm:w-auto rounded-2xl px-10 text-base font-extrabold shadow-card"
               >
-                <StsFormLink to="/formulario">
+                <Link to="/auth" search={{ mode: "cadastro" }}>
                   🙋 Pedir carona <ArrowRight size={18} className="ml-1" />
-                </StsFormLink>
+                </Link>
               </Button>
 
               <Button
@@ -726,9 +676,9 @@ function LandingPage() {
                 size="lg"
                 className="h-14 w-full sm:w-auto rounded-2xl px-10 text-base font-bold shadow-soft"
               >
-                <StsFormLink to="/formulario">
+                <Link to="/auth" search={{ mode: "cadastro" }}>
                   🚗 Oferecer carona
-                </StsFormLink>
+                </Link>
               </Button>
             </div>
           </div>
