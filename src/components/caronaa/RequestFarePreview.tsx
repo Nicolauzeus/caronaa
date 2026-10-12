@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { formatBrl } from "@/lib/ride-cost";
 import { previewRequestFare } from "@/lib/ride-pricing.functions";
 
-type FarePreview = {
+export type FarePreview = {
+  quoteId: string;
   distanceKm: number;
   pricePerPassenger: number;
   tariffReference: string;
@@ -14,10 +15,14 @@ export function RequestFarePreview({
   origin,
   destination,
   passengerCount,
+  onQuote,
+  refreshKey = 0,
 }: {
   origin: string;
   destination: string;
   passengerCount: number;
+  onQuote?: (quote: FarePreview | null) => void;
+  refreshKey?: number;
 }) {
   const preview = useServerFn(previewRequestFare);
   const [fare, setFare] = useState<FarePreview | null>(null);
@@ -29,6 +34,7 @@ export function RequestFarePreview({
     let active = true;
     setFare(null);
     setError("");
+    onQuote?.(null);
     if (!routeIsReady)
       return () => {
         active = false;
@@ -37,7 +43,10 @@ export function RequestFarePreview({
     const timer = setTimeout(() => {
       void preview({ data: { origin, destination } })
         .then((result) => {
-          if (active) setFare(result);
+          if (active) {
+            setFare(result);
+            onQuote?.(result);
+          }
         })
         .catch((reason: unknown) => {
           if (active) {
@@ -54,7 +63,7 @@ export function RequestFarePreview({
       active = false;
       clearTimeout(timer);
     };
-  }, [origin, destination, preview, retry, routeIsReady]);
+  }, [origin, destination, preview, retry, routeIsReady, onQuote, refreshKey]);
 
   const groupTotal = fare ? Math.round(fare.pricePerPassenger * passengerCount * 100) / 100 : null;
 

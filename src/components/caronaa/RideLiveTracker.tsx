@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Car,
   CheckCircle2,
-  Clock,
   Flag,
   Info,
   MapPin,
@@ -140,7 +139,7 @@ export function RideLiveTracker({
       sessionStorage.removeItem(consentKey);
       setSharing(false);
     }
-  }, [status, sharing]);
+  }, [status, sharing, consentKey]);
 
   // Alternância do consentimento explícito
   const handleToggleSharing = async (enabled: boolean) => {
@@ -188,7 +187,12 @@ export function RideLiveTracker({
 
   // Status de atualização das posições
   const getPositionStatus = (loc?: RidePosition & { capturedAt: string }) => {
-    if (!loc) return { label: "Compartilhamento pausado", color: "text-muted-foreground", state: "paused" as const };
+    if (!loc)
+      return {
+        label: "Compartilhamento pausado",
+        color: "text-muted-foreground",
+        state: "paused" as const,
+      };
     const ageSeconds = Math.round((clock - new Date(loc.capturedAt).getTime()) / 1000);
     if (ageSeconds <= 60) {
       return { label: "Ao vivo", color: "text-emerald-500", state: "live" as const };
@@ -201,15 +205,23 @@ export function RideLiveTracker({
 
   // Cálculo de distância e previsão estimada
   const route = safety.routeDetails;
-  const meetingPointCoords = route?.passengerOriginLat && route?.passengerOriginLng
-    ? { lat: route.passengerOriginLat, lng: route.passengerOriginLng }
-    : route?.originLat && route?.originLng
-      ? { lat: route.originLat, lng: route.originLng }
-      : null;
+  const meetingPointCoords = useMemo(
+    () =>
+      route?.passengerOriginLat && route?.passengerOriginLng
+        ? { lat: route.passengerOriginLat, lng: route.passengerOriginLng }
+        : route?.originLat && route?.originLng
+          ? { lat: route.originLat, lng: route.originLng }
+          : null,
+    [route],
+  );
 
-  const destinationCoords = route?.destinationLat && route?.destinationLng
-    ? { lat: route.destinationLat, lng: route.destinationLng }
-    : null;
+  const destinationCoords = useMemo(
+    () =>
+      route?.destinationLat && route?.destinationLng
+        ? { lat: route.destinationLat, lng: route.destinationLng }
+        : null,
+    [route],
+  );
 
   const metrics = useMemo(() => {
     if (!driverLocation) return null;
@@ -251,7 +263,12 @@ export function RideLiveTracker({
 
   // Pontos para o mapa interativo
   const activePoints = useMemo(() => {
-    const pts: Array<{ lat: number; lng: number; title: string; type: "driver" | "passenger" | "meeting" | "destination" }> = [];
+    const pts: Array<{
+      lat: number;
+      lng: number;
+      title: string;
+      type: "driver" | "passenger" | "meeting" | "destination";
+    }> = [];
     if (driverLocation) {
       pts.push({
         lat: driverLocation.latitude,
@@ -393,13 +410,13 @@ export function RideLiveTracker({
       {metrics && (
         <div className="flex items-center justify-between rounded-lg border border-border/80 bg-secondary/40 p-3 text-xs">
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-primary" />
+            <Info size={16} className="text-primary" />
             <div>
               <p className="font-semibold text-foreground">
-                Distância até o {metrics.targetName}: ~{metrics.distanceKm} km
+                Use o aplicativo de mapas para consultar a rota e a previsão atuais.
               </p>
               <p className="text-[10px] text-muted-foreground">
-                Previsão de chegada: ~{metrics.etaMinutes} min (Estimativa aproximada baseada na velocidade média de tráfego)
+                A CARONAA não exibe ETA rodoviário nesta tela.
               </p>
             </div>
           </div>
@@ -411,10 +428,15 @@ export function RideLiveTracker({
         {activePoints.length > 0 ? (
           <div className="relative h-56 w-full">
             <LiveRideMap points={activePoints} />
-            {/* Indicador superior ao vivo */}
             <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/60">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{driverLocation || passengerLocation ? "Posições compartilhadas" : "Pontos da viagem"}</span>
+              <span
+                className={`size-2 rounded-full ${driverStatus.state === "live" || passengerStatus.state === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
+              />
+              <span>
+                {driverStatus.state === "live" || passengerStatus.state === "live"
+                  ? "Posição atualizada"
+                  : "Sem posição atual"}
+              </span>
             </div>
           </div>
         ) : (
@@ -490,7 +512,9 @@ export function RideLiveTracker({
           {passengerLocation ? (
             <div className="text-[11px] text-muted-foreground">
               <p>Precisão: ±{Math.round(passengerLocation.accuracyM)} m</p>
-              <p>Último sinal: {new Date(passengerLocation.capturedAt).toLocaleTimeString("pt-BR")}</p>
+              <p>
+                Último sinal: {new Date(passengerLocation.capturedAt).toLocaleTimeString("pt-BR")}
+              </p>
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground">Nenhuma posição transmitida.</p>
@@ -532,8 +556,11 @@ export function RideLiveTracker({
           <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[11px] text-muted-foreground">
             <Smartphone size={15} className="text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold text-foreground">Aviso sobre dispositivos móveis: </span>
-              Navegadores em celulares suspendem a localização quando a tela é bloqueada ou em segundo plano. Mantenha o navegador aberto para transmissão contínua.
+              <span className="font-semibold text-foreground">
+                Aviso sobre dispositivos móveis:{" "}
+              </span>
+              Navegadores em celulares suspendem a localização quando a tela é bloqueada ou em
+              segundo plano. Mantenha o navegador aberto para transmissão contínua.
             </div>
           </div>
         </div>
@@ -541,4 +568,3 @@ export function RideLiveTracker({
     </div>
   );
 }
-

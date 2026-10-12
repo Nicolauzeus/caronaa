@@ -56,6 +56,8 @@ export type RideSummary = {
   confirmedPassengers: number;
   passengerContribution: number;
   routeDistanceKm?: number | null;
+  offerRouteDistanceKm?: number | null;
+  offerReferencePrice?: number | null;
   pricePerPassenger?: number | null;
   groupTotal?: number | null;
   tariffReference?: string | null;
@@ -210,6 +212,8 @@ function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): Ri
     confirmedPassengers: 0,
     passengerContribution: totalPrice,
     routeDistanceKm: r["route_distance_km"] == null ? null : Number(r["route_distance_km"]),
+    offerRouteDistanceKm: r["route_distance_km"] == null ? null : Number(r["route_distance_km"]),
+    offerReferencePrice: r["passenger_price"] == null ? null : Number(r["passenger_price"]),
     pricePerPassenger: r["passenger_price"] == null ? null : Number(r["passenger_price"]),
     vehicleDescription:
       typeof r["vehicle_description"] === "string" ? r["vehicle_description"] : null,
@@ -322,6 +326,9 @@ function mapRide(
         : null,
     pricePerPassenger: quotedPrice,
     groupTotal: quotedGroupTotal,
+    offerRouteDistanceKm:
+      off?.["route_distance_km"] == null ? null : Number(off["route_distance_km"]),
+    offerReferencePrice: off?.["passenger_price"] == null ? null : Number(off["passenger_price"]),
     tariffReference: typeof ri["tariff_reference"] === "string" ? ri["tariff_reference"] : null,
     driverConfirmedTotal: ri["driver_user_id"] === viewerUserId ? confirmedFareTotal : null,
     driverAcceptedAt:
@@ -755,16 +762,47 @@ export const requestRideOffer = createServerFn({ method: "POST" })
     z
       .object({
         offerId: z.string().uuid(),
+        quoteId: z.string().uuid(),
+        rideDate: z.string().date(),
+        departureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
         passengerCount: z.number().int().min(1).max(6).default(1),
+        timeToleranceMinutes: z
+          .union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)])
+          .default(15),
       })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    const { data: requestId, error } = await context.supabase.rpc("request_available_ride_offer", {
+    const client = context.supabase as unknown as {
+      rpc: (
+        name: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    };
+    const { data: requestId, error } = await client.rpc("request_available_ride_segment", {
       p_offer_id: data.offerId,
+      p_quote_id: data.quoteId,
+      p_ride_date: data.rideDate,
+      p_departure_time: data.departureTime,
       p_passenger_count: data.passengerCount,
+      p_time_tolerance_minutes: data.timeToleranceMinutes,
     });
-    if (error) throw new Error(error.message || "Não foi possível solicitar a carona.");
+    if (error) {
+      const message = error.message || "";
+      if (/quote is invalid or expired/i.test(message)) {
+        throw new Error(
+          "A cotação do trecho expirou. Atualize o preço antes de solicitar novamente.",
+        );
+      }
+      if (/offer unavailable|offer expired|no longer matches|no seats available/i.test(message)) {
+        throw new Error(
+          "Esta oferta mudou ou não tem vagas para o seu trecho. Atualize a busca e tente outra carona.",
+        );
+      }
+      throw new Error(message || "Não foi possível solicitar a carona.");
+    }
+    if (typeof requestId !== "string")
+      throw new Error("A solicitação retornou um identificador inválido.");
     return { requestId };
   });
 

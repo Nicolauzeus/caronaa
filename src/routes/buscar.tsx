@@ -13,6 +13,8 @@ import {
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
 import type { FormLocationDetails } from "@/lib/location/types";
+import { previewRequestFare } from "@/lib/ride-pricing.functions";
+import { formatBrl } from "@/lib/ride-cost";
 
 export const Route = createFileRoute("/buscar")({
   head: () => ({
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/buscar")({
 });
 function Buscar() {
   const searchOffers = useServerFn(searchRideOffers);
+  const previewFare = useServerFn(previewRequestFare);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [originLocation, setOriginLocation] = useState<FormLocationDetails | undefined>();
@@ -54,6 +57,15 @@ function Buscar() {
     destinationLocation: undefined as FormLocationDetails | undefined,
   });
   const [matches, setMatches] = useState<RideSummary[]>([]);
+  const [requestQuote, setRequestQuote] = useState<{
+    quoteId: string;
+    expiresAt: string;
+    distanceKm: number;
+    pricePerPassenger: number;
+  } | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,6 +127,38 @@ function Buscar() {
       active = false;
     };
   }, [searchOffers, submitted]);
+
+  useEffect(() => {
+    let active = true;
+    setRequestQuote(null);
+    setQuoteError(null);
+    if (!submitted.origin.trim() || !submitted.destination.trim()) {
+      setQuoteLoading(false);
+      return;
+    }
+    setQuoteLoading(true);
+    const timer = window.setTimeout(() => {
+      void previewFare({ data: { origin: submitted.origin, destination: submitted.destination } })
+        .then((quote) => {
+          if (active) setRequestQuote(quote);
+        })
+        .catch((quoteFailure) => {
+          if (active)
+            setQuoteError(
+              quoteFailure instanceof Error
+                ? quoteFailure.message
+                : "Não foi possível calcular o preço do trecho.",
+            );
+        })
+        .finally(() => {
+          if (active) setQuoteLoading(false);
+        });
+    }, 300);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [previewFare, submitted.origin, submitted.destination, quoteRefresh]);
 
   return (
     <AppShell>
@@ -225,6 +269,50 @@ function Buscar() {
           </select>
         </label>
       </div>
+      {submitted.origin && submitted.destination && (
+        <div
+          className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3"
+          role={quoteError ? "alert" : "status"}
+        >
+          {requestQuote ? (
+            <>
+              <p className="font-semibold text-primary">
+                Seu trecho: {formatBrl(requestQuote.pricePerPassenger)} por pessoa
+                {Number(submitted.passengers) > 1
+                  ? ` · grupo ${formatBrl(Math.round(requestQuote.pricePerPassenger * Number(submitted.passengers) * 100) / 100)}`
+                  : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {requestQuote.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km
+                por estrada · tarifa R$ 6 a cada 11 km.
+                {submitted.date && submitted.time
+                  ? " Este mesmo valor será enviado na solicitação."
+                  : " Informe data e horário para solicitar uma vaga."}
+              </p>
+            </>
+          ) : (
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {quoteError ||
+                  (quoteLoading
+                    ? "Calculando preço rodoviário do seu trecho…"
+                    : "Não foi possível calcular o preço do trecho.")}
+              </p>
+              {quoteError && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setQuoteRefresh((value) => value + 1)}
+                >
+                  Tentar cotação novamente
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div className="mb-5 mt-9 flex items-end justify-between">
         <div>
           <h2 className="font-display text-xl font-extrabold">Caronas disponíveis</h2>
@@ -252,6 +340,19 @@ function Buscar() {
               key={ride.id}
               ride={ride}
               passengerCount={Number(submitted.passengers) || 1}
+              segmentRequest={
+                requestQuote && submitted.date && submitted.time
+                  ? {
+                      quoteId: requestQuote.quoteId,
+                      distanceKm: requestQuote.distanceKm,
+                      pricePerPassenger: requestQuote.pricePerPassenger,
+                      rideDate: submitted.date,
+                      departureTime: submitted.time,
+                      timeToleranceMinutes: submitted.timeTolerance,
+                    }
+                  : undefined
+              }
+              onQuoteExpired={() => setQuoteRefresh((value) => value + 1)}
             />
           ))}
         </div>

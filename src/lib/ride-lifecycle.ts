@@ -64,7 +64,12 @@ export function getRideNextActions(
       ...(matchAcceptance.acceptedByViewer ||
       (role === "driver" && !matchAcceptance.acceptedByOther)
         ? []
-        : [{ label: "Aceitar combinação", status: "CONFIRMED" as const }]),
+        : [
+            {
+              label: role === "driver" ? "Confirmar passageiro" : "Aceitar combinação",
+              status: "CONFIRMED" as const,
+            },
+          ]),
       {
         label: matchAcceptance.acceptedByViewer ? "Retirar aceite" : "Recusar combinação",
         status: "CANCELLED",

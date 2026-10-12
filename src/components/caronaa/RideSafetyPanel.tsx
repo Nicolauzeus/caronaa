@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { type RideSafety } from "@/lib/ride-safety";
-import {
-  getRideSafety,
-  rateRide,
-  validateRideBoarding,
-} from "@/lib/ride-safety-service";
+import { getRideSafety, rateRide, validateRideBoarding } from "@/lib/ride-safety-service";
 import { RideQrModal } from "./RideQrModal";
 import { RideQrScannerModal } from "./RideQrScannerModal";
 import { CompletedRidePix } from "./DriverPix";
@@ -32,6 +28,7 @@ export function RideSafetyPanel({
   const [safety, setSafety] = useState<RideSafety | null>(null);
   const [error, setError] = useState("");
   const [pin, setPin] = useState("");
+  const [pinEntryOpen, setPinEntryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [score, setScore] = useState(0);
   const [comment, setComment] = useState("");
@@ -44,9 +41,7 @@ export function RideSafetyPanel({
       setSafety(next);
       setError("");
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Não foi possível carregar a segurança da viagem.",
-      );
+      setError(e instanceof Error ? e.message : "Não foi possível carregar a segurança da viagem.");
     }
   };
 
@@ -150,17 +145,33 @@ export function RideSafetyPanel({
 
       {currentStatus === "IN_PROGRESS" && safety && (
         <div className="space-y-2">
-          {safety.completionConfirmed ? <p role="status" className="text-sm font-semibold">Sua chegada foi confirmada. Aguardando a outra pessoa concluir.</p> : (
-            <Button disabled={busy} onClick={async () => {
-              setBusy(true);
-              try {
-                const result = await transitionRideStatus(rideId, "COMPLETED");
-                toast.success(result === "AWAITING_OTHER_PARTICIPANT" ? "Chegada confirmada. Aguardando a outra pessoa." : "Viagem concluída.");
-                await loadSafety();
-                await onChanged();
-              } catch(e) { toast.error(e instanceof Error ? e.message : "Não foi possível concluir."); }
-              finally { setBusy(false); }
-            }}>Confirmar chegada ao destino</Button>
+          {safety.completionConfirmed ? (
+            <p role="status" className="text-sm font-semibold">
+              Sua chegada foi confirmada. Aguardando a outra pessoa concluir.
+            </p>
+          ) : (
+            <Button
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await transitionRideStatus(rideId, "COMPLETED");
+                  toast.success(
+                    result === "AWAITING_OTHER_PARTICIPANT"
+                      ? "Chegada confirmada. Aguardando a outra pessoa."
+                      : "Viagem concluída.",
+                  );
+                  await loadSafety();
+                  await onChanged();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Não foi possível concluir.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Confirmar chegada ao destino
+            </Button>
           )}
         </div>
       )}
@@ -204,44 +215,51 @@ export function RideSafetyPanel({
             Mostrar QR da viagem
           </Button>
 
-          <div className="relative flex items-center justify-center py-1">
-            <span className="absolute inset-x-0 h-px bg-border" />
-            <span className="relative bg-card px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              ou valide por PIN digitado
-            </span>
-          </div>
-
-          <form onSubmit={board} className="space-y-2">
-            <label
-              className="block text-xs font-medium text-muted-foreground"
-              htmlFor={`boarding-${rideId}`}
-            >
-              PIN de 8 dígitos do passageiro
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Input
-                id={`boarding-${rideId}`}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                inputMode="numeric"
-                autoComplete="off"
-                pattern="[0-9]{8}"
-                maxLength={8}
-                required
-                placeholder="8 dígitos"
-                className="min-w-0 flex-1 basis-32 font-mono h-10"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                className="h-10"
-                disabled={busy || pin.length !== 8 || !safety || !!error}
+          <button
+            type="button"
+            aria-expanded={pinEntryOpen}
+            onClick={() => setPinEntryOpen((open) => !open)}
+            className="text-sm font-semibold text-primary underline underline-offset-4"
+          >
+            {pinEntryOpen ? "Fechar alternativa de PIN" : "Alternativa: informar PIN"}
+          </button>
+          {pinEntryOpen && (
+            <form onSubmit={board} className="space-y-2">
+              <label
+                className="block text-xs font-medium text-muted-foreground"
+                htmlFor={`boarding-${rideId}`}
               >
-                {busy ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
-                Validar PIN
-              </Button>
-            </div>
-          </form>
+                PIN de 8 dígitos do passageiro
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  id={`boarding-${rideId}`}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  pattern="[0-9]{8}"
+                  maxLength={8}
+                  required
+                  placeholder="8 dígitos"
+                  className="min-w-0 flex-1 basis-32 font-mono h-10"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-10"
+                  disabled={busy || pin.length !== 8 || !safety || !!error}
+                >
+                  {busy ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <ShieldCheck size={15} />
+                  )}
+                  Validar PIN
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

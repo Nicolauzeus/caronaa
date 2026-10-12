@@ -13,7 +13,7 @@ import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.fun
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
-import { RequestFarePreview } from "@/components/caronaa/RequestFarePreview";
+import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 
@@ -55,8 +55,17 @@ function Home() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
+  const [requestFare, setRequestFare] = useState<
+    (FarePreview & { origin: string; destination: string }) | null
+  >(null);
+  const [requestFareRefresh, setRequestFareRefresh] = useState(0);
+  const receiveRequestFare = useCallback(
+    (quote: FarePreview | null) => {
+      setRequestFare(quote ? { ...quote, origin, destination } : null);
+    },
+    [origin, destination],
+  );
   const [busy, setBusy] = useState(false);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const requestSubmitting = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const refresh = useCallback(() => {
@@ -81,10 +90,11 @@ function Home() {
   const active = journeys[0];
   const activeIsCurrent = Boolean(
     active &&
-      active.status !== "CANCELLED" &&
-      active.status !== "COMPLETED" &&
-      (active.status === "IN_PROGRESS" ||
-        new Date(`${active.ride_date}T${active.departure_time.slice(0, 8)}-03:00`).getTime() > Date.now()),
+    active.status !== "CANCELLED" &&
+    active.status !== "COMPLETED" &&
+    (active.status === "IN_PROGRESS" ||
+      new Date(`${active.ride_date}T${active.departure_time.slice(0, 8)}-03:00`).getTime() >
+        Date.now()),
   );
   const activeNextStep = !active
     ? ""
@@ -94,11 +104,11 @@ function Home() {
         ? "Ver embarque e acompanhar"
         : active.status === "COMPLETED"
           ? "Ver resumo e Pix"
-        : active.status === "MATCHED" || active.status === "matched"
-          ? "Ver combinaÃ§Ã£o"
-          : active.kind === "offer"
-            ? "Ver oferta"
-            : "Ver pedido";
+          : active.status === "MATCHED" || active.status === "matched"
+            ? "Ver combinaÃ§Ã£o"
+            : active.kind === "offer"
+              ? "Ver oferta"
+              : "Ver pedido";
   const point =
     originLocation ??
     (active?.origin_lat != null && active.origin_lng != null
@@ -152,6 +162,72 @@ function Home() {
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
+        {active && (
+          <section
+            className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-4 shadow-soft"
+            aria-label="Sua carona atual"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                  {activeIsCurrent ? "Sua carona atual" : "Sua última publicação"}
+                </p>
+                <p className="mt-2 truncate font-semibold">
+                  {active.origin} → {active.destination}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {active.ride_date.split("-").reverse().join("/")} ·{" "}
+                  {active.departure_time.slice(0, 5)} ·{" "}
+                  {active.status === "IN_PROGRESS"
+                    ? "Em andamento"
+                    : active.status === "CONFIRMED"
+                      ? "Confirmada"
+                      : active.status === "COMPLETED"
+                        ? "Concluída"
+                        : active.status === "MATCHED"
+                          ? "Combinação encontrada"
+                          : "Oferta ativa"}
+                </p>
+                {"pendingCount" in active && active.pendingCount > 0 && (
+                  <p className="mt-1 text-sm font-semibold text-primary">
+                    {active.pendingCount} solicitação(ões) aguardando sua confirmação
+                  </p>
+                )}
+              </div>
+              {active.status === "IN_PROGRESS" || active.status === "CONFIRMED" ? (
+                <Button asChild>
+                  <Link to="/viagem/$rideId" params={{ rideId: active.id }}>
+                    {activeNextStep}
+                    <ArrowRight size={16} />
+                  </Link>
+                </Button>
+              ) : active.kind === "offer" ||
+                ("role" in active &&
+                  active.role === "driver" &&
+                  "offerId" in active &&
+                  Boolean(active.offerId)) ? (
+                <Button asChild>
+                  <Link
+                    to="/minha-carona/$offerId"
+                    params={{
+                      offerId: "offerId" in active && active.offerId ? active.offerId : active.id,
+                    }}
+                  >
+                    {activeNextStep}
+                    <ArrowRight size={16} />
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline">
+                  <Link to="/minhas-caronas" hash={`ride-${active.id}`}>
+                    {activeNextStep}
+                    <ArrowRight size={16} />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </section>
+        )}
         <p className="pb-2 text-xs text-muted-foreground lg:hidden">
           Use sua localização para definir seu ponto de saída automaticamente.
         </p>
@@ -233,6 +309,14 @@ function Home() {
                 window.location.assign(`/oferecer?${params}`);
                 return;
               }
+              if (
+                !requestFare ||
+                requestFare.origin !== origin ||
+                requestFare.destination !== destination
+              ) {
+                setError("Aguarde a cotação atual do seu trecho antes de pedir a carona.");
+                return;
+              }
               if (requestSubmitting.current) return;
               requestSubmitting.current = true;
               setBusy(true);
@@ -240,24 +324,26 @@ function Home() {
               try {
                 await requestRide({
                   data: {
-                    origin,
-                    destination,
-                    originLat: originLocation?.lat,
-                    originLng: originLocation?.lng,
-                    destinationLat: destinationLocation?.lat,
-                    destinationLng: destinationLocation?.lng,
+                    quoteId: requestFare.quoteId,
                     rideDate: date,
                     departureTime: time,
                     passengerCount: Number(count),
+                    timeToleranceMinutes: 15,
                     preferences,
-                    idempotencyKey,
                   },
                 });
                 toast.success("Sua solicitação foi publicada.");
-                setIdempotencyKey(crypto.randomUUID());
+                setRequestFare(null);
                 refresh();
               } catch (reason) {
                 setError("Não foi possível pedir a carona. Confira os dados e tente novamente.");
+                if (
+                  reason instanceof Error &&
+                  /cotação.*expir|quote.*expired/i.test(reason.message)
+                ) {
+                  setRequestFare(null);
+                  setRequestFareRefresh((value) => value + 1);
+                }
               } finally {
                 requestSubmitting.current = false;
                 setBusy(false);
@@ -418,6 +504,8 @@ function Home() {
                 origin={origin}
                 destination={destination}
                 passengerCount={Number(count)}
+                onQuote={receiveRequestFare}
+                refreshKey={requestFareRefresh}
               />
             )}
             {error && (
@@ -432,7 +520,7 @@ function Home() {
             </Button>
           </form>
         </section>
-        {active && (
+        {/*
           <section className="mt-6 border-t border-border py-5" aria-label="Seu trajeto ativo">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold">
@@ -448,7 +536,7 @@ function Home() {
               {active.departure_time.slice(0, 5)} ·{" "}
               {active.status === "IN_PROGRESS"
                 ? "Em andamento"
-              : active.status === "CONFIRMED"
+                : active.status === "CONFIRMED"
                   ? "Confirmada"
                   : active.status === "COMPLETED"
                     ? "Concluída"
@@ -457,10 +545,10 @@ function Home() {
                       : active.status === "NO_SHOW"
                         ? "Não compareceu"
                         : active.kind === "offer"
-                    ? "Oferta ativa"
-                    : active.status === "matched"
-                      ? "Compatibilidade encontrada"
-                      : "Solicitação ativa"}
+                          ? "Oferta ativa"
+                          : active.status === "matched"
+                            ? "Compatibilidade encontrada"
+                            : "Solicitação ativa"}
             </p>
             {!activeIsCurrent && (
               <p className="mt-1 text-xs text-muted-foreground">
@@ -473,7 +561,7 @@ function Home() {
               </Link>
             </Button>
           </section>
-        )}
+        */}
         <StsJourneyActivation
           hasActive={Boolean(active)}
           onPublished={refresh}

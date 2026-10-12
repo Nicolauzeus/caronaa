@@ -66,7 +66,7 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       context.supabase
         .from("rides")
         .select(
-          "ride_id,offer_id,request_id,driver_user_id,passenger_user_id,passenger_accepted_at,driver_accepted_at,status,ride_requests(origin,destination,ride_date,departure_time,origin_lat,origin_lng,destination_lat,destination_lng)",
+          "ride_id,offer_id,request_id,driver_user_id,passenger_user_id,passenger_accepted_at,driver_accepted_at,status,updated_at,ride_requests(origin,destination,ride_date,departure_time,origin_lat,origin_lng,destination_lat,destination_lng)",
         )
         .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
         .in("status", ["MATCHED", "CONFIRMED", "IN_PROGRESS"])
@@ -84,7 +84,23 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
               {
                 ...r.ride_requests,
                 id: r.ride_id,
+                offerId: r.offer_id,
+                role:
+                  r.driver_user_id === context.userId
+                    ? ("driver" as const)
+                    : ("passenger" as const),
                 status: r.status,
+                updated_at: r.updated_at,
+                pendingCount:
+                  r.driver_user_id === context.userId
+                    ? (rides.data ?? []).filter(
+                        (candidate) =>
+                          candidate.offer_id === r.offer_id &&
+                          candidate.status === "MATCHED" &&
+                          candidate.passenger_accepted_at &&
+                          !candidate.driver_accepted_at,
+                      ).length
+                    : 0,
                 kind: "ride" as const,
                 acceptedByViewer:
                   r.driver_user_id === context.userId
@@ -118,26 +134,32 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       .sort(
         (a, b) =>
           Number(b.status === "IN_PROGRESS") - Number(a.status === "IN_PROGRESS") ||
-              `${a.ride_date} ${a.departure_time}`.localeCompare(`${b.ride_date} ${b.departure_time}`),
+          `${a.ride_date} ${a.departure_time}`.localeCompare(`${b.ride_date} ${b.departure_time}`),
       );
     if (currentJourneys.length) return currentJourneys;
 
     const [lastRequest, lastOffer, lastRide] = await Promise.all([
       context.supabase
         .from("ride_requests")
-        .select("request_id,origin,destination,origin_lat,origin_lng,ride_date,departure_time,status,created_at")
+        .select(
+          "request_id,origin,destination,origin_lat,origin_lng,ride_date,departure_time,status,created_at",
+        )
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false })
         .limit(1),
       context.supabase
         .from("ride_offers")
-        .select("offer_id,origin,destination,origin_lat,origin_lng,ride_date,departure_time,status,created_at")
+        .select(
+          "offer_id,origin,destination,origin_lat,origin_lng,ride_date,departure_time,status,created_at",
+        )
         .eq("user_id", context.userId)
         .order("created_at", { ascending: false })
         .limit(1),
       context.supabase
         .from("rides")
-        .select("ride_id,status,updated_at,ride_requests(origin,destination,origin_lat,origin_lng,ride_date,departure_time),ride_offers(origin,destination,origin_lat,origin_lng,ride_date,departure_time)")
+        .select(
+          "ride_id,offer_id,driver_user_id,status,updated_at,ride_requests(origin,destination,origin_lat,origin_lng,ride_date,departure_time),ride_offers(origin,destination,origin_lat,origin_lng,ride_date,departure_time)",
+        )
         .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
         .order("updated_at", { ascending: false })
         .limit(1),
@@ -153,20 +175,31 @@ export const getActiveHomeJourneys = createServerFn({ method: "GET" })
       ...(lastOffer.data ?? []).map((r) => ({
         ...r,
         id: r.offer_id,
+        offerId: r.offer_id,
+        role: "driver" as const,
+        pendingCount: 0,
         kind: "offer" as const,
         sts: sourceIds.has(r.offer_id),
       })),
       ...(lastRide.data ?? []).flatMap((r) => {
         const route = r.ride_requests ?? r.ride_offers;
         return route
-          ? [{
-              ...route,
-              created_at: r.updated_at,
-              id: r.ride_id,
-              status: r.status,
-              kind: "ride" as const,
-              sts: false,
-            }]
+          ? [
+              {
+                ...route,
+                created_at: r.updated_at,
+                id: r.ride_id,
+                offerId: r.offer_id,
+                role:
+                  r.driver_user_id === context.userId
+                    ? ("driver" as const)
+                    : ("passenger" as const),
+                pendingCount: 0,
+                status: r.status,
+                kind: "ride" as const,
+                sts: false,
+              },
+            ]
           : [];
       }),
     ];

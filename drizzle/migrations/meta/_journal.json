@@ -393,6 +393,13 @@
       "when": 1791576070806,
       "tag": "0055_ride_publication_modified_at",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791776864385,
+      "tag": "0056_profile_default_vehicle",
+      "breakpoints": true
     }
   ]
 }
