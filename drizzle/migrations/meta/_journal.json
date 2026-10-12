@@ -421,6 +421,13 @@
       "when": 1791845369229,
       "tag": "0059_disable_retired_sts_ride_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791847689475,
+      "tag": "0060_partial_passenger_route_quotes",
+      "breakpoints": true
     }
   ]
 }
