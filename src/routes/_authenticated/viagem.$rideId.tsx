@@ -315,6 +315,8 @@ function ViagemOperacional() {
               role={ride.role}
               viewerUserId={ride.viewerUserId}
               status={ride.status}
+              pickupLabel={ride.meetingPoint || ride.origin}
+              destinationLabel={ride.destination}
               onChanged={refresh}
             />
           </div>

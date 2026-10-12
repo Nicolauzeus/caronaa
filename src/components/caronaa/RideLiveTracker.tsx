@@ -1,5 +1,5 @@
 import { LiveRideMap } from "./LiveRideMap";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Car,
@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Smartphone,
   User,
+  Volume2,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -40,6 +41,8 @@ export interface RideLiveTrackerProps {
   viewerUserId: string;
   status: string;
   safety: RideSafety;
+  pickupLabel?: string;
+  destinationLabel?: string;
   onRefresh: () => Promise<void>;
 }
 
@@ -57,13 +60,17 @@ export function RideLiveTracker({
   viewerUserId,
   status,
   safety,
+  pickupLabel,
+  destinationLabel,
   onRefresh,
 }: RideLiveTrackerProps) {
   const [sharing, setSharing] = useState(false);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [lastLocalUpdate, setLastLocalUpdate] = useState<Date | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [clock, setClock] = useState(Date.now());
+  const lastVoiceStage = useRef<TransitStage | null>(null);
   const refreshRef = useRef(onRefresh);
   refreshRef.current = onRefresh;
   const consentKey = `caronaa:location:${viewerUserId}:${rideId}`;
@@ -80,6 +87,38 @@ export function RideLiveTracker({
         : status === "CANCELLED"
           ? "CANCELLED"
           : (safety.transitStage ?? "CONFIRMED");
+
+  const announceVoiceInstruction = useCallback(() => {
+    if (!("speechSynthesis" in window)) {
+      toast.error("Este navegador não oferece orientação por voz.");
+      setVoiceEnabled(false);
+      return;
+    }
+    const instruction =
+      currentStage === "CONFIRMED" || currentStage === "DRIVER_EN_ROUTE"
+        ? `Próxima ação: seguir para o embarque${pickupLabel ? ` em ${pickupLabel}` : " do passageiro"}. Use o aplicativo de mapas para instruções de rota.`
+        : currentStage === "AWAITING_BOARDING"
+          ? "Você chegou ao embarque. Valide o QR code ou o PIN antes de iniciar a viagem."
+          : currentStage === "IN_PROGRESS"
+            ? `Viagem em andamento. O destino deste passageiro é ${destinationLabel || "o destino combinado"}. Use o aplicativo de mapas para instruções de rota.`
+            : TRANSIT_STAGE_DESCRIPTIONS[currentStage];
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(instruction);
+    utterance.lang = "pt-BR";
+    utterance.rate = 0.92;
+    window.speechSynthesis.speak(utterance);
+    lastVoiceStage.current = currentStage;
+  }, [currentStage, destinationLabel, pickupLabel]);
+
+  useEffect(() => {
+    if (role === "driver" && voiceEnabled && lastVoiceStage.current !== currentStage) {
+      announceVoiceInstruction();
+    }
+    if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status)) {
+      window.speechSynthesis?.cancel();
+      setVoiceEnabled(false);
+    }
+  }, [announceVoiceInstruction, currentStage, role, status, voiceEnabled]);
 
   // Atualização periódica do relógio interno para cálculo de "Ao vivo" vs "Desatualizado"
   useEffect(() => {
@@ -207,9 +246,9 @@ export function RideLiveTracker({
   const route = safety.routeDetails;
   const meetingPointCoords = useMemo(
     () =>
-      route?.passengerOriginLat && route?.passengerOriginLng
+      route?.passengerOriginLat != null && route?.passengerOriginLng != null
         ? { lat: route.passengerOriginLat, lng: route.passengerOriginLng }
-        : route?.originLat && route?.originLng
+        : route?.originLat != null && route?.originLng != null
           ? { lat: route.originLat, lng: route.originLng }
           : null,
     [route],
@@ -217,9 +256,11 @@ export function RideLiveTracker({
 
   const destinationCoords = useMemo(
     () =>
-      route?.destinationLat && route?.destinationLng
-        ? { lat: route.destinationLat, lng: route.destinationLng }
-        : null,
+      route?.passengerDestinationLat != null && route?.passengerDestinationLng != null
+        ? { lat: route.passengerDestinationLat, lng: route.passengerDestinationLng }
+        : route?.destinationLat != null && route?.destinationLng != null
+          ? { lat: route.destinationLat, lng: route.destinationLng }
+          : null,
     [route],
   );
 
@@ -364,6 +405,32 @@ export function RideLiveTracker({
           })}
         </div>
       </div>
+
+      {role === "driver" && ["CONFIRMED", "IN_PROGRESS"].includes(status) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3">
+          <p className="text-xs text-muted-foreground">
+            {currentStage === "IN_PROGRESS"
+              ? `Próximo destino: ${destinationLabel || "destino combinado"}`
+              : `Próximo passo: embarque${pickupLabel ? ` em ${pickupLabel}` : " do passageiro"}`}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant={voiceEnabled ? "default" : "outline"}
+            onClick={() => {
+              if (voiceEnabled) {
+                window.speechSynthesis?.cancel();
+                setVoiceEnabled(false);
+              } else {
+                setVoiceEnabled(true);
+                announceVoiceInstruction();
+              }
+            }}
+          >
+            <Volume2 size={15} /> {voiceEnabled ? "Desativar voz" : "Ouvir próximo passo"}
+          </Button>
+        </div>
+      )}
 
       {/* 2. Controles de Ação de Etapa do Motorista */}
       {role === "driver" && status === "CONFIRMED" && (

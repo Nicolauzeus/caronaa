@@ -114,13 +114,13 @@ export function CompletedRidePix({ rideId }: { rideId: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4" aria-label="Pix da viagem concluída">
       <p className="text-center text-sm font-semibold">
-        Pix disponível para receber ·{" "}
+        Pix disponível. O pagamento ainda não foi confirmado ·{" "}
         {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
           Number(data.amount),
         )}
       </p>
       <p className="text-center text-xs text-muted-foreground">
-        Gerar o QR não confirma que o pagamento foi realizado.
+        A CARONAA não verifica o recebimento. Gerar, copiar ou abrir o QR não confirma pagamento.
       </p>
       {image && (
         <img

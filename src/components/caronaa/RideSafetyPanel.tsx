@@ -17,12 +17,16 @@ export function RideSafetyPanel({
   role,
   viewerUserId,
   status,
+  pickupLabel,
+  destinationLabel,
   onChanged,
 }: {
   rideId: string;
   role: "driver" | "passenger" | "available";
   viewerUserId: string;
   status: string;
+  pickupLabel?: string;
+  destinationLabel?: string;
   onChanged: () => Promise<void>;
 }) {
   const [safety, setSafety] = useState<RideSafety | null>(null);
@@ -135,6 +139,8 @@ export function RideSafetyPanel({
           role={role}
           viewerUserId={viewerUserId}
           status={currentStatus}
+          pickupLabel={pickupLabel}
+          destinationLabel={destinationLabel}
           safety={safety}
           onRefresh={async () => {
             await loadSafety();
