@@ -448,6 +448,8 @@ export type Database = {
           origin_lng: number | null
           passenger_price: number
           quote_id: string
+          route_duration_minutes: number | null
+          route_path: Json | null
           tariff_reference: string
           user_id: string
         }
@@ -463,6 +465,8 @@ export type Database = {
           origin_lng?: number | null
           passenger_price: number
           quote_id?: string
+          route_duration_minutes?: number | null
+          route_path?: Json | null
           tariff_reference: string
           user_id: string
         }
@@ -478,6 +482,8 @@ export type Database = {
           origin_lng?: number | null
           passenger_price?: number
           quote_id?: string
+          route_duration_minutes?: number | null
+          route_path?: Json | null
           tariff_reference?: string
           user_id?: string
         }
@@ -949,6 +955,8 @@ export type Database = {
           passenger_price: number | null
           ride_date: string
           route_distance_km: number | null
+          route_duration_minutes: number | null
+          route_path: Json | null
           route_quote_id: string | null
           routine_date: string | null
           routine_id: string | null
@@ -984,6 +992,8 @@ export type Database = {
           passenger_price?: number | null
           ride_date: string
           route_distance_km?: number | null
+          route_duration_minutes?: number | null
+          route_path?: Json | null
           route_quote_id?: string | null
           routine_date?: string | null
           routine_id?: string | null
@@ -1019,6 +1029,8 @@ export type Database = {
           passenger_price?: number | null
           ride_date?: string
           route_distance_km?: number | null
+          route_duration_minutes?: number | null
+          route_path?: Json | null
           route_quote_id?: string | null
           routine_date?: string | null
           routine_id?: string | null
@@ -1835,6 +1847,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_valid_route_path: { Args: { p_path: Json }; Returns: boolean }
       is_point_compatible_with_route: {
         Args: {
           endpoint_lat: number

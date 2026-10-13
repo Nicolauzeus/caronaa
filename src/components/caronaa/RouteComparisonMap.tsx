@@ -68,7 +68,7 @@ export function RouteComparisonMap({
     if (!map.current || !layer.current) return;
     layer.current.clearLayers();
     const original = L.polyline(
-      route.originalRoute.map((point) => [point.lat, point.lng]),
+      route.originalRoute.map((point) => [point.lat, point.lng] as [number, number]),
       {
         color: "var(--muted-foreground)",
         weight: 4,
@@ -77,7 +77,7 @@ export function RouteComparisonMap({
       },
     ).addTo(layer.current);
     const suggested = L.polyline(
-      route.suggestedRoute.map((point) => [point.lat, point.lng]),
+      route.suggestedRoute.map((point) => [point.lat, point.lng] as [number, number]),
       {
         color: "var(--primary)",
         weight: 6,
