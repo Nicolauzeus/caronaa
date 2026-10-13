@@ -428,6 +428,13 @@
       "when": 1791847689475,
       "tag": "0060_partial_passenger_route_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791849848361,
+      "tag": "0061_profile_vehicle_brand_plate",
+      "breakpoints": true
     }
   ]
 }
