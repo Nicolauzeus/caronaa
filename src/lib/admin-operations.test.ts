@@ -29,6 +29,8 @@ function compatibleData(): OperationData & {
         travel_preferences: null,
         price: null,
         route_quote_id: null,
+        route_path: null,
+        route_duration_minutes: null,
         route_distance_km: null,
         passenger_price: null,
         passenger_group_total: null,
