@@ -77,13 +77,18 @@ export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
-    if (!data.vehicleDescription?.trim()) {
+    const { data: profile, error: profileError } = await context.supabase
+      .from("profiles").select("vehicle_brand, vehicle_description").eq("id", context.userId).single();
+    if (profileError) throw new Error("Não foi possível carregar o veículo do seu perfil.");
+    const vehicleDescription = data.vehicleDescription?.trim() ||
+      [profile.vehicle_brand, profile.vehicle_description].filter(Boolean).join(" · ");
+    if (!vehicleDescription) {
       throw new Error("Informe o veículo antes de publicar a oferta.");
     }
     if (!data.quoteId) throw new Error("Aguarde o preço do percurso antes de publicar.");
     const { data: offerId, error } = await context.supabase.rpc("publish_priced_offer", {
       p_quote_id: data.quoteId,
-      p_details: { ...data, totalPrice: 0 },
+      p_details: { ...data, vehicleDescription, totalPrice: 0 },
       p_preferences: data.preferences,
     });
     if (error) {

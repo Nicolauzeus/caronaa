@@ -18,6 +18,10 @@ export const Route = createFileRoute("/_authenticated/minha-carona/$offerId")({
     meta: [
       { title: "Gerenciar carona — CARONAA" },
       { name: "description", content: "Gerencie solicitações e passageiros da sua oferta." },
+      { property: "og:title", content: "Gerenciar carona — CARONAA" },
+      { property: "og:description", content: "Consulte seu percurso, veículo e passageiros da oferta." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: GerenciarOferta,
@@ -76,7 +80,7 @@ function GerenciarOferta() {
     );
 
   const active =
-    items.find(
+    items.find((item) => item.kind === "offer") ?? items.find(
       (item) =>
         item.status === "MATCHED" || item.status === "CONFIRMED" || item.status === "IN_PROGRESS",
     ) ?? items[0];
@@ -92,6 +96,9 @@ function GerenciarOferta() {
   const unanswered = pendingPassenger.length + needsDriver.length;
   const confirmedTotal =
     items.find((item) => item.driverConfirmedTotal != null)?.driverConfirmedTotal ?? 0;
+  const operationalRide = confirmed.find((ride) =>
+    ride.rideId && ["CONFIRMED", "IN_PROGRESS"].includes(ride.status),
+  );
 
   return (
     <AppShell>
@@ -151,14 +158,12 @@ function GerenciarOferta() {
               conforme o próprio trecho.
             </p>
           )}
-          {confirmed.some((ride) => ["CONFIRMED", "IN_PROGRESS"].includes(ride.status)) && (
+          {operationalRide?.rideId && (
             <Button asChild className="mt-4">
               <Link
                 to="/viagem/$rideId"
                 params={{
-                  rideId: confirmed.find((ride) =>
-                    ["CONFIRMED", "IN_PROGRESS"].includes(ride.status),
-                  )!.rideId!,
+                  rideId: operationalRide.rideId,
                 }}
               >
                 Acompanhar viagem <ArrowRight size={16} />

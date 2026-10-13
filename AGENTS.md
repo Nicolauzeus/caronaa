@@ -14,6 +14,8 @@
 - Keep CARONAA sample users and rides in `src/mockData.ts`, accessed through small mock services; this keeps the visual MVP replaceable by real data later.
 - Keep the shared app header and navigation in a reusable shell, while every content page owns its TanStack route and metadata; this preserves direct links and responsive navigation.
 - Keep authentication session state in the root AuthProvider and consume it through useAuth; this prevents duplicate auth listeners and keeps navigation synchronized.
+- Keep owned offer rows alongside passenger matches and prefer the offer row for driver summaries; unmatched offers remain manageable and passenger segments cannot replace the driver's route.
+- Store vehicle brand and plate in the owner-only profile, reuse the default description at publication, and exclude plate from public projections; this avoids repeated entry without exposing registration data.
 - Resolve browser connection settings at build time from a strict URL/publishable-key allowlist, preserving deployment bindings over local files and rejecting missing values; this prevents blank-screen artifacts without exposing private credentials.
 
 - Use database roles for administrator access; the first registration receives admin atomically, while later registrations receive user.
