@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { calculatePassengerFare, PASSENGER_TARIFF } from "./ride-cost";
-import { getDrivingDistanceKm } from "./road-routing";
+import { getDrivingRoute } from "./road-routing";
 
 export const quoteOfferRoute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -32,15 +32,16 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
     ) {
       throw new Error("Revise os endereços para calcular o preço do percurso.");
     }
-    let distanceKm: number;
+    let route;
     try {
-      distanceKm = await getDrivingDistanceKm(
+      route = await getDrivingRoute([
         { lat: origin.lat, lng: origin.lng },
         { lat: destination.lat, lng: destination.lng },
-      );
+      ]);
     } catch {
-      throw new Error("Não foi possível calcular o preço. Tente novamente.");
+      throw new Error("Não foi possível calcular o percurso rodoviário. Tente novamente.");
     }
+    const distanceKm = route.distanceKm;
     const pricePerPassenger = calculatePassengerFare(distanceKm);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const quoteClient = supabaseAdmin as unknown as {
@@ -66,11 +67,19 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
         destination_lat: destination.lat,
         destination_lng: destination.lng,
         distance_km: distanceKm,
+        route_path: route.routePath,
+        route_duration_minutes: route.durationMinutes,
         passenger_price: pricePerPassenger,
         tariff_reference: PASSENGER_TARIFF.reference,
       })
       .select("quote_id")
       .single();
     if (error || !quote) throw new Error("Não foi possível salvar o preço. Tente novamente.");
-    return { quoteId: quote.quote_id, distanceKm, pricePerPassenger };
+    return {
+      quoteId: quote.quote_id,
+      distanceKm,
+      durationMinutes: route.durationMinutes,
+      pricePerPassenger,
+      routePath: route.routePath,
+    };
   });

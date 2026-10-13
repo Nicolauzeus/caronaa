@@ -1,39 +1,100 @@
 import { describe, expect, it, vi } from "vitest";
-import { getDrivingDistanceKm } from "./road-routing";
+import { getMultiStopRoute } from "./road-routing";
 
-describe("OSRM road-distance adapter", () => {
-  it("returns the road distance in km, not a geometric estimate", async () => {
-    const request = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ code: "Ok", routes: [{ distance: 12_345.678 }] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+describe("OSRM ordered multi-stop route query", () => {
+  it("preserves supplied waypoint order and maps full road geometry", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "Ok",
+          routes: [
+            {
+              distance: 12500,
+              duration: 1800,
+              geometry: {
+                type: "LineString",
+                coordinates: [
+                  [-38.5, -3.7],
+                  [-38.4, -3.6],
+                ],
+              },
+              legs: [
+                { distance: 5000, duration: 600 },
+                { distance: 7500, duration: 1200 },
+              ],
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
     );
-    await expect(
-      getDrivingDistanceKm({ lat: -3.73, lng: -38.52 }, { lat: -3.77, lng: -38.48 }, request),
-    ).resolves.toBe(12.345678);
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining("/route/v1/driving/-38.52,-3.73;-38.48,-3.77"),
-      expect.objectContaining({
-        headers: { Accept: "application/json", "User-Agent": "CARONAA/1.0 (ride fare quote)" },
-        signal: expect.any(AbortSignal),
-      }),
+    const route = await getMultiStopRoute(
+      [
+        { lat: -3.7, lng: -38.5 },
+        { lat: -3.6, lng: -38.4 },
+        { lat: -3.5, lng: -38.3 },
+      ],
+      fetchMock as unknown as typeof fetch,
     );
+
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain("/-38.5,-3.7;-38.4,-3.6;-38.3,-3.5?");
+    expect(requestedUrl).toContain("overview=full&geometries=geojson");
+    expect(route.distanceKm).toBe(12.5);
+    expect(route.durationMinutes).toBe(30);
+    expect(route.routePath).toEqual([
+      { lat: -3.7, lng: -38.5 },
+      { lat: -3.6, lng: -38.4 },
+    ]);
+    expect(route.legs).toHaveLength(2);
   });
 
-  it("fails closed for no route, HTTP errors, and invalid coordinates", async () => {
-    const noRoute = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ code: "NoRoute", routes: [] }), { status: 200 }),
-    );
+  it("fails closed if OSRM is unavailable or geometry is missing", async () => {
     await expect(
-      getDrivingDistanceKm({ lat: -3.7, lng: -38.5 }, { lat: -3.8, lng: -38.4 }, noRoute),
-    ).rejects.toThrow("Não foi possível calcular");
-    const unavailable = vi.fn().mockResolvedValue(new Response("unavailable", { status: 503 }));
-    await expect(
-      getDrivingDistanceKm({ lat: -3.7, lng: -38.5 }, { lat: -3.8, lng: -38.4 }, unavailable),
+      getMultiStopRoute(
+        [
+          { lat: 0, lng: 0 },
+          { lat: 1, lng: 1 },
+        ],
+        vi.fn().mockResolvedValue(new Response("", { status: 503 })) as unknown as typeof fetch,
+      ),
     ).rejects.toThrow("indisponível");
     await expect(
-      getDrivingDistanceKm({ lat: 120, lng: -38.5 }, { lat: -3.8, lng: -38.4 }, noRoute),
-    ).rejects.toThrow("Coordenadas inválidas");
+      getMultiStopRoute(
+        [
+          { lat: 0, lng: 0 },
+          { lat: 1, lng: 1 },
+        ],
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              code: "Ok",
+              routes: [{ distance: 1000, duration: 60 }],
+            }),
+            { status: 200 },
+          ),
+        ) as unknown as typeof fetch,
+      ),
+    ).rejects.toThrow("geometria");
+  });
+
+  it("rejects invalid coordinates and excessive waypoint counts before network access", async () => {
+    const fetchMock = vi.fn();
+    await expect(
+      getMultiStopRoute(
+        [
+          { lat: 91, lng: 0 },
+          { lat: 1, lng: 1 },
+        ],
+        fetchMock as unknown as typeof fetch,
+      ),
+    ).rejects.toThrow("inválidas");
+    await expect(
+      getMultiStopRoute(
+        Array.from({ length: 15 }, (_, i) => ({ lat: i, lng: i })),
+        fetchMock as unknown as typeof fetch,
+      ),
+    ).rejects.toThrow("14 pontos");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

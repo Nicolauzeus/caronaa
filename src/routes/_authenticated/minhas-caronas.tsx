@@ -12,6 +12,7 @@ import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
 import { RouteMap } from "@/components/caronaa/RouteMap";
+import { RouteSuggestionPanel } from "@/components/caronaa/RouteSuggestionPanel";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { RideRoutineManager } from "@/components/caronaa/RideRoutineManager";
 import { formatBrl } from "@/lib/ride-cost";
@@ -370,7 +371,7 @@ function Tab({
 }
 
 function DriverOfferSummary({ rides }: { rides: RideSummary[] }) {
-   const offer = rides.find((ride) => ride.kind === "offer") ?? rides[0];
+  const offer = rides.find((ride) => ride.kind === "offer") ?? rides[0];
   const proposals = rides.filter((ride) => ride.rideId && ride.status === "MATCHED");
   const waitingDriver = proposals.filter(
     (ride) => ride.passengerAcceptedAt && !ride.driverAcceptedAt,
@@ -424,6 +425,7 @@ function DriverOfferSummary({ rides }: { rides: RideSummary[] }) {
         Recebido: não verificável automaticamente sem integração de confirmação do pagamento.
       </p>
       <RemainingPotential offerId={offer.offerId} freeSeats={offer.seatsRemaining ?? 0} />
+      {proposals.length > 0 ? <RouteSuggestionPanel offerId={offer.offerId} /> : null}
       <Button asChild className="mt-4 w-full sm:w-auto">
         <Link to="/minha-carona/$offerId" params={{ offerId: offer.offerId }}>
           {waitingDriver
