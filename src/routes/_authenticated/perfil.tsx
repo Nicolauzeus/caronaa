@@ -64,6 +64,8 @@ type ProfileData = {
   updated_at: string;
   gender: "FEMININO" | "MASCULINO" | null;
   vehicle_description: string | null;
+  vehicle_brand: string | null;
+  vehicle_plate: string | null;
 };
 
 function Perfil() {
@@ -87,6 +89,8 @@ function Perfil() {
   const [city, setCity] = useState("");
   const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
   const [vehicleDescription, setVehicleDescription] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
@@ -151,13 +155,15 @@ function Perfil() {
             : null;
         const { data: vehicleRow } = await supabase
           .from("profiles")
-          .select("vehicle_description")
+          .select("vehicle_description, vehicle_brand, vehicle_plate")
           .eq("id", user.id)
           .maybeSingle();
         profileData.vehicle_description =
           typeof vehicleRow?.vehicle_description === "string"
             ? vehicleRow.vehicle_description
             : null;
+        profileData.vehicle_brand = vehicleRow?.vehicle_brand ?? null;
+        profileData.vehicle_plate = vehicleRow?.vehicle_plate ?? null;
 
         setProfile(profileData);
 
@@ -167,6 +173,8 @@ function Perfil() {
         setCity(profileData.city ?? "");
         setGender(profileData.gender ?? "");
         setVehicleDescription(profileData.vehicle_description ?? "");
+        setVehicleBrand(profileData.vehicle_brand ?? "");
+        setVehiclePlate(profileData.vehicle_plate ?? "");
 
         setPhoto(profileData.avatar_url);
         setSavedPhoto(profileData.avatar_url);
@@ -421,6 +429,15 @@ function Perfil() {
 
       const normalizedName = fullName.trim();
       const normalizedCity = city.trim();
+      const normalizedPlate = vehiclePlate.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (normalizedPlate && !/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(normalizedPlate)) {
+        toast.error("Informe uma placa válida, como ABC1234 ou ABC1D23.");
+        return;
+      }
+      if (vehicleBrand.trim().length > 60 || vehicleDescription.trim().length > 160) {
+        toast.error("Revise a marca e a descrição do veículo.");
+        return;
+      }
 
       if (!normalizedName) {
         toast.error("Informe seu nome antes de salvar.");
@@ -435,6 +452,9 @@ function Perfil() {
         .update({
           full_name: normalizedName,
           city: normalizedCity || null,
+          vehicle_brand: vehicleBrand.trim() || null,
+          vehicle_plate: normalizedPlate || null,
+          vehicle_description: vehicleDescription.trim() || null,
           updated_at: updatedAt,
         })
         .eq("id", user.id)
@@ -468,6 +488,9 @@ function Perfil() {
       }
       updatedProfile.gender = gender || null;
       updatedProfile.vehicle_description = vehicleDescription.trim() || null;
+      updatedProfile.vehicle_brand = vehicleBrand.trim() || null;
+      updatedProfile.vehicle_plate = normalizedPlate || null;
+      setVehiclePlate(normalizedPlate);
 
       setProfile(updatedProfile);
       setFullName(updatedProfile.full_name);
@@ -700,11 +723,13 @@ function Perfil() {
               </label>
 
               <Field
-                label="Veículo padrão para oferecer carona"
+                label="Modelo e cor do veículo"
                 value={vehicleDescription}
                 onChange={setVehicleDescription}
                 placeholder="Ex.: Honda Fit prata"
               />
+              <Field label="Marca do carro" value={vehicleBrand} onChange={setVehicleBrand} placeholder="Ex.: Honda" />
+              <Field label="Placa do carro" value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())} placeholder="ABC1D23" />
 
               <div className="md:col-span-2">
                 <Field label="E-mail" value={email} readOnly />

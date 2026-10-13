@@ -192,7 +192,7 @@ function mapOffer(row: OfferRow, profile: RideProfile, viewerUserId: string): Ri
     id: String(r["offer_id"]),
     routineId: typeof r["routine_id"] === "string" ? r["routine_id"] : null,
     kind: "offer",
-    role: "available",
+    role: String(r["user_id"]) === viewerUserId ? "driver" : "available",
     origin: String(r["origin"] ?? ""),
     destination: String(r["destination"] ?? ""),
     rideDate: String(r["ride_date"] ?? ""),
@@ -706,7 +706,6 @@ export const getMyRides = createServerFn({ method: "GET" })
       (ride) => !["CANCELLED", "NO_SHOW"].includes(String(ride.status)),
     );
     const matchedRequestIds = new Set(activeRideLinks.map((ride) => String(ride.request_id)));
-    const matchedOfferIds = new Set(activeRideLinks.map((ride) => String(ride.offer_id)));
 
     const currentProfile = profileFor(context.userId, profiles, verifications);
 
@@ -746,7 +745,6 @@ export const getMyRides = createServerFn({ method: "GET" })
           ),
         ),
       ...(offers ?? [])
-        .filter((offer) => !matchedOfferIds.has(String(offer.offer_id)))
         .map((offer) => mapOffer(offer, currentProfile, context.userId)),
     ];
 

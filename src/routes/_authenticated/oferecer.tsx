@@ -100,6 +100,7 @@ function Oferecer() {
   const publishingRef = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const [quote, setQuote] = useState<OfferQuote | null>(null);
+  const [profilePlate, setProfilePlate] = useState("");
   const receiveQuote = useCallback((value: OfferQuote | null) => setQuote(value), []);
   const [form, setForm] = useState<OferecerFormState>(() => ({
     ...initial,
@@ -123,14 +124,16 @@ function Oferecer() {
       if (!auth.user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("vehicle_description")
+        .select("vehicle_description, vehicle_brand, vehicle_plate")
         .eq("id", auth.user.id)
         .maybeSingle();
-      if (active && typeof data?.vehicle_description === "string") {
+      if (active && data) {
+        setProfilePlate(data.vehicle_plate ?? "");
+        const savedVehicle = [data.vehicle_brand, data.vehicle_description].filter(Boolean).join(" · ");
         setForm((current) =>
           current.vehicle.trim()
             ? current
-            : { ...current, vehicle: data.vehicle_description ?? "" },
+            : { ...current, vehicle: savedVehicle },
         );
       }
     })();
@@ -389,7 +392,8 @@ function Oferecer() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Veículo preenchido pelo seu perfil; a alteração vale apenas para esta oferta.
+                      {profilePlate ? `Placa cadastrada: ${profilePlate}. ` : ""}
+                      <Link to="/perfil" className="font-semibold text-primary underline">Meu veículo no perfil</Link>
                     </p>
                     <OfferFarePreview
                       origin={form.origin}

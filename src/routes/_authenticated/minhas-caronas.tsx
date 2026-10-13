@@ -40,6 +40,7 @@ function MinhasCaronas() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hashHandled = useRef(false);
+  const initialTabSelected = useRef(false);
 
   const refreshRides = useCallback(
     async (showLoading = true) => {
@@ -49,6 +50,10 @@ function MinhasCaronas() {
         const data = await loadMyRides();
         setPassengerRides(data.passenger);
         setDriverRides(data.driver);
+        if (!initialTabSelected.current) {
+          initialTabSelected.current = true;
+          if (data.driver.length > 0 && data.passenger.length === 0) setTab("disponiveis");
+        }
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -365,7 +370,7 @@ function Tab({
 }
 
 function DriverOfferSummary({ rides }: { rides: RideSummary[] }) {
-  const offer = rides[0];
+   const offer = rides.find((ride) => ride.kind === "offer") ?? rides[0];
   const proposals = rides.filter((ride) => ride.rideId && ride.status === "MATCHED");
   const waitingDriver = proposals.filter(
     (ride) => ride.passengerAcceptedAt && !ride.driverAcceptedAt,
