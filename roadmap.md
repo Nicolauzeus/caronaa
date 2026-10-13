@@ -1,4 +1,5 @@
 - [x] Rebuild the sign-in screen from the supplied visual reference.
+- [ ] Repair driver-owned offer listing/details and persist profile vehicle brand/license plate for reuse.
 - [x] Add persistent light and dark modes across the app and admin area.
 - [x] Verify administrator access uses the secure database role.
 - [x] Create CARONAA visual identity and shared navigation.
