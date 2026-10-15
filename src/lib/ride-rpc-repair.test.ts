@@ -1,32 +1,33 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("canonical ride creation RPC contract", () => {
+describe("canonical priced ride creation RPC contract", () => {
   const service = readFileSync("src/lib/ride-matching.functions.ts", "utf8");
   const repair = readFileSync("drizzle/migrations/0032_canonical_ride_creation_rpcs.sql", "utf8");
-  it("sends absent coordinates and request price explicitly instead of omitting arguments", () => {
-    const isPreferred = service.includes("create_preferred_ride");
-    if (isPreferred) {
-      expect(service).toContain('p_kind: "request"');
-      expect(service).toContain("p_details: data");
-    } else {
-      expect(service).toContain("p_origin_lat: data.originLat ?? null");
-      expect(service).toContain("p_destination_lng: data.destinationLng ?? null");
-      expect(service).toContain("p_price: data.price ?? null");
-    }
+  const priced = readFileSync("drizzle/migrations/0060_partial_passenger_route_quotes.sql", "utf8");
+
+  it("requires a trusted road quote and never accepts a client-provided price", () => {
+    expect(service).toContain("quoteId: z.string().uuid()");
+    expect(service).toContain('client.rpc("create_priced_ride_request"');
+    expect(service).toContain("p_quote_id: data.quoteId");
+    expect(service).not.toContain("p_price: data.price");
+    expect(priced).toContain("request_available_ride_segment");
   });
-  it("never retries a failed creation with a less complete payload", () => {
-    const isPreferred = service.includes("create_preferred_ride");
-    if (isPreferred) {
-      expect(service.match(/\.rpc\("create_preferred_ride"/g)).toHaveLength(1);
-      expect(service.match(/\.rpc\("publish_priced_offer"/g)).toHaveLength(1);
-      expect(service).not.toMatch(/\.rpc\("create_ride_(?:request|offer)"/);
-    } else {
-      expect(service.match(/\.rpc\("create_ride_request"/g)).toHaveLength(1);
-      expect(service.match(/\.rpc\("create_ride_offer"/g)).toHaveLength(1);
-    }
+
+  it("publishes offers with the priced RPC and verified vehicle details", () => {
+    expect(service).toContain('context.supabase.rpc("publish_priced_offer"');
+    expect(service).toContain("p_quote_id: data.quoteId");
+    expect(service).toContain("profile.vehicle_brand");
+    expect(service).toContain('if (!data.quoteId)');
   });
-  it("removes stale overloads without cascading into dependent application objects", () => {
+
+  it("never retries a rejected request using an unpriced legacy creation path", () => {
+    expect(service.match(/\.rpc\("create_priced_ride_request"/g)).toHaveLength(1);
+    expect(service.match(/\.rpc\("publish_priced_offer"/g)).toHaveLength(1);
+    expect(service).not.toMatch(/\.rpc\("create_ride_(?:request|offer)"/);
+  });
+
+  it("keeps historic canonical RPC repair without destructive cascade", () => {
     expect(repair).toContain("DROP FUNCTION IF EXISTS public.create_ride_offer");
     expect(repair).toContain("DROP FUNCTION IF EXISTS public.create_ride_request");
     expect(repair).not.toContain("CASCADE");
