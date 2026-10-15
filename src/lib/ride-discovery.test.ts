@@ -91,7 +91,10 @@ describe("secure discovery migration contracts (not database integration)", () =
       requestStart,
       profileStart > requestStart ? profileStart : undefined,
     );
-    expect(request).toContain('"request_available_ride_offer"');
+    // Modern priced segment requests require an authenticated quote and do not downgrade to legacy RPCs.
+    expect(request).toContain('"request_available_ride_segment"');
+    expect(request).toContain("p_quote_id: data.quoteId");
+    expect(request).not.toContain('client.rpc("request_available_ride_offer"');
     expect(request).not.toContain(".from(");
   });
   it("retains participant authorization and invalid status rejection", () => {
