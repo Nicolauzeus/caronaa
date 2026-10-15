@@ -24,59 +24,11 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     L: typeof Leaflet;
     map: Leaflet.Map;
     markers: Leaflet.LayerGroup;
-    routeLine: Leaflet.Polyline | null;
   } | null>(null);
   const latest = useRef(props);
   latest.current = props;
   const [ready, setReady] = useState(false);
   const [mapError, setMapError] = useState(false);
-  const [roadRoute, setRoadRoute] = useState<{ path: [number, number][]; km: number; minutes: number } | null>(null);
-  const [routeError, setRouteError] = useState(false);
-  const origin = props.originIsCurrent && validPoint(props.userPosition) ? props.userPosition : props.origin;
-  // GPS varies slightly even while standing still; avoid routing on every jitter.
-  const originLat = origin?.lat == null ? undefined : Math.round(origin.lat * 1000) / 1000;
-  const originLng = origin?.lng == null ? undefined : Math.round(origin.lng * 1000) / 1000;
-  const destLat = props.destination?.lat == null ? undefined : Math.round(props.destination.lat * 10000) / 10000;
-  const destLng = props.destination?.lng == null ? undefined : Math.round(props.destination.lng * 10000) / 10000;
-  useEffect(() => {
-    if (!validPoint({ lat: originLat, lng: originLng }) || !validPoint({ lat: destLat, lng: destLng })) {
-      setRoadRoute(null);
-      setRouteError(false);
-      return;
-    }
-    let alive = true;
-    const abort = new AbortController();
-    // Keep the last valid road geometry displayed while recalculating.
-    setRouteError(false);
-    const timer = window.setTimeout(async () => {
-      const timeout = window.setTimeout(() => abort.abort(), 8000);
-      try {
-        const coords = String(originLng) + "," + String(originLat) + ";" + String(destLng) + "," + String(destLat);
-        const response = await fetch("https://router.project-osrm.org/route/v1/driving/" + coords + "?overview=full&geometries=geojson&steps=false", { signal: abort.signal });
-        if (!response.ok) throw new Error("Router unavailable");
-        const data = await response.json();
-        const route = data.routes?.[0];
-        if (data.code !== "Ok" || !route || !Number.isFinite(route.distance) ||
-            !Number.isFinite(route.duration) || route.distance <= 0 ||
-            !Array.isArray(route.geometry?.coordinates) || route.geometry.coordinates.length < 2) {
-          throw new Error("Invalid route");
-        }
-        const path = route.geometry.coordinates.map((p: number[]) => {
-          if (!Number.isFinite(p[0]) || !Number.isFinite(p[1]) || Math.abs(p[0]) > 180 || Math.abs(p[1]) > 90) {
-            throw new Error("Invalid coordinate");
-          }
-          return [p[1], p[0]] as [number, number];
-        });
-        if (alive) setRoadRoute({ path, km: route.distance / 1000, minutes: route.duration / 60 });
-      } catch {
-        if (alive) setRouteError(true);
-      } finally {
-        window.clearTimeout(timeout);
-      }
-    }, 350);
-    return () => { alive = false; window.clearTimeout(timer); abort.abort(); };
-  }, [originLat, originLng, destLat, destLng]);
-
   const hasPoint =
     validPoint(props.userPosition) || validPoint(props.origin) || validPoint(props.destination);
   useEffect(() => {
@@ -104,7 +56,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
         });
         map.on("dragstart", () => latest.current.onDrag());
         const markers = L.layerGroup().addTo(map);
-        runtime.current = { L, map, markers, routeLine: null };
+        runtime.current = { L, map, markers };
         if (typeof ResizeObserver !== "undefined") {
           resize = new ResizeObserver(() => map.invalidateSize());
           resize.observe(container.current);
@@ -178,25 +130,6 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     props.originIsCurrent,
   ]);
 
-  useEffect(() => {
-    const current = runtime.current;
-    if (!ready || !current) return;
-    if (!roadRoute) {
-      current.routeLine?.remove();
-      current.routeLine = null;
-      return;
-    }
-    const line = current.L.polyline(roadRoute.path, {
-      color: "#FFB000", weight: 6, opacity: 0.96, lineCap: "round", lineJoin: "round",
-    }).addTo(current.map);
-    current.routeLine?.remove();
-    current.routeLine = line;
-    cameraMode.current = "route";
-    current.map.fitBounds(line.getBounds(), {
-      paddingTopLeft: [30, 40], paddingBottomRight: [35, 100], maxZoom: 16, animate: false,
-    });
-  }, [roadRoute, ready]);
-
   const previous = useRef<string | null>(null);
   const recentered = useRef(props.recenterVersion);
   const cameraMode = useRef<"user" | "route">("user");
@@ -226,7 +159,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
         ],
         { paddingTopLeft: [32, 32], paddingBottomRight: [48, 72], maxZoom: 16, animate: false },
       );
-    } else if (props.following && validPoint(props.userPosition) && cameraMode.current === "user" && !roadRoute) {
+    } else if (props.following && validPoint(props.userPosition) && cameraMode.current === "user") {
       instance.map.panTo([props.userPosition.lat, props.userPosition.lng], { animate: false });
     } else if (newRoute) {
       const point = [props.origin, props.destination].find(validPoint);
@@ -242,7 +175,6 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     props.destination?.lat,
     props.destination?.lng,
     props.originIsCurrent,
-    roadRoute,
   ]);
 
   return (
@@ -265,16 +197,6 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
           className="absolute left-3 top-3 rounded-md bg-background px-3 py-2 text-xs shadow-sm"
         >
           Localizando você...
-        </p>
-      )}
-      {roadRoute && (
-        <p role="status" className="absolute left-3 top-3 z-10 rounded-xl bg-background/95 px-3 py-2 text-xs font-bold shadow-md">
-          Trajeto pelas ruas: {roadRoute.km.toFixed(1).replace(".", ",")} km · cerca de {Math.max(1, Math.round(roadRoute.minutes))} min
-        </p>
-      )}
-      {routeError && (
-        <p role="status" className="absolute left-3 right-16 top-3 z-10 rounded-lg bg-background/95 px-3 py-2 text-xs shadow-sm">
-          Não foi possível traçar a rota. Ajuste os pontos ou tente novamente.
         </p>
       )}
       {mapError && (

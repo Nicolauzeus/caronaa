@@ -36,8 +36,6 @@ import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacio
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
-import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
-import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
@@ -183,18 +181,6 @@ const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
   path: '/validacao',
   getParentRoute: () => AdminRoute,
 } as any)
-const AuthenticatedMinhaCaronaOfferIdRoute =
-  AuthenticatedMinhaCaronaOfferIdRouteImport.update({
-    id: '/minha-carona/$offerId',
-    path: '/minha-carona/$offerId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedViagemRideIdRoute =
-  AuthenticatedViagemRideIdRouteImport.update({
-    id: '/viagem/$rideId',
-    path: '/viagem/$rideId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AdminFormulariosIndexRoute = AdminFormulariosIndexRouteImport.update({
   id: '/formularios/',
   path: '/formularios/',
@@ -271,8 +257,6 @@ export interface FileRoutesByFullPath {
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
-  '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
-  '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
@@ -309,8 +293,6 @@ export interface FileRoutesByTo {
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin': typeof AdminIndexRoute
-  '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
-  '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
@@ -350,8 +332,6 @@ export interface FileRoutesById {
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/admin/': typeof AdminIndexRoute
-  '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
-  '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
@@ -391,8 +371,6 @@ export interface FileRouteTypes {
     | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
-    | '/minha-carona/$offerId'
-    | '/viagem/$rideId'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/admin/formularios/'
@@ -429,8 +407,6 @@ export interface FileRouteTypes {
     | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin'
-    | '/minha-carona/$offerId'
-    | '/viagem/$rideId'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/admin/formularios'
@@ -469,8 +445,6 @@ export interface FileRouteTypes {
     | '/admin/sugestoes'
     | '/admin/validacao'
     | '/admin/'
-    | '/_authenticated/minha-carona/$offerId'
-    | '/_authenticated/viagem/$rideId'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/admin/formularios/'
@@ -690,20 +664,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminValidacaoRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_authenticated/minha-carona/$offerId': {
-      id: '/_authenticated/minha-carona/$offerId'
-      path: '/minha-carona/$offerId'
-      fullPath: '/minha-carona/$offerId'
-      preLoaderRoute: typeof AuthenticatedMinhaCaronaOfferIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/viagem/$rideId': {
-      id: '/_authenticated/viagem/$rideId'
-      path: '/viagem/$rideId'
-      fullPath: '/viagem/$rideId'
-      preLoaderRoute: typeof AuthenticatedViagemRideIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/admin/formularios/': {
       id: '/admin/formularios/'
       path: '/formularios'
@@ -775,8 +735,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
   AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
-  AuthenticatedMinhaCaronaOfferIdRoute: typeof AuthenticatedMinhaCaronaOfferIdRoute
-  AuthenticatedViagemRideIdRoute: typeof AuthenticatedViagemRideIdRoute
   AuthenticatedPerfilViagemRideIdUserIdRoute: typeof AuthenticatedPerfilViagemRideIdUserIdRoute
 }
 
@@ -785,8 +743,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
-  AuthenticatedMinhaCaronaOfferIdRoute: AuthenticatedMinhaCaronaOfferIdRoute,
-  AuthenticatedViagemRideIdRoute: AuthenticatedViagemRideIdRoute,
   AuthenticatedPerfilViagemRideIdUserIdRoute:
     AuthenticatedPerfilViagemRideIdUserIdRoute,
 }

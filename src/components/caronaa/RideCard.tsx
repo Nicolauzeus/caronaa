@@ -55,20 +55,9 @@ function getStatusLabel(status: string) {
 export function RideCard({
   ride,
   passengerCount = 1,
-  segmentRequest,
-  onQuoteExpired,
 }: {
   ride: RideSummary;
   passengerCount?: number;
-  segmentRequest?: {
-    quoteId: string;
-    distanceKm: number;
-    pricePerPassenger: number;
-    rideDate: string;
-    departureTime: string;
-    timeToleranceMinutes: 5 | 15 | 30 | 60;
-  };
-  onQuoteExpired?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -80,27 +69,15 @@ export function RideCard({
   const canRequest = ride.kind === "offer" && ride.role === "available" && ride.offerId;
 
   async function requestRide() {
-    if (!ride.offerId || !segmentRequest) return;
+    if (!ride.offerId) return;
     setRequesting(true);
     try {
-      await requestOffer({
-        data: {
-          offerId: ride.offerId,
-          quoteId: segmentRequest.quoteId,
-          rideDate: segmentRequest.rideDate,
-          departureTime: segmentRequest.departureTime,
-          timeToleranceMinutes: segmentRequest.timeToleranceMinutes,
-          passengerCount,
-        },
-      });
+      await requestOffer({ data: { offerId: ride.offerId, passengerCount } });
       setRequested(true);
       toast.success("Carona solicitada", {
-        description:
-          "Seu trecho e preço foram enviados. A viagem só será confirmada após os dois aceites.",
+        description: "Seu pedido foi registrado e o matching será atualizado automaticamente.",
       });
     } catch (error) {
-      if (error instanceof Error && /cotação expirou|quote.*expired/i.test(error.message))
-        onQuoteExpired?.();
       toast.error(error instanceof Error ? error.message : "Não foi possível solicitar a carona.");
     } finally {
       setRequesting(false);
@@ -165,23 +142,6 @@ export function RideCard({
           </p>
         </div>
       )}
-      {segmentRequest && (
-        <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2.5">
-          <p className="text-xs font-semibold text-muted-foreground">
-            Seu trecho cotado por estrada
-          </p>
-          <p className="mt-0.5 font-bold text-primary">
-            {formatBrl(segmentRequest.pricePerPassenger)} por pessoa
-            {passengerCount > 1
-              ? ` · grupo ${formatBrl(Math.round(segmentRequest.pricePerPassenger * passengerCount * 100) / 100)}`
-              : ""}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {segmentRequest.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km ·
-            valor congelado para esta proposta
-          </p>
-        </div>
-      )}
       {expanded && (
         <div className="mt-3 space-y-2 rounded-md bg-secondary p-3 text-sm text-secondary-foreground">
           <p className="flex items-center gap-2">
@@ -217,7 +177,7 @@ export function RideCard({
           <Button
             type="button"
             className="h-10 flex-1"
-            disabled={requested || requesting || !segmentRequest}
+            disabled={requested || requesting}
             onClick={requestRide}
           >
             {requested ? (
@@ -226,8 +186,6 @@ export function RideCard({
               </>
             ) : requesting ? (
               "Solicitando..."
-            ) : !segmentRequest ? (
-              "Informe trecho e horário"
             ) : (
               "Solicitar carona"
             )}

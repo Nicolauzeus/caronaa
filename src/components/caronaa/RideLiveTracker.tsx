@@ -1,9 +1,10 @@
 import { LiveRideMap } from "./LiveRideMap";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Car,
   CheckCircle2,
+  Clock,
   Flag,
   Info,
   MapPin,
@@ -12,7 +13,6 @@ import {
   ShieldCheck,
   Smartphone,
   User,
-  Volume2,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -41,8 +41,6 @@ export interface RideLiveTrackerProps {
   viewerUserId: string;
   status: string;
   safety: RideSafety;
-  pickupLabel?: string;
-  destinationLabel?: string;
   onRefresh: () => Promise<void>;
 }
 
@@ -60,17 +58,13 @@ export function RideLiveTracker({
   viewerUserId,
   status,
   safety,
-  pickupLabel,
-  destinationLabel,
   onRefresh,
 }: RideLiveTrackerProps) {
   const [sharing, setSharing] = useState(false);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [lastLocalUpdate, setLastLocalUpdate] = useState<Date | null>(null);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [clock, setClock] = useState(Date.now());
-  const lastVoiceStage = useRef<TransitStage | null>(null);
   const refreshRef = useRef(onRefresh);
   refreshRef.current = onRefresh;
   const consentKey = `caronaa:location:${viewerUserId}:${rideId}`;
@@ -87,38 +81,6 @@ export function RideLiveTracker({
         : status === "CANCELLED"
           ? "CANCELLED"
           : (safety.transitStage ?? "CONFIRMED");
-
-  const announceVoiceInstruction = useCallback(() => {
-    if (!("speechSynthesis" in window)) {
-      toast.error("Este navegador não oferece orientação por voz.");
-      setVoiceEnabled(false);
-      return;
-    }
-    const instruction =
-      currentStage === "CONFIRMED" || currentStage === "DRIVER_EN_ROUTE"
-        ? `Próxima ação: seguir para o embarque${pickupLabel ? ` em ${pickupLabel}` : " do passageiro"}. Use o aplicativo de mapas para instruções de rota.`
-        : currentStage === "AWAITING_BOARDING"
-          ? "Você chegou ao embarque. Valide o QR code ou o PIN antes de iniciar a viagem."
-          : currentStage === "IN_PROGRESS"
-            ? `Viagem em andamento. O destino deste passageiro é ${destinationLabel || "o destino combinado"}. Use o aplicativo de mapas para instruções de rota.`
-            : TRANSIT_STAGE_DESCRIPTIONS[currentStage];
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(instruction);
-    utterance.lang = "pt-BR";
-    utterance.rate = 0.92;
-    window.speechSynthesis.speak(utterance);
-    lastVoiceStage.current = currentStage;
-  }, [currentStage, destinationLabel, pickupLabel]);
-
-  useEffect(() => {
-    if (role === "driver" && voiceEnabled && lastVoiceStage.current !== currentStage) {
-      announceVoiceInstruction();
-    }
-    if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status)) {
-      window.speechSynthesis?.cancel();
-      setVoiceEnabled(false);
-    }
-  }, [announceVoiceInstruction, currentStage, role, status, voiceEnabled]);
 
   // Atualização periódica do relógio interno para cálculo de "Ao vivo" vs "Desatualizado"
   useEffect(() => {
@@ -178,7 +140,7 @@ export function RideLiveTracker({
       sessionStorage.removeItem(consentKey);
       setSharing(false);
     }
-  }, [status, sharing, consentKey]);
+  }, [status, sharing]);
 
   // Alternância do consentimento explícito
   const handleToggleSharing = async (enabled: boolean) => {
@@ -226,12 +188,7 @@ export function RideLiveTracker({
 
   // Status de atualização das posições
   const getPositionStatus = (loc?: RidePosition & { capturedAt: string }) => {
-    if (!loc)
-      return {
-        label: "Compartilhamento pausado",
-        color: "text-muted-foreground",
-        state: "paused" as const,
-      };
+    if (!loc) return { label: "Compartilhamento pausado", color: "text-muted-foreground", state: "paused" as const };
     const ageSeconds = Math.round((clock - new Date(loc.capturedAt).getTime()) / 1000);
     if (ageSeconds <= 60) {
       return { label: "Ao vivo", color: "text-emerald-500", state: "live" as const };
@@ -244,25 +201,15 @@ export function RideLiveTracker({
 
   // Cálculo de distância e previsão estimada
   const route = safety.routeDetails;
-  const meetingPointCoords = useMemo(
-    () =>
-      route?.passengerOriginLat != null && route?.passengerOriginLng != null
-        ? { lat: route.passengerOriginLat, lng: route.passengerOriginLng }
-        : route?.originLat != null && route?.originLng != null
-          ? { lat: route.originLat, lng: route.originLng }
-          : null,
-    [route],
-  );
+  const meetingPointCoords = route?.passengerOriginLat && route?.passengerOriginLng
+    ? { lat: route.passengerOriginLat, lng: route.passengerOriginLng }
+    : route?.originLat && route?.originLng
+      ? { lat: route.originLat, lng: route.originLng }
+      : null;
 
-  const destinationCoords = useMemo(
-    () =>
-      route?.passengerDestinationLat != null && route?.passengerDestinationLng != null
-        ? { lat: route.passengerDestinationLat, lng: route.passengerDestinationLng }
-        : route?.destinationLat != null && route?.destinationLng != null
-          ? { lat: route.destinationLat, lng: route.destinationLng }
-          : null,
-    [route],
-  );
+  const destinationCoords = route?.destinationLat && route?.destinationLng
+    ? { lat: route.destinationLat, lng: route.destinationLng }
+    : null;
 
   const metrics = useMemo(() => {
     if (!driverLocation) return null;
@@ -304,12 +251,7 @@ export function RideLiveTracker({
 
   // Pontos para o mapa interativo
   const activePoints = useMemo(() => {
-    const pts: Array<{
-      lat: number;
-      lng: number;
-      title: string;
-      type: "driver" | "passenger" | "meeting" | "destination";
-    }> = [];
+    const pts: Array<{ lat: number; lng: number; title: string; type: "driver" | "passenger" | "meeting" | "destination" }> = [];
     if (driverLocation) {
       pts.push({
         lat: driverLocation.latitude,
@@ -406,32 +348,6 @@ export function RideLiveTracker({
         </div>
       </div>
 
-      {role === "driver" && ["CONFIRMED", "IN_PROGRESS"].includes(status) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3">
-          <p className="text-xs text-muted-foreground">
-            {currentStage === "IN_PROGRESS"
-              ? `Próximo destino: ${destinationLabel || "destino combinado"}`
-              : `Próximo passo: embarque${pickupLabel ? ` em ${pickupLabel}` : " do passageiro"}`}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant={voiceEnabled ? "default" : "outline"}
-            onClick={() => {
-              if (voiceEnabled) {
-                window.speechSynthesis?.cancel();
-                setVoiceEnabled(false);
-              } else {
-                setVoiceEnabled(true);
-                announceVoiceInstruction();
-              }
-            }}
-          >
-            <Volume2 size={15} /> {voiceEnabled ? "Desativar voz" : "Ouvir próximo passo"}
-          </Button>
-        </div>
-      )}
-
       {/* 2. Controles de Ação de Etapa do Motorista */}
       {role === "driver" && status === "CONFIRMED" && (
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
@@ -477,13 +393,13 @@ export function RideLiveTracker({
       {metrics && (
         <div className="flex items-center justify-between rounded-lg border border-border/80 bg-secondary/40 p-3 text-xs">
           <div className="flex items-center gap-2">
-            <Info size={16} className="text-primary" />
+            <Clock size={16} className="text-primary" />
             <div>
               <p className="font-semibold text-foreground">
-                Use o aplicativo de mapas para consultar a rota e a previsão atuais.
+                Distância até o {metrics.targetName}: ~{metrics.distanceKm} km
               </p>
               <p className="text-[10px] text-muted-foreground">
-                A CARONAA não exibe ETA rodoviário nesta tela.
+                Previsão de chegada: ~{metrics.etaMinutes} min (Estimativa aproximada baseada na velocidade média de tráfego)
               </p>
             </div>
           </div>
@@ -495,15 +411,10 @@ export function RideLiveTracker({
         {activePoints.length > 0 ? (
           <div className="relative h-56 w-full">
             <LiveRideMap points={activePoints} />
+            {/* Indicador superior ao vivo */}
             <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/60">
-              <span
-                className={`size-2 rounded-full ${driverStatus.state === "live" || passengerStatus.state === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
-              />
-              <span>
-                {driverStatus.state === "live" || passengerStatus.state === "live"
-                  ? "Posição atualizada"
-                  : "Sem posição atual"}
-              </span>
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{driverLocation || passengerLocation ? "Posições compartilhadas" : "Pontos da viagem"}</span>
             </div>
           </div>
         ) : (
@@ -579,9 +490,7 @@ export function RideLiveTracker({
           {passengerLocation ? (
             <div className="text-[11px] text-muted-foreground">
               <p>Precisão: ±{Math.round(passengerLocation.accuracyM)} m</p>
-              <p>
-                Último sinal: {new Date(passengerLocation.capturedAt).toLocaleTimeString("pt-BR")}
-              </p>
+              <p>Último sinal: {new Date(passengerLocation.capturedAt).toLocaleTimeString("pt-BR")}</p>
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground">Nenhuma posição transmitida.</p>
@@ -623,11 +532,8 @@ export function RideLiveTracker({
           <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[11px] text-muted-foreground">
             <Smartphone size={15} className="text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold text-foreground">
-                Aviso sobre dispositivos móveis:{" "}
-              </span>
-              Navegadores em celulares suspendem a localização quando a tela é bloqueada ou em
-              segundo plano. Mantenha o navegador aberto para transmissão contínua.
+              <span className="font-semibold text-foreground">Aviso sobre dispositivos móveis: </span>
+              Navegadores em celulares suspendem a localização quando a tela é bloqueada ou em segundo plano. Mantenha o navegador aberto para transmissão contínua.
             </div>
           </div>
         </div>
@@ -635,3 +541,4 @@ export function RideLiveTracker({
     </div>
   );
 }
+

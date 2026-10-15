@@ -115,7 +115,7 @@ describe("Página Pública /seguranca (Segurança começa antes da carona)", () 
     );
     expect(screen.getByRole("link", { name: /Participar da validação/i })).toHaveAttribute(
       "href",
-      "/auth",
+      "/formulario",
     );
   });
 });

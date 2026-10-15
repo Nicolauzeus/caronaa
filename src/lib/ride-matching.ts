@@ -47,8 +47,6 @@ export type RideCompatibilityInput = {
     seatsRemaining: number;
     userId: string;
     timeToleranceMinutes?: number;
-    /** Polilinha rodoviária opcional do motorista; quando presente, substitui a reta A→F. */
-    routePath?: Coordinate[];
   };
   timeToleranceMinutes?: number;
 };
@@ -128,43 +126,6 @@ export function distanceFromPointToSegmentKm(
   return Math.hypot(projectedPoint.x - nearest.x, projectedPoint.y - nearest.y);
 }
 
-/**
- * Projeta um ponto na polilinha rodoviária do motorista (A → F).
- * Retorna a distância lateral até a rota e o progresso (km desde o início),
- * permitindo aceitar qualquer subtrecho no sentido da viagem.
- */
-export function projectOntoRoutePath(
-  point: { lat: number; lng: number },
-  path: Array<{ lat: number; lng: number }>,
-): { distanceKm: number; progressKm: number } {
-  let best = { distanceKm: Infinity, progressKm: 0 };
-  let travelled = 0;
-  for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i];
-    const b = path[i + 1];
-    const segmentKm = calculateRideDistanceKm(a, b);
-    const end = toLocalPoint(b, a);
-    const p = toLocalPoint(point, a);
-    const len2 = end.x * end.x + end.y * end.y;
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (p.x * end.x + p.y * end.y) / len2));
-    const d = Math.hypot(p.x - end.x * t, p.y - end.y * t);
-    if (d < best.distanceKm) best = { distanceKm: d, progressKm: travelled + segmentKm * t };
-    travelled += segmentKm;
-  }
-  return best;
-}
-
-/** Horário estimado em que o motorista passa pelo ponto de embarque. */
-export function estimatePickupTime(
-  departureTime: string,
-  progressKm: number,
-  averageSpeedKmh = 40,
-): string | null {
-  const start = parseTimeToMinutes(departureTime);
-  if (start === null) return null;
-  return formatMinutesToTime((start + Math.round((progressKm / averageSpeedKmh) * 60)) % 1440);
-}
-
 function isPointCompatibleWithRoute(
   point: { lat: number; lng: number },
   routeStart: { lat: number; lng: number },
@@ -209,16 +170,6 @@ export function areRideLocationsCompatible(
     const destinationToleranceKm =
       options.destinationToleranceKm ?? DEFAULT_GEOGRAPHIC_TOLERANCE_KM;
     const routeToleranceKm = options.routeToleranceKm ?? DEFAULT_GEOGRAPHIC_TOLERANCE_KM;
-    const path = (input.offer.routePath ?? []).filter(isValidCoordinate);
-    if (path.length >= 2) {
-      const pickup = projectOntoRoutePath(requestOrigin, path);
-      const dropoff = projectOntoRoutePath(requestDestination, path);
-      return (
-        pickup.distanceKm <= Math.max(originToleranceKm, routeToleranceKm) &&
-        dropoff.distanceKm <= Math.max(destinationToleranceKm, routeToleranceKm) &&
-        dropoff.progressKm > pickup.progressKm
-      );
-    }
     const driverVector = toLocalPoint(offerDestination, offerOrigin);
     const passengerStart = toLocalPoint(requestOrigin, offerOrigin);
     const passengerEnd = toLocalPoint(requestDestination, offerOrigin);

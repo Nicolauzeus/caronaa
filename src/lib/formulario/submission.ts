@@ -131,11 +131,11 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
       : null;
 
   return {
-    source: normalizeStsSource(data.source ?? "direct"),
+    source: normalizeStsSource(data.source),
 
     campaign: data.campaign ?? null,
 
-    campaignEvent: data.campaignEvent ?? "CARONAA",
+    campaignEvent: data.campaignEvent ?? "Siará Tech Summit 2026",
 
     intent: data.intent,
 
@@ -177,7 +177,7 @@ export function prepareSubmission(data: CaronaaStsFormData): CaronaaStsSubmissio
     termsAccepted: Boolean(data.termsAccepted),
     privacyAccepted: Boolean(data.privacyAccepted),
     researchAccepted: Boolean(data.researchAccepted),
-    termsVersion: data.termsVersion ?? "caronaa_2026_v1",
+    termsVersion: data.termsVersion ?? "sts_2026_v1",
     consentsTimestamp: data.consentsTimestamp ?? new Date().toISOString(),
 
     passengerCount: includePassenger ? (data.passengerCount ?? null) : null,

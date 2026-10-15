@@ -74,7 +74,7 @@ function getPitchTable() {
 }
 
 /**
- * Salva um contato enviado para a equipe de relacionamento da CARONAA.
+ * Salva um novo contato do Pitch do Siará Tech Summit
  */
 export async function savePitchContact(
   formData: PitchContactFormData,
@@ -104,7 +104,7 @@ export async function savePitchContact(
     status: "NOVO",
     suggestion_status: "NOVA",
     notes: null,
-    source: formData.source || "admin_manual",
+    source: formData.source || "pitch_sts_2026",
     raw_payload: { ...formData },
   };
 
@@ -137,7 +137,10 @@ export async function savePitchContact(
       .maybeSingle();
 
     if (error) {
-      console.warn("Supabase insert on pitch_contacts failed:", error);
+      console.warn(
+        "Supabase insert on pitch_contacts failed:",
+        error,
+      );
       return { success: false, error: error.message || "Não foi possível salvar no servidor." };
     }
 
@@ -172,8 +175,7 @@ export async function getPitchContacts(
       contacts = getLocalBackup();
     }
   } catch (error) {
-    remoteError =
-      error instanceof Error ? error.message : "Falha ao carregar contatos do servidor.";
+    remoteError = error instanceof Error ? error.message : "Falha ao carregar contatos do servidor.";
     contacts = getLocalBackup();
   }
 
@@ -234,10 +236,7 @@ export async function updatePitchContactStatus(
     updateLocalBackup(id, { status });
     return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Falha ao atualizar status.",
-    };
+    return { success: false, error: error instanceof Error ? error.message : "Falha ao atualizar status." };
   }
 }
 
@@ -258,10 +257,7 @@ export async function updatePitchSuggestionStatus(
     updateLocalBackup(id, { suggestion_status });
     return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Falha ao atualizar status.",
-    };
+    return { success: false, error: error instanceof Error ? error.message : "Falha ao atualizar status." };
   }
 }
 
@@ -282,10 +278,7 @@ export async function updatePitchContactNotes(
     updateLocalBackup(id, { notes });
     return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Falha ao salvar anotações.",
-    };
+    return { success: false, error: error instanceof Error ? error.message : "Falha ao salvar anotações." };
   }
 }
 

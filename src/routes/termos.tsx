@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/caronaa/AppShell";
-import { BrandBadge } from "@/components/caronaa/BrandElements";
+import { BrandBadge, StsBadge } from "@/components/caronaa/BrandElements";
 import { Button } from "@/components/ui/button";
 import {
   FileText,
@@ -19,15 +19,10 @@ import {
 
 export const Route = createFileRoute("/termos")({
   head: () => ({
-    meta: [
-      { property: "og:title", content: "Termos de Uso — CARONAA" },
-      {
-        property: "og:description",
-        content:
-          "Termos de Uso da CARONAA. Conheça as diretrizes, responsabilidades e limites de atuação da nossa plataforma de caronas colaborativas.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+    meta: [{ property: "og:title", content: "Termos de Uso — CARONAA" },
+{ property: "og:description", content: "Termos de Uso da CARONAA. Conheça as diretrizes, responsabilidades e limites de atuação da nossa plataforma de caronas colaborativas." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Termos de Uso — CARONAA" },
       {
         name: "description",
@@ -69,6 +64,7 @@ function TermosPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <BrandBadge variant="validation" />
+            <StsBadge />
           </div>
 
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
@@ -76,8 +72,8 @@ function TermosPage() {
           </h1>
 
           <p className="text-sm text-muted-foreground">
-            Versão de referência: <strong className="text-foreground">caronaa_2026_v1</strong> •
-            Última atualização: Outubro de 2026
+            Versão de referência: <strong className="text-foreground">sts_2026_v1</strong> • Última
+            atualização: Outubro de 2026
           </p>
         </div>
 
@@ -623,8 +619,8 @@ function TermosPage() {
                 <strong>Ecossistema de Inovação:</strong> Unifor Hub • Universidade de Fortaleza
               </p>
               <p>
-                <strong>Presença institucional:</strong> participação da CARONAA em iniciativas de
-                inovação e mobilidade no Ceará.
+                <strong>Presença em eventos:</strong> Stand da CARONAA no Siará Tech Summit 2026 •
+                Centro de Eventos do Ceará
               </p>
             </div>
           </section>
@@ -637,9 +633,9 @@ function TermosPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <Button asChild variant="strong" className="flex-1 sm:flex-none">
-              <Link to="/auth" search={{ mode: "cadastro" }}>
-                Criar conta na CARONAA <ArrowRight size={16} />
-              </Link>
+<StsFormLink to="/formulario">
+                Ir para o formulário STS 2026 <ArrowRight size={16} />
+              </StsFormLink>
             </Button>
             <Button asChild variant="outline" className="flex-1 sm:flex-none">
               <Link to="/">Voltar ao início</Link>
@@ -650,3 +646,4 @@ function TermosPage() {
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

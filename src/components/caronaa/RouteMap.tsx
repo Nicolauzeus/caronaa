@@ -18,7 +18,6 @@ export interface RouteMapProps {
   className?: string;
   heightClassName?: string;
   showRouteDetails?: boolean;
-  showApproximateMetrics?: boolean;
 }
 
 interface ResolvedCoords {
@@ -35,7 +34,6 @@ export function RouteMap({
   className = "",
   heightClassName = "min-h-48 sm:min-h-56",
   showRouteDetails = true,
-  showApproximateMetrics = true,
 }: RouteMapProps) {
   const [resolvedOrigin, setResolvedOrigin] = useState<ResolvedCoords | null>(null);
   const [resolvedDest, setResolvedDest] = useState<ResolvedCoords | null>(null);
@@ -171,9 +169,7 @@ export function RouteMap({
           <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 rounded-lg bg-background/95 px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/70">
             <RouteIcon size={14} className="text-primary" />
             <span>
-              {showApproximateMetrics
-                ? `Linha reta: ~${routeMetrics.distanceKm} km · previsão ilustrativa: ~${routeMetrics.estimatedMinutes} min`
-                : "Pontos de referência · abrir rota no mapa"}
+              ~{routeMetrics.distanceKm} km • ~{routeMetrics.estimatedMinutes} min
             </span>
           </div>
 
@@ -279,3 +275,4 @@ export function RouteMap({
     </div>
   );
 }
+

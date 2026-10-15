@@ -28,11 +28,6 @@ function compatibleData(): OperationData & {
         pickup_point: null,
         travel_preferences: null,
         price: null,
-        route_quote_id: null,
-        route_distance_km: null,
-        passenger_price: null,
-        passenger_group_total: null,
-        tariff_reference: null,
         user_id: "passenger",
         origin: "Aldeota",
         destination: "Unifor",
@@ -57,8 +52,6 @@ function compatibleData(): OperationData & {
     offers: [
       {
         offer_id: "offer",
-        route_path: null,
-        route_duration_minutes: null,
         accepts_quoted_fares: false,
         route_quote_id: null,
         passenger_price: null,
@@ -196,7 +189,6 @@ describe("administrative people", () => {
       created_at: "2026-01-01",
       updated_at: "2026-01-01",
       completed_at: null,
-      route_quote_id: null,
     };
     data.rides.push(ride);
     expect(getOperationPeople(data, true)[0]?.completed).toBe(0);

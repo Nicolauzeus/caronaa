@@ -1,5 +1,4 @@
 - [x] Rebuild the sign-in screen from the supplied visual reference.
-- [x] Repair driver-owned offer listing/details and persist profile vehicle brand/license plate for reuse. Owner role and full-offer summaries corrected; 8 regression tests pass. Signed-in profile save/reload and offer autofill verified with original profile restored. Available account has no offers, so an existing driver offer was not verified through the hosted UI; no real rides modified.
 - [x] Add persistent light and dark modes across the app and admin area.
 - [x] Verify administrator access uses the secure database role.
 - [x] Create CARONAA visual identity and shared navigation.

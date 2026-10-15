@@ -15,15 +15,10 @@ import {
 
 export const Route = createFileRoute("/como-funciona")({
   head: () => ({
-    meta: [
-      { property: "og:title", content: "Como Funciona — CARONAA" },
-      {
-        property: "og:description",
-        content:
-          "Entenda como a CARONAA conecta motoristas e passageiros de rotas afins em um ambiente comunitário de teste.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+    meta: [{ property: "og:title", content: "Como Funciona — CARONAA" },
+{ property: "og:description", content: "Entenda como a CARONAA conecta motoristas e passageiros de rotas afins em um ambiente comunitário de teste." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Como Funciona — CARONAA" },
       {
         name: "description",
@@ -41,12 +36,13 @@ function ComoFuncionaPage() {
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
         {/* Topo / Header */}
         <div className="mx-auto max-w-3xl text-center">
+          <BrandBadge variant="sts" className="mb-4" />
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
             Como funciona a CARONAA?
           </h1>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            A CARONAA conecta quem precisa ir com quem já está indo. Sem complicações, com
-            informações claras e recursos para uma viagem mais segura.
+            A CARONAA conecta quem precisa ir com quem já está indo. Sem complicações e em fase de
+            validação prática no Siará Tech Summit 2026 e na comunidade da Unifor.
           </p>
         </div>
 
@@ -107,9 +103,9 @@ function ComoFuncionaPage() {
             </p>
             <div className="mt-6">
               <Button asChild variant="strong" className="w-full sm:w-auto">
-                <Link to="/auth" search={{ mode: "cadastro" }}>
-                  Oferecer carona <ArrowRight size={16} />
-                </Link>
+<StsFormLink to="/formulario">
+                  Oferecer carona no STS <ArrowRight size={16} />
+                </StsFormLink>
               </Button>
             </div>
           </div>
@@ -125,9 +121,9 @@ function ComoFuncionaPage() {
             </p>
             <div className="mt-6">
               <Button asChild variant="default" className="w-full sm:w-auto">
-                <Link to="/auth" search={{ mode: "cadastro" }}>
-                  Encontrar carona <ArrowRight size={16} />
-                </Link>
+<StsFormLink to="/formulario">
+                  Encontrar carona no STS <ArrowRight size={16} />
+                </StsFormLink>
               </Button>
             </div>
           </div>
@@ -136,7 +132,7 @@ function ComoFuncionaPage() {
         {/* CTA Final */}
         <div className="mt-16 rounded-3xl border border-border/80 bg-caronaa-dark p-8 text-center text-white sm:p-12">
           <span className="text-xs font-bold uppercase tracking-widest text-event-cyan">
-            Compartilhe seu próximo trajeto
+            Siará Tech Summit 2026 • 07 a 09 de outubro
           </span>
           <h2 className="mt-3 font-display text-2xl font-black sm:text-4xl">
             Pronto para testar a CARONAA na prática?
@@ -146,9 +142,9 @@ function ComoFuncionaPage() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild variant="strong" size="lg" className="h-12 px-8 font-bold">
-              <Link to="/auth" search={{ mode: "cadastro" }}>
-                🚗 Criar conta na CARONAA <ArrowUpRight size={16} />
-              </Link>
+<StsFormLink to="/formulario">
+                🚗 Garantir minha CARONAA no Siará <ArrowUpRight size={16} />
+              </StsFormLink>
             </Button>
           </div>
         </div>
@@ -156,3 +152,4 @@ function ComoFuncionaPage() {
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

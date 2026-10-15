@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/caronaa/AppShell";
-import { BrandBadge } from "@/components/caronaa/BrandElements";
+import { BrandBadge, StsBadge } from "@/components/caronaa/BrandElements";
 import { Button } from "@/components/ui/button";
 import {
   ShieldCheck,
@@ -20,15 +20,10 @@ import {
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
-    meta: [
-      { property: "og:title", content: "Política de Privacidade — CARONAA" },
-      {
-        property: "og:description",
-        content:
-          "Conheça a Política de Privacidade da CARONAA. Saiba como coletamos, usamos, tratamos e protegemos seus dados em conformidade com a LGPD.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+    meta: [{ property: "og:title", content: "Política de Privacidade — CARONAA" },
+{ property: "og:description", content: "Conheça a Política de Privacidade da CARONAA. Saiba como coletamos, usamos, tratamos e protegemos seus dados em conformidade com a LGPD." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Política de Privacidade — CARONAA" },
       {
         name: "description",
@@ -61,6 +56,7 @@ function PrivacidadePage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <BrandBadge variant="community" />
+            <StsBadge />
           </div>
 
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
@@ -69,7 +65,7 @@ function PrivacidadePage() {
 
           <p className="text-sm text-muted-foreground">
             Versão do documento:{" "}
-            <strong className="text-foreground">privacidade_caronaa_2026_v1</strong> • Última
+            <strong className="text-foreground">privacidade_sts_2026_v1</strong> • Última
             atualização: Outubro de 2026
           </p>
         </div>
@@ -143,9 +139,9 @@ function PrivacidadePage() {
             <p className="text-muted-foreground">
               A <strong>CARONAA</strong> respeita a sua privacidade e preza pela proteção dos seus
               dados pessoais. Esta Política de Privacidade explica de forma simples, transparente e
-              acessível como tratamos suas informações em nossos serviços, sites e formulários, em
-              estrita conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018
-              - LGPD).
+              acessível como tratamos suas informações em nossos serviços, sites e formulários
+              (inclusive durante a validação no Siará Tech Summit 2026), em estrita conformidade com
+              a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 - LGPD).
             </p>
           </section>
 

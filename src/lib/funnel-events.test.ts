@@ -14,7 +14,7 @@ describe("form campaign attribution", () => {
     expect(getCampaignAttribution()).toEqual({
       source: "qr",
       campaign: "sts2026",
-      campaignEvent: "CARONAA",
+      campaignEvent: "Siará Tech Summit 2026",
     });
   });
 
@@ -25,7 +25,7 @@ describe("form campaign attribution", () => {
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/formulario?utm_campaign=sts2026-pre-evento");
     expect(getCampaignAttribution()).toMatchObject({
-      source: "direct",
+      source: "sts-2026",
       campaign: "sts2026-pre-evento",
     });
   });
@@ -43,11 +43,11 @@ describe("form campaign attribution", () => {
     expect(getCampaignAttribution().source).toBe("sts-2026");
   });
 
-  it("uses generic direct attribution when no campaign parameter is present", () => {
+  it("uses the STS form fallback only without a valid parameter", () => {
     expect(getCampaignAttribution()).toEqual({
-      source: "direct",
+      source: "sts-2026",
       campaign: null,
-      campaignEvent: "CARONAA",
+      campaignEvent: "Siará Tech Summit 2026",
     });
   });
 

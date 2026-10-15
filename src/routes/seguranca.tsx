@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/caronaa/AppShell";
-import { BrandBadge } from "@/components/caronaa/BrandElements";
+import { BrandBadge, StsBadge } from "@/components/caronaa/BrandElements";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordForm } from "@/components/caronaa/ChangePasswordForm";
 import { useAuth } from "@/lib/auth-context";
@@ -24,15 +24,10 @@ import {
 
 export const Route = createFileRoute("/seguranca")({
   head: () => ({
-    meta: [
-      { property: "og:title", content: "Segurança começa antes da carona — CARONAA" },
-      {
-        property: "og:description",
-        content:
-          "Diretrizes e mecanismos da CARONAA para tomada de decisões conscientes e seguras no compartilhamento de trajetos.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+    meta: [{ property: "og:title", content: "Segurança começa antes da carona — CARONAA" },
+{ property: "og:description", content: "Diretrizes e mecanismos da CARONAA para tomada de decisões conscientes e seguras no compartilhamento de trajetos." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Segurança começa antes da carona — CARONAA" },
       {
         name: "description",
@@ -57,6 +52,7 @@ function SegurancaPage() {
         <div className="space-y-4 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <BrandBadge variant="community" />
+            <StsBadge />
           </div>
 
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
@@ -218,7 +214,8 @@ function SegurancaPage() {
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Marque embarques e desembarques sempre em pontos públicos, movimentados e bem
                 iluminados (como entradas principais de eventos, postos conhecidos, shoppings ou
-                estações de transporte).
+                estações de transporte). No STS 2026, priorize os portões e acessos oficiais do
+                Centro de Eventos do Ceará.
               </p>
             </div>
 
@@ -377,9 +374,8 @@ function SegurancaPage() {
             </Link>
 
             {/* Participar da validação */}
-            <Link
-              to="/auth"
-              search={{ mode: "cadastro" }}
+<StsFormLink
+              to="/formulario"
               className="flex items-center justify-between rounded-2xl border border-caronaa-primary/30 bg-caronaa-primary/10 p-4 hover:bg-caronaa-primary/20 transition group"
             >
               <div>
@@ -387,17 +383,18 @@ function SegurancaPage() {
                   Participar da validação
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Crie sua conta para compartilhar caminhos na CARONAA.
+                  Simule trajetos e colabore com a pesquisa no Siará Tech Summit.
                 </p>
               </div>
               <ArrowRight
                 size={18}
                 className="text-caronaa-dark dark:text-caronaa-primary group-hover:translate-x-1 transition shrink-0 ml-2"
               />
-            </Link>
+            </StsFormLink>
           </div>
         </div>
       </div>
     </AppShell>
   );
 }
+import { StsFormLink } from "@/components/caronaa/StsFormLink";

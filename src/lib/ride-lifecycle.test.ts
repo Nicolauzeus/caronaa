@@ -82,7 +82,7 @@ describe("ride lifecycle", () => {
       { label: "Recusar combinação", status: "CANCELLED", variant: "outline" },
     ]);
     expect(getRideNextActions("MATCHED", "driver", { acceptedByOther: true })).toEqual([
-      { label: "Confirmar passageiro", status: "CONFIRMED" },
+      { label: "Aceitar combinação", status: "CONFIRMED" },
       { label: "Recusar combinação", status: "CANCELLED", variant: "outline" },
     ]);
 
