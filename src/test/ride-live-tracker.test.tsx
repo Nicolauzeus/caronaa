@@ -89,7 +89,7 @@ describe("RideLiveTracker Component", () => {
     expect(screen.getByText("Destino Final")).toBeInTheDocument();
   });
 
-  it("displays distance and estimated arrival time flagged as an estimate", () => {
+  it("does not misrepresent straight-line distance as verified road ETA", () => {
     render(
       <RideLiveTracker
         rideId="ride-test-1"
@@ -102,7 +102,7 @@ describe("RideLiveTracker Component", () => {
     );
 
     expect(
-      screen.getByText(/Estimativa aproximada baseada na velocidade média de tráfego/i),
+      screen.getByText(/O mapa calcula o percurso pelas vias quando o serviço estiver disponível/i),
     ).toBeInTheDocument();
   });
 
