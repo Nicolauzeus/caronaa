@@ -273,6 +273,33 @@ function Home() {
             </div>
           </section>
         )}
+        {recent.length > 0 && (
+          <section className="mb-4 sm:hidden" aria-label="Atalhos de destinos recentes">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-bold">Seus destinos recentes</h2>
+              <span className="text-xs text-muted-foreground">Um toque para repetir</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {recent.slice(0, 4).map((item) => (
+                <button key={item.destination} type="button"
+                  className="inline-flex min-h-11 max-w-56 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-sm"
+                  onClick={() => {
+                    setDestination(item.destination);
+                    setDestinationLocation(item.destination_lat != null && item.destination_lng != null
+                      ? { rawText: item.destination, lat: item.destination_lat, lng: item.destination_lng }
+                      : undefined);
+                    setPanelOpen(true);
+                    window.requestAnimationFrame(() =>
+                      document.getElementById("home-destination")?.scrollIntoView({ behavior: "smooth", block: "center" })
+                    );
+                  }}>
+                  <MapPin size={15} aria-hidden="true" className="shrink-0 text-primary" />
+                  <span className="truncate">{item.destination}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         <div className="mb-2 flex items-center justify-between gap-3 sm:hidden">
           <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <MapPin size={14} aria-hidden="true" className="text-primary" />
