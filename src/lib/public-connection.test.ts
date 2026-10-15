@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicConnectionDefines } from "./public-connection";
+import { publicConnectionDefines } from "../../config/public-connection";
 
 describe("public connection build configuration", () => {
   it("provides the verified managed connection when deployment env is absent", () => {
