@@ -14,6 +14,7 @@
 - Keep CARONAA sample users and rides in `src/mockData.ts`, accessed through small mock services; this keeps the visual MVP replaceable by real data later.
 - Keep the shared app header and navigation in a reusable shell, while every content page owns its TanStack route and metadata; this preserves direct links and responsive navigation.
 - Keep authentication session state in the root AuthProvider and consume it through useAuth; this prevents duplicate auth listeners and keeps navigation synchronized.
+- Resolve browser connection constants through `config/public-connection.ts`, preferring a complete VITE public pair and otherwise the verified managed public connection; this keeps deployment independent of local env files without bundling server bindings or privileged keys.
 
 - Use database roles for administrator access; the first registration receives admin atomically, while later registrations receive user.
 - Serve user-supplied brand images through Lovable Assets and import their pointer files.

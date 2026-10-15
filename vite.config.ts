@@ -7,6 +7,7 @@
 import path from "node:path";
 import { loadEnv } from "vite";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { publicConnectionDefines } from "./config/public-connection";
 
 // Preserve deployment bindings; local files must not overwrite them with blanks.
 const localEnv = loadEnv(process.env["NODE_ENV"] ?? "development", process.cwd(), "");
@@ -14,23 +15,13 @@ for (const [key, value] of Object.entries(localEnv)) {
   if (!process.env[key] && value) process.env[key] = value;
 }
 
-// Only these public connection values may cross into the browser bundle.
-// Cloud deployments may supply the unprefixed bindings instead of VITE_*.
-const publicConnection = {
-  VITE_SUPABASE_URL: process.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"],
-  VITE_SUPABASE_PUBLISHABLE_KEY:
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"],
-};
-const publicConnectionDefines: Record<string, string> = {};
-for (const [key, value] of Object.entries(publicConnection)) {
-  if (!value) {
-    // Some build environments (e.g. publish pipeline) inject these later;
-    // warn instead of failing the whole build.
-    console.warn(`[caronaa] build configuration missing: ${key}`);
-    continue;
-  }
-  publicConnectionDefines[`import.meta.env.${key}`] = JSON.stringify(value);
-}
+const connectionDefines = publicConnectionDefines(process.env);
+// Populate Vite's env object as well as static replacements: generated clients
+// use bracket access, and the framework also captures VITE bindings itself.
+process.env["VITE_SUPABASE_URL"] = JSON.parse(connectionDefines["import.meta.env.VITE_SUPABASE_URL"]);
+process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] = JSON.parse(
+  connectionDefines["import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY"],
+);
 
 export default defineConfig({
   tanstackStart: {
@@ -39,7 +30,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    define: publicConnectionDefines,
+    define: connectionDefines,
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
