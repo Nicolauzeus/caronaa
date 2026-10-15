@@ -494,7 +494,7 @@ export function RideLiveTracker({
       <div className="relative overflow-hidden rounded-xl border border-border bg-muted/20">
         {activePoints.length > 0 ? (
           <div className="relative w-full">
-            <LiveRideMap points={activePoints} />
+            <LiveRideMap points={activePoints} skipMeeting={currentStage === "IN_PROGRESS" || currentStage === "COMPLETED"} />
             <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/60">
               <span
                 className={`size-2 rounded-full ${driverStatus.state === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
