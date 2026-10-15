@@ -39,3 +39,14 @@ Apenas integração **server-side**. Nunca colocar ASAAS_API_KEY no navegador, r
 - Credenciais do sandbox não pagam em produção.
 - Nenhum código desta etapa cria cobrança real, marca PIX pago ou transfere fundos.
 - Revisar termos comerciais, classificação do serviço e responsabilidades legais antes de operar.
+
+## Progresso técnico (15/10/2026)
+- Migração `0064_asaas_checkout_ledger.sql`: modelo de cobrança privada, unicidade por viagem, aceite registrado, webhook inbox idempotente, RLS sem acesso ao cliente. **Não aplicada ao banco de produção**.
+- Rota `POST /api/asaas/webhook`: somente sandbox, valida `asaas-access-token`, consulta Asaas independentemente e registra evento no inbox. **Não altera status financeiro nem liquida split**.
+- `previewAsaasCheckout`: server function autenticada, lê preço persistido, exige tarifa validada e mostra total antes de cobrar; não gera QR.
+- `AsaasCheckoutPreview`: mostra preço, tarifa e divisão prevista ao passageiro na viagem. **Ainda não é checkout**.
+- Configuração de tarifa: `ASAAS_VERIFIED_PIX_FEE_CENTS` (centavos, inteiro), `ASAAS_FEE_VERIFIED_AT` (ISO UTC, verificado há no máximo 14 dias), `ASAAS_ENV=sandbox`. Esses valores devem ser conferidos no painel Asaas; **não inventar tarifa**.
+- Credenciais privadas: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_AUTH_TOKEN` apenas no backend; nunca em variáveis `VITE_` ou no git.
+- `ASAAS_ENABLE_CHARGES=false` permanece obrigatório até existir provisionamento autenticado de customer/wallet, checkout transacional com consentimento, reembolso e reconciliação dos splits.
+- Testes de domínio, mocks de Pix/split e contratos de segurança via GitHub Actions. **Testes simulados não comprovam confirmação financeira real nem GPS em dispositivos**.
+- A tarifa do Asaas pode variar por contrato, promoção e outros serviços. A margem líquida de 15% só é atingida se a tarifa efetiva corresponder exatamente à tarifa cobrada ao passageiro.
