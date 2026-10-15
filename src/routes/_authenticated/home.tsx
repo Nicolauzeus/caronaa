@@ -156,9 +156,50 @@ function Home() {
     document.getElementById("home-origin")?.focus();
   }
 
+  function startJourney(nextRole: "request" | "offer") {
+    setRole(nextRole);
+    setError(null);
+    const destinationInput = document.getElementById("home-destination");
+    destinationInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Allow the form to become visible before opening the mobile keyboard.
+    window.setTimeout(() => destinationInput?.focus({ preventScroll: true }), 250);
+  }
+
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
+        <section className="mb-4 space-y-3 sm:hidden" aria-label="Começar uma carona">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">
+              Sua próxima viagem começa aqui
+            </p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+              Para onde vamos?
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Escolha o destino e encontre uma carona no seu caminho.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              onClick={() => startJourney("request")}
+              className="min-h-12 rounded-xl text-sm font-bold"
+            >
+              <UserRound size={17} aria-hidden="true" />
+              Pedir carona
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => startJourney("offer")}
+              className="min-h-12 rounded-xl text-sm font-bold"
+            >
+              <CarFront size={17} aria-hidden="true" />
+              Oferecer
+            </Button>
+          </div>
+        </section>
         {active && (
           <section
             className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-4 shadow-soft"
@@ -243,8 +284,9 @@ function Home() {
           aria-labelledby="journey-title"
           className="relative -mx-4 rounded-t-2xl bg-background px-4 pt-5 sm:mx-0 sm:rounded-none sm:px-0 sm:pt-6"
         >
-          <h1 id="journey-title" className="text-2xl font-extrabold sm:text-3xl">
-            Para onde vamos?
+          <h1 id="journey-title" className="text-xl font-extrabold sm:text-3xl">
+            <span className="sm:hidden">Detalhes da viagem</span>
+            <span className="hidden sm:inline">Para onde vamos?</span>
           </h1>
           {location.failure && (
             <div role="alert" className="mt-3 text-sm text-muted-foreground">
