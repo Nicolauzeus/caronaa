@@ -449,6 +449,13 @@
       "when": 1791857574382,
       "tag": "0063_multi_stop_route_geometry",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792043000000,
+      "tag": "0064_asaas_checkout_ledger",
+      "breakpoints": true
     }
   ]
 }
