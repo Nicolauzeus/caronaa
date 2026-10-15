@@ -15,6 +15,14 @@ for (const [key, value] of Object.entries(localEnv)) {
   if (!process.env[key] && value) process.env[key] = value;
 }
 
+const connectionDefines = publicConnectionDefines(process.env);
+// Populate Vite's env object as well as static replacements: generated clients
+// use bracket access, and the framework also captures VITE bindings itself.
+process.env["VITE_SUPABASE_URL"] = JSON.parse(connectionDefines["import.meta.env.VITE_SUPABASE_URL"]);
+process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] = JSON.parse(
+  connectionDefines["import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY"],
+);
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -22,7 +30,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    define: publicConnectionDefines(process.env),
+    define: connectionDefines,
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
