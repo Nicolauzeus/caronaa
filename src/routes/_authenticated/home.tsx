@@ -45,6 +45,7 @@ function Home() {
   const [recent, setRecent] = useState<Awaited<ReturnType<typeof loadRecent>>>([]);
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<"request" | "offer">("request");
+  const [panelOpen, setPanelOpen] = useState(false);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [originLocation, setOriginLocation] = useState<FormLocationDetails>();
@@ -163,11 +164,12 @@ function Home() {
 
   function startJourney(nextRole: "request" | "offer") {
     setRole(nextRole);
+    setPanelOpen(true);
     setError(null);
     const destinationInput = document.getElementById("home-destination");
-    destinationInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.requestAnimationFrame(() => destinationInput?.scrollIntoView({ behavior: "smooth", block: "center" }));
     // Allow the form to become visible before opening the mobile keyboard.
-    window.setTimeout(() => destinationInput?.focus({ preventScroll: true }), 250);
+    window.setTimeout(() => destinationInput?.focus({ preventScroll: true }), 100);
   }
 
   return (
@@ -299,7 +301,12 @@ function Home() {
           aria-labelledby="journey-title"
           className="relative -mx-4 -mt-5 rounded-t-3xl border-t border-border/60 bg-background px-4 pb-5 pt-5 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] sm:mx-0 sm:mt-0 sm:rounded-none sm:border-0 sm:px-0 sm:pt-6 sm:shadow-none"
         >
-          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" />
+          <button type="button" aria-controls="caronaa-journey-details" aria-expanded={panelOpen}
+            onClick={() => setPanelOpen((open) => !open)}
+            className="mb-4 flex min-h-11 w-full flex-col items-center justify-center gap-2 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:hidden">
+            <span className="h-1 w-10 rounded-full bg-border" aria-hidden="true" />
+            <span className="text-xs font-bold text-muted-foreground">{panelOpen ? "Recolher detalhes" : "Expandir e planejar viagem"}</span>
+          </button>
           <h2 id="journey-title" className="text-xl font-extrabold sm:text-3xl">
             <span className="sm:hidden">Planeje sua carona</span>
             <span className="hidden sm:inline">Para onde vamos?</span>
@@ -307,6 +314,17 @@ function Home() {
           <p className="mt-1 text-sm text-muted-foreground sm:hidden">
             Informe o trajeto, escolha quando sair e confira os detalhes antes de continuar.
           </p>
+          {!panelOpen && (
+            <button type="button" onClick={() => startJourney(role)}
+              className="mt-4 flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 text-left sm:hidden">
+              <span className="min-w-0">
+                <span className="block text-xs font-medium text-muted-foreground">Destino</span>
+                <span className="block truncate font-semibold">{destination || "Para onde você vai?"}</span>
+              </span>
+              <ArrowRight size={20} className="shrink-0 text-primary" aria-hidden="true" />
+            </button>
+          )}
+          <div id="caronaa-journey-details" className={panelOpen ? "block" : "hidden sm:block"}>
           {location.failure && (
             <div role="alert" className="mt-3 text-sm text-muted-foreground">
               <p>{locationFailureMessages[location.failure]}</p>
@@ -571,6 +589,7 @@ function Home() {
               <ArrowRight size={18} />
             </Button>
           </form>
+          </div>
         </section>
         {/*
           <section className="mt-6 border-t border-border py-5" aria-label="Seu trajeto ativo">
