@@ -271,9 +271,19 @@ function Home() {
             </div>
           </section>
         )}
-        <p className="pb-2 text-xs text-muted-foreground lg:hidden">
-          Use sua localização para definir seu ponto de saída automaticamente.
-        </p>
+        <div className="mb-2 flex items-center justify-between gap-3 sm:hidden">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <MapPin size={14} aria-hidden="true" className="text-primary" />
+            Seu mapa e ponto de partida
+          </span>
+          <button
+            type="button"
+            onClick={() => startJourney(role)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-bold text-primary underline underline-offset-4"
+          >
+            Escolher destino <ArrowRight size={14} aria-hidden="true" />
+          </button>
+        </div>
         <HomeRideMap
           userPosition={location.position}
           origin={point}
@@ -289,10 +299,14 @@ function Home() {
           aria-labelledby="journey-title"
           className="relative -mx-4 -mt-5 rounded-t-3xl border-t border-border/60 bg-background px-4 pb-5 pt-5 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] sm:mx-0 sm:mt-0 sm:rounded-none sm:border-0 sm:px-0 sm:pt-6 sm:shadow-none"
         >
-          <h1 id="journey-title" className="text-xl font-extrabold sm:text-3xl">
-            <span className="sm:hidden">Detalhes da viagem</span>
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" />
+          <h2 id="journey-title" className="text-xl font-extrabold sm:text-3xl">
+            <span className="sm:hidden">Planeje sua carona</span>
             <span className="hidden sm:inline">Para onde vamos?</span>
-          </h1>
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground sm:hidden">
+            Informe o trajeto, escolha quando sair e confira os detalhes antes de continuar.
+          </p>
           {location.failure && (
             <div role="alert" className="mt-3 text-sm text-muted-foreground">
               <p>{locationFailureMessages[location.failure]}</p>
@@ -465,6 +479,9 @@ function Home() {
             />
             {recent.length > 0 && (
               <div aria-label="Destinos recentes" className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Seus destinos recentes
+                </p>
                 {recent.map((item) => (
                   <button
                     key={item.destination}
