@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { MapPin, Navigation, ExternalLink, Route as RouteIcon, Info } from "lucide-react";
-import { calculateDistance, geocodeAddress } from "@/lib/location/geo-utils";
+import { geocodeAddress } from "@/lib/location/geo-utils";
+import { LiveRideMap } from "./LiveRideMap";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 export interface RouteMapLocation {
@@ -125,30 +126,9 @@ export function RouteMap({
   const routeMetrics = useMemo(() => {
     if (!resolvedOrigin || !resolvedDest) return null;
 
-    const distanceKm = calculateDistance(
-      { lat: resolvedOrigin.lat, lng: resolvedOrigin.lng },
-      { lat: resolvedDest.lat, lng: resolvedDest.lng },
-    );
-
-    // Média de tráfego urbano em Fortaleza/CE (~28 km/h)
-    const estimatedMinutes = Math.max(5, Math.round((distanceKm / 28) * 60));
-
-    // Bounding box expandido para visualização completa
-    const minLat = Math.min(resolvedOrigin.lat, resolvedDest.lat) - 0.012;
-    const maxLat = Math.max(resolvedOrigin.lat, resolvedDest.lat) + 0.012;
-    const minLng = Math.min(resolvedOrigin.lng, resolvedDest.lng) - 0.015;
-    const maxLng = Math.max(resolvedOrigin.lng, resolvedDest.lng) + 0.015;
-
-    const centerLat = (resolvedOrigin.lat + resolvedDest.lat) / 2;
-    const centerLng = (resolvedOrigin.lng + resolvedDest.lng) / 2;
-
-    const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${centerLat}%2C${centerLng}`;
     const externalNavUrl = `https://www.google.com/maps/dir/?api=1&origin=${resolvedOrigin.lat},${resolvedOrigin.lng}&destination=${resolvedDest.lat},${resolvedDest.lng}`;
 
     return {
-      distanceKm,
-      estimatedMinutes,
-      osmEmbedUrl,
       externalNavUrl,
     };
   }, [resolvedOrigin, resolvedDest]);
@@ -160,20 +140,20 @@ export function RouteMap({
         className={`relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all ${className}`}
       >
         <div className={`relative w-full ${heightClassName} overflow-hidden bg-muted/30`}>
-          <iframe
-            title={`Mapa da rota entre ${resolvedOrigin.name} e ${resolvedDest.name}`}
-            src={routeMetrics.osmEmbedUrl}
-            className="h-full w-full border-0 contrast-[1.05] opacity-95"
-            loading="lazy"
+          <LiveRideMap
+            points={[
+              { lat: resolvedOrigin.lat, lng: resolvedOrigin.lng, title: resolvedOrigin.name, type: "meeting" },
+              { lat: resolvedDest.lat, lng: resolvedDest.lng, title: resolvedDest.name, type: "destination" },
+            ]}
           />
 
           {/* Badge superior indicando trajeto */}
-          <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 rounded-lg bg-background/95 px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/70">
+          <div className="absolute z-20 top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 rounded-lg bg-background/95 px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/70">
             <RouteIcon size={14} className="text-primary" />
             <span>
               {showApproximateMetrics
-                ? `Linha reta: ~${routeMetrics.distanceKm} km · previsão ilustrativa: ~${routeMetrics.estimatedMinutes} min`
-                : "Pontos de referência · abrir rota no mapa"}
+                ? "Trajeto pelas vias · distância e tempo estimados no mapa"
+                : "Pontos de referência · rota pelas vias quando disponível"}
             </span>
           </div>
 
@@ -182,14 +162,14 @@ export function RouteMap({
             href={routeMetrics.externalNavUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-lg bg-background/95 px-2 py-1 text-[11px] font-semibold text-primary hover:text-primary/80 shadow-sm backdrop-blur-xs border border-border/70 transition-colors"
+            className="absolute z-20 top-2.5 right-2.5 flex items-center gap-1 rounded-lg bg-background/95 px-2 py-1 text-[11px] font-semibold text-primary hover:text-primary/80 shadow-sm backdrop-blur-xs border border-border/70 transition-colors"
           >
             <span>Abrir mapa</span>
             <ExternalLink size={12} />
           </a>
 
           {/* Marcadores de Coordenadas A e B */}
-          <div className="pointer-events-none absolute bottom-2 left-2 right-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted-foreground">
+          <div className="pointer-events-none absolute z-20 bottom-12 left-2 right-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted-foreground">
             <span className="rounded bg-background/90 px-1.5 py-0.5 shadow-xs backdrop-blur-xs">
               A: {resolvedOrigin.lat.toFixed(4)}, {resolvedOrigin.lng.toFixed(4)}
             </span>
