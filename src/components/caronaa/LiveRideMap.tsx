@@ -14,19 +14,20 @@ function validPoint(p: LiveMapPoint) {
   return Number.isFinite(p.lat) && Math.abs(p.lat) <= 90 &&
     Number.isFinite(p.lng) && Math.abs(p.lng) <= 180;
 }
-export function routeWaypoints(points: LiveMapPoint[]): LiveMapPoint[] {
+export function routeWaypoints(points: LiveMapPoint[], skipMeeting = false): LiveMapPoint[] {
   const find = (type: LiveMapPoint["type"]) => points.find(p => p.type === type && validPoint(p));
   const driver = find("driver");
   const meeting = find("meeting");
   const destination = find("destination");
-  return [driver, meeting, destination].filter((p): p is LiveMapPoint => Boolean(p))
+  return [driver, skipMeeting ? undefined : meeting, destination].filter((p): p is LiveMapPoint => Boolean(p))
     .filter((p, i, arr) => i === 0 || Math.abs(p.lat - arr[i-1].lat) + Math.abs(p.lng - arr[i-1].lng) > 0.00001);
 }
 export async function fetchRoadRoute(
   points: LiveMapPoint[],
   signal?: AbortSignal,
+  skipMeeting = false,
 ): Promise<RoadRoute | null> {
-  const waypoints = routeWaypoints(points);
+  const waypoints = routeWaypoints(points, skipMeeting);
   if (waypoints.length < 2) return null;
   const coordinates = waypoints.map(p => `${p.lng},${p.lat}`).join(";");
   const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`;
@@ -44,7 +45,7 @@ export async function fetchRoadRoute(
   return { geometry, distanceKm: first.distance / 1000, durationMinutes: first.duration / 60 };
 }
 
-export function LiveRideMap({ points }: { points: LiveMapPoint[] }) {
+export function LiveRideMap({ points, skipMeeting = false }: { points: LiveMapPoint[]; skipMeeting?: boolean }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const layer = useRef<LayerGroup | null>(null);
@@ -52,21 +53,21 @@ export function LiveRideMap({ points }: { points: LiveMapPoint[] }) {
   const [road, setRoad] = useState<RoadRoute | null>(null);
   const [routeError, setRouteError] = useState(false);
   const positions = useMemo(() => points.filter(validPoint), [points]);
-  const key = routeWaypoints(positions).map(p => `${p.type}:${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join("|");
+  const key = routeWaypoints(positions, skipMeeting).map(p => `${p.type}:${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join("|");
   const latest = useRef(positions);
   latest.current = positions;
   const roadLatest = useRef(road);
   roadLatest.current = road;
 
   useEffect(() => {
-    if (routeWaypoints(positions).length < 2) {
+    if (routeWaypoints(positions, skipMeeting).length < 2) {
       setRoad(null);
       setRouteError(false);
       return;
     }
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      void fetchRoadRoute(positions, controller.signal).then(result => {
+      void fetchRoadRoute(positions, controller.signal, skipMeeting).then(result => {
         if (!controller.signal.aborted) { setRoad(result); setRouteError(false); }
       }).catch(() => {
         if (!controller.signal.aborted) { setRoad(null); setRouteError(true); }
@@ -75,7 +76,7 @@ export function LiveRideMap({ points }: { points: LiveMapPoint[] }) {
     return () => { clearTimeout(timeout); controller.abort(); };
   // Rounded key avoids fetching on every small GPS movement.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, skipMeeting]);
 
   useEffect(() => {
     let active = true;
