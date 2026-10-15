@@ -143,9 +143,9 @@ function ViagemOperacional() {
         title={ride.status === "COMPLETED" ? "Resumo da viagem" : "Acompanhar viagem"}
         description="Informações e ações da sua combinação, visíveis apenas aos participantes."
       />
-      <main className="mx-auto max-w-6xl space-y-4 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-start lg:gap-4 lg:space-y-0">
+      <main className="mx-auto flex max-w-6xl flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-start">
         <section
-          className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-6 lg:col-start-2 lg:row-start-1"
+          className="order-2 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-6 lg:col-start-2 lg:row-start-1"
           aria-label="Resumo da viagem"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -167,10 +167,16 @@ function ViagemOperacional() {
                     : ride.status}
             </span>
           </div>
-          <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-base font-bold sm:text-lg">
-            <span className="break-words">{ride.origin}</span>
-            <ArrowRight className="text-primary" size={18} />
-            <span className="break-words">{ride.destination}</span>
+          <div className="mt-5 grid min-w-0 gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-3">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Origem</span>
+              <p className="break-words font-semibold leading-snug">{ride.origin}</p>
+            </div>
+            <ArrowRight className="rotate-90 text-primary sm:rotate-0" size={18} aria-hidden="true" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Destino</span>
+              <p className="break-words font-semibold leading-snug">{ride.destination}</p>
+            </div>
           </div>
           <div className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
             <p className="flex items-start gap-2">
@@ -214,7 +220,7 @@ function ViagemOperacional() {
         </section>
 
         <section
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 lg:col-start-2 lg:row-start-2"
+          className="order-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 lg:col-start-2 lg:row-start-2"
           aria-label="Outra pessoa da viagem"
         >
           <div className="flex min-w-0 items-center gap-3">
@@ -251,7 +257,7 @@ function ViagemOperacional() {
         </section>
 
         {ride.status === "MATCHED" && (
-          <section className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 lg:col-start-2 lg:row-start-3">
+          <section className="order-4 space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 lg:col-start-2 lg:row-start-3">
             <p className="flex items-center gap-2 font-semibold">
               <ShieldCheck size={17} />
               Combinação encontrada — ainda não é uma viagem confirmada.
@@ -294,7 +300,7 @@ function ViagemOperacional() {
         )}
 
         {canNavigate && (
-          <section className="rounded-xl border border-primary/25 bg-primary/5 p-4 lg:col-start-2 lg:row-start-3">
+          <section className="order-4 rounded-xl border border-primary/25 bg-primary/5 p-4 lg:col-start-2 lg:row-start-3">
             <p className="mb-3 text-sm text-muted-foreground">
               A navegação abre o aplicativo de mapas. A CARONAA não fornece ETA rodoviário nesta
               tela.
@@ -309,7 +315,7 @@ function ViagemOperacional() {
         )}
 
         {ride.rideId && ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(ride.status) && (
-          <div className="lg:col-start-1 lg:row-start-1 lg:row-span-4">
+          <div className="order-1 lg:col-start-1 lg:row-start-1 lg:row-span-4">
             <RideSafetyPanel
               rideId={ride.rideId}
               role={ride.role}
