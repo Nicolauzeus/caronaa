@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound } from "lucide-react";
+import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound, CalendarDays } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
@@ -156,6 +156,11 @@ function Home() {
     document.getElementById("home-origin")?.focus();
   }
 
+  function setToday() {
+    const now = new Date();
+    setDate([now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-"));
+  }
+
   function startJourney(nextRole: "request" | "offer") {
     setRole(nextRole);
     setError(null);
@@ -202,7 +207,7 @@ function Home() {
         </section>
         {active && (
           <section
-            className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-4 shadow-soft"
+            className="mb-4 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-soft"
             aria-label="Sua carona atual"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -282,7 +287,7 @@ function Home() {
         />
         <section
           aria-labelledby="journey-title"
-          className="relative -mx-4 rounded-t-2xl bg-background px-4 pt-5 sm:mx-0 sm:rounded-none sm:px-0 sm:pt-6"
+          className="relative -mx-4 -mt-5 rounded-t-3xl border-t border-border/60 bg-background px-4 pb-5 pt-5 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] sm:mx-0 sm:mt-0 sm:rounded-none sm:border-0 sm:px-0 sm:pt-6 sm:shadow-none"
         >
           <h1 id="journey-title" className="text-xl font-extrabold sm:text-3xl">
             <span className="sm:hidden">Detalhes da viagem</span>
@@ -306,7 +311,7 @@ function Home() {
           <div
             role="group"
             aria-label="Papel nesta viagem"
-            className="my-5 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+            className="my-4 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:my-5"
           >
             {(
               [
@@ -484,6 +489,12 @@ function Home() {
                 ))}
               </div>
             )}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">Quando pretende sair?</span>
+              <button type="button" onClick={setToday} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 text-xs font-bold text-foreground hover:bg-primary/20">
+                <CalendarDays size={15} aria-hidden="true" /> Hoje
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm font-semibold">
                 Data
@@ -493,7 +504,7 @@ function Home() {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="mt-1 h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 font-normal"
+                  className="mt-1 h-12 w-full min-w-0 rounded-xl border border-input bg-background px-2 text-sm font-normal sm:px-3"
                 />
               </label>
               <label className="text-sm font-semibold">
@@ -504,7 +515,7 @@ function Home() {
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="mt-1 h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 font-normal"
+                  className="mt-1 h-12 w-full min-w-0 rounded-xl border border-input bg-background px-2 text-sm font-normal sm:px-3"
                 />
               </label>
             </div>
@@ -538,7 +549,7 @@ function Home() {
               </p>
             )}
             {role === "request" && <JourneyPreferences kind="request" onChange={setPreferences} />}
-            <Button type="submit" disabled={busy} className="min-h-12 w-full text-base font-bold">
+            <Button type="submit" disabled={busy} className="min-h-14 w-full rounded-xl text-base font-bold shadow-sm">
               {busy ? "Publicando..." : role === "request" ? "Pedir carona" : "Continuar"}
               <ArrowRight size={18} />
             </Button>
