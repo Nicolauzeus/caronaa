@@ -1,7 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { RouteMap } from "@/components/caronaa/RouteMap";
+
+vi.mock("@/components/caronaa/LiveRideMap", () => ({
+  LiveRideMap: ({points}: {points: Array<{title:string}>}) => (
+    <div role="img" aria-label={`Mapa da viagem: ${points.map(p=>p.title).join(", ")}`} />
+  ),
+}));
 
 describe("RouteMap Component", () => {
   it("renders empty state placeholder when no origin or destination are provided", () => {
@@ -14,7 +20,7 @@ describe("RouteMap Component", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders real route with coordinates, OpenStreetMap iframe embed and distance calculation", () => {
+  it("renders road-routing map with the origin and destination coordinates", () => {
     render(
       <RouteMap
         origin="Aldeota, Fortaleza"
@@ -32,14 +38,9 @@ describe("RouteMap Component", () => {
       />,
     );
 
-    // Bounding box map embed is rendered
-    const iframe = screen.getByTitle(/Mapa da rota entre/i);
-    expect(iframe).toBeInTheDocument();
-    expect(iframe).toHaveAttribute("src");
-    expect(iframe.getAttribute("src")).toContain("openstreetmap.org/export/embed.html");
-
-    // Route distance and time calculations
-    expect(screen.getByText(/km • ~/i)).toBeInTheDocument();
+    // Coordinates are passed to the real road-route component instead of a point-only iframe.
+    expect(screen.getByRole("img", { name: /Mapa da viagem/i })).toBeInTheDocument();
+    expect(screen.getByText(/Trajeto pelas vias/i)).toBeInTheDocument();
 
     // External map link
     const externalLink = screen.getByRole("link", { name: /Abrir mapa/i });
@@ -65,7 +66,7 @@ describe("RouteMap Component", () => {
     // Geocodes via catalog provider and loads map
     await waitFor(
       () => {
-        expect(screen.getByTitle(/Mapa da rota entre/i)).toBeInTheDocument();
+        expect(screen.getByRole("img", { name: /Mapa da viagem/i })).toBeInTheDocument();
       },
       { timeout: 4000 },
     );
