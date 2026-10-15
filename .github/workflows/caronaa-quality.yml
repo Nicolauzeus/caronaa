@@ -18,8 +18,9 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: |
-          npm install --global pnpm@10
-          pnpm install --no-frozen-lockfile
+          npm install --global npm@11
+          rm package-lock.json
+          npm install --no-audit --no-fund
       - name: Payment policy and route tests
         run: npx vitest run src/lib/payments src/components/caronaa/LiveRideMap.test.ts
       - name: Full regression suite
