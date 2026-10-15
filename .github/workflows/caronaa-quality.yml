@@ -17,7 +17,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-save --package-lock=false
       - name: Payment policy and route tests
         run: npx vitest run src/lib/payments src/components/caronaa/LiveRideMap.test.ts
       - name: Full regression suite
