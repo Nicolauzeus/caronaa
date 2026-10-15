@@ -40,7 +40,7 @@ describe("Página Pública /privacidade (Política de Privacidade LGPD da CARONA
     expect(
       screen.getByRole("heading", { level: 1, name: /Política de Privacidade da CARONAA/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/privacidade_sts_2026_v1/i)).toBeInTheDocument();
+    expect(screen.getByText(/privacidade_caronaa_2026_v1/i)).toBeInTheDocument();
   });
 
   it("exibe o destaque obrigatório de startup em fase inicial e evolução contínua", () => {

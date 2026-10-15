@@ -393,6 +393,62 @@
       "when": 1791576070806,
       "tag": "0055_ride_publication_modified_at",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791776864385,
+      "tag": "0056_profile_default_vehicle",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1791782496109,
+      "tag": "0057_repair_profile_default_vehicle",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1791841259106,
+      "tag": "0058_0058_repair_priced_segments_and_start_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791845369229,
+      "tag": "0059_disable_retired_sts_ride_rpc",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791847689475,
+      "tag": "0060_partial_passenger_route_quotes",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791849848361,
+      "tag": "0061_profile_vehicle_brand_plate",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791853221772,
+      "tag": "0062_multi_stop_route_geometry",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1791857574382,
+      "tag": "0063_multi_stop_route_geometry",
+      "breakpoints": true
     }
   ]
 }

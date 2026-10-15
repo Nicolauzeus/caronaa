@@ -3,11 +3,11 @@ import type { Enums, TablesInsert } from "@/integrations/supabase/types";
 
 const ANONYMOUS_SESSION_KEY = "caronaa-anonymous-session-id";
 export const STS_2026_SOURCE = "sts-2026";
-const DEFAULT_SOURCE = STS_2026_SOURCE;
-const DEFAULT_CAMPAIGN_EVENT = "Siará Tech Summit 2026";
+const DEFAULT_SOURCE = "direct";
+const DEFAULT_CAMPAIGN_EVENT = "CARONAA";
 
 export function normalizeStsSource(source: string | null | undefined): string {
-  if (!source) return STS_2026_SOURCE;
+  if (!source) return DEFAULT_SOURCE;
   const trimmed = source.trim();
   const lower = trimmed.toLowerCase();
   if (lower === "sts2026" || lower === "sts_2026" || lower === "sts-2026") {

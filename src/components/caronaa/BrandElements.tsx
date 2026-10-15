@@ -3,22 +3,41 @@ import { cn } from "@/lib/utils";
 import { Sparkles, MapPin, CheckCircle2 } from "lucide-react";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
-export function CaronaaSymbol({ className, size = 24 }: {
+export function CaronaaSymbol({
+  className,
+  size = 24,
+}: {
   className?: string;
   size?: number;
   color?: string;
 }) {
-  return <img src={logoAsset.url} alt="" aria-hidden="true"
-    width={size} height={size} className={cn("shrink-0 object-contain", className)} />;
+  return (
+    <img
+      src={logoAsset.url}
+      alt=""
+      aria-hidden="true"
+      width={size}
+      height={size}
+      className={cn("shrink-0 object-contain", className)}
+    />
+  );
 }
 
-export function BrandLogo({ size = "md", className }: {
+export function BrandLogo({
+  size = "md",
+  className,
+}: {
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
   const height = { sm: "h-8", md: "h-11", lg: "h-16" }[size];
-  return <img src={logoAsset.url} alt="CARONAA"
-    className={cn("w-auto shrink-0 object-contain", height, className)} />;
+  return (
+    <img
+      src={logoAsset.url}
+      alt="CARONAA"
+      className={cn("w-auto shrink-0 object-contain", height, className)}
+    />
+  );
 }
 
 export function StsBadge({ className }: { className?: string }) {
@@ -180,9 +199,7 @@ export function RouteConnectionVisual({
   );
 }
 
-/**
- * Banner Institucional de Validação do Evento (Siará Tech Summit + Unifor Hub)
- */
+/** Faixa institucional da CARONAA e do ecossistema Unifor Hub. */
 export function InstitutionalPartnershipStrip({ className }: { className?: string }) {
   return (
     <aside
@@ -193,11 +210,6 @@ export function InstitutionalPartnershipStrip({ className }: { className?: strin
       )}
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 text-center sm:px-6">
-        <span className="flex items-center gap-1.5 font-medium text-foreground">
-          <Sparkles size={14} className="text-caronaa-primary" />
-          Startup expositora no <strong className="text-foreground">Siará Tech Summit 2026</strong>
-        </span>
-        <span className="hidden text-muted-foreground/40 sm:inline">•</span>
         <span className="flex items-center gap-1.5 font-medium text-foreground">
           <CheckCircle2 size={14} className="text-success" />
           Startup do ecossistema <strong className="text-foreground">Unifor Hub</strong>

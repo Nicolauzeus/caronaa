@@ -5,6 +5,7 @@ import { Route } from "@/routes/_authenticated/home";
 const api = vi.hoisted(() => ({
   load: vi.fn(),
   request: vi.fn(),
+  quote: vi.fn(),
   reverse: vi.fn(),
   seed: vi.fn(),
   account: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("@/lib/home.functions", () => ({
   getRecentHomeDestinations: () => Promise.resolve([]),
 }));
 vi.mock("@/lib/ride-matching.functions", () => ({ createRideRequest: api.request }));
+vi.mock("@/lib/ride-pricing.functions", () => ({ previewRequestFare: api.quote }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@/components/caronaa/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
@@ -67,6 +69,12 @@ describe("Home mobile", () => {
     vi.clearAllMocks();
     api.load.mockResolvedValue([]);
     api.request.mockResolvedValue({ requestId: "request" });
+    api.quote.mockResolvedValue({
+      quoteId: "route-quote",
+      distanceKm: 11,
+      pricePerPassenger: 6,
+      tariffReference: "caronaa-km-6-per-11-v1",
+    });
     api.seed.mockResolvedValue(null);
     api.account.mockResolvedValue({ status: "none" });
     api.reverse.mockResolvedValue({
@@ -114,15 +122,16 @@ describe("Home mobile", () => {
     const { container } = render(<Home />);
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Aldeota" } });
-    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-08" } });
+    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
     fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
+    await waitFor(() => expect(api.quote).toHaveBeenCalled());
+    await screen.findByText(/R\$ 6,00 por pessoa/);
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() => expect(api.request).toHaveBeenCalledOnce());
     expect(api.request).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        origin: "CEC",
-        destination: "Aldeota",
-        rideDate: "2026-10-08",
+        quoteId: "route-quote",
+        rideDate: "2026-10-15",
         departureTime: "20:00",
       }),
     });
@@ -174,57 +183,24 @@ describe("Home mobile", () => {
     act(() => fix(position()));
     await screen.findByText(/Suas coordenadas estão disponíveis/);
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "CEC" } });
-    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-08" } });
+    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
     fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
+    await screen.findByText(/R\$ 6,00 por pessoa/);
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() =>
       expect(api.request).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          origin: "Localização atual",
-          originLat: -3.73,
-          originLng: -38.52,
-        }),
+        data: expect.objectContaining({ quoteId: "route-quote" }),
       }),
     );
   });
-  it("erro da RPC STS não bloqueia GPS nem criação manual e não expõe SQL", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({ matches: true }),
-    });
-    api.seed.mockRejectedValue(new Error("Could not find the function public.get_sts_ride_seed"));
-    const { container } = render(<Home />);
-    await screen.findByText(/Seu trajeto STS está indisponível agora/);
-    expect(screen.queryByText(/Could not find/)).toBeNull();
-    act(() => fix(position()));
-    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Aldeota" } });
-    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-08" } });
-    fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
-    fireEvent.submit(container.querySelector("form")!);
-    await waitFor(() => expect(api.request).toHaveBeenCalledOnce());
-    expect(screen.getByLabelText("Mapa do seu trajeto")).toHaveTextContent("-3.73");
-  });
-  it("origem STS escolhida é preservada mesmo longe do GPS", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({ matches: true }),
-    });
-    api.seed.mockResolvedValue({
-      classification: "partial",
-      details: { origin: "Centro de Eventos", originLat: -3.79, originLng: -38.48 },
-      publicationId: null,
-    });
+  it("não inicia mais carregamento de publicação atribuída ao evento", () => {
     render(<Home />);
-    await screen.findByRole("button", { name: "Concluir publicação" });
+    expect(api.seed).not.toHaveBeenCalled();
+    expect(screen.queryByText(/trajeto STS/i)).not.toBeInTheDocument();
+  });
+  it("não apresenta opções de saída vinculadas à inscrição do evento", () => {
+    render(<Home />);
     fireEvent.click(screen.getByText("Opções de saída"));
-    const button = await screen.findByRole("button", {
-      name: "Usar origem da inscrição STS",
-    });
-    fireEvent.click(button);
-    act(() => fix(position()));
-    act(() => move(position(-3.8)));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Centro de Eventos"));
-    expect(screen.getByText("Origem da inscrição STS")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /inscrição STS/i })).not.toBeInTheDocument();
   });
 });

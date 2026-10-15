@@ -64,11 +64,36 @@ export function AppShell({
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
-          <div className={!publicPage && user ? "hidden lg:block" : ""}><Brand /></div>
-          {!publicPage && user && <Link to="/perfil" className="flex min-w-0 items-center gap-3 lg:hidden">
-            {typeof (user.user_metadata.avatar_url || user.user_metadata.picture) === "string" ? <img src={user.user_metadata.avatar_url || user.user_metadata.picture} alt="" className="size-10 shrink-0 rounded-full object-cover"/> : <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted"><UserRound size={20}/></span>}
-            <span className="truncate text-base font-bold">Olá, {String(user.user_metadata.full_name || user.user_metadata.name || user.email?.split("@")[0] || "você").split(" ")[0]}!</span>
-          </Link>}
+          <div className={!publicPage && user ? "hidden lg:block" : ""}>
+            <Brand />
+          </div>
+          {!publicPage && user && (
+            <Link to="/perfil" className="flex min-w-0 items-center gap-3 lg:hidden">
+              {typeof (user.user_metadata.avatar_url || user.user_metadata.picture) === "string" ? (
+                <img
+                  src={user.user_metadata.avatar_url || user.user_metadata.picture}
+                  alt=""
+                  className="size-10 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <UserRound size={20} />
+                </span>
+              )}
+              <span className="truncate text-base font-bold">
+                Olá,{" "}
+                {
+                  String(
+                    user.user_metadata.full_name ||
+                      user.user_metadata.name ||
+                      user.email?.split("@")[0] ||
+                      "você",
+                  ).split(" ")[0]
+                }
+                !
+              </span>
+            </Link>
+          )}
 
           {/* Navegação DESKTOP para Páginas Públicas */}
           {publicPage ? (
@@ -82,13 +107,6 @@ export function AppShell({
                 }`}
               >
                 Como funciona
-              </Link>
-              <Link
-                to="/"
-                hash="siara-tech-summit"
-                className="rounded-lg px-3.5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                Siará Tech Summit
               </Link>
               <Link
                 to="/seguranca"
@@ -127,37 +145,53 @@ export function AppShell({
           {/* Área Direita do Header */}
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle className="hidden md:inline-flex" />
-            {user && <div className="hidden lg:block"><NotificationControls /></div>}
+            {user && (
+              <div className="hidden lg:block">
+                <NotificationControls />
+              </div>
+            )}
 
-            {publicPage ? (!loading && !user &&
-              <>
-                {/* CTA Destacado no DESKTOP: 'Encontrar minha CARONAA' */}
-                <Button
-                  asChild
-                  variant="strong"
-                  className="hidden h-10 rounded-xl px-5 font-bold shadow-soft lg:inline-flex"
-                >
-                  <Link to="/formulario">Encontrar minha CARONAA</Link>
-                </Button>
+            {publicPage ? (
+              !loading &&
+              !user && (
+                <>
+                  {/* CTA Destacado no DESKTOP: 'Encontrar minha CARONAA' */}
+                  <Button
+                    asChild
+                    variant="strong"
+                    className="hidden h-10 rounded-xl px-5 font-bold shadow-soft lg:inline-flex"
+                  >
+                    <Link to="/auth" search={{ mode: "cadastro" }}>
+                      Encontrar minha CARONAA
+                    </Link>
+                  </Button>
 
-                {/* CTA no MOBILE: 'Participar' */}
-                <Button
-                  asChild
-                  size="sm"
-                  variant="strong"
-                  className="h-8.5 rounded-xl px-3.5 text-xs font-extrabold shadow-soft lg:hidden"
-                >
-                  <Link to="/formulario">Participar</Link>
-                </Button>
-              </>
+                  {/* CTA no MOBILE: 'Participar' */}
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="strong"
+                    className="h-8.5 rounded-xl px-3.5 text-xs font-extrabold shadow-soft lg:hidden"
+                  >
+                    <Link to="/auth" search={{ mode: "cadastro" }}>
+                      Participar
+                    </Link>
+                  </Button>
+                </>
+              )
             ) : (
               /* Ações da Área Autenticada */
               <>
-                {!loading && !user && <Button asChild className="hidden h-9 rounded-lg px-4 font-semibold xl:inline-flex">
-                  <Link to="/formulario">
-                    Validação Siará Tech Summit <ArrowUpRight size={16} />
-                  </Link>
-                </Button>}
+                {!loading && !user && (
+                  <Button
+                    asChild
+                    className="hidden h-9 rounded-lg px-4 font-semibold xl:inline-flex"
+                  >
+                    <Link to="/auth" search={{ mode: "cadastro" }}>
+                      Criar conta <ArrowUpRight size={16} />
+                    </Link>
+                  </Button>
+                )}
                 {!loading &&
                   (user ? (
                     <>
@@ -199,15 +233,19 @@ export function AppShell({
             )}
 
             {/* Botão de Menu para MOBILE */}
-            {!publicPage ? <MobileAccountDrawer signOut={signOut}/> : <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-lg lg:hidden"
-              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-              onClick={() => setMenuOpen((value) => !value)}
-            >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </Button>}
+            {!publicPage ? (
+              <MobileAccountDrawer signOut={signOut} />
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-lg lg:hidden"
+                aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+                onClick={() => setMenuOpen((value) => !value)}
+              >
+                {menuOpen ? <X size={20} /> : <Menu size={20} />}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -228,14 +266,6 @@ export function AppShell({
                     Como funciona
                   </Link>
                   <Link
-                    to="/"
-                    hash="siara-tech-summit"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold text-foreground hover:bg-secondary"
-                  >
-                    Siará Tech Summit
-                  </Link>
-                  <Link
                     to="/auth"
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold text-foreground hover:bg-secondary"
@@ -243,13 +273,19 @@ export function AppShell({
                     <LogIn size={18} className="text-caronaa-primary" />
                     Entrar
                   </Link>
-                  {!loading && !user && <div className="pt-2">
-                    <Button asChild variant="strong" className="w-full rounded-xl py-3 font-bold">
-                      <Link to="/formulario" onClick={() => setMenuOpen(false)}>
-                        Encontrar minha CARONAA
-                      </Link>
-                    </Button>
-                  </div>}
+                  {!loading && !user && (
+                    <div className="pt-2">
+                      <Button asChild variant="strong" className="w-full rounded-xl py-3 font-bold">
+                        <Link
+                          to="/auth"
+                          search={{ mode: "cadastro" }}
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          Criar conta
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -289,15 +325,43 @@ export function AppShell({
         className={
           publicPage
             ? "flex-1"
-            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 md:pb-12 md:pt-8"
+            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
         }
       >
         {children}
       </main>
 
+      {/* Navegação inferior acessível para a área autenticada em celulares. */}
+      {!publicPage && user && (
+        <nav
+          aria-label="Navegação principal mobile"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-xl md:hidden"
+        >
+          <div className="mx-auto grid max-w-lg grid-cols-3 gap-1 px-3 pt-2">
+            {authenticatedNav.map(({ to, label, icon: Icon }) => {
+              const selected = pathname === to || pathname.startsWith(`${to}/`);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={selected ? "page" : undefined}
+                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    selected
+                      ? "bg-primary/15 text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon size={21} aria-hidden="true" className={selected ? "text-primary" : ""} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
       {/* Rodapé Público Consistente em Todas as Páginas Públicas */}
       {publicPage && <PublicFooter />}
-
     </div>
   );
 }

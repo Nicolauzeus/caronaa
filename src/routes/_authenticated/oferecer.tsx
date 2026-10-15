@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -21,19 +21,25 @@ import type { TravelPreferences } from "@/lib/travel-preferences";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
 import { OfferFarePreview, type OfferQuote } from "@/components/caronaa/OfferFarePreview";
+import { formatBrl } from "@/lib/ride-cost";
 import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
 import type { FormLocationDetails } from "@/lib/location/types";
 import {
   TimeToleranceSelector,
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
   validateSearch: z.object({
-    origem: z.string().max(160).optional(), destino: z.string().max(160).optional(),
-    data: z.string().optional(), horario: z.string().optional(),
-    olat: z.coerce.number().min(-90).max(90).optional(), olng: z.coerce.number().min(-180).max(180).optional(),
-    dlat: z.coerce.number().min(-90).max(90).optional(), dlng: z.coerce.number().min(-180).max(180).optional(),
+    origem: z.string().max(160).optional(),
+    destino: z.string().max(160).optional(),
+    data: z.string().optional(),
+    horario: z.string().optional(),
+    olat: z.coerce.number().min(-90).max(90).optional(),
+    olng: z.coerce.number().min(-180).max(180).optional(),
+    dlat: z.coerce.number().min(-90).max(90).optional(),
+    dlng: z.coerce.number().min(-180).max(180).optional(),
   }),
   head: () => ({
     meta: [
@@ -59,12 +65,10 @@ type OferecerFormState = {
   destination: string;
   originLocation?: FormLocationDetails;
   destinationLocation?: FormLocationDetails;
-  meetingLocation?: FormLocationDetails;
   date: string;
   time: string;
   seats: string;
   vehicle: string;
-  meeting: string;
   notes: string;
   timeTolerance: TimeToleranceMinutes;
   passengerGenderPreference: "ANY" | "FEMININO" | "MASCULINO";
@@ -79,13 +83,13 @@ const initial: OferecerFormState = {
   time: "",
   seats: "2",
   vehicle: "",
-  meeting: "",
   notes: "",
   timeTolerance: 15,
   passengerGenderPreference: "ANY",
 };
 function Oferecer() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
   const publishOffer = useServerFn(createRideOffer);
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"point" | "routine">("point");
@@ -96,19 +100,63 @@ function Oferecer() {
   const publishingRef = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const [quote, setQuote] = useState<OfferQuote | null>(null);
+  const [profilePlate, setProfilePlate] = useState("");
   const receiveQuote = useCallback((value: OfferQuote | null) => setQuote(value), []);
   const [form, setForm] = useState<OferecerFormState>(() => ({
-    ...initial, origin: search.origem ?? "", destination: search.destino ?? "", date: search.data ?? "", time: search.horario ?? "",
-    originLocation: search.olat != null && search.olng != null ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng } : undefined,
-    destinationLocation: search.dlat != null && search.dlng != null ? { rawText: search.destino ?? "", lat: search.dlat, lng: search.dlng } : undefined,
+    ...initial,
+    origin: search.origem ?? "",
+    destination: search.destino ?? "",
+    date: search.data ?? "",
+    time: search.horario ?? "",
+    originLocation:
+      search.olat != null && search.olng != null
+        ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng }
+        : undefined,
+    destinationLocation:
+      search.dlat != null && search.dlng != null
+        ? { rawText: search.destino ?? "", lat: search.dlat, lng: search.dlng }
+        : undefined,
   }));
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("vehicle_description, vehicle_brand, vehicle_plate")
+        .eq("id", auth.user.id)
+        .maybeSingle();
+      if (active && data) {
+        setProfilePlate(data.vehicle_plate ?? "");
+        const savedVehicle = [data.vehicle_brand, data.vehicle_description].filter(Boolean).join(" · ");
+        setForm((current) =>
+          current.vehicle.trim()
+            ? current
+            : { ...current, vehicle: savedVehicle },
+        );
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
   const update = (key: keyof OferecerFormState, value: string) =>
     setForm((previous) => ({ ...previous, [key]: value }));
   const next = async (e: FormEvent) => {
     e.preventDefault();
+    if (step === 1) {
+      if (!quote || quote.origin !== form.origin || quote.destination !== form.destination) {
+        toast.error("Aguarde a cotação rodoviária do percurso ou tente novamente.");
+        return;
+      }
+      setStep((current) => current + 1);
+      return;
+    }
     if (step === 2) {
       if (!quote || quote.origin !== form.origin || quote.destination !== form.destination) {
-        toast.error("Aguarde o preço do percurso antes de publicar."); return;
+        toast.error("Aguarde o preço do percurso antes de publicar.");
+        return;
       }
       if (publishingRef.current) return;
       publishingRef.current = true;
@@ -131,13 +179,11 @@ function Oferecer() {
             preferences,
             idempotencyKey,
             vehicleDescription: form.vehicle,
-            meetingPoint: form.meeting,
-            meetingLat: form.meetingLocation?.lat,
-            meetingLng: form.meetingLocation?.lng,
             notes: form.notes,
           },
         });
         setPublishedOfferId(result.offerId);
+        await navigate({ to: "/minha-carona/$offerId", params: { offerId: result.offerId } });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Não foi possível publicar a oferta.");
         return;
@@ -146,8 +192,7 @@ function Oferecer() {
         setPublishing(false);
       }
       setIdempotencyKey(crypto.randomUUID());
-      setStep(3);
-    } else setStep(2);
+    }
   };
   return (
     <AppShell>
@@ -163,10 +208,10 @@ function Oferecer() {
             <div className="space-y-4 border-y border-border py-8">
               <h2 className="text-xl font-semibold">Rotina ativa</h2>
               <Button asChild>
-                  <Link
-                    to="/minhas-caronas"
-                    hash={publishedOfferId ? `ride-${publishedOfferId}` : undefined}
-                  >
+                <Link
+                  to="/minhas-caronas"
+                  hash={publishedOfferId ? `ride-${publishedOfferId}` : undefined}
+                >
                   Minhas viagens <ArrowRight size={16} />
                 </Link>
               </Button>
@@ -195,7 +240,7 @@ function Oferecer() {
         ) : (
           <>
             <div className="mb-8 flex items-center gap-3">
-              {[1, 2, 3].map((n) => (
+              {[1, 2].map((n) => (
                 <div key={n} className="flex flex-1 items-center gap-2">
                   <span
                     className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step >= n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
@@ -205,21 +250,22 @@ function Oferecer() {
                   <span
                     className={`hidden text-xs font-semibold sm:block ${step >= n ? "text-foreground" : "text-muted-foreground"}`}
                   >
-                    {["Trajeto", "Detalhes", "Pronto!"][n - 1]}
+                    {["Publicar", "Revisão"][n - 1]}
                   </span>
-                  {n < 3 && <span className="ml-auto h-px flex-1 bg-border" />}
+                  {n < 2 && <span className="ml-auto h-px flex-1 bg-border" />}
                 </div>
               ))}
             </div>
-            {step === 3 ? (
+            {publishedOfferId ? (
               <div className="rounded-lg border border-border bg-card px-6 py-16 text-center shadow-soft">
                 <span className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-secondary text-primary">
                   <CheckCircle2 size={34} />
                 </span>
                 <h2 className="font-display text-2xl font-extrabold">Carona publicada!</h2>
                 <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-                  Seu trajeto de {form.origin} para {form.destination} foi adicionado às suas
-                    caronas. Passageiros compatíveis podem confirmar sem novo aceite seu.
+                  Seu trajeto de {form.origin} para {form.destination} está publicado. Você receberá
+                  solicitações e poderá confirmar quem vai viajar. Publicar não confirma
+                  automaticamente nenhuma combinação.
                 </p>
                 <div className="mt-7 flex flex-wrap justify-center gap-3">
                   <Button asChild>
@@ -230,7 +276,8 @@ function Oferecer() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setForm(initial);
+                      setForm({ ...initial, vehicle: form.vehicle });
+                      setPublishedOfferId(null);
                       setStep(1);
                     }}
                   >
@@ -245,16 +292,18 @@ function Oferecer() {
               >
                 <div className="mb-7 flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
-                    {step === 1 ? <MapPin /> : <CarFront />}
+                    {step === 1 ? <MapPin /> : <CheckCircle2 />}
                   </span>
                   <div>
                     <h2 className="font-display text-xl font-extrabold">
-                      {step === 1 ? "Por onde você vai?" : "Detalhes da sua carona"}
+                      {step === 1 ? "Para onde você vai e quando sai?" : "Revise sua carona"}
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       {step === 1
-                        ? "Conte-nos o trajeto e quando pretende sair."
-                        : "Ajude passageiros a conhecer sua viagem."}
+                        ? "Informe o trajeto e o horário da sua viagem."
+                        : step === 2
+                          ? "Veículo e preferências podem vir do seu perfil e ser ajustados nesta viagem."
+                          : "Confira o trajeto, as vagas e a estimativa antes de publicar."}
                     </p>
                   </div>
                 </div>
@@ -319,9 +368,76 @@ function Oferecer() {
                       destination={form.destination}
                       originLocation={form.originLocation}
                       destinationLocation={form.destinationLocation}
+                      showApproximateMetrics={false}
                     />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block text-sm font-semibold">
+                        Vagas disponíveis
+                        <select
+                          value={form.seats}
+                          onChange={(event) => update("seats", event.target.value)}
+                          className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3"
+                        >
+                          {[1, 2, 3, 4].map((count) => (
+                            <option key={count}>{count}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <Field
+                        label="Veículo desta viagem"
+                        value={form.vehicle}
+                        onChange={(value) => update("vehicle", value)}
+                        placeholder="Ex.: Honda Fit, prata"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {profilePlate ? `Placa cadastrada: ${profilePlate}. ` : ""}
+                      <Link to="/perfil" className="font-semibold text-primary underline">Meu veículo no perfil</Link>
+                    </p>
+                    <OfferFarePreview
+                      origin={form.origin}
+                      destination={form.destination}
+                      seats={Number(form.seats)}
+                      onQuote={receiveQuote}
+                    />
+                    <details>
+                      <summary className="cursor-pointer py-2 text-sm font-semibold">
+                        Preferências e observações (opcional)
+                      </summary>
+                      <div className="mt-3 space-y-4">
+                        <label className="block text-sm font-semibold">
+                          Quem pode viajar?
+                          <select
+                            value={form.passengerGenderPreference}
+                            onChange={(event) =>
+                              setForm((previous) => ({
+                                ...previous,
+                                passengerGenderPreference: event.target
+                                  .value as OferecerFormState["passengerGenderPreference"],
+                              }))
+                            }
+                            className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3"
+                          >
+                            <option value="ANY">Todos os gêneros</option>
+                            <option value="FEMININO">Somente mulheres</option>
+                            <option value="MASCULINO">Somente homens</option>
+                          </select>
+                        </label>
+                        <JourneyPreferences kind="offer" onChange={setPreferences} />
+                        <label className="block text-sm font-semibold">
+                          Observações (opcional)
+                          <textarea
+                            value={form.notes}
+                            onChange={(event) => update("notes", event.target.value)}
+                            rows={2}
+                            className="mt-2 w-full rounded-md border border-input bg-background p-3"
+                          />
+                        </label>
+                      </div>
+                    </details>
                   </div>
-                ) : (
+                ) : step === 99 ? (
                   <div className="grid gap-5 sm:grid-cols-2">
                     <label className="block text-sm font-semibold">
                       Vagas disponíveis
@@ -337,51 +453,103 @@ function Oferecer() {
                       </select>
                     </label>
                     <Field
-                      label="Veículo"
+                      label="Veículo desta viagem"
                       value={form.vehicle}
                       onChange={(v) => update("vehicle", v)}
                       placeholder="Ex.: Honda Fit, prata"
                       required
                     />
-                    <label className="block text-sm font-semibold">
-                      Passageiros aceitos
-                      <select value={form.passengerGenderPreference} onChange={(e) => setForm((prev) => ({ ...prev, passengerGenderPreference: e.target.value as OferecerFormState["passengerGenderPreference"] }))} className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 outline-none focus:ring-2 focus:ring-ring">
-                        <option value="ANY">Todos os gêneros</option><option value="FEMININO">Somente mulheres</option><option value="MASCULINO">Somente homens</option>
-                      </select>
-                    </label>
-                    <JourneyPreferences kind="offer" onChange={setPreferences} />
-                    <LocationAutocomplete
-                      id="oferecer-meeting"
-                      label="Ponto de encontro"
-                      value={form.meeting}
-                      onChange={(v, details) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          meeting: details?.formattedAddress || v,
-                          meetingLocation: details,
-                        }))
-                      }
-                      placeholder="Ex.: Praça Portugal"
-                      required
-                      variant="simple"
-                    />
-                    <p className="text-sm text-muted-foreground sm:col-span-2">Ao publicar, você aceita os passageiros compatíveis e o preço automático de seus trechos.</p>
-                    <label className="block text-sm font-semibold sm:col-span-2">
-                      Observações
-                      <textarea
-                        value={form.notes}
-                        onChange={(e) => update("notes", e.target.value)}
-                        placeholder="Algo mais que os passageiros devem saber?"
-                        rows={3}
-                        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-3 outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </label>
+                    <p className="text-xs text-muted-foreground sm:col-span-2">
+                      Veículo preenchido pelo seu perfil. Você pode alterar apenas para esta viagem.
+                    </p>
+                    <details className="sm:col-span-2">
+                      <summary className="cursor-pointer py-2 text-sm font-semibold">
+                        Preferências e observações (opcional)
+                      </summary>
+                      <div className="mt-3 space-y-4">
+                        <label className="block text-sm font-semibold">
+                          Quem pode viajar?
+                          <select
+                            value={form.passengerGenderPreference}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                passengerGenderPreference: e.target
+                                  .value as OferecerFormState["passengerGenderPreference"],
+                              }))
+                            }
+                            className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <option value="ANY">Todos os gêneros</option>
+                            <option value="FEMININO">Somente mulheres</option>
+                            <option value="MASCULINO">Somente homens</option>
+                          </select>
+                        </label>
+                        <JourneyPreferences kind="offer" onChange={setPreferences} />
+                        <label className="block text-sm font-semibold">
+                          Observações (opcional)
+                          <textarea
+                            value={form.notes}
+                            onChange={(e) => update("notes", e.target.value)}
+                            placeholder="Algo importante para os passageiros?"
+                            rows={2}
+                            className="mt-2 w-full rounded-md border border-input bg-background px-3 py-3 outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </label>
+                      </div>
+                    </details>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-lg bg-secondary/60 p-4">
+                      <p className="font-semibold">{form.origin || "Origem pendente"}</p>
+                      <ArrowRight className="my-2 rotate-90 text-primary" size={18} />
+                      <p className="font-semibold">{form.destination || "Destino pendente"}</p>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        {form.date
+                          ? new Date(`${form.date}T12:00:00`).toLocaleDateString("pt-BR")
+                          : "Data pendente"}{" "}
+                        · {form.time || "Horário pendente"}
+                        {form.timeTolerance ? ` · tolerância de ${form.timeTolerance} min` : ""}
+                      </p>
+                    </div>
+                    <div className="grid gap-2 text-sm sm:grid-cols-2">
+                      <p>
+                        {form.seats} {Number(form.seats) === 1 ? "vaga" : "vagas"}
+                      </p>
+                      <p>{form.vehicle || "Veículo pendente"}</p>
+                    </div>
+                    {form.notes.trim() && (
+                      <p className="text-sm text-muted-foreground">Observações: {form.notes}</p>
+                    )}
+                    <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm">
+                      <p className="font-semibold">
+                        Percurso completo:{" "}
+                        {quote?.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) ??
+                          "Cotação indisponível"}{" "}
+                        km
+                      </p>
+                      <p className="mt-1 font-bold text-primary">
+                        Preço de referência: {quote ? formatBrl(quote.pricePerPassenger) : "—"} por
+                        pessoa
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        O preço de cada passageiro depende do seu trecho.
+                      </p>
+                    </div>
+                    <p className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+                      Passageiros aceitam primeiro; você confirma depois quem vai viajar. Publicar a
+                      oferta não confirma passageiros automaticamente.
+                    </p>
                   </div>
                 )}
-                <div className="mt-5"><OfferFarePreview origin={form.origin} destination={form.destination} onQuote={receiveQuote} /></div>
                 <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
-                  {step === 2 ? (
-                    <Button type="button" variant="ghost" onClick={() => setStep(1)}>
+                  {step > 1 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setStep((current) => current - 1)}
+                    >
                       <ArrowLeft /> Voltar
                     </Button>
                   ) : (
@@ -389,8 +557,23 @@ function Oferecer() {
                       <CalendarDays size={15} /> Planeje seu trajeto
                     </span>
                   )}
-                  <Button type="submit" className="h-11 px-6" disabled={step === 2 && (publishing || !quote || quote.origin !== form.origin || quote.destination !== form.destination)}>
-                    {step === 1 ? "Continuar" : publishing ? "Publicando..." : "Publicar carona"} <ArrowRight />
+                  <Button
+                    type="submit"
+                    className="h-11 px-6"
+                    disabled={
+                      step === 2 &&
+                      (publishing ||
+                        !quote ||
+                        quote.origin !== form.origin ||
+                        quote.destination !== form.destination)
+                    }
+                  >
+                    {step === 1
+                      ? "Revisar carona"
+                      : publishing
+                        ? "Publicando..."
+                        : "Publicar carona"}{" "}
+                    <ArrowRight />
                   </Button>
                 </div>
               </form>

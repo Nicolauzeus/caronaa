@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
-import { NotificationControls, NotificationPreferences } from "@/components/caronaa/NotificationControls";
+import {
+  NotificationControls,
+  NotificationPreferences,
+} from "@/components/caronaa/NotificationControls";
 import { DriverPixSettings } from "@/components/caronaa/DriverPix";
 import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
@@ -41,7 +44,10 @@ export const Route = createFileRoute("/_authenticated/perfil")({
         content: "Gerencie seus dados e verificações no CARONAA.",
       },
       { property: "og:title", content: "Meu perfil — CARONAA" },
-      { property: "og:description", content: "Gerencie seus dados e preferências de viagem no CARONAA." },
+      {
+        property: "og:description",
+        content: "Gerencie seus dados e preferências de viagem no CARONAA.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -57,6 +63,9 @@ type ProfileData = {
   created_at: string;
   updated_at: string;
   gender: "FEMININO" | "MASCULINO" | null;
+  vehicle_description: string | null;
+  vehicle_brand: string | null;
+  vehicle_plate: string | null;
 };
 
 function Perfil() {
@@ -66,7 +75,9 @@ function Perfil() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">(
+    "idle",
+  );
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
@@ -77,6 +88,9 @@ function Perfil() {
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
   const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
+  const [vehicleDescription, setVehicleDescription] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
@@ -112,7 +126,7 @@ function Perfil() {
           throw new Error("Não foi possível identificar o usuário autenticado.");
         }
 
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("profiles")
           .select("id, full_name, avatar_url, city, created_at, updated_at")
           .eq("id", user.id)
@@ -130,14 +144,26 @@ function Perfil() {
 
         // A coluna foi adicionada depois do lançamento. Mantém perfis antigos
         // acessíveis enquanto a migration chega ao ambiente publicado.
-        const { data: genderRow } = await (supabase as any)
+        const { data: genderRow } = await supabase
           .from("profiles")
           .select("gender")
           .eq("id", user.id)
           .maybeSingle();
-        profileData.gender = genderRow?.gender === "FEMININO" || genderRow?.gender === "MASCULINO"
-          ? genderRow.gender
-          : null;
+        profileData.gender =
+          genderRow?.gender === "FEMININO" || genderRow?.gender === "MASCULINO"
+            ? genderRow.gender
+            : null;
+        const { data: vehicleRow } = await supabase
+          .from("profiles")
+          .select("vehicle_description, vehicle_brand, vehicle_plate")
+          .eq("id", user.id)
+          .maybeSingle();
+        profileData.vehicle_description =
+          typeof vehicleRow?.vehicle_description === "string"
+            ? vehicleRow.vehicle_description
+            : null;
+        profileData.vehicle_brand = vehicleRow?.vehicle_brand ?? null;
+        profileData.vehicle_plate = vehicleRow?.vehicle_plate ?? null;
 
         setProfile(profileData);
 
@@ -146,6 +172,9 @@ function Perfil() {
         setFullName(profileData.full_name ?? "");
         setCity(profileData.city ?? "");
         setGender(profileData.gender ?? "");
+        setVehicleDescription(profileData.vehicle_description ?? "");
+        setVehicleBrand(profileData.vehicle_brand ?? "");
+        setVehiclePlate(profileData.vehicle_plate ?? "");
 
         setPhoto(profileData.avatar_url);
         setSavedPhoto(profileData.avatar_url);
@@ -254,7 +283,7 @@ function Perfil() {
 
       const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
-      const { error: profileError } = await (supabase as any)
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           avatar_url: publicUrl,
@@ -318,7 +347,7 @@ function Perfil() {
         throw new Error("Usuário autenticado não encontrado.");
       }
 
-      const { error: profileError } = await (supabase as any)
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           avatar_url: null,
@@ -400,6 +429,15 @@ function Perfil() {
 
       const normalizedName = fullName.trim();
       const normalizedCity = city.trim();
+      const normalizedPlate = vehiclePlate.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (normalizedPlate && !/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(normalizedPlate)) {
+        toast.error("Informe uma placa válida, como ABC1234 ou ABC1D23.");
+        return;
+      }
+      if (vehicleBrand.trim().length > 60 || vehicleDescription.trim().length > 160) {
+        toast.error("Revise a marca e a descrição do veículo.");
+        return;
+      }
 
       if (!normalizedName) {
         toast.error("Informe seu nome antes de salvar.");
@@ -409,11 +447,14 @@ function Perfil() {
 
       const updatedAt = new Date().toISOString();
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("profiles")
         .update({
           full_name: normalizedName,
           city: normalizedCity || null,
+          vehicle_brand: vehicleBrand.trim() || null,
+          vehicle_plate: normalizedPlate || null,
+          vehicle_description: vehicleDescription.trim() || null,
           updated_at: updatedAt,
         })
         .eq("id", user.id)
@@ -427,13 +468,29 @@ function Perfil() {
       const updatedProfile = data as ProfileData;
 
       if (gender) {
-        const { error: genderError } = await (supabase as any)
+        const { error: genderError } = await supabase
           .from("profiles")
           .update({ gender })
           .eq("id", user.id);
-        if (genderError) throw new Error("Não foi possível salvar o gênero. Atualize o banco com a migration mais recente.");
+        if (genderError)
+          throw new Error(
+            "Não foi possível salvar o gênero. Atualize o banco com a migration mais recente.",
+          );
+      }
+      const { error: vehicleError } = await supabase
+        .from("profiles")
+        .update({ vehicle_description: vehicleDescription.trim() || null })
+        .eq("id", user.id);
+      if (vehicleError) {
+        throw new Error(
+          "Não foi possível salvar o veículo padrão. A migration do perfil precisa estar aplicada.",
+        );
       }
       updatedProfile.gender = gender || null;
+      updatedProfile.vehicle_description = vehicleDescription.trim() || null;
+      updatedProfile.vehicle_brand = vehicleBrand.trim() || null;
+      updatedProfile.vehicle_plate = normalizedPlate || null;
+      setVehiclePlate(normalizedPlate);
 
       setProfile(updatedProfile);
       setFullName(updatedProfile.full_name);
@@ -506,10 +563,15 @@ function Perfil() {
         description="Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."
       />
 
-      <section className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft" aria-label="Notificações de carona">
+      <section
+        className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft"
+        aria-label="Notificações de carona"
+      >
         <div>
           <h2 className="text-sm font-semibold">Combinações e notificações</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Acompanhe novos matches e atualizações das suas viagens.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Acompanhe novos matches e atualizações das suas viagens.
+          </p>
         </div>
         <NotificationControls />
       </section>
@@ -626,7 +688,10 @@ function Perfil() {
             {!gender && (
               <div className="mb-4 flex gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
                 <CircleAlert className="mt-0.5 shrink-0 text-primary" size={18} />
-                <p><strong>Defina seu gênero.</strong> Essa informação permite respeitar filtros de segurança em caronas exclusivas para mulheres ou homens.</p>
+                <p>
+                  <strong>Defina seu gênero.</strong> Essa informação permite respeitar filtros de
+                  segurança em caronas exclusivas para mulheres ou homens.
+                </p>
               </div>
             )}
 
@@ -644,10 +709,27 @@ function Perfil() {
 
               <label className="block text-xs font-bold text-muted-foreground">
                 GÊNERO
-                <select value={gender} onChange={(event) => setGender(event.target.value as "FEMININO" | "MASCULINO" | "")} className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground">
-                  <option value="">Prefiro não informar agora</option><option value="FEMININO">Feminino</option><option value="MASCULINO">Masculino</option>
+                <select
+                  value={gender}
+                  onChange={(event) =>
+                    setGender(event.target.value as "FEMININO" | "MASCULINO" | "")
+                  }
+                  className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground"
+                >
+                  <option value="">Prefiro não informar agora</option>
+                  <option value="FEMININO">Feminino</option>
+                  <option value="MASCULINO">Masculino</option>
                 </select>
               </label>
+
+              <Field
+                label="Modelo e cor do veículo"
+                value={vehicleDescription}
+                onChange={setVehicleDescription}
+                placeholder="Ex.: Honda Fit prata"
+              />
+              <Field label="Marca do carro" value={vehicleBrand} onChange={setVehicleBrand} placeholder="Ex.: Honda" />
+              <Field label="Placa do carro" value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())} placeholder="ABC1D23" />
 
               <div className="md:col-span-2">
                 <Field label="E-mail" value={email} readOnly />
@@ -749,18 +831,11 @@ function Perfil() {
             </label>
 
             <div className="mt-5 flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={cancelPhoto}
-                disabled={uploadStatus === "uploading"}
-              >
+              <Button variant="ghost" onClick={cancelPhoto} disabled={uploadStatus === "uploading"}>
                 Cancelar
               </Button>
 
-              <Button
-                onClick={confirmPhoto}
-                disabled={uploadStatus === "uploading"}
-              >
+              <Button onClick={confirmPhoto} disabled={uploadStatus === "uploading"}>
                 {uploadStatus === "uploading" ? (
                   <>
                     <Loader2 size={16} className="mr-2 animate-spin" />
@@ -777,7 +852,10 @@ function Perfil() {
 
       {/* Bottom Sheet Mobile para opções do Avatar */}
       <Sheet open={avatarSheetOpen} onOpenChange={setAvatarSheetOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl border-t border-border bg-card px-6 pb-8 pt-6 shadow-2xl">
+        <SheetContent
+          side="bottom"
+          className="rounded-t-3xl border-t border-border bg-card px-6 pb-8 pt-6 shadow-2xl"
+        >
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-lg font-extrabold text-foreground">
               Foto de perfil

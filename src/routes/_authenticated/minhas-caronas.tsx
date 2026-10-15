@@ -1,31 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowRight, CalendarDays, CarFront, Clock3, MapPin, Plus, UsersRound } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowRight, CalendarDays, Clock3, MapPin, Plus, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { createRideRequest } from "@/lib/ride-matching.functions";
-import { calculateRideQuote } from "@/lib/ride-pricing.functions";
+import { calculateOfferRemainingPotential, calculateRideQuote } from "@/lib/ride-pricing.functions";
 import { getMyRides, type RideSummary } from "@/lib/rides.functions";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { getRideNextActions, type RideStatus } from "@/lib/ride-lifecycle";
-import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
-import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
+import { RouteSuggestionPanel } from "@/components/caronaa/RouteSuggestionPanel";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
-import { RideRoutineForm, RideScheduleMode } from "@/components/caronaa/RideRoutineForm";
 import { RideRoutineManager } from "@/components/caronaa/RideRoutineManager";
-import type { FormLocationDetails } from "@/lib/location/types";
-import {
-  TimeToleranceSelector,
-  type TimeToleranceMinutes,
-} from "@/components/caronaa/TimeToleranceSelector";
 import { formatBrl } from "@/lib/ride-cost";
-import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
-import type { TravelPreferences } from "@/lib/travel-preferences";
+import { shouldRecalculateRoadEstimate, type RoadEstimateLocation } from "@/lib/ride-potential";
 import { compareRideRecency } from "@/lib/ride-order";
 
 export const Route = createFileRoute("/_authenticated/minhas-caronas")({
@@ -42,48 +33,15 @@ export const Route = createFileRoute("/_authenticated/minhas-caronas")({
   component: MinhasCaronas,
 });
 
-type FormState = {
-  origin: string;
-  destination: string;
-  originLocation?: FormLocationDetails;
-  destinationLocation?: FormLocationDetails;
-  meetingLocation?: FormLocationDetails;
-  date: string;
-  time: string;
-  seats: string;
-  meeting: string;
-  notes: string;
-  timeTolerance: TimeToleranceMinutes;
-};
-const initialForm: FormState = {
-  origin: "",
-  destination: "",
-  originLocation: undefined,
-  destinationLocation: undefined,
-  meetingLocation: undefined,
-  date: "",
-  time: "",
-  seats: "1",
-  meeting: "",
-  notes: "",
-  timeTolerance: 15,
-};
-
 function MinhasCaronas() {
-  const publishRequest = useServerFn(createRideRequest);
   const loadMyRides = useServerFn(getMyRides);
   const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas">("pedidos");
-  const [mode, setMode] = useState<"point" | "routine">("point");
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [preferences, setPreferences] = useState<TravelPreferences>();
   const [passengerRides, setPassengerRides] = useState<RideSummary[]>([]);
   const [driverRides, setDriverRides] = useState<RideSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [publishing, setPublishing] = useState(false);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
-  const publishingRef = useRef(false);
   const hashHandled = useRef(false);
+  const initialTabSelected = useRef(false);
 
   const refreshRides = useCallback(
     async (showLoading = true) => {
@@ -93,6 +51,10 @@ function MinhasCaronas() {
         const data = await loadMyRides();
         setPassengerRides(data.passenger);
         setDriverRides(data.driver);
+        if (!initialTabSelected.current) {
+          initialTabSelected.current = true;
+          if (data.driver.length > 0 && data.passenger.length === 0) setTab("disponiveis");
+        }
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -149,8 +111,6 @@ function MinhasCaronas() {
     );
   }, [driverRides, passengerRides]);
 
-  const update = (key: keyof FormState, value: string) =>
-    setForm((current) => ({ ...current, [key]: value }));
   const allPublications = [...passengerRides, ...driverRides].sort(compareRideRecency);
   const hasFutureDeparture = (ride: RideSummary) =>
     new Date(`${ride.rideDate}T${ride.departureTime}:00-03:00`).getTime() > Date.now();
@@ -180,8 +140,8 @@ function MinhasCaronas() {
           ? currentRide.role === "driver"
             ? currentRide.passengerAcceptedAt
               ? currentRide.driverAcceptedAt
-                ? "Aguardando atualização"
-                : "Confirmar combinação"
+                ? "Aguardando confirmação da viagem"
+                : "Confirmar passageiro"
               : "Aguardando aceite do passageiro"
             : currentRide.passengerAcceptedAt
               ? "Aguardando confirmação do motorista"
@@ -191,47 +151,24 @@ function MinhasCaronas() {
             : currentRide.kind === "offer"
               ? "Ver oferta"
               : "Ver pedido";
+  const currentRideHasOperationScreen = Boolean(
+    currentRide?.rideId && ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(currentRide.status),
+  );
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (publishingRef.current) return;
-    publishingRef.current = true;
-    setPublishing(true);
-    try {
-      await publishRequest({
-        data: {
-          origin: form.origin,
-          destination: form.destination,
-          rideDate: form.date,
-          departureTime: form.time,
-          passengerCount: Number(form.seats),
-          timeToleranceMinutes: form.timeTolerance,
-          preferences,
-          idempotencyKey,
-          meetingPoint: form.meeting,
-          meetingLat: form.meetingLocation?.lat,
-          meetingLng: form.meetingLocation?.lng,
-          notes: form.notes,
-          originLat: form.originLocation?.lat,
-          originLng: form.originLocation?.lng,
-          destinationLat: form.destinationLocation?.lat,
-          destinationLng: form.destinationLocation?.lng,
-        },
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível publicar o pedido.");
-      return;
-    } finally {
-      publishingRef.current = false;
-      setPublishing(false);
-    }
-    setIdempotencyKey(crypto.randomUUID());
-    toast.success("Pedido publicado", {
-      description: "Seu trajeto já está disponível para a comunidade.",
-    });
-    setForm(initialForm);
-    void refreshRides();
+  function focusCurrentRide() {
+    if (!currentRide) return;
+    setTab(
+      currentRide.role === "driver" || currentRide.kind === "offer" ? "disponiveis" : "pedidos",
+    );
+    window.setTimeout(
+      () =>
+        document
+          .getElementById(`ride-${currentRide.rideId ?? currentRide.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      150,
+    );
   }
+
   const items = tab === "pedidos" ? passengerRides : driverRides;
   const activeItems = items.filter((ride) =>
     ["open", "available", "full", "matched", "MATCHED", "CONFIRMED", "IN_PROGRESS"].includes(
@@ -239,12 +176,22 @@ function MinhasCaronas() {
     ),
   );
   const historyItems = items.filter((ride) => !activeItems.includes(ride));
+  const groupByOffer = (rides: RideSummary[]) => {
+    const groups = new Map<string, RideSummary[]>();
+    for (const ride of rides) {
+      const key = ride.offerId ?? `ride:${ride.id}`;
+      groups.set(key, [...(groups.get(key) ?? []), ride]);
+    }
+    return [...groups.values()].sort((left, right) => compareRideRecency(left[0], right[0]));
+  };
+  const activeOfferGroups = tab === "disponiveis" ? groupByOffer(activeItems) : [];
+  const historyOfferGroups = tab === "disponiveis" ? groupByOffer(historyItems) : [];
   return (
     <AppShell>
       <PageHeading
         eyebrow="SEUS TRAJETOS"
         title="Minhas viagens"
-        description="Publique um pedido e acompanhe suas conexões em um só lugar."
+        description="Acompanhe primeiro sua próxima carona e as solicitações que precisam de você."
       />
       {currentRide && (
         <section
@@ -269,179 +216,50 @@ function MinhasCaronas() {
                 </p>
               )}
             </div>
-            {currentRideAction && (
+            {currentRide?.status === "MATCHED" &&
+            currentRide.role === "driver" &&
+            currentRide.offerId ? (
+              <Button asChild>
+                <Link to="/minha-carona/$offerId" params={{ offerId: currentRide.offerId }}>
+                  Ver solicitações <ArrowRight size={16} />
+                </Link>
+              </Button>
+            ) : currentRideAction && currentRideHasOperationScreen ? (
+              <Button asChild>
+                <Link to="/viagem/$rideId" params={{ rideId: currentRide.rideId! }}>
+                  {currentRideAction} <ArrowRight size={16} />
+                </Link>
+              </Button>
+            ) : currentRideAction ? (
               <Button
                 type="button"
                 variant={currentRideAction.startsWith("Aguardando") ? "outline" : "default"}
-                onClick={() => {
-                  setTab(
-                    currentRide.role === "driver" || currentRide.kind === "offer"
-                      ? "disponiveis"
-                      : "pedidos",
-                  );
-                  window.setTimeout(
-                    () =>
-                      document
-                        .getElementById(`ride-${currentRide.rideId ?? currentRide.id}`)
-                        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                    150,
-                  );
-                }}
+                onClick={focusCurrentRide}
               >
-                {currentRideAction}
+                {currentRideAction} <ArrowRight size={16} />
               </Button>
-            )}
+            ) : null}
           </div>
         </section>
       )}
-      <RideScheduleMode value={mode} onChange={setMode} />
-      {mode === "routine" ? (
-        <RideRoutineForm
-          kind="request"
-          initial={{
-            origin: form.origin,
-            destination: form.destination,
-            originLat: form.originLocation?.lat ?? null,
-            originLng: form.originLocation?.lng ?? null,
-            destinationLat: form.destinationLocation?.lat ?? null,
-            destinationLng: form.destinationLocation?.lng ?? null,
-            departureTime: form.time || "07:30",
-            seats: Number(form.seats),
-            timeToleranceMinutes: form.timeTolerance,
-          }}
-          onSaved={async () => {
-            setMode("point");
-            setTab("rotinas");
-            await refreshRides(false);
-          }}
-        />
-      ) : (
-        <form
-          onSubmit={submit}
-          className="rounded-xl border border-border bg-card p-4 shadow-soft md:p-5"
-        >
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-bold">Pedir carona</p>
-              <p className="text-xs text-muted-foreground">
-                Um mapa compartilhado orienta origem e destino.
-              </p>
-            </div>
-            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold text-primary">
-              A / B
-            </span>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.1fr]">
-            <LocationAutocomplete
-              id="pedido-origem"
-              label="Origem"
-              value={form.origin}
-              onChange={(v, details) => {
-                setForm((prev) => ({
-                  ...prev,
-                  origin: details?.formattedAddress || v,
-                  originLocation: details,
-                }));
-              }}
-              placeholder="De onde você sai?"
-              required
-              variant="simple"
-            />
-            <LocationAutocomplete
-              id="pedido-destino"
-              label="Destino"
-              value={form.destination}
-              onChange={(v, details) => {
-                setForm((prev) => ({
-                  ...prev,
-                  destination: details?.formattedAddress || v,
-                  destinationLocation: details,
-                }));
-              }}
-              placeholder="Para onde você vai?"
-              required
-              variant="simple"
-            />
-            <div className="lg:row-span-2">
-              <RouteMap
-                origin={form.origin}
-                destination={form.destination}
-                originLocation={form.originLocation}
-                destinationLocation={form.destinationLocation}
-                heightClassName="min-h-48 h-full"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field
-                label="Data"
-                value={form.date}
-                onChange={(value) => update("date", value)}
-                type="date"
-                required
-              />
-              <Field
-                label="Horário"
-                value={form.time}
-                onChange={(value) => update("time", value)}
-                type="time"
-                required
-              />
-              <Field
-                label="Lugares"
-                value={form.seats}
-                onChange={(value) => update("seats", value)}
-                type="number"
-                required
-              />
-              <p className="col-span-2 self-center text-xs text-muted-foreground sm:col-span-4">
-                O preço será calculado automaticamente para cada passageiro, conforme a distância
-                rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas
-                do trecho.
-              </p>
-            </div>
-            <div className="lg:col-span-2 rounded-lg border border-border/70 bg-muted/15 p-3">
-              <TimeToleranceSelector
-                value={form.timeTolerance}
-                onChange={(val) => setForm((prev) => ({ ...prev, timeTolerance: val }))}
-                baseTime={form.time}
-                label="Tolerância de horário do pedido"
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2">
-              <LocationAutocomplete
-                id="pedido-meeting"
-                label="Ponto de embarque"
-                value={form.meeting}
-                onChange={(value, details) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    meeting: details?.formattedAddress || value,
-                    meetingLocation: details,
-                  }))
-                }
-                placeholder="Ex.: Praça Portugal"
-                variant="simple"
-              />
-              <label className="block text-xs font-bold text-muted-foreground">
-                OBSERVAÇÕES
-                <textarea
-                  value={form.notes}
-                  onChange={(event) => update("notes", event.target.value)}
-                  placeholder="Algum detalhe importante?"
-                  rows={2}
-                  className="mt-1.5 w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
-              </label>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button type="submit" disabled={publishing}>
-              {publishing ? "Publicando..." : "Publicar pedido"} <ArrowRight size={16} />
-            </Button>
-          </div>
-          <JourneyPreferences kind="request" onChange={setPreferences} />
-        </form>
-      )}
+      <section
+        className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3"
+        aria-label="Criar outra publicação"
+      >
+        <p className="text-sm text-muted-foreground">
+          Sua próxima viagem e suas solicitações ficam em primeiro plano.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link to="/oferecer">
+              <Plus size={16} /> Oferecer outra carona
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/home">Pedir carona</Link>
+          </Button>
+        </div>
+      </section>
       <div className="mt-7 border-b border-border">
         <div className="flex flex-wrap gap-5">
           <Tab active={tab === "pedidos"} onClick={() => setTab("pedidos")}>
@@ -469,13 +287,18 @@ function MinhasCaronas() {
         <div className="mt-5 space-y-6">
           <section aria-label="Publicações ativas">
             <h2 className="mb-2 text-sm font-bold">
-              Ativas e aguardando combinação ({activeItems.length})
+              {tab === "disponiveis" ? "Ofertas ativas" : "Ativas e aguardando combinação"} (
+              {tab === "disponiveis" ? activeOfferGroups.length : activeItems.length})
             </h2>
             {activeItems.length ? (
               <div className="grid gap-3 md:grid-cols-2">
-                {activeItems.map((item) => (
-                  <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
-                ))}
+                {tab === "disponiveis"
+                  ? activeOfferGroups.map((group) => (
+                      <DriverOfferSummary key={group[0].offerId ?? group[0].id} rides={group} />
+                    ))
+                  : activeItems.map((item) => (
+                      <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
+                    ))}
               </div>
             ) : (
               <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -487,12 +310,17 @@ function MinhasCaronas() {
           {historyItems.length ? (
             <details className="rounded-lg border border-border bg-card p-3">
               <summary className="cursor-pointer text-sm font-semibold">
-                Histórico ({historyItems.length})
+                Histórico ({tab === "disponiveis" ? historyOfferGroups.length : historyItems.length}
+                )
               </summary>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {historyItems.map((item) => (
-                  <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
-                ))}
+                {tab === "disponiveis"
+                  ? historyOfferGroups.map((group) => (
+                      <DriverOfferSummary key={group[0].offerId ?? group[0].id} rides={group} />
+                    ))
+                  : historyItems.map((item) => (
+                      <Trip key={item.id} ride={item} onChanged={() => refreshRides(false)} />
+                    ))}
               </div>
             </details>
           ) : null}
@@ -541,36 +369,249 @@ function Tab({
     </button>
   );
 }
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-  required?: boolean;
-}) {
+
+function DriverOfferSummary({ rides }: { rides: RideSummary[] }) {
+  const offer = rides.find((ride) => ride.kind === "offer") ?? rides[0];
+  const proposals = rides.filter((ride) => ride.rideId && ride.status === "MATCHED");
+  const waitingDriver = proposals.filter(
+    (ride) => ride.passengerAcceptedAt && !ride.driverAcceptedAt,
+  ).length;
+  const waitingPassenger = proposals.length - waitingDriver;
+  const confirmed = rides.filter((ride) => ["CONFIRMED", "IN_PROGRESS"].includes(ride.status));
+  const confirmedTotal =
+    rides.find((ride) => ride.driverConfirmedTotal != null)?.driverConfirmedTotal ?? 0;
+  if (!offer.offerId) {
+    return <Trip ride={offer} onChanged={async () => undefined} />;
+  }
   return (
-    <label className="block text-xs font-bold text-muted-foreground">
-      {label}
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        required={required}
-        min={type === "number" ? "0" : undefined}
-        className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-      />
-    </label>
+    <article className="rounded-xl border border-border bg-card p-4 shadow-soft">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-muted-foreground">
+          {formatDate(offer.rideDate)} · {offer.departureTime}
+        </span>
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-primary">
+          {statusLabel(offer.status)}
+        </span>
+      </div>
+      <h3 className="mt-3 font-semibold">
+        {offer.origin} → {offer.destination}
+      </h3>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
+        <span className="rounded-full bg-secondary px-2.5 py-1">
+          {offer.seatsRemaining ?? offer.seats} vagas livres
+        </span>
+        {waitingPassenger > 0 && (
+          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-700">
+            {waitingPassenger} aguardando passageiro
+          </span>
+        )}
+        {waitingDriver > 0 && (
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">
+            {waitingDriver} aguardando você
+          </span>
+        )}
+        {confirmed.length > 0 && (
+          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700">
+            {confirmed.length} confirmada(s)
+          </span>
+        )}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Valor combinado com passageiros:{" "}
+        <strong className="text-foreground">{formatBrl(confirmedTotal)}</strong> · não representa
+        pagamento recebido.
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Recebido: não verificável automaticamente sem integração de confirmação do pagamento.
+      </p>
+      <RemainingPotential offerId={offer.offerId} freeSeats={offer.seatsRemaining ?? 0} />
+      {proposals.length > 0 ? <RouteSuggestionPanel offerId={offer.offerId} /> : null}
+      <Button asChild className="mt-4 w-full sm:w-auto">
+        <Link to="/minha-carona/$offerId" params={{ offerId: offer.offerId }}>
+          {waitingDriver
+            ? "Confirmar passageiro"
+            : proposals.length
+              ? "Ver solicitações"
+              : confirmed.length
+                ? "Acompanhar viagem"
+                : "Gerenciar carona"}
+          <ArrowRight size={15} />
+        </Link>
+      </Button>
+    </article>
   );
 }
+
+type RemainingPotentialQuote = {
+  distanceKm: number;
+  freeSeats: number;
+  pricePerPassenger: number;
+  potentialTotal: number;
+  calculatedAt: string;
+};
+
+function RemainingPotential({ offerId, freeSeats }: { offerId: string; freeSeats: number }) {
+  const calculate = useServerFn(calculateOfferRemainingPotential);
+  const [sharingLocation, setSharingLocation] = useState(false);
+  const [estimate, setEstimate] = useState<RemainingPotentialQuote | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const watchId = useRef<number | null>(null);
+  const inFlight = useRef(false);
+  const lastSent = useRef<RoadEstimateLocation | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (watchId.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const pauseWhenHidden = () => {
+      if (!document.hidden || watchId.current === null) return;
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+      setSharingLocation(false);
+    };
+    document.addEventListener("visibilitychange", pauseWhenHidden);
+    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
+  }, []);
+
+  function stopLocationUpdates() {
+    if (watchId.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId.current);
+    }
+    watchId.current = null;
+    setSharingLocation(false);
+  }
+
+  function startLocationUpdates() {
+    if (!navigator.geolocation) {
+      setError("Este navegador não disponibiliza localização.");
+      return;
+    }
+    setError(null);
+    setSharingLocation(true);
+    watchId.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const current: RoadEstimateLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          capturedAt: Date.now(),
+        };
+        if (current.accuracy > 200) {
+          setError("A localização está imprecisa. A última estimativa foi mantida.");
+          return;
+        }
+        // Recalculate a new road route after a meaningful movement and a
+        // minimum interval; GPS jitter is never accumulated as trip distance.
+        if (inFlight.current || !shouldRecalculateRoadEstimate(lastSent.current, current)) {
+          return;
+        }
+        // Throttle failed as well as successful route calls to avoid repeatedly
+        // sending the same precise location if the routing service is down.
+        lastSent.current = current;
+        inFlight.current = true;
+        setError(null);
+        void calculate({
+          data: {
+            offerId,
+            latitude: current.latitude,
+            longitude: current.longitude,
+          },
+        })
+          .then((result) => {
+            setEstimate(result);
+          })
+          .catch((reason) => {
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Não foi possível atualizar a estimativa; a última foi mantida.",
+            );
+          })
+          .finally(() => {
+            inFlight.current = false;
+          });
+      },
+      (reason) => {
+        setError(
+          reason.code === reason.PERMISSION_DENIED
+            ? "Localização não autorizada. A última estimativa foi mantida."
+            : "Não foi possível obter a localização. A última estimativa foi mantida.",
+        );
+        stopLocationUpdates();
+      },
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 12_000 },
+    );
+  }
+
+  const stale = !estimate || now - Date.parse(estimate.calculatedAt) > 120_000;
+  const potential = Math.round((estimate?.pricePerPassenger ?? 0) * freeSeats * 100) / 100;
+
+  return (
+    <section
+      className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3"
+      aria-label="Potencial adicional nas vagas livres"
+    >
+      <p className="text-xs font-semibold">Potencial adicional nas vagas livres</p>
+      {estimate ? (
+        <p className="mt-1 text-sm">
+          {freeSeats} vaga(s) livre(s) ·{" "}
+          {estimate.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km restantes ·
+          até <strong>{formatBrl(potential)}</strong>
+          <span className="block text-xs text-muted-foreground">
+            Estimativa pela rota rodoviária ·{" "}
+            {stale ? "última posição desatualizada" : "posição atualizada"} · não é valor combinado
+            nem recebido.
+          </span>
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Autorize a localização para estimar o percurso rodoviário restante e o potencial das vagas
+          livres.
+        </p>
+      )}
+      {error && (
+        <p role="status" className="mt-1 text-xs text-amber-700">
+          {error}
+        </p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-2"
+        onClick={sharingLocation ? stopLocationUpdates : startLocationUpdates}
+      >
+        {sharingLocation
+          ? "Parar atualização"
+          : estimate
+            ? "Atualizar com localização"
+            : "Autorizar localização"}
+      </Button>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Enquanto ativada, as coordenadas são enviadas ao serviço público OSRM para calcular a rota.
+        A CARONAA não as armazena; atualizações param quando esta tela fica em segundo plano.
+      </p>
+      {freeSeats > 0 && (
+        <p className="mt-2 text-xs font-medium text-primary">
+          Ainda há {freeSeats} vaga(s) livres. Compartilhe sua oferta para mais pessoas encontrarem
+          esse trajeto.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function formatDate(value: string) {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value || "Data não informada";
@@ -736,24 +777,17 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
         <Clock3 size={14} /> Saída às {ride.departureTime}
       </p>
 
-      {ride.status === "CONFIRMED" && ride.role === "passenger" && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2 text-xs font-medium text-primary">
-          <CarFront size={14} className="shrink-0" />
-          <span>Viagem confirmada! Aguardando o motorista iniciar o trajeto.</span>
-        </div>
-      )}
-
       {ride.status === "MATCHED" && (
         <div className="mt-2 space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs font-medium text-amber-700 dark:text-amber-400">
           <p>
             {ride.role === "passenger"
               ? acceptedByViewer
                 ? "Você aceitou — aguardando confirmação do motorista."
-                : "Combinação encontrada. Aceite primeiro para solicitar a confirmação do motorista."
+                : "Combinação encontrada. Aceite para solicitar a confirmação do motorista."
               : acceptedByViewer
                 ? "Você confirmou — aguardando a atualização da viagem."
                 : acceptedByOther
-                  ? "O passageiro aceitou. Sua confirmação é necessária para confirmar a viagem."
+                  ? "O passageiro aceitou. Confirme para fechar a viagem."
                   : "Aguardando o aceite do passageiro. Você poderá confirmar em seguida."}
           </p>
           {ride.responseExpiresAt ? (
@@ -884,7 +918,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
           />
         </div>
       )}
-      {actions.length ? (
+      {ride.status === "MATCHED" && actions.length ? (
         <div className="mt-4 flex flex-wrap justify-end gap-2">
           {actions
             .filter(
@@ -910,15 +944,16 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
             ))}
         </div>
       ) : null}
-      {ride.rideId && (
-        <RideSafetyPanel
-          rideId={ride.rideId}
-          role={ride.role}
-          viewerUserId={ride.viewerUserId}
-          status={ride.status}
-          onChanged={onChanged}
-        />
-      )}
+      {ride.rideId && ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(ride.status) ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <Button asChild className="w-full sm:w-auto">
+            <Link to="/viagem/$rideId" params={{ rideId: ride.rideId }}>
+              {ride.status === "COMPLETED" ? "Ver resumo e Pix" : "Acompanhar viagem"}
+              <ArrowRight size={15} />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
     </article>
   );
 }

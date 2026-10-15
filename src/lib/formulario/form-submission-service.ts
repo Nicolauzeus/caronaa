@@ -205,15 +205,20 @@ export async function saveFormSubmission(payload: CaronaaStsSubmission, userId: 
 
 export async function registerFormStart({
   userId,
-  source = "sts-2026",
+  source = "direct",
   campaign = null,
-  campaignEvent = "Siará Tech Summit 2026",
+  campaignEvent = "CARONAA",
   tipoUsuario = null,
   ocupacao = null,
   rawPayload = {},
 }: RegisterFormStartInput) {
-  const normalizedSource = normalizeStsSource(source);
-  const deduplicationKey = ["caronaa-form-start", normalizedSource, campaign ?? "", campaignEvent].join(":");
+  const normalizedSource = normalizeStsSource(source || "direct");
+  const deduplicationKey = [
+    "caronaa-form-start",
+    normalizedSource,
+    campaign ?? "",
+    campaignEvent,
+  ].join(":");
 
   if (typeof window !== "undefined" && window.localStorage.getItem(deduplicationKey) === "1") {
     return;

@@ -47,10 +47,14 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/sugestoes")({
   head: () => ({
-    meta: [{ property: "og:title", content: "Sugestões & Perguntas — Administração CARONAA" },
-{ property: "og:description", content: "Acompanhe todas as perguntas e sugestões enviadas através da página do Pitch." },
-{ property: "og:type", content: "website" },
-{ name: "twitter:card", content: "summary" },
+    meta: [
+      { property: "og:title", content: "Sugestões & Perguntas — Administração CARONAA" },
+      {
+        property: "og:description",
+        content: "Acompanhe todas as perguntas e sugestões enviadas através da página do Pitch.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         title: "Sugestões & Perguntas — Administração CARONAA",
       },
@@ -167,7 +171,7 @@ export function AdminSugestoesPage() {
             Sugestões & Perguntas do Pitch
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Feedbacks, dúvidas e insights enviados diretamente pelo público do Siará Tech Summit.
+            Feedbacks, dúvidas e insights enviados diretamente pelo público da CARONAA.
           </p>
         </div>
 
@@ -192,11 +196,7 @@ export function AdminSugestoesPage() {
           value={String(metrics.total)}
           detail="Recebidas no pitch"
         />
-        <MetricCard
-          label="Novas"
-          value={String(metrics.novas)}
-          detail="Aguardando leitura"
-        />
+        <MetricCard label="Novas" value={String(metrics.novas)} detail="Aguardando leitura" />
         <MetricCard
           label="Em Análise"
           value={String(metrics.emAnalise)}
@@ -207,11 +207,7 @@ export function AdminSugestoesPage() {
           value={String(metrics.respondidas)}
           detail="Contato realizado"
         />
-        <MetricCard
-          label="Arquivadas"
-          value={String(metrics.arquivadas)}
-          detail="Histórico"
-        />
+        <MetricCard label="Arquivadas" value={String(metrics.arquivadas)} detail="Histórico" />
       </div>
 
       {/* Filter Bar */}
@@ -264,7 +260,7 @@ export function AdminSugestoesPage() {
           {filtered.slice(currentPage * 8, (currentPage + 1) * 8).map((item) => {
             const cleanPhone = normalizePhoneNumber(item.whatsapp);
             const waLink = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-              `Olá ${item.name}! Agradecemos por compartilhar sua mensagem com a equipe da CARONAA durante o Siará Tech Summit.`,
+              `Olá ${item.name}! Agradecemos por compartilhar sua mensagem com a equipe da CARONAA.`,
             )}`;
 
             return (
@@ -316,7 +312,10 @@ export function AdminSugestoesPage() {
                 <CardContent className="space-y-4 pt-0">
                   {/* The Message Box */}
                   <div className="p-4 bg-muted/60 rounded-xl border border-border text-foreground font-normal text-sm leading-relaxed whitespace-pre-wrap">
-                    <details><summary className="cursor-pointer line-clamp-2">{item.message}</summary><p className="mt-3 whitespace-pre-wrap">{item.message}</p></details>
+                    <details>
+                      <summary className="cursor-pointer line-clamp-2">{item.message}</summary>
+                      <p className="mt-3 whitespace-pre-wrap">{item.message}</p>
+                    </details>
                   </div>
 
                   {/* Metadata footer with quick status and contact action */}

@@ -36,13 +36,7 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_cec",
-    aliases: [
-      "centro de eventos",
-      "centro de eventos do ceará",
-      "siara tech summit",
-      "sts 2026",
-      "evento sts",
-    ],
+    aliases: ["centro de eventos", "centro de eventos do ceará"],
     mainText: "Centro de Eventos do Ceará",
     formattedAddress: "Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE, 60811-341",
     neighborhood: "Edson Queiroz",
