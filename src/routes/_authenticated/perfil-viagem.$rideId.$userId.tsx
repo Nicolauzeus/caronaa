@@ -97,19 +97,19 @@ function RideParticipantProfilePage() {
               <div className="min-w-0">
                 <h2 className="truncate text-xl font-bold">{profile.fullName}</h2>
                 {profile.city ? (
-                  <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-foreground/75">
                     <MapPin size={14} />
                     {profile.city}
                   </p>
                 ) : null}
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-foreground/75">
                   Na CARONAA desde {new Date(profile.memberSince).getFullYear()}
                 </p>
               </div>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg bg-secondary/60 p-3">
+              <div className="rounded-lg border border-border bg-card p-4">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <ShieldCheck size={16} className="text-primary" />
                   Verificações
@@ -128,7 +128,7 @@ function RideParticipantProfilePage() {
                   segurança.
                 </p>
               </div>
-              <div className="rounded-lg bg-secondary/60 p-3">
+              <div className="rounded-lg border border-border bg-card p-4">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <Star size={16} className="text-primary" />
                   Avaliações
@@ -149,7 +149,7 @@ function RideParticipantProfilePage() {
             </div>
 
             {profile.vehicleDescription ? (
-              <div className="mt-3 rounded-lg bg-secondary/60 p-3">
+              <div className="mt-3 rounded-lg border border-border bg-card p-4">
                 <p className="text-sm font-semibold">Veículo informado pelo motorista</p>
                 <p className="mt-1 text-sm text-muted-foreground">{profile.vehicleDescription}</p>
               </div>
