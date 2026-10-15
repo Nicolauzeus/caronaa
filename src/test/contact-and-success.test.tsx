@@ -8,6 +8,13 @@ import { validateFormStep } from "@/lib/formulario/schema";
 import { prepareSubmission, sanitizeSubmissionRawPayload } from "@/lib/formulario/submission";
 import type { CaronaaStsFormData } from "@/lib/formulario/types";
 
+// Analytics unit tests must not depend on real Supabase environment credentials.
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    from: () => ({ insert: async () => ({ error: null }) }),
+  },
+}));
+
 // Mock TanStack router Link component
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
