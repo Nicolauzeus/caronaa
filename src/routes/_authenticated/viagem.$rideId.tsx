@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
+import { AsaasCheckoutPreview } from "@/components/caronaa/AsaasCheckoutPreview";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -312,6 +313,13 @@ function ViagemOperacional() {
               </a>
             </Button>
           </section>
+        )}
+
+        {ride.role === "passenger" && ride.rideId &&
+          ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(ride.status) && (
+          <div className="order-5 lg:col-start-2">
+            <AsaasCheckoutPreview rideId={ride.rideId} />
+          </div>
         )}
 
         {ride.rideId && ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(ride.status) && (
