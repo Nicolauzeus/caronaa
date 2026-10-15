@@ -121,10 +121,10 @@ export function LiveRideMap({ points }: { points: LiveMapPoint[] }) {
     return () => { active = false; };
   }, [positions, road]);
 
-  return <div className="relative">
+  return <div className="relative isolate z-0">
     <div ref={container} className="h-72 w-full" role="img"
       aria-label={`Mapa da viagem: ${positions.map(p => p.title).join(", ")}`} />
-    <div className="absolute bottom-2 left-2 z-[500] max-w-[85%] rounded-md bg-background/95 px-2 py-1 text-[11px] text-foreground shadow">
+    <div className="absolute bottom-2 left-2 z-10 max-w-[85%] rounded-md bg-background/95 px-2 py-1 text-[11px] text-foreground shadow">
       {road ? `Rota pelas vias · ${road.distanceKm.toFixed(1)} km · cerca de ${Math.round(road.durationMinutes)} min (estimativa)`
         : routeError ? "Rota indisponível. Marcadores não representam o percurso."
         : "Carregando trajeto rodoviário…"}
