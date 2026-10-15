@@ -12,6 +12,9 @@ describe("live road route", () => {
   it("respects driver, boarding and drop-off order", () => {
     expect(routeWaypoints([...points].reverse()).map(p => p.type)).toEqual(["driver", "meeting", "destination"]);
   });
+  it("skips pickup once the ride is in progress", () => {
+    expect(routeWaypoints(points,true).map(p => p.type)).toEqual(["driver","destination"]);
+  });
   it("requests OSRM geometry and decodes longitude/latitude into Leaflet order", async () => {
     const fn = vi.fn().mockResolvedValue({ok:true,json:async()=>({
       routes:[{distance:12000,duration:900,geometry:{coordinates:[[-38.5,-3.7],[-38.52,-3.72],[-38.54,-3.76]]}}],
