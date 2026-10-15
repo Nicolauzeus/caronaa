@@ -325,11 +325,40 @@ export function AppShell({
         className={
           publicPage
             ? "flex-1"
-            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 md:pb-12 md:pt-8"
+            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
         }
       >
         {children}
       </main>
+
+      {/* Navegação inferior acessível para a área autenticada em celulares. */}
+      {!publicPage && user && (
+        <nav
+          aria-label="Navegação principal mobile"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-xl md:hidden"
+        >
+          <div className="mx-auto grid max-w-lg grid-cols-3 gap-1 px-3 pt-2">
+            {authenticatedNav.map(({ to, label, icon: Icon }) => {
+              const selected = pathname === to || pathname.startsWith(`${to}/`);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={selected ? "page" : undefined}
+                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    selected
+                      ? "bg-primary/15 text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon size={21} aria-hidden="true" className={selected ? "text-primary" : ""} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {/* Rodapé Público Consistente em Todas as Páginas Públicas */}
       {publicPage && <PublicFooter />}
