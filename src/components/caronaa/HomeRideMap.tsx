@@ -33,8 +33,11 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
   const [roadRoute, setRoadRoute] = useState<{ path: [number, number][]; km: number; minutes: number } | null>(null);
   const [routeError, setRouteError] = useState(false);
   const origin = props.originIsCurrent && validPoint(props.userPosition) ? props.userPosition : props.origin;
-  const originLat = origin?.lat, originLng = origin?.lng;
-  const destLat = props.destination?.lat, destLng = props.destination?.lng;
+  // GPS varies slightly even while standing still; avoid routing on every jitter.
+  const originLat = origin?.lat == null ? undefined : Math.round(origin.lat * 1000) / 1000;
+  const originLng = origin?.lng == null ? undefined : Math.round(origin.lng * 1000) / 1000;
+  const destLat = props.destination?.lat == null ? undefined : Math.round(props.destination.lat * 10000) / 10000;
+  const destLng = props.destination?.lng == null ? undefined : Math.round(props.destination.lng * 10000) / 10000;
   useEffect(() => {
     if (!validPoint({ lat: originLat, lng: originLng }) || !validPoint({ lat: destLat, lng: destLng })) {
       setRoadRoute(null);
@@ -43,7 +46,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     }
     let alive = true;
     const abort = new AbortController();
-    setRoadRoute(null);
+    // Keep the last valid road geometry displayed while recalculating.
     setRouteError(false);
     const timer = window.setTimeout(async () => {
       const timeout = window.setTimeout(() => abort.abort(), 8000);
@@ -178,13 +181,17 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
   useEffect(() => {
     const current = runtime.current;
     if (!ready || !current) return;
-    current.routeLine?.remove();
-    current.routeLine = null;
-    if (!roadRoute) return;
+    if (!roadRoute) {
+      current.routeLine?.remove();
+      current.routeLine = null;
+      return;
+    }
     const line = current.L.polyline(roadRoute.path, {
       color: "#FFB000", weight: 6, opacity: 0.96, lineCap: "round", lineJoin: "round",
     }).addTo(current.map);
+    current.routeLine?.remove();
     current.routeLine = line;
+    cameraMode.current = "route";
     current.map.fitBounds(line.getBounds(), {
       paddingTopLeft: [30, 40], paddingBottomRight: [35, 100], maxZoom: 16, animate: false,
     });
@@ -219,7 +226,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
         ],
         { paddingTopLeft: [32, 32], paddingBottomRight: [48, 72], maxZoom: 16, animate: false },
       );
-    } else if (props.following && validPoint(props.userPosition) && cameraMode.current === "user") {
+    } else if (props.following && validPoint(props.userPosition) && cameraMode.current === "user" && !roadRoute) {
       instance.map.panTo([props.userPosition.lat, props.userPosition.lng], { animate: false });
     } else if (newRoute) {
       const point = [props.origin, props.destination].find(validPoint);
@@ -235,6 +242,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     props.destination?.lat,
     props.destination?.lng,
     props.originIsCurrent,
+    roadRoute,
   ]);
 
   return (
