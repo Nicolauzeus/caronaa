@@ -38,10 +38,10 @@ export async function fetchRoadRoute(
   const first = routes?.[0];
   const coords = first?.geometry?.coordinates;
   if (!first || !Array.isArray(coords) || coords.length < 2 ||
-      !Number.isFinite(first.distance) || !Number.isFinite(first.duration)) throw new Error("Trajeto rodoviário indisponível");
+      typeof first.distance !== "number" || !Number.isFinite(first.distance) || typeof first.duration !== "number" || !Number.isFinite(first.duration)) throw new Error("Trajeto rodoviário indisponível");
   const geometry: Coordinates[] = coords.map(c => [c[1], c[0]]);
   if (geometry.some(([lat,lng]) => !Number.isFinite(lat) || !Number.isFinite(lng))) throw new Error("Coordenadas de rota inválidas");
-  return { geometry, distanceKm: first.distance! / 1000, durationMinutes: first.duration! / 60 };
+  return { geometry, distanceKm: first.distance / 1000, durationMinutes: first.duration / 60 };
 }
 
 export function LiveRideMap({ points }: { points: LiveMapPoint[] }) {
