@@ -483,7 +483,7 @@ export function RideLiveTracker({
                 Use o aplicativo de mapas para consultar a rota e a previsão atuais.
               </p>
               <p className="text-[10px] text-muted-foreground">
-                A CARONAA não exibe ETA rodoviário nesta tela.
+                O mapa calcula o percurso pelas vias quando o serviço estiver disponível. A previsão é aproximada.
               </p>
             </div>
           </div>
@@ -493,16 +493,16 @@ export function RideLiveTracker({
       {/* 4. Mapa Interativo com Marcadores e Legenda */}
       <div className="relative overflow-hidden rounded-xl border border-border bg-muted/20">
         {activePoints.length > 0 ? (
-          <div className="relative h-56 w-full">
+          <div className="relative w-full">
             <LiveRideMap points={activePoints} />
             <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/60">
               <span
-                className={`size-2 rounded-full ${driverStatus.state === "live" || passengerStatus.state === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
+                className={`size-2 rounded-full ${driverStatus.state === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
               />
               <span>
                 {driverStatus.state === "live" || passengerStatus.state === "live"
-                  ? "Posição atualizada"
-                  : "Sem posição atual"}
+                  ? "GPS do motorista atualizado"
+                  : "GPS do motorista ausente ou desatualizado"}
               </span>
             </div>
           </div>
