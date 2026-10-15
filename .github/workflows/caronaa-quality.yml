@@ -20,6 +20,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install dependencies
+        id: install
         run: |
           npm install --global npm@11
           rm package-lock.json
@@ -29,4 +30,5 @@ jobs:
       - name: Full regression suite
         run: npm test
       - name: Build
+        if: always() && steps.install.outcome == 'success'
         run: npm run build
