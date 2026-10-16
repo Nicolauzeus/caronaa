@@ -32,8 +32,16 @@ export function ResearchFormEditor({formId,onClose}:{formId:string;onClose:()=>v
  <input disabled={published} aria-label="Pergunta" className="w-full rounded-lg border bg-background p-2" value={q.label} onChange={e=>patchQuestion(si,qi,{label:e.target.value})}/>
  <div className="flex flex-wrap items-center gap-2"><select disabled={published} value={q.type} onChange={e=>patchQuestion(si,qi,{type:e.target.value as SurveyQuestion["type"]})} className="rounded-lg border bg-background p-2">{[["short_text","Texto curto"],["long_text","Texto longo"],["number","Número"],["single_choice","Escolha única"],["multiple_choice","Múltipla escolha"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><label className="text-sm"><input disabled={published} type="checkbox" checked={q.required} onChange={e=>patchQuestion(si,qi,{required:e.target.checked})}/> Obrigatória</label><button disabled={published} className="ml-auto text-sm text-destructive" onClick={()=>patchSection(si,{questions:section.questions.filter((_,i)=>i!==qi)})}>Remover</button></div>
  {q.type.includes("choice")&&<label className="block text-sm">Alternativas (uma por linha)<textarea disabled={published} value={q.options.join("\n")} onChange={e=>patchQuestion(si,qi,{options:e.target.value.split("\n")})} className="mt-1 w-full rounded-lg border bg-background p-2" rows={3}/></label>}
- <label className="block text-sm">Exibir somente quando (ID da pergunta, opcional)<input disabled={published} value={q.showWhen?.questionId??""} onChange={e=>patchQuestion(si,qi,{showWhen:e.target.value?{questionId:e.target.value,equals:q.showWhen?.equals??""}:undefined})} className="mt-1 w-full rounded-lg border bg-background p-2"/></label>
- {q.showWhen&&<label className="block text-sm">Resposta necessária<input disabled={published} value={q.showWhen.equals} onChange={e=>patchQuestion(si,qi,{showWhen:{...q.showWhen!,equals:e.target.value}})} className="mt-1 w-full rounded-lg border bg-background p-2"/></label>}
+ <label className="block text-sm">Exibir somente quando
+ <select disabled={published} value={q.showWhen?.questionId??""} onChange={e=>patchQuestion(si,qi,{showWhen:e.target.value?{questionId:e.target.value,equals:""}:undefined})} className="mt-1 w-full rounded-lg border bg-background p-2">
+ <option value="">Sempre visível</option>
+ {sections.flatMap(sec=>sec.questions).filter(other=>other.id!==q.id&&other.type==="single_choice").map(other=><option key={other.id} value={other.id}>{other.label}</option>)}
+ </select></label>
+ {q.showWhen&&<label className="block text-sm">Quando a resposta for
+ <select disabled={published} value={q.showWhen.equals} onChange={e=>patchQuestion(si,qi,{showWhen:{questionId:q.showWhen!.questionId,equals:e.target.value}})} className="mt-1 w-full rounded-lg border bg-background p-2">
+ <option value="">Selecione uma alternativa</option>
+ {(sections.flatMap(sec=>sec.questions).find(other=>other.id===q.showWhen?.questionId)?.options??[]).map(o=><option key={o} value={o}>{o}</option>)}
+ </select></label>}
  </>}
  {preview&&<div className="text-sm text-muted-foreground">{q.type.includes("choice")?q.options.join(" • "):"Campo de resposta"}</div>}
  </div>)}
