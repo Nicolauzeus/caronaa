@@ -1,0 +1,34 @@
+import {createFileRoute} from "@tanstack/react-router";
+import {useEffect,useState,type FormEvent} from "react";
+import {supabase} from "@/integrations/supabase/client";
+type Q={id:string;label:string;type:string;required:boolean;options:string[]};
+type Section={title:string;questions:Q[]};
+type Payload={id:string;version:string;title:string;sections:Section[]};
+export const Route=createFileRoute("/pesquisas/$code")({component:PublicResearchPage});
+function PublicResearchPage(){
+ const {code}=Route.useParams();
+ const [form,setForm]=useState<Payload|null>(null),[answers,setAnswers]=useState<Record<string,string|string[]>>({});
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false);
+ useEffect(()=>{let current=true;void (async()=>{
+  const {data:f,error:e}=await (supabase as any).from("research_forms").select("id,title").eq("code",code).eq("status","PUBLICADO").maybeSingle();
+  if(!current)return;if(e||!f){setError("Pesquisa indisponível");setLoading(false);return;}
+  const {data:v,error:ev}=await (supabase as any).from("research_form_versions").select("id,schema_json").eq("form_id",f.id).not("published_at","is",null).order("version_number",{ascending:false}).limit(1).maybeSingle();
+  if(!current)return;if(ev||!v){setError("Versão publicada não encontrada");setLoading(false);return;}
+  setForm({id:f.id,version:v.id,title:f.title,sections:v.schema_json?.sections??[]});setLoading(false);
+ })();return()=>{current=false};},[code]);
+ async function submit(event:FormEvent){event.preventDefault();if(!form||busy)return;setBusy(true);setError("");
+  for(const section of form.sections)for(const q of section.questions){const v=answers[q.id];if(q.required&&(!v||(Array.isArray(v)&&v.length===0))){setError("Responda: "+q.label);setBusy(false);return;}}
+  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers});
+  if(e)setError("Não foi possível enviar sua resposta. Tente novamente.");else setComplete(true);setBusy(false);
+ }
+ if(loading)return <main className="mx-auto max-w-xl p-6">Carregando pesquisa...</main>;
+ if(!form)return <main className="mx-auto max-w-xl p-6" role="alert">{error}</main>;
+ if(complete)return <main className="mx-auto max-w-xl p-8"><h1 className="text-2xl font-bold">Resposta registrada!</h1><p>Obrigado por contribuir com a mobilidade.</p></main>;
+ return <main className="mx-auto max-w-xl space-y-6 p-4 py-8 sm:p-8"><header className="rounded-2xl border bg-card p-5"><p className="text-xs font-bold uppercase tracking-widest text-primary">Pesquisa CARONAA</p><h1 className="mt-3 text-3xl font-extrabold">{form.title}</h1><p className="mt-2 text-sm text-muted-foreground">Responda com base na sua experiência real.</p></header>
+ <form onSubmit={submit} className="space-y-5">{form.sections.map((section,i)=><section key={i} className="space-y-4 rounded-2xl border bg-card p-5"><h2 className="text-lg font-bold">{section.title}</h2>{section.questions.map(q=><div key={q.id} className="space-y-2"><label className="block text-sm font-semibold" htmlFor={q.id}>{q.label}{q.required?" *":""}</label>
+ {q.type==="long_text"?<textarea id={q.id} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} rows={4} className="w-full rounded-xl border bg-background p-3"/>:
+ q.type==="single_choice"?<select id={q.id} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione</option>{q.options.map(o=><option key={o} value={o}>{o}</option>)}</select>:
+ q.type==="multiple_choice"?<div className="space-y-2">{q.options.map(o=><label key={o} className="flex gap-2 text-sm"><input type="checkbox" checked={Array.isArray(answers[q.id])&&(answers[q.id] as string[]).includes(o)} onChange={e=>setAnswers(a=>{const prev=Array.isArray(a[q.id])?a[q.id] as string[]:[];return {...a,[q.id]:e.target.checked?[...prev,o]:prev.filter(x=>x!==o)}})}/>{o}</label>)}</div>:
+ <input id={q.id} type={q.type==="number"?"number":"text"} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} className="w-full rounded-xl border bg-background p-3"/>}
+ </div>)}</section>)}{error&&<p className="text-sm text-destructive" role="alert">{error}</p>}<button disabled={busy} className="w-full rounded-xl bg-primary px-5 py-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Enviando...":"Enviar respostas"}</button></form></main>;
+}
