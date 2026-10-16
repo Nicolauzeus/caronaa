@@ -43,4 +43,4 @@ SELECT CASE WHEN public.has_role(auth.uid(),'admin') THEN jsonb_build_object(
 ) ELSE NULL END
 $$;
 REVOKE ALL ON FUNCTION public.get_research_legacy_metrics(uuid,text,text,text,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_research_legacy_metrics(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_research_legacy_metrics(uuid,text,text,text,text) TO authenticated;
