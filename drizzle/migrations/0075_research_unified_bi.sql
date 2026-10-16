@@ -1,7 +1,7 @@
 -- Unified counts for historical and dynamic forms. No personally identifiable fields.
 CREATE OR REPLACE FUNCTION public.get_research_unified_bi(
  p_form_id uuid DEFAULT NULL,p_nature text DEFAULT NULL,
- p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL)
+ p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL,p_pain_code text DEFAULT NULL)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
 WITH source_rows AS (
  SELECT s.submission_id id,s.research_form_id form_id,f.nature,
@@ -19,6 +19,10 @@ WITH source_rows AS (
  AND (p_nature IS NULL OR nature=p_nature)
  AND (p_profile IS NULL OR profile=p_profile)
  AND (p_occupation IS NULL OR ocupacao=p_occupation)
+ AND (p_pain_code IS NULL
+ OR (jsonb_typeof(payload->'passengerDifficulties')='array' AND (payload->'passengerDifficulties') ? p_pain_code)
+ OR (jsonb_typeof(payload->'main_challenge')='array' AND (payload->'main_challenge') ? p_pain_code)
+ OR EXISTS (SELECT 1 FROM public.form_submission_pain_points pp WHERE pp.submission_id=id AND pp.selecionada AND pp.codigo_dor::text=p_pain_code))
 ), normalized AS (
  SELECT DISTINCT e.id,x.code FROM e CROSS JOIN LATERAL jsonb_array_elements_text(
  CASE WHEN jsonb_typeof(e.payload->'passengerDifficulties')='array' THEN e.payload->'passengerDifficulties'
@@ -44,6 +48,6 @@ SELECT jsonb_build_object(
  'pains',(SELECT coalesce(jsonb_agg(jsonb_build_object('code',code,'selectedCount',cnt)),'[]'::jsonb) FROM pains),
  'sources',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',source,'total',cnt)),'[]'::jsonb) FROM sources)
 ) $$;
-REVOKE ALL ON FUNCTION public.get_research_unified_bi(uuid,text,text,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_research_unified_bi(uuid,text,text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_research_unified_bi(uuid,text,text,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_research_unified_bi(uuid,text,text,text,text) TO authenticated;
 NOTIFY pgrst,'reload schema';
