@@ -6,7 +6,7 @@ export function ResearchCompare({forms}:{forms:ResearchForm[]}){
  const [first,setFirst]=useState(""),[second,setSecond]=useState("");
  const [left,setLeft]=useState<Brief|null>(null),[right,setRight]=useState<Brief|null>(null),[error,setError]=useState("");
  useEffect(()=>{if(!first||!second||first===second){setLeft(null);setRight(null);return;}let active=true;
- void Promise.all([first,second].map(p_form_id=>(supabase as any).rpc("get_research_bi",{p_form_id,p_nature:null,p_profile:null,p_occupation:null}))).then(([a,b]:any[])=>{if(!active)return;if(a.error||b.error){setError(a.error?.message??b.error?.message);return;}setError("");setLeft(a.data);setRight(b.data);});
+ void Promise.all([first,second].map(p_form_id=>(supabase as any).rpc("get_research_unified_bi",{p_form_id,p_nature:null,p_profile:null,p_occupation:null}))).then(([a,b]:any[])=>{if(!active)return;if(a.error||b.error){setError(a.error?.message??b.error?.message);return;}setError("");setLeft(a.data);setRight(b.data);});
  return()=>{active=false};},[first,second]);
  const metrics=[["PASSAGEIRO","Passageiros"],["MOTORISTA","Motoristas"],["AMBOS","Ambos (histórico)"]];
  const pct=(n:number,t:number)=>t?((n/t)*100).toFixed(1)+"%":"N/D";
