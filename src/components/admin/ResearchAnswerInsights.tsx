@@ -8,7 +8,16 @@ export function ResearchAnswerInsights({formId}:{formId:string}){
  useEffect(()=>{let mounted=true;setLoading(true);void Promise.all([
  (supabase as any).rpc("get_research_answer_summary",{p_form_id:formId}),
  (supabase as any).from("research_form_versions").select("id,version_number,schema_json").eq("form_id",formId).not("published_at","is",null)
- ]).then(([r,v]:any[])=>{if(!mounted)return;if(r.error)setError(r.error.message);else setData(r.data);if(v.data){setQuestions((v.data as any[]).flatMap((ver:any)=>(ver.schema_json?.sections??[]).flatMap((sec:any)=>(sec.questions??[]).map((q:any)=>({...q,versionId:ver.id,versionNumber:ver.version_number}))))}setLoading(false)});return()=>{mounted=false}},[formId]);
+ ]).then(([r,v]:any[])=>{if(!mounted)return;if(r.error)setError(r.error.message);else setData(r.data);if(v.data){
+  const flat:Question[]=[];
+  for(const ver of v.data as any[]){
+   for(const sec of ver.schema_json?.sections??[]){
+    for(const q of sec.questions??[])flat.push({...q,versionId:ver.id,versionNumber:ver.version_number});
+   }
+  }
+  setQuestions(flat);
+ }
+ setLoading(false)});return()=>{mounted=false}},[formId]);
  const groups=useMemo(()=>{const map=new Map<string,Entry[]>();for(const e of data?.distributions??[])map.set(e.versionId+":"+e.questionId,[...(map.get(e.versionId+":"+e.questionId)??[]),e]);return [...map].map(([key,entries])=>({key,label:"v"+(questions.find(q=>q.versionId===entries[0].versionId&&q.id===entries[0].questionId)?.versionNumber??"?")+" · "+(questions.find(q=>q.versionId===entries[0].versionId&&q.id===entries[0].questionId)?.label??entries[0].questionId),versionId:entries[0].versionId,entries:entries.sort((a,b)=>b.count-a.count)}))},[data,questions]);
  return <section className="space-y-4 rounded-xl border p-4">
  <h3 className="text-lg font-bold">Resultados deste questionário</h3>
