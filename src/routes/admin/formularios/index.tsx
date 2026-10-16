@@ -2,6 +2,7 @@ import { ArrowRight, FileText, Users } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
+import { ResearchCatalog } from "@/components/admin/ResearchCatalog";
 import { MetricCard } from "@/components/admin/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFormMetrics, type FormMetricsSummary } from "@/lib/formulario/metrics";
@@ -216,6 +217,8 @@ function AdminFormsPage() {
           <ArrowRight size={16} />
         </Link>
       </div>
+
+      <ResearchCatalog />
 
       {error ? (
         <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
