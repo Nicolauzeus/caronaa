@@ -15,6 +15,9 @@ export function ResearchFormEditor({formId,onClose}:{formId:string;onClose:()=>v
   if(published)throw Error("Esta versão foi publicada. Crie outra versão para editar.");
   if(action==="publish"&&!sections.some(s=>s.questions.length))throw Error("Inclua perguntas antes da publicação.");
   for(const s of sections)for(const q of s.questions){if(!q.label.trim())throw Error("Há perguntas sem enunciado.");if(q.type.includes("choice")&&q.options.filter(Boolean).length<2)throw Error("Perguntas de escolha exigem pelo menos duas opções.");}
+  const allQuestions=sections.flatMap(sec=>sec.questions);
+  if(new Set(allQuestions.map(q=>q.id)).size!==allQuestions.length)throw Error("IDs de perguntas duplicados.");
+  for(const q of allQuestions){if(q.showWhen){const parent=allQuestions.find(p=>p.id===q.showWhen?.questionId);if(!parent||parent.type!=="single_choice"||!parent.options.includes(q.showWhen.equals))throw Error("Configure uma condição de exibição válida para: "+q.label);}}
   const {data,error}=await db.from("research_form_versions").update({schema_json:schema,...(action==="publish"?{published_at:new Date().toISOString()}:{})}).eq("id",versionId).is("published_at",null).select("id").single();
   if(error||!data)throw Error(error?.message||"A versão não está mais editável.");
   if(action==="publish"){const r=await db.from("research_forms").update({status:"PUBLICADO"}).eq("id",formId);if(r.error)throw Error(r.error.message);setPublished(true);}
