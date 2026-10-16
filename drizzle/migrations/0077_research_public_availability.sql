@@ -1,0 +1,32 @@
+-- Independent availability switch, without changing lifecycle or historic results.
+ALTER TABLE public.research_forms ADD COLUMN IF NOT EXISTS is_enabled boolean NOT NULL DEFAULT false;
+UPDATE public.research_forms SET is_enabled=false WHERE status<>'PUBLICADO';
+CREATE INDEX IF NOT EXISTS research_forms_public_enabled_idx ON public.research_forms(code) WHERE is_enabled AND status='PUBLICADO';
+DROP POLICY IF EXISTS public_published_research ON public.research_forms;
+CREATE POLICY public_published_research ON public.research_forms FOR SELECT TO anon,authenticated
+USING (status='PUBLICADO' AND is_enabled=true);
+DROP POLICY IF EXISTS public_published_versions ON public.research_form_versions;
+CREATE POLICY public_published_versions ON public.research_form_versions FOR SELECT TO anon,authenticated
+USING (published_at IS NOT NULL AND EXISTS (
+ SELECT 1 FROM public.research_forms f WHERE f.id=form_id AND f.status='PUBLICADO' AND f.is_enabled=true
+));
+DROP POLICY IF EXISTS anonymous_published_research_answer ON public.research_answers;
+CREATE POLICY anonymous_published_research_answer ON public.research_answers FOR INSERT TO anon,authenticated
+WITH CHECK (EXISTS (
+ SELECT 1 FROM public.research_form_versions v JOIN public.research_forms f ON f.id=v.form_id
+ WHERE v.id=version_id AND f.id=form_id AND v.published_at IS NOT NULL
+ AND f.status='PUBLICADO' AND f.is_enabled=true
+));
+-- Ensure race-safe disabling even for privileged callers.
+CREATE OR REPLACE FUNCTION public.reject_disabled_research_answer()
+RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.research_forms f JOIN public.research_form_versions v ON v.form_id=f.id
+ WHERE f.id=NEW.form_id AND v.id=NEW.version_id AND f.is_enabled AND f.status='PUBLICADO' AND v.published_at IS NOT NULL)
+ THEN RAISE EXCEPTION 'Research form is not accepting responses'; END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS check_research_answer_enabled ON public.research_answers;
+CREATE TRIGGER check_research_answer_enabled BEFORE INSERT ON public.research_answers
+FOR EACH ROW EXECUTE FUNCTION public.reject_disabled_research_answer();
+NOTIFY pgrst,'reload schema';
