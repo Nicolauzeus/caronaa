@@ -8,7 +8,7 @@ export const Route=createFileRoute("/pesquisas/$code")({component:PublicResearch
 function PublicResearchPage(){
  const {code}=Route.useParams();
  const [form,setForm]=useState<Payload|null>(null),[answers,setAnswers]=useState<Record<string,string|string[]>>({});
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false);
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false);
  useEffect(()=>{let current=true;void (async()=>{
   const {data:f,error:e}=await (supabase as any).from("research_forms").select("id,title").eq("code",code).eq("status","PUBLICADO").maybeSingle();
   if(!current)return;if(e||!f){setError("Pesquisa indisponível");setLoading(false);return;}
@@ -16,9 +16,9 @@ function PublicResearchPage(){
   if(!current)return;if(ev||!v){setError("Versão publicada não encontrada");setLoading(false);return;}
   setForm({id:f.id,version:v.id,title:f.title,sections:v.schema_json?.sections??[]});setLoading(false);
  })();return()=>{current=false};},[code]);
- async function submit(event:FormEvent){event.preventDefault();if(!form||busy)return;setBusy(true);setError("");
+ async function submit(event:FormEvent){event.preventDefault();if(!form||busy)return;setBusy(true);setError("");if(!consent){setError("É necessário consentir com esta pesquisa.");setBusy(false);return;}
   for(const section of form.sections)for(const q of section.questions){const v=answers[q.id];if((!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals)&&q.required&&(!v||(Array.isArray(v)&&v.length===0))){setError("Responda: "+q.label);setBusy(false);return;}}
-  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers});
+  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers,consent_accepted:true});
   if(e)setError("Não foi possível enviar sua resposta. Tente novamente.");else setComplete(true);setBusy(false);
  }
  if(loading)return <main className="mx-auto max-w-xl p-6">Carregando pesquisa...</main>;
@@ -30,5 +30,5 @@ function PublicResearchPage(){
  q.type==="single_choice"?<select id={q.id} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione</option>{q.options.map(o=><option key={o} value={o}>{o}</option>)}</select>:
  q.type==="multiple_choice"?<div className="space-y-2">{q.options.map(o=><label key={o} className="flex gap-2 text-sm"><input type="checkbox" checked={Array.isArray(answers[q.id])&&(answers[q.id] as string[]).includes(o)} onChange={e=>setAnswers(a=>{const prev=Array.isArray(a[q.id])?a[q.id] as string[]:[];return {...a,[q.id]:e.target.checked?[...prev,o]:prev.filter(x=>x!==o)}})}/>{o}</label>)}</div>:
  <input id={q.id} type={q.type==="number"?"number":"text"} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} className="w-full rounded-xl border bg-background p-3"/>}
- </div>)}</section>)}{error&&<p className="text-sm text-destructive" role="alert">{error}</p>}<button disabled={busy} className="w-full rounded-xl bg-primary px-5 py-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Enviando...":"Enviar respostas"}</button></form></main>;
+ </div>)}</section>)}<label className="flex items-start gap-3 rounded-xl border p-4 text-sm"><input type="checkbox" required checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-1"/> Concordo em participar desta pesquisa e autorizo o uso das respostas para análise de mobilidade, conforme o aviso de privacidade aplicável.</label>{error&&<p className="text-sm text-destructive" role="alert">{error}</p>}<button disabled={busy||!consent} className="w-full rounded-xl bg-primary px-5 py-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Enviando...":"Enviar respostas"}</button></form></main>;
 }
