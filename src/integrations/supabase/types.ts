@@ -308,6 +308,8 @@ export type Database = {
           ocupacao: string | null
           origem_trajeto: string | null
           raw_payload: Json
+          research_form_id: string | null
+          research_version_id: string | null
           source: string
           submission_id: string
           tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"]
@@ -339,6 +341,8 @@ export type Database = {
           ocupacao?: string | null
           origem_trajeto?: string | null
           raw_payload?: Json
+          research_form_id?: string | null
+          research_version_id?: string | null
           source: string
           submission_id?: string
           tipo_usuario: Database["public"]["Enums"]["form_tipo_usuario"]
@@ -370,6 +374,8 @@ export type Database = {
           ocupacao?: string | null
           origem_trajeto?: string | null
           raw_payload?: Json
+          research_form_id?: string | null
+          research_version_id?: string | null
           source?: string
           submission_id?: string
           tipo_usuario?: Database["public"]["Enums"]["form_tipo_usuario"]
@@ -377,7 +383,22 @@ export type Database = {
           user_id?: string | null
           whatsapp?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_research_form_id_fkey"
+            columns: ["research_form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_research_version_id_fkey"
+            columns: ["research_version_id"]
+            isOneToOne: false
+            referencedRelation: "research_form_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       funnel_events: {
         Row: {
@@ -738,6 +759,74 @@ export type Database = {
           vehicle_brand?: string | null
           vehicle_description?: string | null
           vehicle_plate?: string | null
+        }
+        Relationships: []
+      }
+      research_form_versions: {
+        Row: {
+          form_id: string
+          id: string
+          published_at: string | null
+          schema_json: Json
+          version_number: number
+        }
+        Insert: {
+          form_id: string
+          id?: string
+          published_at?: string | null
+          schema_json?: Json
+          version_number: number
+        }
+        Update: {
+          form_id?: string
+          id?: string
+          published_at?: string | null
+          schema_json?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_form_versions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_forms: {
+        Row: {
+          audience: string
+          code: string
+          created_at: string
+          id: string
+          mobility_mode: string
+          municipality: string | null
+          nature: string
+          status: string
+          title: string
+        }
+        Insert: {
+          audience?: string
+          code: string
+          created_at?: string
+          id?: string
+          mobility_mode?: string
+          municipality?: string | null
+          nature: string
+          status?: string
+          title: string
+        }
+        Update: {
+          audience?: string
+          code?: string
+          created_at?: string
+          id?: string
+          mobility_mode?: string
+          municipality?: string | null
+          nature?: string
+          status?: string
+          title?: string
         }
         Relationships: []
       }
@@ -1794,6 +1883,15 @@ export type Database = {
           p_profile?: string
           p_source?: string
           p_time_window?: string
+        }
+        Returns: Json
+      }
+      get_research_bi: {
+        Args: {
+          p_form_id?: string
+          p_nature?: string
+          p_occupation?: string
+          p_profile?: string
         }
         Returns: Json
       }
