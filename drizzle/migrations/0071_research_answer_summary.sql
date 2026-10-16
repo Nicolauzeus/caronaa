@@ -18,6 +18,7 @@ WITH base AS (
 )
 SELECT jsonb_build_object(
  'total',(SELECT count(*) FROM base),
+ 'versions',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',version_id,'total',qty)),'[]'::jsonb) FROM (SELECT version_id,count(*) qty FROM base GROUP BY version_id) v),
  'distributions',coalesce((SELECT jsonb_agg(jsonb_build_object('versionId',version_id,'questionId',question_id,'answer',answer,'count',quantity)) FROM distribution),'[]'::jsonb)
 ) $$;
 REVOKE ALL ON FUNCTION public.get_research_answer_summary(uuid) FROM PUBLIC,anon;
