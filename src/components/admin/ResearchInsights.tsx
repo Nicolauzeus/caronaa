@@ -1,3 +1,4 @@
+import { ResearchMobilityDimensions } from "@/components/admin/ResearchMobilityDimensions";
 import { useEffect,useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RESEARCH_NATURES,type ResearchForm } from "@/lib/formulario/research-catalog";
@@ -43,6 +44,7 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Perfis classificados</p><p className="mt-2 text-3xl font-extrabold">{count(profileData.reduce((a,p)=>a+p.total,0))}</p></div>
  </div>
  {legacy&&<div className="rounded-xl border p-4"><h3 className="font-bold">Barreiras de adoção — STS histórico</h3><p className="text-xs text-muted-foreground">Respostas originais do JSON, sem misturar barreiras com as seis dores.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{legacy.barriers.map(b=><div key={b.role+b.code} className="flex justify-between rounded-lg bg-secondary/40 p-2 text-sm"><span>{b.role} · {b.code.replaceAll("_"," ")}</span><strong>{b.total}</strong></div>)}</div></div>}
+ <ResearchMobilityDimensions formId={selectedId==="ALL"?null:selectedId} nature={nature==="ALL"?null:nature} profile={profile==="ALL"?null:profile} occupation={occupation==="ALL"?null:occupation}/>
  <div className="grid gap-5 lg:grid-cols-2">
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Perfil dos respondentes</h3>{profileData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!profileData.length&&<p className="text-sm text-muted-foreground">Sem respostas no recorte.</p>}</div>
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Ocupação</h3>{occupationData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category.replaceAll("_"," ")}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!occupationData.length&&<p className="text-sm text-muted-foreground">Sem dados.</p>}</div>
