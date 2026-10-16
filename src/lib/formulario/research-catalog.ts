@@ -16,6 +16,7 @@ export type ResearchForm = {
   audience: string;
   mobility_mode: string;
   status: string;
+  is_enabled: boolean;
   municipality: string | null;
   created_at: string;
 };
@@ -48,4 +49,13 @@ export async function createResearchForm(input: {
   });
   if (versionError) throw new Error("Formulário criado, mas sua versão inicial falhou: " + versionError.message);
   return data.id as string;
+}
+
+export async function setResearchFormEnabled(form: ResearchForm, enabled: boolean) {
+  if (enabled && form.status !== "PUBLICADO") throw new Error("Publique o formulário antes de habilitá-lo.");
+  const {error}=await db.from("research_forms").update({is_enabled:enabled}).eq("id",form.id);
+  if(error)throw new Error(error.message);
+}
+export function researchPublicPath(code:string) {
+ return "/formulario/"+encodeURIComponent(code.toLowerCase());
 }
