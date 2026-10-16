@@ -31,9 +31,15 @@ BEGIN
    IF v_value IS NOT NULL AND v_value<>'null'::jsonb THEN
     IF v_question->>'type'='number' AND (jsonb_typeof(v_value) NOT IN ('number','string') OR (trim(both '"' from v_value::text) !~ '^-?[0-9]+(\.[0-9]+)?$')) THEN RAISE EXCEPTION 'Invalid number'; END IF;
     IF v_question->>'type'='multiple_choice' AND jsonb_typeof(v_value)<>'array' THEN RAISE EXCEPTION 'Invalid multiple choice'; END IF;
+    IF v_question->>'type'='multiple_choice' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(v_value) choice WHERE NOT (v_question->'options' ? choice)) THEN RAISE EXCEPTION 'Invalid multiple choice option'; END IF;
     IF v_question->>'type'='single_choice' AND NOT (v_question->'options' ? (trim(both '"' from v_value::text))) THEN RAISE EXCEPTION 'Invalid choice'; END IF;
    END IF;
   END LOOP;
+ END LOOP;
+ FOR v_key IN SELECT jsonb_object_keys(NEW.answers) LOOP
+  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_schema->'sections') sec CROSS JOIN LATERAL jsonb_array_elements(sec->'questions') q WHERE q->>'id'=v_key) THEN
+    RAISE EXCEPTION 'Unexpected question key';
+  END IF;
  END LOOP;
  RETURN NEW;
 END $$;
