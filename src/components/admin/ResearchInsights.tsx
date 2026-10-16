@@ -1,30 +1,50 @@
 import { useEffect,useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
-const PAINS=[["DOR_01","Acesso a transporte"],["DOR_02","Lotação e desconforto"],["DOR_03","Preço elevado"],["DOR_04","Tempo de deslocamento"],["DOR_05","Vagas não aproveitadas"],["DOR_06","Confiança e segurança"]];
-type PainRow={codigo_dor:string;selecionada:boolean;principal:boolean;intensidade:number|null;submission_id:string};
-type Submission={submission_id:string;research_form_id:string|null;tipo_usuario:string;ocupacao:string|null;form_submission_pain_points:PainRow[]};
-export function ResearchInsights({forms}:{forms:ResearchForm[]}){
- const [rows,setRows]=useState<Submission[]>([]);const [error,setError]=useState("");const [loading,setLoading]=useState(true);
- const [form,setForm]=useState("ALL");const [nature,setNature]=useState("ALL");const [profile,setProfile]=useState("ALL");
- useEffect(()=>{let active=true;setLoading(true);
- // Bounded page explicitly signals that the BI requires server-side aggregation at scale.
- void (async()=>{const {data,error}=await (supabase as any).from("form_submissions").select("submission_id,research_form_id,tipo_usuario,ocupacao,form_submission_pain_points(submission_id,codigo_dor,selecionada,principal,intensidade)").order("created_at",{ascending:false}).limit(1000);
- if(!active)return;if(error)setError(error.message);else setRows(data??[]);setLoading(false);})();return()=>{active=false};},[]);
- const selected=rows.filter(r=>(form==="ALL"||r.research_form_id===form)&&(nature==="ALL"||forms.some(f=>f.id===r.research_form_id&&f.nature===nature))&&(profile==="ALL"||r.tipo_usuario===profile));
- const allOld=rows.some(r=>!r.research_form_id);
- return <section className="space-y-4 rounded-2xl border bg-card p-4">
- <h2 className="text-xl font-extrabold">Inteligência de pesquisas</h2>
- <p className="text-sm text-muted-foreground">Indicadores calculados a partir de respostas individuais, sem somar porcentagens.</p>
- <div className="grid gap-3 sm:grid-cols-3">
- <label className="text-sm">Pesquisa<select value={form} onChange={e=>setForm(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas</option>{forms.map(f=><option key={f.id} value={f.id}>{f.title}</option>)}</select></label>
- <label className="text-sm">Natureza<select value={nature} onChange={e=>setNature(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas</option>{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></label>
- <label className="text-sm">Perfil<select value={profile} onChange={e=>setProfile(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todos</option>{["PASSAGEIRO","MOTORISTA","AMBOS"].map(p=><option key={p}>{p}</option>)}</select></label>
+import { RESEARCH_NATURES,type ResearchForm } from "@/lib/formulario/research-catalog";
+
+const PAINS:[string,string][]=[["DOR_01","Acesso ao transporte"],["DOR_02","Lotação e desconforto"],["DOR_03","Preço elevado"],["DOR_04","Tempo de deslocamento"],["DOR_05","Vagas não aproveitadas"],["DOR_06","Confiança e segurança"]];
+type Category={category:string;total:number};
+type Pain={code:string;selectedCount:number;principalCount:number;averageIntensity:number|null};
+type BI={total:number;profiles:Category[];occupations:Category[];pains:Pain[]};
+const count=(n:number)=>new Intl.NumberFormat("pt-BR").format(n);
+export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];formId?:string|null;onBack?:()=>void}){
+ const [id,setId]=useState("ALL"),[nature,setNature]=useState("ALL"),[profile,setProfile]=useState("ALL"),[occupation,setOccupation]=useState("ALL"),[data,setData]=useState<BI|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
+ const selectedId=formId||id, selectedForm=forms.find(f=>f.id===selectedId);
+ useEffect(()=>{let mounted=true;setLoading(true);setError("");
+ void (supabase as any).rpc("get_research_bi",{
+ p_form_id:selectedId==="ALL"?null:selectedId,p_nature:nature==="ALL"?null:nature,
+ p_profile:profile==="ALL"?null:profile,p_occupation:occupation==="ALL"?null:occupation
+ }).then(({data,error}:{data:BI|null;error:{message:string}|null})=>{
+ if(!mounted)return;if(error){setError(error.message);setData(null)}else setData(data);setLoading(false);
+ });return()=>{mounted=false};},[selectedId,nature,profile,occupation]);
+ const total=data?.total??0;
+ const pains=PAINS.map(([code,label])=>({code,label,...(data?.pains.find(p=>p.code===code)??{selectedCount:0,principalCount:0,averageIntensity:null})})).sort((a,b)=>b.selectedCount-a.selectedCount);
+ const profileData=data?.profiles??[], occupationData=data?.occupations??[];
+ return <section className="space-y-5 rounded-2xl border border-border bg-card p-4 md:p-6" aria-label="Inteligência de pesquisas">
+ <div className="flex flex-wrap items-center justify-between gap-3"><div>
+ {onBack&&<button onClick={onBack} className="mb-2 text-sm text-primary">← Todas as pesquisas</button>}
+ <h2 className="text-xl font-extrabold">{selectedForm?selectedForm.title:"Inteligência global de pesquisas"}</h2>
+ <p className="text-sm text-muted-foreground">Dados reais calculados no banco, com filtros aplicados a todos os indicadores.</p></div>
+ <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{selectedForm?selectedForm.code:"Visão consolidada"}</span></div>
+ <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+ {!formId&&<label className="text-sm">Pesquisa<select value={id} onChange={e=>setId(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas as pesquisas</option>{forms.map(f=><option key={f.id} value={f.id}>{f.title}</option>)}</select></label>}
+ <label className="text-sm">Natureza<select value={nature} onChange={e=>setNature(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas as naturezas</option>{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></label>
+ <label className="text-sm">Perfil de mobilidade<select value={profile} onChange={e=>setProfile(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todos</option>{["PASSAGEIRO","MOTORISTA","AMBOS"].map(p=><option key={p} value={p}>{p}</option>)}</select></label>
+ <label className="text-sm">Ocupação<select value={occupation} onChange={e=>setOccupation(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas</option>{["ESTUDANTE","TRABALHADOR","ESTUDANTE_TRABALHADOR","OUTRO"].map(p=><option key={p} value={p}>{p.replaceAll("_"," ")}</option>)}</select></label>
  </div>
- {loading?<p>Carregando respostas...</p>:error?<p role="alert" className="text-destructive">{error}</p>:<><p className="text-sm font-semibold">{selected.length} respostas no recorte carregado</p>
- {allOld&&<p className="text-sm text-muted-foreground">Existem respostas históricas ainda sem associação STS. A análise por pesquisa será completa após backfill auditado.</p>}
- {rows.length===1000&&<p className="text-sm text-destructive">Limite de 1.000 registros alcançado. Não use estas métricas como totais globais; é necessária agregação paginada no servidor.</p>}
- <div className="space-y-3">{PAINS.map(([code,label])=>{const related=selected.filter(r=>r.form_submission_pain_points?.some(p=>p.codigo_dor===code&&p.selecionada));const principal=selected.filter(r=>r.form_submission_pain_points?.some(p=>p.codigo_dor===code&&p.principal));const intens=related.flatMap(r=>r.form_submission_pain_points??[]).filter(p=>p.codigo_dor===code&&p.intensidade!==null).map(p=>p.intensidade as number);
- const percentage=selected.length?Math.round(related.length/selected.length*1000)/10:0;return <div key={code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span>{label}</span><span className="font-semibold">{related.length} ({percentage}%) · principal: {principal.length} · intensidade: {intens.length?(intens.reduce((a,b)=>a+b,0)/intens.length).toFixed(1):"N/D"}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full bg-primary" style={{width:percentage+"%"}}/></div></div>})}</div></>}
+ {loading?<p role="status">Calculando indicadores...</p>:error?<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-destructive">Não foi possível carregar o BI: {error}. Confirme a execução da migração 0068.</p>:<>
+ <div className="grid gap-3 sm:grid-cols-3">
+ <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Respostas</p><p className="mt-2 text-3xl font-extrabold">{count(total)}</p></div>
+ <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Dores relatadas</p><p className="mt-2 text-3xl font-extrabold">{count(pains.reduce((a,p)=>a+p.selectedCount,0))}</p><p className="text-xs text-muted-foreground">Uma pessoa pode relatar várias dores</p></div>
+ <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Perfis classificados</p><p className="mt-2 text-3xl font-extrabold">{count(profileData.reduce((a,p)=>a+p.total,0))}</p></div>
+ </div>
+ <div className="grid gap-5 lg:grid-cols-2">
+ <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Perfil dos respondentes</h3>{profileData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!profileData.length&&<p className="text-sm text-muted-foreground">Sem respostas no recorte.</p>}</div>
+ <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Ocupação</h3>{occupationData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category.replaceAll("_"," ")}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!occupationData.length&&<p className="text-sm text-muted-foreground">Sem dados.</p>}</div>
+ </div>
+ <div className="space-y-4 rounded-xl border p-4"><h3 className="text-lg font-bold">Ranking das seis dores</h3>
+ {pains.map(p=>{const percent=total?p.selectedCount/total*100:0;return <div key={p.code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{p.label}</span><span className="font-bold">{p.selectedCount} · {percent.toFixed(1)}%</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{width:percent+"%"}}/></div><p className="mt-1 text-xs text-muted-foreground">Principal: {p.principalCount} · Intensidade média: {p.averageIntensity??"N/D"}</p></div>})}
+ <p className="text-xs text-muted-foreground">Percentual = respostas que relataram a dor ÷ respondentes filtrados. Não somamos percentuais entre formulários.</p>
+ </div></>}
  </section>;
 }
