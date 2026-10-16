@@ -8,6 +8,7 @@ export const Route=createFileRoute("/pesquisas/$code")({component:PublicResearch
 function PublicResearchPage(){
  const {code}=Route.useParams();
  const [form,setForm]=useState<Payload|null>(null),[answers,setAnswers]=useState<Record<string,string|string[]>>({});
+ const [submissionKey]=useState(()=>crypto.randomUUID());
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false);
  useEffect(()=>{let current=true;void (async()=>{
   const {data:f,error:e}=await (supabase as any).from("research_forms").select("id,title").eq("code",code).eq("status","PUBLICADO").maybeSingle();
@@ -21,8 +22,8 @@ function PublicResearchPage(){
   const visibleQuestions=form.sections.flatMap(section=>section.questions).filter(q=>!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals);
   const allowed=new Set(visibleQuestions.map(q=>q.id));
   const filteredAnswers=Object.fromEntries(Object.entries(answers).filter(([key])=>allowed.has(key)));
-  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers:filteredAnswers,consent_accepted:true});
-  if(e)setError("Não foi possível enviar sua resposta. Tente novamente.");else setComplete(true);setBusy(false);
+  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers:filteredAnswers,consent_accepted:true,client_submission_key:submissionKey});
+  if(e&&e.code!=="23505")setError("Não foi possível enviar sua resposta. Tente novamente.");else setComplete(true);setBusy(false);
  }
  if(loading)return <main className="mx-auto max-w-xl p-6">Carregando pesquisa...</main>;
  if(!form)return <main className="mx-auto max-w-xl p-6" role="alert">{error}</main>;
