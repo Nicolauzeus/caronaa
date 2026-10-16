@@ -1,7 +1,7 @@
 -- Aggregated mobility dimensions; return no names, coordinates or contact information.
 CREATE OR REPLACE FUNCTION public.get_research_mobility_dimensions(
  p_form_id uuid DEFAULT NULL,p_nature text DEFAULT NULL,
- p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL)
+ p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL,p_pain_code text DEFAULT NULL)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
 WITH eligible AS (
  SELECT s.submission_id,s.transporte_atual,s.custo_atual_faixa,s.custo_referencia,
@@ -13,6 +13,9 @@ WITH eligible AS (
  AND (p_nature IS NULL OR f.nature=p_nature)
  AND (p_profile IS NULL OR s.tipo_usuario::text=p_profile)
  AND (p_occupation IS NULL OR s.ocupacao=p_occupation)
+ AND (p_pain_code IS NULL OR
+ (jsonb_typeof(s.raw_payload #> '{raw_payload,passengerDifficulties}')='array' AND (s.raw_payload #> '{raw_payload,passengerDifficulties}') ? p_pain_code)
+ OR EXISTS (SELECT 1 FROM public.form_submission_pain_points pp WHERE pp.submission_id=s.submission_id AND pp.selecionada AND pp.codigo_dor::text=p_pain_code))
 ), dims AS (
  SELECT 'transport' category,coalesce(transporte_atual,'N/D') label,count(*) qty FROM eligible GROUP BY transporte_atual
  UNION ALL SELECT 'cost',coalesce(custo_atual_faixa,'N/D')||' / '||coalesce(custo_referencia::text,'N/D'),count(*) FROM eligible GROUP BY custo_atual_faixa,custo_referencia
@@ -26,6 +29,6 @@ WITH eligible AS (
 SELECT jsonb_build_object('total',(SELECT count(*) FROM eligible),
 'dimensions',coalesce(jsonb_agg(jsonb_build_object('category',category,'label',label,'total',qty)),'[]'::jsonb))
 FROM dims $$;
-REVOKE ALL ON FUNCTION public.get_research_mobility_dimensions(uuid,text,text,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_research_mobility_dimensions(uuid,text,text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_research_mobility_dimensions(uuid,text,text,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_research_mobility_dimensions(uuid,text,text,text,text) TO authenticated;
 NOTIFY pgrst,'reload schema';
