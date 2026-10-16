@@ -463,6 +463,13 @@
       "when": 1792110000000,
       "tag": "0065_research_forms_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792111000000,
+      "tag": "0066_research_form_draft_edit_permissions",
+      "breakpoints": true
     }
   ]
 }
