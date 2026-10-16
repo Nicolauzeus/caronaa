@@ -1,9 +1,12 @@
+import { Link } from "@tanstack/react-router";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
 import { ResearchFormEditor } from "@/components/admin/ResearchFormEditor";
 import { useEffect, useState, type FormEvent } from "react";
 import { createResearchForm, listResearchForms, RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
 export function ResearchCatalog() {
  const [selected,setSelected]=useState<string|null>(null);
+ const [search,setSearch]=useState("");
+ const [natureFilter,setNatureFilter]=useState("ALL");
  const [report,setReport]=useState<string|null>(null);
  const [items,setItems]=useState<ResearchForm[]>([]);
  const [error,setError]=useState("");
@@ -35,8 +38,9 @@ export function ResearchCatalog() {
    {nature==="MOBILIDADE_LOCAL" && <label className="text-sm sm:col-span-2">Município<input value={municipality} onChange={e=>setMunicipality(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label>}
    <button disabled={saving} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2">{saving?"Criando...":"Criar rascunho"}</button>
   </form>}
+  {!report && <div className="flex flex-wrap gap-3"><input aria-label="Buscar pesquisas" placeholder="Buscar por título ou código" value={search} onChange={e=>setSearch(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-3"/><select aria-label="Filtrar natureza" value={natureFilter} onChange={e=>setNatureFilter(e.target.value)} className="rounded-lg border bg-background p-3"><option value="ALL">Todas as naturezas</option>{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></div>}
   {!report && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-   {items.map(item=><article key={item.id} className="rounded-xl border bg-card p-4"><p className="text-xs font-bold text-primary">{item.nature.replaceAll("_"," ")}</p><h3 className="mt-2 font-bold">{item.title}</h3><p className="text-sm text-muted-foreground">{item.code} · {item.audience} · {item.status}</p><div className="mt-3 flex flex-wrap gap-2"><button className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground" onClick={()=>setReport(item.id)}>Ver análise e gráficos →</button><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setSelected(item.id)}>Editar perguntas</button></div></article>)}
+   {items.filter(item=>(natureFilter==="ALL"||item.nature===natureFilter)&&(!search.trim()||(item.title+" "+item.code).toLowerCase().includes(search.trim().toLowerCase()))).map(item=><article key={item.id} className="rounded-xl border bg-card p-4"><p className="text-xs font-bold text-primary">{item.nature.replaceAll("_"," ")}</p><h3 className="mt-2 font-bold">{item.title}</h3><p className="text-sm text-muted-foreground">{item.code} · {item.audience} · {item.status}</p><div className="mt-3 flex flex-wrap gap-2"><Link to="/admin/formularios/$code" params={{code:item.code}} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Abrir pesquisa →</Link><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setSelected(item.id)}>Editar perguntas</button></div></article>)}
   </div>}
   {report ? <ResearchInsights forms={items} formId={report} onBack={()=>setReport(null)}/> : <ResearchInsights forms={items}/> }
   {selected&&<ResearchFormEditor formId={selected} onClose={()=>{setSelected(null);void refresh();}}/>}
