@@ -1,12 +1,16 @@
 -- STS historical normalized analytics, original records remain unchanged.
-CREATE OR REPLACE FUNCTION public.get_research_legacy_metrics(p_form_id uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.get_research_legacy_metrics(p_form_id uuid DEFAULT NULL,p_nature text DEFAULT NULL,p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
 WITH eligible AS (
  SELECT s.submission_id,
  CASE WHEN jsonb_typeof(s.raw_payload->'raw_payload')='object'
  THEN s.raw_payload->'raw_payload' ELSE s.raw_payload END AS payload
  FROM public.form_submissions s
+ JOIN public.research_forms f ON f.id=s.research_form_id
  WHERE (p_form_id IS NULL OR s.research_form_id=p_form_id)
+ AND (p_nature IS NULL OR f.nature=p_nature)
+ AND (p_profile IS NULL OR s.tipo_usuario::text=p_profile)
+ AND (p_occupation IS NULL OR s.ocupacao=p_occupation)
 ), pains AS (
  SELECT DISTINCT e.submission_id,d.code
  FROM eligible e CROSS JOIN LATERAL (
@@ -34,5 +38,5 @@ SELECT CASE WHEN public.has_role(auth.uid(),'admin') THEN jsonb_build_object(
  'covered',(SELECT count(DISTINCT submission_id) FROM pains)
 ) ELSE NULL END
 $$;
-REVOKE ALL ON FUNCTION public.get_research_legacy_metrics(uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.get_research_legacy_metrics(uuid,text,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_research_legacy_metrics(uuid) TO authenticated;
