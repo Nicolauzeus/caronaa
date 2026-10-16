@@ -18,7 +18,10 @@ function PublicResearchPage(){
  })();return()=>{current=false};},[code]);
  async function submit(event:FormEvent){event.preventDefault();if(!form||busy)return;setBusy(true);setError("");if(!consent){setError("É necessário consentir com esta pesquisa.");setBusy(false);return;}
   for(const section of form.sections)for(const q of section.questions){const v=answers[q.id];if((!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals)&&q.required&&(!v||(Array.isArray(v)&&v.length===0))){setError("Responda: "+q.label);setBusy(false);return;}}
-  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers,consent_accepted:true});
+  const visibleQuestions=form.sections.flatMap(section=>section.questions).filter(q=>!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals);
+  const allowed=new Set(visibleQuestions.map(q=>q.id));
+  const filteredAnswers=Object.fromEntries(Object.entries(answers).filter(([key])=>allowed.has(key)));
+  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers:filteredAnswers,consent_accepted:true});
   if(e)setError("Não foi possível enviar sua resposta. Tente novamente.");else setComplete(true);setBusy(false);
  }
  if(loading)return <main className="mx-auto max-w-xl p-6">Carregando pesquisa...</main>;
