@@ -248,10 +248,10 @@ export async function getFormMetrics(filters: FormMetricsFilters = {}) {
           reached: funnelTotals.reached ?? 0,
           started,
           completed,
-          leads: completed,
+          leads: funnelTotals.leads ?? 0,
           startRate: funnelTotals.startRate ?? 0,
-          completionRate: started > 0 ? Math.round((completed / started) * 10000) / 100 : 0,
-          leadRate: completed > 0 ? 100 : 0,
+          completionRate: started > 0 ? Math.min(100, Math.round((completed / started) * 10000) / 100) : null,
+          leadRate: typeof funnelTotals.leadRate === "number" ? funnelTotals.leadRate : null,
         };
       })(),
     },
