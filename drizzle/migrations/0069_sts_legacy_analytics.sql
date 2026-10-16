@@ -1,5 +1,5 @@
 -- STS historical normalized analytics, original records remain unchanged.
-CREATE OR REPLACE FUNCTION public.get_research_legacy_metrics(p_form_id uuid DEFAULT NULL,p_nature text DEFAULT NULL,p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.get_research_legacy_metrics(p_form_id uuid DEFAULT NULL,p_nature text DEFAULT NULL,p_profile text DEFAULT NULL,p_occupation text DEFAULT NULL,p_pain_code text DEFAULT NULL)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
 WITH eligible AS (
  SELECT s.submission_id,
@@ -11,6 +11,9 @@ WITH eligible AS (
  AND (p_nature IS NULL OR f.nature=p_nature)
  AND (p_profile IS NULL OR s.tipo_usuario::text=p_profile)
  AND (p_occupation IS NULL OR s.ocupacao=p_occupation)
+ AND (p_pain_code IS NULL
+ OR (jsonb_typeof(s.raw_payload #> '{raw_payload,passengerDifficulties}')='array' AND (s.raw_payload #> '{raw_payload,passengerDifficulties}') ? p_pain_code)
+ OR EXISTS (SELECT 1 FROM public.form_submission_pain_points pp WHERE pp.submission_id=s.submission_id AND pp.selecionada AND pp.codigo_dor::text=p_pain_code))
 ), pains AS (
  SELECT DISTINCT e.submission_id,d.code
  FROM eligible e CROSS JOIN LATERAL (
@@ -39,5 +42,5 @@ SELECT CASE WHEN public.has_role(auth.uid(),'admin') THEN jsonb_build_object(
  'questionEligibleCount',(SELECT count(*) FROM eligible WHERE jsonb_typeof(payload->'passengerDifficulties')='array')
 ) ELSE NULL END
 $$;
-REVOKE ALL ON FUNCTION public.get_research_legacy_metrics(uuid,text,text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.get_research_legacy_metrics(uuid,text,text,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_research_legacy_metrics(uuid) TO authenticated;
