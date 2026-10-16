@@ -3,10 +3,10 @@ export type SurveySection={title:string;questions:SurveyQuestion[]};
 export type SurveySchema={sections:SurveySection[]};
 const q=(id:string,label:string,type:SurveyQuestion["type"],required=true,options:string[]=[]):SurveyQuestion=>({id,label,type,required,options});
 const context=(name:string):SurveySection=>({title:"Seu contexto",questions:[
- q("occupation","Qual é a sua ocupação?","single_choice",true,["ESTUDANTE","PROFISSIONAL","ESTUDANTE_E_PROFISSIONAL","OUTRO"]),
+ q("occupation","Qual é a sua ocupação?","single_choice",true,["ESTUDANTE","TRABALHADOR","ESTUDANTE_TRABALHADOR","OUTRO"]),
  q("current_transport","Como você se desloca atualmente?","multiple_choice",true,["MOTO","CARRO","ONIBUS","TAXI","MOTOTAXI","A_PE","OUTRO"]),
  q("transport_cost","Quanto gasta em média por viagem (R$)?","number",false),
- q("main_challenge","Qual a maior dificuldade de deslocamento?","multiple_choice",true,["ACESSO","LOTACAO","PRECO","TEMPO","VAGAS","CONFIANCA","OUTRA"])
+ q("main_challenge","Qual a maior dificuldade de deslocamento?","multiple_choice",true,["DOR_01","DOR_02","DOR_03","DOR_04","DOR_05","DOR_06","OUTRA"])
 ]});
 export const MUNICIPAL_TEMPLATES:{key:string;label:string;description:string;schema:SurveySchema}[]=[
  {key:"PROFISSIONAIS",label:"Profissionais locais",description:"Mototaxistas, taxistas e motoristas",schema:{sections:[
