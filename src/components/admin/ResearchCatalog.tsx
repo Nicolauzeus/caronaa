@@ -1,3 +1,4 @@
+import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
 import { Link } from "@tanstack/react-router";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
 import { ResearchFormEditor } from "@/components/admin/ResearchFormEditor";
@@ -43,6 +44,7 @@ export function ResearchCatalog() {
    {items.filter(item=>(natureFilter==="ALL"||item.nature===natureFilter)&&(!search.trim()||(item.title+" "+item.code).toLowerCase().includes(search.trim().toLowerCase()))).map(item=><article key={item.id} className="rounded-xl border bg-card p-4"><p className="text-xs font-bold text-primary">{item.nature.replaceAll("_"," ")}</p><h3 className="mt-2 font-bold">{item.title}</h3><p className="text-sm text-muted-foreground">{item.code} · {item.audience} · {item.status}</p><div className="mt-3 flex flex-wrap gap-2"><Link to="/admin/formularios/$code" params={{code:item.code}} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Abrir pesquisa →</Link>{item.status!=="ENCERRADO"&&<button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setSelected(item.id)}>Editar perguntas</button>}</div></article>)}
   </div>}
   {report ? <ResearchInsights forms={items} formId={report} onBack={()=>setReport(null)}/> : <ResearchInsights forms={items}/> }
+  <MunicipalResearchOverview/>
   {selected&&<ResearchFormEditor formId={selected} onClose={()=>{setSelected(null);void refresh();}}/>}
  </section>;
 }
