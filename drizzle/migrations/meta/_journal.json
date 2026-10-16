@@ -519,6 +519,20 @@
       "when": 1792118000000,
       "tag": "0073_research_mobility_dimensions",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792119000000,
+      "tag": "0074_municipal_research_overview",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1792120000000,
+      "tag": "0075_research_unified_bi",
+      "breakpoints": true
     }
   ]
 }
