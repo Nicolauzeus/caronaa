@@ -1,0 +1,25 @@
+name: Research quality checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/formulario/**"
+      - "src/components/admin/Research**"
+      - "src/routes/pesquisas/**"
+      - "src/routes/admin/formularios/**"
+      - "drizzle/migrations/00**"
+      - ".github/workflows/research-quality.yml"
+  workflow_dispatch:
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm test -- src/lib/formulario/research-templates.test.ts
+      - run: npm run build
