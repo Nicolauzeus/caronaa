@@ -7,7 +7,7 @@ const PAINS:[string,string][]=[["DOR_01","Acesso ao transporte"],["DOR_02","Lota
 type Category={category:string;total:number};
 type Pain={code:string;selectedCount:number;principalCount:number;averageIntensity:number|null};
 type BI={total:number;profiles:Category[];occupations:Category[];pains:Pain[]};
-type Legacy={pains:{code:string;total:number}[];barriers:{role:string;code:string;total:number}[];covered:number};
+type Legacy={pains:{code:string;total:number}[];barriers:{role:string;code:string;total:number}[];covered:number;questionEligibleCount:number};
 const count=(n:number)=>new Intl.NumberFormat("pt-BR").format(n);
 export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];formId?:string|null;onBack?:()=>void}){
  const [legacy,setLegacy]=useState<Legacy|null>(null);
@@ -50,8 +50,8 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Ocupação</h3>{occupationData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category.replaceAll("_"," ")}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!occupationData.length&&<p className="text-sm text-muted-foreground">Sem dados.</p>}</div>
  </div>
  <div className="space-y-4 rounded-xl border p-4"><h3 className="text-lg font-bold">Ranking das seis dores</h3>
- {pains.map(p=>{const percent=total?p.selectedCount/total*100:0;return <div key={p.code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{p.label}</span><span className="font-bold">{p.selectedCount} · {percent.toFixed(1)}%</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{width:percent+"%"}}/></div><p className="mt-1 text-xs text-muted-foreground">{p.normalized?"Origem: STS histórico · ": ""}Principal: {p.principalCount || "N/D"} · Intensidade média: {p.averageIntensity??"N/D"}</p></div>})}
- <p className="text-xs text-muted-foreground">Dores históricas do STS são lidas diretamente do JSON original com os mesmos filtros. </p>
+ {pains.map(p=>{const eligible=p.normalized?(legacy?.questionEligibleCount??0):total;const percent=eligible?p.selectedCount/eligible*100:0;return <div key={p.code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{p.label}</span><span className="font-bold">{p.selectedCount} · {percent.toFixed(1)}%</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{width:percent+"%"}}/></div><p className="mt-1 text-xs text-muted-foreground">{p.normalized?"Origem: STS histórico · ": ""}Principal: {p.principalCount || "N/D"} · Intensidade média: {p.averageIntensity??"N/D"}</p></div>})}
+ <p className="text-xs text-muted-foreground">Dores históricas do STS são lidas diretamente do JSON original com os mesmos filtros. Denominador: respondentes com a pergunta de dificuldades disponível ({legacy?.questionEligibleCount??"N/D"} no recorte). </p>
  <p className="text-xs text-muted-foreground">Percentual = respostas que relataram a dor ÷ respondentes filtrados. Não somamos percentuais entre formulários.</p>
  </div></>}
  </section>;
