@@ -11,15 +11,16 @@ type Legacy={pains:{code:string;total:number}[];barriers:{role:string;code:strin
 const count=(n:number)=>new Intl.NumberFormat("pt-BR").format(n);
 export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];formId?:string|null;onBack?:()=>void}){
  const [legacy,setLegacy]=useState<Legacy|null>(null);
+ const [painCode,setPainCode]=useState("ALL");
  const [id,setId]=useState("ALL"),[nature,setNature]=useState("ALL"),[profile,setProfile]=useState("ALL"),[occupation,setOccupation]=useState("ALL"),[data,setData]=useState<BI|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const selectedId=formId||id, selectedForm=forms.find(f=>f.id===selectedId);
  useEffect(()=>{let mounted=true;setLoading(true);setError("");
  void (supabase as any).rpc("get_research_unified_bi",{
  p_form_id:selectedId==="ALL"?null:selectedId,p_nature:nature==="ALL"?null:nature,
- p_profile:profile==="ALL"?null:profile,p_occupation:occupation==="ALL"?null:occupation
+ p_profile:profile==="ALL"?null:profile,p_occupation:occupation==="ALL"?null:occupation,p_pain_code:painCode==="ALL"?null:painCode
  }).then(({data,error}:{data:BI|null;error:{message:string}|null})=>{
  if(!mounted)return;if(error){setError(error.message);setData(null)}else setData(data);setLoading(false);
- });return()=>{mounted=false};},[selectedId,nature,profile,occupation]);
+ });return()=>{mounted=false};},[selectedId,nature,profile,occupation,painCode]);
  useEffect(()=>{let alive=true;setLegacy(null);void (supabase as any).rpc("get_research_legacy_metrics",{p_form_id:selectedId==="ALL"?null:selectedId,p_nature:nature==="ALL"?null:nature,p_profile:profile==="ALL"?null:profile,p_occupation:occupation==="ALL"?null:occupation}).then(({data,error}:{data:Legacy|null;error:any})=>{if(alive&&!error)setLegacy(data)});return()=>{alive=false};},[selectedId,nature,profile,occupation]);
  const total=data?.total??0;
 
@@ -37,6 +38,7 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  <label className="text-sm">Perfil de mobilidade<select value={profile} onChange={e=>setProfile(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todos</option>{["PASSAGEIRO","MOTORISTA","AMBOS"].map(p=><option key={p} value={p}>{p}</option>)}</select></label>
  <label className="text-sm">Ocupação<select value={occupation} onChange={e=>setOccupation(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas</option>{["ESTUDANTE","TRABALHADOR","ESTUDANTE_TRABALHADOR","OUTRO"].map(p=><option key={p} value={p}>{p.replaceAll("_"," ")}</option>)}</select></label>
  </div>
+ <div className="max-w-sm"><label className="text-sm">Cruzamento por dor<select aria-label="Filtrar por dor" value={painCode} onChange={e=>setPainCode(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas as dores</option>{PAINS.map(([code,label])=><option key={code} value={code}>{code} · {label}</option>)}</select></label></div>
  {loading?<p role="status">Calculando indicadores...</p>:error?<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-destructive">Não foi possível carregar o BI: {error}. Confirme a execução da migração 0068.</p>:<>
  <div className="grid gap-3 sm:grid-cols-3">
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Respostas</p><p className="mt-2 text-3xl font-extrabold">{count(total)}</p></div>
@@ -44,7 +46,7 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Perfis classificados</p><p className="mt-2 text-3xl font-extrabold">{count(profileData.reduce((a,p)=>a+p.total,0))}</p></div>
  </div>
  {legacy&&<div className="rounded-xl border p-4"><h3 className="font-bold">Barreiras de adoção — STS histórico</h3><p className="text-xs text-muted-foreground">Respostas originais do JSON, sem misturar barreiras com as seis dores.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{legacy.barriers.map(b=><div key={b.role+b.code} className="flex justify-between rounded-lg bg-secondary/40 p-2 text-sm"><span>{b.role} · {b.code.replaceAll("_"," ")}</span><strong>{b.total}</strong></div>)}</div></div>}
- {(!selectedForm||selectedForm.code==="STS-2026")&&<ResearchMobilityDimensions formId={selectedId==="ALL"?null:selectedId} nature={nature==="ALL"?null:nature} profile={profile==="ALL"?null:profile} occupation={occupation==="ALL"?null:occupation}/>}
+ {(!selectedForm||selectedForm.code==="STS-2026")&&<ResearchMobilityDimensions formId={selectedId==="ALL"?null:selectedId} nature={nature==="ALL"?null:nature} profile={profile==="ALL"?null:profile} occupation={occupation==="ALL"?null:occupation} painCode={painCode==="ALL"?null:painCode}/>}
  <div className="grid gap-5 lg:grid-cols-2">
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Perfil dos respondentes</h3>{profileData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!profileData.length&&<p className="text-sm text-muted-foreground">Sem respostas no recorte.</p>}</div>
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Ocupação</h3>{occupationData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category.replaceAll("_"," ")}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!occupationData.length&&<p className="text-sm text-muted-foreground">Sem dados.</p>}</div>
