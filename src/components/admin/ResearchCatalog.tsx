@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
 import { ResearchFormEditor } from "@/components/admin/ResearchFormEditor";
 import { useEffect, useState, type FormEvent } from "react";
-import { createResearchForm, listResearchForms, RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
+import { createResearchForm, setResearchFormEnabled, researchPublicPath, listResearchForms, RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
 export function ResearchCatalog() {
  const [selected,setSelected]=useState<string|null>(null);
  const [tab,setTab]=useState<"pesquisas"|"inteligencia"|"comparacoes"|"municipios">("pesquisas");
@@ -20,6 +20,8 @@ export function ResearchCatalog() {
  const [municipality,setMunicipality]=useState("");
  const [editing,setEditing]=useState(false);
  const [saving,setSaving]=useState(false);
+ const [toggling,setToggling]=useState<string|null>(null);
+ async function toggleForm(form:ResearchForm){setToggling(form.id);try{await setResearchFormEnabled(form,!form.is_enabled);await refresh()}catch(e){setError(e instanceof Error?e.message:"Falha ao alterar disponibilidade")}finally{setToggling(null)}}
  async function refresh(){try {setItems(await listResearchForms());setError("");}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar pesquisas");}}
  useEffect(()=>{void refresh();},[]);
  async function submit(e:FormEvent){e.preventDefault();setSaving(true);try{
@@ -44,7 +46,7 @@ export function ResearchCatalog() {
   </form>}
   {tab==="pesquisas" && !report && <div className="flex flex-wrap gap-3"><input aria-label="Buscar pesquisas" placeholder="Buscar por título ou código" value={search} onChange={e=>setSearch(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-3"/><select aria-label="Filtrar natureza" value={natureFilter} onChange={e=>setNatureFilter(e.target.value)} className="rounded-lg border bg-background p-3"><option value="ALL">Todas as naturezas</option>{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></div>}
   {tab==="pesquisas" && !report && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-   {items.filter(item=>(natureFilter==="ALL"||item.nature===natureFilter)&&(!search.trim()||(item.title+" "+item.code).toLowerCase().includes(search.trim().toLowerCase()))).map(item=><article key={item.id} className="rounded-xl border bg-card p-4"><p className="text-xs font-bold text-primary">{item.nature.replaceAll("_"," ")}</p><h3 className="mt-2 font-bold">{item.title}</h3><p className="text-sm text-muted-foreground">{item.code} · {item.audience} · {item.status}</p><div className="mt-3 flex flex-wrap gap-2"><Link to="/admin/formularios/$code" params={{code:item.code}} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Abrir pesquisa →</Link>{item.status!=="ENCERRADO"&&<button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setSelected(item.id)}>Editar perguntas</button>}</div></article>)}
+   {items.filter(item=>(natureFilter==="ALL"||item.nature===natureFilter)&&(!search.trim()||(item.title+" "+item.code).toLowerCase().includes(search.trim().toLowerCase()))).map(item=><article key={item.id} className="rounded-xl border bg-card p-4"><p className="text-xs font-bold text-primary">{item.nature.replaceAll("_"," ")}</p><h3 className="mt-2 font-bold">{item.title}</h3><p className="text-sm text-muted-foreground">{item.code} · {item.audience} · {item.status}</p><div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-secondary/40 p-2"><span className="text-xs font-semibold">{item.is_enabled?"Disponível publicamente":"Indisponível"}</span><label className="flex cursor-pointer items-center gap-2 text-xs"><input type="checkbox" aria-label={"Habilitar formulário "+item.title} disabled={toggling===item.id||item.status!=="PUBLICADO"} checked={Boolean(item.is_enabled)} onChange={()=>void toggleForm(item)}/>{item.is_enabled?"Ativo":"Inativo"}</label></div>{item.is_enabled&&<div className="mt-2 flex flex-wrap items-center gap-2"><a target="_blank" rel="noreferrer" href={researchPublicPath(item.code)} className="break-all text-xs text-primary">{researchPublicPath(item.code)}</a><button className="rounded border px-2 py-1 text-xs" onClick={()=>void navigator.clipboard.writeText(window.location.origin+researchPublicPath(item.code))}>Copiar link</button></div>}<div className="mt-3 flex flex-wrap gap-2"><Link to="/admin/formularios/$code" params={{code:item.code}} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Abrir pesquisa →</Link>{item.status!=="ENCERRADO"&&<button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setSelected(item.id)}>Editar perguntas</button>}</div></article>)}
   </div>}
   {tab==="inteligencia" && (report ? <ResearchInsights forms={items} formId={report} onBack={()=>setReport(null)}/> : <ResearchInsights forms={items}/>)}
   {tab==="comparacoes" && <ResearchCompare forms={items}/>}
