@@ -38,7 +38,7 @@ WITH source_rows AS (
 )
 SELECT jsonb_build_object(
  'total',(SELECT count(*) FROM e),
- 'painEligible',(SELECT count(*) FROM e WHERE jsonb_typeof(payload->'passengerDifficulties')='array' OR jsonb_typeof(payload->'main_challenge')='array'),
+ 'painEligible',(SELECT count(*) FROM e WHERE jsonb_typeof(payload->'passengerDifficulties')='array' OR jsonb_typeof(payload->'main_challenge')='array' OR EXISTS (SELECT 1 FROM public.form_submission_pain_points pp WHERE pp.submission_id=e.id AND pp.selecionada)),
  'profiles',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',category,'total',cnt)),'[]'::jsonb) FROM profiles),
  'occupations',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',category,'total',cnt)),'[]'::jsonb) FROM occupations),
  'pains',(SELECT coalesce(jsonb_agg(jsonb_build_object('code',code,'selectedCount',cnt)),'[]'::jsonb) FROM pains),
