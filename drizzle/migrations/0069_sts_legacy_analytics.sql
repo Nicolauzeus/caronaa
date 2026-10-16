@@ -35,7 +35,8 @@ SELECT CASE WHEN public.has_role(auth.uid(),'admin') THEN jsonb_build_object(
  FROM (SELECT code,count(*) total FROM pains GROUP BY code) x),
  'barriers',(SELECT coalesce(jsonb_agg(jsonb_build_object('role',role,'code',code,'total',total)),'[]'::jsonb)
  FROM (SELECT role,code,count(*) total FROM barriers GROUP BY role,code) x),
- 'covered',(SELECT count(DISTINCT submission_id) FROM pains)
+ 'covered',(SELECT count(DISTINCT submission_id) FROM pains),
+ 'questionEligibleCount',(SELECT count(*) FROM eligible WHERE jsonb_typeof(payload->'passengerDifficulties')='array')
 ) ELSE NULL END
 $$;
 REVOKE ALL ON FUNCTION public.get_research_legacy_metrics(uuid,text,text,text) FROM PUBLIC,anon;
