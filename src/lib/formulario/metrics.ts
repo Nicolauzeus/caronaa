@@ -19,7 +19,7 @@ export type FormMetricsTotals = {
   leads: number;
   startRate: number;
   completionRate: number | null;
-  leadRate: number;
+  leadRate: number | null;
   passageiros: number;
   motoristas: number;
   ambos: number;
