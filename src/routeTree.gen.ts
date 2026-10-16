@@ -36,12 +36,15 @@ import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacio
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
+import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
 import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
+import { Route as AdminFormulariosCodeRouteImport } from './routes/admin/formularios/$code'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
 import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
+import { Route as ApiAsaasWebhookRouteImport } from './routes/api/asaas/webhook'
 import { Route as AuthenticatedPerfilViagemRideIdUserIdRouteImport } from './routes/_authenticated/perfil-viagem.$rideId.$userId'
 import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
 import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
@@ -183,6 +186,11 @@ const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
   path: '/validacao',
   getParentRoute: () => AdminRoute,
 } as any)
+const PesquisasCodeRoute = PesquisasCodeRouteImport.update({
+  id: '/pesquisas/$code',
+  path: '/pesquisas/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMinhaCaronaOfferIdRoute =
   AuthenticatedMinhaCaronaOfferIdRouteImport.update({
     id: '/minha-carona/$offerId',
@@ -200,6 +208,11 @@ const AdminFormulariosIndexRoute = AdminFormulariosIndexRouteImport.update({
   path: '/formularios/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminFormulariosCodeRoute = AdminFormulariosCodeRouteImport.update({
+  id: '/formularios/$code',
+  path: '/formularios/$code',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminUsuariosIndexRoute = AdminUsuariosIndexRouteImport.update({
   id: '/usuarios/',
   path: '/usuarios/',
@@ -214,6 +227,11 @@ const AdminValidacaoPainIdRoute = AdminValidacaoPainIdRouteImport.update({
   id: '/$painId',
   path: '/$painId',
   getParentRoute: () => AdminValidacaoRoute,
+} as any)
+const ApiAsaasWebhookRoute = ApiAsaasWebhookRouteImport.update({
+  id: '/api/asaas/webhook',
+  path: '/api/asaas/webhook',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPerfilViagemRideIdUserIdRoute =
   AuthenticatedPerfilViagemRideIdUserIdRouteImport.update({
@@ -270,11 +288,14 @@ export interface FileRoutesByFullPath {
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
+  '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
+  '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
+  '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -308,11 +329,14 @@ export interface FileRoutesByTo {
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
+  '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin': typeof AdminIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
+  '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
+  '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
   '/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -349,11 +373,14 @@ export interface FileRoutesById {
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
+  '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
+  '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
+  '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/_authenticated/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -390,11 +417,14 @@ export interface FileRouteTypes {
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
+    | '/pesquisas/$code'
     | '/admin/'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
+    | '/admin/formularios/$code'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
+    | '/api/asaas/webhook'
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/perfil-viagem/$rideId/$userId'
@@ -428,11 +458,14 @@ export interface FileRouteTypes {
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
+    | '/pesquisas/$code'
     | '/admin'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
+    | '/admin/formularios/$code'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
+    | '/api/asaas/webhook'
     | '/admin/formularios'
     | '/admin/usuarios'
     | '/perfil-viagem/$rideId/$userId'
@@ -468,11 +501,14 @@ export interface FileRouteTypes {
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
+    | '/pesquisas/$code'
     | '/admin/'
     | '/_authenticated/minha-carona/$offerId'
     | '/_authenticated/viagem/$rideId'
+    | '/admin/formularios/$code'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
+    | '/api/asaas/webhook'
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/_authenticated/perfil-viagem/$rideId/$userId'
@@ -495,6 +531,8 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
+  PesquisasCodeRoute: typeof PesquisasCodeRoute
+  ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -690,6 +728,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminValidacaoRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/pesquisas/$code': {
+      id: '/pesquisas/$code'
+      path: '/pesquisas/$code'
+      fullPath: '/pesquisas/$code'
+      preLoaderRoute: typeof PesquisasCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/minha-carona/$offerId': {
       id: '/_authenticated/minha-carona/$offerId'
       path: '/minha-carona/$offerId'
@@ -709,6 +754,13 @@ declare module '@tanstack/react-router' {
       path: '/formularios'
       fullPath: '/admin/formularios/'
       preLoaderRoute: typeof AdminFormulariosIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/formularios/$code': {
+      id: '/admin/formularios/$code'
+      path: '/formularios/$code'
+      fullPath: '/admin/formularios/$code'
+      preLoaderRoute: typeof AdminFormulariosCodeRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/usuarios/': {
@@ -731,6 +783,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/validacao/$painId'
       preLoaderRoute: typeof AdminValidacaoPainIdRouteImport
       parentRoute: typeof AdminValidacaoRoute
+    }
+    '/api/asaas/webhook': {
+      id: '/api/asaas/webhook'
+      path: '/api/asaas/webhook'
+      fullPath: '/api/asaas/webhook'
+      preLoaderRoute: typeof ApiAsaasWebhookRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/perfil-viagem/$rideId/$userId': {
       id: '/_authenticated/perfil-viagem/$rideId/$userId'
@@ -818,6 +877,7 @@ interface AdminRouteChildren {
   AdminSugestoesRoute: typeof AdminSugestoesRoute
   AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminFormulariosCodeRoute: typeof AdminFormulariosCodeRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
   AdminFormulariosIndexRoute: typeof AdminFormulariosIndexRoute
   AdminUsuariosIndexRoute: typeof AdminUsuariosIndexRoute
@@ -837,6 +897,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSugestoesRoute: AdminSugestoesRoute,
   AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
+  AdminFormulariosCodeRoute: AdminFormulariosCodeRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
   AdminFormulariosIndexRoute: AdminFormulariosIndexRoute,
   AdminUsuariosIndexRoute: AdminUsuariosIndexRoute,
@@ -859,6 +920,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
+  PesquisasCodeRoute: PesquisasCodeRoute,
+  ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
