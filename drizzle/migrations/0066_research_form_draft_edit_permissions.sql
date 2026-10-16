@@ -1,0 +1,22 @@
+-- Allow draft editing, but never edits to published versions.
+GRANT UPDATE ON public.research_form_versions TO authenticated;
+DROP POLICY IF EXISTS research_versions_admin_draft_update ON public.research_form_versions;
+CREATE POLICY research_versions_admin_draft_update ON public.research_form_versions
+FOR UPDATE TO authenticated
+USING (public.has_role(auth.uid(),'admin') AND published_at IS NULL)
+WITH CHECK (public.has_role(auth.uid(),'admin'));
+-- Protect published versions from being changed even by privileged direct SQL clients.
+CREATE OR REPLACE FUNCTION public.reject_published_research_version_changes()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF OLD.published_at IS NOT NULL THEN
+  RAISE EXCEPTION 'Published form versions are immutable';
+ END IF;
+ IF NEW.form_id IS DISTINCT FROM OLD.form_id OR NEW.version_number IS DISTINCT FROM OLD.version_number THEN
+  RAISE EXCEPTION 'Form identity and version number are immutable';
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS research_version_immutable ON public.research_form_versions;
+CREATE TRIGGER research_version_immutable BEFORE UPDATE ON public.research_form_versions
+FOR EACH ROW EXECUTE FUNCTION public.reject_published_research_version_changes();
