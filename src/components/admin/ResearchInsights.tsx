@@ -6,8 +6,10 @@ const PAINS:[string,string][]=[["DOR_01","Acesso ao transporte"],["DOR_02","Lota
 type Category={category:string;total:number};
 type Pain={code:string;selectedCount:number;principalCount:number;averageIntensity:number|null};
 type BI={total:number;profiles:Category[];occupations:Category[];pains:Pain[]};
+type Legacy={pains:{code:string;total:number}[];barriers:{role:string;code:string;total:number}[];covered:number};
 const count=(n:number)=>new Intl.NumberFormat("pt-BR").format(n);
 export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];formId?:string|null;onBack?:()=>void}){
+ const [legacy,setLegacy]=useState<Legacy|null>(null);
  const [id,setId]=useState("ALL"),[nature,setNature]=useState("ALL"),[profile,setProfile]=useState("ALL"),[occupation,setOccupation]=useState("ALL"),[data,setData]=useState<BI|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const selectedId=formId||id, selectedForm=forms.find(f=>f.id===selectedId);
  useEffect(()=>{let mounted=true;setLoading(true);setError("");
@@ -17,8 +19,10 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  }).then(({data,error}:{data:BI|null;error:{message:string}|null})=>{
  if(!mounted)return;if(error){setError(error.message);setData(null)}else setData(data);setLoading(false);
  });return()=>{mounted=false};},[selectedId,nature,profile,occupation]);
+ useEffect(()=>{let alive=true;setLegacy(null);void (supabase as any).rpc("get_research_legacy_metrics",{p_form_id:selectedId==="ALL"?null:selectedId}).then(({data,error}:{data:Legacy|null;error:any})=>{if(alive&&!error)setLegacy(data)});return()=>{alive=false};},[selectedId]);
  const total=data?.total??0;
- const pains=PAINS.map(([code,label])=>({code,label,...(data?.pains.find(p=>p.code===code)??{selectedCount:0,principalCount:0,averageIntensity:null})})).sort((a,b)=>b.selectedCount-a.selectedCount);
+ const isFiltered=profile!=="ALL"||occupation!=="ALL"||nature!=="ALL";
+ const pains=PAINS.map(([code,label])=>{const canonical=data?.pains.find(p=>p.code===code);const historical=!isFiltered?legacy?.pains.find(p=>p.code===code):undefined;return {code,label,selectedCount:historical?.total??canonical?.selectedCount??0,principalCount:canonical?.principalCount??0,averageIntensity:canonical?.averageIntensity??null,normalized:Boolean(historical)};}).sort((a,b)=>b.selectedCount-a.selectedCount);
  const profileData=data?.profiles??[], occupationData=data?.occupations??[];
  return <section className="space-y-5 rounded-2xl border border-border bg-card p-4 md:p-6" aria-label="Inteligência de pesquisas">
  <div className="flex flex-wrap items-center justify-between gap-3"><div>
@@ -38,12 +42,14 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Dores relatadas</p><p className="mt-2 text-3xl font-extrabold">{count(pains.reduce((a,p)=>a+p.selectedCount,0))}</p><p className="text-xs text-muted-foreground">Uma pessoa pode relatar várias dores</p></div>
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Perfis classificados</p><p className="mt-2 text-3xl font-extrabold">{count(profileData.reduce((a,p)=>a+p.total,0))}</p></div>
  </div>
+ {!isFiltered&&legacy&&<div className="rounded-xl border p-4"><h3 className="font-bold">Barreiras de adoção — STS histórico</h3><p className="text-xs text-muted-foreground">Respostas originais do JSON, sem misturar barreiras com as seis dores.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{legacy.barriers.map(b=><div key={b.role+b.code} className="flex justify-between rounded-lg bg-secondary/40 p-2 text-sm"><span>{b.role} · {b.code.replaceAll("_"," ")}</span><strong>{b.total}</strong></div>)}</div></div>}
  <div className="grid gap-5 lg:grid-cols-2">
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Perfil dos respondentes</h3>{profileData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!profileData.length&&<p className="text-sm text-muted-foreground">Sem respostas no recorte.</p>}</div>
  <div className="space-y-3 rounded-xl border p-4"><h3 className="font-bold">Ocupação</h3>{occupationData.map(p=><div key={p.category}><div className="flex justify-between text-sm"><span>{p.category.replaceAll("_"," ")}</span><strong>{p.total} · {total?(p.total/total*100).toFixed(1):"0"}%</strong></div><div className="mt-1 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{width:(total?p.total/total*100:0)+"%"}}/></div></div>)}{!occupationData.length&&<p className="text-sm text-muted-foreground">Sem dados.</p>}</div>
  </div>
  <div className="space-y-4 rounded-xl border p-4"><h3 className="text-lg font-bold">Ranking das seis dores</h3>
- {pains.map(p=>{const percent=total?p.selectedCount/total*100:0;return <div key={p.code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{p.label}</span><span className="font-bold">{p.selectedCount} · {percent.toFixed(1)}%</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{width:percent+"%"}}/></div><p className="mt-1 text-xs text-muted-foreground">Principal: {p.principalCount} · Intensidade média: {p.averageIntensity??"N/D"}</p></div>})}
+ {pains.map(p=>{const percent=total?p.selectedCount/total*100:0;return <div key={p.code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{p.label}</span><span className="font-bold">{p.selectedCount} · {percent.toFixed(1)}%</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{width:percent+"%"}}/></div><p className="mt-1 text-xs text-muted-foreground">{p.normalized?"Origem: STS histórico · ": ""}Principal: {p.principalCount || "N/D"} · Intensidade média: {p.averageIntensity??"N/D"}</p></div>})}
+ <p className="text-xs text-muted-foreground">Quando filtros de perfil ou ocupação estão ativos, o painel usa apenas as dores estruturadas até a migração do BI v2. </p>
  <p className="text-xs text-muted-foreground">Percentual = respostas que relataram a dor ÷ respondentes filtrados. Não somamos percentuais entre formulários.</p>
  </div></>}
  </section>;
