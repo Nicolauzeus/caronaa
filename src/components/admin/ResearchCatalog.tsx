@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { createResearchForm, listResearchForms, RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
 export function ResearchCatalog() {
  const [selected,setSelected]=useState<string|null>(null);
+ const [tab,setTab]=useState<"pesquisas"|"inteligencia"|"comparacoes"|"municipios">("pesquisas");
  const [search,setSearch]=useState("");
  const [natureFilter,setNatureFilter]=useState("ALL");
  const [report,setReport]=useState<string|null>(null);
@@ -29,10 +30,11 @@ export function ResearchCatalog() {
  return <section className="space-y-4">
   <div className="flex flex-wrap items-center justify-between gap-3">
    <div><h2 className="text-xl font-extrabold">Central de pesquisas</h2><p className="text-sm text-muted-foreground">Pesquisas por evento, educação, empresa e mobilidade local.</p></div>
-   <button type="button" onClick={()=>setEditing(!editing)} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground">+ Novo formulário</button>
+   <button type="button" onClick={()=>{setTab("pesquisas");setEditing(!editing)}} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground">+ Novo formulário</button>
   </div>
+  <nav aria-label="Áreas da central" className="flex flex-wrap gap-2">{[["pesquisas","Pesquisas"],["inteligencia","Inteligência"],["comparacoes","Comparações"],["municipios","Municípios"]].map(([id,label])=><button key={id} onClick={()=>setTab(id as typeof tab)} className={tab===id?"rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-xl border px-4 py-2 text-sm"}>{label}</button>)}</nav>
   {error && <p role="alert" className="rounded-lg border p-3 text-sm">{error}. Confirme a implantação da migração.</p>}
-  {editing && <form onSubmit={submit} className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2">
+  {tab==="pesquisas" && editing && <form onSubmit={submit} className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2">
    <label className="text-sm">Título<input required minLength={2} maxLength={180} value={title} onChange={e=>setTitle(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label>
    <label className="text-sm">Código<input required value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="UNIFOR-2026" className="mt-1 w-full rounded-lg border bg-background p-3"/></label>
    <label className="text-sm">Natureza<select value={nature} onChange={e=>setNature(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3">{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></label>
@@ -40,13 +42,13 @@ export function ResearchCatalog() {
    {nature==="MOBILIDADE_LOCAL" && <label className="text-sm sm:col-span-2">Município<input value={municipality} onChange={e=>setMunicipality(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label>}
    <button disabled={saving} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2">{saving?"Criando...":"Criar rascunho"}</button>
   </form>}
-  {!report && <div className="flex flex-wrap gap-3"><input aria-label="Buscar pesquisas" placeholder="Buscar por título ou código" value={search} onChange={e=>setSearch(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-3"/><select aria-label="Filtrar natureza" value={natureFilter} onChange={e=>setNatureFilter(e.target.value)} className="rounded-lg border bg-background p-3"><option value="ALL">Todas as naturezas</option>{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></div>}
-  {!report && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+  {tab==="pesquisas" && !report && <div className="flex flex-wrap gap-3"><input aria-label="Buscar pesquisas" placeholder="Buscar por título ou código" value={search} onChange={e=>setSearch(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-3"/><select aria-label="Filtrar natureza" value={natureFilter} onChange={e=>setNatureFilter(e.target.value)} className="rounded-lg border bg-background p-3"><option value="ALL">Todas as naturezas</option>{RESEARCH_NATURES.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}</select></div>}
+  {tab==="pesquisas" && !report && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
    {items.filter(item=>(natureFilter==="ALL"||item.nature===natureFilter)&&(!search.trim()||(item.title+" "+item.code).toLowerCase().includes(search.trim().toLowerCase()))).map(item=><article key={item.id} className="rounded-xl border bg-card p-4"><p className="text-xs font-bold text-primary">{item.nature.replaceAll("_"," ")}</p><h3 className="mt-2 font-bold">{item.title}</h3><p className="text-sm text-muted-foreground">{item.code} · {item.audience} · {item.status}</p><div className="mt-3 flex flex-wrap gap-2"><Link to="/admin/formularios/$code" params={{code:item.code}} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Abrir pesquisa →</Link>{item.status!=="ENCERRADO"&&<button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setSelected(item.id)}>Editar perguntas</button>}</div></article>)}
   </div>}
-  {report ? <ResearchInsights forms={items} formId={report} onBack={()=>setReport(null)}/> : <ResearchInsights forms={items}/> }
-  <ResearchCompare forms={items}/>
-  <MunicipalResearchOverview/>
-  {selected&&<ResearchFormEditor formId={selected} onClose={()=>{setSelected(null);void refresh();}}/>}
+  {tab==="inteligencia" && (report ? <ResearchInsights forms={items} formId={report} onBack={()=>setReport(null)}/> : <ResearchInsights forms={items}/>)}
+  {tab==="comparacoes" && <ResearchCompare forms={items}/>}
+  {tab==="municipios" && <MunicipalResearchOverview/>}
+  {tab==="pesquisas" && selected&&<ResearchFormEditor formId={selected} onClose={()=>{setSelected(null);void refresh();}}/>}
  </section>;
 }
