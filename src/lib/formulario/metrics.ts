@@ -238,20 +238,22 @@ export async function getFormMetrics(filters: FormMetricsFilters = {}) {
     ...summary,
     totals: {
       ...summary.totals,
-      ...(
-        funnelData as {
-          totals: Pick<
-            FormMetricsTotals,
-            | "reached"
-            | "started"
-            | "completed"
-            | "leads"
-            | "startRate"
-            | "completionRate"
-            | "leadRate"
-          >;
-        }
-      ).totals,
+      // A contagem das submissões persistidas é a fonte de verdade para "completed".
+      // Eventos do funil são telemetria e não podem zerar respostas reais.
+      ...(() => {
+        const funnelTotals = (funnelData as { totals: Partial<FormMetricsTotals> }).totals;
+        const completed = summary.totals.completed;
+        const started = funnelTotals.started ?? 0;
+        return {
+          reached: funnelTotals.reached ?? 0,
+          started,
+          completed,
+          leads: completed,
+          startRate: funnelTotals.startRate ?? 0,
+          completionRate: started > 0 ? Math.round((completed / started) * 10000) / 100 : 0,
+          leadRate: completed > 0 ? 100 : 0,
+        };
+      })(),
     },
   };
 }
