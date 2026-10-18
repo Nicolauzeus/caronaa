@@ -17,10 +17,10 @@ const existing=(id:string,label:string,description:string,route:string):Departme
 const planned=(id:string,label:string,description:string):DepartmentCategory=>({id,label,description,phase:"planned"});
 export const DEPARTMENTS:readonly Department[]=[
  {id:"executive",name:"Direção e Estratégia",shortName:"Direção",mission:"Acompanhar resultados, metas, decisões e riscos empresariais.",ownerRole:"Direção executiva",categories:[
- existing("overview","Visão executiva","Indicadores reais já disponíveis na visão geral.","/admin"),
- planned("okrs","Objetivos e resultados-chave","Metas, resultados-chave, prazos e responsáveis."),
- planned("decisions","Decisões estratégicas","Registro de decisões, evidências e responsáveis."),
- planned("risk","Riscos e oportunidades","Visão consolidada e acompanhamento executivo.")
+ existing("overview","Visão executiva","Indicadores reais, funil de ativação e gestão estratégica.","/admin/executivo"),
+ existing("okrs","Objetivos e resultados-chave","Metas, progresso e prazos com persistência.","/admin/executivo"),
+ existing("decisions","Decisões estratégicas","Registro de decisões e responsáveis.","/admin/executivo"),
+ existing("risk","Riscos e oportunidades","Registro de riscos, prioridades e tratamento.","/admin/executivo")
  ]},
  {id:"technology",name:"Tecnologia e Produto",shortName:"Tecnologia",mission:"Evoluir produto, infraestrutura e confiabilidade técnica.",ownerRole:"Gestão de tecnologia",categories:[
  planned("health","Saúde dos serviços","Disponibilidade, erros e métricas instrumentadas."),
