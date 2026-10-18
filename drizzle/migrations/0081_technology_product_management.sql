@@ -1,0 +1,56 @@
+-- Technology and Product: tracked incidents, releases and product work.
+CREATE TABLE IF NOT EXISTS public.tech_work_items (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ kind text NOT NULL CHECK(kind IN ('INCIDENT','BUG','FEATURE','RELEASE')),
+ title text NOT NULL CHECK(length(btrim(title)) BETWEEN 3 AND 180),
+ description text NOT NULL DEFAULT '',
+ status text NOT NULL DEFAULT 'ABERTO' CHECK(status IN ('ABERTO','EM_ANDAMENTO','BLOQUEADO','RESOLVIDO','ENCERRADO')),
+ severity text NOT NULL DEFAULT 'MEDIA' CHECK(severity IN ('BAIXA','MEDIA','ALTA','CRITICA')),
+ service_name text,
+ external_url text,
+ owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+ occurred_at timestamptz,
+ resolved_at timestamptz,
+ due_date date,
+ created_by uuid NOT NULL DEFAULT auth.uid(),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK (external_url IS NULL OR external_url ~ '^https://')
+);
+CREATE INDEX IF NOT EXISTS tech_work_items_kind_status_idx ON public.tech_work_items(kind,status);
+CREATE TABLE IF NOT EXISTS public.tech_work_item_events (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ item_id uuid NOT NULL REFERENCES public.tech_work_items(id),
+ actor_id uuid,
+ action text NOT NULL CHECK(action IN ('CREATE','UPDATE')),
+ before_state jsonb,
+ after_state jsonb,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.tech_work_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tech_work_item_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tech_items_select ON public.tech_work_items;
+CREATE POLICY tech_items_select ON public.tech_work_items FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS tech_items_insert ON public.tech_work_items;
+CREATE POLICY tech_items_insert ON public.tech_work_items FOR INSERT TO authenticated WITH CHECK(public.has_role(auth.uid(),'admin') AND created_by=auth.uid());
+DROP POLICY IF EXISTS tech_items_update ON public.tech_work_items;
+CREATE POLICY tech_items_update ON public.tech_work_items FOR UPDATE TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS tech_events_select ON public.tech_work_item_events;
+CREATE POLICY tech_events_select ON public.tech_work_item_events FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+CREATE OR REPLACE FUNCTION public.audit_tech_work_item()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF TG_OP='INSERT' THEN
+  INSERT INTO public.tech_work_item_events(item_id,actor_id,action,after_state) VALUES(NEW.id,auth.uid(),'CREATE',to_jsonb(NEW));
+ ELSE
+  NEW.updated_at=now();
+  INSERT INTO public.tech_work_item_events(item_id,actor_id,action,before_state,after_state)
+  VALUES(NEW.id,auth.uid(),'UPDATE',to_jsonb(OLD),to_jsonb(NEW));
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS audit_tech_item_trigger ON public.tech_work_items;
+CREATE TRIGGER audit_tech_item_trigger BEFORE INSERT OR UPDATE ON public.tech_work_items FOR EACH ROW EXECUTE FUNCTION public.audit_tech_work_item();
+GRANT SELECT,INSERT,UPDATE ON public.tech_work_items TO authenticated;
+GRANT SELECT ON public.tech_work_item_events TO authenticated;
+NOTIFY pgrst,'reload schema';
