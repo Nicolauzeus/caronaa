@@ -36,6 +36,7 @@ import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacio
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
+import { Route as FormularioIndexRouteImport } from './routes/formulario/index'
 import { Route as FormularioCodeRouteImport } from './routes/formulario/$code'
 import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
@@ -187,6 +188,11 @@ const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
   path: '/validacao',
   getParentRoute: () => AdminRoute,
 } as any)
+const FormularioIndexRoute = FormularioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FormularioRoute,
+} as any)
 const FormularioCodeRoute = FormularioCodeRouteImport.update({
   id: '/$code',
   path: '/$code',
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
+  '/formulario/': typeof FormularioIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
@@ -316,7 +323,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
-  '/formulario': typeof FormularioRouteWithChildren
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -339,6 +345,7 @@ export interface FileRoutesByTo {
   '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin': typeof AdminIndexRoute
+  '/formulario': typeof FormularioIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
@@ -384,6 +391,7 @@ export interface FileRoutesById {
   '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
+  '/formulario/': typeof FormularioIndexRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
@@ -429,6 +437,7 @@ export interface FileRouteTypes {
     | '/formulario/$code'
     | '/pesquisas/$code'
     | '/admin/'
+    | '/formulario/'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/formularios/$code'
@@ -448,7 +457,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/buscar'
     | '/como-funciona'
-    | '/formulario'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
@@ -471,6 +479,7 @@ export interface FileRouteTypes {
     | '/formulario/$code'
     | '/pesquisas/$code'
     | '/admin'
+    | '/formulario'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/formularios/$code'
@@ -515,6 +524,7 @@ export interface FileRouteTypes {
     | '/formulario/$code'
     | '/pesquisas/$code'
     | '/admin/'
+    | '/formulario/'
     | '/_authenticated/minha-carona/$offerId'
     | '/_authenticated/viagem/$rideId'
     | '/admin/formularios/$code'
@@ -740,6 +750,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminValidacaoRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/formulario/': {
+      id: '/formulario/'
+      path: '/'
+      fullPath: '/formulario/'
+      preLoaderRoute: typeof FormularioIndexRouteImport
+      parentRoute: typeof FormularioRoute
+    }
     '/formulario/$code': {
       id: '/formulario/$code'
       path: '/$code'
@@ -928,10 +945,12 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface FormularioRouteChildren {
   FormularioCodeRoute: typeof FormularioCodeRoute
+  FormularioIndexRoute: typeof FormularioIndexRoute
 }
 
 const FormularioRouteChildren: FormularioRouteChildren = {
   FormularioCodeRoute: FormularioCodeRoute,
+  FormularioIndexRoute: FormularioIndexRoute,
 }
 
 const FormularioRouteWithChildren = FormularioRoute._addFileChildren(
