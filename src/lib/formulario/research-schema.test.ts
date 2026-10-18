@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
 import {RESEARCH_TEMPLATES} from "./research-templates";
-import {inspectSchema,reorder,cleanAnswers,cloneQuestion,validatePage} from "./research-schema";
+import {inspectSchema,reorder,cleanAnswers,cloneQuestion,validatePage,scheduleWarning} from "./research-schema";
 describe("Research builder",()=>{
  it("ships useful valid templates for five natures",()=>{
   expect(RESEARCH_TEMPLATES).toHaveLength(13);
@@ -54,6 +54,15 @@ describe("Research builder",()=>{
   expect(validatePage(section,{capacity:"5"})).not.toEqual([]);
   expect(validatePage(section,{capacity:"2.5"})).not.toEqual([]);
   expect(validatePage(section,{capacity:"3"})).toEqual([]);
+ });
+ it("warns about possible next-day departure without rejecting valid HH:mm",()=>{
+  const section={title:"Rotina",questions:[
+   {id:"arrival",label:"Chegada",type:"time" as const,required:false,options:[]},
+   {id:"departure",label:"Saída",type:"time" as const,required:false,options:[]}
+  ]};
+  expect(validatePage(section,{arrival:"17:30",departure:"12:00"})).toEqual([]);
+  expect(scheduleWarning(section,{arrival:"17:30",departure:"12:00"})).toContain("dia seguinte");
+  expect(scheduleWarning(section,{arrival:"08:00",departure:"17:30"})).toBeNull();
  });
  it("omits optional empty answers in persistence",()=>{
   const section={title:"Teste",questions:[{id:"optional",label:"Comentário opcional",type:"short_text" as const,required:false,options:[]}]};
