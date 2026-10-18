@@ -29,6 +29,23 @@ DROP POLICY IF EXISTS research_lifecycle_audit_admin_select ON public.research_f
 CREATE POLICY research_lifecycle_audit_admin_select ON public.research_form_lifecycle_audit
  FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin'));
 
+-- Do not permit direct inserts to create tombstones without a lifecycle audit.
+DROP POLICY IF EXISTS research_forms_admin_insert ON public.research_forms;
+CREATE POLICY research_forms_admin_insert ON public.research_forms
+ FOR INSERT TO authenticated WITH CHECK (
+  public.has_role(auth.uid(),'admin') AND trashed_at IS NULL
+  AND trashed_by IS NULL AND trash_previous_status IS NULL
+ );
+DROP POLICY IF EXISTS research_versions_admin_insert ON public.research_form_versions;
+CREATE POLICY research_versions_admin_insert ON public.research_form_versions
+ FOR INSERT TO authenticated WITH CHECK (
+  public.has_role(auth.uid(),'admin')
+  AND EXISTS (
+    SELECT 1 FROM public.research_forms f
+    WHERE f.id=form_id AND f.trashed_at IS NULL
+  )
+);
+
 -- Direct client updates MUST NOT modify a trashed form or clear its tombstone.
 -- SECURITY DEFINER lifecycle RPCs handle trash/restore explicitly and atomically.
 DROP POLICY IF EXISTS research_forms_admin_update ON public.research_forms;
