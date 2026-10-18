@@ -81,7 +81,18 @@ function ResearchDetail() {
       ) : error ? (
         <p role="alert">{error}</p>
       ) : (
-        form && (
+        form && (form.trashed_at ? (
+          <section role="status" className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+            <h1 className="text-xl font-bold">Pesquisa na lixeira</h1>
+            <p className="text-sm text-muted-foreground">
+              {form.title} · {form.code} está fora da biblioteca e não recebe novas respostas.
+              Para editar, consultar ou compartilhar novamente, restaure a pesquisa na Central de Pesquisas.
+            </p>
+            <Link to="/admin/formularios" className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+              Abrir Central de Pesquisas e Lixeira
+            </Link>
+          </section>
+        ) : (
           <>
             <div className="space-y-2">
               <ResearchBrandHeader
@@ -117,7 +128,7 @@ function ResearchDetail() {
                   className="rounded-lg border border-destructive/50 px-4 py-2 text-sm font-semibold text-destructive"
                   onClick={() => setRemoving(true)}
                 >
-                  Arquivar / Excluir
+                  Arquivar / Lixeira
                 </button>
               )}
             </div>
@@ -226,7 +237,7 @@ function ResearchDetail() {
               )}
             </Tabs>
           </>
-        )
+        ))
       )}
     </main>
   );
