@@ -17,6 +17,7 @@ export function ResearchCatalog() {
  const [search,setSearch]=useState("");
  const [natureFilter,setNatureFilter]=useState("ALL");
  const [statusFilter,setStatusFilter]=useState("ALL");
+ const [availabilityFilter,setAvailabilityFilter]=useState("ALL");
  const [report,setReport]=useState<string|null>(null);
  const [items,setItems]=useState<ResearchForm[]>([]);
  const [error,setError]=useState("");
