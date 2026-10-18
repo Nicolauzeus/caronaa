@@ -1,0 +1,167 @@
+-- 0092: Safe form disposal and robust atomic publication.
+-- REVIEW AFTER BACKUP; run once on the intended Supabase environment.
+-- Existing research responses and historic STS data are never deleted by this migration.
+
+CREATE OR REPLACE FUNCTION public.get_research_form_removal_eligibility(p_form_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_form public.research_forms%ROWTYPE;
+ v_answers bigint; v_submissions bigint; v_leads bigint; v_pilots bigint;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  RAISE EXCEPTION 'Apenas administradores podem consultar a exclusão' USING ERRCODE='42501';
+ END IF;
+ SELECT * INTO v_form FROM public.research_forms WHERE id=p_form_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Pesquisa não encontrada'; END IF;
+
+ SELECT count(*) INTO v_answers FROM public.research_answers WHERE form_id=p_form_id;
+ SELECT count(*) INTO v_submissions FROM public.form_submissions
+  WHERE research_form_id=p_form_id OR research_version_id IN
+    (SELECT id FROM public.research_form_versions WHERE form_id=p_form_id);
+ SELECT count(*) INTO v_leads FROM public.crm_leads WHERE source_form_id=p_form_id;
+ SELECT count(*) INTO v_pilots FROM public.partner_pilots WHERE research_form_id=p_form_id;
+ RETURN jsonb_build_object(
+  'code',v_form.code,'status',v_form.status,
+  'answers',v_answers,'legacy_submissions',v_submissions,
+  'crm_leads',v_leads,'partner_pilots',v_pilots,
+  'can_delete',v_form.status<>'ENCERRADO' AND
+    v_answers=0 AND v_submissions=0 AND v_leads=0 AND v_pilots=0
+ );
+END $$;
+REVOKE ALL ON FUNCTION public.get_research_form_removal_eligibility(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_research_form_removal_eligibility(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.delete_unanswered_research_form(
+ p_form_id uuid,p_confirm_code text
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_form public.research_forms%ROWTYPE;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  RAISE EXCEPTION 'Apenas administradores podem excluir pesquisas' USING ERRCODE='42501';
+ END IF;
+ SELECT * INTO v_form FROM public.research_forms WHERE id=p_form_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Pesquisa não encontrada'; END IF;
+ IF v_form.code IS DISTINCT FROM p_confirm_code THEN
+  RAISE EXCEPTION 'O código de confirmação não corresponde à pesquisa';
+ END IF;
+ IF v_form.status='ENCERRADO' THEN
+  RAISE EXCEPTION 'Pesquisas históricas encerradas não podem ser excluídas';
+ END IF;
+ -- Prevent new submissions while checking and deleting; the whole function is atomic.
+ UPDATE public.research_forms SET is_enabled=false WHERE id=p_form_id;
+ IF EXISTS(SELECT 1 FROM public.research_answers WHERE form_id=p_form_id)
+ OR EXISTS(SELECT 1 FROM public.form_submissions
+  WHERE research_form_id=p_form_id OR research_version_id IN
+    (SELECT id FROM public.research_form_versions WHERE form_id=p_form_id))
+ OR EXISTS(SELECT 1 FROM public.crm_leads WHERE source_form_id=p_form_id)
+ OR EXISTS(SELECT 1 FROM public.partner_pilots WHERE research_form_id=p_form_id)
+ THEN
+  RAISE EXCEPTION 'A pesquisa possui respostas ou vínculos e não pode ser excluída. Arquive-a para ocultar o link público.';
+ END IF;
+ DELETE FROM public.research_form_versions WHERE form_id=p_form_id;
+ DELETE FROM public.research_forms WHERE id=p_form_id;
+ RETURN true;
+END $$;
+REVOKE ALL ON FUNCTION public.delete_unanswered_research_form(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.delete_unanswered_research_form(uuid,text) TO authenticated;
+
+-- Repair the conditional-parent query, guard against invalid structures and
+-- report meaningful errors without partial publication.
+CREATE OR REPLACE FUNCTION public.publish_research_form(
+ p_form_id uuid,p_version_id uuid,p_schema jsonb
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_form public.research_forms%ROWTYPE;
+ v_version public.research_form_versions%ROWTYPE;
+ v_section jsonb;v_question jsonb;v_previous jsonb;
+ v_seen jsonb := '[]'::jsonb;v_parent_id text;v_expected text;
+ v_count integer:=0;v_section_no integer:=0;v_question_no integer;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  RAISE EXCEPTION 'Apenas administradores podem publicar pesquisas' USING ERRCODE='42501';
+ END IF;
+ SELECT * INTO v_form FROM public.research_forms WHERE id=p_form_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Pesquisa não encontrada'; END IF;
+ IF v_form.status NOT IN ('RASCUNHO','PUBLICADO') THEN
+  RAISE EXCEPTION 'Esta pesquisa não pode ser publicada no estado atual (%)',v_form.status;
+ END IF;
+ SELECT * INTO v_version FROM public.research_form_versions
+ WHERE id=p_version_id AND form_id=p_form_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'A versão selecionada não pertence a esta pesquisa'; END IF;
+ IF v_version.published_at IS NOT NULL THEN
+  RAISE EXCEPTION 'Esta versão já foi publicada. Crie uma nova versão para editar.';
+ END IF;
+ IF p_schema IS NULL OR jsonb_typeof(p_schema) IS DISTINCT FROM 'object'
+  OR jsonb_typeof(p_schema->'sections') IS DISTINCT FROM 'array' THEN
+  RAISE EXCEPTION 'Estrutura de questionário inválida';
+ END IF;
+ IF jsonb_array_length(p_schema->'sections') NOT BETWEEN 1 AND 30
+  OR pg_column_size(p_schema)>262144 THEN
+  RAISE EXCEPTION 'A pesquisa precisa ter de 1 a 30 seções e respeitar o tamanho máximo';
+ END IF;
+ FOR v_section IN SELECT value FROM jsonb_array_elements(p_schema->'sections') LOOP
+  v_section_no:=v_section_no+1;
+  IF length(btrim(coalesce(v_section->>'title',''))) NOT BETWEEN 2 AND 180 THEN
+   RAISE EXCEPTION 'Seção %: informe um título válido',v_section_no;
+  END IF;
+  IF jsonb_typeof(v_section->'questions') IS DISTINCT FROM 'array'
+   OR (CASE WHEN jsonb_typeof(v_section->'questions')='array'
+     THEN jsonb_array_length(v_section->'questions')=0 ELSE true END) THEN
+   RAISE EXCEPTION 'Seção %: adicione pelo menos uma pergunta',v_section_no;
+  END IF;
+  v_question_no:=0;
+  FOR v_question IN SELECT value FROM jsonb_array_elements(v_section->'questions') LOOP
+   v_question_no:=v_question_no+1;
+   v_count:=v_count+1;
+   IF v_count>200 THEN RAISE EXCEPTION 'Limite de 200 perguntas excedido'; END IF;
+   IF length(coalesce(v_question->>'id','')) NOT BETWEEN 1 AND 100
+    OR length(btrim(coalesce(v_question->>'label',''))) NOT BETWEEN 3 AND 500 THEN
+    RAISE EXCEPTION 'Seção %, pergunta %: identificador ou enunciado inválido',v_section_no,v_question_no;
+   END IF;
+   IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_seen) e(value)
+     WHERE e.value->>'id'=v_question->>'id') THEN
+    RAISE EXCEPTION 'Seção %, pergunta %: identificador duplicado',v_section_no,v_question_no;
+   END IF;
+   IF coalesce(v_question->>'type','') NOT IN
+     ('short_text','long_text','single_choice','multiple_choice','number',
+      'rating_1_5','rating_0_10','date','time','yes_no','rating_stars',
+      'money_range','location','ranking','matrix','contact') THEN
+    RAISE EXCEPTION 'Seção %, pergunta %: tipo não reconhecido',v_section_no,v_question_no;
+   END IF;
+   IF v_question->>'type' IN ('single_choice','multiple_choice','ranking','matrix','money_range') THEN
+    IF jsonb_typeof(v_question->'options') IS DISTINCT FROM 'array'
+     OR (CASE WHEN jsonb_typeof(v_question->'options')='array'
+      THEN jsonb_array_length(v_question->'options')<2 ELSE true END) THEN
+     RAISE EXCEPTION 'Seção %, pergunta %: informe ao menos duas alternativas',v_section_no,v_question_no;
+    END IF;
+    IF EXISTS(SELECT 1 FROM jsonb_array_elements_text(v_question->'options') o(value)
+      GROUP BY o.value HAVING count(*)>1 OR length(btrim(o.value))=0) THEN
+     RAISE EXCEPTION 'Seção %, pergunta %: existem alternativas vazias ou duplicadas',v_section_no,v_question_no;
+    END IF;
+   END IF;
+   IF v_question->>'type'='matrix' AND (
+      jsonb_typeof(v_question->'rows') IS DISTINCT FROM 'array'
+      OR (CASE WHEN jsonb_typeof(v_question->'rows')='array'
+        THEN jsonb_array_length(v_question->'rows')=0 ELSE true END)) THEN
+    RAISE EXCEPTION 'Seção %, pergunta %: matriz sem linhas',v_section_no,v_question_no;
+   END IF;
+   IF v_question ? 'showWhen' AND v_question->'showWhen'<>'null'::jsonb THEN
+    v_parent_id:=v_question#>>'{showWhen,questionId}';
+    v_expected:=v_question#>>'{showWhen,equals}';
+    SELECT e.value INTO v_previous FROM jsonb_array_elements(v_seen) e(value)
+     WHERE e.value->>'id'=v_parent_id LIMIT 1;
+    IF v_previous IS NULL OR v_previous->>'type'<>'single_choice'
+     OR NOT (v_previous->'options' ? v_expected) THEN
+     RAISE EXCEPTION 'Seção %, pergunta %: condição inválida. Use uma pergunta anterior de escolha única.',v_section_no,v_question_no;
+    END IF;
+   END IF;
+   v_seen:=v_seen||jsonb_build_array(v_question);
+  END LOOP;
+ END LOOP;
+ UPDATE public.research_form_versions
+ SET schema_json=p_schema,published_at=now() WHERE id=p_version_id;
+ UPDATE public.research_forms SET status='PUBLICADO',is_enabled=true WHERE id=p_form_id;
+ RETURN true;
+END $$;
+REVOKE ALL ON FUNCTION public.publish_research_form(uuid,uuid,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.publish_research_form(uuid,uuid,jsonb) TO authenticated;
+NOTIFY pgrst,'reload schema';
