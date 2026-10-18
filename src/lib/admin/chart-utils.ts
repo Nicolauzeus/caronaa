@@ -7,9 +7,9 @@ export function rankChartRows(rows:ChartDatum[]):ChartDatum[]{
  return [...validChartRows(rows)].sort((a,b)=>b.value-a.value||a.name.localeCompare(b.name,"pt-BR"));
 }
 export function semanticMetricTone(label:string):"danger"|"warning"|"success"|"neutral"{
- const value=label.toLocaleLowerCase("pt-BR");
- if(/cancel|falha|erro|crític|grave|denúncia|incidente|atraso|reembolso/.test(value))return "danger";
- if(/pendente|aguardando|atenção|em análise|sem match|sem correspondência/.test(value))return "warning";
- if(/concluíd|resolvid|confirmad|validado|pago|sucesso/.test(value))return "success";
+ const value=label.toLocaleLowerCase("pt-BR").replaceAll("_"," ");
+ if(/cancel|failed|refunded|reembols|falha|erro|crític|critica|grave|denúncia|incidente|atraso|déficit/.test(value))return "danger";
+ if(/pending|pendente|aguardando|atenção|em análise|em andamento|sem match|sem correspondência/.test(value))return "warning";
+ if(/paid|completed|resolved|concluíd|concluido|resolvid|confirmad|validado|pago|sucesso/.test(value))return "success";
  return "neutral";
 }
