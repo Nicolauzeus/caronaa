@@ -1,5 +1,5 @@
-export type SurveyQuestionType = "short_text"|"long_text"|"single_choice"|"multiple_choice"|"number"|"rating_1_5"|"rating_0_10"|"date"|"time"|"yes_no";
-export type SurveyQuestion = {id:string;label:string;type:SurveyQuestionType;required:boolean;options:string[];showWhen?:{questionId:string;equals:string};semanticCode?:string;helpText?:string};
+export type SurveyQuestionType = "short_text"|"long_text"|"single_choice"|"multiple_choice"|"number"|"rating_1_5"|"rating_0_10"|"date"|"time"|"yes_no"|"rating_stars"|"money_range"|"location"|"ranking"|"matrix"|"contact";
+export type SurveyQuestion = {id:string;label:string;type:SurveyQuestionType;required:boolean;options:string[];showWhen?:{questionId:string;equals:string};semanticCode?:string;helpText?:string;rows?:string[]};
 export type SurveySection={title:string;questions:SurveyQuestion[];id?:string;description?:string};
 export type SurveySchema={sections:SurveySection[]};
 export type ResearchTemplate={key:string;nature:string;label:string;description:string;estimatedMinutes:number;schema:SurveySchema};
@@ -1695,4 +1695,7 @@ export const QUESTION_TYPES:{value:SurveyQuestionType;label:string}[]=[
  {value:"number",label:"Número"},{value:"single_choice",label:"Escolha única"},
  {value:"multiple_choice",label:"Múltipla escolha"},{value:"rating_1_5",label:"Escala de 1 a 5"},
  {value:"rating_0_10",label:"Escala de 0 a 10"},{value:"date",label:"Data"},
- {value:"time",label:"Horário"},{value:"yes_no",label:"Sim ou não"}];
+ {value:"time",label:"Horário"},{value:"yes_no",label:"Sim ou não"},
+ {value:"rating_stars",label:"Estrelas (1–5)"},{value:"money_range",label:"Faixa de valores"},
+ {value:"location",label:"Localidade (bairro ou município)"},{value:"ranking",label:"Ordenar opções"},
+ {value:"matrix",label:"Matriz de avaliação"},{value:"contact",label:"Contato opcional"}];
