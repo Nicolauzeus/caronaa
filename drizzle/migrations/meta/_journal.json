@@ -617,6 +617,13 @@
       "when": 1792342000000,
       "tag": "0087_finance_read_only_reporting",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1792343000000,
+      "tag": "0088_compliance_registry",
+      "breakpoints": true
     }
   ]
 }
