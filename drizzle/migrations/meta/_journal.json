@@ -547,6 +547,13 @@
       "when": 1792122000000,
       "tag": "0077_research_public_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792256000000,
+      "tag": "0078_research_draft_management",
+      "breakpoints": true
     }
   ]
 }
