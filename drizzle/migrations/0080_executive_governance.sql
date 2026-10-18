@@ -20,7 +20,7 @@ CREATE INDEX IF NOT EXISTS executive_records_kind_status_idx ON public.executive
 CREATE INDEX IF NOT EXISTS executive_records_due_idx ON public.executive_records(due_date);
 CREATE TABLE IF NOT EXISTS public.executive_record_history (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- record_id uuid NOT NULL REFERENCES public.executive_records(id) ON DELETE CASCADE,
+ record_id uuid NOT NULL REFERENCES public.executive_records(id),
  actor_id uuid,
  action text NOT NULL CHECK(action IN ('CREATE','UPDATE','DELETE')),
  before_state jsonb,
@@ -35,8 +35,6 @@ DROP POLICY IF EXISTS executive_records_admin_insert ON public.executive_records
 CREATE POLICY executive_records_admin_insert ON public.executive_records FOR INSERT TO authenticated WITH CHECK(public.has_role(auth.uid(),'admin') AND created_by=auth.uid());
 DROP POLICY IF EXISTS executive_records_admin_update ON public.executive_records;
 CREATE POLICY executive_records_admin_update ON public.executive_records FOR UPDATE TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
-DROP POLICY IF EXISTS executive_records_admin_delete ON public.executive_records;
-CREATE POLICY executive_records_admin_delete ON public.executive_records FOR DELETE TO authenticated USING(public.has_role(auth.uid(),'admin'));
 DROP POLICY IF EXISTS executive_history_admin_select ON public.executive_record_history;
 CREATE POLICY executive_history_admin_select ON public.executive_record_history FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
 CREATE OR REPLACE FUNCTION public.audit_executive_record()
@@ -59,6 +57,6 @@ BEGIN
 END $$;
 DROP TRIGGER IF EXISTS executive_record_audit_trigger ON public.executive_records;
 CREATE TRIGGER executive_record_audit_trigger BEFORE INSERT OR UPDATE OR DELETE ON public.executive_records FOR EACH ROW EXECUTE FUNCTION public.audit_executive_record();
-GRANT SELECT,INSERT,UPDATE,DELETE ON public.executive_records TO authenticated;
+GRANT SELECT,INSERT,UPDATE ON public.executive_records TO authenticated;
 GRANT SELECT ON public.executive_record_history TO authenticated;
 NOTIFY pgrst,'reload schema';
