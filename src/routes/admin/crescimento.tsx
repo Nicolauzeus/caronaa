@@ -1,31 +1,395 @@
-import {createFileRoute} from "@tanstack/react-router";
-import {useEffect,useMemo,useState,type FormEvent} from "react";
-import {supabase} from "@/integrations/supabase/client";
-import {useAdminModuleSection} from "@/lib/admin/use-admin-module-section";
-import {InsightChart} from "@/components/admin/InsightChart";
-export const Route=createFileRoute("/admin/crescimento")({component:GrowthCenter});
-type Lead={id:string;display_name:string;status:string;email:string|null;whatsapp:string|null;contact_consent:boolean;created_at:string};
-type Campaign={id:string;name:string;code:string;status:string;channel:string;institution:string|null};
-const db=supabase as any;
-const STATES=["NOVO","QUALIFICADO","CONTATADO","CONVERTIDO","DESCARTADO"];
-function GrowthCenter(){
- const [tab]=useAdminModuleSection<"leads"|"campaigns">({leads:"leads",campaigns:"campaigns"},"leads");
- const [leads,setLeads]=useState<Lead[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false);
- const [name,setName]=useState(""),[email,setEmail]=useState(""),[phone,setPhone]=useState(""),[consent,setConsent]=useState(false),[campaignId,setCampaignId]=useState("");
- const [campaignName,setCampaignName]=useState(""),[campaignCode,setCampaignCode]=useState(""),[channel,setChannel]=useState("QR_CODE"),[institution,setInstitution]=useState("");
- const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState("");
- async function reload(){setLoading(true);const [a,b]=await Promise.all([db.from("crm_leads").select("id,display_name,status,email,whatsapp,contact_consent,created_at").order("created_at",{ascending:false}).limit(300),db.from("crm_campaigns").select("id,name,code,status,channel,institution").order("created_at",{ascending:false}).limit(150)]);if(a.error||b.error){setError("CRM indisponível. Confirme a migração 0084: "+(a.error?.message??b.error?.message));setLeads([]);setCampaigns([])}else{setError("");setLeads(a.data??[]);setCampaigns(b.data??[])}setLoading(false)}
- useEffect(()=>{void reload()},[]);
- async function createLead(e:FormEvent){e.preventDefault();setBusy(true);const {data,error}=await db.from("crm_leads").insert({display_name:name.trim(),email:email.trim()||null,whatsapp:phone.trim()||null,contact_consent:consent,campaign_id:campaignId||null}).select("id").maybeSingle();if(error||!data)setError(error?.message??"Cadastro não confirmado");else{setName("");setEmail("");setPhone("");setConsent(false);await reload()}setBusy(false)}
- async function createCampaign(e:FormEvent){e.preventDefault();setBusy(true);const {data,error}=await db.from("crm_campaigns").insert({name:campaignName.trim(),code:campaignCode.trim().toLowerCase(),channel,institution:institution.trim()||null}).select("id").maybeSingle();if(error||!data)setError(error?.message??"Campanha não confirmada");else{setCampaignName("");setCampaignCode("");setInstitution("");await reload()}setBusy(false)}
- async function update(table:string,id:string,patch:Record<string,unknown>){setBusy(true);const {data,error}=await db.from(table).update(patch).eq("id",id).select("id").maybeSingle();if(error||!data)setError(error?.message??"Atualização não confirmada");else await reload();setBusy(false)}
- const filtered=useMemo(()=>leads.filter(x=>(filter==="ALL"||x.status===filter)&&[x.display_name,x.email??"",x.whatsapp??""].join(" ").toLowerCase().includes(search.toLowerCase())),[leads,filter,search]);
- return <main className="space-y-6"><header><h1 className="mt-3 text-3xl font-extrabold">Centro de Crescimento e CRM</h1><p className="mt-2 text-sm text-muted-foreground">Leads e campanhas reais, com consentimento de contato separado da participação em pesquisas.</p></header>
- {error&&<p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
- <div className="grid gap-3 sm:grid-cols-3">{[["Leads registrados",leads.length],["Convertidos",leads.filter(x=>x.status==="CONVERTIDO").length],["Campanhas ativas",campaigns.filter(x=>x.status==="ATIVA").length]].map(([label,value])=><div key={String(label)} className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-3xl font-bold">{loading||error?"N/D":value}</p></div>)}</div>
+import { AdminDataError } from "@/components/admin/AdminDataError";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
+import { InsightChart } from "@/components/admin/InsightChart";
+export const Route = createFileRoute("/admin/crescimento")({ component: GrowthCenter });
+type Lead = {
+  id: string;
+  display_name: string;
+  status: string;
+  email: string | null;
+  whatsapp: string | null;
+  contact_consent: boolean;
+  created_at: string;
+};
+type Campaign = {
+  id: string;
+  name: string;
+  code: string;
+  status: string;
+  channel: string;
+  institution: string | null;
+};
+const db = supabase as any;
+const STATES = ["NOVO", "QUALIFICADO", "CONTATADO", "CONVERTIDO", "DESCARTADO"];
+function GrowthCenter() {
+  const [tab] = useAdminModuleSection<"leads" | "campaigns">(
+    { leads: "leads", campaigns: "campaigns" },
+    "leads",
+  );
+  const [leads, setLeads] = useState<Lead[]>([]),
+    [campaigns, setCampaigns] = useState<Campaign[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const [name, setName] = useState(""),
+    [email, setEmail] = useState(""),
+    [phone, setPhone] = useState(""),
+    [consent, setConsent] = useState(false),
+    [campaignId, setCampaignId] = useState("");
+  const [campaignName, setCampaignName] = useState(""),
+    [campaignCode, setCampaignCode] = useState(""),
+    [channel, setChannel] = useState("QR_CODE"),
+    [institution, setInstitution] = useState("");
+  const [filter, setFilter] = useState("ALL"),
+    [search, setSearch] = useState("");
+  async function reload() {
+    setLoading(true);
+    const [a, b] = await Promise.all([
+      db
+        .from("crm_leads")
+        .select("id,display_name,status,email,whatsapp,contact_consent,created_at")
+        .order("created_at", { ascending: false })
+        .limit(300),
+      db
+        .from("crm_campaigns")
+        .select("id,name,code,status,channel,institution")
+        .order("created_at", { ascending: false })
+        .limit(150),
+    ]);
+    if (a.error || b.error) {
+      setError(
+        "CRM indisponível. Confirme a migração 0084: " + (a.error?.message ?? b.error?.message),
+      );
+      setLeads([]);
+      setCampaigns([]);
+    } else {
+      setError("");
+      setLeads(a.data ?? []);
+      setCampaigns(b.data ?? []);
+    }
+    setLoading(false);
+  }
+  useEffect(() => {
+    void reload();
+  }, []);
+  async function createLead(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    const { data, error } = await db
+      .from("crm_leads")
+      .insert({
+        display_name: name.trim(),
+        email: email.trim() || null,
+        whatsapp: phone.trim() || null,
+        contact_consent: consent,
+        campaign_id: campaignId || null,
+      })
+      .select("id")
+      .maybeSingle();
+    if (error || !data) setError(error?.message ?? "Cadastro não confirmado");
+    else {
+      setName("");
+      setEmail("");
+      setPhone("");
+      setConsent(false);
+      await reload();
+    }
+    setBusy(false);
+  }
+  async function createCampaign(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    const { data, error } = await db
+      .from("crm_campaigns")
+      .insert({
+        name: campaignName.trim(),
+        code: campaignCode.trim().toLowerCase(),
+        channel,
+        institution: institution.trim() || null,
+      })
+      .select("id")
+      .maybeSingle();
+    if (error || !data) setError(error?.message ?? "Campanha não confirmada");
+    else {
+      setCampaignName("");
+      setCampaignCode("");
+      setInstitution("");
+      await reload();
+    }
+    setBusy(false);
+  }
+  async function update(table: string, id: string, patch: Record<string, unknown>) {
+    setBusy(true);
+    const { data, error } = await db
+      .from(table)
+      .update(patch)
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+    if (error || !data) setError(error?.message ?? "Atualização não confirmada");
+    else await reload();
+    setBusy(false);
+  }
+  const filtered = useMemo(
+    () =>
+      leads.filter(
+        (x) =>
+          (filter === "ALL" || x.status === filter) &&
+          [x.display_name, x.email ?? "", x.whatsapp ?? ""]
+            .join(" ")
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+      ),
+    [leads, filter, search],
+  );
+  return (
+    <main className="space-y-6">
+      <AdminDataError error={error} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Leads registrados", leads.length],
+          ["Convertidos", leads.filter((x) => x.status === "CONVERTIDO").length],
+          ["Campanhas ativas", campaigns.filter((x) => x.status === "ATIVA").length],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-xl border bg-card p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-2 text-3xl font-bold">
+              {loading ? "Carregando…" : error ? "Indisponível" : value}
+            </p>
+          </div>
+        ))}
+      </div>
 
- {tab==="leads"?<>{!loading&&!error&&<InsightChart title="Funil de leads" description="Registros administrativos por situação. Converter aqui significa marcar o lead como convertido, não comprova a primeira viagem." rows={STATES.map(status=>({name:status.replaceAll("_"," "),value:leads.filter(lead=>lead.status===status).length}))}/>}<details className="rounded-xl border border-border/70 bg-card/30 p-3"><summary className="cursor-pointer py-1 text-sm font-semibold text-primary">+ Novo lead</summary><div className="pt-3"><form onSubmit={createLead} className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2"><h2 className="font-bold md:col-span-2">Cadastrar lead manualmente</h2><label className="text-sm">Nome<input required minLength={2} value={name} onChange={e=>setName(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><label className="text-sm">E-mail<input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><label className="text-sm">WhatsApp<input value={phone} onChange={e=>setPhone(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><label className="text-sm">Campanha<select value={campaignId} onChange={e=>setCampaignId(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"><option value="">Sem campanha</option>{campaigns.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label className="flex gap-2 text-sm md:col-span-2"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>Autorizou contato comercial (consentimento verificado)</label><button disabled={busy||Boolean(error)||(!email.trim()&&!phone.trim())} className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground disabled:opacity-50 md:col-span-2">Salvar lead</button></form></div></details><div className="flex flex-wrap gap-2"><input aria-label="Buscar leads" placeholder="Buscar por nome ou contato" value={search} onChange={e=>setSearch(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-3"/><select aria-label="Filtrar situação" value={filter} onChange={e=>setFilter(e.target.value)} className="rounded-lg border bg-background p-3"><option value="ALL">Todos</option>{STATES.map(x=><option key={x}>{x}</option>)}</select></div><div className="divide-y overflow-hidden rounded-xl border border-border/70">{filtered.map(x=><article key={x.id} className="space-y-2 bg-card/30 p-4 transition-colors hover:bg-accent/20"><h3 className="font-bold">{x.display_name}</h3><p className="break-all text-sm text-muted-foreground">{x.email??x.whatsapp??"Sem contato"}</p><p className="text-xs text-muted-foreground">{x.contact_consent?"Contato autorizado":"Sem autorização de contato comercial"}</p><label className="block text-xs">Situação<select disabled={busy} value={x.status} onChange={e=>void update("crm_leads",x.id,{status:e.target.value})} className="mt-1 w-full rounded-lg border bg-background p-2">{STATES.map(s=><option key={s}>{s}</option>)}</select></label></article>)}</div>{!loading&&!filtered.length&&<p className="text-sm text-muted-foreground">Nenhum lead encontrado.</p>}</>:
- <><details className="rounded-xl border border-border/70 bg-card/30 p-3"><summary className="cursor-pointer py-1 text-sm font-semibold text-primary">+ Nova campanha</summary><div className="pt-3"><form onSubmit={createCampaign} className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2"><h2 className="font-bold md:col-span-2">Nova campanha</h2><label className="text-sm">Nome<input required minLength={3} value={campaignName} onChange={e=>setCampaignName(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><label className="text-sm">Código único<input required pattern="[a-z0-9][a-z0-9_-]{1,62}" value={campaignCode} onChange={e=>setCampaignCode(e.target.value.toLowerCase())} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><label className="text-sm">Canal<select value={channel} onChange={e=>setChannel(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3">{["QR_CODE","WHATSAPP","ORGANICO","PARCEIRO","OUTRO"].map(x=><option key={x}>{x}</option>)}</select></label><label className="text-sm">Instituição<input value={institution} onChange={e=>setInstitution(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><button disabled={busy||Boolean(error)} className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground md:col-span-2">Criar campanha</button></form></div></details><div className="divide-y overflow-hidden rounded-xl border border-border/70">{campaigns.map(x=><article key={x.id} className="bg-card/30 p-4 transition-colors hover:bg-accent/20"><h3 className="font-bold">{x.name}</h3><p className="text-xs text-muted-foreground">{x.code} · {x.channel} · {x.institution??"Sem instituição"}</p><label className="mt-3 block text-xs">Situação<select value={x.status} disabled={busy} onChange={e=>void update("crm_campaigns",x.id,{status:e.target.value})} className="mt-1 w-full rounded-lg border bg-background p-2">{["RASCUNHO","ATIVA","PAUSADA","ENCERRADA"].map(s=><option key={s}>{s}</option>)}</select></label></article>)}</div></>}
- <p className="text-xs text-muted-foreground">Pesquisas públicas continuam independentes de cadastro. Vinculação automática à conta e deduplicação ainda exigem identidade verificada e implementação específica; nenhuma conversão é presumida.</p>
- </main>;
+      {tab === "leads" ? (
+        <>
+          {!loading && !error && (
+            <InsightChart
+              title="Funil de leads"
+              description="Registros administrativos por situação. Converter aqui significa marcar o lead como convertido, não comprova a primeira viagem."
+              rows={STATES.map((status) => ({
+                name: status.replaceAll("_", " "),
+                value: leads.filter((lead) => lead.status === status).length,
+              }))}
+            />
+          )}
+          <details className="rounded-xl border border-border/70 bg-card/30 p-3">
+            <summary className="cursor-pointer py-1 text-sm font-semibold text-primary">
+              + Novo lead
+            </summary>
+            <div className="pt-3">
+              <form
+                onSubmit={createLead}
+                className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2"
+              >
+                <h2 className="font-bold md:col-span-2">Cadastrar lead manualmente</h2>
+                <label className="text-sm">
+                  Nome
+                  <input
+                    required
+                    minLength={2}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  E-mail
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  WhatsApp
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  Campanha
+                  <select
+                    value={campaignId}
+                    onChange={(e) => setCampaignId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  >
+                    <option value="">Sem campanha</option>
+                    {campaigns.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex gap-2 text-sm md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                  />
+                  Autorizou contato comercial (consentimento verificado)
+                </label>
+                <button
+                  disabled={busy || Boolean(error) || (!email.trim() && !phone.trim())}
+                  className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground disabled:opacity-50 md:col-span-2"
+                >
+                  Salvar lead
+                </button>
+              </form>
+            </div>
+          </details>
+          <div className="flex flex-wrap gap-2">
+            <input
+              aria-label="Buscar leads"
+              placeholder="Buscar por nome ou contato"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border bg-background p-3"
+            />
+            <select
+              aria-label="Filtrar situação"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="rounded-lg border bg-background p-3"
+            >
+              <option value="ALL">Todos</option>
+              {STATES.map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </div>
+          <div className="divide-y overflow-hidden rounded-xl border border-border/70">
+            {filtered.map((x) => (
+              <article
+                key={x.id}
+                className="space-y-2 bg-card/30 p-4 transition-colors hover:bg-accent/20"
+              >
+                <h3 className="font-bold">{x.display_name}</h3>
+                <p className="break-all text-sm text-muted-foreground">
+                  {x.email ?? x.whatsapp ?? "Sem contato"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {x.contact_consent
+                    ? "Contato autorizado"
+                    : "Sem autorização de contato comercial"}
+                </p>
+                <label className="block text-xs">
+                  Situação
+                  <select
+                    disabled={busy}
+                    value={x.status}
+                    onChange={(e) => void update("crm_leads", x.id, { status: e.target.value })}
+                    className="mt-1 w-full rounded-lg border bg-background p-2"
+                  >
+                    {STATES.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </label>
+              </article>
+            ))}
+          </div>
+          {!loading && !error && !filtered.length && (
+            <p className="text-sm text-muted-foreground">Nenhum lead encontrado.</p>
+          )}
+        </>
+      ) : (
+        <>
+          <details className="rounded-xl border border-border/70 bg-card/30 p-3">
+            <summary className="cursor-pointer py-1 text-sm font-semibold text-primary">
+              + Nova campanha
+            </summary>
+            <div className="pt-3">
+              <form
+                onSubmit={createCampaign}
+                className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2"
+              >
+                <h2 className="font-bold md:col-span-2">Nova campanha</h2>
+                <label className="text-sm">
+                  Nome
+                  <input
+                    required
+                    minLength={3}
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  Código único
+                  <input
+                    required
+                    pattern="[a-z0-9][a-z0-9_-]{1,62}"
+                    value={campaignCode}
+                    onChange={(e) => setCampaignCode(e.target.value.toLowerCase())}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  Canal
+                  <select
+                    value={channel}
+                    onChange={(e) => setChannel(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  >
+                    {["QR_CODE", "WHATSAPP", "ORGANICO", "PARCEIRO", "OUTRO"].map((x) => (
+                      <option key={x}>{x}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm">
+                  Instituição
+                  <input
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    className="mt-1 w-full rounded-lg border bg-background p-3"
+                  />
+                </label>
+                <button
+                  disabled={busy || Boolean(error)}
+                  className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground md:col-span-2"
+                >
+                  Criar campanha
+                </button>
+              </form>
+            </div>
+          </details>
+          <div className="divide-y overflow-hidden rounded-xl border border-border/70">
+            {campaigns.map((x) => (
+              <article key={x.id} className="bg-card/30 p-4 transition-colors hover:bg-accent/20">
+                <h3 className="font-bold">{x.name}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {x.code} · {x.channel} · {x.institution ?? "Sem instituição"}
+                </p>
+                <label className="mt-3 block text-xs">
+                  Situação
+                  <select
+                    value={x.status}
+                    disabled={busy}
+                    onChange={(e) => void update("crm_campaigns", x.id, { status: e.target.value })}
+                    className="mt-1 w-full rounded-lg border bg-background p-2"
+                  >
+                    {["RASCUNHO", "ATIVA", "PAUSADA", "ENCERRADA"].map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </label>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+      <p className="text-xs text-muted-foreground">
+        Pesquisas públicas continuam independentes de cadastro. Vinculação automática à conta e
+        deduplicação ainda exigem identidade verificada e implementação específica; nenhuma
+        conversão é presumida.
+      </p>
+    </main>
+  );
 }

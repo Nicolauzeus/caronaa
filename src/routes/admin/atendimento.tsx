@@ -1,30 +1,283 @@
-import {createFileRoute} from "@tanstack/react-router";
-import {useEffect,useMemo,useState,type FormEvent} from "react";
-import {supabase} from "@/integrations/supabase/client";
-import {useAdminModuleSection} from "@/lib/admin/use-admin-module-section";
-import {InsightChart} from "@/components/admin/InsightChart";
-export const Route=createFileRoute("/admin/atendimento")({component:SafetyCenter});
-type Case={id:string;case_number:number;kind:string;title:string;description:string;priority:string;status:string;created_at:string;due_at:string|null};
-const db=supabase as any;
-const kinds=["SUPORTE","RECLAMACAO","DENUNCIA","INCIDENTE","VERIFICACAO"];
-const statuses=["ABERTO","EM_TRIAGEM","EM_ANALISE","AGUARDANDO","RESOLVIDO","ENCERRADO"];
-function SafetyCenter(){
- const [section]=useAdminModuleSection<"tickets"|"reports">({tickets:"tickets",reports:"reports"},"tickets");
- const [items,setItems]=useState<Case[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false);
- const [title,setTitle]=useState(""),[description,setDescription]=useState(""),[kind,setKind]=useState("SUPORTE"),[priority,setPriority]=useState("MEDIA"),[filter,setFilter]=useState("ALL"),[search,setSearch]=useState("");
- async function reload(){setLoading(true);const {data,error}=await db.from("safety_cases").select("id,case_number,kind,title,description,priority,status,created_at,due_at").order("created_at",{ascending:false}).limit(250);if(error){setError("Central indisponível. Confirme a migração 0086: "+error.message);setItems([])}else{setError("");setItems(data??[])}setLoading(false)}
- useEffect(()=>{void reload()},[]);
- async function create(e:FormEvent){e.preventDefault();setBusy(true);const {data,error}=await db.from("safety_cases").insert({title:title.trim(),description:description.trim(),kind,priority}).select("id").maybeSingle();if(error||!data)setError(error?.message??"Criação não confirmada");else{setTitle("");setDescription("");await reload()}setBusy(false)}
- async function update(item:Case,status:string){setBusy(true);const {data,error}=await db.from("safety_cases").update({status}).eq("id",item.id).select("id").maybeSingle();if(error||!data)setError(error?.message??"Atualização não confirmada");else await reload();setBusy(false)}
- useEffect(()=>{setKind(section==="reports"?"DENUNCIA":"SUPORTE");setFilter("ALL")},[section]);
- const groupKinds=section==="reports"?["DENUNCIA","INCIDENTE"]:["SUPORTE","RECLAMACAO","VERIFICACAO"];
- const filtered=useMemo(()=>items.filter(x=>groupKinds.includes(x.kind)&&(filter==="ALL"||x.kind===filter)&&[x.title,x.description,String(x.case_number)].join(" ").toLowerCase().includes(search.toLowerCase())),[items,filter,search,section]);
- return <main className="space-y-6"><header><p className="mt-3 text-xs font-bold uppercase tracking-widest text-primary">CARONAA · Confiança e Proteção</p><h1 className="mt-1 text-3xl font-extrabold">Central de Atendimento e Segurança</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Casos reportados e ações administrativas. Uma denúncia não constitui comprovação de culpa.</p></header>
- {error&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
- <div className="grid gap-3 sm:grid-cols-3">{[["Casos registrados",items.length],["Em tratamento",items.filter(x=>["EM_TRIAGEM","EM_ANALISE","AGUARDANDO"].includes(x.status)).length],["Prioridade crítica em aberto",items.filter(x=>x.priority==="CRITICA"&&!["RESOLVIDO","ENCERRADO"].includes(x.status)).length]].map(([label,n])=><article key={String(label)} className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-3xl font-bold">{loading||error?"N/D":n}</p></article>)}</div>
- <details className="rounded-xl border border-border/70 bg-card/30 p-3"><summary className="cursor-pointer py-1 text-sm font-semibold text-primary">+ Novo atendimento ou ocorrência</summary><div className="pt-3"><form onSubmit={create} className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2"><h2 className="font-bold md:col-span-2">Registrar atendimento ou ocorrência</h2><label className="text-sm">Categoria<select value={kind} onChange={e=>setKind(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3">{groupKinds.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-sm">Prioridade<select value={priority} onChange={e=>setPriority(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3">{["BAIXA","MEDIA","ALTA","CRITICA"].map(x=><option key={x}>{x}</option>)}</select></label><label className="text-sm md:col-span-2">Título<input required minLength={3} maxLength={180} value={title} onChange={e=>setTitle(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><label className="text-sm md:col-span-2">Descrição<textarea value={description} onChange={e=>setDescription(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border bg-background p-3"/></label><button disabled={busy||Boolean(error)} className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground disabled:opacity-50 md:col-span-2">Registrar caso</button></form></div></details>
- {!loading&&!error&&<InsightChart title="Casos por prioridade" description="Registros em aberto e em tratamento, sem interpretar denúncia como culpa." rows={["BAIXA","MEDIA","ALTA","CRITICA"].map(priority=>({name:priority,value:filtered.filter(item=>item.priority===priority&&!["RESOLVIDO","ENCERRADO"].includes(item.status)).length}))}/>}
- <section className="space-y-3"><h2 className="text-xl font-bold">Fila de tratamento</h2><div className="flex flex-wrap gap-2"><input aria-label="Buscar casos" placeholder="Título ou protocolo" value={search} onChange={e=>setSearch(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-3"/><select aria-label="Filtrar categoria" value={filter} onChange={e=>setFilter(e.target.value)} className="rounded-lg border bg-background p-3"><option value="ALL">Todas as categorias</option>{kinds.map(x=><option key={x}>{x}</option>)}</select></div><div className="divide-y overflow-hidden rounded-xl border border-border/70">{filtered.map(x=><article key={x.id} className="space-y-2 bg-card/30 p-4 transition-colors hover:bg-accent/20"><div className="flex justify-between gap-2"><h3 className="font-bold">#{x.case_number} · {x.title}</h3><span className={x.priority==="CRITICA"?"text-xs font-bold text-destructive":x.priority==="ALTA"?"text-xs font-semibold text-amber-600 dark:text-amber-400":"text-xs text-muted-foreground"}>{x.priority}</span></div><p className="text-xs text-muted-foreground">{x.kind} · {new Date(x.created_at).toLocaleDateString("pt-BR")}</p><p className="whitespace-pre-wrap text-sm text-muted-foreground">{x.description}</p><label className="block text-xs">Tratamento<select disabled={busy} value={x.status} onChange={e=>void update(x,e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2">{statuses.map(s=><option key={s}>{s}</option>)}</select></label></article>)}</div>{!loading&&!filtered.length&&<p className="text-sm text-muted-foreground">Nenhum caso encontrado neste recorte.</p>}</section>
- <aside className="rounded-xl border bg-secondary/20 p-4"><h2 className="font-bold">Proteção e confidencialidade</h2><p className="mt-2 text-sm text-muted-foreground">O acesso ainda está restrito à administração. Não insira documentos pessoais, laudos ou evidências sensíveis no campo de descrição: o fluxo de anexos protegidos e a segmentação de equipes serão implementados separadamente.</p></aside>
- </main>;
+import { AdminDataError } from "@/components/admin/AdminDataError";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
+import { InsightChart } from "@/components/admin/InsightChart";
+export const Route = createFileRoute("/admin/atendimento")({ component: SafetyCenter });
+type Case = {
+  id: string;
+  case_number: number;
+  kind: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  created_at: string;
+  due_at: string | null;
+};
+const db = supabase as any;
+const kinds = ["SUPORTE", "RECLAMACAO", "DENUNCIA", "INCIDENTE", "VERIFICACAO"];
+const statuses = ["ABERTO", "EM_TRIAGEM", "EM_ANALISE", "AGUARDANDO", "RESOLVIDO", "ENCERRADO"];
+function SafetyCenter() {
+  const [section] = useAdminModuleSection<"tickets" | "reports">(
+    { tickets: "tickets", reports: "reports" },
+    "tickets",
+  );
+  const [items, setItems] = useState<Case[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const [title, setTitle] = useState(""),
+    [description, setDescription] = useState(""),
+    [kind, setKind] = useState("SUPORTE"),
+    [priority, setPriority] = useState("MEDIA"),
+    [filter, setFilter] = useState("ALL"),
+    [search, setSearch] = useState("");
+  async function reload() {
+    setLoading(true);
+    const { data, error } = await db
+      .from("safety_cases")
+      .select("id,case_number,kind,title,description,priority,status,created_at,due_at")
+      .order("created_at", { ascending: false })
+      .limit(250);
+    if (error) {
+      setError("Central indisponível. Confirme a migração 0086: " + error.message);
+      setItems([]);
+    } else {
+      setError("");
+      setItems(data ?? []);
+    }
+    setLoading(false);
+  }
+  useEffect(() => {
+    void reload();
+  }, []);
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    const { data, error } = await db
+      .from("safety_cases")
+      .insert({ title: title.trim(), description: description.trim(), kind, priority })
+      .select("id")
+      .maybeSingle();
+    if (error || !data) setError(error?.message ?? "Criação não confirmada");
+    else {
+      setTitle("");
+      setDescription("");
+      await reload();
+    }
+    setBusy(false);
+  }
+  async function update(item: Case, status: string) {
+    setBusy(true);
+    const { data, error } = await db
+      .from("safety_cases")
+      .update({ status })
+      .eq("id", item.id)
+      .select("id")
+      .maybeSingle();
+    if (error || !data) setError(error?.message ?? "Atualização não confirmada");
+    else await reload();
+    setBusy(false);
+  }
+  useEffect(() => {
+    setKind(section === "reports" ? "DENUNCIA" : "SUPORTE");
+    setFilter("ALL");
+  }, [section]);
+  const groupKinds =
+    section === "reports" ? ["DENUNCIA", "INCIDENTE"] : ["SUPORTE", "RECLAMACAO", "VERIFICACAO"];
+  const filtered = useMemo(
+    () =>
+      items.filter(
+        (x) =>
+          groupKinds.includes(x.kind) &&
+          (filter === "ALL" || x.kind === filter) &&
+          [x.title, x.description, String(x.case_number)]
+            .join(" ")
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+      ),
+    [items, filter, search, section],
+  );
+  return (
+    <main className="space-y-6">
+      <AdminDataError error={error} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Casos registrados", items.length],
+          [
+            "Em tratamento",
+            items.filter((x) => ["EM_TRIAGEM", "EM_ANALISE", "AGUARDANDO"].includes(x.status))
+              .length,
+          ],
+          [
+            "Prioridade crítica em aberto",
+            items.filter(
+              (x) => x.priority === "CRITICA" && !["RESOLVIDO", "ENCERRADO"].includes(x.status),
+            ).length,
+          ],
+        ].map(([label, n]) => (
+          <article key={String(label)} className="rounded-xl border bg-card p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-2 text-3xl font-bold">
+              {loading ? "Carregando…" : error ? "Indisponível" : n}
+            </p>
+          </article>
+        ))}
+      </div>
+      <details className="rounded-xl border border-border/70 bg-card/30 p-3">
+        <summary className="cursor-pointer py-1 text-sm font-semibold text-primary">
+          + Novo atendimento ou ocorrência
+        </summary>
+        <div className="pt-3">
+          <form
+            onSubmit={create}
+            className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2"
+          >
+            <h2 className="font-bold md:col-span-2">Registrar atendimento ou ocorrência</h2>
+            <label className="text-sm">
+              Categoria
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+                className="mt-1 w-full rounded-lg border bg-background p-3"
+              >
+                {groupKinds.map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              Prioridade
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="mt-1 w-full rounded-lg border bg-background p-3"
+              >
+                {["BAIXA", "MEDIA", "ALTA", "CRITICA"].map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm md:col-span-2">
+              Título
+              <input
+                required
+                minLength={3}
+                maxLength={180}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="mt-1 w-full rounded-lg border bg-background p-3"
+              />
+            </label>
+            <label className="text-sm md:col-span-2">
+              Descrição
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="mt-1 w-full rounded-lg border bg-background p-3"
+              />
+            </label>
+            <button
+              disabled={busy || Boolean(error)}
+              className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground disabled:opacity-50 md:col-span-2"
+            >
+              Registrar caso
+            </button>
+          </form>
+        </div>
+      </details>
+      {!loading && !error && (
+        <InsightChart
+          title="Casos por prioridade"
+          description="Registros em aberto e em tratamento, sem interpretar denúncia como culpa."
+          rows={["BAIXA", "MEDIA", "ALTA", "CRITICA"].map((priority) => ({
+            name: priority,
+            value: filtered.filter(
+              (item) =>
+                item.priority === priority && !["RESOLVIDO", "ENCERRADO"].includes(item.status),
+            ).length,
+          }))}
+        />
+      )}
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold">Fila de tratamento</h2>
+        <div className="flex flex-wrap gap-2">
+          <input
+            aria-label="Buscar casos"
+            placeholder="Título ou protocolo"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border bg-background p-3"
+          />
+          <select
+            aria-label="Filtrar categoria"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="rounded-lg border bg-background p-3"
+          >
+            <option value="ALL">Todas as categorias</option>
+            {kinds.map((x) => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+        </div>
+        <div className="divide-y overflow-hidden rounded-xl border border-border/70">
+          {filtered.map((x) => (
+            <article
+              key={x.id}
+              className="space-y-2 bg-card/30 p-4 transition-colors hover:bg-accent/20"
+            >
+              <div className="flex justify-between gap-2">
+                <h3 className="font-bold">
+                  #{x.case_number} · {x.title}
+                </h3>
+                <span
+                  className={
+                    x.priority === "CRITICA"
+                      ? "text-xs font-bold text-destructive"
+                      : x.priority === "ALTA"
+                        ? "text-xs font-semibold text-amber-600 dark:text-amber-400"
+                        : "text-xs text-muted-foreground"
+                  }
+                >
+                  {x.priority}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {x.kind} · {new Date(x.created_at).toLocaleDateString("pt-BR")}
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{x.description}</p>
+              <label className="block text-xs">
+                Tratamento
+                <select
+                  disabled={busy}
+                  value={x.status}
+                  onChange={(e) => void update(x, e.target.value)}
+                  className="mt-1 w-full rounded-lg border bg-background p-2"
+                >
+                  {statuses.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+            </article>
+          ))}
+        </div>
+        {!loading && !error && !filtered.length && (
+          <p className="text-sm text-muted-foreground">Nenhum caso encontrado neste recorte.</p>
+        )}
+      </section>
+      <aside className="rounded-xl border bg-secondary/20 p-4">
+        <h2 className="font-bold">Proteção e confidencialidade</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          O acesso ainda está restrito à administração. Não insira documentos pessoais, laudos ou
+          evidências sensíveis no campo de descrição: o fluxo de anexos protegidos e a segmentação
+          de equipes serão implementados separadamente.
+        </p>
+      </aside>
+    </main>
+  );
 }

@@ -21,26 +21,38 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminAtendimentoRouteImport } from './routes/admin/atendimento'
 import { Route as AdminCaronasRouteImport } from './routes/admin/caronas'
+import { Route as AdminComplianceRouteImport } from './routes/admin/compliance'
+import { Route as AdminCrescimentoRouteImport } from './routes/admin/crescimento'
+import { Route as AdminExecutivoRouteImport } from './routes/admin/executivo'
+import { Route as AdminFinanceiroRouteImport } from './routes/admin/financeiro'
+import { Route as AdminInteligenciaPesquisaRouteImport } from './routes/admin/inteligencia-pesquisa'
 import { Route as AdminMatchingRouteImport } from './routes/admin/matching'
 import { Route as AdminMotoristasRouteImport } from './routes/admin/motoristas'
+import { Route as AdminOperacoesRouteImport } from './routes/admin/operacoes'
 import { Route as AdminOportunidadesRouteImport } from './routes/admin/oportunidades'
+import { Route as AdminParceriasRouteImport } from './routes/admin/parcerias'
 import { Route as AdminPassageirosRouteImport } from './routes/admin/passageiros'
 import { Route as AdminRelacionamentoRouteImport } from './routes/admin/relacionamento'
 import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacionamentos'
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
+import { Route as AdminTecnologiaRouteImport } from './routes/admin/tecnologia'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as FormularioIndexRouteImport } from './routes/formulario/index'
 import { Route as FormularioCodeRouteImport } from './routes/formulario/$code'
 import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
 import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
+import { Route as AdminDepartamentosIndexRouteImport } from './routes/admin/departamentos/index'
+import { Route as AdminDepartamentosDepartmentRouteImport } from './routes/admin/departamentos/$department'
 import { Route as AdminFormulariosIndexRouteImport } from './routes/admin/formularios/index'
 import { Route as AdminFormulariosCodeRouteImport } from './routes/admin/formularios/$code'
 import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/index'
@@ -112,6 +124,12 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDisponibilidadeProfissionalRoute =
+  AuthenticatedDisponibilidadeProfissionalRouteImport.update({
+    id: '/disponibilidade-profissional',
+    path: '/disponibilidade-profissional',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -138,11 +156,42 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAtendimentoRoute = AdminAtendimentoRouteImport.update({
+  id: '/atendimento',
+  path: '/atendimento',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCaronasRoute = AdminCaronasRouteImport.update({
   id: '/caronas',
   path: '/caronas',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminComplianceRoute = AdminComplianceRouteImport.update({
+  id: '/compliance',
+  path: '/compliance',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCrescimentoRoute = AdminCrescimentoRouteImport.update({
+  id: '/crescimento',
+  path: '/crescimento',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminExecutivoRoute = AdminExecutivoRouteImport.update({
+  id: '/executivo',
+  path: '/executivo',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFinanceiroRoute = AdminFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInteligenciaPesquisaRoute =
+  AdminInteligenciaPesquisaRouteImport.update({
+    id: '/inteligencia-pesquisa',
+    path: '/inteligencia-pesquisa',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminMatchingRoute = AdminMatchingRouteImport.update({
   id: '/matching',
   path: '/matching',
@@ -153,9 +202,19 @@ const AdminMotoristasRoute = AdminMotoristasRouteImport.update({
   path: '/motoristas',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOperacoesRoute = AdminOperacoesRouteImport.update({
+  id: '/operacoes',
+  path: '/operacoes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOportunidadesRoute = AdminOportunidadesRouteImport.update({
   id: '/oportunidades',
   path: '/oportunidades',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminParceriasRoute = AdminParceriasRouteImport.update({
+  id: '/parcerias',
+  path: '/parcerias',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPassageirosRoute = AdminPassageirosRouteImport.update({
@@ -181,6 +240,11 @@ const AdminSolicitacoesRoute = AdminSolicitacoesRouteImport.update({
 const AdminSugestoesRoute = AdminSugestoesRouteImport.update({
   id: '/sugestoes',
   path: '/sugestoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTecnologiaRoute = AdminTecnologiaRouteImport.update({
+  id: '/tecnologia',
+  path: '/tecnologia',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
@@ -214,6 +278,17 @@ const AuthenticatedViagemRideIdRoute =
     id: '/viagem/$rideId',
     path: '/viagem/$rideId',
     getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AdminDepartamentosIndexRoute = AdminDepartamentosIndexRouteImport.update({
+  id: '/departamentos/',
+  path: '/departamentos/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDepartamentosDepartmentRoute =
+  AdminDepartamentosDepartmentRouteImport.update({
+    id: '/departamentos/$department',
+    path: '/departamentos/$department',
+    getParentRoute: () => AdminRoute,
   } as any)
 const AdminFormulariosIndexRoute = AdminFormulariosIndexRouteImport.update({
   id: '/formularios/',
@@ -286,19 +361,29 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
+  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/atendimento': typeof AdminAtendimentoRoute
   '/admin/caronas': typeof AdminCaronasRoute
+  '/admin/compliance': typeof AdminComplianceRoute
+  '/admin/crescimento': typeof AdminCrescimentoRoute
+  '/admin/executivo': typeof AdminExecutivoRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/inteligencia-pesquisa': typeof AdminInteligenciaPesquisaRoute
   '/admin/matching': typeof AdminMatchingRoute
   '/admin/motoristas': typeof AdminMotoristasRoute
+  '/admin/operacoes': typeof AdminOperacoesRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/parcerias': typeof AdminParceriasRoute
   '/admin/passageiros': typeof AdminPassageirosRoute
   '/admin/relacionamento': typeof AdminRelacionamentoRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
+  '/admin/tecnologia': typeof AdminTecnologiaRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
@@ -306,10 +391,12 @@ export interface FileRoutesByFullPath {
   '/formulario/': typeof FormularioIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
+  '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
   '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/admin/departamentos/': typeof AdminDepartamentosIndexRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -328,19 +415,29 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
+  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/atendimento': typeof AdminAtendimentoRoute
   '/admin/caronas': typeof AdminCaronasRoute
+  '/admin/compliance': typeof AdminComplianceRoute
+  '/admin/crescimento': typeof AdminCrescimentoRoute
+  '/admin/executivo': typeof AdminExecutivoRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/inteligencia-pesquisa': typeof AdminInteligenciaPesquisaRoute
   '/admin/matching': typeof AdminMatchingRoute
   '/admin/motoristas': typeof AdminMotoristasRoute
+  '/admin/operacoes': typeof AdminOperacoesRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/parcerias': typeof AdminParceriasRoute
   '/admin/passageiros': typeof AdminPassageirosRoute
   '/admin/relacionamento': typeof AdminRelacionamentoRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
+  '/admin/tecnologia': typeof AdminTecnologiaRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
@@ -348,10 +445,12 @@ export interface FileRoutesByTo {
   '/formulario': typeof FormularioIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
+  '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
   '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/admin/departamentos': typeof AdminDepartamentosIndexRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
   '/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -374,19 +473,29 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
+  '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/admin/atendimento': typeof AdminAtendimentoRoute
   '/admin/caronas': typeof AdminCaronasRoute
+  '/admin/compliance': typeof AdminComplianceRoute
+  '/admin/crescimento': typeof AdminCrescimentoRoute
+  '/admin/executivo': typeof AdminExecutivoRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/inteligencia-pesquisa': typeof AdminInteligenciaPesquisaRoute
   '/admin/matching': typeof AdminMatchingRoute
   '/admin/motoristas': typeof AdminMotoristasRoute
+  '/admin/operacoes': typeof AdminOperacoesRoute
   '/admin/oportunidades': typeof AdminOportunidadesRoute
+  '/admin/parcerias': typeof AdminParceriasRoute
   '/admin/passageiros': typeof AdminPassageirosRoute
   '/admin/relacionamento': typeof AdminRelacionamentoRoute
   '/admin/relacionamentos': typeof AdminRelacionamentosRoute
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
+  '/admin/tecnologia': typeof AdminTecnologiaRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
   '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
@@ -394,10 +503,12 @@ export interface FileRoutesById {
   '/formulario/': typeof FormularioIndexRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
+  '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
   '/admin/formularios/$code': typeof AdminFormulariosCodeRoute
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/admin/departamentos/': typeof AdminDepartamentosIndexRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
   '/_authenticated/perfil-viagem/$rideId/$userId': typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -420,19 +531,29 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguranca'
     | '/termos'
+    | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/atendimento'
     | '/admin/caronas'
+    | '/admin/compliance'
+    | '/admin/crescimento'
+    | '/admin/executivo'
+    | '/admin/financeiro'
+    | '/admin/inteligencia-pesquisa'
     | '/admin/matching'
     | '/admin/motoristas'
+    | '/admin/operacoes'
     | '/admin/oportunidades'
+    | '/admin/parcerias'
     | '/admin/passageiros'
     | '/admin/relacionamento'
     | '/admin/relacionamentos'
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
+    | '/admin/tecnologia'
     | '/admin/validacao'
     | '/formulario/$code'
     | '/pesquisas/$code'
@@ -440,10 +561,12 @@ export interface FileRouteTypes {
     | '/formulario/'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
+    | '/admin/departamentos/$department'
     | '/admin/formularios/$code'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/admin/departamentos/'
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/perfil-viagem/$rideId/$userId'
@@ -462,19 +585,29 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguranca'
     | '/termos'
+    | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
     | '/perfil'
+    | '/admin/atendimento'
     | '/admin/caronas'
+    | '/admin/compliance'
+    | '/admin/crescimento'
+    | '/admin/executivo'
+    | '/admin/financeiro'
+    | '/admin/inteligencia-pesquisa'
     | '/admin/matching'
     | '/admin/motoristas'
+    | '/admin/operacoes'
     | '/admin/oportunidades'
+    | '/admin/parcerias'
     | '/admin/passageiros'
     | '/admin/relacionamento'
     | '/admin/relacionamentos'
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
+    | '/admin/tecnologia'
     | '/admin/validacao'
     | '/formulario/$code'
     | '/pesquisas/$code'
@@ -482,10 +615,12 @@ export interface FileRouteTypes {
     | '/formulario'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
+    | '/admin/departamentos/$department'
     | '/admin/formularios/$code'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/admin/departamentos'
     | '/admin/formularios'
     | '/admin/usuarios'
     | '/perfil-viagem/$rideId/$userId'
@@ -507,19 +642,29 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguranca'
     | '/termos'
+    | '/_authenticated/disponibilidade-profissional'
     | '/_authenticated/home'
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
+    | '/admin/atendimento'
     | '/admin/caronas'
+    | '/admin/compliance'
+    | '/admin/crescimento'
+    | '/admin/executivo'
+    | '/admin/financeiro'
+    | '/admin/inteligencia-pesquisa'
     | '/admin/matching'
     | '/admin/motoristas'
+    | '/admin/operacoes'
     | '/admin/oportunidades'
+    | '/admin/parcerias'
     | '/admin/passageiros'
     | '/admin/relacionamento'
     | '/admin/relacionamentos'
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
+    | '/admin/tecnologia'
     | '/admin/validacao'
     | '/formulario/$code'
     | '/pesquisas/$code'
@@ -527,10 +672,12 @@ export interface FileRouteTypes {
     | '/formulario/'
     | '/_authenticated/minha-carona/$offerId'
     | '/_authenticated/viagem/$rideId'
+    | '/admin/departamentos/$department'
     | '/admin/formularios/$code'
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/admin/departamentos/'
     | '/admin/formularios/'
     | '/admin/usuarios/'
     | '/_authenticated/perfil-viagem/$rideId/$userId'
@@ -645,6 +792,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/disponibilidade-profissional': {
+      id: '/_authenticated/disponibilidade-profissional'
+      path: '/disponibilidade-profissional'
+      fullPath: '/disponibilidade-profissional'
+      preLoaderRoute: typeof AuthenticatedDisponibilidadeProfissionalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/home': {
       id: '/_authenticated/home'
       path: '/home'
@@ -680,11 +834,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/atendimento': {
+      id: '/admin/atendimento'
+      path: '/atendimento'
+      fullPath: '/admin/atendimento'
+      preLoaderRoute: typeof AdminAtendimentoRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/caronas': {
       id: '/admin/caronas'
       path: '/caronas'
       fullPath: '/admin/caronas'
       preLoaderRoute: typeof AdminCaronasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/compliance': {
+      id: '/admin/compliance'
+      path: '/compliance'
+      fullPath: '/admin/compliance'
+      preLoaderRoute: typeof AdminComplianceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/crescimento': {
+      id: '/admin/crescimento'
+      path: '/crescimento'
+      fullPath: '/admin/crescimento'
+      preLoaderRoute: typeof AdminCrescimentoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/executivo': {
+      id: '/admin/executivo'
+      path: '/executivo'
+      fullPath: '/admin/executivo'
+      preLoaderRoute: typeof AdminExecutivoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/financeiro': {
+      id: '/admin/financeiro'
+      path: '/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AdminFinanceiroRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/inteligencia-pesquisa': {
+      id: '/admin/inteligencia-pesquisa'
+      path: '/inteligencia-pesquisa'
+      fullPath: '/admin/inteligencia-pesquisa'
+      preLoaderRoute: typeof AdminInteligenciaPesquisaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/matching': {
@@ -701,11 +897,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMotoristasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/operacoes': {
+      id: '/admin/operacoes'
+      path: '/operacoes'
+      fullPath: '/admin/operacoes'
+      preLoaderRoute: typeof AdminOperacoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/oportunidades': {
       id: '/admin/oportunidades'
       path: '/oportunidades'
       fullPath: '/admin/oportunidades'
       preLoaderRoute: typeof AdminOportunidadesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/parcerias': {
+      id: '/admin/parcerias'
+      path: '/parcerias'
+      fullPath: '/admin/parcerias'
+      preLoaderRoute: typeof AdminParceriasRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/passageiros': {
@@ -741,6 +951,13 @@ declare module '@tanstack/react-router' {
       path: '/sugestoes'
       fullPath: '/admin/sugestoes'
       preLoaderRoute: typeof AdminSugestoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tecnologia': {
+      id: '/admin/tecnologia'
+      path: '/tecnologia'
+      fullPath: '/admin/tecnologia'
+      preLoaderRoute: typeof AdminTecnologiaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/validacao': {
@@ -784,6 +1001,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/viagem/$rideId'
       preLoaderRoute: typeof AuthenticatedViagemRideIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/admin/departamentos/': {
+      id: '/admin/departamentos/'
+      path: '/departamentos'
+      fullPath: '/admin/departamentos/'
+      preLoaderRoute: typeof AdminDepartamentosIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/departamentos/$department': {
+      id: '/admin/departamentos/$department'
+      path: '/departamentos/$department'
+      fullPath: '/admin/departamentos/$department'
+      preLoaderRoute: typeof AdminDepartamentosDepartmentRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/formularios/': {
       id: '/admin/formularios/'
@@ -866,6 +1097,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDisponibilidadeProfissionalRoute: typeof AuthenticatedDisponibilidadeProfissionalRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
   AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
@@ -876,6 +1108,8 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDisponibilidadeProfissionalRoute:
+    AuthenticatedDisponibilidadeProfissionalRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
@@ -902,19 +1136,30 @@ const AdminValidacaoRouteWithChildren = AdminValidacaoRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAtendimentoRoute: typeof AdminAtendimentoRoute
   AdminCaronasRoute: typeof AdminCaronasRoute
+  AdminComplianceRoute: typeof AdminComplianceRoute
+  AdminCrescimentoRoute: typeof AdminCrescimentoRoute
+  AdminExecutivoRoute: typeof AdminExecutivoRoute
+  AdminFinanceiroRoute: typeof AdminFinanceiroRoute
+  AdminInteligenciaPesquisaRoute: typeof AdminInteligenciaPesquisaRoute
   AdminMatchingRoute: typeof AdminMatchingRoute
   AdminMotoristasRoute: typeof AdminMotoristasRoute
+  AdminOperacoesRoute: typeof AdminOperacoesRoute
   AdminOportunidadesRoute: typeof AdminOportunidadesRoute
+  AdminParceriasRoute: typeof AdminParceriasRoute
   AdminPassageirosRoute: typeof AdminPassageirosRoute
   AdminRelacionamentoRoute: typeof AdminRelacionamentoRoute
   AdminRelacionamentosRoute: typeof AdminRelacionamentosRoute
   AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
   AdminSugestoesRoute: typeof AdminSugestoesRoute
+  AdminTecnologiaRoute: typeof AdminTecnologiaRoute
   AdminValidacaoRoute: typeof AdminValidacaoRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminDepartamentosDepartmentRoute: typeof AdminDepartamentosDepartmentRoute
   AdminFormulariosCodeRoute: typeof AdminFormulariosCodeRoute
   AdminUsuariosIdRoute: typeof AdminUsuariosIdRoute
+  AdminDepartamentosIndexRoute: typeof AdminDepartamentosIndexRoute
   AdminFormulariosIndexRoute: typeof AdminFormulariosIndexRoute
   AdminUsuariosIndexRoute: typeof AdminUsuariosIndexRoute
   AdminFormulariosRespostasIdRoute: typeof AdminFormulariosRespostasIdRoute
@@ -922,19 +1167,30 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAtendimentoRoute: AdminAtendimentoRoute,
   AdminCaronasRoute: AdminCaronasRoute,
+  AdminComplianceRoute: AdminComplianceRoute,
+  AdminCrescimentoRoute: AdminCrescimentoRoute,
+  AdminExecutivoRoute: AdminExecutivoRoute,
+  AdminFinanceiroRoute: AdminFinanceiroRoute,
+  AdminInteligenciaPesquisaRoute: AdminInteligenciaPesquisaRoute,
   AdminMatchingRoute: AdminMatchingRoute,
   AdminMotoristasRoute: AdminMotoristasRoute,
+  AdminOperacoesRoute: AdminOperacoesRoute,
   AdminOportunidadesRoute: AdminOportunidadesRoute,
+  AdminParceriasRoute: AdminParceriasRoute,
   AdminPassageirosRoute: AdminPassageirosRoute,
   AdminRelacionamentoRoute: AdminRelacionamentoRoute,
   AdminRelacionamentosRoute: AdminRelacionamentosRoute,
   AdminSolicitacoesRoute: AdminSolicitacoesRoute,
   AdminSugestoesRoute: AdminSugestoesRoute,
+  AdminTecnologiaRoute: AdminTecnologiaRoute,
   AdminValidacaoRoute: AdminValidacaoRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
+  AdminDepartamentosDepartmentRoute: AdminDepartamentosDepartmentRoute,
   AdminFormulariosCodeRoute: AdminFormulariosCodeRoute,
   AdminUsuariosIdRoute: AdminUsuariosIdRoute,
+  AdminDepartamentosIndexRoute: AdminDepartamentosIndexRoute,
   AdminFormulariosIndexRoute: AdminFormulariosIndexRoute,
   AdminUsuariosIndexRoute: AdminUsuariosIndexRoute,
   AdminFormulariosRespostasIdRoute: AdminFormulariosRespostasIdRoute,

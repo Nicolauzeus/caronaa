@@ -2,11 +2,21 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Building2,
+  BriefcaseBusiness,
+  Code2,
+  Route,
+  TrendingUp,
+  FlaskConical,
+  Handshake,
+  Headset,
+  Wallet,
+  Scale,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   LayoutDashboard,
   Menu,
   Search,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -21,81 +31,130 @@ import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/admin/departments";
 import { getDepartmentHome, getDepartmentOfPath } from "@/lib/admin/module-navigation";
 import { AdminDepartmentTabs } from "@/components/admin/AdminDepartmentTabs";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 type AdminProfile = {
   full_name: string;
   avatar_url: string | null;
 };
 
+const departmentIcons = {
+  executive: BriefcaseBusiness,
+  technology: Code2,
+  operations: Route,
+  growth: TrendingUp,
+  research: FlaskConical,
+  partnerships: Handshake,
+  safety: Headset,
+  finance: Wallet,
+  compliance: Scale,
+};
 const navigation = [
- {title:"Painel",items:[{label:"Visão geral",to:"/admin",icon:LayoutDashboard}]},
- {title:"Departamentos",items:[
-  ...DEPARTMENTS.map(department=>({label:department.shortName,to:getDepartmentHome(department.id),icon:Building2}))
- ]}
+  { title: "Painel", items: [{ label: "Visão geral", to: "/admin", icon: LayoutDashboard }] },
+  {
+    title: "Departamentos",
+    items: [
+      ...DEPARTMENTS.map((department) => ({
+        label: department.shortName,
+        to: getDepartmentHome(department.id),
+        icon: departmentIcons[department.id] ?? Building2,
+      })),
+    ],
+  },
 ];
 
-function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean; onNavigate?: () => void; query?: string }) {
+function AdminNav({
+  mobile = false,
+  onNavigate,
+  query = "",
+  collapsed = false,
+}: {
+  mobile?: boolean;
+  onNavigate?: () => void;
+  query?: string;
+  collapsed?: boolean;
+}) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const activeDepartment=getDepartmentOfPath(pathname);
+  const activeDepartment = getDepartmentOfPath(pathname);
 
   return (
-    <nav className="space-y-6" aria-label="Admin navigation">
-      {navigation.map((section) => ({ ...section, items: section.items.filter((item) => (item.label+" "+section.title).toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) })).filter((section) => section.items.length).map((section) => (
-        <div key={section.title}>
-          <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-normal text-muted-foreground/80">
-            {section.title}
+    <nav className="space-y-6" aria-label="Navegação administrativa">
+      {query &&
+        !navigation.some((section) =>
+          section.items.some((item) =>
+            item.label.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR")),
+          ),
+        ) && (
+          <p role="status" className="px-3 text-sm text-muted-foreground">
+            Nenhuma seção encontrada.
           </p>
+        )}
+      {navigation
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) =>
+            (item.label + " " + section.title)
+              .toLocaleLowerCase("pt-BR")
+              .includes(query.toLocaleLowerCase("pt-BR")),
+          ),
+        }))
+        .filter((section) => section.items.length)
+        .map((section) => (
+          <div key={section.title}>
+            <p
+              className={
+                collapsed
+                  ? "sr-only"
+                  : "mb-3 px-3 text-[11px] font-bold uppercase tracking-normal text-muted-foreground/80"
+              }
+            >
+              {section.title}
+            </p>
 
-          <div className="space-y-1">
-            {section.items.map(({ label, to, icon: Icon }) => {
-              const isRelacionamentos =
-                (to === "/admin/relacionamentos" || to === "/admin/relacionamento") &&
-                (pathname === "/admin/relacionamentos" || pathname === "/admin/relacionamento");
-              const active =
-                (section.title==="Departamentos"&&activeDepartment!==null&&to===getDepartmentHome(activeDepartment)) ||
-                isRelacionamentos ||
-                pathname === to ||
-                (to !== "/admin" &&
-                  pathname.startsWith(`${to}/`) &&
-                  !navigation
-                    .flatMap((group) => group.items)
-                    .some(
-                      (item) =>
-                        item.to !== to &&
-                        item.to.startsWith(`${to}/`) &&
-                        (pathname === item.to || pathname.startsWith(`${item.to}/`)),
-                    ));
+            <div className="space-y-1">
+              {section.items.map(({ label, to, icon: Icon }) => {
+                const active =
+                  section.title === "Departamentos"
+                    ? activeDepartment !== null && to === getDepartmentHome(activeDepartment)
+                    : pathname.replace(/\/$/, "") === to;
 
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                    mobile ? "min-h-12" : "",
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon size={16} />
-                    {label}
-                  </span>
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    activeOptions={{ exact: true }}
+                    aria-current={active ? "page" : undefined}
+                    onClick={onNavigate}
+                    title={collapsed ? label : undefined}
+                    className={cn(
+                      "flex items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      mobile ? "min-h-12" : "",
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon size={16} />
+                      <span className={collapsed ? "sr-only" : undefined}>{label}</span>
+                    </span>
 
-                  <ChevronRight
-                    size={14}
-                    className={cn(active ? "text-primary-foreground" : "opacity-60")}
-                  />
-                </Link>
-              );
-            })}
+                    <ChevronRight
+                      size={14}
+                      className={cn(
+                        collapsed && "hidden",
+                        active ? "text-primary-foreground" : "opacity-60",
+                      )}
+                    />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
     </nav>
   );
 }
@@ -122,21 +181,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
-  // Only the mobile drawer locks background scrolling.
-  // Desktop pages continue to use the natural document scroll.
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [mobileOpen]);
   const [navQuery, setNavQuery] = useState("");
   const [profile, setProfile] = useState<AdminProfile | null>(null);
 
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const department = DEPARTMENTS.find((item) => item.id === getDepartmentOfPath(pathname));
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const close = () => {
+      if (query.matches) setMobileOpen(false);
+    };
+    query.addEventListener("change", close);
+    return () => query.removeEventListener("change", close);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -181,10 +246,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const breadcrumb = useMemo(() => {
-    if(pathname==="/admin"||pathname==="/admin/")return "Visão geral";
-    const deptId=getDepartmentOfPath(pathname);
-    const dept=DEPARTMENTS.find(d=>d.id===deptId);
-    return dept?.name??"Departamentos";
+    if (pathname === "/admin" || pathname === "/admin/") return "Visão geral";
+    const deptId = getDepartmentOfPath(pathname);
+    const dept = DEPARTMENTS.find((d) => d.id === deptId);
+    return dept?.name ?? "Departamentos";
   }, [pathname]);
 
   const adminName = useMemo(() => {
@@ -223,24 +288,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-workspace min-h-screen bg-background">
       <div className="mx-auto flex max-w-[1680px] items-start gap-6 p-3 md:p-5 lg:px-6 lg:py-0">
-        <aside className="hidden w-[240px] shrink-0 border-r border-border bg-muted/20 pr-5 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:py-6 lg:[scrollbar-width:thin]">
+        <aside
+          className={cn(
+            "hidden shrink-0 border-r border-border bg-muted/20 pr-3 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:py-6 lg:[scrollbar-width:thin]",
+            collapsed ? "w-[64px]" : "w-[240px]",
+          )}
+        >
           <div className="mb-6 flex items-center justify-between gap-3">
-            <Link to="/admin" className="inline-flex items-center gap-3">
-              <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
-
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-normal text-muted-foreground">
-                  Administração
-                </p>
-              </div>
-            </Link>
-
-
+            {!collapsed && (
+              <Link to="/admin" className="inline-flex min-w-0 items-center gap-2">
+                <img src={logoAsset.url} alt="CARONAA" className="h-auto w-28 object-contain" />
+              </Link>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed((value) => !value)}
+              aria-label={collapsed ? "Expandir navegação" : "Recolher navegação"}
+              title={collapsed ? "Expandir navegação" : "Recolher navegação"}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </Button>
           </div>
 
-          <AdminNav query={navQuery} />
-
-
+          <AdminNav query={navQuery} collapsed={collapsed} />
         </aside>
 
         <div className="min-w-0 flex-1 lg:py-6">
@@ -259,11 +331,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 </Button>
 
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
-                    CARONAA admin
-                  </p>
-
-                  <p className="mt-1 text-sm text-muted-foreground">{breadcrumb}</p>
+                  <nav
+                    aria-label="Caminho administrativo"
+                    className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+                  >
+                    <Link to="/admin" className="font-medium hover:text-foreground">
+                      Admin
+                    </Link>
+                    <ChevronRight size={14} aria-hidden="true" />
+                    <span aria-current="page">{breadcrumb}</span>
+                  </nav>
                 </div>
               </div>
 
@@ -278,7 +355,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     aria-label="Buscar seção administrativa"
                     placeholder="Buscar seção do painel"
                     value={navQuery}
-                    onChange={(event) => { setNavQuery(event.target.value); if (window.innerWidth < 1024) setMobileOpen(true); }}
+                    onChange={(event) => {
+                      setNavQuery(event.target.value);
+                      if (window.innerWidth < 1024) setMobileOpen(true);
+                    }}
                     className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
                   />
                 </div>
@@ -311,40 +391,45 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
+          {department && (
+            <AdminPageHeader title={department.name} description={department.mission} />
+          )}
           <AdminDepartmentTabs />
 
           <main className="px-0 py-5 md:py-6">{children}</main>
         </div>
       </div>
 
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm lg:hidden" role="presentation" onKeyDown={(event) => { if (event.key === "Escape") setMobileOpen(false); }}>
-          <div role="dialog" aria-modal="true" aria-label="Menu administrativo" className="h-dvh w-[82%] max-w-xs overflow-y-auto overscroll-y-contain border-r border-border bg-card p-4 shadow-soft [scrollbar-width:thin]">
-            <div className="mb-5 flex items-center justify-between">
-              <Link
-                to="/admin"
-                onClick={() => setMobileOpen(false)}
-                className="font-display text-xl font-extrabold"
-              >
-                CARONAA Admin
-              </Link>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          side="left"
+          className="admin-workspace h-dvh w-[85%] max-w-xs overflow-y-auto overscroll-y-contain p-4"
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <Link
+              to="/admin"
+              onClick={() => setMobileOpen(false)}
+              className="font-display text-xl font-extrabold"
+            >
+              CARONAA Admin
+            </Link>
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Fechar menu administrativo"
-              >
-                <X size={18} />
-              </Button>
-            </div>
-
-            <Input aria-label="Buscar seção no menu" placeholder="Buscar seção" value={navQuery} onChange={(event) => setNavQuery(event.target.value)} className="mb-4" />
-            <AdminNav mobile query={navQuery} onNavigate={() => setMobileOpen(false)} />
+            <SheetTitle className="sr-only">Menu administrativo</SheetTitle>
+            <SheetDescription className="sr-only">
+              Navegação entre as áreas administrativas.
+            </SheetDescription>
           </div>
-        </div>
-      ) : null}
+
+          <Input
+            aria-label="Buscar seção no menu"
+            placeholder="Buscar seção"
+            value={navQuery}
+            onChange={(event) => setNavQuery(event.target.value)}
+            className="mb-4"
+          />
+          <AdminNav mobile query={navQuery} onNavigate={() => setMobileOpen(false)} />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

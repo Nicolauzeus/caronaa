@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Route as PitchRoute } from "@/routes/pitch";
-import { Route as FormRoute } from "@/routes/formulario";
+import { Route as FormRoute } from "@/routes/formulario/index";
 
 describe("Página promocional encerrada", () => {
   it("redireciona a URL antiga para a página inicial", () => {
