@@ -25,7 +25,9 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS, departmentPath } from "@/lib/admin/departments";
+import { DEPARTMENTS } from "@/lib/admin/departments";
+import { getDepartmentHome, getDepartmentOfPath } from "@/lib/admin/module-navigation";
+import { AdminDepartmentTabs } from "@/components/admin/AdminDepartmentTabs";
 
 type AdminProfile = {
   full_name: string;
@@ -33,95 +35,10 @@ type AdminProfile = {
 };
 
 const navigation = [
-  { title: "Organização", items: [
-    {label:"Departamentos",to:"/admin/departamentos",icon:Building2},
-    ...DEPARTMENTS.map(department=>({label:department.shortName,to:departmentPath(department.id),icon:Building2}))
-  ]},
-  {
-    title: "Visão Geral",
-    items: [
-      {
-        label: "Visão geral",
-        to: "/admin",
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-  {
-    title: "Operação",
-    items: [
-      {
-        label: "Caronas",
-        to: "/admin/caronas",
-        icon: Gauge,
-      },
-      {
-        label: "Solicitações",
-        to: "/admin/solicitacoes",
-        icon: FileText,
-      },
-      {
-        label: "Combinações",
-        to: "/admin/matching",
-        icon: Activity,
-      },
-    ],
-  },
-  {
-    title: "Pessoas",
-    items: [
-      {
-        label: "Usuários",
-        to: "/admin/usuarios",
-        icon: Users,
-      },
-      {
-        label: "Motoristas",
-        to: "/admin/motoristas",
-        icon: Building2,
-      },
-      {
-        label: "Passageiros",
-        to: "/admin/passageiros",
-        icon: Users,
-      },
-    ],
-  },
-  {
-    title: "Validação & Pitch",
-    items: [
-      {
-        label: "Relacionamentos",
-        to: "/admin/relacionamentos",
-        icon: HeartHandshake,
-      },
-      {
-        label: "Sugestões",
-        to: "/admin/sugestoes",
-        icon: MessageSquareHeart,
-      },
-      {
-        label: "Oportunidades",
-        to: "/admin/oportunidades",
-        icon: Gauge,
-      },
-      {
-        label: "Formulários",
-        to: "/admin/formularios",
-        icon: FileText,
-      },
-      {
-        label: "Respostas",
-        to: "/admin/formularios/respostas",
-        icon: FileText,
-      },
-      {
-        label: "Validação",
-        to: "/admin/validacao",
-        icon: ShieldCheck,
-      },
-    ],
-  },
+ {title:"Painel",items:[{label:"Visão geral",to:"/admin",icon:LayoutDashboard}]},
+ {title:"Departamentos",items:[
+  ...DEPARTMENTS.map(department=>({label:department.shortName,to:getDepartmentHome(department.id),icon:Building2}))
+ ]}
 ];
 
 function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean; onNavigate?: () => void; query?: string }) {
@@ -260,16 +177,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const breadcrumb = useMemo(() => {
-    const parts = pathname.split("/").filter(Boolean);
-
-    if (!parts.length) {
-      return "Dashboard";
-    }
-
-    return parts
-      .map((segment) => segment.replace(/-/g, " "))
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-      .join(" / ");
+    if(pathname==="/admin"||pathname==="/admin/")return "Visão geral";
+    const deptId=getDepartmentOfPath(pathname);
+    const dept=DEPARTMENTS.find(d=>d.id===deptId);
+    return dept?.name??"Departamentos";
   }, [pathname]);
 
   const adminName = useMemo(() => {
@@ -325,17 +236,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <AdminNav query={navQuery} />
 
-          <div className="mt-8 rounded-xl border border-border bg-secondary/40 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-normal text-muted-foreground">
-              Segurança
-            </p>
 
-            <p className="mt-2 text-sm font-semibold text-foreground">Controle administrativo</p>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              Acesso liberado para perfil com autorização ativa.
-            </p>
-          </div>
         </aside>
 
         <div className="flex-1">
@@ -405,6 +306,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
+
+          <AdminDepartmentTabs />
 
           <main className="px-0 py-5 md:py-6">{children}</main>
         </div>
