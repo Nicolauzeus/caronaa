@@ -66,6 +66,18 @@ export function getNumberBounds(q:SurveyQuestion):{min:number;max:number;integer
  else if(id==="population"){max=100000000;integerOnly=true}
  return {min:q.minValue??min,max:q.maxValue??max,integerOnly:q.integerOnly??integerOnly};
 }
+/** Inform without assuming that every arrival/departure happens on the same day. */
+export function scheduleWarning(section:SurveySection,answers:Answers):string|null{
+ const ids=new Set(section.questions.map(q=>q.id));
+ const start=["arrival","arrive"].find(id=>ids.has(id));
+ const end=["departure"].find(id=>ids.has(id));
+ if(!start||!end)return null;
+ const from=answers[start],to=answers[end];
+ if(typeof from!=="string"||typeof to!=="string")return null;
+ const valid=/^([01]\d|2[0-3]):[0-5]\d$/;
+ if(!valid.test(from)||!valid.test(to))return null;
+ return to<from?"O horário de saída é anterior ao de chegada. Confirme se a saída é no dia seguinte; caso contrário, revise os horários.":null;
+}
 export function validatePage(section:SurveySection,answers:Answers):string[]{
  return section.questions.filter(q=>isVisible(q,answers)).flatMap(q=>{
   const value=answers[q.id];
