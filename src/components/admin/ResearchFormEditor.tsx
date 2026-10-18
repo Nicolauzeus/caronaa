@@ -1,15 +1,16 @@
-import {useEffect,useMemo,useState,type ChangeEvent} from "react";
+import {useEffect,useMemo,useState} from "react";
 import {supabase} from "@/integrations/supabase/client";
 import {RESEARCH_TEMPLATES,QUESTION_TYPES,freshTemplate,type SurveyQuestion,type SurveySchema} from "@/lib/formulario/research-templates";
 import {emptySurveySchema,newSurveyQuestion,reorder,cloneQuestion,inspectSchema,validatePage,type Answers} from "@/lib/formulario/research-schema";
 import {ResearchSectionFields,ResearchBrandHeader} from "@/components/research/ResearchFields";
+import {ResearchBrandManager} from "@/components/admin/ResearchBrandManager";
 const db=supabase as any;
 export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;onClose:()=>void;onPublished?:()=>void}){
  const [versionId,setVersionId]=useState(""),[version,setVersion]=useState(1),[published,setPublished]=useState(false),[schema,setSchema]=useState<SurveySchema>(emptySurveySchema());
  const [saved,setSaved]=useState(""),[undo,setUndo]=useState<SurveySchema[]>([]),[redo,setRedo]=useState<SurveySchema[]>([]);
  const [busy,setBusy]=useState(true),[error,setError]=useState(""),[preview,setPreview]=useState(false);
  const [templateKey,setTemplateKey]=useState(""),[formNature,setFormNature]=useState("EVENTO"),[formTitle,setFormTitle]=useState("Pesquisa");
- const [brandName,setBrandName]=useState(""),[brandAlt,setBrandAlt]=useState(""),[brandPath,setBrandPath]=useState<string|null>(null),[brandBusy,setBrandBusy]=useState(false);
+ const [brandName,setBrandName]=useState(""),[brandAlt,setBrandAlt]=useState(""),[brandPath,setBrandPath]=useState<string|null>(null),[brandOpen,setBrandOpen]=useState(false);
  const [previewAnswers,setPreviewAnswers]=useState<Answers>({}),[previewStep,setPreviewStep]=useState(0);
  useEffect(()=>{let alive=true;setBusy(true);void Promise.all([
   db.from("research_form_versions").select("id,version_number,schema_json,published_at").eq("form_id",formId).order("version_number",{ascending:false}).limit(1).single(),
@@ -61,32 +62,13 @@ export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;o
   if(error)throw Error(error.message);
   setVersionId(data.id);setVersion(v=>v+1);setPublished(false);setSaved(JSON.stringify(schema));setUndo([]);setRedo([]);
  }catch(e){setError(e instanceof Error?e.message:"Não foi possível criar nova versão")}finally{setBusy(false)}}
- async function uploadImage(e:ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;e.target.value="";
- if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>2097152){setError("Use PNG, JPEG ou WebP de até 2 MB.");return}
- setBrandBusy(true);setError("");try{
-  const extension=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
-  const path=formId+"/"+crypto.randomUUID()+"."+extension;
-  const {error}=await db.storage.from("research-branding").upload(path,file,{contentType:file.type,upsert:false});
-  if(error)throw Error(error.message);
-  setBrandPath(path);
- }catch(err){setError(err instanceof Error?err.message:"Erro de imagem")}finally{setBrandBusy(false)}}
- async function saveBrand(){setBrandBusy(true);setError("");try{
-  const {error}=await db.from("research_forms").update({brand_image_path:brandPath,brand_image_alt:brandAlt.trim()||null,brand_display_name:brandName.trim()||null}).eq("id",formId);
-  if(error)throw Error(error.message);
- }catch(e){setError(e instanceof Error?e.message:"Falha ao salvar identidade")}finally{setBrandBusy(false)}}
  function continuePreview(){const e=validatePage(schema.sections[previewStep],previewAnswers);if(e.length){setError(e[0]);return}setError("");setPreviewStep(p=>Math.min(schema.sections.length-1,p+1))}
  const visibleParents=(si:number,qi:number)=>schema.sections.flatMap((section,i)=>section.questions.filter((q,j)=>(i<si||(i===si&&j<qi))&&q.type==="single_choice"));
  return <section className="space-y-5 rounded-xl border bg-card/50 p-4 md:p-6">
  <header className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-extrabold">Construtor de pesquisa</h2><p className="text-sm text-muted-foreground">Versão {version} · {published?"Publicada e protegida":dirty?"Alterações não salvas":"Rascunho salvo"}</p></div>
- <div className="flex flex-wrap gap-2"><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setPreview(v=>!v)}>{preview?"Voltar ao editor":"Pré-visualizar como participante"}</button><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>{if(!dirty||confirm("Existem alterações não salvas. Fechar mesmo assim?"))onClose()}}>Fechar</button></div></header>
+ <div className="flex flex-wrap gap-2"><button type="button" aria-expanded={brandOpen} onClick={()=>setBrandOpen(v=>!v)} className="rounded-lg border border-primary/60 px-3 py-2 text-sm font-semibold text-[#805900] dark:text-[#ffd166]">{brandPath?"Trocar imagem":"Adicionar imagem / logomarca"}</button><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>setPreview(v=>!v)}>{preview?"Voltar ao editor":"Pré-visualizar como participante"}</button><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>{if(!dirty||confirm("Existem alterações não salvas. Fechar mesmo assim?"))onClose()}}>Fechar</button></div></header>
  {error&&<p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
- <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">Identidade visual e logomarca do formulário</summary><div className="mt-4 grid gap-3 sm:grid-cols-2">
-  <label className="text-sm">Nome exibido no cabeçalho<input value={brandName} maxLength={120} onChange={e=>setBrandName(e.target.value)} placeholder="Ex.: Pesquisa de mobilidade universitária" className="mt-1 w-full rounded-lg border bg-background p-2"/></label>
-  <label className="text-sm">Descrição acessível da imagem<input value={brandAlt} maxLength={180} onChange={e=>setBrandAlt(e.target.value)} placeholder="Ex.: Identidade visual da pesquisa" className="mt-1 w-full rounded-lg border bg-background p-2"/></label>
-  <label className="text-sm sm:col-span-2">Imagem (PNG, JPG ou WebP, até 2 MB)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>void uploadImage(e)} className="mt-1 block w-full text-sm"/></label>
-  <div className="flex flex-wrap items-center gap-3 sm:col-span-2"><button disabled={brandBusy} onClick={()=>void saveBrand()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Salvar identidade</button>{brandPath&&<button onClick={()=>setBrandPath(null)} className="text-sm text-destructive">Remover imagem (salvar para confirmar)</button>}</div>
-  <p className="text-xs text-muted-foreground sm:col-span-2">Use logomarcas institucionais apenas quando autorizado. A imagem ficará pública para permitir que participantes vejam o formulário.</p>
- </div></details>
+ {brandOpen&&<ResearchBrandManager form={{id:formId,title:formTitle,brand_image_path:brandPath,brand_image_alt:brandAlt,brand_display_name:brandName}} onSaved={next=>{setBrandPath(next.brand_image_path??null);setBrandAlt(next.brand_image_alt??"");setBrandName(next.brand_display_name??"")}}/>}
  {!published&&!preview&&<div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-3"><label className="min-w-48 flex-1 text-sm font-medium">Modelo recomendado<select value={templateKey} onChange={e=>setTemplateKey(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="">Escolher modelo (opcional)</option>{RESEARCH_TEMPLATES.filter(t=>t.nature===formNature).map(t=><option key={t.key} value={t.key}>{t.label} · {t.estimatedMinutes} min</option>)}</select></label><button type="button" disabled={!templateKey} onClick={insertTemplate} className="rounded-lg border px-3 py-2 text-sm font-semibold">Aplicar modelo</button><button disabled={!undo.length} onClick={revert} className="rounded-lg border px-3 py-2 text-sm">Desfazer</button><button disabled={!redo.length} onClick={forward} className="rounded-lg border px-3 py-2 text-sm">Refazer</button></div>}
  {preview?<div className="mx-auto max-w-xl space-y-4"><ResearchBrandHeader title={formTitle} imagePath={brandPath} alt={brandAlt} brandName={brandName}/><div className="text-xs text-muted-foreground">Prévia fiel · etapa {previewStep+1} de {schema.sections.length} · sem gravação no banco</div>
  {schema.sections[previewStep]&&<div className="rounded-xl border p-4"><h3 className="mb-4 text-lg font-bold">{schema.sections[previewStep].title}</h3><ResearchSectionFields section={schema.sections[previewStep]} answers={previewAnswers} onChange={(id,value)=>setPreviewAnswers(a=>({...a,[id]:value}))} idPrefix="preview-"/></div>}
