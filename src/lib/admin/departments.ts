@@ -62,8 +62,8 @@ export const DEPARTMENTS:readonly Department[]=[
  ]},
  {id:"safety",name:"Atendimento, Confiança e Segurança",shortName:"Atendimento",mission:"Atender participantes e gerir segurança e incidentes.",ownerRole:"Gestão de atendimento e segurança",categories:[
  existing("feedback","Sugestões","Feedback recebido da comunidade.","/admin/sugestoes"),
- planned("tickets","Tickets e atendimento","Fila, prioridade, histórico e SLA."),
- planned("reports","Denúncias e incidentes","Tratamento seguro de ocorrências."),
+ existing("tickets","Tickets e atendimento","Fila administrativa, prioridade e acompanhamento.","/admin/atendimento"),
+ existing("reports","Denúncias e incidentes","Registro e triagem administrativa de ocorrências.","/admin/atendimento"),
  planned("verification","Verificações","Critérios de segurança de profissionais.")
  ]},
  {id:"finance",name:"Financeiro e Administrativo",shortName:"Financeiro",mission:"Controlar receitas, pagamentos, repasses e despesas.",ownerRole:"Gestão financeira",categories:[
