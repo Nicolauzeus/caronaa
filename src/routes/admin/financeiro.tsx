@@ -6,7 +6,7 @@ import {useAdminModuleSection} from "@/lib/admin/use-admin-module-section";
 export const Route=createFileRoute("/admin/financeiro")({component:FinanceCenter});
 type Summary={currency:string;provider:string;payment_status:string;transactions:number;total_amount:number};
 type Payment={payment_id:string;created_at:string;currency:string;provider:string;payment_status:string;amount:number};
-const money=(amount:number,currency:string)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:currency==="BRL"?"BRL":"USD"}).format(amount);
+const money=(amount:number,currency:string)=>{try{return new Intl.NumberFormat("pt-BR",{style:"currency",currency}).format(amount)}catch{return currency+" "+new Intl.NumberFormat("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(amount)}};
 function FinanceCenter(){
  const [section]=useAdminModuleSection<"overview"|"transactions">({overview:"overview",transactions:"transactions"},"overview");
  const [days,setDays]=useState(30),[summary,setSummary]=useState<Summary[]>([]),[payments,setPayments]=useState<Payment[]>([]),[error,setError]=useState(""),[loading,setLoading]=useState(true),[refresh,setRefresh]=useState(0);
