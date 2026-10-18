@@ -82,7 +82,6 @@ export const RESEARCH_OPTION_LABELS:Record<string,string>={
  PROVAVELMENTE:"Provavelmente",
  PROVAVELMENTE_NAO:"Provavelmente não",
  PREVISIBILIDADE:"Ter previsibilidade do trajeto",
- PONTO:"Ponto de embarque",
  DIVIDIR_DESPESAS:"Dividir despesas do trajeto",
  AJUDAR:"Ajudar alguém que faz o mesmo caminho",
  PRATICIDADE:"Praticidade",
