@@ -12,6 +12,10 @@ describe("Admin chart utilities",()=>{
  it("uses meaning rather than high numbers for warning colors",()=>{
   expect(semanticMetricTone("Cancelamentos")).toBe("danger");
   expect(semanticMetricTone("Viagens concluídas")).toBe("success");
+  expect(semanticMetricTone("PAID")).toBe("success");
+  expect(semanticMetricTone("CRITICA")).toBe("danger");
+  expect(semanticMetricTone("REFUNDED")).toBe("danger");
+  expect(semanticMetricTone("EM_ANALISE")).toBe("warning");
   expect(semanticMetricTone("Total de solicitações")).toBe("neutral");
  });
 });
