@@ -36,6 +36,7 @@ import { Route as AdminRelacionamentosRouteImport } from './routes/admin/relacio
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin/solicitacoes'
 import { Route as AdminSugestoesRouteImport } from './routes/admin/sugestoes'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
+import { Route as FormularioCodeRouteImport } from './routes/formulario/$code'
 import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
 import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
@@ -186,6 +187,11 @@ const AdminValidacaoRoute = AdminValidacaoRouteImport.update({
   path: '/validacao',
   getParentRoute: () => AdminRoute,
 } as any)
+const FormularioCodeRoute = FormularioCodeRouteImport.update({
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => FormularioRoute,
+} as any)
 const PesquisasCodeRoute = PesquisasCodeRouteImport.update({
   id: '/pesquisas/$code',
   path: '/pesquisas/$code',
@@ -268,7 +274,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
-  '/formulario': typeof FormularioRoute
+  '/formulario': typeof FormularioRouteWithChildren
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
+  '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
@@ -309,7 +316,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
-  '/formulario': typeof FormularioRoute
+  '/formulario': typeof FormularioRouteWithChildren
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
+  '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin': typeof AdminIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
@@ -353,7 +361,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
-  '/formulario': typeof FormularioRoute
+  '/formulario': typeof FormularioRouteWithChildren
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   '/admin/solicitacoes': typeof AdminSolicitacoesRoute
   '/admin/sugestoes': typeof AdminSugestoesRoute
   '/admin/validacao': typeof AdminValidacaoRouteWithChildren
+  '/formulario/$code': typeof FormularioCodeRoute
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
@@ -417,6 +426,7 @@ export interface FileRouteTypes {
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
+    | '/formulario/$code'
     | '/pesquisas/$code'
     | '/admin/'
     | '/minha-carona/$offerId'
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
+    | '/formulario/$code'
     | '/pesquisas/$code'
     | '/admin'
     | '/minha-carona/$offerId'
@@ -501,6 +512,7 @@ export interface FileRouteTypes {
     | '/admin/solicitacoes'
     | '/admin/sugestoes'
     | '/admin/validacao'
+    | '/formulario/$code'
     | '/pesquisas/$code'
     | '/admin/'
     | '/_authenticated/minha-carona/$offerId'
@@ -525,7 +537,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BuscarRoute: typeof BuscarRoute
   ComoFuncionaRoute: typeof ComoFuncionaRoute
-  FormularioRoute: typeof FormularioRoute
+  FormularioRoute: typeof FormularioRouteWithChildren
   PitchRoute: typeof PitchRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -728,6 +740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminValidacaoRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/formulario/$code': {
+      id: '/formulario/$code'
+      path: '/$code'
+      fullPath: '/formulario/$code'
+      preLoaderRoute: typeof FormularioCodeRouteImport
+      parentRoute: typeof FormularioRoute
+    }
     '/pesquisas/$code': {
       id: '/pesquisas/$code'
       path: '/pesquisas/$code'
@@ -907,6 +926,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface FormularioRouteChildren {
+  FormularioCodeRoute: typeof FormularioCodeRoute
+}
+
+const FormularioRouteChildren: FormularioRouteChildren = {
+  FormularioCodeRoute: FormularioCodeRoute,
+}
+
+const FormularioRouteWithChildren = FormularioRoute._addFileChildren(
+  FormularioRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -914,7 +945,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BuscarRoute: BuscarRoute,
   ComoFuncionaRoute: ComoFuncionaRoute,
-  FormularioRoute: FormularioRoute,
+  FormularioRoute: FormularioRouteWithChildren,
   PitchRoute: PitchRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
