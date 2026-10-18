@@ -1,18 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Activity,
   ArrowLeft,
   Building2,
   ChevronRight,
-  FileText,
-  Gauge,
-  HeartHandshake,
   LayoutDashboard,
   Menu,
-  MessageSquareHeart,
   Search,
-  ShieldCheck,
-  Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -45,6 +38,7 @@ function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const activeDepartment=getDepartmentOfPath(pathname);
 
   return (
     <nav className="space-y-6" aria-label="Admin navigation">
@@ -60,6 +54,7 @@ function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean
                 (to === "/admin/relacionamentos" || to === "/admin/relacionamento") &&
                 (pathname === "/admin/relacionamentos" || pathname === "/admin/relacionamento");
               const active =
+                (section.title==="Departamentos"&&activeDepartment!==null&&to===getDepartmentHome(activeDepartment)) ||
                 isRelacionamentos ||
                 pathname === to ||
                 (to !== "/admin" &&
@@ -239,7 +234,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         </aside>
 
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <header className="border-b border-border bg-background px-1 py-3 md:px-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-3">
