@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
+import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
+import { validateResearchBrandImage, RESEARCH_BRAND_IMAGE_TYPES } from "@/lib/formulario/research-branding";
 import { ResearchCompare } from "@/components/admin/ResearchCompare";
 import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
 import { Link } from "@tanstack/react-router";
@@ -75,6 +77,8 @@ export function ResearchCatalog() {
   const [templateKey, setTemplateKey] = useState("");
   const [configure, setConfigure] = useState(false);
   const [configuration, setConfiguration] = useState(newResearchConfiguration);
+  const [institutionLogo, setInstitutionLogo] = useState<File | null>(null);
+  const [creationNotice, setCreationNotice] = useState("");
   const [audience, setAudience] = useState("GERAL");
   const [municipality, setMunicipality] = useState("");
   const [editing, setEditing] = useState(false);
@@ -114,8 +118,16 @@ export function ResearchCatalog() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setError("");
+    setCreationNotice("");
     try {
       if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(code)) throw Error("Código inválido");
+      if (templateKey === URBAN_UNIVERSITY_KEY && !configure)
+        throw Error("O modelo Universidade Urbana requer a configuração da instituição e dos horários.");
+      if (institutionLogo) {
+        const invalid = validateResearchBrandImage(institutionLogo.type, institutionLogo.size);
+        if (invalid) throw Error(invalid);
+      }
       const id = await createResearchForm({
         title,
         code,
@@ -125,6 +137,27 @@ export function ResearchCatalog() {
         templateKey,
         configuration: configure ? configuration : undefined,
       });
+      let logoWarning = "";
+      if (templateKey === URBAN_UNIVERSITY_KEY && institutionLogo) {
+        const extension = RESEARCH_BRAND_IMAGE_TYPES[institutionLogo.type];
+        const path = id + "/" + crypto.randomUUID() + "." + extension;
+        const storage = supabase.storage.from("research-branding");
+        const uploaded = await storage.upload(path, institutionLogo, { contentType: institutionLogo.type, upsert: false });
+        if (uploaded.error) {
+          logoWarning = "Pesquisa criada, mas o envio da logomarca falhou: " + uploaded.error.message;
+        } else {
+          const update = await (supabase as any).from("research_forms")
+            .update({ brand_image_path: path, brand_image_alt: "Logomarca da instituição " + configuration.institutionName,
+              brand_display_name: configuration.institutionName })
+            .eq("id", id).select("id").maybeSingle();
+          if (update.error || !update.data) {
+            logoWarning = "Pesquisa criada, mas não foi possível vincular a logomarca. Edite a identidade visual.";
+            await storage.remove([path]);
+          }
+        }
+      }
+      setCreationNotice(logoWarning || "Rascunho criado. Revise as perguntas e publique quando estiver pronto.");
+      setInstitutionLogo(null);
       setSelected(id);
       setTemplateKey("");
       setEditing(false);
@@ -158,6 +191,7 @@ export function ResearchCatalog() {
         </button>
       </div>
 
+      {creationNotice && <p role="status" className="rounded-lg border border-primary/40 p-3 text-sm">{creationNotice}</p>}
       {error && (
         <p role="alert" className="rounded-lg border p-3 text-sm">
           {error}. Confirme a implantação da migração.
@@ -263,7 +297,12 @@ export function ResearchCatalog() {
                   aria-pressed={templateKey === t.key}
                   onClick={() => {
                     setTemplateKey(t.key);
-                    setConfiguration({ ...newResearchConfiguration(t.key), publicName: title });
+                    setConfiguration({
+                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : newResearchConfiguration(t.key)),
+                      publicName: title,
+                      institutionId: code || "",
+                    });
+                    setInstitutionLogo(null);
                     setConfigure(true);
                   }}
                   className={
@@ -287,10 +326,27 @@ export function ResearchCatalog() {
             <input
               type="checkbox"
               checked={configure}
+              disabled={templateKey === URBAN_UNIVERSITY_KEY}
               onChange={(e) => setConfigure(e.target.checked)}
             />
             Configurar instituição, horários e interesse em caronas
           </label>
+          {templateKey === URBAN_UNIVERSITY_KEY && (
+            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:col-span-2">
+              <p className="font-semibold">Universidade urbana · modelo institucional</p>
+              <p className="text-sm text-muted-foreground">
+                Configure nome, campus, endereço, data de lançamento e horários sugeridos. Use apenas
+                dados institucionais confirmados. O questionário inclui Uber/99, custos, dificuldades,
+                disponibilidade de carona e orçamento. O trajeto vem da configuração institucional.
+              </p>
+              <label className="block text-sm">
+                Logomarca autorizada da instituição (opcional, até 2 MB)
+                <input type="file" accept="image/png,image/jpeg,image/webp"
+                  onChange={(event)=>setInstitutionLogo(event.target.files?.[0] ?? null)}
+                  className="mt-2 block w-full rounded-lg border bg-background p-2 text-sm"/>
+              </label>
+            </div>
+          )}
           {configure && (
             <div className="min-w-0 sm:col-span-2">
               <ResearchConfigurationFields value={configuration} onChange={setConfiguration} />
