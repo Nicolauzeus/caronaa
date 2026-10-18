@@ -291,7 +291,7 @@ function DashboardPage() {
                           {step.label}
                         </div>
 
-                        <div className="flex-1 rounded-full bg-secondary px-2 py-1.5">
+                        <div className="flex-1 rounded-full bg-muted/65 px-2 py-1.5">
                           <div
                             className="h-2 rounded-full bg-primary transition-all"
                             style={{
@@ -336,7 +336,7 @@ function DashboardPage() {
               <Link
                 key={action.label}
                 to={action.to}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
               >
                 <span>{action.label}</span>
 
