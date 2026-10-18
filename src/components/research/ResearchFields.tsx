@@ -1,6 +1,6 @@
 import {supabase} from "@/integrations/supabase/client";
 import type {Answers} from "@/lib/formulario/research-schema";
-import {isVisible} from "@/lib/formulario/research-schema";
+import {isVisible,getNumberBounds} from "@/lib/formulario/research-schema";
 import type {SurveySection} from "@/lib/formulario/research-templates";
 
 export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string}){
@@ -8,6 +8,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{se
   const id=idPrefix+q.id;
   const value=answers[q.id];
   const select=(v:string|string[])=>onChange(q.id,v);
+  const bounds=q.type==="number"?getNumberBounds(q):null;
   const choice=(options:string[])=> <div role="group" aria-label={q.label} className="grid gap-2 sm:grid-cols-2">{options.map(opt=><label key={opt} className={"flex cursor-pointer gap-2 rounded-lg border p-3 text-sm transition-colors "+(String(value)===opt?"border-primary bg-primary/10":"hover:bg-muted/50")}><input type="radio" name={id} checked={String(value??"")===opt} onChange={()=>select(opt)}/>{opt.replaceAll("_"," ")}</label>)}</div>;
   return <div key={q.id} className="space-y-2"><label htmlFor={id} className="block text-sm font-semibold">{q.label}{q.required&&<span className="ml-1 text-destructive" aria-label="obrigatória">*</span>}</label>{q.helpText&&<p className="text-xs text-muted-foreground">{q.helpText}</p>}
   {q.type==="long_text"?<textarea id={id} value={String(value??"")} onChange={e=>select(e.target.value)} rows={4} className="w-full rounded-xl border bg-background p-3" maxLength={2000}/>:
@@ -18,7 +19,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{se
   q.type==="ranking"?<div className="space-y-2">{(!Array.isArray(value)?[]:value).length===0?<button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={()=>select([...q.options])}>Começar ordenação</button>:(value as string[]).map((opt,index,items)=><div key={opt} className="flex items-center gap-2 rounded-lg border p-2"><span className="w-7 text-xs text-muted-foreground">{index+1}º</span><span className="flex-1 text-sm">{opt}</span><button type="button" disabled={index===0} onClick={()=>{const next=[...items];[next[index-1],next[index]]=[next[index],next[index-1]];select(next)}} className="rounded border px-2 py-1 text-sm" aria-label={"Subir "+opt}>↑</button><button type="button" disabled={index===items.length-1} onClick={()=>{const next=[...items];[next[index+1],next[index]]=[next[index],next[index+1]];select(next)}} className="rounded border px-2 py-1 text-sm" aria-label={"Descer "+opt}>↓</button></div>)}</div>:
   q.type==="matrix"?<div className="space-y-2">{(q.rows??[]).map(row=>{const found=Array.isArray(value)?value.find(x=>x.startsWith(row+"::")):undefined;return <label key={row} className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm"><span className="min-w-28 flex-1 font-medium">{row}</span><select value={found?.slice(row.length+2)??""} onChange={e=>{const current=Array.isArray(value)?value.filter(x=>!x.startsWith(row+"::")):[];select(e.target.value?[...current,row+"::"+e.target.value]:current)}} className="min-w-32 rounded-lg border bg-background p-2"><option value="">Escolha</option>{q.options.map(opt=><option key={opt}>{opt}</option>)}</select></label>})}</div>:
   q.type==="rating_1_5"||q.type==="rating_0_10"||q.type==="rating_stars"?choice(Array.from({length:q.type==="rating_0_10"?11:5},(_,i)=>String(q.type==="rating_0_10"?i:i+1))):
-  <input id={id} type={q.type==="date"?"date":q.type==="time"?"time":q.type==="number"?"number":q.type==="contact"?"email":"text"} inputMode={q.type==="number"?"decimal":q.type==="contact"?"email":undefined} step={q.type==="number"?"any":undefined} value={String(value??"")} onChange={e=>select(e.target.value)} required={q.required} maxLength={q.type==="short_text"?240:undefined} className="w-full rounded-xl border bg-background p-3"/>}
+  <><input id={id} type={q.type==="date"?"date":q.type==="time"?"time":q.type==="number"?"number":q.type==="contact"?"email":"text"} inputMode={q.type==="number"?(bounds?.integerOnly?"numeric":"decimal"):q.type==="contact"?"email":undefined} min={bounds?.min} max={bounds?.max} step={q.type==="number"?(bounds?.integerOnly?"1":"0.01"):undefined} value={String(value??"")} onChange={e=>select(e.target.value)} required={q.required} maxLength={q.type==="short_text"?240:undefined} aria-describedby={bounds?id+"-limits":undefined} className="w-full rounded-xl border bg-background p-3"/>{bounds&&<p id={id+"-limits"} className="text-xs text-muted-foreground">Valor permitido: {bounds.min} a {bounds.max}{bounds.integerOnly?" · somente números inteiros":""}.</p>}</>}
   </div>;
  })}</div>;
 }
