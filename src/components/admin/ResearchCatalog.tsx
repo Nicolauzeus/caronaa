@@ -37,6 +37,7 @@ export function ResearchCatalog() {
  async function toggleForm(form:ResearchForm){setToggling(form.id);setError("");try{await setResearchFormEnabled(form,!form.is_enabled);await refresh()}catch(e){setError(e instanceof Error?e.message:"Falha ao alterar disponibilidade")}finally{setToggling(null)}}
  async function refresh(){try {setItems(await listResearchForms());}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar pesquisas");}}
  useEffect(()=>{void refresh();},[]);
+ useEffect(()=>{if(!selected)return;const frame=requestAnimationFrame(()=>document.getElementById("research-form-editor")?.scrollIntoView({behavior:"smooth",block:"start"}));return()=>cancelAnimationFrame(frame)},[selected]);
  async function submit(e:FormEvent){e.preventDefault();setSaving(true);try{
    if(!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(code)) throw Error("Código inválido");
    const id=await createResearchForm({title,code,nature,audience,municipality,templateKey});
