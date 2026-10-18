@@ -1,35 +1,42 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {supabase} from "@/integrations/supabase/client";
-type Q={id:string;label:string;type:string;required:boolean;options:string[];showWhen?:{questionId:string;equals:string}};
-type Section={title:string;questions:Q[]};
-type Payload={id:string;version:string;title:string;sections:Section[]};
+import type {SurveySchema} from "@/lib/formulario/research-templates";
+import {cleanAnswers,validatePage,type Answers} from "@/lib/formulario/research-schema";
+import {ResearchBrandHeader,ResearchSectionFields} from "@/components/research/ResearchFields";
+type Form={id:string;version:string;title:string;schema:SurveySchema;brandImagePath:string|null;brandAlt:string|null;brandName:string|null};
 export function PublicResearchForm({code}:{code:string}){
- const [form,setForm]=useState<Payload|null>(null),[answers,setAnswers]=useState<Record<string,string|string[]>>({});
- const [submissionKey]=useState(()=>crypto.randomUUID());
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false);
- useEffect(()=>{let current=true;void (async()=>{
-  const {data:f,error:e}=await (supabase as any).from("research_forms").select("id,title").ilike("code",code).eq("status","PUBLICADO").eq("is_enabled",true).maybeSingle();
-  if(!current)return;if(e){setError("Não foi possível consultar esta pesquisa. Confira sua conexão e tente novamente.");setLoading(false);return;}if(!f){setError("Esta pesquisa não está disponível para novas respostas. Confira o endereço ou solicite um novo link ao organizador.");setLoading(false);return;}
-  const {data:v,error:ev}=await (supabase as any).from("research_form_versions").select("id,schema_json").eq("form_id",f.id).not("published_at","is",null).order("version_number",{ascending:false}).limit(1).maybeSingle();
-  if(!current)return;if(ev||!v){setError("O questionário publicado não está disponível. Entre em contato com o organizador.");setLoading(false);return;}
-  setForm({id:f.id,version:v.id,title:f.title,sections:v.schema_json?.sections??[]});setLoading(false);
- })();return()=>{current=false};},[code]);
- async function submit(event:FormEvent){event.preventDefault();if(!form||busy)return;setBusy(true);setError("");if(!consent){setError("É necessário consentir com esta pesquisa.");setBusy(false);return;}
-  for(const section of form.sections)for(const q of section.questions){const v=answers[q.id];if((!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals)&&q.required&&(!v||(Array.isArray(v)&&v.length===0))){setError("Responda: "+q.label);setBusy(false);return;}}
-  const visibleQuestions=form.sections.flatMap(section=>section.questions).filter(q=>!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals);
-  const allowed=new Set(visibleQuestions.map(q=>q.id));
-  const filteredAnswers=Object.fromEntries(Object.entries(answers).filter(([key])=>allowed.has(key)));
-  const {error:e}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers:filteredAnswers,consent_accepted:true,client_submission_key:submissionKey});
-  if(e&&e.code!=="23505")setError("Não foi possível enviar sua resposta. Tente novamente.");else setComplete(true);setBusy(false);
+ const [form,setForm]=useState<Form|null>(null),[answers,setAnswers]=useState<Answers>({}),[submissionKey]=useState(()=>crypto.randomUUID());
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false),[step,setStep]=useState(0);
+ useEffect(()=>{let alive=true;void (async()=>{
+  const {data:f,error:fe}=await (supabase as any).from("research_forms").select("id,title,brand_image_path,brand_image_alt,brand_display_name").ilike("code",code).eq("status","PUBLICADO").eq("is_enabled",true).maybeSingle();
+  if(!alive)return;
+  if(fe||!f){setError(fe?"Não foi possível carregar a pesquisa. Tente novamente.":"Esta pesquisa não está disponível para novas respostas.");setLoading(false);return}
+  const {data:v,error:ve}=await (supabase as any).from("research_form_versions").select("id,schema_json").eq("form_id",f.id).not("published_at","is",null).order("version_number",{ascending:false}).limit(1).maybeSingle();
+  if(!alive)return;
+  if(ve||!v||!Array.isArray(v.schema_json?.sections)||!v.schema_json.sections.length){setError("Questionário indisponível. Entre em contato com o organizador.");setLoading(false);return}
+  setForm({id:f.id,version:v.id,title:f.title,schema:v.schema_json,brandImagePath:f.brand_image_path,brandAlt:f.brand_image_alt,brandName:f.brand_display_name});setLoading(false);
+ })();return()=>{alive=false}},[code]);
+ function next(){if(!form)return;const problems=validatePage(form.schema.sections[step],answers);if(problems.length){setError(problems[0]);return}setError("");setStep(s=>Math.min(form.schema.sections.length-1,s+1))}
+ async function submit(e:FormEvent){e.preventDefault();if(!form||busy)return;
+ const problems=form.schema.sections.flatMap(section=>validatePage(section,answers));
+ if(problems.length){setError(problems[0]);return}
+ if(!consent){setError("Leia e confirme o consentimento antes de enviar.");return}
+ setBusy(true);setError("");
+ const {error:insertError}=await (supabase as any).from("research_answers").insert({form_id:form.id,version_id:form.version,answers:cleanAnswers(form.schema,answers),consent_accepted:true,client_submission_key:submissionKey});
+ if(insertError&&insertError.code!=="23505")setError("Não foi possível enviar sua resposta. Verifique a conexão e tente novamente.");
+ else setComplete(true);
+ setBusy(false);
  }
- if(loading)return <main className="mx-auto max-w-xl p-6">Carregando pesquisa...</main>;
- if(!form)return <main className="mx-auto max-w-xl space-y-4 p-6" role="alert"><h1 className="text-2xl font-bold">Formulário indisponível</h1><p className="text-muted-foreground">{error}</p><button type="button" className="rounded-lg border px-4 py-2" onClick={()=>window.location.reload()}>Tentar novamente</button><p className="text-sm text-muted-foreground">Não é necessário criar uma conta para responder a pesquisas públicas habilitadas.</p></main>;
- if(complete)return <main className="mx-auto max-w-xl space-y-4 p-8"><h1 className="text-2xl font-bold">Resposta registrada!</h1><p>Obrigado por contribuir com a mobilidade. Sua participação foi concluída, mesmo sem cadastro.</p><section className="rounded-2xl border bg-card p-5 space-y-3"><h2 className="text-lg font-bold">Quer experimentar o CARONAA?</h2><p className="text-sm text-muted-foreground">Crie uma conta para solicitar ou oferecer caronas quando o serviço estiver disponível para o seu trajeto. O cadastro é opcional.</p><a className="block rounded-xl bg-primary px-4 py-3 text-center font-bold text-primary-foreground" href={"/auth?mode=cadastro&redirect="+encodeURIComponent("/home")}>Criar minha conta CARONAA</a><a className="block text-center text-sm text-muted-foreground" href="/home">Conhecer o aplicativo</a></section></main>;
- return <main className="mx-auto max-w-xl space-y-6 p-4 py-8 sm:p-8"><header className="rounded-2xl border bg-card p-5"><p className="text-xs font-bold uppercase tracking-widest text-primary">Pesquisa CARONAA</p><h1 className="mt-3 text-3xl font-extrabold">{form.title}</h1><p className="mt-2 text-sm text-muted-foreground">Responda com base na sua experiência real.</p></header>
- <form onSubmit={submit} className="space-y-5">{form.sections.map((section,i)=><section key={i} className="space-y-4 rounded-2xl border bg-card p-5"><h2 className="text-lg font-bold">{section.title}</h2>{section.questions.filter(q=>!q.showWhen || String(answers[q.showWhen.questionId]??"")===q.showWhen.equals).map(q=><div key={q.id} className="space-y-2"><label className="block text-sm font-semibold" htmlFor={q.id}>{q.label}{q.required?" *":""}</label>
- {q.type==="long_text"?<textarea id={q.id} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} rows={4} className="w-full rounded-xl border bg-background p-3"/>:
- q.type==="single_choice"?<select id={q.id} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione</option>{q.options.map(o=><option key={o} value={o}>{o}</option>)}</select>:
- q.type==="multiple_choice"?<div className="space-y-2">{q.options.map(o=><label key={o} className="flex gap-2 text-sm"><input type="checkbox" checked={Array.isArray(answers[q.id])&&(answers[q.id] as string[]).includes(o)} onChange={e=>setAnswers(a=>{const prev=Array.isArray(a[q.id])?a[q.id] as string[]:[];return {...a,[q.id]:e.target.checked?[...prev,o]:prev.filter(x=>x!==o)}})}/>{o}</label>)}</div>:
- <input id={q.id} type={q.type==="number"?"number":"text"} required={q.required} value={String(answers[q.id]??"")} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} className="w-full rounded-xl border bg-background p-3"/>}
- </div>)}</section>)}<label className="flex items-start gap-3 rounded-xl border p-4 text-sm"><input type="checkbox" required checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-1"/> Concordo em participar desta pesquisa e autorizo o uso das respostas para análise de mobilidade, conforme o aviso de privacidade aplicável.</label>{error&&<p className="text-sm text-destructive" role="alert">{error}</p>}<button disabled={busy||!consent} className="w-full rounded-xl bg-primary px-5 py-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Enviando...":"Enviar respostas"}</button></form></main>;
+ if(loading)return <main className="mx-auto max-w-xl p-6" role="status">Carregando pesquisa…</main>;
+ if(!form)return <main className="mx-auto max-w-xl space-y-3 p-6" role="alert"><h1 className="text-2xl font-bold">Formulário indisponível</h1><p>{error}</p><button type="button" onClick={()=>window.location.reload()} className="rounded-lg border px-4 py-2">Tentar novamente</button><p className="text-sm text-muted-foreground">Não é necessário cadastro para responder.</p></main>;
+ if(complete)return <main className="mx-auto max-w-xl space-y-4 p-6"><ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/><div className="rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Resposta registrada!</h2><p className="mt-2 text-sm text-muted-foreground">Sua participação foi concluída mesmo sem criar uma conta.</p></div><div className="space-y-3 rounded-xl border bg-card p-5"><h2 className="text-lg font-bold">Quer conhecer o CARONAA?</h2><p className="text-sm text-muted-foreground">Criar uma conta é opcional e independente do consentimento da pesquisa.</p><a className="block rounded-lg bg-primary px-4 py-3 text-center font-semibold text-primary-foreground" href={"/auth?mode=cadastro&redirect="+encodeURIComponent("/home")}>Criar minha conta</a><a className="block text-center text-sm text-muted-foreground" href="/home">Conhecer o aplicativo</a></div></main>;
+ const section=form.schema.sections[step],last=step===form.schema.sections.length-1;
+ return <main className="mx-auto max-w-xl space-y-5 p-4 py-8 sm:p-8"><ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/>
+ <div className="space-y-2" aria-label="Progresso da pesquisa"><div className="flex items-center justify-between text-xs text-muted-foreground"><span>Etapa {step+1} de {form.schema.sections.length}</span><span>{Math.round((step+1)/form.schema.sections.length*100)}% do questionário</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:(step+1)/form.schema.sections.length*100+"%"}}/></div></div>
+ <form onSubmit={submit} className="space-y-4"><section className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">{section.title}</h2>{section.description&&<p className="text-sm text-muted-foreground">{section.description}</p>}<ResearchSectionFields section={section} answers={answers} onChange={(id,value)=>{setAnswers(a=>({...a,[id]:value}));setError("")}}/></section>
+ {last&&<label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm"><input type="checkbox" required checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-1"/><span>Concordo em participar desta pesquisa e autorizo o uso das respostas para análise de mobilidade, conforme o aviso de privacidade aplicável. Esse consentimento não autoriza automaticamente contatos comerciais.</span></label>}
+ {error&&<p className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error}</p>}
+ <div className="flex items-center justify-between gap-3"><button type="button" disabled={step===0||busy} onClick={()=>{setError("");setStep(s=>s-1)}} className="rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40">Anterior</button>
+ {last?<button type="submit" disabled={busy||!consent} className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{busy?"Enviando…":"Enviar respostas"}</button>:<button type="button" onClick={next} className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">Próxima etapa →</button>}</div></form>
+ </main>;
 }
