@@ -17,7 +17,7 @@ export function PublicResearchForm({code}:{code:string}){
   setForm({id:f.id,version:v.id,title:f.title,schema:v.schema_json,brandImagePath:f.brand_image_path,brandAlt:f.brand_image_alt,brandName:f.brand_display_name});setLoading(false);
  })();return()=>{alive=false}},[code]);
  function next(){if(!form)return;const problems=validatePage(form.schema.sections[step],answers);if(problems.length){setError(problems[0]);return}setError("");setStep(s=>Math.min(form.schema.sections.length-1,s+1))}
- async function submit(e:FormEvent){e.preventDefault();if(!form||busy)return;
+ async function submit(e:FormEvent){e.preventDefault();if(!form||busy)return;if(step<form.schema.sections.length-1){next();return;}
  const problems=form.schema.sections.flatMap(section=>validatePage(section,answers));
  if(problems.length){setError(problems[0]);return}
  if(!consent){setError("Leia e confirme o consentimento antes de enviar.");return}
