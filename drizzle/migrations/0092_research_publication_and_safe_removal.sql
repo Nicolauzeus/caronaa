@@ -149,7 +149,8 @@ BEGIN
     v_expected:=v_question#>>'{showWhen,equals}';
     SELECT e.value INTO v_previous FROM jsonb_array_elements(v_seen) e(value)
      WHERE e.value->>'id'=v_parent_id LIMIT 1;
-    IF v_previous IS NULL OR v_previous->>'type'<>'single_choice'
+    IF v_parent_id IS NULL OR v_expected IS NULL
+     OR v_previous IS NULL OR v_previous->>'type'<>'single_choice'
      OR NOT (v_previous->'options' ? v_expected) THEN
      RAISE EXCEPTION 'Seção %, pergunta %: condição inválida. Use uma pergunta anterior de escolha única.',v_section_no,v_question_no;
     END IF;
