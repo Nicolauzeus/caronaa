@@ -38,7 +38,7 @@ export function ResearchCatalog() {
  const [saving,setSaving]=useState(false);
  const [toggling,setToggling]=useState<string|null>(null);
  async function toggleForm(form:ResearchForm){setToggling(form.id);setError("");try{await setResearchFormEnabled(form,!form.is_enabled);await refresh()}catch(e){setError(e instanceof Error?e.message:"Falha ao alterar disponibilidade")}finally{setToggling(null)}}
- async function refresh(){try {setItems(await listResearchForms());}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar pesquisas");}}
+ async function refresh(){try {setItems(await listResearchForms({ includeTrashed: true }));}catch(e){setError(e instanceof Error?e.message:"Não foi possível carregar pesquisas");}}
  useEffect(()=>{void refresh();},[]);
  useEffect(()=>{if(!selected)return;const frame=requestAnimationFrame(()=>document.getElementById("research-form-editor")?.scrollIntoView({behavior:"smooth",block:"start"}));return()=>cancelAnimationFrame(frame)},[selected]);
  async function submit(e:FormEvent){e.preventDefault();setSaving(true);try{
