@@ -1,7 +1,7 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {supabase} from "@/integrations/supabase/client";
 import type {SurveySchema} from "@/lib/formulario/research-templates";
-import {cleanAnswers,validatePage,type Answers} from "@/lib/formulario/research-schema";
+import {cleanAnswers,scheduleWarning,validatePage,type Answers} from "@/lib/formulario/research-schema";
 import {ResearchBrandHeader,ResearchSectionFields} from "@/components/research/ResearchFields";
 import {storePendingParticipation,claimResearchParticipation} from "@/lib/formulario/research-participation";
 type Form={id:string;version:string;title:string;schema:SurveySchema;brandImagePath:string|null;brandAlt:string|null;brandName:string|null};
@@ -79,7 +79,7 @@ export function PublicResearchForm({code}:{code:string}){
  const section=form.schema.sections[step],last=step===form.schema.sections.length-1;
  return <main className="mx-auto max-w-xl space-y-5 p-4 py-8 sm:p-8"><ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/>
  <div className="space-y-2" aria-label="Progresso da pesquisa"><div className="flex items-center justify-between text-xs text-muted-foreground"><span>Etapa {step+1} de {form.schema.sections.length}</span><span>{Math.round((step+1)/form.schema.sections.length*100)}% do questionário</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:(step+1)/form.schema.sections.length*100+"%"}}/></div></div>
- <form onSubmit={submit} className="space-y-4"><section className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">{section.title}</h2>{section.description&&<p className="text-sm text-muted-foreground">{section.description}</p>}<ResearchSectionFields section={section} answers={answers} errors={fieldErrors} onChange={(id,value)=>{setAnswers(a=>({...a,[id]:value}));setFieldErrors(prev=>({...prev,[id]:""}));setError("")}}/></section>
+ <form onSubmit={submit} className="space-y-4"><section className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">{section.title}</h2>{section.description&&<p className="text-sm text-muted-foreground">{section.description}</p>}<ResearchSectionFields section={section} answers={answers} errors={fieldErrors} onChange={(id,value)=>{setAnswers(a=>({...a,[id]:value}));setFieldErrors(prev=>({...prev,[id]:""}));setError("")}}/>{scheduleWarning(section,answers)&&<p role="status" className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-300">{scheduleWarning(section,answers)}</p>}</section>
  {last&&<label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm"><input type="checkbox" required checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-1"/><span>Concordo em participar desta pesquisa e autorizo o uso das respostas para análise de mobilidade, conforme o aviso de privacidade aplicável. Esse consentimento não autoriza automaticamente contatos comerciais.</span></label>}
  {error&&<p className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error}</p>}
  <div className="flex items-center justify-between gap-3"><button type="button" disabled={step===0||busy} onClick={()=>{setError("");setFieldErrors({});setStep(s=>s-1)}} className="rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40">Anterior</button>
