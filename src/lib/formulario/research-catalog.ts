@@ -59,3 +59,16 @@ export async function setResearchFormEnabled(form: ResearchForm, enabled: boolea
 export function researchPublicPath(code:string) {
  return "/formulario/"+encodeURIComponent(code.toLowerCase());
 }
+
+export async function renameResearchForm(formId:string,title:string){
+ const clean=title.trim();
+ if(clean.length<2||clean.length>180)throw new Error("O título deve ter entre 2 e 180 caracteres.");
+ const {error}=await db.from("research_forms").update({title:clean}).eq("id",formId);
+ if(error)throw new Error(error.message);
+}
+export async function deleteEmptyDraft(form:ResearchForm){
+ if(form.status!=="RASCUNHO"||form.is_enabled)throw new Error("Somente rascunhos desabilitados e sem respostas podem ser excluídos.");
+ const {data,error}=await db.rpc("delete_empty_research_draft",{p_form_id:form.id});
+ if(error)throw new Error(error.message);
+ if(data!==true)throw new Error("Não foi possível excluir o rascunho.");
+}
