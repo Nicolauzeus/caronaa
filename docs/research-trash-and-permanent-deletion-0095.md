@@ -1,4 +1,4 @@
-# Lixeira de pesquisas e exclusão definitiva — migração 0095
+# Lixeira de pesquisas e exclusão definitiva — migração 0096
 
 ## Regra de negócio
 
@@ -18,11 +18,17 @@ Selos vinculados são **bloqueadores definitivos** da exclusão direta, inclusiv
 
 As consultas de elegibilidade são orientativas. As RPCs de exclusão repetem as validações transacionalmente, exigindo conta com papel `admin`; usuários com acesso departamental simples não podem executar.
 
+## Bancos que já receberam a lixeira manualmente
+
+Em bancos onde os 6 objetos da lixeira já estão instalados, **não execute de novo** o SQL. A renumeração do arquivo apenas corrige a ordem do repositório. Confira o estado atual do banco e registre a execução no mecanismo de migrations sem reaplicar DDL destrutivo.
+
+A infraestrutura institucional é a migration `0095_reusable_research_infrastructure.sql`, instalada antes da lixeira `0096_research_trash_and_guarded_deletion.sql` em novos ambientes.
+
 ## Implantação
 
-**Não executar em produção antes de backup verificável e homologação.** A migração 0095 altera políticas e cria RPCs; deve ser aplicada na instalação Lovable/Supabase correta, depois da 0093. `drizzle/migrations/meta/_journal.json` apenas registra a migration no repositório: merge no GitHub **não aplica SQL no banco**.
+**Não executar em produção antes de backup verificável e homologação.** A migração 0096 altera políticas e cria RPCs; deve ser aplicada na instalação Lovable/Supabase correta, depois da 0093. `drizzle/migrations/meta/_journal.json` apenas registra a migration no repositório: merge no GitHub **não aplica SQL no banco**.
 
-1. Em homologação, confirmar backups e aplicar `drizzle/migrations/0095_research_trash_and_guarded_deletion.sql` completo, em transação.
+1. Em homologação, confirmar backups e aplicar `drizzle/migrations/0096_research_trash_and_guarded_deletion.sql` completo, em transação.
 2. Testar com uma pesquisa fictícia de 2 respostas **sem vínculos**: mover para lixeira, constatar que o link público fica desativado e que as respostas são preservadas.
 3. Restaurar a pesquisa e conferir que o link continua **inativo**; habilitar manualmente somente se houver uma versão publicada.
 4. Mover novamente, verificar o total e excluir definitivamente confirmando o código, a frase e o aceite. Verificar ausência da pesquisa/versões/respostas e presença do evento de auditoria.
