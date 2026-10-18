@@ -1,3 +1,4 @@
+import { urbanUniversityTemplate } from "./urban-university";
 import { getNumberBounds } from "./research-schema";
 export type SurveyQuestionType =
   | "short_text"
@@ -46,6 +47,7 @@ export type ResearchTemplate = {
   schema: SurveySchema;
 };
 export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
+  urbanUniversityTemplate,
   {
     key: "EVENTO_TRAJETO",
     nature: "EVENTO",
