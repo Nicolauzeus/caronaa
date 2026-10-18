@@ -35,10 +35,14 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       };
     }
     setAuthorized(null);
-    void Promise.all([checkAdmin(), supabase.rpc("get_my_admin_scope" as never)])
-      .then(([{ isAdmin }, scopeResponse]) => {
+    void checkAdmin()
+      .then(async ({ isAdmin }) => {
+        if (isAdmin) return { isAdmin, resolved: EMPTY_ADMIN_SCOPE };
+        const scopeResponse = await supabase.rpc("get_my_admin_scope" as never);
         if (scopeResponse.error) throw scopeResponse.error;
-        const resolved = parseAdminScope(scopeResponse.data);
+        return { isAdmin, resolved: parseAdminScope(scopeResponse.data) };
+      })
+      .then(({ isAdmin, resolved }) => {
         // A global grant is always verified independently by the original admin check.
         const effectiveScope = { ...resolved, isGlobalAdmin: isAdmin };
         const hasAccess = isAdmin || resolved.departments.length > 0;
