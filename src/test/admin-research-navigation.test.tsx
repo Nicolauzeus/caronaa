@@ -73,8 +73,23 @@ describe("Research detail navigation preserves management workflows", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Revisar e publicar" }));
     expect(await screen.findByText("Editor preservado")).toBeInTheDocument();
     expect(api.navigate).toHaveBeenCalledWith(expect.objectContaining({ hash: "perguntas" }));
-    fireEvent.click(screen.getByRole("button", { name: "Arquivar / Excluir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Arquivar / Lixeira" }));
     expect(screen.getByText("Confirmação de remoção")).toBeInTheDocument();
+  });
+  it("blocks editing a trashed form on a direct URL", async () => {
+    api.read.mockResolvedValue({
+      error: null,
+      data: {
+        id: "form-test", code: "DEMO", title: "Pesquisa de teste",
+        nature: "EVENTO", status: "ARQUIVADO", audience: "GERAL",
+        mobility_mode: "COMPARTILHADA", is_enabled: false,
+        trashed_at: "2026-10-18T16:00:00Z",
+      },
+    });
+    render(<Page />);
+    expect(await screen.findByText("Pesquisa na lixeira")).toBeInTheDocument();
+    expect(screen.queryByText("Editor preservado")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Editar ou publicar/ })).not.toBeInTheDocument();
   });
   it("switches tabs without refetching the form or dropping deep response links", async () => {
     const view = render(<Page />);
