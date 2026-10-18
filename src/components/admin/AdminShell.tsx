@@ -223,7 +223,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-workspace min-h-screen bg-background">
       <div className="mx-auto flex max-w-[1680px] items-start gap-6 p-3 md:p-5 lg:px-6 lg:py-0">
-        <aside className="hidden w-[240px] shrink-0 border-r border-border bg-background pr-5 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:py-6 lg:[scrollbar-width:thin]">
+        <aside className="hidden w-[240px] shrink-0 border-r border-border bg-muted/20 pr-5 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:py-6 lg:[scrollbar-width:thin]">
           <div className="mb-6 flex items-center justify-between gap-3">
             <Link to="/admin" className="inline-flex items-center gap-3">
               <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
