@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { registerPwa, requestPersistentStorage } from "@/lib/pwa";
 import { PwaInstallNotice } from "@/components/caronaa/PwaInstallNotice";
+import { recoverStaleChunk } from "@/lib/chunk-recovery";
 
 function NotFoundComponent() {
   return (
@@ -53,6 +54,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
   useEffect(() => {
+    if (recoverStaleChunk(error, window.sessionStorage, () => window.location.reload())) return;
     reportLovableError(error, {
       boundary: "tanstack_root_error_component",
     });
@@ -73,6 +75,10 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
+              if (/dynamically imported module|module script|Loading chunk/i.test(error instanceof Error ? error.message : String(error))) {
+                window.location.reload();
+                return;
+              }
               router.invalidate();
               reset();
             }}
