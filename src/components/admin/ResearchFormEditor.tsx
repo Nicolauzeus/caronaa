@@ -20,6 +20,13 @@ export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;o
   setFormNature(f.data.nature);setFormTitle(f.data.title);setBrandName(f.data.brand_display_name??"");setBrandAlt(f.data.brand_image_alt??"");setBrandPath(f.data.brand_image_path??null);
  }).finally(()=>{if(alive)setBusy(false)});return()=>{alive=false}},[formId]);
  const dirty=JSON.stringify(schema)!==saved;
+ // Autosave drafts after idle editing; only unpublished versions can be updated.
+ useEffect(()=>{if(published||!versionId||!dirty||busy)return;
+  const timer=window.setTimeout(()=>{const snapshot=JSON.stringify(schema);void db.from("research_form_versions").update({schema_json:schema}).eq("id",versionId).is("published_at",null).select("id").maybeSingle().then(({data,error}:any)=>{if(error||!data){setError(error?.message??"Salvamento automático indisponível");return}setSaved(snapshot)})},2500);
+  return()=>window.clearTimeout(timer);
+ },[schema,versionId,published,busy,dirty]);
+ useEffect(()=>{if(!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=""};window.addEventListener("beforeunload",warn);return()=>window.removeEventListener("beforeunload",warn)},[dirty]);
+
  const issues=useMemo(()=>inspectSchema(schema),[schema]);
  function apply(next:SurveySchema){if(published)return;setUndo(u=>[...u.slice(-29),structuredClone(schema)]);setRedo([]);setSchema(next)}
  function revert(){const previous=undo.at(-1);if(!previous)return;setRedo(r=>[...r,structuredClone(schema)]);setUndo(u=>u.slice(0,-1));setSchema(previous)}
@@ -92,7 +99,7 @@ export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;o
  <button disabled={published||schema.sections.length===1} onClick={()=>{if(confirm("Excluir a seção e suas perguntas?"))apply({sections:schema.sections.filter((_,i)=>i!==si)})}} className="rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive">Excluir</button></div>
  {section.questions.map((q,qi)=><div key={q.id} className="space-y-2 rounded-lg border bg-muted/20 p-3">
  <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-muted-foreground">Pergunta {qi+1}</span><button disabled={published||qi===0} onClick={()=>shiftQuestion(si,qi,-1)} className="rounded border px-2 py-1 text-xs" aria-label="Mover pergunta para cima">↑</button><button disabled={published||qi===section.questions.length-1} onClick={()=>shiftQuestion(si,qi,1)} className="rounded border px-2 py-1 text-xs" aria-label="Mover pergunta para baixo">↓</button><button disabled={published} onClick={()=>changeSection(si,{questions:[...section.questions.slice(0,qi+1),cloneQuestion(q),...section.questions.slice(qi+1)]})} className="rounded border px-2 py-1 text-xs">Duplicar</button><button disabled={published} onClick={()=>deleteQuestion(si,qi)} className="ml-auto text-xs text-destructive">Excluir pergunta</button></div>
- <input aria-label="Enunciado da pergunta" disabled={published} value={q.label} onChange={e=>changeQuestion(si,qi,{label:e.target.value})} className="w-full rounded-lg border bg-background p-2"/>
+ <input title="Ao editar o enunciado, a classificação analítica anterior é removida por segurança." aria-label="Enunciado da pergunta" disabled={published} value={q.label} onChange={e=>changeQuestion(si,qi,{label:e.target.value,semanticCode:undefined})} className="w-full rounded-lg border bg-background p-2"/>
  <div className="flex flex-wrap items-center gap-3"><label className="text-xs">Tipo<select disabled={published} value={q.type} onChange={e=>changeQuestion(si,qi,{type:e.target.value as SurveyQuestion["type"],options:["single_choice","multiple_choice","ranking","matrix","money_range"].includes(e.target.value)?(q.options.length?q.options:["Opção 1","Opção 2"]):[],rows:e.target.value==="matrix"?(q.rows?.length?q.rows:["Critério 1","Critério 2"]):undefined,showWhen:undefined})} className="ml-2 rounded-lg border bg-background p-2">{QUESTION_TYPES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
  <label className="text-xs"><input disabled={published} type="checkbox" checked={q.required} onChange={e=>changeQuestion(si,qi,{required:e.target.checked})}/> Obrigatória</label>
  <label className="text-xs">Mover para<select disabled={published} value="" onChange={e=>moveQuestion(si,qi,Number(e.target.value))} className="ml-2 rounded-lg border bg-background p-2"><option value="">Esta seção</option>{schema.sections.map((s,i)=>i!==si?<option key={s.id??i} value={i}>{s.title}</option>:null)}</select></label></div>
