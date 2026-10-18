@@ -575,6 +575,13 @@
       "when": 1792336000000,
       "tag": "0081_technology_product_management",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792337000000,
+      "tag": "0082_fix_governance_audit_trigger_order",
+      "breakpoints": true
     }
   ]
 }
