@@ -8,7 +8,8 @@ type Campaign={id:string;name:string;code:string;status:string;channel:string;in
 const db=supabase as any;
 const STATES=["NOVO","QUALIFICADO","CONTATADO","CONVERTIDO","DESCARTADO"];
 function GrowthCenter(){
- [leads,setLeads]=useState<Lead[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+ const [tab]=useAdminModuleSection<"leads"|"campaigns">({leads:"leads",campaigns:"campaigns"},"leads");
+ const [leads,setLeads]=useState<Lead[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [name,setName]=useState(""),[email,setEmail]=useState(""),[phone,setPhone]=useState(""),[consent,setConsent]=useState(false),[campaignId,setCampaignId]=useState("");
  const [campaignName,setCampaignName]=useState(""),[campaignCode,setCampaignCode]=useState(""),[channel,setChannel]=useState("QR_CODE"),[institution,setInstitution]=useState("");
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState("");
