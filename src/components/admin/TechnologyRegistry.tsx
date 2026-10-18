@@ -1,19 +1,23 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {supabase} from "@/integrations/supabase/client";
+import {useRouterState} from "@tanstack/react-router";
 type Kind="INCIDENT"|"BUG"|"FEATURE"|"RELEASE";
 type Item={id:string;kind:Kind;title:string;description:string;status:string;severity:string;service_name:string|null;external_url:string|null;created_at:string;resolved_at:string|null};
 const types:Kind[]=["INCIDENT","BUG","FEATURE","RELEASE"];
 const names:Record<Kind,string>={INCIDENT:"Incidentes",BUG:"Bugs",FEATURE:"Melhorias",RELEASE:"Releases"};
 const statuses=["ABERTO","EM_ANDAMENTO","BLOQUEADO","RESOLVIDO","ENCERRADO"];
 export function TechnologyRegistry(){
+ const locationHash=useRouterState({select:s=>s.location.hash});
+ const group=locationHash==="releases"||locationHash==="#releases"?"product":"incident";
  const [kind,setKind]=useState<Kind>("INCIDENT"),[items,setItems]=useState<Item[]>([]),[error,setError]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[title,setTitle]=useState(""),[description,setDescription]=useState(""),[service,setService]=useState(""),[severity,setSeverity]=useState("MEDIA"),[url,setUrl]=useState("");
  async function reload(){setLoading(true);const {data,error}=await (supabase as any).from("tech_work_items").select("id,kind,title,description,status,severity,service_name,external_url,created_at,resolved_at").order("created_at",{ascending:false}).limit(200);if(error){setError("Confirme a migração 0081 e as permissões: "+error.message);setItems([])}else{setError("");setItems(data??[])}setLoading(false)}
  useEffect(()=>{void reload()},[]);
  async function create(e:FormEvent){e.preventDefault();setBusy(true);const {data,error}=await (supabase as any).from("tech_work_items").insert({kind,title:title.trim(),description:description.trim(),service_name:service.trim()||null,severity,external_url:url.trim()||null}).select("id").maybeSingle();if(error||!data)setError(error?.message??"Criação não confirmada");else{setTitle("");setDescription("");setService("");setUrl("");await reload()}setBusy(false)}
  async function setStatus(item:Item,status:string){setBusy(true);const {data,error}=await (supabase as any).from("tech_work_items").update({status,resolved_at:status==="RESOLVIDO"||status==="ENCERRADO"?new Date().toISOString():null}).eq("id",item.id).select("id").maybeSingle();if(error||!data)setError(error?.message??"Atualização não confirmada");else await reload();setBusy(false)}
+ useEffect(()=>{setKind(group==="incident"?"INCIDENT":"BUG")},[group]);
  const visible=items.filter(x=>x.kind===kind);
  return <section className="space-y-4">
- <div className="flex flex-wrap gap-2" role="tablist">{types.map(t=><button key={t} role="tab" aria-selected={kind===t} onClick={()=>setKind(t)} className={kind===t?"rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-lg border px-4 py-2 text-sm"}>{names[t]} ({items.filter(i=>i.kind===t).length})</button>)}</div>
+ {group==="product"&&<div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de produto">{types.filter(t=>t!=="INCIDENT").map(t=><button key={t} role="tab" aria-selected={kind===t} onClick={()=>setKind(t)} className={kind===t?"rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-lg border px-4 py-2 text-sm"}>{names[t]} ({items.filter(i=>i.kind===t).length})</button>)}</div>}
  {error&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
  <form onSubmit={create} className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2">
  <h3 className="font-bold md:col-span-2">Registrar {names[kind].toLowerCase()}</h3>
