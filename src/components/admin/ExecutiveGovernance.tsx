@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState,type FormEvent} from "react";
 import {supabase} from "@/integrations/supabase/client";
+import {useAdminModuleSection} from "@/lib/admin/use-admin-module-section";
 type Kind="OKR"|"DECISION"|"RISK";
 type RecordRow={id:string;kind:Kind;title:string;description:string;status:string;priority:string;target_value:number|null;actual_value:number|null;unit:string|null;due_date:string|null;created_at:string};
 const db=supabase as any;
@@ -8,7 +9,7 @@ const TYPES:Kind[]=["OKR","DECISION","RISK"];
 const STATUSES=["ABERTO","EM_ANDAMENTO","CONCLUIDO","SUSPENSO"];
 function progress(record:RecordRow){return record.target_value&&record.target_value>0&&record.actual_value!==null?Math.max(0,Math.min(100,(record.actual_value/record.target_value)*100)):null}
 export function ExecutiveGovernance(){
- const [kind,setKind]=useState<Kind>("OKR"),[rows,setRows]=useState<RecordRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [kind]=useAdminModuleSection<Kind>({okrs:"OKR",decisions:"DECISION",risk:"RISK"},"OKR"),[rows,setRows]=useState<RecordRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [title,setTitle]=useState(""),[description,setDescription]=useState(""),[priority,setPriority]=useState("MEDIA"),[dueDate,setDueDate]=useState(""),[target,setTarget]=useState(""),[unit,setUnit]=useState(""),[busy,setBusy]=useState(false);
  async function reload(){setLoading(true);const {data,error}=await db.from("executive_records").select("id,kind,title,description,status,priority,target_value,actual_value,unit,due_date,created_at").order("created_at",{ascending:false}).limit(200);if(error){setError("Gestão executiva indisponível. Confirme a migração 0080 e as permissões: "+error.message);setRows([])}else{setRows(data??[]);setError("")}setLoading(false)}
  useEffect(()=>{void reload()},[]);
@@ -16,7 +17,7 @@ export function ExecutiveGovernance(){
  async function update(id:string,patch:Record<string,unknown>){setBusy(true);setError("");const {data,error}=await db.from("executive_records").update(patch).eq("id",id).select("id").maybeSingle();if(error||!data)setError(error?.message??"A atualização não foi confirmada pelo banco.");else {setNotice("Atualização registrada no histórico.");await reload()}setBusy(false)}
  const filtered=useMemo(()=>rows.filter(r=>r.kind===kind),[rows,kind]);
  return <section className="space-y-5">
- <div className="flex flex-wrap gap-2" role="tablist" aria-label="Gestão executiva">{TYPES.map(x=><button role="tab" aria-selected={kind===x} key={x} className={kind===x?"rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-xl border px-4 py-2 text-sm"} onClick={()=>{setKind(x);setNotice("")}}>{LABELS[x]}</button>)}</div>
+
  {error&&<p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
  {notice&&<p role="status" className="text-sm text-muted-foreground">{notice}</p>}
  <form onSubmit={create} className="grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-2">
