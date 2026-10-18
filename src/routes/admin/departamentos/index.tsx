@@ -1,0 +1,7 @@
+import {createFileRoute,Link} from "@tanstack/react-router";
+import {DEPARTMENTS,departmentPath} from "@/lib/admin/departments";
+export const Route=createFileRoute("/admin/departamentos/")({component:DepartmentsIndex});
+function DepartmentsIndex(){return <main className="space-y-6">
+<header><p className="text-xs font-bold uppercase tracking-widest text-primary">CARONAA Enterprise</p><h1 className="mt-2 text-3xl font-extrabold">Departamentos</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Organização por responsabilidades. Os módulos existentes permanecem acessíveis, e os planejados não exibem dados fictícios.</p></header>
+<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{DEPARTMENTS.map((department,i)=><article key={department.id} className="flex flex-col gap-3 rounded-2xl border bg-card p-5"><span className="text-xs font-bold text-primary">{String(i+1).padStart(2,"0")} / 09</span><div><h2 className="text-lg font-bold">{department.name}</h2><p className="mt-2 text-sm text-muted-foreground">{department.mission}</p></div><p className="text-xs text-muted-foreground">{department.categories.filter(c=>c.phase==="existing").length} categorias integradas · {department.categories.filter(c=>c.phase==="planned").length} planejadas</p><Link to={departmentPath(department.id)} className="mt-auto inline-flex min-h-10 items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Abrir departamento →</Link></article>)}</div>
+</main>}
