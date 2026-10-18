@@ -624,6 +624,27 @@
       "when": 1792343000000,
       "tag": "0088_compliance_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1792353000000,
+      "tag": "0089_research_builder_branding_atomic_publish",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1792353002000,
+      "tag": "0090_research_extended_answer_validation",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1792353004000,
+      "tag": "0091_research_semantic_comparison",
+      "breakpoints": true
     }
   ]
 }
