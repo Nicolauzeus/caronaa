@@ -1,6 +1,9 @@
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
+import { getDepartmentOfPath } from "@/lib/admin/module-navigation";
+import { AdminAccessProvider, EMPTY_ADMIN_SCOPE, parseAdminScope } from "@/lib/admin/access";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
@@ -14,10 +17,13 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   const [checkedUserId, setCheckedUserId] = useState<string | null>(null);
   const [accessError, setAccessError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [scope, setScope] = useState(EMPTY_ADMIN_SCOPE);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   useEffect(() => {
     let active = true;
     setAccessError(false);
+    setScope(EMPTY_ADMIN_SCOPE);
     if (loading)
       return () => {
         active = false;
@@ -29,11 +35,17 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       };
     }
     setAuthorized(null);
-    void checkAdmin()
-      .then(({ isAdmin }) => {
+    void Promise.all([checkAdmin(), supabase.rpc("get_my_admin_scope" as never)])
+      .then(([{ isAdmin }, scopeResponse]) => {
+        if (scopeResponse.error) throw scopeResponse.error;
+        const resolved = parseAdminScope(scopeResponse.data);
+        // A global grant is always verified independently by the original admin check.
+        const effectiveScope = { ...resolved, isGlobalAdmin: isAdmin };
+        const hasAccess = isAdmin || resolved.departments.length > 0;
         if (active) {
           setCheckedUserId(user.id);
-          setAuthorized(isAdmin);
+          setScope(effectiveScope);
+          setAuthorized(hasAccess);
         }
       })
       .catch(() => {
@@ -101,5 +113,16 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  const department = getDepartmentOfPath(pathname);
+  const isOverview = pathname === "/admin" || pathname === "/admin/";
+  const isDepartmentDirectory = pathname.startsWith("/admin/departamentos") && !department;
+  if ((isOverview || isDepartmentDirectory) && !scope.isGlobalAdmin ||
+      (department && !scope.isGlobalAdmin && !scope.departments.some((d) => d.id === department))) {
+    return <div role="alert" className="mx-auto max-w-lg p-8 text-center">
+      <h1 className="text-2xl font-bold">Acesso não autorizado</h1>
+      <p className="mt-3">Esta área não faz parte das suas permissões administrativas.</p>
+      <Link to="/home" className="mt-4 inline-block underline">Voltar ao aplicativo</Link>
+    </div>;
+  }
+  return <AdminAccessProvider value={scope}>{children}</AdminAccessProvider>;
 }
