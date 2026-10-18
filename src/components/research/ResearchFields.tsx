@@ -1,7 +1,7 @@
 import {supabase} from "@/integrations/supabase/client";
 import type {Answers} from "@/lib/formulario/research-schema";
 import {isVisible} from "@/lib/formulario/research-schema";
-import type {SurveyQuestion,SurveySection} from "@/lib/formulario/research-templates";
+import type {SurveySection} from "@/lib/formulario/research-templates";
 
 export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string}){
  return <div className="space-y-5">{section.questions.filter(q=>isVisible(q,answers)).map(q=>{
