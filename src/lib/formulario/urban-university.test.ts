@@ -24,7 +24,7 @@ describe("Modelo 01 — universidade urbana", () => {
     const first = freshTemplate(urbanUniversityTemplate);
     const second = freshTemplate(urbanUniversityTemplate);
     const all = first.sections.flatMap((section) => section.questions);
-    const offer = all.find((q) => q.semanticCode === "RIDE_OFFER_INTENT")!;
+    const offer = all.find((q) => q.semanticCode === "URBAN_OFFER_POSSIBLE")!;
     const seats = all.find((q) => q.semanticCode === "SEATS_AVAILABLE")!;
     expect(seats.showWhen?.questionId).toBe(offer.id);
     expect(isVisible(seats, { [offer.id]: "NAO" })).toBe(false);
