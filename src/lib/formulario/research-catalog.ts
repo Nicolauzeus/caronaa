@@ -72,3 +72,21 @@ export async function deleteEmptyDraft(form:ResearchForm){
  if(error)throw new Error(error.message);
  if(data!==true)throw new Error("Não foi possível excluir o rascunho.");
 }
+
+export async function archiveResearchForm(form:ResearchForm) {
+ if(form.status==="ENCERRADO")throw new Error("Pesquisa histórica encerrada deve permanecer protegida.");
+ const {error}=await db.from("research_forms").update({status:"ARQUIVADO",is_enabled:false}).eq("id",form.id);
+ if(error)throw new Error(error.message);
+}
+export async function restoreResearchForm(form:ResearchForm) {
+ if(form.status!=="ARQUIVADO")throw new Error("Somente formulários arquivados podem ser restaurados.");
+ const {data,error}=await db.from("research_form_versions").select("id").eq("form_id",form.id).not("published_at","is",null).limit(1);
+ if(error)throw new Error(error.message);
+ const {error:err}=await db.from("research_forms").update({status:data?.length?"PUBLICADO":"RASCUNHO",is_enabled:false}).eq("id",form.id);
+ if(err)throw new Error(err.message);
+}
+export async function duplicateResearchForm(form:ResearchForm) {
+ const {data,error}=await db.rpc("duplicate_research_form",{p_form_id:form.id});
+ if(error)throw new Error(error.message);
+ return data as string;
+}
