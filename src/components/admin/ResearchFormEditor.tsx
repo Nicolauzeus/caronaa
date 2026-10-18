@@ -45,6 +45,7 @@ export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;o
  if(published)throw Error("Versão publicada. Crie uma nova versão antes de editar.");
  if(!versionId)throw Error("Versão ainda não carregada.");
  if(action==="publish"&&issues.length)throw Error("Corrija antes de publicar: "+issues.join(" "));
+ if(action==="publish"&&!window.confirm("Publicar e habilitar esta versão para respostas públicas? Depois da publicação, o questionário ficará protegido contra alterações; novas perguntas exigirão outra versão."))return;
  if(action==="publish"){
   const result=await db.rpc("publish_research_form",{p_form_id:formId,p_version_id:versionId,p_schema:schema});
   if(result.error)throw Error(result.error.message);
