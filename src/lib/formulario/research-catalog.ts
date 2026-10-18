@@ -90,3 +90,10 @@ export async function duplicateResearchForm(form:ResearchForm) {
  if(error)throw new Error(error.message);
  return data as string;
 }
+
+export function researchPublicUrl(code:string){
+ const configured=String(import.meta.env.VITE_PUBLIC_SITE_URL??"").trim().replace(/\/$/,"");
+ const current=typeof window==="undefined"?"":window.location.origin;
+ const base=configured||(current.includes("lovable")?"https://caronaa.com":current);
+ return base+researchPublicPath(code);
+}
