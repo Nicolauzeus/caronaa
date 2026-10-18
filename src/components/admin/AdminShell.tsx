@@ -122,6 +122,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Only the mobile drawer locks background scrolling.
+  // Desktop pages continue to use the natural document scroll.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [mobileOpen]);
   const [navQuery, setNavQuery] = useState("");
   const [profile, setProfile] = useState<AdminProfile | null>(null);
 
@@ -213,8 +222,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="admin-workspace min-h-screen bg-background">
-      <div className="mx-auto flex max-w-[1680px] gap-6 p-3 md:p-5 lg:p-6">
-        <aside className="hidden w-[240px] shrink-0 border-r border-border bg-background pr-5 py-3 lg:block">
+      <div className="mx-auto flex max-w-[1680px] items-start gap-6 p-3 md:p-5 lg:px-6 lg:py-0">
+        <aside className="hidden w-[240px] shrink-0 border-r border-border bg-background pr-5 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start lg:overflow-y-auto lg:overscroll-y-contain lg:py-6 lg:[scrollbar-width:thin]">
           <div className="mb-6 flex items-center justify-between gap-3">
             <Link to="/admin" className="inline-flex items-center gap-3">
               <img src={logoAsset.url} alt="CARONAA" className="h-11 w-auto object-contain" />
@@ -234,7 +243,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         </aside>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 lg:py-6">
           <header className="border-b border-border bg-background px-1 py-3 md:px-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-3">
@@ -309,8 +318,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm lg:hidden">
-          <div className="h-full overflow-y-auto w-[82%] max-w-xs border-r border-border bg-card p-4 shadow-soft">
+        <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm lg:hidden" role="presentation" onKeyDown={(event) => { if (event.key === "Escape") setMobileOpen(false); }}>
+          <div role="dialog" aria-modal="true" aria-label="Menu administrativo" className="h-dvh w-[82%] max-w-xs overflow-y-auto overscroll-y-contain border-r border-border bg-card p-4 shadow-soft [scrollbar-width:thin]">
             <div className="mb-5 flex items-center justify-between">
               <Link
                 to="/admin"
