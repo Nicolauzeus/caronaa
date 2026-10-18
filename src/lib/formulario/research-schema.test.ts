@@ -33,6 +33,28 @@ describe("Research builder",()=>{
   expect(validatePage(section,{r:["A","A"],m:["Custo::Bom"],c:"invalido"})).toHaveLength(3);
   expect(validatePage(section,{r:["A","B"],m:["Custo::Bom","Segurança::Ruim"],c:"a@b.com"})).toEqual([]);
  });
+ it("accepts valid 24-hour time and rejects invalid clock times",()=>{
+  const section={title:"Horários",questions:[{id:"arrival",label:"Horário de chegada",type:"time" as const,required:true,options:[]}]};
+  expect(validatePage(section,{arrival:"17:30"})).toEqual([]);
+  expect(validatePage(section,{arrival:"12:00"})).toEqual([]);
+  expect(validatePage(section,{arrival:"25:30"})).not.toEqual([]);
+ });
+ it("blocks impossible days, negative fare and trip duration in legacy schemas",()=>{
+  const section={title:"Rotina",questions:[
+   {id:"days",label:"Dias por semana",type:"number" as const,required:true,options:[]},
+   {id:"time",label:"Duração em minutos",type:"number" as const,required:true,options:[]},
+   {id:"cost",label:"Valor em reais",type:"number" as const,required:true,options:[]}
+  ]};
+  expect(validatePage(section,{days:"47",time:"-28",cost:"-31"})).toHaveLength(3);
+  expect(validatePage(section,{days:"7.5",time:"15",cost:"3"})).toHaveLength(1);
+  expect(validatePage(section,{days:"5",time:"15",cost:"3"})).toEqual([]);
+ });
+ it("validates configured number limits instead of relying on question wording",()=>{
+  const section={title:"Teste",questions:[{id:"capacity",label:"Número de convidados",type:"number" as const,required:true,options:[],minValue:1,maxValue:4,integerOnly:true}]};
+  expect(validatePage(section,{capacity:"5"})).not.toEqual([]);
+  expect(validatePage(section,{capacity:"2.5"})).not.toEqual([]);
+  expect(validatePage(section,{capacity:"3"})).toEqual([]);
+ });
  it("omits optional empty answers in persistence",()=>{
   const section={title:"Teste",questions:[{id:"optional",label:"Comentário opcional",type:"short_text" as const,required:false,options:[]}]};
   expect(cleanAnswers({sections:[section]},{optional:""})).toEqual({});
