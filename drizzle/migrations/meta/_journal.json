@@ -652,6 +652,13 @@
       "when": 1792353006000,
       "tag": "0092_research_publication_and_safe_removal",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1792353008000,
+      "tag": "0093_research_smart_validation_participation_badges",
+      "breakpoints": true
     }
   ]
 }
