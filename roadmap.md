@@ -1,3 +1,4 @@
+- [ ] Repair public research deep links; verify anonymous direct access, refresh, submission, disabled forms and app guards without production publishing or historical mutations.
 - [x] Rebuild the sign-in screen from the supplied visual reference.
 - [x] Add persistent light and dark modes across the app and admin area.
 - [x] Verify administrator access uses the secure database role.
