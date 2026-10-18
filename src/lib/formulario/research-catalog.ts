@@ -68,6 +68,24 @@ export async function deleteEmptyDraft(form:ResearchForm){
  if(data!==true)throw new Error("Não foi possível excluir o rascunho.");
 }
 
+export type ResearchRemovalEligibility={
+ code:string;status:string;answers:number;legacy_submissions:number;crm_leads:number;partner_pilots:number;can_delete:boolean;
+};
+
+export async function getResearchFormRemovalEligibility(id:string):Promise<ResearchRemovalEligibility>{
+ const {data,error}=await db.rpc("get_research_form_removal_eligibility",{p_form_id:id});
+ if(error)throw new Error("Não foi possível consultar os vínculos da pesquisa: "+error.message);
+ if(!data||typeof data.can_delete!=="boolean")throw new Error("Verificação de exclusão indisponível.");
+ return data as ResearchRemovalEligibility;
+}
+
+export async function deleteUnansweredResearchForm(form:ResearchForm,confirmationCode:string){
+ if(form.code!==confirmationCode)throw new Error("O código de confirmação está diferente do código da pesquisa.");
+ const {data,error}=await db.rpc("delete_unanswered_research_form",{p_form_id:form.id,p_confirm_code:confirmationCode});
+ if(error)throw new Error(error.message);
+ if(data!==true)throw new Error("A exclusão não foi confirmada pelo servidor.");
+}
+
 export async function archiveResearchForm(form:ResearchForm) {
  if(form.status==="ENCERRADO")throw new Error("Pesquisa histórica encerrada deve permanecer protegida.");
  const {error}=await db.from("research_forms").update({status:"ARQUIVADO",is_enabled:false}).eq("id",form.id);
