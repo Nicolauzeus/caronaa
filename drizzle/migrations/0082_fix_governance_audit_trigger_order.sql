@@ -1,0 +1,47 @@
+-- Fix premature audit writes: FK parents must exist before history INSERT.
+-- Safe to rerun; keeps all existing business and historical records intact.
+CREATE OR REPLACE FUNCTION public.touch_governance_updated_at()
+RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
+BEGIN
+ NEW.updated_at=now();
+ RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.audit_tech_work_item()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF TG_OP='INSERT' THEN
+  INSERT INTO public.tech_work_item_events(item_id,actor_id,action,after_state)
+  VALUES(NEW.id,auth.uid(),'CREATE',to_jsonb(NEW));
+ ELSIF TG_OP='UPDATE' THEN
+  INSERT INTO public.tech_work_item_events(item_id,actor_id,action,before_state,after_state)
+  VALUES(NEW.id,auth.uid(),'UPDATE',to_jsonb(OLD),to_jsonb(NEW));
+ END IF;
+ RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS audit_tech_item_trigger ON public.tech_work_items;
+DROP TRIGGER IF EXISTS touch_tech_item_trigger ON public.tech_work_items;
+CREATE TRIGGER touch_tech_item_trigger BEFORE UPDATE ON public.tech_work_items
+ FOR EACH ROW EXECUTE FUNCTION public.touch_governance_updated_at();
+CREATE TRIGGER audit_tech_item_trigger AFTER INSERT OR UPDATE ON public.tech_work_items
+ FOR EACH ROW EXECUTE FUNCTION public.audit_tech_work_item();
+
+CREATE OR REPLACE FUNCTION public.audit_executive_record()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF TG_OP='INSERT' THEN
+  INSERT INTO public.executive_record_history(record_id,actor_id,action,after_state)
+  VALUES(NEW.id,auth.uid(),'CREATE',to_jsonb(NEW));
+ ELSIF TG_OP='UPDATE' THEN
+  INSERT INTO public.executive_record_history(record_id,actor_id,action,before_state,after_state)
+  VALUES(NEW.id,auth.uid(),'UPDATE',to_jsonb(OLD),to_jsonb(NEW));
+ END IF;
+ RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS executive_record_audit_trigger ON public.executive_records;
+DROP TRIGGER IF EXISTS touch_executive_record_trigger ON public.executive_records;
+CREATE TRIGGER touch_executive_record_trigger BEFORE UPDATE ON public.executive_records
+ FOR EACH ROW EXECUTE FUNCTION public.touch_governance_updated_at();
+CREATE TRIGGER executive_record_audit_trigger AFTER INSERT OR UPDATE ON public.executive_records
+ FOR EACH ROW EXECUTE FUNCTION public.audit_executive_record();
+NOTIFY pgrst,'reload schema';
