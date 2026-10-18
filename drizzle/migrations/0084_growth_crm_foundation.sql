@@ -1,0 +1,37 @@
+-- Growth CRM: institution/campaign management with private admin-only lead records.
+CREATE TABLE IF NOT EXISTS public.crm_campaigns (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ name text NOT NULL CHECK (length(btrim(name)) BETWEEN 3 AND 160),
+ code text NOT NULL UNIQUE CHECK(code ~ '^[a-z0-9][a-z0-9_-]{1,62}$'),
+ channel text NOT NULL DEFAULT 'OUTRO',
+ institution text,
+ status text NOT NULL DEFAULT 'RASCUNHO' CHECK(status IN ('RASCUNHO','ATIVA','PAUSADA','ENCERRADA')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ created_by uuid NOT NULL DEFAULT auth.uid()
+);
+CREATE TABLE IF NOT EXISTS public.crm_leads (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ display_name text NOT NULL CHECK(length(btrim(display_name)) BETWEEN 2 AND 160),
+ email text,
+ whatsapp text,
+ status text NOT NULL DEFAULT 'NOVO' CHECK(status IN ('NOVO','QUALIFICADO','CONTATADO','CONVERTIDO','DESCARTADO')),
+ source_form_id uuid REFERENCES public.research_forms(id) ON DELETE SET NULL,
+ campaign_id uuid REFERENCES public.crm_campaigns(id) ON DELETE SET NULL,
+ account_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+ notes text NOT NULL DEFAULT '',
+ contact_consent boolean NOT NULL DEFAULT false,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ created_by uuid NOT NULL DEFAULT auth.uid(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(email IS NOT NULL OR whatsapp IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS crm_leads_campaign_idx ON public.crm_leads(campaign_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS crm_leads_status_idx ON public.crm_leads(status,created_at DESC);
+ALTER TABLE public.crm_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crm_leads ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS crm_campaigns_admin ON public.crm_campaigns;
+CREATE POLICY crm_campaigns_admin ON public.crm_campaigns FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS crm_leads_admin ON public.crm_leads;
+CREATE POLICY crm_leads_admin ON public.crm_leads FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
+GRANT SELECT,INSERT,UPDATE ON public.crm_campaigns,public.crm_leads TO authenticated;
+NOTIFY pgrst,'reload schema';
