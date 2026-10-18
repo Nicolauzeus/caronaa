@@ -22,5 +22,5 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm test -- src/lib/formulario/research-templates.test.ts src/lib/formulario/research-schema.test.ts src/lib/formulario/research-branding.test.ts
+      - run: npm test -- src/lib/formulario/research-templates.test.ts src/lib/formulario/research-schema.test.ts src/lib/formulario/research-branding.test.ts src/lib/formulario/research-participation.test.ts
       - run: npm run build
