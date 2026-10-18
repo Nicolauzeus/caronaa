@@ -5,6 +5,13 @@
  * Legacy pain descriptions follow the CARONAA pain catalog.
  */
 export const RESEARCH_OPTION_LABELS:Record<string,string>={
+ CARONA_COMPARTILHADA:"Carona compartilhada no mesmo trajeto",
+ MOTOTAXI_REGULARIZADO:"Mototáxi profissional regularizado",
+ AMBAS_MODALIDADES:"Ambas, dependendo do trajeto",
+ NENHUMA:"Nenhuma dessas alternativas",
+ CONHECER_MELHOR:"Preciso conhecer melhor as opções",
+ DISPONIBILIDADE:"Disponibilidade no horário",
+ ESPERA:"Tempo de espera",
  DOR_01:"Dificuldade para encontrar transporte para meu trajeto",
  DOR_02:"Transporte lotado ou desconfortável",
  DOR_03:"Preço alto das opções de transporte",
