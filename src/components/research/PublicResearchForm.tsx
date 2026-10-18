@@ -24,6 +24,7 @@ import {
 } from "@/lib/formulario/research-configuration";
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
 import { ResearchInterestActivation } from "./ResearchInterestActivation";
+import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
 type Form = {
   id: string;
   version: string;
@@ -148,7 +149,11 @@ export function PublicResearchForm({ code }: { code: string }) {
   function next() {
     if (!form) return;
     const sec = form.schema.sections[step];
-    const problems = validatePage(sec, answers);
+    const problems = [
+      ...validatePage(sec, answers),
+      ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
+        ? validateUrbanUniversityAnswers(form.schema, answers) : []),
+    ];
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
       for (const q of sec.questions) {
@@ -178,7 +183,11 @@ export function PublicResearchForm({ code }: { code: string }) {
       return;
     }
     const cleaned = cleanAnswers(form.schema, answers);
-    const problems = form.schema.sections.flatMap((section) => validatePage(section, cleaned));
+    const problems = [
+      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned)),
+      ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
+        ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
+    ];
     if (problems.length) {
       setError(problems[0]);
       return;
@@ -352,6 +361,12 @@ export function PublicResearchForm({ code }: { code: string }) {
         alt={form.brandAlt}
         brandName={form.brandName}
       />
+      {form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
+        <section aria-label="Apresentação da pesquisa" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade</p>
+          <p className="text-sm leading-6">{urbanUniversityIntro(form.configuration.settings)}</p>
+        </section>
+      )}
       {form.configuration && (
         <div className="space-y-2 border-y py-3">
           <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>

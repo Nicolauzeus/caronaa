@@ -31,7 +31,8 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-      - run: npm ci
+      # Keep in sync with CARONAA Quality until the existing lockfile drift is fixed.
+      - run: npm install --no-audit --no-fund
       - run: npm test -- src/lib/formulario src/test/research-infrastructure.test.tsx
       - run: npx tsc --noEmit
       - name: Install ephemeral PostgreSQL test tools
