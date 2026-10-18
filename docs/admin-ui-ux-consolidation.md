@@ -13,6 +13,7 @@ A nine-department, mobile-first enterprise Admin without duplicated navigation c
 - Removed duplicative operation navigation cards and redundant Quick Actions from main dashboard.
 - Compact, dense record lists replacing repetitive card grids for CRM, partnership, support, compliance, executive and technology.
 - Form library: secondary edit/archive/delete actions collapsed behind an accessible disclosure; primary action stays visible.
+- All new-record forms in CRM, Partnerships, Safety, Compliance, Technology and Executive are collapsed by default under explicit create controls.
 - Research mobility dimensions: choose one of eight dimensions and render a unified chart instead of eight card panels.
 - Methodology: collapsible definitions rather than explanatory cards.
 
