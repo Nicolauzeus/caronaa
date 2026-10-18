@@ -1,5 +1,5 @@
 export type SurveyQuestionType = "short_text"|"long_text"|"single_choice"|"multiple_choice"|"number"|"rating_1_5"|"rating_0_10"|"date"|"time"|"yes_no"|"rating_stars"|"money_range"|"location"|"ranking"|"matrix"|"contact";
-export type SurveyQuestion = {id:string;label:string;type:SurveyQuestionType;required:boolean;options:string[];showWhen?:{questionId:string;equals:string};semanticCode?:string;helpText?:string;rows?:string[]};
+export type SurveyQuestion = {id:string;label:string;type:SurveyQuestionType;required:boolean;options:string[];showWhen?:{questionId:string;equals:string};semanticCode?:string;helpText?:string;rows?:string[];minValue?:number;maxValue?:number;integerOnly?:boolean};
 export type SurveySection={title:string;questions:SurveyQuestion[];id?:string;description?:string};
 export type SurveySchema={sections:SurveySection[]};
 export type ResearchTemplate={key:string;nature:string;label:string;description:string;estimatedMinutes:number;schema:SurveySchema};
@@ -64,7 +64,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "TRAVEL_TIME"
+              "semanticCode": "TRAVEL_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "cost",
@@ -72,7 +75,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "COST_PER_TRIP"
+              "semanticCode": "COST_PER_TRIP",
+              "minValue": 0,
+              "maxValue": 10000,
+              "integerOnly": false
             },
             {
               "id": "difficulties",
@@ -202,7 +208,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "WAIT_TIME"
+              "semanticCode": "WAIT_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "safety",
@@ -341,7 +350,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "label": "Quantas pessoas se deslocam com você?",
               "type": "number",
               "required": false,
-              "options": []
+              "options": [],
+              "minValue": 1,
+              "maxValue": 50,
+              "integerOnly": true
             },
             {
               "id": "needs",
@@ -439,7 +451,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": true,
               "options": [],
-              "semanticCode": "CAMPUS_DAYS"
+              "semanticCode": "CAMPUS_DAYS",
+              "minValue": 0,
+              "maxValue": 7,
+              "integerOnly": true
             },
             {
               "id": "arrival",
@@ -461,7 +476,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "TRAVEL_TIME"
+              "semanticCode": "TRAVEL_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "cost",
@@ -469,7 +487,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "COST_PER_TRIP"
+              "semanticCode": "COST_PER_TRIP",
+              "minValue": 0,
+              "maxValue": 10000,
+              "integerOnly": false
             }
           ]
         },
@@ -610,7 +631,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "label": "Dias de presença por semana",
               "type": "number",
               "required": false,
-              "options": []
+              "options": [],
+              "minValue": 0,
+              "maxValue": 7,
+              "integerOnly": true
             },
             {
               "id": "work_shift",
@@ -630,7 +654,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "TRAVEL_TIME"
+              "semanticCode": "TRAVEL_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "cost",
@@ -638,7 +665,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "COST_PER_TRIP"
+              "semanticCode": "COST_PER_TRIP",
+              "minValue": 0,
+              "maxValue": 10000,
+              "integerOnly": false
             }
           ]
         },
@@ -779,7 +809,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "WAIT_TIME"
+              "semanticCode": "WAIT_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "difficulties",
@@ -909,7 +942,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "TRAVEL_TIME"
+              "semanticCode": "TRAVEL_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "cost",
@@ -917,14 +953,20 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "COST_PER_TRIP"
+              "semanticCode": "COST_PER_TRIP",
+              "minValue": 0,
+              "maxValue": 10000,
+              "integerOnly": false
             },
             {
               "id": "frequency",
               "label": "Dias trabalhados por semana",
               "type": "number",
               "required": false,
-              "options": []
+              "options": [],
+              "minValue": 0,
+              "maxValue": 7,
+              "integerOnly": true
             },
             {
               "id": "arrive",
@@ -1047,7 +1089,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "SEATS_AVAILABLE"
+              "semanticCode": "SEATS_AVAILABLE",
+              "minValue": 0,
+              "maxValue": 8,
+              "integerOnly": true
             },
             {
               "id": "cost",
@@ -1055,7 +1100,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "COST_PER_TRIP"
+              "semanticCode": "COST_PER_TRIP",
+              "minValue": 0,
+              "maxValue": 10000,
+              "integerOnly": false
             },
             {
               "id": "time",
@@ -1063,7 +1111,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "TRAVEL_TIME"
+              "semanticCode": "TRAVEL_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             }
           ]
         },
@@ -1336,7 +1387,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "WAIT_TIME"
+              "semanticCode": "WAIT_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "time",
@@ -1344,7 +1398,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "TRAVEL_TIME"
+              "semanticCode": "TRAVEL_TIME",
+              "minValue": 0,
+              "maxValue": 1440,
+              "integerOnly": true
             },
             {
               "id": "cost",
@@ -1352,7 +1409,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "type": "number",
               "required": false,
               "options": [],
-              "semanticCode": "COST_PER_TRIP"
+              "semanticCode": "COST_PER_TRIP",
+              "minValue": 0,
+              "maxValue": 10000,
+              "integerOnly": false
             }
           ]
         },
@@ -1423,7 +1483,10 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
               "label": "População estimada atendida",
               "type": "number",
               "required": false,
-              "options": []
+              "options": [],
+              "minValue": 0,
+              "maxValue": 100000000,
+              "integerOnly": true
             },
             {
               "id": "categories",
