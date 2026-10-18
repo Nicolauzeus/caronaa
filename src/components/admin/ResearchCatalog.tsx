@@ -7,7 +7,7 @@ import { ResearchInsights } from "@/components/admin/ResearchInsights";
 import { ResearchFormEditor } from "@/components/admin/ResearchFormEditor";
 import { ResearchFormRemovalDialog } from "@/components/admin/ResearchFormRemovalDialog";
 import { useEffect, useState, type FormEvent } from "react";
-import { createResearchForm, archiveResearchForm, restoreResearchForm, duplicateResearchForm, renameResearchForm, deleteEmptyDraft, setResearchFormEnabled, researchPublicPath, researchPublicUrl, listResearchForms, RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
+import { createResearchForm, archiveResearchForm, restoreResearchForm, duplicateResearchForm, renameResearchForm, setResearchFormEnabled, researchPublicPath, researchPublicUrl, listResearchForms, RESEARCH_NATURES, type ResearchForm } from "@/lib/formulario/research-catalog";
 export function ResearchCatalog() {
  const [selected,setSelected]=useState<string|null>(null);
  const [removing,setRemoving]=useState<ResearchForm|null>(null);
@@ -16,7 +16,7 @@ export function ResearchCatalog() {
  const [managing,setManaging]=useState<string|null>(null);
  async function saveTitle(form:ResearchForm){setManaging(form.id);try{await renameResearchForm(form.id,renameTitle);setRenaming(null);await refresh()}catch(e){setError(e instanceof Error?e.message:"Falha ao atualizar título")}finally{setManaging(null)}}
  async function performAction(form:ResearchForm,action:"duplicate"|"archive"|"restore"){if(action==="archive"&&!window.confirm('Arquivar "'+form.title+'"? O link público será desativado.'))return;setManaging(form.id);try{if(action==="duplicate")await duplicateResearchForm(form);else if(action==="archive")await archiveResearchForm(form);else await restoreResearchForm(form);await refresh()}catch(e){setError(e instanceof Error?e.message:"Falha na operação")}finally{setManaging(null)}}
- async function deleteDraft(form:ResearchForm){if(!window.confirm(`Excluir permanentemente o rascunho "${form.title}"? Esta ação não pode ser desfeita.`))return;setManaging(form.id);try{await deleteEmptyDraft(form);await refresh()}catch(e){setError(e instanceof Error?e.message:"Falha ao excluir formulário")}finally{setManaging(null)}}
+
  const [tab,setTab]=useState<"pesquisas"|"inteligencia"|"comparacoes"|"municipios">("pesquisas");
  const [search,setSearch]=useState("");
  const [natureFilter,setNatureFilter]=useState("ALL");
