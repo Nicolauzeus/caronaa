@@ -1,0 +1,43 @@
+-- Compliance registry: metadata only, no sensitive attachments.
+CREATE TABLE IF NOT EXISTS public.compliance_records (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ kind text NOT NULL CHECK(kind IN ('CONTRATO','POLITICA','REGULACAO','RISCO','SOLICITACAO_TITULAR')),
+ title text NOT NULL CHECK(length(btrim(title)) BETWEEN 3 AND 180),
+ description text NOT NULL DEFAULT '',
+ status text NOT NULL DEFAULT 'ABERTO' CHECK(status IN ('ABERTO','EM_ANALISE','AGUARDANDO','CONCLUIDO','ARQUIVADO')),
+ municipality text,
+ due_date date,
+ version_label text,
+ reference_url text CHECK(reference_url IS NULL OR reference_url ~ '^https://'),
+ created_by uuid NOT NULL DEFAULT auth.uid(),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.compliance_record_events(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ record_id uuid NOT NULL REFERENCES public.compliance_records(id),
+ actor_id uuid,
+ previous_status text,
+ new_status text NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.compliance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.compliance_record_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY compliance_admin_read ON public.compliance_records FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+CREATE POLICY compliance_admin_insert ON public.compliance_records FOR INSERT TO authenticated WITH CHECK(public.has_role(auth.uid(),'admin') AND created_by=auth.uid());
+CREATE POLICY compliance_admin_update ON public.compliance_records FOR UPDATE TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
+CREATE POLICY compliance_events_admin_read ON public.compliance_record_events FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+CREATE OR REPLACE FUNCTION public.compliance_touch() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
+BEGIN NEW.updated_at=now(); RETURN NEW; END $$;
+CREATE OR REPLACE FUNCTION public.compliance_audit() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF TG_OP='INSERT' OR NEW.status IS DISTINCT FROM OLD.status THEN
+ INSERT INTO public.compliance_record_events(record_id,actor_id,previous_status,new_status)
+ VALUES(NEW.id,auth.uid(),CASE WHEN TG_OP='INSERT' THEN NULL ELSE OLD.status END,NEW.status);
+ END IF; RETURN NULL;
+END $$;
+CREATE TRIGGER compliance_touch_trigger BEFORE UPDATE ON public.compliance_records FOR EACH ROW EXECUTE FUNCTION public.compliance_touch();
+CREATE TRIGGER compliance_audit_trigger AFTER INSERT OR UPDATE ON public.compliance_records FOR EACH ROW EXECUTE FUNCTION public.compliance_audit();
+GRANT SELECT,INSERT,UPDATE ON public.compliance_records TO authenticated;
+GRANT SELECT ON public.compliance_record_events TO authenticated;
+NOTIFY pgrst,'reload schema';
