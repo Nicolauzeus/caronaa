@@ -40,8 +40,8 @@ export const urbanUniversityTemplate: ResearchTemplate = {
         title: "Oferta de caronas e confiança",
         description: "Mesmo que só queira pegar carona, sua opinião nos ajuda a validar a proposta.",
         questions: [
-          { id: "urban_offer_possible", label: "Você poderia oferecer lugares em um trajeto que já realiza?", type: "yes_no", required: true,
-            options: [], semanticCode: "RIDE_OFFER_INTENT" },
+          { id: "urban_offer_possible", label: "Você poderia oferecer lugares em um trajeto que já realiza?", type: "single_choice", required: true,
+            options: ["SIM","NAO"], semanticCode: "URBAN_OFFER_POSSIBLE" },
           { id: "urban_offer_vehicle", label: "Qual veículo usaria para oferecer carona?", type: "single_choice", required: true,
             options: ["CARRO","MOTO"], showWhen: { questionId: "urban_offer_possible", equals: "SIM" }, semanticCode: "URBAN_OFFER_VEHICLE" },
           { id: "urban_seats", label: "Quantos lugares para passageiros teria disponíveis?", type: "number", required: true,
