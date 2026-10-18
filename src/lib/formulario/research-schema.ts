@@ -21,6 +21,10 @@ export function inspectSchema(schema:SurveySchema):string[]{
    if(ids.has(q.id))errors.push(name+": identificador duplicado.");
    ids.add(q.id);
    if(q.label.trim().length<3)errors.push(name+": enunciado muito curto.");
+   if(q.type==="number"){
+    const bounds=getNumberBounds(q);
+    if(!Number.isFinite(bounds.min)||!Number.isFinite(bounds.max)||bounds.min>bounds.max)errors.push(name+": limites numéricos inválidos.");
+   }
    if(["single_choice","multiple_choice","ranking","money_range","matrix"].includes(q.type)){
     const options=q.options.map(x=>x.trim()).filter(Boolean);
     if(options.length<2||new Set(options).size!==options.length)errors.push(name+": alternativas insuficientes ou duplicadas.");
