@@ -67,8 +67,8 @@ export const DEPARTMENTS:readonly Department[]=[
  planned("verification","Verificações","Critérios de segurança de profissionais.")
  ]},
  {id:"finance",name:"Financeiro e Administrativo",shortName:"Financeiro",mission:"Controlar receitas, pagamentos, repasses e despesas.",ownerRole:"Gestão financeira",categories:[
- planned("overview","Visão financeira","Indicadores apenas de transações reconciliadas."),
- planned("transactions","Transações","Pagamentos e respectivas situações."),
+ existing("overview","Visão financeira","Painel de transações confirmadas e pendentes.","/admin/financeiro"),
+ existing("transactions","Transações","Consulta de pagamentos por status e provedor.","/admin/financeiro"),
  planned("payouts","Repasses e conciliação","Liquidação, taxas e conferência."),
  planned("budget","Orçamento e despesas","Planejamento e acompanhamento financeiro.")
  ]},
