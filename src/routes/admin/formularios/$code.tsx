@@ -9,6 +9,7 @@ import { researchPublicUrl } from "@/lib/formulario/research-catalog";
 import { ResearchShare } from "@/components/admin/ResearchShare";
 import { ResearchBrandHeader } from "@/components/research/ResearchFields";
 import { ResearchBrandManager } from "@/components/admin/ResearchBrandManager";
+import { ResearchConfigurationManager } from "@/components/admin/ResearchConfigurationManager";
 import { ResearchFormRemovalDialog } from "@/components/admin/ResearchFormRemovalDialog";
 import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -84,13 +85,8 @@ function ResearchDetail() {
         form && (form.trashed_at ? (
           <section role="status" className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
             <h1 className="text-xl font-bold">Pesquisa na lixeira</h1>
-            <p className="text-sm text-muted-foreground">
-              {form.title} · {form.code} está fora da biblioteca e não recebe novas respostas.
-              Para editar, consultar ou compartilhar novamente, restaure a pesquisa na Central de Pesquisas.
-            </p>
-            <Link to="/admin/formularios" className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-              Abrir Central de Pesquisas e Lixeira
-            </Link>
+            <p className="text-sm text-muted-foreground">Esta pesquisa foi removida da biblioteca e não pode receber respostas. Restaure-a pela Central de Pesquisas antes de editar ou publicar.</p>
+            <Link to="/admin/formularios" className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Ir à Central de Pesquisas</Link>
           </section>
         ) : (
           <>
@@ -207,6 +203,7 @@ function ResearchDetail() {
               </TabsContent>
               <TabsContent value="config">
                 <div className="space-y-4">
+                  {form.status !== "ENCERRADO" && <ResearchConfigurationManager formId={form.id} />}
                   <ResearchBrandManager
                     form={form}
                     onSaved={(updated) =>

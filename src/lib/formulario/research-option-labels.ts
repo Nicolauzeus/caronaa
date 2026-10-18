@@ -72,7 +72,25 @@ export const RESEARCH_OPTION_LABELS:Record<string,string>={
  PARCIAL:"Parcialmente",
  EQUIPE:"Equipe",
  CARRO:"Carro",
- ESCALA:"Escala de trabalho"
+ ESCALA:"Escala de trabalho",
+ COLABORADOR:"Colaborador(a)",
+ PEGAR:"Quero pegar carona",
+ OFERECER:"Posso oferecer carona",
+ AMBOS:"Quero pegar ou oferecer carona",
+ CONHECER:"Quero apenas conhecer",
+ CERTEZA:"Com certeza",
+ PROVAVELMENTE:"Provavelmente",
+ PROVAVELMENTE_NAO:"Provavelmente não",
+ PREVISIBILIDADE:"Ter previsibilidade do trajeto",
+ DIVIDIR_DESPESAS:"Dividir despesas do trajeto",
+ AJUDAR:"Ajudar alguém que faz o mesmo caminho",
+ PRATICIDADE:"Praticidade",
+ ATE_5:"Até R$ 5",
+ DE_5_A_10:"De R$ 5 a R$ 10",
+ DE_10_A_15:"De R$ 10 a R$ 15",
+ DE_15_A_20:"De R$ 15 a R$ 20",
+ ACIMA_20:"Acima de R$ 20",
+ DEPENDE_DA_ROTA:"Depende da rota"
 };
 
 /** Safe fallback for administrator-authored options that have no dictionary entry. */

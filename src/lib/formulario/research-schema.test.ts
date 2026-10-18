@@ -3,7 +3,9 @@ import {RESEARCH_TEMPLATES} from "./research-templates";
 import {inspectSchema,reorder,cleanAnswers,cloneQuestion,validatePage,scheduleWarning} from "./research-schema";
 describe("Research builder",()=>{
  it("ships useful valid templates for five natures",()=>{
-  expect(RESEARCH_TEMPLATES).toHaveLength(13);
+  expect(RESEARCH_TEMPLATES.length).toBeGreaterThanOrEqual(14);
+  expect(new Set(RESEARCH_TEMPLATES.map(t=>t.key)).size).toBe(RESEARCH_TEMPLATES.length);
+  expect(RESEARCH_TEMPLATES.some(t=>t.key==="UNIVERSIDADE_URBANA_CARONAA" && t.nature==="EDUCACAO")).toBe(true);
   expect(new Set(RESEARCH_TEMPLATES.map(t=>t.nature)).size).toBe(5);
   for(const t of RESEARCH_TEMPLATES)expect(inspectSchema(t.schema)).toEqual([]);
  });
