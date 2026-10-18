@@ -1,14 +1,13 @@
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import {
   Activity,
-  ArrowRight,
   CheckCircle2,
   FileText,
   Gauge,
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
