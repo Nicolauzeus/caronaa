@@ -19,6 +19,9 @@ export type ResearchForm = {
   status: string;
   is_enabled: boolean;
   municipality: string | null;
+  brand_image_path?:string|null;
+  brand_image_alt?:string|null;
+  brand_display_name?:string|null;
   created_at: string;
 };
 
