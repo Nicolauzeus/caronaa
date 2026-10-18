@@ -44,7 +44,7 @@ export function isVisible(q:SurveyQuestion,answers:Answers):boolean{
 }
 export function cleanAnswers(schema:SurveySchema,answers:Answers):Answers{
  const result:Answers={};
- for(const section of schema.sections)for(const q of section.questions)if(isVisible(q,answers)&&answers[q.id]!==undefined)result[q.id]=answers[q.id];
+ for(const section of schema.sections)for(const q of section.questions)if(isVisible(q,answers)&&answers[q.id]!==undefined&&answers[q.id]!==""&&!(Array.isArray(answers[q.id])&&answers[q.id].length===0))result[q.id]=answers[q.id];
  return result;
 }
 export function validatePage(section:SurveySection,answers:Answers):string[]{
@@ -61,7 +61,9 @@ export function validatePage(section:SurveySection,answers:Answers):string[]{
   if(q.type==="money_range"&&!q.options.includes(String(value)))return ["Escolha uma faixa válida: "+q.label];
   if(q.type==="ranking"&&(!Array.isArray(value)||value.length!==q.options.length||new Set(value).size!==value.length||value.some(x=>!q.options.includes(x))))return ["Ordenação incompleta: "+q.label];
   if(q.type==="matrix"&&(!Array.isArray(value)||value.length!==(q.rows?.length??0)||value.some(x=>{const parts=x.split("::");return parts.length!==2||!q.rows?.includes(parts[0])||!q.options.includes(parts[1])})))return ["Complete a matriz: "+q.label];
-  if(q.type==="contact"&&!Array.isArray(value)&&String(value).length>180)return ["Contato muito longo: "+q.label];
+  if(q.type==="contact"&&(Array.isArray(value)||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(value))||String(value).length>180))return ["E-mail inválido: "+q.label];
+  if(q.type==="date"&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value)))return ["Data inválida: "+q.label];
+  if(q.type==="time"&&!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(value)))return ["Horário inválido: "+q.label];
   return [];
  });
 }
