@@ -2,6 +2,7 @@ import {createFileRoute,Link} from "@tanstack/react-router";
 import {useEffect,useMemo,useState} from "react";
 import {getOperationalMetrics,type OperationalMetrics} from "@/lib/operational-metrics";
 import {BarChart,Bar,ResponsiveContainer,XAxis,YAxis,CartesianGrid,Tooltip} from "recharts";
+import {ProfessionalLiveMonitor} from "@/components/admin/ProfessionalLiveMonitor";
 
 export const Route=createFileRoute("/admin/operacoes")({component:MobilityOperationsCenter});
 const destinations=[
@@ -45,6 +46,7 @@ function MobilityOperationsCenter(){
  ["Tempo médio até o match",metrics?.match.averageMinutesToMatch," min"]
  ].map(([label,value,suffix])=><div key={String(label)} className="flex justify-between gap-3 border-b pb-3"><dt className="text-muted-foreground">{label}</dt><dd className="font-bold">{pending?"…":display(value as number|null|undefined,String(suffix))}</dd></div>)}</dl><p className="text-xs text-muted-foreground">Taxas calculadas pela fonte de métricas operacionais. N/D indica ausência de medição válida.</p></div></section>
  <section className="space-y-3"><h2 className="text-xl font-bold">Gestão das operações</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{destinations.map(d=><Link key={d.url} to={d.url} className="rounded-xl border bg-card p-4 transition-colors hover:border-primary"><h3 className="font-bold">{d.name} →</h3><p className="mt-2 text-sm text-muted-foreground">{d.description}</p></Link>)}</div></section>
+ <ProfessionalLiveMonitor/>
  <section className="rounded-xl border bg-secondary/20 p-4"><h2 className="font-bold">Mobilidade profissional local</h2><p className="mt-2 text-sm text-muted-foreground">Monitoramento de profissionais online, despacho em tempo real e operações municipais permanecem planejados até a validação da modalidade e das fontes operacionais. Nenhuma chamada ou corrida é simulada.</p></section>
  </main>
 }
