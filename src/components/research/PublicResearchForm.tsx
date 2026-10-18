@@ -25,6 +25,7 @@ import {
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
 import { ResearchInterestActivation } from "./ResearchInterestActivation";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
+import { REGIONAL_UNIVERSITY_KEY, regionalUniversityIntro, validateRegionalUniversityAnswers } from "@/lib/formulario/regional-university";
 type Form = {
   id: string;
   version: string;
@@ -153,6 +154,8 @@ export function PublicResearchForm({ code }: { code: string }) {
       ...validatePage(sec, answers),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
+      ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
+        ? validateRegionalUniversityAnswers(form.schema, answers) : []),
     ];
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
@@ -187,6 +190,8 @@ export function PublicResearchForm({ code }: { code: string }) {
       ...form.schema.sections.flatMap((section) => validatePage(section, cleaned)),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
+      ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
+        ? validateRegionalUniversityAnswers(form.schema, cleaned) : []),
     ];
     if (problems.length) {
       setError(problems[0]);
@@ -361,6 +366,15 @@ export function PublicResearchForm({ code }: { code: string }) {
         alt={form.brandAlt}
         brandName={form.brandName}
       />
+      {form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
+        <section aria-label="Apresentação da pesquisa regional" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade · Mobilidade regional</p>
+          <p className="text-sm leading-6">{regionalUniversityIntro(form.configuration.settings)}</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            A carona compartilhada não é mototáxi remunerado. Transporte profissional somente poderá ser oferecido mediante autorização, habilitação e parceria efetivamente verificadas.
+          </p>
+        </section>
+      )}
       {form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade</p>
