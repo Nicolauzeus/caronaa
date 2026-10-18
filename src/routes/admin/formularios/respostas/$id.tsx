@@ -87,17 +87,17 @@ function SurveyDetailPage() {
         </p>
         <h1 className="mt-2 font-display text-3xl font-extrabold">{response.nome}</h1>
         <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted-foreground">
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
+          <span className="rounded-md border border-[#B8860B]/25 bg-[#FFBB00]/10 px-2.5 py-1 font-semibold text-[#805900] dark:text-[#FFD166]">
             {response.tipo_usuario}
           </span>
-          <span className="rounded-full bg-secondary px-2.5 py-1">
+          <span className="rounded-md border border-border/70 bg-muted/60 px-2.5 py-1 text-foreground">
             {response.origem_trajeto ?? "Origem não informada"} → {response.destino_trajeto}
           </span>
-          <span className="rounded-full bg-secondary px-2.5 py-1">{response.source}</span>
+          <span className="rounded-md border border-border/70 bg-muted/60 px-2.5 py-1 text-foreground">{response.source}</span>
         </div>
       </div>
 
-      <Link to="/admin/formularios/respostas" className="text-sm text-primary">← Todas as respostas</Link>
+      <Link to="/admin/formularios/respostas" className="text-sm font-medium text-[#805900] hover:underline dark:text-[#FFD166]">← Todas as respostas</Link>
       <Tabs defaultValue="summary"><TabsList className="flex h-auto flex-wrap"><TabsTrigger value="summary">Resumo</TabsTrigger><TabsTrigger value="survey">Trajeto e pesquisa</TabsTrigger><TabsTrigger value="complete">Respostas completas</TabsTrigger></TabsList><TabsContent value="summary">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border border-border bg-card shadow-soft">
