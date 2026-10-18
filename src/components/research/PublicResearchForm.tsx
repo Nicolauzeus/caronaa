@@ -3,10 +3,11 @@ import {supabase} from "@/integrations/supabase/client";
 import type {SurveySchema} from "@/lib/formulario/research-templates";
 import {cleanAnswers,validatePage,type Answers} from "@/lib/formulario/research-schema";
 import {ResearchBrandHeader,ResearchSectionFields} from "@/components/research/ResearchFields";
+import {storePendingParticipation,claimResearchParticipation} from "@/lib/formulario/research-participation";
 type Form={id:string;version:string;title:string;schema:SurveySchema;brandImagePath:string|null;brandAlt:string|null;brandName:string|null};
 export function PublicResearchForm({code}:{code:string}){
  const [form,setForm]=useState<Form|null>(null),[answers,setAnswers]=useState<Answers>({}),[submissionKey]=useState(()=>crypto.randomUUID());
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false),[step,setStep]=useState(0);
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false),[step,setStep]=useState(0),[linking,setLinking]=useState(false),[linkError,setLinkError]=useState("");
  useEffect(()=>{let alive=true;void (async()=>{
   const {data:f,error:fe}=await (supabase as any).from("research_forms").select("id,title,brand_image_path,brand_image_alt,brand_display_name").ilike("code",code).eq("status","PUBLICADO").eq("is_enabled",true).maybeSingle();
   if(!alive)return;
@@ -29,7 +30,22 @@ export function PublicResearchForm({code}:{code:string}){
  }
  if(loading)return <main className="mx-auto max-w-xl p-6" role="status">Carregando pesquisa…</main>;
  if(!form)return <main className="mx-auto max-w-xl space-y-3 p-6" role="alert"><h1 className="text-2xl font-bold">Formulário indisponível</h1><p>{error}</p><button type="button" onClick={()=>window.location.reload()} className="rounded-lg border px-4 py-2">Tentar novamente</button><p className="text-sm text-muted-foreground">Não é necessário cadastro para responder.</p></main>;
- if(complete)return <main className="mx-auto max-w-xl space-y-4 p-6"><ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/><div className="rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Resposta registrada!</h2><p className="mt-2 text-sm text-muted-foreground">Sua participação foi concluída mesmo sem criar uma conta.</p></div><div className="space-y-3 rounded-xl border bg-card p-5"><h2 className="text-lg font-bold">Quer conhecer o CARONAA?</h2><p className="text-sm text-muted-foreground">Criar uma conta é opcional e independente do consentimento da pesquisa.</p><a className="block rounded-lg bg-primary px-4 py-3 text-center font-semibold text-primary-foreground" href={"/auth?mode=cadastro&redirect="+encodeURIComponent("/home")}>Criar minha conta</a><a className="block text-center text-sm text-muted-foreground" href="/home">Conhecer o aplicativo</a></div></main>;
+ if(complete)return <main className="mx-auto max-w-xl space-y-4 p-6">
+ <ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/>
+ <div className="rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Resposta registrada!</h2><p className="mt-2 text-sm text-muted-foreground">Sua participação está registrada. Não é obrigatório criar conta.</p></div>
+ <section className="space-y-3 rounded-xl border bg-card p-5">
+  <h2 className="text-lg font-bold">Vincular participação ao meu perfil</h2>
+  <p className="text-sm text-muted-foreground">Se deseja mostrar no seu perfil CARONAA que respondeu a esta pesquisa, pode associar a participação após confirmar seu e-mail. O selo indica <strong>participação no questionário</strong> — não comprova matrícula, presença no evento nem verificação de identidade.</p>
+  <button type="button" disabled={linking} onClick={()=>void linkParticipation()} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{linking?"Preparando vínculo…":"Vincular participação à minha conta"}</button>
+  {linkError&&<p role="alert" className="text-sm text-destructive">{linkError}</p>}
+  <details className="rounded-lg border p-3"><summary className="cursor-pointer text-sm font-semibold">Guardar recibo privado da participação</summary>
+   <p className="my-2 text-xs text-muted-foreground">Caso confirme sua conta em outro navegador, pode digitar este recibo em Meu perfil. Não compartilhe: ele permite vincular esta resposta a uma única conta.</p>
+   <code className="block break-all rounded-lg bg-muted p-2 text-xs">{submissionKey}</code>
+   <button type="button" onClick={()=>void navigator.clipboard.writeText(submissionKey)} className="mt-2 rounded-lg border px-3 py-2 text-sm">Copiar recibo</button>
+  </details>
+  <a className="block text-center text-sm text-muted-foreground" href="/home">Conhecer o CARONAA sem vincular</a>
+ </section>
+ </main>;
  const section=form.schema.sections[step],last=step===form.schema.sections.length-1;
  return <main className="mx-auto max-w-xl space-y-5 p-4 py-8 sm:p-8"><ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/>
  <div className="space-y-2" aria-label="Progresso da pesquisa"><div className="flex items-center justify-between text-xs text-muted-foreground"><span>Etapa {step+1} de {form.schema.sections.length}</span><span>{Math.round((step+1)/form.schema.sections.length*100)}% do questionário</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:(step+1)/form.schema.sections.length*100+"%"}}/></div></div>
