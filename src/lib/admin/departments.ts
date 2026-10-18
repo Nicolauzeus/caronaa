@@ -46,6 +46,7 @@ export const DEPARTMENTS:readonly Department[]=[
  planned("retention","Retenção","Segmentos e retenção comprovada.")
  ]},
  {id:"research",name:"Pesquisa e Inteligência de Mercado",shortName:"Pesquisa",mission:"Validar problemas de mobilidade com evidências confiáveis.",ownerRole:"Gestão de pesquisa",categories:[
+ existing("intelligence","Centro de Pesquisa e Validação","BI consolidado, comparações e metodologia.","/admin/inteligencia-pesquisa"),
  existing("forms","Central de Formulários","Biblioteca, publicação e análises de pesquisas.","/admin/formularios"),
  existing("answers","Respostas","Consulta de respostas históricas.","/admin/formularios/respostas"),
  existing("validation","Validação","Análise de hipóteses e dores.","/admin/validacao"),
