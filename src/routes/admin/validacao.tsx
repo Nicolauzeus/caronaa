@@ -1,7 +1,7 @@
 ﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertCircle, Download, Filter, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import {InsightChart} from "@/components/admin/InsightChart";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -646,27 +646,7 @@ function MarketValidationPage() {
       <section className="space-y-4">
         <SectionHeader title="Quem respondeu?" />
         <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-            <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Perfil
-            </h3>
-            <div className="mt-5 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={profiles} layout="vertical" margin={{ left: 20, right: 20 }}>
-                  <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                  <XAxis type="number" hide />
-                  <YAxis
-                    dataKey="label"
-                    type="category"
-                    width={92}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Bar dataKey="value" radius={[0, 6, 6, 0]} fill="hsl(var(--primary))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <InsightChart title="Perfis dos respondentes" rows={profiles.map(p=>({name:p.label,value:p.value}))} description="Distribuição de perfis nas respostas válidas; compare com o tamanho da amostra."/>
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
