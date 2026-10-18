@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/admin/departments";
+import { useAdminAccess, hasDepartmentAccess } from "@/lib/admin/access";
 import { getDepartmentHome, getDepartmentOfPath } from "@/lib/admin/module-navigation";
 import { AdminDepartmentTabs } from "@/components/admin/AdminDepartmentTabs";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -79,6 +80,7 @@ function AdminNav({
     select: (state) => state.location.pathname,
   });
   const activeDepartment = getDepartmentOfPath(pathname);
+  const scope = useAdminAccess();
 
   return (
     <nav className="space-y-6" aria-label="Navegação administrativa">
@@ -96,6 +98,9 @@ function AdminNav({
         .map((section) => ({
           ...section,
           items: section.items.filter((item) =>
+            (section.title !== "Painel" || scope.isGlobalAdmin) &&
+            (section.title !== "Departamentos" || DEPARTMENTS.some((dept) =>
+              getDepartmentHome(dept.id) === item.to && hasDepartmentAccess(scope, dept.id))) &&
             (item.label + " " + section.title)
               .toLocaleLowerCase("pt-BR")
               .includes(query.toLocaleLowerCase("pt-BR")),
@@ -179,6 +184,7 @@ function getInitials(name: string) {
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const scope = useAdminAccess();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -296,7 +302,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         >
           <div className="mb-6 flex items-center justify-between gap-3">
             {!collapsed && (
-              <Link to="/admin" className="inline-flex min-w-0 items-center gap-2">
+              <Link to={scope.isGlobalAdmin ? "/admin" : getDepartmentHome(scope.departments[0]?.id ?? "technology")} className="inline-flex min-w-0 items-center gap-2">
                 <img src={logoAsset.url} alt="CARONAA" className="h-auto w-28 object-contain" />
               </Link>
             )}
@@ -335,7 +341,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     aria-label="Caminho administrativo"
                     className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
                   >
-                    <Link to="/admin" className="font-medium hover:text-foreground">
+                    <Link to={scope.isGlobalAdmin ? "/admin" : getDepartmentHome(scope.departments[0]?.id ?? "technology")} className="font-medium hover:text-foreground">
                       Admin
                     </Link>
                     <ChevronRight size={14} aria-hidden="true" />
@@ -407,7 +413,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         >
           <div className="mb-5 flex items-center justify-between">
             <Link
-              to="/admin"
+              to={scope.isGlobalAdmin ? "/admin" : getDepartmentHome(scope.departments[0]?.id ?? "technology")}
               onClick={() => setMobileOpen(false)}
               className="font-display text-xl font-extrabold"
             >
