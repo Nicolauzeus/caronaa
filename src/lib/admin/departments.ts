@@ -73,10 +73,10 @@ export const DEPARTMENTS:readonly Department[]=[
  planned("budget","Orçamento e despesas","Planejamento e acompanhamento financeiro.")
  ]},
  {id:"compliance",name:"Jurídico, Compliance e Privacidade",shortName:"Compliance",mission:"Assegurar contratos, privacidade, auditoria e obrigações legais.",ownerRole:"Responsável jurídico e compliance",categories:[
- planned("contracts","Contratos","Acordos, versões e prazos."),
+ existing("contracts","Contratos","Controle de prazos, referências e situações.","/admin/compliance"),
  planned("privacy","Consentimentos e privacidade","Finalidades, consentimentos e direitos dos titulares."),
- planned("audit","Auditoria","Ações administrativas e trilha de alterações."),
- planned("regulation","Regulamentação","Requisitos por modalidade e município.")
+ existing("audit","Auditoria","Histórico de alterações de estados no banco.","/admin/compliance"),
+ existing("regulation","Regulamentação","Registro administrativo de requisitos e prazos.","/admin/compliance")
  ]}
 ] as const;
 export function getDepartment(id:string):Department|undefined{return DEPARTMENTS.find(d=>d.id===id)}
