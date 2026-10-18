@@ -100,10 +100,10 @@ describe("Modelo 02 — Universidade Regional", () => {
     const q = (code: string) => qs.find((it) => it.semanticCode === code)!.id;
     const base = { [q("REGIONAL_OFFER_POSSIBLE")]: "SIM" };
     expect(validateRegionalUniversityAnswers(schema, {
-      ...base, [q("REGIONAL_OFFER_VEHICLE")]: "MOTO", [q("SEATS_AVAILABLE")]: 2,
+      ...base, [q("REGIONAL_OFFER_VEHICLE")]: "MOTO", [q("SEATS_AVAILABLE")]: "2",
     }).join(" ")).toMatch(/um lugar/);
     expect(validateRegionalUniversityAnswers(schema, {
-      ...base, [q("REGIONAL_OFFER_VEHICLE")]: "CARRO", [q("SEATS_AVAILABLE")]: 3,
+      ...base, [q("REGIONAL_OFFER_VEHICLE")]: "CARRO", [q("SEATS_AVAILABLE")]: "3",
     })).toEqual([]);
   });
 
