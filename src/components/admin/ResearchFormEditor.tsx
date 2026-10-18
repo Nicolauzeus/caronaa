@@ -49,7 +49,7 @@ export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;o
  if(action==="publish"&&!window.confirm("Publicar e habilitar esta versão para respostas públicas? Depois da publicação, o questionário ficará protegido contra alterações; novas perguntas exigirão outra versão."))return;
  if(action==="publish"){
   const result=await db.rpc("publish_research_form",{p_form_id:formId,p_version_id:versionId,p_schema:schema});
-  if(result.error)throw Error(result.error.message);
+  if(result.error||result.data!==true)throw Error(result.error?.message??"O banco não confirmou a publicação. Verifique a versão e as permissões.");
   setPublished(true);onPublished?.();
  }else{
   const result=await db.from("research_form_versions").update({schema_json:schema}).eq("id",versionId).is("published_at",null).select("id").maybeSingle();
@@ -99,6 +99,6 @@ export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;o
  {!published&&<button className="rounded-lg border px-4 py-2 text-sm" onClick={()=>apply({sections:[...schema.sections,{id:crypto.randomUUID(),title:"Nova seção",questions:[]}]})}>+ Adicionar seção</button>}</div>}
  {!published&&!preview&&<div className="space-y-3 border-t pt-4"><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>void persist("save")} className="rounded-lg border px-4 py-2 font-medium">Salvar rascunho</button><button disabled={busy} onClick={()=>void persist("publish")} className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50">Revisar e publicar</button></div>
  {issues.length>0&&<details className="rounded-lg border border-amber-400/40 p-3 text-sm"><summary className="cursor-pointer font-semibold">Checklist: {issues.length} pendência(s)</summary><ul className="mt-2 list-disc pl-5">{issues.slice(0,15).map((issue,i)=><li key={i}>{issue}</li>)}</ul></details>}</div>}
- {published&&<button disabled={busy} onClick={()=>void newVersion()} className="rounded-lg border px-4 py-2 font-semibold">Criar nova versão editável</button>}
+ 
  </section>;
 }
