@@ -7,6 +7,7 @@ import {storePendingParticipation,claimResearchParticipation} from "@/lib/formul
 type Form={id:string;version:string;title:string;schema:SurveySchema;brandImagePath:string|null;brandAlt:string|null;brandName:string|null};
 export function PublicResearchForm({code}:{code:string}){
  const [form,setForm]=useState<Form|null>(null),[answers,setAnswers]=useState<Answers>({}),[submissionKey]=useState(()=>crypto.randomUUID());
+ const [fieldErrors,setFieldErrors]=useState<Record<string,string>>({});
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[complete,setComplete]=useState(false),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false),[step,setStep]=useState(0),[linking,setLinking]=useState(false),[linkError,setLinkError]=useState("");
  useEffect(()=>{let alive=true;void (async()=>{
   const {data:f,error:fe}=await (supabase as any).from("research_forms").select("id,title,brand_image_path,brand_image_alt,brand_display_name").ilike("code",code).eq("status","PUBLICADO").eq("is_enabled",true).maybeSingle();
@@ -17,7 +18,22 @@ export function PublicResearchForm({code}:{code:string}){
   if(ve||!v||!Array.isArray(v.schema_json?.sections)||!v.schema_json.sections.length){setError("Questionário indisponível. Entre em contato com o organizador.");setLoading(false);return}
   setForm({id:f.id,version:v.id,title:f.title,schema:v.schema_json,brandImagePath:f.brand_image_path,brandAlt:f.brand_image_alt,brandName:f.brand_display_name});setLoading(false);
  })();return()=>{alive=false}},[code]);
- function next(){if(!form)return;const problems=validatePage(form.schema.sections[step],answers);if(problems.length){setError(problems[0]);return}setError("");setStep(s=>Math.min(form.schema.sections.length-1,s+1))}
+ function next(){if(!form)return;
+  const sec=form.schema.sections[step];
+  const problems=validatePage(sec,answers);
+  if(problems.length){
+   const byQuestion:Record<string,string>={};
+   for(const q of sec.questions){
+    const errors=validatePage({title:sec.title,questions:[q]},answers);
+    if(errors.length)byQuestion[q.id]=errors[0];
+   }
+   setFieldErrors(byQuestion);setError(problems[0]);
+   const first=sec.questions.find(q=>byQuestion[q.id]);
+   if(first)requestAnimationFrame(()=>document.getElementById(first.id)?.scrollIntoView({block:"center",behavior:"smooth"}));
+   return;
+  }
+  setFieldErrors({});setError("");setStep(i=>Math.min(form.schema.sections.length-1,i+1));
+ }
  async function submit(e:FormEvent){e.preventDefault();if(!form||busy)return;if(step<form.schema.sections.length-1){next();return;}
  const problems=form.schema.sections.flatMap(section=>validatePage(section,answers));
  if(problems.length){setError(problems[0]);return}
@@ -63,10 +79,10 @@ export function PublicResearchForm({code}:{code:string}){
  const section=form.schema.sections[step],last=step===form.schema.sections.length-1;
  return <main className="mx-auto max-w-xl space-y-5 p-4 py-8 sm:p-8"><ResearchBrandHeader title={form.title} imagePath={form.brandImagePath} alt={form.brandAlt} brandName={form.brandName}/>
  <div className="space-y-2" aria-label="Progresso da pesquisa"><div className="flex items-center justify-between text-xs text-muted-foreground"><span>Etapa {step+1} de {form.schema.sections.length}</span><span>{Math.round((step+1)/form.schema.sections.length*100)}% do questionário</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:(step+1)/form.schema.sections.length*100+"%"}}/></div></div>
- <form onSubmit={submit} className="space-y-4"><section className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">{section.title}</h2>{section.description&&<p className="text-sm text-muted-foreground">{section.description}</p>}<ResearchSectionFields section={section} answers={answers} onChange={(id,value)=>{setAnswers(a=>({...a,[id]:value}));setError("")}}/></section>
+ <form onSubmit={submit} className="space-y-4"><section className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">{section.title}</h2>{section.description&&<p className="text-sm text-muted-foreground">{section.description}</p>}<ResearchSectionFields section={section} answers={answers} errors={fieldErrors} onChange={(id,value)=>{setAnswers(a=>({...a,[id]:value}));setFieldErrors(prev=>({...prev,[id]:""}));setError("")}}/></section>
  {last&&<label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm"><input type="checkbox" required checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-1"/><span>Concordo em participar desta pesquisa e autorizo o uso das respostas para análise de mobilidade, conforme o aviso de privacidade aplicável. Esse consentimento não autoriza automaticamente contatos comerciais.</span></label>}
  {error&&<p className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive" role="alert">{error}</p>}
- <div className="flex items-center justify-between gap-3"><button type="button" disabled={step===0||busy} onClick={()=>{setError("");setStep(s=>s-1)}} className="rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40">Anterior</button>
+ <div className="flex items-center justify-between gap-3"><button type="button" disabled={step===0||busy} onClick={()=>{setError("");setFieldErrors({});setStep(s=>s-1)}} className="rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40">Anterior</button>
  {last?<button type="submit" disabled={busy||!consent} className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{busy?"Enviando…":"Enviar respostas"}</button>:<button type="button" onClick={next} className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">Próxima etapa →</button>}</div></form>
  </main>;
 }
