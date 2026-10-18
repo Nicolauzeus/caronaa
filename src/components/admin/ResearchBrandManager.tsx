@@ -1,12 +1,11 @@
 import {useEffect,useRef,useState,type ChangeEvent} from "react";
 import {supabase} from "@/integrations/supabase/client";
+import {RESEARCH_BRAND_IMAGE_TYPES,validateResearchBrandImage} from "@/lib/formulario/research-branding";
 
 export type ResearchBrandForm={
  id:string;title:string;brand_image_path?:string|null;brand_image_alt?:string|null;brand_display_name?:string|null;
 };
 const BUCKET="research-branding";
-const ACCEPTED_TYPES:Record<string,string>={"image/png":"png","image/jpeg":"jpg","image/webp":"webp"};
-const MAX_FILE_BYTES=2*1024*1024;
 
 export function researchBrandUrl(path?:string|null){
  return path?supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl:null;
@@ -34,8 +33,9 @@ export function ResearchBrandManager({form,onSaved}:{form:ResearchBrandForm;onSa
   const next=event.target.files?.[0];event.target.value="";
   if(!next)return;
   setSuccess("");setError("");
-  if(!ACCEPTED_TYPES[next.type]||next.size>MAX_FILE_BYTES||next.size===0){
-   setError("Use PNG, JPG ou WebP com até 2 MB.");
+  const validationError=validateResearchBrandImage(next.type,next.size);
+  if(validationError){
+   setError(validationError);
    return;
   }
   setFile(next);setPath(null);setPreview(URL.createObjectURL(next));
@@ -50,8 +50,9 @@ export function ResearchBrandManager({form,onSaved}:{form:ResearchBrandForm;onSa
   let uploadedPath:string|null=null;
   try{
    if(file){
-    const ext=ACCEPTED_TYPES[file.type];
-    if(!ext||file.size>MAX_FILE_BYTES)throw Error("Imagem inválida. Escolha PNG, JPG ou WebP de até 2 MB.");
+    const ext=RESEARCH_BRAND_IMAGE_TYPES[file.type];
+    const validationError=validateResearchBrandImage(file.type,file.size);
+    if(validationError)throw Error(validationError);
     uploadedPath=form.id+"/"+crypto.randomUUID()+"."+ext;
     const {error:uploadError}=await supabase.storage.from(BUCKET).upload(uploadedPath,file,{contentType:file.type,upsert:false,cacheControl:"3600"});
     if(uploadError)throw Error("Falha ao enviar a imagem: "+uploadError.message);
