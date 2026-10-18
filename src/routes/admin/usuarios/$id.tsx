@@ -153,7 +153,7 @@ function UserDetailPage() {
               <h1 className="mt-2 truncate font-display text-3xl font-extrabold">{name}</h1>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-sm font-medium text-foreground">
+                <span className="rounded-md border border-border/70 bg-muted/60 px-2.5 py-1 text-sm font-medium text-foreground">
                   {getRoleLabel(user)}
                 </span>
 
@@ -162,7 +162,7 @@ function UserDetailPage() {
                     E-mail confirmado
                   </span>
                 ) : (
-                  <span className="rounded-full bg-secondary px-2.5 py-1 text-sm font-medium text-muted-foreground">
+                  <span className="rounded-md border border-border/70 bg-muted/60 px-2.5 py-1 text-sm font-medium text-muted-foreground">
                     E-mail não confirmado
                   </span>
                 )}
