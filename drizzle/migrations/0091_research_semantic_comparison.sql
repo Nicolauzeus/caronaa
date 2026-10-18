@@ -1,0 +1,29 @@
+-- 0091: safe comparable aggregate for explicitly tagged structured questions.
+-- Historical STS submissions are not automatically mapped to new semantics.
+CREATE OR REPLACE FUNCTION public.get_research_semantic_summary(p_form_id uuid)
+RETURNS TABLE(semantic_code text, category text, total bigint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  RAISE EXCEPTION 'Admin only' USING ERRCODE='42501';
+ END IF;
+ RETURN QUERY
+ SELECT q.question->>'semanticCode' AS semantic_code, val.answer AS category,count(*)::bigint AS total
+ FROM public.research_answers a
+ JOIN public.research_form_versions v ON v.id=a.version_id AND v.form_id=a.form_id
+ CROSS JOIN LATERAL jsonb_array_elements(coalesce(v.schema_json->'sections','[]'::jsonb)) AS sec(section)
+ CROSS JOIN LATERAL jsonb_array_elements(coalesce(sec.section->'questions','[]'::jsonb)) AS q(question)
+ CROSS JOIN LATERAL jsonb_array_elements_text(
+  CASE WHEN jsonb_typeof(a.answers->(q.question->>'id'))='array' THEN a.answers->(q.question->>'id')
+  ELSE jsonb_build_array(a.answers->(q.question->>'id')) END
+ ) AS val(answer)
+ WHERE a.form_id=p_form_id
+   AND coalesce(q.question->>'semanticCode','') ~ '^[A-Z0-9_]{3,60}$'
+   AND q.question->>'type' IN ('single_choice','multiple_choice','yes_no','rating_1_5','rating_0_10','rating_stars','money_range')
+   AND val.answer IS NOT NULL AND length(val.answer) BETWEEN 1 AND 120
+ GROUP BY q.question->>'semanticCode',val.answer
+ ORDER BY q.question->>'semanticCode',total DESC;
+END $$;
+REVOKE ALL ON FUNCTION public.get_research_semantic_summary(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_research_semantic_summary(uuid) TO authenticated;
+NOTIFY pgrst,'reload schema';
