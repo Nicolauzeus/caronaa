@@ -43,16 +43,20 @@ BEGIN
  IF jsonb_array_length(p_schema->'sections') NOT BETWEEN 1 AND 30 OR pg_column_size(p_schema)>262144 THEN RAISE EXCEPTION 'Invalid section count or payload'; END IF;
  FOR v_section IN SELECT value FROM jsonb_array_elements(p_schema->'sections') LOOP
    IF length(btrim(coalesce(v_section->>'title',''))) NOT BETWEEN 2 AND 180 THEN RAISE EXCEPTION 'Invalid section title'; END IF;
-   IF jsonb_typeof(v_section->'questions') <> 'array' THEN RAISE EXCEPTION 'Invalid questions array'; END IF;
+   IF jsonb_typeof(v_section->'questions') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Invalid questions array'; END IF;
+   IF jsonb_array_length(v_section->'questions') = 0 THEN RAISE EXCEPTION 'An empty section cannot be published'; END IF;
    FOR v_question IN SELECT value FROM jsonb_array_elements(v_section->'questions') LOOP
      v_id:=v_question->>'id';
      IF length(coalesce(v_id,'')) NOT BETWEEN 1 AND 100 OR length(btrim(coalesce(v_question->>'label',''))) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'Invalid question identifier or label'; END IF;
-     IF v_question->>'type' NOT IN ('short_text','long_text','single_choice','multiple_choice','number','rating_1_5','rating_0_10','date','time','yes_no','rating_stars','money_range','location','ranking','matrix','contact') THEN RAISE EXCEPTION 'Unsupported question type'; END IF;
+     IF coalesce(v_question->>'type','') NOT IN ('short_text','long_text','single_choice','multiple_choice','number','rating_1_5','rating_0_10','date','time','yes_no','rating_stars','money_range','location','ranking','matrix','contact') THEN RAISE EXCEPTION 'Unsupported question type'; END IF;
      IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_questions) previous WHERE previous->>'id'=v_id) THEN RAISE EXCEPTION 'Duplicate question identifier'; END IF;
      IF v_question->>'type' IN ('single_choice','multiple_choice','ranking','matrix','money_range') AND (
        jsonb_typeof(v_question->'options') IS DISTINCT FROM 'array' OR
        (CASE WHEN jsonb_typeof(v_question->'options')='array' THEN jsonb_array_length(v_question->'options') < 2 ELSE true END)
      ) THEN RAISE EXCEPTION 'Structured question requires at least two choices'; END IF;
+     IF v_question->>'type' IN ('single_choice','multiple_choice','ranking','matrix','money_range')
+       AND EXISTS(SELECT 1 FROM jsonb_array_elements_text(v_question->'options') x GROUP BY x.value HAVING count(*)>1 OR length(btrim(x.value))=0)
+     THEN RAISE EXCEPTION 'Duplicate or empty choice'; END IF;
      IF v_question->>'type'='matrix' AND (
        jsonb_typeof(v_question->'rows') IS DISTINCT FROM 'array' OR
        (CASE WHEN jsonb_typeof(v_question->'rows')='array' THEN jsonb_array_length(v_question->'rows') < 1 ELSE true END)
