@@ -3,7 +3,7 @@ import type {Answers} from "@/lib/formulario/research-schema";
 import {isVisible,getNumberBounds} from "@/lib/formulario/research-schema";
 import type {SurveySection} from "@/lib/formulario/research-templates";
 
-export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string}){
+export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={}}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>}){
  return <div className="space-y-5">{section.questions.filter(q=>isVisible(q,answers)).map(q=>{
   const id=idPrefix+q.id;
   const value=answers[q.id];
@@ -20,6 +20,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{se
   q.type==="matrix"?<div className="space-y-2">{(q.rows??[]).map(row=>{const found=Array.isArray(value)?value.find(x=>x.startsWith(row+"::")):undefined;return <label key={row} className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm"><span className="min-w-28 flex-1 font-medium">{row}</span><select value={found?.slice(row.length+2)??""} onChange={e=>{const current=Array.isArray(value)?value.filter(x=>!x.startsWith(row+"::")):[];select(e.target.value?[...current,row+"::"+e.target.value]:current)}} className="min-w-32 rounded-lg border bg-background p-2"><option value="">Escolha</option>{q.options.map(opt=><option key={opt}>{opt}</option>)}</select></label>})}</div>:
   q.type==="rating_1_5"||q.type==="rating_0_10"||q.type==="rating_stars"?choice(Array.from({length:q.type==="rating_0_10"?11:5},(_,i)=>String(q.type==="rating_0_10"?i:i+1))):
   <><input id={id} type={q.type==="date"?"date":q.type==="time"?"time":q.type==="number"?"number":q.type==="contact"?"email":"text"} inputMode={q.type==="number"?(bounds?.integerOnly?"numeric":"decimal"):q.type==="contact"?"email":undefined} min={bounds?.min} max={bounds?.max} step={q.type==="number"?(bounds?.integerOnly?"1":"0.01"):undefined} value={String(value??"")} onChange={e=>select(e.target.value)} required={q.required} maxLength={q.type==="short_text"?240:undefined} aria-describedby={bounds?id+"-limits":undefined} className="w-full rounded-xl border bg-background p-3"/>{bounds&&<p id={id+"-limits"} className="text-xs text-muted-foreground">Valor permitido: {bounds.min} a {bounds.max}{bounds.integerOnly?" · somente números inteiros":""}.</p>}</>}
+  {errors[q.id]&&<p role="alert" className="text-xs font-medium text-destructive">{errors[q.id]}</p>}
   </div>;
  })}</div>;
 }
