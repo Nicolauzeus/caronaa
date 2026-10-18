@@ -59,7 +59,7 @@ export function ResearchCatalog() {
     Biblioteca ({activeItems.length})
    </button>
    <button type="button" aria-pressed={libraryView==="trash"}
-    onClick={()=>{setLibraryView("trash");setTab("pesquisas");setEditing(false);setSelected(null);setReport(null);setRenaming(null)}}
+    onClick={()=>{setLibraryView("trash");setTab("pesquisas");setEditing(false);setSelected(null);setReport(null);setRenaming(null);setSearch("")}}
     className={libraryView==="trash"?"rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-lg px-4 py-2 text-sm font-semibold hover:bg-muted"}>
     Lixeira ({trashedItems.length})
    </button>
@@ -91,6 +91,8 @@ export function ResearchCatalog() {
      <p className="mt-1 text-sm text-muted-foreground">As pesquisas na lixeira não aceitam novas respostas. Restaurar não reativa o link público automaticamente. A exclusão definitiva exige verificação dos vínculos e confirmação reforçada.</p>
     </div>
     {trashedItems.length===0&&<p role="status" className="rounded-xl border p-5 text-sm text-muted-foreground">A lixeira está vazia.</p>}
+    <input aria-label="Buscar pesquisas na lixeira" value={search} onChange={(event)=>setSearch(event.target.value)}
+     placeholder="Buscar na lixeira por nome ou código" className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm"/>
     <div className="divide-y overflow-hidden rounded-xl border bg-card/30">
      {trashedItems.filter((item)=>!search.trim()||(item.title+" "+item.code).toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR"))).map((item)=>(
       <article key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
