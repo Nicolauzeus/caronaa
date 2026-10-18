@@ -38,7 +38,6 @@ export const DEPARTMENTS:readonly Department[]=[
  planned("local","Mobilidade local","Operação profissional e municípios.")
  ]},
  {id:"growth",name:"Crescimento, Marketing e CRM",shortName:"Growth e CRM",mission:"Adquirir, converter e reter usuários com origem rastreável.",ownerRole:"Gestão de crescimento",categories:[
- existing("relations","Relacionamentos","Relações já registradas no Admin.","/admin/relacionamentos"),
  existing("users","Usuários","Contas existentes e situação de cadastro.","/admin/usuarios"),
  existing("leads","Leads e aquisição","Cadastro e qualificação de leads.","/admin/crescimento"),
  planned("funnels","Funil de conversão","Pesquisa, lead, cadastro e primeira utilização."),
