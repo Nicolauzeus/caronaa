@@ -18,7 +18,7 @@ export function TechnologyRegistry(){
  useEffect(()=>{setKind(group==="incident"?"INCIDENT":"BUG")},[group]);
  const visible=items.filter(x=>x.kind===kind);
  return <section className="space-y-4">
- <InsightChart title={group==="incident"?"Incidentes por situação":"Registros do produto por situação"} rows={["ABERTO","EM_ANDAMENTO","RESOLVIDO","ENCERRADO"].map(status=>({name:status.replaceAll("_"," "),value:visible.filter(item=>item.status===status).length}))}/>
+ {!loading&&!error&&<InsightChart title={group==="incident"?"Incidentes por situação":"Registros do produto por situação"} rows={["ABERTO","EM_ANDAMENTO","RESOLVIDO","ENCERRADO"].map(status=>({name:status.replaceAll("_"," "),value:visible.filter(item=>item.status===status).length}))}/>}
  {group==="product"&&<div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de produto">{types.filter(t=>t!=="INCIDENT").map(t=><button key={t} role="tab" aria-selected={kind===t} onClick={()=>setKind(t)} className={kind===t?"rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-lg border px-4 py-2 text-sm"}>{names[t]} ({items.filter(i=>i.kind===t).length})</button>)}</div>}
  {error&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
  <details className="rounded-xl border border-border/70 bg-card/30 p-3"><summary className="cursor-pointer py-1 text-sm font-semibold text-primary">+ Novo registro técnico</summary><div className="pt-3"><form onSubmit={create} className="grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-2">
