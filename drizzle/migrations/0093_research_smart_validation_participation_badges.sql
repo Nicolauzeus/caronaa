@@ -149,7 +149,7 @@ BEGIN
      IF v_question ? 'maxValue' THEN v_max:=(v_question->>'maxValue')::numeric; END IF;
      IF v_question ? 'integerOnly' THEN v_integer:=(v_question->>'integerOnly')::boolean; END IF;
      IF v_num<v_min OR v_num>v_max OR (v_integer AND trunc(v_num)<>v_num)
-      THEN RAISE EXCEPTION 'Pergunta %: valor permitido entre % e %%',v_key,v_min,v_max,
+      THEN RAISE EXCEPTION 'Pergunta %: valor permitido entre % e % %',v_key,v_min,v_max,
        CASE WHEN v_integer THEN ' (inteiro)' ELSE '' END; END IF;
    END IF;
    IF v_kind IN ('matrix','ranking') THEN
