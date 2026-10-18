@@ -10,8 +10,9 @@ export type ParticipationClaimResult={status:"linked"|"already_linked";form_id:s
  * A UUID submission receipt is proof of control of that submission, not an
  * institution credential. Never derive eligibility from mutable title/code.
  */
+export function isValidParticipationReceipt(receipt:string){return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipt)}
 export function storePendingParticipation(receipt:string){
- if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipt))
+ if(!isValidParticipationReceipt(receipt))
   throw new Error("Recibo inválido.");
  const existing=readPendingParticipations();
  sessionStorage.setItem(PENDING_KEY,JSON.stringify([...new Set([...existing,receipt])].slice(-10)));
@@ -19,7 +20,7 @@ export function storePendingParticipation(receipt:string){
 export function readPendingParticipations():string[]{
  try{
   const parsed=JSON.parse(sessionStorage.getItem(PENDING_KEY)??"[]");
-  return Array.isArray(parsed)?parsed.filter((s):s is string=>typeof s==="string"&&/^[0-9a-f-]{36}$/i.test(s)):[];
+  return Array.isArray(parsed)?parsed.filter((s):s is string=>typeof s==="string"&&isValidParticipationReceipt(s)):[];
  }catch{return []}
 }
 export function removePendingParticipation(receipt:string){
