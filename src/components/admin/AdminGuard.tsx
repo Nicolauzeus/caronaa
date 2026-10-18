@@ -1,7 +1,6 @@
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
 import { getDepartmentOfPath } from "@/lib/admin/module-navigation";
 import { AdminAccessProvider, EMPTY_ADMIN_SCOPE, parseAdminScope } from "@/lib/admin/access";
 import { useServerFn } from "@tanstack/react-start";
@@ -38,6 +37,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     void checkAdmin()
       .then(async ({ isAdmin }) => {
         if (isAdmin) return { isAdmin, resolved: EMPTY_ADMIN_SCOPE };
+        const { supabase } = await import("@/integrations/supabase/client");
         const scopeResponse = await supabase.rpc("get_my_admin_scope" as never);
         if (scopeResponse.error) throw scopeResponse.error;
         return { isAdmin, resolved: parseAdminScope(scopeResponse.data) };
