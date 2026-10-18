@@ -666,6 +666,20 @@
       "when": 1792353010000,
       "tag": "0094_admin_department_rbac",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1792353015000,
+      "tag": "0095_reusable_research_infrastructure",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1792353020000,
+      "tag": "0096_research_trash_and_guarded_deletion",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,7 @@ import {
 } from "@/lib/formulario/research-catalog";
 export function ResearchCatalog() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [libraryView,setLibraryView] = useState<"library"|"trash">("library");
   const [removing, setRemoving] = useState<ResearchForm | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
@@ -70,6 +71,8 @@ export function ResearchCatalog() {
   const [availabilityFilter, setAvailabilityFilter] = useState("ALL");
   const [report, setReport] = useState<string | null>(null);
   const [items, setItems] = useState<ResearchForm[]>([]);
+  const activeItems=items.filter((item)=>!item.trashed_at);
+  const trashedItems=items.filter((item)=>Boolean(item.trashed_at));
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [code, setCode] = useState("");
@@ -98,7 +101,7 @@ export function ResearchCatalog() {
   }
   async function refresh() {
     try {
-      setItems(await listResearchForms());
+      setItems(await listResearchForms({ includeTrashed: true }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível carregar pesquisas");
     }
@@ -179,7 +182,7 @@ export function ResearchCatalog() {
             Pesquisas por evento, educação, empresa e mobilidade local.
           </p>
         </div>
-        <button
+        {libraryView==="library"&&<button
           type="button"
           onClick={() => {
             setTab("pesquisas");
@@ -188,8 +191,20 @@ export function ResearchCatalog() {
           className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"
         >
           + Novo formulário
-        </button>
+        </button>}
       </div>
+
+  <nav aria-label="Visualizações da biblioteca de pesquisas" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card/30 p-2">
+   <button type="button" aria-pressed={libraryView==="library"} onClick={()=>setLibraryView("library")}
+    className={libraryView==="library"?"rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-lg px-4 py-2 text-sm font-semibold hover:bg-muted"}>
+    Biblioteca ({activeItems.length})
+   </button>
+   <button type="button" aria-pressed={libraryView==="trash"}
+    onClick={()=>{setLibraryView("trash");setTab("pesquisas");setEditing(false);setSelected(null);setReport(null);setRenaming(null);setSearch("")}}
+    className={libraryView==="trash"?"rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground":"rounded-lg px-4 py-2 text-sm font-semibold hover:bg-muted"}>
+    Lixeira ({trashedItems.length})
+   </button>
+  </nav>
 
       {creationNotice && <p role="status" className="rounded-lg border border-primary/40 p-3 text-sm">{creationNotice}</p>}
       {error && (
@@ -197,7 +212,7 @@ export function ResearchCatalog() {
           {error}. Confirme a implantação da migração.
         </p>
       )}
-      {tab === "pesquisas" && editing && (
+      {tab === "pesquisas" && libraryView==="library" && editing && (
         <form onSubmit={submit} className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2">
           <label className="text-sm">
             Título
@@ -371,7 +386,7 @@ export function ResearchCatalog() {
           }}
         />
       )}
-      {tab === "pesquisas" && selected && (
+      {tab === "pesquisas" && libraryView==="library" && selected && (
         <ResearchFormEditor
           formId={selected}
           onPublished={() => {
@@ -384,7 +399,7 @@ export function ResearchCatalog() {
           }}
         />
       )}
-      {tab === "pesquisas" && !report && (
+      {tab === "pesquisas" && libraryView==="library" && !report && (
         <div className="flex flex-wrap gap-3">
           <input
             aria-label="Buscar pesquisas"
@@ -431,9 +446,9 @@ export function ResearchCatalog() {
           </select>
         </div>
       )}
-      {tab === "pesquisas" && !report && (
+      {tab === "pesquisas" && libraryView==="library" && !report && (
         <div className="divide-y overflow-hidden rounded-xl border border-border/70 bg-card/30">
-          {items
+          {activeItems
             .filter(
               (item) =>
                 (availabilityFilter === "ALL" ||
@@ -647,7 +662,7 @@ export function ResearchCatalog() {
                           className="rounded-lg border border-destructive/40 px-3 py-2 text-sm text-destructive"
                           onClick={() => setRemoving(item)}
                         >
-                          Arquivar / Excluir
+                          Arquivar / Lixeira
                         </button>
                       )}
                     </div>
@@ -657,13 +672,38 @@ export function ResearchCatalog() {
             ))}
         </div>
       )}
+  {tab==="pesquisas" && libraryView==="trash" && (
+   <section aria-label="Pesquisas na lixeira" className="space-y-3">
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+     <h3 className="font-semibold">Lixeira de pesquisas</h3>
+     <p className="mt-1 text-sm text-muted-foreground">As pesquisas na lixeira não aceitam novas respostas. Restaurar não reativa o link público automaticamente. A exclusão definitiva exige verificação dos vínculos e confirmação reforçada.</p>
+    </div>
+    {trashedItems.length===0&&<p role="status" className="rounded-xl border p-5 text-sm text-muted-foreground">A lixeira está vazia.</p>}
+    <input aria-label="Buscar pesquisas na lixeira" value={search} onChange={(event)=>setSearch(event.target.value)}
+     placeholder="Buscar na lixeira por nome ou código" className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm"/>
+    <div className="divide-y overflow-hidden rounded-xl border bg-card/30">
+     {trashedItems.filter((item)=>!search.trim()||(item.title+" "+item.code).toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR"))).map((item)=>(
+      <article key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+       <div className="min-w-0">
+        <h3 className="font-semibold">{item.title}</h3>
+        <p className="mt-1 break-all text-xs text-muted-foreground">{item.code} · Anteriormente: {item.trash_previous_status??"indefinido"}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Movida para a lixeira em {item.trashed_at?new Date(item.trashed_at).toLocaleString("pt-BR"):"data indisponível"}</p>
+       </div>
+       <button type="button" onClick={()=>setRemoving(item)} className="rounded-lg border border-primary/50 px-4 py-2.5 text-sm font-semibold hover:bg-muted/40">
+        Restaurar / Excluir definitivamente
+       </button>
+      </article>
+     ))}
+    </div>
+   </section>
+  )}
       {tab === "inteligencia" &&
         (report ? (
-          <ResearchInsights forms={items} formId={report} onBack={() => setReport(null)} />
+          <ResearchInsights forms={activeItems} formId={report} onBack={() => setReport(null)} />
         ) : (
-          <ResearchInsights forms={items} />
+          <ResearchInsights forms={activeItems} />
         ))}
-      {tab === "comparacoes" && <ResearchCompare forms={items} />}
+      {tab === "comparacoes" && <ResearchCompare forms={activeItems} />}
       {tab === "municipios" && <MunicipalResearchOverview />}
     </section>
   );
