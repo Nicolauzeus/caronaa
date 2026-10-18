@@ -1,6 +1,5 @@
 import {createFileRoute,Link} from "@tanstack/react-router";
 import {useEffect,useState} from "react";
-import {supabase} from "@/integrations/supabase/client";
 import {listResearchForms,type ResearchForm} from "@/lib/formulario/research-catalog";
 import {ResearchInsights} from "@/components/admin/ResearchInsights";
 import {ResearchCompare} from "@/components/admin/ResearchCompare";
