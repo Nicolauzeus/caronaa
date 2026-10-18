@@ -89,7 +89,7 @@ export function urbanUniversityPreset(): ResearchConfiguration {
   };
 }
 
-export function urbanUniversityIntro(config: ResearchConfiguration): string {
+export function urbanUniversityIntro(config: Pick<ResearchConfiguration, "institutionName" | "campus">): string {
   const place = config.institutionName.trim() || "sua universidade";
   return "Seu caminho para " + place + " pode ser mais simples. " +
     "O CARONAA conecta pessoas com trajetos e horários compatíveis para compartilhar deslocamentos. " +
