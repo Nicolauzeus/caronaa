@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {claimResearchParticipation,getMyResearchParticipationBadges,type ResearchParticipationBadge} from "@/lib/formulario/research-participation";
+import {claimPendingParticipations,claimResearchParticipation,getMyResearchParticipationBadges,type ResearchParticipationBadge} from "@/lib/formulario/research-participation";
 
 export function ResearchParticipationCard(){
  const [badges,setBadges]=useState<ResearchParticipationBadge[]>([]);
@@ -13,7 +13,7 @@ export function ResearchParticipationCard(){
   catch(err){setError(err instanceof Error?err.message:"Não foi possível consultar selos de participação.")}
   finally{setLoading(false)}
  }
- useEffect(()=>{void refresh()},[]);
+ useEffect(()=>{void (async()=>{await claimPendingParticipations();await refresh()})()},[]);
  async function claim(){
   if(!receipt.trim()||working)return;
   setWorking(true);setError("");setSuccess("");
