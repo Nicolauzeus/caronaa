@@ -5,7 +5,7 @@ import {ResearchInsights} from "@/components/admin/ResearchInsights";
 import {ResearchAnswerInsights} from "@/components/admin/ResearchAnswerInsights";
 import {ResearchFormEditor} from "@/components/admin/ResearchFormEditor";
 import type {ResearchForm} from "@/lib/formulario/research-catalog";
-import {researchPublicPath,researchPublicUrl} from "@/lib/formulario/research-catalog";
+import {researchPublicUrl} from "@/lib/formulario/research-catalog";
 import {ResearchShare} from "@/components/admin/ResearchShare";
 import {ResearchBrandHeader} from "@/components/research/ResearchFields";
 import {ResearchBrandManager} from "@/components/admin/ResearchBrandManager";
