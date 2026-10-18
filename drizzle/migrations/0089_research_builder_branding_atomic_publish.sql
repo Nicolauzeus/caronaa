@@ -3,10 +3,13 @@
 ALTER TABLE public.research_forms ADD COLUMN IF NOT EXISTS brand_image_path text;
 ALTER TABLE public.research_forms ADD COLUMN IF NOT EXISTS brand_image_alt text;
 ALTER TABLE public.research_forms ADD COLUMN IF NOT EXISTS brand_display_name text;
-DO $ BEGIN
+DO $$ BEGIN
  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='research_brand_path_safe') THEN
   ALTER TABLE public.research_forms ADD CONSTRAINT research_brand_path_safe CHECK (
-   brand_image_path IS NULL OR brand_image_path ~ '^[0-9a-f-]{36}/[a-zA-Z0-9_-]+\.(png|jpg|jpeg|webp)
+   brand_image_path IS NULL OR brand_image_path ~ '^[0-9a-f-]{36}/[a-zA-Z0-9_-]+\.(png|jpg|jpeg|webp)$'
+  );
+ END IF;
+END $$;
 INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
  VALUES('research-branding','research-branding',true,2097152,ARRAY['image/png','image/jpeg','image/webp'])
  ON CONFLICT(id) DO UPDATE SET public=true,file_size_limit=2097152,allowed_mime_types=EXCLUDED.allowed_mime_types;
@@ -44,7 +47,7 @@ BEGIN
    FOR v_question IN SELECT value FROM jsonb_array_elements(v_section->'questions') LOOP
      v_id:=v_question->>'id';
      IF length(coalesce(v_id,'')) NOT BETWEEN 1 AND 100 OR length(btrim(coalesce(v_question->>'label',''))) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'Invalid question identifier or label'; END IF;
-     IF v_question->>'type' NOT IN ('short_text','long_text','single_choice','multiple_choice','number','rating_1_5','rating_0_10','date','time','yes_no') THEN RAISE EXCEPTION 'Unsupported question type'; END IF;
+     IF v_question->>'type' NOT IN ('short_text','long_text','single_choice','multiple_choice','number','rating_1_5','rating_0_10','date','time','yes_no','rating_stars','money_range','location','ranking','matrix','contact') THEN RAISE EXCEPTION 'Unsupported question type'; END IF;
      IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_questions) previous WHERE previous->>'id'=v_id) THEN RAISE EXCEPTION 'Duplicate question identifier'; END IF;
      IF v_question->>'type' IN ('single_choice','multiple_choice') AND (
        jsonb_typeof(v_question->'options') <> 'array' OR jsonb_array_length(v_question->'options') < 2
