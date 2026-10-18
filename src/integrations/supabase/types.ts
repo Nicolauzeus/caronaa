@@ -762,6 +762,51 @@ export type Database = {
         }
         Relationships: []
       }
+      research_answers: {
+        Row: {
+          answers: Json
+          client_submission_key: string
+          consent_accepted: boolean
+          form_id: string
+          id: string
+          submitted_at: string
+          version_id: string
+        }
+        Insert: {
+          answers: Json
+          client_submission_key?: string
+          consent_accepted?: boolean
+          form_id: string
+          id?: string
+          submitted_at?: string
+          version_id: string
+        }
+        Update: {
+          answers?: Json
+          client_submission_key?: string
+          consent_accepted?: boolean
+          form_id?: string
+          id?: string
+          submitted_at?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_answers_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_answers_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "research_form_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_form_versions: {
         Row: {
           form_id: string
@@ -800,6 +845,7 @@ export type Database = {
           code: string
           created_at: string
           id: string
+          is_enabled: boolean
           mobility_mode: string
           municipality: string | null
           nature: string
@@ -811,6 +857,7 @@ export type Database = {
           code: string
           created_at?: string
           id?: string
+          is_enabled?: boolean
           mobility_mode?: string
           municipality?: string | null
           nature: string
@@ -822,6 +869,7 @@ export type Database = {
           code?: string
           created_at?: string
           id?: string
+          is_enabled?: boolean
           mobility_mode?: string
           municipality?: string | null
           nature?: string
@@ -1848,6 +1896,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_municipal_research_overview: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
@@ -1886,11 +1935,45 @@ export type Database = {
         }
         Returns: Json
       }
+      get_research_answer_summary: {
+        Args: { p_form_id: string }
+        Returns: Json
+      }
       get_research_bi: {
         Args: {
           p_form_id?: string
           p_nature?: string
           p_occupation?: string
+          p_profile?: string
+        }
+        Returns: Json
+      }
+      get_research_legacy_metrics: {
+        Args: {
+          p_form_id?: string
+          p_nature?: string
+          p_occupation?: string
+          p_pain_code?: string
+          p_profile?: string
+        }
+        Returns: Json
+      }
+      get_research_mobility_dimensions: {
+        Args: {
+          p_form_id?: string
+          p_nature?: string
+          p_occupation?: string
+          p_pain_code?: string
+          p_profile?: string
+        }
+        Returns: Json
+      }
+      get_research_unified_bi: {
+        Args: {
+          p_form_id?: string
+          p_nature?: string
+          p_occupation?: string
+          p_pain_code?: string
           p_profile?: string
         }
         Returns: Json
