@@ -10,7 +10,8 @@ const kinds=["UNIVERSIDADE","PREFEITURA","EMPRESA","ASSOCIACAO","COOPERATIVA","O
 const partnerStatuses=["PROSPECCAO","CONTATO","NEGOCIACAO","ATIVA","SUSPENSA","ENCERRADA"];
 const pilotStatuses=["PLANEJAMENTO","VALIDACAO","ATIVO","PAUSADO","CONCLUIDO","CANCELADO"];
 function PartnershipsPage(){
- const [partners,setPartners]=useState<Partner[]>([]),[pilots,setPilots]=useState<Pilot[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false),[tab,setTab]=useState<"partners"|"pilots"|"territory">("partners");
+ const [tab]=useAdminModuleSection<"partners"|"pilots"|"territory">({partners:"partners",pilots:"pilots",expansion:"territory"},"partners");
+ const [partners,setPartners]=useState<Partner[]>([]),[pilots,setPilots]=useState<Pilot[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [name,setName]=useState(""),[kind,setKind]=useState("UNIVERSIDADE"),[municipality,setMunicipality]=useState(""),[contactName,setContactName]=useState(""),[contactEmail,setContactEmail]=useState("");
  const [pilotPartner,setPilotPartner]=useState(""),[pilotTitle,setPilotTitle]=useState(""),[objective,setObjective]=useState(""),[criteria,setCriteria]=useState("");
  const [query,setQuery]=useState("");
