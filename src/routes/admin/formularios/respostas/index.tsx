@@ -174,7 +174,7 @@ function AdminResponsesPage() {
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left">
-            <thead className="bg-secondary/40 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-semibold">Participante</th>
                 <th className="px-4 py-3 font-semibold">Perfil</th>
@@ -207,13 +207,13 @@ function AdminResponsesPage() {
                 rows.slice(currentPage * 12, (currentPage + 1) * 12).map((row) => (
                   <tr
                     key={row.submission_id}
-                    className="border-t border-border text-sm text-foreground hover:bg-secondary/30"
+                    className="border-t border-border bg-card text-sm text-foreground transition-colors hover:bg-muted/40 focus-within:bg-accent/30 dark:hover:bg-muted/65"
                   >
                     <td className="px-4 py-3">
                       <Link
                         to="/admin/formularios/respostas/$id"
                         params={{ id: row.submission_id }}
-                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                        className="font-semibold text-[#805900] underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-[#FFD166]"
                       >
                         {row.nome}
                       </Link>
@@ -221,16 +221,16 @@ function AdminResponsesPage() {
                         {row.email ? `${row.whatsapp} • ${row.email}` : row.whatsapp}
                       </p>
                     </td>
-                    <td className="px-4 py-3">{row.tipo_usuario}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{row.tipo_usuario}</td>
                     <td className="px-4 py-3">
                       {row.origem_trajeto ?? "Não informado"} → {row.destino_trajeto}
                     </td>
-                    <td className="px-4 py-3">{row.source}</td>
+                    <td className="px-4 py-3"><span className="whitespace-nowrap text-muted-foreground">{row.source}</span></td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {new Date(row.created_at).toLocaleDateString("pt-BR")}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
+                      <span className="inline-block max-w-[220px] break-words rounded-md border border-border/70 bg-muted/70 px-2.5 py-1 text-xs font-medium leading-relaxed text-foreground">
                         {row.campaign_event}
                       </span>
                     </td>
