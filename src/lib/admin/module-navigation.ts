@@ -6,10 +6,13 @@ export const adminModules:AdminModule[]=DEPARTMENTS.flatMap(department=>
   id:category.id,label:category.label,route:category.route!,department:department.id
  }))
 );
-export function getDepartmentHome(id:DepartmentId):string{
- const department=DEPARTMENTS.find(item=>item.id===id);
- return department?.categories.find(item=>item.route)?.route??"/admin/departamentos";
-}
+/** Canonical workspaces avoid sending Growth and Partnerships to the same old Relations page. */
+const HOMES:Record<DepartmentId,string>={
+ executive:"/admin/executivo",technology:"/admin/tecnologia",operations:"/admin/operacoes",
+ growth:"/admin/crescimento",research:"/admin/inteligencia-pesquisa",partnerships:"/admin/parcerias",
+ safety:"/admin/atendimento",finance:"/admin/financeiro",compliance:"/admin/compliance"
+};
+export function getDepartmentHome(id:DepartmentId):string{return HOMES[id];}
 export function getDepartmentOfPath(pathname:string):DepartmentId|null{
  const path=pathname.replace(/\/$/,"")||"/";
  const matches=adminModules.filter(item=>path===item.route||path.startsWith(item.route+"/"));
