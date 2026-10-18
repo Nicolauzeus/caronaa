@@ -5,6 +5,7 @@ on:
     paths:
       - "src/lib/formulario/**"
       - "src/components/admin/Research**"
+      - "src/components/research/**"
       - "src/routes/pesquisas/**"
       - "src/routes/admin/formularios/**"
       - "drizzle/migrations/00**"
@@ -21,5 +22,5 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm test -- src/lib/formulario/research-templates.test.ts
+      - run: npm test -- src/lib/formulario/research-templates.test.ts src/lib/formulario/research-schema.test.ts
       - run: npm run build
