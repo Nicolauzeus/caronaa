@@ -24,8 +24,8 @@ export const DEPARTMENTS:readonly Department[]=[
  ]},
  {id:"technology",name:"Tecnologia e Produto",shortName:"Tecnologia",mission:"Evoluir produto, infraestrutura e confiabilidade técnica.",ownerRole:"Gestão de tecnologia",categories:[
  planned("health","Saúde dos serviços","Disponibilidade, erros e métricas instrumentadas."),
- planned("incidents","Incidentes técnicos","Gestão e resolução de incidentes."),
- planned("releases","Produto e releases","Roadmap, bugs, testes e entregas."),
+ existing("incidents","Incidentes técnicos","Gestão de incidentes com histórico.","/admin/tecnologia"),
+ existing("releases","Produto e releases","Registros de bugs, melhorias e releases.","/admin/tecnologia"),
  planned("integrations","Integrações","Estado e dependências das integrações.")
  ]},
  {id:"operations",name:"Operações de Mobilidade",shortName:"Operações",mission:"Operar viagens e equilibrar oferta, demanda e qualidade.",ownerRole:"Gestão de operações",categories:[
