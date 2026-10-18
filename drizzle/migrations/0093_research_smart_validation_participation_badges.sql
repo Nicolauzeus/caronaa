@@ -121,7 +121,7 @@ BEGIN
     THEN RAISE EXCEPTION 'Escala 0-10 inválida na pergunta: %',v_key; END IF;
    IF v_kind='yes_no' AND v_value#>>'{}' NOT IN ('SIM','NAO')
     THEN RAISE EXCEPTION 'Resposta sim/não inválida na pergunta: %',v_key; END IF;
-   IF v_kind IN ('single_choice','money_range') AND NOT (v_question->'options' ? v_value#>>'{}')
+   IF v_kind IN ('single_choice','money_range') AND NOT (v_question->'options' ? (v_value#>>'{}'))
     THEN RAISE EXCEPTION 'Alternativa inválida na pergunta: %',v_key; END IF;
    IF v_kind='multiple_choice' THEN
      IF jsonb_typeof(v_value)<>'array' THEN RAISE EXCEPTION 'Seleção múltipla inválida: %',v_key; END IF;
