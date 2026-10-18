@@ -49,9 +49,14 @@ BEGIN
      IF length(coalesce(v_id,'')) NOT BETWEEN 1 AND 100 OR length(btrim(coalesce(v_question->>'label',''))) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'Invalid question identifier or label'; END IF;
      IF v_question->>'type' NOT IN ('short_text','long_text','single_choice','multiple_choice','number','rating_1_5','rating_0_10','date','time','yes_no','rating_stars','money_range','location','ranking','matrix','contact') THEN RAISE EXCEPTION 'Unsupported question type'; END IF;
      IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_questions) previous WHERE previous->>'id'=v_id) THEN RAISE EXCEPTION 'Duplicate question identifier'; END IF;
-     IF v_question->>'type' IN ('single_choice','multiple_choice') AND (
-       jsonb_typeof(v_question->'options') <> 'array' OR jsonb_array_length(v_question->'options') < 2
-     ) THEN RAISE EXCEPTION 'Choice question requires options'; END IF;
+     IF v_question->>'type' IN ('single_choice','multiple_choice','ranking','matrix','money_range') AND (
+       jsonb_typeof(v_question->'options') IS DISTINCT FROM 'array' OR
+       (CASE WHEN jsonb_typeof(v_question->'options')='array' THEN jsonb_array_length(v_question->'options') < 2 ELSE true END)
+     ) THEN RAISE EXCEPTION 'Structured question requires at least two choices'; END IF;
+     IF v_question->>'type'='matrix' AND (
+       jsonb_typeof(v_question->'rows') IS DISTINCT FROM 'array' OR
+       (CASE WHEN jsonb_typeof(v_question->'rows')='array' THEN jsonb_array_length(v_question->'rows') < 1 ELSE true END)
+     ) THEN RAISE EXCEPTION 'Matrix requires at least one row'; END IF;
      IF v_question ? 'showWhen' AND v_question->'showWhen' <> 'null'::jsonb THEN
        SELECT prior INTO v_parent FROM jsonb_array_elements(v_questions) prior WHERE prior->>'id'=v_question#>>'{showWhen,questionId}' LIMIT 1;
        IF v_parent IS NULL OR v_parent->>'type' <> 'single_choice' OR NOT (v_parent->'options' ? (v_question#>>'{showWhen,equals}'))
