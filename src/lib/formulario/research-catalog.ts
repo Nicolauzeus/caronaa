@@ -30,10 +30,11 @@ export type ResearchForm = {
 
 const db = supabase as any;
 
-export async function listResearchForms(): Promise<ResearchForm[]> {
+export async function listResearchForms(options: { includeTrashed?: boolean } = {}): Promise<ResearchForm[]> {
   const { data, error } = await db.from("research_forms").select("*").order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []) as ResearchForm[];
+  const forms = (data ?? []) as ResearchForm[];
+  return options.includeTrashed ? forms : forms.filter((form) => !form.trashed_at);
 }
 
 export async function createResearchForm(input: {
