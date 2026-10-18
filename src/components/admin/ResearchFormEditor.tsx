@@ -4,7 +4,7 @@ import {MUNICIPAL_TEMPLATES,type SurveySchema,type SurveyQuestion} from "@/lib/f
 const db=supabase as any;
 const empty=():SurveySchema=>({sections:[{title:"Seção 1",questions:[]}]});
 const newQuestion=():SurveyQuestion=>({id:crypto.randomUUID(),label:"Nova pergunta",type:"short_text",required:false,options:[]});
-export function ResearchFormEditor({formId,onClose}:{formId:string;onClose:()=>void}){
+export function ResearchFormEditor({formId,onClose,onPublished}:{formId:string;onClose:()=>void;onPublished?:()=>void}){
  const [versionId,setVersionId]=useState(""),[version,setVersion]=useState(1),[published,setPublished]=useState(false),[schema,setSchema]=useState<SurveySchema>(empty());
  const [busy,setBusy]=useState(true),[error,setError]=useState(""),[preview,setPreview]=useState(false);
  useEffect(()=>{let alive=true;void db.from("research_form_versions").select("id,version_number,schema_json,published_at").eq("form_id",formId).order("version_number",{ascending:false}).limit(1).single().then(({data,error}:any)=>{if(!alive)return;if(error)setError(error.message);else if(data){setVersionId(data.id);setVersion(data.version_number);setPublished(Boolean(data.published_at));setSchema(data.schema_json?.sections?.length?data.schema_json:empty());}setBusy(false)});return()=>{alive=false}},[formId]);

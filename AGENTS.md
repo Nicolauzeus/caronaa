@@ -13,6 +13,7 @@
 
 - Keep CARONAA sample users and rides in `src/mockData.ts`, accessed through small mock services; this keeps the visual MVP replaceable by real data later.
 - Keep the shared app header and navigation in a reusable shell, while every content page owns its TanStack route and metadata; this preserves direct links and responsive navigation.
+- Keep the public formulario parent as an Outlet-only layout and scope its legacy registration redirect to its index; parent guards also run for public survey deep links.
 - Keep authentication session state in the root AuthProvider and consume it through useAuth; this prevents duplicate auth listeners and keeps navigation synchronized.
 - Recover missing deployment chunks with a bounded session-scoped reload in the root error boundary; this refreshes stale asset references without reload loops.
 - Resolve browser connection constants through `config/public-connection.ts`, preferring a complete VITE public pair and otherwise the verified managed public connection; this keeps deployment independent of local env files without bundling server bindings or privileged keys.

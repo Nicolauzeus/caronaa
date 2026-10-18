@@ -1812,6 +1812,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_empty_research_draft: {
+        Args: { p_form_id: string }
+        Returns: boolean
+      }
       distance_km: {
         Args: { lat_a: number; lat_b: number; lng_a: number; lng_b: number }
         Returns: number
@@ -1827,6 +1831,7 @@ export type Database = {
         }
         Returns: number
       }
+      duplicate_research_form: { Args: { p_form_id: string }; Returns: string }
       expire_ride_match_proposals: { Args: never; Returns: number }
       generate_ride_qr_token: { Args: { p_ride_id: string }; Returns: Json }
       get_acquisition_funnel_metrics: {
