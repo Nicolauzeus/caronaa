@@ -20,7 +20,7 @@ export function ResearchFormEditor({formId,onClose}:{formId:string;onClose:()=>v
   for(const q of allQuestions){if(q.showWhen){const parent=allQuestions.find(p=>p.id===q.showWhen?.questionId);if(!parent||parent.type!=="single_choice"||!parent.options.includes(q.showWhen.equals))throw Error("Configure uma condição de exibição válida para: "+q.label);}}
   const {data,error}=await db.from("research_form_versions").update({schema_json:schema,...(action==="publish"?{published_at:new Date().toISOString()}:{})}).eq("id",versionId).is("published_at",null).select("id").single();
   if(error||!data)throw Error(error?.message||"A versão não está mais editável.");
-  if(action==="publish"){const r=await db.from("research_forms").update({status:"PUBLICADO"}).eq("id",formId);if(r.error)throw Error(r.error.message);setPublished(true);}
+  if(action==="publish"){const r=await db.from("research_forms").update({status:"PUBLICADO",is_enabled:true}).eq("id",formId);if(r.error)throw Error(r.error.message);setPublished(true);onPublished?.();}
  }catch(e){setError(e instanceof Error?e.message:"Falha ao salvar");}finally{setBusy(false)}}
  async function startNewVersion(){setBusy(true);setError("");try{const r=await db.from("research_form_versions").insert({form_id:formId,version_number:version+1,schema_json:schema}).select("id").single();if(r.error)throw Error(r.error.message);setVersionId(r.data.id);setVersion(v=>v+1);setPublished(false);}catch(e){setError(e instanceof Error?e.message:"Falha ao criar versão")}finally{setBusy(false)}}
  return <section className="space-y-4 rounded-2xl border bg-card p-4 md:p-6">
@@ -51,6 +51,6 @@ export function ResearchFormEditor({formId,onClose}:{formId:string;onClose:()=>v
  {!published&&!preview&&<button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>patchSection(si,{questions:[...section.questions,newQuestion()]})}>+ Pergunta</button>}
  </div>)}
  {!published&&!preview&&<button className="rounded-lg border px-3 py-2" onClick={()=>setSchema(s=>({sections:[...s.sections,{title:"Nova seção",questions:[]}]}))}>+ Seção</button>}
- <div className="flex flex-wrap gap-2">{!published&&<><button disabled={busy} className="rounded-lg border px-4 py-2" onClick={()=>void persist("save")}>Salvar rascunho</button><button disabled={busy} className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground" onClick={()=>void persist("publish")}>Publicar versão</button></>}</div>
+ <div className="flex flex-wrap gap-2">{!published&&<><button disabled={busy} className="rounded-lg border px-4 py-2" onClick={()=>void persist("save")}>Salvar rascunho</button><button disabled={busy} className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground" onClick={()=>void persist("publish")}>Publicar e habilitar</button></>}</div>
  </section>;
 }
