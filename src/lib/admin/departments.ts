@@ -56,9 +56,9 @@ export const DEPARTMENTS:readonly Department[]=[
  ]},
  {id:"partnerships",name:"Parcerias e Expansão",shortName:"Parcerias",mission:"Desenvolver relações institucionais e pilotos locais.",ownerRole:"Gestão de parcerias",categories:[
  existing("relations","Relacionamentos","Relações e contatos já cadastrados.","/admin/relacionamentos"),
- planned("partners","Instituições e convênios","Universidades, prefeituras, empresas e associações."),
- planned("pilots","Pilotos","Projetos locais, responsáveis e resultados."),
- planned("expansion","Expansão","Avaliação de cobertura e prontidão territorial.")
+ existing("partners","Instituições e convênios","Gestão de instituições, contatos e situações.","/admin/parcerias"),
+ existing("pilots","Pilotos","Criação e acompanhamento de pilotos.","/admin/parcerias"),
+ existing("expansion","Expansão","Municípios com instituições e pilotos cadastrados.","/admin/parcerias")
  ]},
  {id:"safety",name:"Atendimento, Confiança e Segurança",shortName:"Atendimento",mission:"Atender participantes e gerir segurança e incidentes.",ownerRole:"Gestão de atendimento e segurança",categories:[
  existing("feedback","Sugestões","Feedback recebido da comunidade.","/admin/sugestoes"),
