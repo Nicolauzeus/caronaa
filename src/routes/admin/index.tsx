@@ -313,7 +313,7 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        <InsightChart title="Comparação das etapas do funil" description="Contagens das etapas registradas. Etapas não equivalem a pessoas diferentes." rows={funnelStages.filter(stage=>typeof stage.count==="number").map(stage=>({name:stage.label,value:stage.count}))}/>
+        <InsightChart title="Comparação das etapas do funil" description="Contagens das etapas registradas. Etapas não equivalem a pessoas diferentes." rows={funnelStages.filter(stage=>typeof stage.count==="number").map(stage=>({name:stage.label,value:Number(stage.count)}))}/>
       </div>
 
       </TabsContent><TabsContent value="results" className="space-y-5">
