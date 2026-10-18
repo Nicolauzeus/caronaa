@@ -22,6 +22,7 @@ import { DriverPixSettings } from "@/components/caronaa/DriverPix";
 import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
+import { ResearchParticipationCard } from "@/components/caronaa/ResearchParticipationCard";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -774,6 +775,8 @@ function Perfil() {
               </div>
             </div>
           </div>
+
+          <ResearchParticipationCard />
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button variant="outline" asChild>
