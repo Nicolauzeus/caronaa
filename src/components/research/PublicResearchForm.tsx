@@ -28,6 +28,20 @@ export function PublicResearchForm({code}:{code:string}){
  else setComplete(true);
  setBusy(false);
  }
+ async function linkParticipation(){
+  if(linking)return;
+  setLinking(true);setLinkError("");
+  try{
+   storePendingParticipation(submissionKey);
+   const {data}=await supabase.auth.getUser();
+   if(data.user?.email_confirmed_at){
+    await claimResearchParticipation(submissionKey);
+    window.location.assign("/perfil");
+   }else{
+    window.location.assign("/auth?mode=cadastro&redirect="+encodeURIComponent("/perfil"));
+   }
+  }catch(err){setLinkError(err instanceof Error?err.message:"Não foi possível associar a participação. Guarde o recibo para tentar mais tarde.");setLinking(false)}
+ }
  if(loading)return <main className="mx-auto max-w-xl p-6" role="status">Carregando pesquisa…</main>;
  if(!form)return <main className="mx-auto max-w-xl space-y-3 p-6" role="alert"><h1 className="text-2xl font-bold">Formulário indisponível</h1><p>{error}</p><button type="button" onClick={()=>window.location.reload()} className="rounded-lg border px-4 py-2">Tentar novamente</button><p className="text-sm text-muted-foreground">Não é necessário cadastro para responder.</p></main>;
  if(complete)return <main className="mx-auto max-w-xl space-y-4 p-6">
