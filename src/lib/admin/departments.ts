@@ -40,9 +40,10 @@ export const DEPARTMENTS:readonly Department[]=[
  {id:"growth",name:"Crescimento, Marketing e CRM",shortName:"Growth e CRM",mission:"Adquirir, converter e reter usuários com origem rastreável.",ownerRole:"Gestão de crescimento",categories:[
  existing("relations","Relacionamentos","Relações já registradas no Admin.","/admin/relacionamentos"),
  existing("users","Usuários","Contas existentes e situação de cadastro.","/admin/usuarios"),
- planned("leads","Leads e aquisição","Origem, campanhas, identidade e consentimentos."),
+ existing("leads","Leads e aquisição","Cadastro e qualificação de leads.","/admin/crescimento"),
  planned("funnels","Funil de conversão","Pesquisa, lead, cadastro e primeira utilização."),
- planned("retention","Retenção e campanhas","Segmentos, campanhas e retenção real.")
+ existing("campaigns","Campanhas","Cadastro de campanhas e canais de origem.","/admin/crescimento"),
+ planned("retention","Retenção","Segmentos e retenção comprovada.")
  ]},
  {id:"research",name:"Pesquisa e Inteligência de Mercado",shortName:"Pesquisa",mission:"Validar problemas de mobilidade com evidências confiáveis.",ownerRole:"Gestão de pesquisa",categories:[
  existing("forms","Central de Formulários","Biblioteca, publicação e análises de pesquisas.","/admin/formularios"),
