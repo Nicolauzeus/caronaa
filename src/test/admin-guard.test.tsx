@@ -6,11 +6,15 @@ import type { ReactNode } from "react";
 const auth = vi.hoisted(() => ({
   check: vi.fn(),
   user: { id: "admin-test" } as { id: string } | null,
+  pathname: "/admin",
+  scope: vi.fn(),
 }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: auth.user, loading: false }) }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: () => auth.check }));
 vi.mock("@/lib/admin.functions", () => ({ getAdminAccess: vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: auth.scope } }));
 vi.mock("@tanstack/react-router", () => ({
+  useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) => select({ location: { pathname: auth.pathname } }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
@@ -18,6 +22,8 @@ describe("Existing administrative authorization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     auth.user = { id: "admin-test" };
+    auth.pathname = "/admin";
+    auth.scope.mockResolvedValue({ data: { is_global_admin: false, departments: [] }, error: null });
   });
   it("allows the global admin confirmed by the backend", async () => {
     auth.check.mockResolvedValue({ isAdmin: true });
@@ -29,6 +35,17 @@ describe("Existing administrative authorization", () => {
     auth.check.mockResolvedValue({ isAdmin: false });
     render(<AdminGuard>Dados administrativos</AdminGuard>);
     expect(await screen.findByText("Acesso restrito")).toBeInTheDocument();
+    expect(screen.queryByText("Dados administrativos")).not.toBeInTheDocument();
+  });
+  it("grants scoped access to the assigned department only", async () => {
+    auth.pathname = "/admin/tecnologia";
+    auth.check.mockResolvedValue({ isAdmin: false });
+    auth.scope.mockResolvedValue({ data: { is_global_admin: false, departments: [{ id: "technology", can_write: false }] }, error: null });
+    const view = render(<AdminGuard>Dados administrativos</AdminGuard>);
+    expect(await screen.findByText("Dados administrativos")).toBeInTheDocument();
+    auth.pathname = "/admin/financeiro";
+    view.rerender(<AdminGuard>Dados administrativos</AdminGuard>);
+    expect(await screen.findByText("Acesso não autorizado")).toBeInTheDocument();
     expect(screen.queryByText("Dados administrativos")).not.toBeInTheDocument();
   });
   it("fails closed if authorization fails", async () => {

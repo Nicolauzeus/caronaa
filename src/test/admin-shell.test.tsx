@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DEPARTMENTS } from "@/lib/admin/departments";
 import { getDepartmentHome } from "@/lib/admin/module-navigation";
+import { AdminAccessProvider } from "@/lib/admin/access";
 
 const state = vi.hoisted(() => ({ pathname: "/admin", hash: "" }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: null }) }));
@@ -44,9 +45,9 @@ describe("Shared administrative navigation", () => {
     (department) => {
       state.pathname = getDepartmentHome(department.id);
       render(
-        <AdminShell>
-          <div>Conteúdo</div>
-        </AdminShell>,
+        <AdminAccessProvider value={{ isGlobalAdmin: true, departments: [] }}>
+          <AdminShell><div>Conteúdo</div></AdminShell>
+        </AdminAccessProvider>,
       );
       const nav = screen.getByRole("navigation", { name: "Navegação administrativa" });
       expect(within(nav).getAllByRole("link")).toHaveLength(10);
@@ -62,18 +63,30 @@ describe("Shared administrative navigation", () => {
   it("keeps nested research details and their specific tab active", () => {
     state.pathname = "/admin/formularios/respostas";
     render(
-      <AdminShell>
-        <div>Respostas</div>
-      </AdminShell>,
+      <AdminAccessProvider value={{ isGlobalAdmin: true, departments: [] }}>
+        <AdminShell><div>Respostas</div></AdminShell>
+      </AdminAccessProvider>,
     );
     const modules = screen.getByRole("navigation", { name: /Módulos de Pesquisa/ });
     expect(modules.querySelector('[aria-current="page"]')).toHaveTextContent("Respostas");
   });
+  it("keeps restricted departments out of the visible navigation", () => {
+    state.pathname = "/admin/tecnologia";
+    render(
+      <AdminAccessProvider value={{ isGlobalAdmin: false, departments: [{ id: "technology", canWrite: false }] }}>
+        <AdminShell><div>Conteúdo</div></AdminShell>
+      </AdminAccessProvider>,
+    );
+    const nav = screen.getByRole("navigation", { name: "Navegação administrativa" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(1);
+    expect(within(nav).getByRole("link", { name: /Tecnologia/ })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: /Financeiro/ })).not.toBeInTheDocument();
+  });
   it("opens a modal mobile menu and closes after navigation", async () => {
     render(
-      <AdminShell>
-        <div>Conteúdo</div>
-      </AdminShell>,
+      <AdminAccessProvider value={{ isGlobalAdmin: true, departments: [] }}>
+        <AdminShell><div>Conteúdo</div></AdminShell>
+      </AdminAccessProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Abrir menu administrativo" }));
     const dialog = await screen.findByRole("dialog", { name: "Menu administrativo" });
