@@ -1116,159 +1116,7 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
     }
   },
   {
-    "key": "LOCAL_PASSAGEIROS",
-    "nature": "MOBILIDADE_LOCAL",
-    "label": "Moradores e passageiros",
-    "description": "Diagnóstico de demanda e acesso para passageiros",
-    "estimatedMinutes": 4,
-    "schema": {
-      "sections": [
-        {
-          "title": "Seu contexto",
-          "questions": [
-            {
-              "id": "municipality",
-              "label": "Em qual município você costuma se deslocar?",
-              "type": "short_text",
-              "required": true,
-              "options": [],
-              "semanticCode": "MUNICIPALITY"
-            },
-            {
-              "id": "occupation",
-              "label": "Qual é sua ocupação?",
-              "type": "single_choice",
-              "required": true,
-              "options": [
-                "ESTUDANTE",
-                "TRABALHADOR",
-                "ESTUDANTE_TRABALHADOR",
-                "PROFESSOR",
-                "OUTRO"
-              ],
-              "semanticCode": "OCCUPATION"
-            },
-            {
-              "id": "transport",
-              "label": "Como costuma se deslocar?",
-              "type": "multiple_choice",
-              "required": true,
-              "options": [
-                "ONIBUS",
-                "MOTO",
-                "CARRO",
-                "MOTOTAXI",
-                "APLICATIVO",
-                "A_PE",
-                "BICICLETA",
-                "OUTRO"
-              ],
-              "semanticCode": "TRANSPORT_MODE"
-            },
-            {
-              "id": "difficulties",
-              "label": "Quais são suas dificuldades no trajeto?",
-              "type": "multiple_choice",
-              "required": true,
-              "options": [
-                "DOR_01",
-                "DOR_02",
-                "DOR_03",
-                "DOR_04",
-                "DOR_05",
-                "DOR_06",
-                "OUTRA"
-              ],
-              "semanticCode": "MOBILITY_PAINS"
-            }
-          ]
-        },
-        {
-          "title": "Disponibilidade",
-          "questions": [
-            {
-              "id": "availability",
-              "label": "Consegue transporte quando precisa?",
-              "type": "single_choice",
-              "required": true,
-              "options": [
-                "SEMPRE",
-                "AS_VEZES",
-                "RARAMENTE"
-              ],
-              "semanticCode": "AVAILABILITY"
-            },
-            {
-              "id": "wait",
-              "label": "Quanto tempo costuma esperar por transporte em minutos?",
-              "type": "number",
-              "required": false,
-              "options": [],
-              "semanticCode": "WAIT_TIME"
-            },
-            {
-              "id": "time",
-              "label": "Quanto tempo dura o deslocamento em minutos?",
-              "type": "number",
-              "required": false,
-              "options": [],
-              "semanticCode": "TRAVEL_TIME"
-            },
-            {
-              "id": "cost",
-              "label": "Quanto gasta, aproximadamente, por trajeto em R$?",
-              "type": "number",
-              "required": false,
-              "options": [],
-              "semanticCode": "COST_PER_TRIP"
-            }
-          ]
-        },
-        {
-          "title": "Confiança e adoção",
-          "questions": [
-            {
-              "id": "safety",
-              "label": "Quão seguro considera o trajeto atual?",
-              "type": "rating_1_5",
-              "required": true,
-              "options": [],
-              "semanticCode": "PERCEIVED_SAFETY"
-            },
-            {
-              "id": "trust",
-              "label": "O que aumentaria sua confiança no serviço?",
-              "type": "multiple_choice",
-              "required": true,
-              "options": [
-                "IDENTIFICACAO",
-                "AVALIACOES",
-                "RASTREAMENTO",
-                "PRECO_ANTECIPADO",
-                "SUPORTE",
-                "OUTRO"
-              ],
-              "semanticCode": "TRUST_FACTORS"
-            },
-            {
-              "id": "adoption",
-              "label": "Experimentaria uma alternativa segura de carona?",
-              "type": "single_choice",
-              "required": true,
-              "options": [
-                "SIM",
-                "TALVEZ",
-                "NAO"
-              ],
-              "semanticCode": "ADOPTION_INTENT"
-            }
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "key": "LOCAL_PROFISSIONAIS",
+    "key": "PROFISSIONAIS",
     "nature": "MOBILIDADE_LOCAL",
     "label": "Motoristas e mototaxistas",
     "description": "Perfil, operação, conectividade e adesão de profissionais",
@@ -1400,7 +1248,159 @@ export const RESEARCH_TEMPLATES:ResearchTemplate[]=[
     }
   },
   {
-    "key": "LOCAL_PREFEITURA",
+    "key": "PASSAGEIROS",
+    "nature": "MOBILIDADE_LOCAL",
+    "label": "Moradores e passageiros",
+    "description": "Diagnóstico de demanda e acesso para passageiros",
+    "estimatedMinutes": 4,
+    "schema": {
+      "sections": [
+        {
+          "title": "Seu contexto",
+          "questions": [
+            {
+              "id": "municipality",
+              "label": "Em qual município você costuma se deslocar?",
+              "type": "short_text",
+              "required": true,
+              "options": [],
+              "semanticCode": "MUNICIPALITY"
+            },
+            {
+              "id": "occupation",
+              "label": "Qual é sua ocupação?",
+              "type": "single_choice",
+              "required": true,
+              "options": [
+                "ESTUDANTE",
+                "TRABALHADOR",
+                "ESTUDANTE_TRABALHADOR",
+                "PROFESSOR",
+                "OUTRO"
+              ],
+              "semanticCode": "OCCUPATION"
+            },
+            {
+              "id": "transport",
+              "label": "Como costuma se deslocar?",
+              "type": "multiple_choice",
+              "required": true,
+              "options": [
+                "ONIBUS",
+                "MOTO",
+                "CARRO",
+                "MOTOTAXI",
+                "APLICATIVO",
+                "A_PE",
+                "BICICLETA",
+                "OUTRO"
+              ],
+              "semanticCode": "TRANSPORT_MODE"
+            },
+            {
+              "id": "difficulties",
+              "label": "Quais são suas dificuldades no trajeto?",
+              "type": "multiple_choice",
+              "required": true,
+              "options": [
+                "DOR_01",
+                "DOR_02",
+                "DOR_03",
+                "DOR_04",
+                "DOR_05",
+                "DOR_06",
+                "OUTRA"
+              ],
+              "semanticCode": "MOBILITY_PAINS"
+            }
+          ]
+        },
+        {
+          "title": "Disponibilidade",
+          "questions": [
+            {
+              "id": "availability",
+              "label": "Consegue transporte quando precisa?",
+              "type": "single_choice",
+              "required": true,
+              "options": [
+                "SEMPRE",
+                "AS_VEZES",
+                "RARAMENTE"
+              ],
+              "semanticCode": "AVAILABILITY"
+            },
+            {
+              "id": "wait_minutes",
+              "label": "Quanto tempo costuma esperar por transporte em minutos?",
+              "type": "number",
+              "required": false,
+              "options": [],
+              "semanticCode": "WAIT_TIME"
+            },
+            {
+              "id": "time",
+              "label": "Quanto tempo dura o deslocamento em minutos?",
+              "type": "number",
+              "required": false,
+              "options": [],
+              "semanticCode": "TRAVEL_TIME"
+            },
+            {
+              "id": "cost",
+              "label": "Quanto gasta, aproximadamente, por trajeto em R$?",
+              "type": "number",
+              "required": false,
+              "options": [],
+              "semanticCode": "COST_PER_TRIP"
+            }
+          ]
+        },
+        {
+          "title": "Confiança e adoção",
+          "questions": [
+            {
+              "id": "safety",
+              "label": "Quão seguro considera o trajeto atual?",
+              "type": "rating_1_5",
+              "required": true,
+              "options": [],
+              "semanticCode": "PERCEIVED_SAFETY"
+            },
+            {
+              "id": "trust",
+              "label": "O que aumentaria sua confiança no serviço?",
+              "type": "multiple_choice",
+              "required": true,
+              "options": [
+                "IDENTIFICACAO",
+                "AVALIACOES",
+                "RASTREAMENTO",
+                "PRECO_ANTECIPADO",
+                "SUPORTE",
+                "OUTRO"
+              ],
+              "semanticCode": "TRUST_FACTORS"
+            },
+            {
+              "id": "adoption",
+              "label": "Experimentaria uma alternativa segura de carona?",
+              "type": "single_choice",
+              "required": true,
+              "options": [
+                "SIM",
+                "TALVEZ",
+                "NAO"
+              ],
+              "semanticCode": "ADOPTION_INTENT"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "key": "PREFEITURA",
     "nature": "MOBILIDADE_LOCAL",
     "label": "Gestão municipal",
     "description": "Planejamento institucional e interesse em piloto supervisionado",
