@@ -88,8 +88,8 @@ export async function deleteUnansweredResearchForm(form:ResearchForm,confirmatio
 
 export async function archiveResearchForm(form:ResearchForm) {
  if(form.status==="ENCERRADO")throw new Error("Pesquisa histórica encerrada deve permanecer protegida.");
- const {error}=await db.from("research_forms").update({status:"ARQUIVADO",is_enabled:false}).eq("id",form.id);
- if(error)throw new Error(error.message);
+ const {data,error}=await db.from("research_forms").update({status:"ARQUIVADO",is_enabled:false}).eq("id",form.id).select("id").maybeSingle();
+ if(error||!data)throw new Error(error?.message??"O arquivamento não foi confirmado pelo banco.");
 }
 export async function restoreResearchForm(form:ResearchForm) {
  if(form.status!=="ARQUIVADO")throw new Error("Somente formulários arquivados podem ser restaurados.");
