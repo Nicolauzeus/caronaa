@@ -25,7 +25,7 @@ export function ResearchBrandManager({form,onSaved}:{form:ResearchBrandForm;onSa
  const fileRef=useRef<HTMLInputElement>(null);
  useEffect(()=>{
   setPath(form.brand_image_path??null);setName(form.brand_display_name??"");setAlt(form.brand_image_alt??"");
-  setFile(null);setError("");setSuccess("");
+  setFile(null);
  },[form.id,form.brand_image_path,form.brand_display_name,form.brand_image_alt]);
  useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
  const imageUrl=preview??researchBrandUrl(path);
@@ -68,6 +68,11 @@ export function ResearchBrandManager({form,onSaved}:{form:ResearchBrandForm;onSa
    setPath(data.brand_image_path??null);setAlt(data.brand_image_alt??"");setName(data.brand_display_name??"");
    setFile(null);setPreview(null);setSuccess("Identidade visual salva. A imagem já pode aparecer no formulário público.");
    onSaved?.({...form,...data});
+   const previousPath=form.brand_image_path??null;
+   if(previousPath&&previousPath!==nextPath){
+    // Clean up the replaced public asset only after the database points to the new one.
+    void supabase.storage.from(BUCKET).remove([previousPath]);
+   }
   }catch(caught){
    if(uploadedPath)await supabase.storage.from(BUCKET).remove([uploadedPath]);
    setError(caught instanceof Error?caught.message:"Não foi possível salvar a imagem.");
