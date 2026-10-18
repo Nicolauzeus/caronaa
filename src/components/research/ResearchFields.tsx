@@ -22,10 +22,14 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix=""}:{se
   </div>;
  })}</div>;
 }
-export function ResearchBrandHeader({title,imagePath,alt,brandName}:{title:string;imagePath?:string|null;alt?:string|null;brandName?:string|null}){
+export function ResearchBrandHeader({title,imagePath,alt,brandName,onEditImage}:{title:string;imagePath?:string|null;alt?:string|null;brandName?:string|null;onEditImage?:()=>void}){
  const url=imagePath?supabase.storage.from("research-branding").getPublicUrl(imagePath).data.publicUrl:null;
  return <header className="space-y-3 rounded-xl border bg-card p-5"><div className="flex items-center gap-3">
-  {url?<img src={url} alt={alt||"Imagem de identidade visual da pesquisa"} className="h-16 w-16 shrink-0 rounded-xl border bg-white object-contain p-1" loading="lazy"/>:<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl font-black text-[#805900] dark:text-[#ffd166]" aria-hidden="true">C</div>}
+  {onEditImage?<button type="button" aria-label={imagePath?"Trocar imagem do formulário":"Adicionar imagem ao formulário"} title="Personalizar imagem do formulário" onClick={onEditImage} className="group relative flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-primary/55 bg-primary/5 p-1 text-left transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+    {url?<img src={url} alt={alt||"Identidade visual da pesquisa"} className="h-16 w-16 shrink-0 rounded-lg bg-white object-contain"/>:<span aria-hidden="true" className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10 text-2xl font-black text-[#805900] dark:text-[#ffd166]">C</span>}
+    <span className="max-w-24 text-xs font-semibold text-[#805900] dark:text-[#FFD166]">{url?"Trocar imagem":"Adicionar imagem"}</span>
+   </button>:
+   url?<img src={url} alt={alt||"Imagem de identidade visual da pesquisa"} className="h-16 w-16 shrink-0 rounded-xl border bg-white object-contain p-1" loading="lazy"/>:<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl font-black text-[#805900] dark:text-[#ffd166]" aria-hidden="true">C</div>}
   <div><p className="text-xs font-bold uppercase tracking-widest text-[#805900] dark:text-[#ffd166]">{brandName||"Pesquisa CARONAA"}</p><h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{title}</h1></div>
  </div><p className="text-xs text-muted-foreground">Questionário conduzido pela equipe responsável pela pesquisa. A imagem institucional somente deve ser utilizada com autorização.</p></header>;
 }
