@@ -31,7 +31,7 @@ export const urbanUniversityTemplate: ResearchTemplate = {
             semanticCode: "COST_PER_TRIP", helpText: "Considere uma única viagem, não a semana. Pode informar 0.", minValue: 0, maxValue: 10000 },
           { id: "urban_pains", label: "Quais são as duas maiores dificuldades no seu deslocamento?", type: "multiple_choice", required: true,
             options: ["DOR_01","DOR_02","DOR_03","DOR_04","DOR_05","DOR_06"], semanticCode: "MOBILITY_PAINS",
-            helpText: "Escolha uma ou duas dificuldades." },
+            helpText: "Escolha uma ou duas dificuldades.", maxValue: 2 },
           { id: "urban_primary_pain", label: "Qual dessas dificuldades é a principal?", type: "single_choice", required: true,
             options: ["DOR_01","DOR_02","DOR_03","DOR_04","DOR_05","DOR_06"], semanticCode: "URBAN_PRIMARY_PAIN" },
         ],
