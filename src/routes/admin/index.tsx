@@ -12,6 +12,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MetricCard } from "@/components/admin/MetricCard";
+import {InsightChart} from "@/components/admin/InsightChart";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttentionQueue } from "@/components/admin/AttentionQueue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,24 +57,6 @@ type DashboardMetrics = {
   retention: RetentionMetrics | null;
 };
 
-const quickActions = [
-  {
-    label: "Ver usuários",
-    to: "/admin/usuarios",
-  },
-  {
-    label: "Ver caronas",
-    to: "/admin/caronas",
-  },
-  {
-    label: "Ver respostas",
-    to: "/admin/formularios/respostas",
-  },
-  {
-    label: "Analisar validação",
-    to: "/admin/validacao",
-  },
-] as const;
 
 function formatNumber(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -330,25 +313,7 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border bg-card/85 shadow-soft">
-          <CardHeader>
-            <CardTitle className="font-display text-2xl font-extrabold">Ações rápidas</CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-2">
-            {quickActions.map((action) => (
-              <Link
-                key={action.label}
-                to={action.to}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
-              >
-                <span>{action.label}</span>
-
-                <ArrowRight size={16} className="text-primary" />
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+        <InsightChart title="Comparação das etapas do funil" description="Contagens das etapas registradas. Etapas não equivalem a pessoas diferentes." rows={funnelStages.filter(stage=>typeof stage.count==="number").map(stage=>({name:stage.label,value:stage.count}))}/>
       </div>
 
       </TabsContent><TabsContent value="results" className="space-y-5">
