@@ -5,11 +5,21 @@ on:
     paths:
       - "src/lib/formulario/**"
       - "src/components/admin/Research**"
+      - "src/components/admin/ConfiguredResearchInsights.tsx"
       - "src/components/research/**"
       - "src/routes/pesquisas/**"
+      - "src/routes/formulario/**"
+      - "src/routes/admin/inteligencia-pesquisa.tsx"
       - "src/routes/admin/formularios/**"
       - "drizzle/migrations/00**"
+      - "src/test/research-infrastructure.test.tsx"
+      - "tests/research-infrastructure.integration.sql"
+      - "scripts/test-research-infrastructure.mjs"
+      - "scripts/test-research-navigation.mjs"
+      - "tests/research-browser/**"
       - ".github/workflows/research-quality.yml"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   quality:
@@ -22,5 +32,24 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm test -- src/lib/formulario/research-templates.test.ts src/lib/formulario/research-schema.test.ts src/lib/formulario/research-branding.test.ts src/lib/formulario/research-participation.test.ts src/lib/formulario/research-option-labels.test.ts
+      - run: npm test -- src/lib/formulario src/test/research-infrastructure.test.tsx
+      - run: npx tsc --noEmit
+      - name: Install ephemeral PostgreSQL test tools
+        run: sudo apt-get update && sudo apt-get install -y postgresql postgresql-common
+      - name: Research configuration, RLS and publication integration
+        run: node scripts/test-research-infrastructure.mjs
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/research-browser-tools" playwright --no-save --package-lock=false
+          node "$RUNNER_TEMP/research-browser-tools/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Research mobile and desktop validation
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/research-browser-tools/node_modules/playwright/index.mjs
+          RESEARCH_VISUAL_OUTPUT: ${{ runner.temp }}/research-visual
+        run: node scripts/test-research-navigation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-visual-checks
+          path: ${{ runner.temp }}/research-visual/*.png
       - run: npm run build

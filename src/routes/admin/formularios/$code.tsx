@@ -9,6 +9,7 @@ import { researchPublicUrl } from "@/lib/formulario/research-catalog";
 import { ResearchShare } from "@/components/admin/ResearchShare";
 import { ResearchBrandHeader } from "@/components/research/ResearchFields";
 import { ResearchBrandManager } from "@/components/admin/ResearchBrandManager";
+import { ResearchConfigurationManager } from "@/components/admin/ResearchConfigurationManager";
 import { ResearchFormRemovalDialog } from "@/components/admin/ResearchFormRemovalDialog";
 import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -196,6 +197,7 @@ function ResearchDetail() {
               </TabsContent>
               <TabsContent value="config">
                 <div className="space-y-4">
+                  {form.status !== "ENCERRADO" && <ResearchConfigurationManager formId={form.id} />}
                   <ResearchBrandManager
                     form={form}
                     onSaved={(updated) =>

@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { listResearchForms, type ResearchForm } from "@/lib/formulario/research-catalog";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
+import { ConfiguredResearchInsights } from "@/components/admin/ConfiguredResearchInsights";
 import { ResearchCompare } from "@/components/admin/ResearchCompare";
 import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
 import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
@@ -10,13 +11,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 export const Route = createFileRoute("/admin/inteligencia-pesquisa")({
   component: ResearchIntelligenceCenter,
 });
-type View = "overview" | "insights" | "compare" | "municipal";
+type View = "overview" | "insights" | "compare" | "municipal" | "institutions";
 function ResearchIntelligenceCenter() {
   const [forms, setForms] = useState<ResearchForm[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
   const [view, setView] = useAdminModuleSection<View>(
-    { intelligence: "overview", insights: "insights", compare: "compare", municipal: "municipal" },
+    {
+      intelligence: "overview",
+      insights: "insights",
+      compare: "compare",
+      municipal: "municipal",
+      institutions: "institutions",
+    },
     "overview",
   );
   useEffect(() => {
@@ -63,6 +70,7 @@ function ResearchIntelligenceCenter() {
             [
               ["overview", "Metodologia"],
               ["insights", "Análises e dores"],
+              ["institutions", "Coortes institucionais"],
               ["compare", "Comparações"],
               ["municipal", "Municípios"],
             ] as const
@@ -135,6 +143,9 @@ function ResearchIntelligenceCenter() {
         </TabsContent>
         <TabsContent value="insights">
           {!loading && !error && <ResearchInsights forms={forms} />}
+        </TabsContent>
+        <TabsContent value="institutions">
+          {!loading && !error && <ConfiguredResearchInsights forms={forms} />}
         </TabsContent>
         <TabsContent value="compare">
           {!loading && !error && <ResearchCompare forms={forms} />}
