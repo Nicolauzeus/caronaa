@@ -47,12 +47,36 @@ export function cleanAnswers(schema:SurveySchema,answers:Answers):Answers{
  for(const section of schema.sections)for(const q of section.questions)if(isVisible(q,answers)&&answers[q.id]!==undefined&&answers[q.id]!==""&&!(Array.isArray(answers[q.id])&&answers[q.id].length===0))result[q.id]=answers[q.id];
  return result;
 }
+/** Limits are semantic, not based on the translated question label.
+ * Fallbacks support previously published schema versions with no min/max metadata.
+ */
+export function getNumberBounds(q:SurveyQuestion):{min:number;max:number;integerOnly:boolean}{
+ const id=q.id.toLowerCase();
+ const semantic=q.semanticCode?.toUpperCase()??"";
+ let min=0,max=1000000,integerOnly=false;
+ if(["days","work_days","frequency"].includes(id)||["CAMPUS_DAYS","WORK_DAYS"].includes(semantic)){max=7;integerOnly=true}
+ else if(["time","wait","wait_minutes"].includes(id)||["TRAVEL_TIME","WAIT_TIME"].includes(semantic)){max=1440;integerOnly=true}
+ else if(id==="cost"||semantic==="COST_PER_TRIP"){max=10000}
+ else if(id==="seats"||semantic==="SEATS_AVAILABLE"){max=8;integerOnly=true}
+ else if(id==="group"){min=1;max=50;integerOnly=true}
+ else if(id==="population"){max=100000000;integerOnly=true}
+ return {min:q.minValue??min,max:q.maxValue??max,integerOnly:q.integerOnly??integerOnly};
+}
 export function validatePage(section:SurveySection,answers:Answers):string[]{
  return section.questions.filter(q=>isVisible(q,answers)).flatMap(q=>{
   const value=answers[q.id];
   if(q.required&&(!value||(Array.isArray(value)&&!value.length)))return ["Responda: "+q.label];
   if(value===undefined||value==="")return [];
-  if(q.type==="number"&&(!Number.isFinite(Number(value))||Array.isArray(value)))return ["Número inválido: "+q.label];
+  if(q.type==="number"){
+   const bounds=getNumberBounds(q);
+   const number=Number(value);
+   if(Array.isArray(value)||!Number.isFinite(number)||String(value).trim()==="")
+    return ["Informe um número válido: "+q.label];
+   if(number<bounds.min||number>bounds.max)
+    return [q.label+": informe um valor entre "+bounds.min+" e "+bounds.max+"."];
+   if(bounds.integerOnly&&!Number.isInteger(number))
+    return [q.label+": informe um número inteiro."];
+  }
   if((q.type==="rating_1_5"||q.type==="rating_stars")&&(!/^[1-5]$/.test(String(value))))return ["Escolha uma nota entre 1 e 5: "+q.label];
   if(q.type==="rating_0_10"&&(!/^(10|[0-9])$/.test(String(value))))return ["Escolha uma nota entre 0 e 10: "+q.label];
   if(q.type==="yes_no"&&!["SIM","NAO"].includes(String(value)))return ["Escolha sim ou não: "+q.label];
@@ -61,9 +85,9 @@ export function validatePage(section:SurveySection,answers:Answers):string[]{
   if(q.type==="money_range"&&!q.options.includes(String(value)))return ["Escolha uma faixa válida: "+q.label];
   if(q.type==="ranking"&&(!Array.isArray(value)||value.length!==q.options.length||new Set(value).size!==value.length||value.some(x=>!q.options.includes(x))))return ["Ordenação incompleta: "+q.label];
   if(q.type==="matrix"&&(!Array.isArray(value)||value.length!==(q.rows?.length??0)||value.some(x=>{const parts=x.split("::");return parts.length!==2||!q.rows?.includes(parts[0])||!q.options.includes(parts[1])})))return ["Complete a matriz: "+q.label];
-  if(q.type==="contact"&&(Array.isArray(value)||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(value))||String(value).length>180))return ["E-mail inválido: "+q.label];
-  if(q.type==="date"&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value)))return ["Data inválida: "+q.label];
-  if(q.type==="time"&&!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(value)))return ["Horário inválido: "+q.label];
+  if(q.type==="contact"&&(Array.isArray(value)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))||String(value).length>180))return ["E-mail inválido: "+q.label];
+  if(q.type==="date"&&!/^\d{4}-\d{2}-\d{2}$/.test(String(value)))return ["Data inválida: "+q.label];
+  if(q.type==="time"&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(value)))return ["Horário inválido: "+q.label];
   return [];
  });
 }
