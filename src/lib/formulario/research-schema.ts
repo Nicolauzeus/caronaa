@@ -21,10 +21,11 @@ export function inspectSchema(schema:SurveySchema):string[]{
    if(ids.has(q.id))errors.push(name+": identificador duplicado.");
    ids.add(q.id);
    if(q.label.trim().length<3)errors.push(name+": enunciado muito curto.");
-   if(["single_choice","multiple_choice"].includes(q.type)){
+   if(["single_choice","multiple_choice","ranking","money_range","matrix"].includes(q.type)){
     const options=q.options.map(x=>x.trim()).filter(Boolean);
     if(options.length<2||new Set(options).size!==options.length)errors.push(name+": alternativas insuficientes ou duplicadas.");
    }
+   if(q.type==="matrix"&&(!q.rows||q.rows.length<1))errors.push(name+": inclua pelo menos uma linha na matriz.");
    if(q.showWhen){
     const parent=prior.get(q.showWhen.questionId);
     if(!parent||parent.type!=="single_choice"||!parent.options.includes(q.showWhen.equals))errors.push(name+": a condição deve depender de pergunta anterior de escolha única.");
@@ -52,11 +53,15 @@ export function validatePage(section:SurveySection,answers:Answers):string[]{
   if(q.required&&(!value||(Array.isArray(value)&&!value.length)))return ["Responda: "+q.label];
   if(value===undefined||value==="")return [];
   if(q.type==="number"&&(!Number.isFinite(Number(value))||Array.isArray(value)))return ["Número inválido: "+q.label];
-  if(q.type==="rating_1_5"&&(!/^[1-5]$/.test(String(value))))return ["Escolha uma nota entre 1 e 5: "+q.label];
+  if((q.type==="rating_1_5"||q.type==="rating_stars")&&(!/^[1-5]$/.test(String(value))))return ["Escolha uma nota entre 1 e 5: "+q.label];
   if(q.type==="rating_0_10"&&(!/^(10|[0-9])$/.test(String(value))))return ["Escolha uma nota entre 0 e 10: "+q.label];
   if(q.type==="yes_no"&&!["SIM","NAO"].includes(String(value)))return ["Escolha sim ou não: "+q.label];
   if(q.type==="single_choice"&&!q.options.includes(String(value)))return ["Alternativa inválida: "+q.label];
   if(q.type==="multiple_choice"&&(!Array.isArray(value)||value.some(x=>!q.options.includes(x))))return ["Alternativas inválidas: "+q.label];
+  if(q.type==="money_range"&&!q.options.includes(String(value)))return ["Escolha uma faixa válida: "+q.label];
+  if(q.type==="ranking"&&(!Array.isArray(value)||value.length!==q.options.length||new Set(value).size!==value.length||value.some(x=>!q.options.includes(x))))return ["Ordenação incompleta: "+q.label];
+  if(q.type==="matrix"&&(!Array.isArray(value)||value.length!==(q.rows?.length??0)||value.some(x=>{const parts=x.split("::");return parts.length!==2||!q.rows?.includes(parts[0])||!q.options.includes(parts[1])})))return ["Complete a matriz: "+q.label];
+  if(q.type==="contact"&&!Array.isArray(value)&&String(value).length>180)return ["Contato muito longo: "+q.label];
   return [];
  });
 }
