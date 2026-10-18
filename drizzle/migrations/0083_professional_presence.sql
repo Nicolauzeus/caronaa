@@ -1,0 +1,30 @@
+CREATE TABLE IF NOT EXISTS public.professional_presence (
+ user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+ is_available boolean NOT NULL DEFAULT false,
+ mode text NOT NULL DEFAULT 'LOCAL' CHECK(mode IN ('LOCAL')),
+ last_seen_at timestamptz NOT NULL DEFAULT now(),
+ municipality text,
+ updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS professional_presence_active_idx ON public.professional_presence(last_seen_at DESC) WHERE is_available;
+ALTER TABLE public.professional_presence ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS presence_self_read ON public.professional_presence;
+CREATE POLICY presence_self_read ON public.professional_presence FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS presence_self_insert ON public.professional_presence;
+CREATE POLICY presence_self_insert ON public.professional_presence FOR INSERT TO authenticated WITH CHECK(user_id=auth.uid());
+DROP POLICY IF EXISTS presence_self_update ON public.professional_presence;
+CREATE POLICY presence_self_update ON public.professional_presence FOR UPDATE TO authenticated USING(user_id=auth.uid()) WITH CHECK(user_id=auth.uid());
+CREATE OR REPLACE FUNCTION public.set_professional_presence(p_available boolean,p_municipality text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+ -- Availability may not be self-declared by unverified professionals once verification workflow is enabled.
+ INSERT INTO public.professional_presence(user_id,is_available,last_seen_at,municipality,updated_at)
+ VALUES(auth.uid(),p_available,now(),left(nullif(btrim(p_municipality),''),120),now())
+ ON CONFLICT(user_id) DO UPDATE SET is_available=EXCLUDED.is_available,last_seen_at=now(),
+ municipality=coalesce(EXCLUDED.municipality,professional_presence.municipality),updated_at=now();
+END $$;
+REVOKE ALL ON FUNCTION public.set_professional_presence(boolean,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.set_professional_presence(boolean,text) TO authenticated;
+GRANT SELECT ON public.professional_presence TO authenticated;
+NOTIFY pgrst,'reload schema';
