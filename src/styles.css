@@ -417,9 +417,12 @@
   padding-top: 14px;
   padding-bottom: 14px;
 }
-.admin-workspace .bg-secondary\/30,
+.admin-workspace .bg-secondary\/30 {
+  /* Avoid dark secondary (#121212) as a background for neutral admin rows. */
+  background: color-mix(in oklab, var(--muted) 45%, var(--card));
+}
 .admin-workspace .bg-secondary\/40 {
-  background: var(--muted);
+  background: color-mix(in oklab, var(--muted) 65%, var(--card));
 }
 .admin-workspace > div > div {
   min-width: 0;
