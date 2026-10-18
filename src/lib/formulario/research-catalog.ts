@@ -1,3 +1,4 @@
+import {RESEARCH_TEMPLATES,freshTemplate} from "@/lib/formulario/research-templates";
 import { supabase } from "@/integrations/supabase/client";
 
 export const RESEARCH_NATURES = [
@@ -30,25 +31,16 @@ export async function listResearchForms(): Promise<ResearchForm[]> {
 }
 
 export async function createResearchForm(input: {
-  title: string; code: string; nature: string; audience: string; municipality?: string;
+ title:string;code:string;nature:string;audience:string;municipality?:string;templateKey?:string;
 }) {
-  const { data, error } = await db.from("research_forms").insert({
-    title: input.title.trim(),
-    code: input.code.trim().toUpperCase(),
-    nature: input.nature,
-    audience: input.audience,
-    municipality: input.municipality?.trim() || null,
-    mobility_mode: input.nature === "MOBILIDADE_LOCAL" ? "PROFISSIONAL_SOB_DEMANDA" : "COMPARTILHADA",
-    status: "RASCUNHO",
-  }).select("id").single();
-  if (error) throw new Error(error.message);
-  const { error: versionError } = await db.from("research_form_versions").insert({
-    form_id: data.id,
-    version_number: 1,
-    schema_json: { sections: [] },
-  });
-  if (versionError) throw new Error("Formulário criado, mas sua versão inicial falhou: " + versionError.message);
-  return data.id as string;
+ const selected=RESEARCH_TEMPLATES.find(t=>t.key===input.templateKey&&t.nature===input.nature);
+ const schema=selected?freshTemplate(selected):{sections:[{id:crypto.randomUUID(),title:"Primeira seção",questions:[]}]};
+ const {data,error}=await db.rpc("create_research_form_draft",{
+  p_title:input.title.trim(),p_code:input.code.trim().toUpperCase(),p_nature:input.nature,
+  p_audience:input.audience,p_municipality:input.municipality?.trim()??"",p_schema:schema
+ });
+ if(error)throw new Error(error.message);
+ return data as string;
 }
 
 export async function setResearchFormEnabled(form: ResearchForm, enabled: boolean) {
