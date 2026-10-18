@@ -17,7 +17,7 @@ A data de início e a situação real da parceria pertencem à configuração in
 7. A conclusão pode registrar **interesse e disponibilidade** com confirmação. Ainda não cria carro disponível, viagem, match nem pagamento. A opção profissional continua em estudo, separada das caronas.
 
 ## Inteligência de mercado e integridade
-- Reutiliza `TRANSPORT_MODE`, `COST_PER_TRIP`, `WAIT_TIME`, `MOBILITY_PAINS`, `ADOPTION_INTENT`, `ACCEPTABLE_FARE_RANGE`, `BOOKING_INTENT` e `LAUNCH_PARTICIPATION_INTENT`.
+- Reutiliza `ACADEMIC_ROLE`, `TRANSPORT_MODE`, `COST_PER_TRIP`, `WAIT_TIME`, `MOBILITY_PAINS`, `SEATS_AVAILABLE`, `ADOPTION_INTENT`, `ACCEPTABLE_FARE_RANGE`, `BOOKING_INTENT` e `LAUNCH_PARTICIPATION_INTENT`. Os lugares captados representam capacidade **declarada**, não assentos efetivamente publicados.
 - A migration `0097_regional_university_market_metrics.sql` inclui 7 classificações novas no resumo institucional, preservando o contrato agregado e os denominadores de respostas elegíveis.
 - Novos códigos: `REGIONAL_SERVICE_PREFERENCE`, `REGIONAL_PRIMARY_PAIN`, `REGIONAL_BARRIER`, `REGIONAL_OFFER_POSSIBLE`, `REGIONAL_OFFER_VEHICLE`, `REGIONAL_PROFESSIONAL_ROLE`, `REGIONAL_PROFESSIONAL_INTEREST`.
 - Filtros por instituição, campus, campanha, perfil, modalidade de interesse, região, data e versão já são fornecidos por `ConfiguredResearchInsights`.
