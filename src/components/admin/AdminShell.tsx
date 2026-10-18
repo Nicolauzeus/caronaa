@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { DEPARTMENTS, departmentPath } from "@/lib/admin/departments";
 
 type AdminProfile = {
   full_name: string;
@@ -32,6 +33,10 @@ type AdminProfile = {
 };
 
 const navigation = [
+  { title: "Organização", items: [
+    {label:"Departamentos",to:"/admin/departamentos",icon:Building2},
+    ...DEPARTMENTS.map(department=>({label:department.shortName,to:departmentPath(department.id),icon:Building2}))
+  ]},
   {
     title: "Visão Geral",
     items: [
@@ -126,7 +131,7 @@ function AdminNav({ mobile = false, onNavigate, query = "" }: { mobile?: boolean
 
   return (
     <nav className="space-y-6" aria-label="Admin navigation">
-      {navigation.map((section) => ({ ...section, items: section.items.filter((item) => item.label.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) })).filter((section) => section.items.length).map((section) => (
+      {navigation.map((section) => ({ ...section, items: section.items.filter((item) => (item.label+" "+section.title).toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) })).filter((section) => section.items.length).map((section) => (
         <div key={section.title}>
           <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-normal text-muted-foreground/80">
             {section.title}
