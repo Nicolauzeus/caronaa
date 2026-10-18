@@ -26,6 +26,14 @@ const labels: Record<string, string> = {
   JOURNEY_DEPARTURE_TIME: "Horário declarado do trajeto",
   PASSENGER_INTEREST_REGISTERED: "Interesse confirmado em procurar carona",
   DRIVER_AVAILABILITY_REGISTERED: "Disponibilidade confirmada para oferecer carona",
+  REGIONAL_SERVICE_PREFERENCE: "Preferência entre carona e mototáxi local",
+  REGIONAL_PRIMARY_PAIN: "Principal dificuldade de mobilidade regional",
+  REGIONAL_BARRIER: "Principal barreira para utilizar a solução",
+  REGIONAL_OFFER_POSSIBLE: "Potencial para oferecer lugares em trajeto habitual",
+  REGIONAL_OFFER_VEHICLE: "Veículo potencial do motorista",
+  REGIONAL_PROFESSIONAL_ROLE: "Mototaxistas profissionais declarados",
+  REGIONAL_PROFESSIONAL_INTEREST: "Interesse declarado em parceria profissional (não habilitado)",
+
 };
 export function ConfiguredResearchInsights({ forms }: { forms: ResearchForm[] }) {
   const [filters, setFilters] = useState<Record<string, string>>({}),
