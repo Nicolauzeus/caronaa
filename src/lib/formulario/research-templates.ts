@@ -4,6 +4,8 @@ import { companyCampusDriverTemplate } from "./company-campus-driver";
 import { corporateInternalTemplate } from "./corporate-internal";
 import { urbanUniversityTemplate } from "./urban-university";
 import { getNumberBounds } from "./research-schema";
+import type { ResearchCondition } from "./research-conditions";
+import { remapResearchCondition } from "./research-conditions";
 export type SurveyQuestionType =
   | "short_text"
   | "long_text"
@@ -28,6 +30,7 @@ export type SurveyQuestion = {
   required: boolean;
   options: string[];
   showWhen?: { questionId: string; equals: string };
+  condition?: ResearchCondition;
   semanticCode?: string;
   helpText?: string;
   rows?: string[];
@@ -40,6 +43,7 @@ export type SurveySection = {
   questions: SurveyQuestion[];
   id?: string;
   description?: string;
+  condition?: ResearchCondition;
 };
 export type SurveySchema = { sections: SurveySection[] };
 export type ResearchTemplate = {
@@ -1551,6 +1555,7 @@ export function freshTemplate(template: ResearchTemplate): SurveySchema {
     sections: sections.map((section) => ({
       ...section,
       id: crypto.randomUUID(),
+      condition: section.condition ? remapResearchCondition(section.condition, ids) : undefined,
       questions: section.questions.map((question) => {
         const bounds = question.type === "number" ? getNumberBounds(question) : null;
         return {
@@ -1559,6 +1564,7 @@ export function freshTemplate(template: ResearchTemplate): SurveySchema {
             ? { minValue: bounds.min, maxValue: bounds.max, integerOnly: bounds.integerOnly }
             : {}),
           id: ids.get(question.id)!,
+          condition: question.condition ? remapResearchCondition(question.condition, ids) : undefined,
           showWhen: question.showWhen
             ? { ...question.showWhen, questionId: ids.get(question.showWhen.questionId)! }
             : undefined,

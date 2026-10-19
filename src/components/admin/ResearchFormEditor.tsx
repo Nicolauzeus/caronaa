@@ -19,6 +19,7 @@ import {
 } from "@/lib/formulario/research-schema";
 import { ResearchSectionFields, ResearchBrandHeader } from "@/components/research/ResearchFields";
 import { ResearchBrandManager } from "@/components/admin/ResearchBrandManager";
+import { ResearchConditionEditor } from "@/components/admin/ResearchConditionEditor";
 import {
   RESEARCH_SEMANTICS,
   RESEARCH_SEMANTIC_TYPES,
@@ -161,9 +162,17 @@ export function ResearchFormEditor({
   }
   function deleteQuestion(si: number, qi: number) {
     const item = schema.sections[si].questions[qi];
-    const dependent = schema.sections
-      .flatMap((s) => s.questions)
-      .filter((q) => q.showWhen?.questionId === item.id);
+    const includes = (condition: unknown): boolean => {
+      if (!condition || typeof condition !== "object") return false;
+      const rule = condition as {questionId?:string; rules?:unknown[]};
+      return rule.questionId === item.id || (rule.rules?.some(includes) ?? false);
+    };
+    const dependent = schema.sections.flatMap(s=>s.questions)
+      .filter(q=>q.showWhen?.questionId===item.id || includes(q.condition));
+    if (schema.sections.some(s=>includes(s.condition))) {
+      setError("Esta pergunta controla a visibilidade de uma seção. Remova primeiro essa condição.");
+      return;
+    }
     if (
       dependent.length &&
       !confirm(
@@ -173,14 +182,13 @@ export function ResearchFormEditor({
       )
     )
       return;
-    apply({
-      sections: schema.sections.map((s, i) => ({
-        ...s,
-        questions: s.questions
-          .filter((q) => q.id !== item.id)
-          .map((q) => (q.showWhen?.questionId === item.id ? { ...q, showWhen: undefined } : q)),
-      })),
-    });
+    if (dependent.length) {
+      setError("Remova as condições das perguntas dependentes antes de excluir a pergunta.");
+      return;
+    }
+    apply({ sections: schema.sections.map(s => ({
+      ...s, questions: s.questions.filter(q => q.id !== item.id),
+    })) });
   }
   function shiftQuestion(si: number, qi: number, direction: number) {
     changeSection(si, { questions: reorder(schema.sections[si].questions, qi, qi + direction) });
@@ -287,7 +295,7 @@ export function ResearchFormEditor({
     }
   }
   function continuePreview() {
-    const e = validatePage(schema.sections[previewStep], previewAnswers, schema.sections.flatMap(s => s.questions));
+    const e = validatePage(schema.sections[previewStep], previewAnswers, schema.sections.flatMap(s => s.questions), schema);
     if (e.length) {
       setError(e[0]);
       return;
@@ -466,6 +474,7 @@ export function ResearchFormEditor({
               <h3 className="mb-4 text-lg font-bold">{schema.sections[previewStep].title}</h3>
               <ResearchSectionFields
                 section={schema.sections[previewStep]}
+                schema={schema}
                 answers={previewAnswers}
                 allQuestions={schema.sections.flatMap(s => s.questions)}
                 onChange={(id, value) => setPreviewAnswers((a) => cleanAnswers(schema, { ...a, [id]: value }))}
@@ -573,6 +582,13 @@ export function ResearchFormEditor({
                     Excluir
                   </button>
                 </div>
+                <ResearchConditionEditor
+                  label="Quando mostrar esta seção"
+                  value={section.condition}
+                  parents={schema.sections.slice(0, si).flatMap(s => s.questions)}
+                  disabled={published}
+                  onChange={condition => changeSection(si, { condition })}
+                />
                 {section.questions.map((q, qi) => (
                   <details key={q.id} open={expandedQuestionId === q.id} className="min-w-0 rounded-lg border bg-muted/20 p-3">
                     <summary
@@ -810,6 +826,16 @@ export function ResearchFormEditor({
                         className="mt-1 w-full rounded-lg border bg-background p-2"
                       />
                     </label>
+                    <ResearchConditionEditor
+                      label="Regras condicionais (E / OU)"
+                      value={q.condition}
+                      parents={schema.sections.flatMap((s, i) => s.questions.filter(
+                        (other, j) => (i < si || (i === si && j < qi)) &&
+                          ["single_choice","yes_no","multiple_choice","money_range"].includes(other.type)
+                      ))}
+                      disabled={published}
+                      onChange={condition => changeQuestion(si, qi, { condition })}
+                    />
                     <label className="block text-xs">
                       Mostrar somente quando
                       <select

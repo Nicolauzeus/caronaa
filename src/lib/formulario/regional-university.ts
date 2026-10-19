@@ -1,4 +1,5 @@
 import type { ResearchTemplate, SurveySchema } from "./research-templates";
+import { researchRoleQuestion, roleCondition } from "./research-conditions";
 import type { Answers } from "./research-schema";
 import {
   newResearchConfiguration,
@@ -22,6 +23,7 @@ export const regionalUniversityTemplate: ResearchTemplate = {
         title: "Como você chega ao campus?",
         description: "Responda sobre sua rotina real. Não é necessário informar endereço residencial.",
         questions: [
+          researchRoleQuestion(true),
           {
             id: "regional_affiliation",
             label: "Qual é seu vínculo com a universidade?",
@@ -108,7 +110,8 @@ export const regionalUniversityTemplate: ResearchTemplate = {
         questions: [
           {
             id: "regional_offer_possible",
-            label: "Você poderia compartilhar lugares em um trajeto que já faz?",
+            condition: roleCondition("MOTORISTA","AMBOS"),
+          label: "Você poderia compartilhar lugares em um trajeto que já faz?",
             type: "single_choice", required: true,
             options: ["SIM", "NAO"],
             semanticCode: "REGIONAL_OFFER_POSSIBLE",
@@ -132,7 +135,8 @@ export const regionalUniversityTemplate: ResearchTemplate = {
           },
           {
             id: "regional_professional_role",
-            label: "Você trabalha como mototaxista profissional?",
+            condition: roleCondition("PROFISSIONAL"),
+            label: "Você atua profissionalmente como mototaxista?",
             type: "single_choice", required: true,
             options: ["SIM", "NAO"],
             semanticCode: "REGIONAL_PROFESSIONAL_ROLE",

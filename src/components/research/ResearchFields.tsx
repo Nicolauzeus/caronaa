@@ -2,10 +2,11 @@ import {supabase} from "@/integrations/supabase/client";
 import type {Answers} from "@/lib/formulario/research-schema";
 import {isVisible,getNumberBounds} from "@/lib/formulario/research-schema";
 import {formatResearchOption,getRatingScaleContext} from "@/lib/formulario/research-option-labels";
-import type {SurveyQuestion,SurveySection} from "@/lib/formulario/research-templates";
+import type {SurveyQuestion,SurveySection,SurveySchema} from "@/lib/formulario/research-templates";
+import {createResearchVisibility} from "@/lib/formulario/research-conditions";
 
-export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[]}){
- return <div className="space-y-5">{section.questions.filter(q=>isVisible(q,answers,allQuestions)).map(q=>{
+export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions,schema}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[];schema?:SurveySchema}){
+ return <div className="space-y-5">{section.questions.filter(q=>schema?createResearchVisibility(schema,answers).questionVisible(q):isVisible(q,answers,allQuestions)).map(q=>{
   const id=idPrefix+q.id;
   const value=answers[q.id];
   const select=(v:string|string[])=>onChange(q.id,v);
@@ -34,6 +35,14 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
    <p className="text-sm font-semibold" id={id+"-prompt"}>{q.label}{q.required&&<span className="ml-1 text-destructive" aria-label="obrigatória">*</span>}</p>:
    <label htmlFor={id} className="block text-sm font-semibold">{q.label}{q.required&&<span className="ml-1 text-destructive" aria-label="obrigatória">*</span>}</label>}{q.helpText&&<p className="text-xs text-muted-foreground">{q.helpText}</p>}
   {q.type==="long_text"?<textarea id={id} value={String(value??"")} onChange={e=>select(e.target.value)} rows={4} className="w-full rounded-xl border bg-background p-3" maxLength={2000}/>:
+  q.type==="single_choice"&&q.semanticCode==="RESEARCH_PARTICIPANT_ROLE"?
+  <fieldset className="grid gap-2 sm:grid-cols-2">
+    <legend className="sr-only">{q.label}</legend>
+    {q.options.map(o=><label key={o} className={"flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm transition-colors "+(value===o?"border-primary bg-primary/10 font-semibold":"border-border hover:bg-muted/50")}>
+      <input type="radio" name={id} value={o} checked={value===o} onChange={()=>select(o)} className="accent-primary"/>
+      <span>{o==="PASSAGEIRO"?"Quero encontrar carona":o==="MOTORISTA"?"Posso oferecer carona":o==="AMBOS"?"Quero encontrar e oferecer carona":"Atuo com transporte profissional"}</span>
+    </label>)}
+  </fieldset>:
   q.type==="single_choice"?<select id={id} required={q.required} value={String(value??"")} onChange={e=>select(e.target.value)} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione</option>{q.options.map(o=><option key={o} value={o}>{formatResearchOption(o)}</option>)}</select>:
   q.type==="multiple_choice"?<fieldset className={q.options.every(opt=>formatResearchOption(opt).length<=48)?"grid grid-cols-1 gap-2 sm:grid-cols-2":"grid grid-cols-1 gap-2"}><legend className="sr-only">{q.label}</legend>{q.options.map(opt=>{
     const checked=Array.isArray(value)&&value.includes(opt);

@@ -17,7 +17,7 @@ describe("Modelo 03 — pesquisa rápida e match de saída", () => {
   it("registers a compact valid template with independent IDs and a configured journey", () => {
     expect(RESEARCH_TEMPLATES.filter(x=>x.key===EVENT_EXIT_MATCH_KEY)).toHaveLength(1);
     expect(eventExitMatchTemplate.schema.sections).toHaveLength(1);
-    expect(eventExitMatchTemplate.schema.sections[0].questions).toHaveLength(7);
+    expect(eventExitMatchTemplate.schema.sections[0].questions).toHaveLength(8);
     expect(inspectSchema(eventExitMatchTemplate.schema)).toEqual([]);
     const a=freshTemplate(eventExitMatchTemplate),b=freshTemplate(eventExitMatchTemplate);
     expect(a.sections[0].questions[0].id).not.toBe(b.sections[0].questions[0].id);

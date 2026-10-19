@@ -1,4 +1,5 @@
 import type { ResearchTemplate, SurveySchema } from "./research-templates";
+import { researchRoleQuestion, roleCondition } from "./research-conditions";
 import { newResearchConfiguration, type ResearchConfiguration, type ResearchJourney, type PublicResearchConfiguration } from "./research-configuration";
 import type { Answers } from "./research-schema";
 
@@ -15,6 +16,7 @@ export const eventExitMatchTemplate: ResearchTemplate = {
       title: "Sua saída do evento",
       description: "Responda rapidamente. A rota e o horário serão selecionados na próxima etapa.",
       questions: [
+          researchRoleQuestion(false),
         {
           id: "event_transport", label: "Como você costuma voltar de eventos?",
           type: "multiple_choice", required: true,
@@ -29,7 +31,8 @@ export const eventExitMatchTemplate: ResearchTemplate = {
           helpText: "Escolha apenas uma dificuldade.",
         },
         {
-          id: "event_offer_possible", label: "Você poderia oferecer lugares numa carona ao sair do evento?",
+          id: "event_offer_possible", condition: roleCondition("MOTORISTA","AMBOS"),
+          label: "Você poderia oferecer lugares numa carona ao sair do evento?",
           type: "single_choice", required: true, options: ["SIM","NAO"],
           semanticCode: "EVENT_OFFER_POSSIBLE",
         },

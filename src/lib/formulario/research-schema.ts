@@ -1,5 +1,6 @@
 import type { SurveyQuestion, SurveySchema, SurveySection } from "./research-templates";
 import { RESEARCH_SEMANTIC_TYPES } from "./research-configuration";
+import { createResearchVisibility, inspectResearchCondition } from "./research-conditions";
 export const newSurveyQuestion = (): SurveyQuestion => ({
   id: crypto.randomUUID(),
   label: "Nova pergunta",
@@ -33,6 +34,7 @@ export function inspectSchema(schema: SurveySchema): string[] {
   const prior = new Map<string, SurveyQuestion>();
   let total = 0;
   schema.sections.forEach((s, si) => {
+    if (s.condition) errors.push(...inspectResearchCondition(s.condition, prior, "Seção " + (si + 1)));
     if (s.title.trim().length < 2) errors.push("A seção " + (si + 1) + " precisa de título.");
     if (!s.questions.length) errors.push("A seção " + (si + 1) + " está vazia.");
     s.questions.forEach((q, qi) => {
@@ -65,6 +67,7 @@ export function inspectSchema(schema: SurveySchema): string[] {
       }
       if (q.type === "matrix" && (!q.rows || q.rows.length < 1))
         errors.push(name + ": inclua pelo menos uma linha na matriz.");
+      if (q.condition) errors.push(...inspectResearchCondition(q.condition, prior, name));
       if (q.showWhen) {
         const parent = prior.get(q.showWhen.questionId);
         if (
@@ -87,36 +90,17 @@ export type Answers = Record<string, AnswerValue>;
  * This prevents hidden nested questions from reappearing through stale answers.
  * When allQuestions is omitted, the caller must pass already cleaned answers.
  */
-export function isVisible(
-  q: SurveyQuestion,
-  answers: Answers,
-  allQuestions?: SurveyQuestion[],
-): boolean {
-  if (!q.showWhen) return true;
-  const lookup = new Map((allQuestions ?? []).map((question) => [question.id, question]));
-  const seen = new Set<string>();
-  function visible(question: SurveyQuestion): boolean {
-    if (!question.showWhen) return true;
-    if (seen.has(question.id)) return false;
-    seen.add(question.id);
-    const condition = question.showWhen;
-    const parent = lookup.get(condition.questionId);
-    if (allQuestions && (!parent || !visible(parent))) return false;
-    return typeof answers[condition.questionId] === "string" &&
-      answers[condition.questionId] === condition.equals;
-  }
-  return visible(q);
+export function isVisible(q: SurveyQuestion, answers: Answers, allQuestions?: SurveyQuestion[]): boolean {
+  if (!allQuestions) return !q.showWhen || answers[q.showWhen.questionId] === q.showWhen.equals;
+  return createResearchVisibility({sections:[{title:"Condicional",questions:allQuestions}]},answers).questionVisible(q);
 }
 export function cleanAnswers(schema: SurveySchema, answers: Answers): Answers {
   const result: Answers = {};
+  const visibility = createResearchVisibility(schema, answers);
   for (const section of schema.sections)
     for (const q of section.questions)
-      if (
-        isVisible(q, result) &&
-        answers[q.id] !== undefined &&
-        answers[q.id] !== "" &&
-        !(Array.isArray(answers[q.id]) && answers[q.id].length === 0)
-      )
+      if (visibility.questionVisible(q) && answers[q.id] !== undefined &&
+        answers[q.id] !== "" && (!Array.isArray(answers[q.id]) || answers[q.id].length))
         result[q.id] = answers[q.id];
   return result;
 }
@@ -179,9 +163,10 @@ export function scheduleWarning(section: SurveySection, answers: Answers): strin
     ? "O horário de saída é anterior ao de chegada. Confirme se a saída é no dia seguinte; caso contrário, revise os horários."
     : null;
 }
-export function validatePage(section: SurveySection, answers: Answers, allQuestions?: SurveyQuestion[]): string[] {
+export function validatePage(section: SurveySection, answers: Answers, allQuestions?: SurveyQuestion[], schema?: SurveySchema): string[] {
+  const visible = createResearchVisibility(schema ?? {sections:[{...section,questions:allQuestions ?? section.questions}]},answers);
   return section.questions
-    .filter((q) => isVisible(q, answers, allQuestions))
+    .filter(q => visible.questionVisible(q))
     .flatMap((q) => {
       const value = answers[q.id];
       if (q.required && (!value || (Array.isArray(value) && !value.length)))

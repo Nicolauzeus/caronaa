@@ -1,4 +1,5 @@
 import type { ResearchTemplate, SurveySchema } from "./research-templates";
+import { researchRoleQuestion, roleCondition } from "./research-conditions";
 import {
   newResearchConfiguration,
   type ResearchConfiguration,
@@ -23,6 +24,7 @@ export const urbanUniversityTemplate: ResearchTemplate = {
         title: "Sua rotina universitária",
         description: "Queremos conhecer suas alternativas atuais. Não pedimos seu endereço residencial.",
         questions: [
+          researchRoleQuestion(false),
           { id: "urban_affiliation", label: "Qual é seu vínculo com a universidade?", type: "single_choice", required: true,
             options: ["ESTUDANTE","ESTUDANTE_TRABALHADOR","PROFESSOR","COLABORADOR","TERCEIRIZADO","OUTRO"], semanticCode: "ACADEMIC_ROLE" },
           { id: "urban_transport", label: "Como costuma ir ou voltar da universidade?", type: "multiple_choice", required: true,
@@ -40,7 +42,8 @@ export const urbanUniversityTemplate: ResearchTemplate = {
         title: "Oferta de caronas e confiança",
         description: "Mesmo que só queira pegar carona, sua opinião nos ajuda a validar a proposta.",
         questions: [
-          { id: "urban_offer_possible", label: "Você poderia oferecer lugares em um trajeto que já realiza?", type: "single_choice", required: true,
+          { id: "urban_offer_possible", condition: roleCondition("MOTORISTA","AMBOS"),
+          label: "Você poderia oferecer lugares em um trajeto que já realiza?", type: "single_choice", required: true,
             options: ["SIM","NAO"], semanticCode: "URBAN_OFFER_POSSIBLE" },
           { id: "urban_offer_vehicle", label: "Qual veículo usaria para oferecer carona?", type: "single_choice", required: true,
             options: ["CARRO","MOTO"], showWhen: { questionId: "urban_offer_possible", equals: "SIM" }, semanticCode: "URBAN_OFFER_VEHICLE" },
