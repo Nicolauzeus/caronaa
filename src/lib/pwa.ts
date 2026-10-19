@@ -1,7 +1,20 @@
 export async function registerPwa(): Promise<void> {
   if (!window.isSecureContext || !("serviceWorker" in navigator)) return;
   try {
-    await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+    // A tab left open across a deploy keeps requesting files the server replaced,
+    // so look for the replacement as soon as the user comes back to it.
+    const checkForUpdate = () => {
+      try {
+        void registration?.update?.()?.catch?.(() => {});
+      } catch {
+        // Checking for an update is best-effort.
+      }
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkForUpdate();
+    });
+    window.addEventListener("focus", checkForUpdate);
   } catch (error) {
     console.warn("[PWA] Não foi possível registrar o service worker:", error);
   }
