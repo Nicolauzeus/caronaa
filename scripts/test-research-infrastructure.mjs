@@ -40,6 +40,13 @@ const sql =
   readFileSync(
     new URL("../tests/research-infrastructure.integration.sql", import.meta.url),
     "utf8",
+  ) +
+  // The corporate-only RLS migration is tested in the same disposable cluster.
+  // No production endpoint/credentials are used, and 0099 preserves 0097/0098 BI semantics.
+  read("0099_corporate_internal_research_access.sql") +
+  readFileSync(
+    new URL("../tests/research-corporate-access.integration.sql", import.meta.url),
+    "utf8",
   );
 const result = spawnSync("pg_virtualenv", ["psql", "-X", "-v", "ON_ERROR_STOP=1"], {
   input: sql,

@@ -24,6 +24,7 @@ export const researchConfigurationSchema = z
     institutionName: text().min(2),
     publicName: text().min(2),
     campus: text(120),
+    nearbyUniversity: text(180).optional(),
     region: text(120).min(2),
     address: text(240),
     latitude: z.number().min(-90).max(90).nullable(),
