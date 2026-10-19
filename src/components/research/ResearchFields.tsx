@@ -51,7 +51,12 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
       disabled={!checked && q.maxValue !== undefined && Array.isArray(value) && value.length>=q.maxValue}
       onChange={e=>{const current=Array.isArray(value)?value:[];select(e.target.checked?[...current,opt]:current.filter(v=>v!==opt))}}/>{formatResearchOption(opt)}
     </label>;
-   })}</fieldset>:
+   })}{compact&&q.semanticCode==="MOBILITY_PAINS"&&Array.isArray(value)&&value.length>0&&(
+      <p className="col-span-2 mt-1 rounded-lg bg-primary/10 px-2 py-1.5 text-xs leading-5">
+        <strong>Principal:</strong> {formatResearchOption(value[0])}
+        {value.length>1&&<span className="text-muted-foreground"> · Segunda: {formatResearchOption(value[1])}</span>}
+      </p>
+    )}</fieldset>:
   q.type==="yes_no"?choice(["SIM","NAO"]):
   q.type==="money_range"?<select id={id} value={String(value??"")} onChange={e=>select(e.target.value)} className="w-full rounded-lg border bg-background p-3"><option value="">Selecione a faixa</option>{q.options.map(o=><option key={o} value={o}>{formatResearchOption(o)}</option>)}</select>:
   q.type==="ranking"?<div className="space-y-2">{(!Array.isArray(value)?[]:value).length===0?<button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={()=>select([...q.options])}>Começar ordenação</button>:(value as string[]).map((opt,index,items)=><div key={opt} className="flex items-center gap-2 rounded-lg border p-2"><span className="w-7 text-xs text-muted-foreground">{index+1}º</span><span className="flex-1 text-sm">{opt}</span><button type="button" disabled={index===0} onClick={()=>{const next=[...items];[next[index-1],next[index]]=[next[index],next[index-1]];select(next)}} className="rounded border px-2 py-1 text-sm" aria-label={"Subir "+opt}>↑</button><button type="button" disabled={index===items.length-1} onClick={()=>{const next=[...items];[next[index+1],next[index]]=[next[index],next[index+1]];select(next)}} className="rounded border px-2 py-1 text-sm" aria-label={"Descer "+opt}>↓</button></div>)}</div>:

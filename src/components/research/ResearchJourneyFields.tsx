@@ -47,7 +47,7 @@ export function ResearchJourneyFields({
   onChange: (value: ResearchJourney) => void;
   showConsents?: boolean;
   lockedProfile?: boolean;
-  phase?: "direction" | "days" | "time" | "origin" | "destination";
+  phase?: "direction" | "days" | "time" | "origin" | "destination" | "routine" | "locations";
 }) {
   const fieldId = useId();
   c = effectiveResearchSchedule(c, j.profile);
@@ -143,7 +143,7 @@ export function ResearchJourneyFields({
           ))}
         </select>
       </label>}
-      {(!phase || phase === "direction") && (eventExit ? <p className="rounded-lg bg-primary/5 p-3 text-sm font-medium">Trajeto de saída do evento: local do evento → destino</p> : <label className="block text-sm">
+      {(!phase || phase === "direction" || phase === "routine") && (eventExit ? <p className="rounded-lg bg-primary/5 p-3 text-sm font-medium">Trajeto de saída do evento: local do evento → destino</p> : <label className="block text-sm">
         Sentido do percurso
         <select
           className={cls}
@@ -174,7 +174,7 @@ export function ResearchJourneyFields({
           <option value="IDA_E_VOLTA">Ida e volta</option>
         </select>
       </label>)}
-      {(!phase || phase === "days") && !eventExit && <fieldset>
+      {(!phase || phase === "days" || phase === "routine") && !eventExit && <fieldset>
         <legend className="mb-2 text-sm font-medium">Dias do trajeto</legend>
         <div className="flex flex-wrap gap-2">
           {c.days.map((day) => (
@@ -218,7 +218,7 @@ export function ResearchJourneyFields({
           onChange={(event) => set("flexibilityMinutes", Number(event.target.value))}
         />
       </label>}
-      {(!phase || phase === "origin") && <LocationAutocomplete
+      {(!phase || phase === "origin" || phase === "locations") && <LocationAutocomplete
         id={fieldId + "-origin"}
         label={eventExit ? "Ponto de saída do evento" : "Bairro ou município de origem"}
         value={j.originArea}
@@ -226,14 +226,14 @@ export function ResearchJourneyFields({
         helperText="Informe uma região aproximada, sem endereço residencial ou número."
         variant="simple"
       />}
-      {(!phase || phase === "destination") && <LocationAutocomplete
+      {(!phase || phase === "destination" || phase === "locations") && <LocationAutocomplete
         id={fieldId + "-destination"}
         label={eventExit ? "Bairro ou região de destino após o evento" : "Bairro, campus ou ponto de destino"}
         value={j.destinationArea}
         onChange={(text, details) => location("destination", text, details)}
         variant="simple"
       />}
-      {(!phase || phase === "destination") && c.safeMeetingPoints.length > 0 && (
+      {(!phase || phase === "destination" || phase === "locations") && c.safeMeetingPoints.length > 0 && (
         <div>
           <p className="text-sm font-medium">Pontos de embarque informados pela organização</p>
           <ul className="mt-2 list-inside list-disc text-sm text-muted-foreground">
