@@ -43,6 +43,8 @@ const sql =
   ) +
   // The corporate-only RLS migration is tested in the same disposable cluster.
   // No production endpoint/credentials are used, and 0099 preserves 0097/0098 BI semantics.
+  read("0097_regional_university_market_metrics.sql") +
+  read("0098_company_campus_research.sql") +
   read("0099_corporate_internal_research_access.sql") +
   readFileSync(
     new URL("../tests/research-corporate-access.integration.sql", import.meta.url),
