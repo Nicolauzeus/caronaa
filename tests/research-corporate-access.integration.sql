@@ -16,6 +16,7 @@ SELECT public.create_configured_research_form(
 ) AS id;
 ALTER TABLE corporate_fixture ADD COLUMN version uuid;
 ALTER TABLE corporate_fixture ADD COLUMN journey jsonb;
+GRANT SELECT ON corporate_fixture TO anon,authenticated;
 UPDATE corporate_fixture f SET version=(
  SELECT v.id FROM public.research_form_versions v WHERE v.form_id=f.id ORDER BY v.version_number DESC LIMIT 1
 ), journey=(SELECT journey FROM fixture);
