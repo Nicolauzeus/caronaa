@@ -8,8 +8,8 @@ describe("Página promocional encerrada", () => {
     expect(() => PitchRoute.options.beforeLoad?.({} as never)).toThrow();
   });
 
-  it("redireciona links antigos do formulário para cadastro normal", () => {
-    expect(FormRoute.options.beforeLoad).toBeTypeOf("function");
-    expect(() => FormRoute.options.beforeLoad?.({} as never)).toThrow();
+  it("mantém /formulario público e sem redirecionamento para cadastro", () => {
+    expect(FormRoute.options.beforeLoad).toBeUndefined();
+    expect(FormRoute.options.component).toBeTypeOf("function");
   });
 });
