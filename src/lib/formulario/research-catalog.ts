@@ -31,6 +31,34 @@ export type ResearchForm = {
 };
 
 const db = supabase as any;
+/** Minimum required SQL version by model. Unrelated public and event surveys
+ * continue operating even while later model migrations await approval.
+ */
+const MODEL_SQL_VERSION: Record<string,number> = {
+  UNIVERSIDADE_MOBILIDADE_REGIONAL: 97,
+  EMPRESA_CARONA_CAMPUS: 98,
+  EMPRESA_CARONA_INTERNA: 99,
+};
+export function requiredResearchSchemaVersion(templateKey?:string):number {
+  return MODEL_SQL_VERSION[templateKey??""]??95;
+}
+export async function getResearchSchemaVersion():Promise<number>{
+  const {data,error}=await db.rpc("get_research_schema_version");
+  if (error){
+    if (error.code==="PGRST202" || /function.*get_research_schema_version.*not found/i.test(error.message??"")) return 95;
+    throw new Error("Não foi possível confirmar as migrations de pesquisa: "+error.message);
+  }
+  const n=Number(data);
+  if(!Number.isInteger(n)||n<95||n>99)throw new Error("Versão de infraestrutura de pesquisa inválida.");
+  return n;
+}
+export async function requireResearchSchemaVersion(templateKey?:string){
+  const needed=requiredResearchSchemaVersion(templateKey);
+  if(needed<=95)return;
+  const current=await getResearchSchemaVersion();
+  if(current<needed) throw new Error("Modelo aguardando migration "+String(needed)+". O banco está na versão "+String(current)+". Nenhum formulário foi criado.");
+}
+
 
 export async function listResearchForms(options: { includeTrashed?: boolean } = {}): Promise<ResearchForm[]> {
   const { data, error } = await db
@@ -51,6 +79,7 @@ export async function createResearchForm(input: {
   templateKey?: string;
   configuration?: ResearchConfiguration;
 }) {
+  await requireResearchSchemaVersion(input.templateKey);
   const selected = RESEARCH_TEMPLATES.find(
     (t) => t.key === input.templateKey && t.nature === input.nature,
   );
