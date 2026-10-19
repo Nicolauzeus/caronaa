@@ -45,6 +45,8 @@ type Form = {
 export function PublicResearchForm({ code }: { code: string }) {
   const previousStep = useRef(0);
   const [microQuestionIndex, setMicroQuestionIndex] = useState(0);
+  const [pilotRoleConfirmed,setPilotRoleConfirmed] = useState(false);
+  const [pilotSelectedRole,setPilotSelectedRole] = useState<ResearchJourney["profile"] | null>(null);
   const [microJourneyIndex, setMicroJourneyIndex] = useState(0);
   const [form, setForm] = useState<Form | null>(null),
     [answers, setAnswers] = useState<Answers>({}),
@@ -175,6 +177,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     : [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   const isUnifor = Boolean(form && isUniforPilotForm(form.id));
+  const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
   const currentSection = form?.schema.sections[step];
   const displayedQuestions = currentSection && form
     ? currentSection.questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q))
@@ -182,23 +185,34 @@ export function PublicResearchForm({ code }: { code: string }) {
   const currentMicroIndex = Math.min(microQuestionIndex,Math.max(0,displayedQuestions.length-1));
   const currentMicroQuestion = displayedQuestions[currentMicroIndex];
   const journeyPhases = ["direction","days","time","origin","destination"] as const;
-  const microTotal = isUnifor && form
+  const microTotalBase = isUnifor && form
     ? visibleStepIndexes.reduce((n,index)=>n+(
       index===form.schema.sections.length ? journeyPhases.length :
       form.schema.sections[index].questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length
     ),0) : totalSteps;
+  const microTotal = microTotalBase+(isUnifor&&!roleId?1:0);
   const microCompletedBefore = isUnifor && form ? visibleStepIndexes
     .filter(index=>index<step)
     .reduce((n,index)=>n+(index===form.schema.sections.length?journeyPhases.length:
       form.schema.sections[index].questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length),0)
     : 0;
   const microPosition = isUnifor
-    ? microCompletedBefore+(currentSection?currentMicroIndex:microJourneyIndex)+1
+    ? (pilotRoleStep ? 1 : microCompletedBefore+(currentSection?currentMicroIndex:microJourneyIndex)+1+(!roleId?1:0))
     : visibleStepIndexes.indexOf(step)+1;
   const progressCount = isUnifor ? microTotal : visibleStepIndexes.length;
   const progressNumber = Math.max(1,Math.min(microPosition,Math.max(1,progressCount)));
   function next() {
     if (!form) return;
+    if (pilotRoleStep) {
+      if (!pilotSelectedRole || !journey) {
+        setError("Escolha se deseja pedir ou oferecer uma carona.");
+        return;
+      }
+      setJourney({...journey,profile:pilotSelectedRole});
+      setPilotRoleConfirmed(true);
+      setError("");
+      return;
+    }
     const sec = form.schema.sections[step];
     if (!sec) {
       if (isUnifor && microJourneyIndex < journeyPhases.length - 1) {
@@ -505,7 +519,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       </main>
     );
   const section = form.schema.sections[step],
-    last = step === visibleStepIndexes[visibleStepIndexes.length - 1] &&
+    last = !pilotRoleStep && step === visibleStepIndexes[visibleStepIndexes.length - 1] &&
       (!isUnifor || microJourneyIndex === journeyPhases.length - 1);
   const pilotContent = isUnifor && section && currentMicroQuestion
     ? {...section,questions:[currentMicroQuestion]} : section;
@@ -600,12 +614,26 @@ export function PublicResearchForm({ code }: { code: string }) {
           ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border bg-card p-3 sm:p-5 max-[height:560px]:overflow-y-auto"
           : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
           <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 truncate text-base font-bold outline-none":"text-xl font-bold outline-none"}>
-            {section?.title ?? (isUnifor? ["Sentido do trajeto","Dias da semana","Horário de saída","Origem","Destino"][microJourneyIndex] : "Seu trajeto")}
+            {pilotRoleStep?"Como pretende participar?":section?.title ?? (isUnifor? ["Sentido do trajeto","Dias da semana","Horário de saída","Origem","Destino"][microJourneyIndex] : "Seu trajeto")}
           </h2>
           {!isUnifor && section?.description && (
             <p className="text-sm text-muted-foreground">{section.description}</p>
           )}
-          {section ? (
+          {pilotRoleStep ? (
+            <fieldset className="grid gap-2" aria-label="Perfil para a carona no lançamento">
+              <legend className="mb-2 text-sm font-medium text-muted-foreground">Qual será seu perfil principal?</legend>
+              {([
+                ["PASSAGEIRO","Quero encontrar carona"],
+                ["MOTORISTA","Posso oferecer lugares"],
+                ["AMBOS","Quero encontrar e oferecer"],
+              ] as const).map(([role,label])=>(
+                <label key={role} className={"flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm "+(pilotSelectedRole===role?"border-primary bg-primary/10 font-semibold":"border-border")}>
+                  <input type="radio" name="unifor-pilot-role" checked={pilotSelectedRole===role} onChange={()=>{setPilotSelectedRole(role);setError("");}} className="accent-primary" />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+          ) : section ? (
             <ResearchSectionFields
               section={pilotContent!}
               schema={form.schema}
@@ -623,7 +651,7 @@ export function PublicResearchForm({ code }: { code: string }) {
               config={form.configuration.settings}
               phase={isUnifor ? journeyPhases[microJourneyIndex] : undefined}
               showConsents={!isUnifor}
-              lockedProfile={Boolean(declaredRole)}
+              lockedProfile={isUnifor || Boolean(declaredRole)}
               value={journey}
               onChange={setJourney}
             />
@@ -665,7 +693,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
           <button
             type="button"
-            disabled={(step === visibleStepIndexes[0] && (!isUnifor || currentMicroIndex === 0)) || busy}
+            disabled={((step === visibleStepIndexes[0] && (!isUnifor || currentMicroIndex === 0)) && (pilotRoleStep || !isUnifor || Boolean(roleId))) || busy}
             onClick={() => {
               setError("");
               setFieldErrors({});
@@ -673,6 +701,8 @@ export function PublicResearchForm({ code }: { code: string }) {
                 setMicroJourneyIndex(i=>i-1);
               } else if (isUnifor && section && currentMicroIndex > 0) {
                 setMicroQuestionIndex(i=>i-1);
+              } else if (isUnifor && section && step === visibleStepIndexes[0] && !roleId && pilotRoleConfirmed) {
+                setPilotRoleConfirmed(false);
               } else {
                 const previous = [...visibleStepIndexes].reverse().find(index => index < step) ?? 0;
                 if (isUnifor && previous < form.schema.sections.length) {
