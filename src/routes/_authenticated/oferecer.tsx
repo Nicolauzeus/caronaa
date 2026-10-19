@@ -37,6 +37,7 @@ export const Route = createFileRoute("/_authenticated/oferecer")({
     data: z.string().optional(),
     horario: z.string().optional(),
     vagas: z.coerce.number().int().min(1).max(6).optional(),
+    tolerancia: z.coerce.number().int().refine((n)=>[5,15,30,60].includes(n)).optional(),
     olat: z.coerce.number().min(-90).max(90).optional(),
     olng: z.coerce.number().min(-180).max(180).optional(),
     dlat: z.coerce.number().min(-90).max(90).optional(),
@@ -110,6 +111,7 @@ function Oferecer() {
     date: search.data ?? "",
     time: search.horario ?? "",
     seats: search.vagas ? String(search.vagas) : initial.seats,
+    timeTolerance: search.tolerancia ?? initial.timeTolerance,
     originLocation:
       search.olat != null && search.olng != null
         ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng }
