@@ -16,9 +16,11 @@ export function EventExitMatchActions({
   answers: Answers;
   schema: SurveySchema;
 }) {
-  const today = new Intl.DateTimeFormat("en-CA", {
+  const dateParts = new Intl.DateTimeFormat("en-US", {
     timeZone: configuration.timezone, year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
+  }).formatToParts(new Date());
+  const getDatePart=(type: string)=>dateParts.find(part=>part.type===type)?.value ?? "";
+  const today = getDatePart("year")+"-"+getDatePart("month")+"-"+getDatePart("day");
   const seatsQuestion = schema.sections.flatMap(s=>s.questions)
     .find(q=>q.semanticCode==="EVENT_OFFER_SEATS");
   const available = seatsQuestion ? Number(answers[seatsQuestion.id]) : NaN;
