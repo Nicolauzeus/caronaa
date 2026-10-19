@@ -1,4 +1,5 @@
 import { urbanUniversityTemplate } from "./urban-university";
+import { companyCampusDriverTemplate } from "./company-campus-driver";
 import { getNumberBounds } from "./research-schema";
 export type SurveyQuestionType =
   | "short_text"
@@ -48,6 +49,7 @@ export type ResearchTemplate = {
 };
 export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
   urbanUniversityTemplate,
+  companyCampusDriverTemplate,
   {
     key: "EVENTO_TRAJETO",
     nature: "EVENTO",
