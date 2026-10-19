@@ -1,7 +1,7 @@
 import {describe,it,expect,vi,beforeEach} from "vitest";
 vi.mock("@/integrations/supabase/client",()=>({supabase:{}}));
 import {isValidParticipationReceipt,storePendingParticipation,readPendingParticipations,removePendingParticipation} from "./research-participation";
-beforeEach(()=>sessionStorage.clear());
+beforeEach(()=>{sessionStorage.clear();localStorage.clear();});
 describe("survey participation receipt safety",()=>{
  it("requires a private v4 UUID rather than a visible form code or title",()=>{
   expect(isValidParticipationReceipt("TESTE-25")).toBe(false);
@@ -15,6 +15,20 @@ describe("survey participation receipt safety",()=>{
   storePendingParticipation(token);
   expect(readPendingParticipations()).toEqual([token]);
   removePendingParticipation(token);
+  expect(readPendingParticipations()).toEqual([]);
+ });
+ it("keeps a short-lived launch receipt across email-confirmation tabs",()=>{
+  const token="10975917-c190-4928-a466-5bd76959fd6f";
+  storePendingParticipation(token,true);
+  sessionStorage.clear();
+  expect(readPendingParticipations()).toEqual([token]);
+  removePendingParticipation(token);
+  expect(readPendingParticipations()).toEqual([]);
+ });
+ it("does not accept an expired stored launch receipt",()=>{
+  localStorage.setItem("caronaa.researchLaunch.pending.v1",JSON.stringify([
+   {receipt:"10975917-c190-4928-a466-5bd76959fd6f",expires:Date.now()-1000}
+  ]));
   expect(readPendingParticipations()).toEqual([]);
  });
  it("does not accept a form code as participation proof",()=>{

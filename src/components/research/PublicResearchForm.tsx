@@ -384,7 +384,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       // validates and binds it only to a confirmed account; nothing is inferred
       // from a university or company name typed by the visitor.
       if (form.configuration?.settings.launchDate) {
-        try { storePendingParticipation(submissionKey); } catch { /* Storage may be blocked. */ }
+        try { storePendingParticipation(submissionKey, true); } catch { /* Storage may be blocked. */ }
       }
       setSubmittedConfiguration(form.configuration ?? null);
       setComplete(true);
