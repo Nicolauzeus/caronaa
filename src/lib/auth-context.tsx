@@ -41,7 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if(!user?.id||!user.email_confirmed_at||readPendingParticipations().length===0)return;
     // Only claims for receipts explicitly opted into after submission.
     // The server verifies the authenticated email and binds to immutable form UUID.
-    void claimPendingParticipations();
+    void claimPendingParticipations().then(() => router.invalidate()).catch(() => undefined);
+    // A linked UNIFOR research participant must immediately enter the waiting
+    // experience; this is not proof of university enrollment.
   },[user?.id,user?.email_confirmed_at]);
 
   return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>;
