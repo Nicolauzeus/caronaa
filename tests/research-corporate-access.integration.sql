@@ -132,6 +132,9 @@ SELECT pg_temp.assert_fails(format(
  'SELECT public.submit_configured_research_answer(%L,%L,%L,%L,1,%L,true)',
  id,version,gen_random_uuid(),'{"drives":"SIM","seats":"2","offer":"SIM"}',journey||'{"profile":"MOTORISTA"}'::jsonb
 ),'revoked employee cannot send new answers') FROM corporate_fixture;
+SELECT pg_temp.assert_fails(
+ 'SELECT public.claim_research_participation(''abababab-abab-4bab-8bab-abababababab'')',
+ 'revoked employee cannot claim corporate participation badge');
 RESET ROLE;
 SELECT pg_temp.assert_true((SELECT count(*) FROM public.corporate_research_access_audit
  WHERE form_id=(SELECT id FROM corporate_fixture))=3,'verification and revocation retained in audit');
