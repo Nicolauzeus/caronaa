@@ -3198,6 +3198,25 @@ export type Database = {
         }
         Returns: string
       }
+      research_condition_matches: {
+        Args: {
+          v_answers: Json
+          v_condition: Json
+          v_depth?: number
+          v_schema: Json
+        }
+        Returns: boolean
+      }
+      research_question_visible: {
+        Args: {
+          v_answers: Json
+          v_depth?: number
+          v_id: string
+          v_schema: Json
+        }
+        Returns: boolean
+      }
+      research_remap_condition: { Args: { c: Json; ids: Json }; Returns: Json }
       respond_to_ride_match: {
         Args: { p_response: string; p_ride_id: string }
         Returns: string
