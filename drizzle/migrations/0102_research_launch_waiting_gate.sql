@@ -201,6 +201,22 @@ BEGIN
  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
  RETURN NEW;
 END $body$;
+-- Protect the ancillary ride state as well: read receipts, boarding, tracking,
+-- payments and legacy form publications must not bypass the waiting period.
+DO $extended$
+DECLARE tab text;
+BEGIN
+ FOREACH tab IN ARRAY ARRAY[
+  'ride_locations','ride_boarding_codes','ride_completion_confirmations',
+  'ride_qr_tokens','ride_ratings','ride_notifications','ride_status_history',
+  'form_ride_publications','payments'
+ ] LOOP
+  EXECUTE format('DROP TRIGGER IF EXISTS trg_research_launch_guard ON public.%I',tab);
+  EXECUTE format(
+   'CREATE TRIGGER trg_research_launch_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.guard_unifor_prelaunch_ride_write()',tab);
+ END LOOP;
+END $extended$;
+
 DO $checks$
 DECLARE tab text;
 BEGIN
