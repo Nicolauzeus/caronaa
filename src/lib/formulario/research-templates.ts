@@ -1,3 +1,7 @@
+import { regionalUniversityTemplate } from "./regional-university";
+import { eventExitMatchTemplate } from "./event-exit-match";
+import { companyCampusDriverTemplate } from "./company-campus-driver";
+import { corporateInternalTemplate } from "./corporate-internal";
 import { urbanUniversityTemplate } from "./urban-university";
 import { getNumberBounds } from "./research-schema";
 export type SurveyQuestionType =
@@ -48,6 +52,10 @@ export type ResearchTemplate = {
 };
 export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
   urbanUniversityTemplate,
+  regionalUniversityTemplate,
+  eventExitMatchTemplate,
+  companyCampusDriverTemplate,
+  corporateInternalTemplate,
   {
     key: "EVENTO_TRAJETO",
     nature: "EVENTO",

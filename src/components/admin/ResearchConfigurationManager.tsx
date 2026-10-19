@@ -7,6 +7,8 @@ import {
 import { saveResearchConfiguration } from "@/lib/formulario/research-configuration-service";
 import { ResearchConfigurationFields } from "./ResearchConfigurationFields";
 import { Button } from "@/components/ui/button";
+import { CORPORATE_INTERNAL_KEY, validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
+import { CorporateResearchAccessManager } from "./CorporateResearchAccessManager";
 export function ResearchConfigurationManager({ formId }: { formId: string }) {
   const [settings, setSettings] = useState<ResearchConfiguration>(newResearchConfiguration);
   const [revision, setRevision] = useState(0),
@@ -83,12 +85,17 @@ export function ResearchConfigurationManager({ formId }: { formId: string }) {
         </p>
       )}
       <ResearchConfigurationFields value={settings} onChange={setSettings} />
+      {settings.templateKey===CORPORATE_INTERNAL_KEY && <CorporateResearchAccessManager formId={formId} />}
       <Button
         disabled={busy || loadFailed}
         onClick={async () => {
           setBusy(true);
           setNotice("");
           try {
+            if (settings.templateKey===CORPORATE_INTERNAL_KEY) {
+              const issues=validateCorporateInternalConfiguration(settings);
+              if (issues.length) throw Error(issues[0]);
+            }
             const next = await saveResearchConfiguration(formId, settings, revision);
             setRevision(next);
             setError("");

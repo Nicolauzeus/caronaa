@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { EVENT_EXIT_MATCH_KEY } from "@/lib/formulario/event-exit-match";
 import type {
   PublicResearchConfiguration,
   ResearchJourney,
@@ -11,22 +12,24 @@ export function initialResearchJourney(
   c: PublicResearchConfiguration["settings"],
 ): ResearchJourney {
   c = effectiveResearchSchedule(c, c.profiles[0]);
+  const isEvent=c.templateKey===EVENT_EXIT_MATCH_KEY;
+  const eventDay=c.launchDate ? new Date(c.launchDate+"T12:00:00Z").getUTCDay() || 7 : null;
   return {
     profile: c.profiles[0],
     mode: c.modes[0],
-    direction: "IDA",
-    days: [],
+    direction: isEvent ? "VOLTA" : "IDA",
+    days: isEvent && eventDay && c.days.includes(eventDay) ? [eventDay] : [],
     outboundTime: c.outboundTimes[0],
     returnTime: "",
     otherOutboundTime: false,
     otherReturnTime: false,
     flexibilityMinutes: 0,
-    originArea: "",
-    originLat: null,
-    originLng: null,
-    destinationArea: c.campus || c.institutionName,
-    destinationLat: c.latitude,
-    destinationLng: c.longitude,
+    originArea: isEvent ? c.address || c.campus || c.institutionName : "",
+    originLat: isEvent ? c.latitude : null,
+    originLng: isEvent ? c.longitude : null,
+    destinationArea: isEvent ? "" : c.campus || c.institutionName,
+    destinationLat: isEvent ? null : c.latitude,
+    destinationLng: isEvent ? null : c.longitude,
     marketingConsent: false,
     partnerSharingConsent: false,
   };
@@ -44,6 +47,7 @@ export function ResearchJourneyFields({
 }) {
   const fieldId = useId();
   c = effectiveResearchSchedule(c, j.profile);
+  const eventExit=c.templateKey===EVENT_EXIT_MATCH_KEY;
   const set = <K extends keyof ResearchJourney>(key: K, value: ResearchJourney[K]) =>
     onChange({ ...j, [key]: value });
   const cls = "mt-1 min-h-11 w-full rounded-lg border bg-background px-3 py-2 text-sm";
@@ -135,7 +139,7 @@ export function ResearchJourneyFields({
           ))}
         </select>
       </label>
-      <label className="block text-sm">
+      {eventExit ? <p className="rounded-lg bg-primary/5 p-3 text-sm font-medium">Trajeto de saída do evento: local do evento → destino</p> : <label className="block text-sm">
         Sentido do percurso
         <select
           className={cls}
@@ -165,8 +169,8 @@ export function ResearchJourneyFields({
           <option value="VOLTA">Volta</option>
           <option value="IDA_E_VOLTA">Ida e volta</option>
         </select>
-      </label>
-      <fieldset>
+      </label>}
+      {!eventExit && <fieldset>
         <legend className="mb-2 text-sm font-medium">Dias do trajeto</legend>
         <div className="flex flex-wrap gap-2">
           {c.days.map((day) => (
@@ -190,7 +194,7 @@ export function ResearchJourneyFields({
             </label>
           ))}
         </div>
-      </fieldset>
+      </fieldset>}
       {time(
         "outboundTime",
         "Horário de saída",
@@ -212,7 +216,7 @@ export function ResearchJourneyFields({
       </label>
       <LocationAutocomplete
         id={fieldId + "-origin"}
-        label="Bairro ou município de origem"
+        label={eventExit ? "Ponto de saída do evento" : "Bairro ou município de origem"}
         value={j.originArea}
         onChange={(text, details) => location("origin", text, details)}
         helperText="Informe uma região aproximada, sem endereço residencial ou número."
@@ -220,7 +224,7 @@ export function ResearchJourneyFields({
       />
       <LocationAutocomplete
         id={fieldId + "-destination"}
-        label="Bairro, campus ou ponto de destino"
+        label={eventExit ? "Bairro ou região de destino após o evento" : "Bairro, campus ou ponto de destino"}
         value={j.destinationArea}
         onChange={(text, details) => location("destination", text, details)}
         variant="simple"

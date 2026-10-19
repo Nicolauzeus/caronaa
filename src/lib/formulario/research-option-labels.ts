@@ -5,6 +5,21 @@
  * Legacy pain descriptions follow the CARONAA pain catalog.
  */
 export const RESEARCH_OPTION_LABELS:Record<string,string>={
+ CARONA_COMPARTILHADA:"Carona compartilhada no mesmo trajeto",
+ MOTOTAXI_REGULARIZADO:"Mototáxi profissional regularizado",
+ AMBAS_MODALIDADES:"Ambas, dependendo do trajeto",
+ NENHUMA:"Nenhuma dessas alternativas",
+ CONHECER_MELHOR:"Preciso conhecer melhor as opções",
+ DISPONIBILIDADE:"Disponibilidade no horário",
+ ESPERA:"Tempo de espera",
+ SEM_GRANDE_DESVIO:"Não desviar muito do trajeto",
+ NENHUM:"Nenhum desvio",
+ ATE_5_MIN:"Até 5 minutos",
+ ATE_10_MIN:"Até 10 minutos",
+ MAIS_10_MIN:"Mais de 10 minutos",
+ TODOS_DIAS:"Todos os dias de trabalho",
+ ALGUNS_DIAS:"Alguns dias da semana",
+ EVENTUALMENTE:"Eventualmente",
  DOR_01:"Dificuldade para encontrar transporte para meu trajeto",
  DOR_02:"Transporte lotado ou desconfortável",
  DOR_03:"Preço alto das opções de transporte",

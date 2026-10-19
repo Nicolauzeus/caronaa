@@ -3,6 +3,10 @@ import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
+import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
+import { REGIONAL_UNIVERSITY_KEY,regionalUniversityPreset } from "@/lib/formulario/regional-university";
+import { EVENT_EXIT_MATCH_KEY,eventExitMatchPreset,validateEventConfiguration } from "@/lib/formulario/event-exit-match";
+import { COMPANY_CAMPUS_DRIVER_KEY,companyCampusDriverPreset,validateCompanyCampusConfiguration } from "@/lib/formulario/company-campus-driver";
 import { validateResearchBrandImage, RESEARCH_BRAND_IMAGE_TYPES } from "@/lib/formulario/research-branding";
 import { ResearchCompare } from "@/components/admin/ResearchCompare";
 import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
@@ -24,6 +28,14 @@ import {
   RESEARCH_NATURES,
   type ResearchForm,
 } from "@/lib/formulario/research-catalog";
+const configuredModelKeys = [URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
+const modelDescription:Record<string,{title:string,description:string}>={
+ [URBAN_UNIVERSITY_KEY]:{title:"Universidade urbana · modelo institucional",description:"Informe nome, campus, endereço, lançamento e horários confirmados."},
+ [REGIONAL_UNIVERSITY_KEY]:{title:"Universidade regional · mobilidade local",description:"Configure campus, município, turnos e lançamento. Carona e interesse em mototáxi profissional são pesquisas distintas; nenhuma parceria ou serviço profissional é automaticamente autorizado."},
+ [EVENT_EXIT_MATCH_KEY]:{title:"Evento · carona na saída",description:"Informe o local, endereço, dia, horários e pontos seguros do evento. Uma resposta nunca representa corrida ou reserva confirmada."},
+ [COMPANY_CAMPUS_DRIVER_KEY]:{title:"Empresa próxima à universidade · motoristas",description:"Configure a empresa, unidade, universidade próxima e horários. A disponibilidade registrada é intenção declarada, não uma oferta publicada."},
+ [CORPORATE_INTERNAL_KEY]:{title:"Empresa · carona interna",description:"O acesso exige colaborador verificado por um administrador. Informe unidades e turnos; não publique caronas empresariais neste formulário."}
+};
 export function ResearchCatalog() {
   const [selected, setSelected] = useState<string | null>(null);
   const [libraryView,setLibraryView] = useState<"library"|"trash">("library");
@@ -125,8 +137,20 @@ export function ResearchCatalog() {
     setCreationNotice("");
     try {
       if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(code)) throw Error("Código inválido");
-      if (templateKey === URBAN_UNIVERSITY_KEY && !configure)
-        throw Error("O modelo Universidade Urbana requer a configuração da instituição e dos horários.");
+      if (configuredModelKeys.includes(templateKey) && !configure)
+        throw Error("Este modelo requer configuração institucional de endereços e horários.");
+      if (templateKey === EVENT_EXIT_MATCH_KEY) {
+        const issues=validateEventConfiguration(configuration);
+        if(issues.length) throw Error(issues[0]);
+      }
+      if (templateKey === COMPANY_CAMPUS_DRIVER_KEY) {
+        const issues=validateCompanyCampusConfiguration(configuration);
+        if(issues.length) throw Error(issues[0]);
+      }
+      if (templateKey === CORPORATE_INTERNAL_KEY) {
+        const issues=validateCorporateInternalConfiguration(configuration);
+        if(issues.length)throw Error(issues[0]);
+      }
       if (institutionLogo) {
         const invalid = validateResearchBrandImage(institutionLogo.type, institutionLogo.size);
         if (invalid) throw Error(invalid);
@@ -141,7 +165,7 @@ export function ResearchCatalog() {
         configuration: configure ? configuration : undefined,
       });
       let logoWarning = "";
-      if (templateKey === URBAN_UNIVERSITY_KEY && institutionLogo) {
+      if (configuredModelKeys.includes(templateKey) && institutionLogo) {
         const extension = RESEARCH_BRAND_IMAGE_TYPES[institutionLogo.type];
         const path = id + "/" + crypto.randomUUID() + "." + extension;
         const storage = supabase.storage.from("research-branding");
@@ -313,7 +337,7 @@ export function ResearchCatalog() {
                   onClick={() => {
                     setTemplateKey(t.key);
                     setConfiguration({
-                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : newResearchConfiguration(t.key)),
+                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : t.key === REGIONAL_UNIVERSITY_KEY ? regionalUniversityPreset() : t.key === EVENT_EXIT_MATCH_KEY ? eventExitMatchPreset() : t.key === COMPANY_CAMPUS_DRIVER_KEY ? companyCampusDriverPreset() : t.key === CORPORATE_INTERNAL_KEY ? corporateInternalPreset() : newResearchConfiguration(t.key)),
                       publicName: title,
                       institutionId: code || "",
                     });
@@ -341,19 +365,15 @@ export function ResearchCatalog() {
             <input
               type="checkbox"
               checked={configure}
-              disabled={templateKey === URBAN_UNIVERSITY_KEY}
+              disabled={configuredModelKeys.includes(templateKey)}
               onChange={(e) => setConfigure(e.target.checked)}
             />
             Configurar instituição, horários e interesse em caronas
           </label>
-          {templateKey === URBAN_UNIVERSITY_KEY && (
+          {configuredModelKeys.includes(templateKey) && (
             <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:col-span-2">
-              <p className="font-semibold">Universidade urbana · modelo institucional</p>
-              <p className="text-sm text-muted-foreground">
-                Configure nome, campus, endereço, data de lançamento e horários sugeridos. Use apenas
-                dados institucionais confirmados. O questionário inclui Uber/99, custos, dificuldades,
-                disponibilidade de carona e orçamento. O trajeto vem da configuração institucional.
-              </p>
+              <p className="font-semibold">{modelDescription[templateKey]?.title}</p>
+              <p className="text-sm text-muted-foreground">{modelDescription[templateKey]?.description}</p>
               <label className="block text-sm">
                 Logomarca autorizada da instituição (opcional, até 2 MB)
                 <input type="file" accept="image/png,image/jpeg,image/webp"
