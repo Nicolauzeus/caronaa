@@ -25,6 +25,11 @@ import {
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
 import { ResearchInterestActivation } from "./ResearchInterestActivation";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
+import { REGIONAL_UNIVERSITY_KEY, regionalUniversityIntro, validateRegionalUniversityAnswers } from "@/lib/formulario/regional-university";
+import { EVENT_EXIT_MATCH_KEY, eventExitMatchIntro, validateEventExitAnswers, validateEventExitJourney } from "@/lib/formulario/event-exit-match";
+import { EventExitMatchActions } from "./EventExitMatchActions";
+import { COMPANY_CAMPUS_DRIVER_KEY, companyCampusDriverIntro, validateCompanyCampusAnswers, validateCompanyCampusJourney, companyCampusSuggestedProfile } from "@/lib/formulario/company-campus-driver";
+import { CORPORATE_INTERNAL_KEY, corporateInternalIntro, validateCorporateInternalAnswers, validateCorporateInternalJourney,corporateCanOffer } from "@/lib/formulario/corporate-internal";
 type Form = {
   id: string;
   version: string;
@@ -153,6 +158,14 @@ export function PublicResearchForm({ code }: { code: string }) {
       ...validatePage(sec, answers),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
+      ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
+        ? validateRegionalUniversityAnswers(form.schema, answers) : []),
+      ...(form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY
+        ? validateEventExitAnswers(form.schema, answers) : []),
+      ...(form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY
+        ? validateCompanyCampusAnswers(form.schema, answers) : []),
+      ...(form.configuration?.settings.templateKey === CORPORATE_INTERNAL_KEY
+        ? validateCorporateInternalAnswers(form.schema, answers) : []),
     ];
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
@@ -173,6 +186,13 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     setFieldErrors({});
     setError("");
+    if (form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY && step === form.schema.sections.length - 1) {
+      const recommended = companyCampusSuggestedProfile(form.schema, answers);
+      setJourney((previous) => previous ? { ...previous, profile: recommended } : previous);
+    }
+    if (form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY && step===form.schema.sections.length-1) {
+      setJourney(previous => previous ? {...previous, profile:corporateCanOffer(form.schema,answers)?"MOTORISTA":"PASSAGEIRO"} : previous);
+    }
     setStep((i) => Math.min(totalSteps - 1, i + 1));
   }
   async function submit(e: FormEvent) {
@@ -187,6 +207,14 @@ export function PublicResearchForm({ code }: { code: string }) {
       ...form.schema.sections.flatMap((section) => validatePage(section, cleaned)),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
+      ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
+        ? validateRegionalUniversityAnswers(form.schema, cleaned) : []),
+      ...(form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY
+        ? validateEventExitAnswers(form.schema, cleaned) : []),
+      ...(form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY
+        ? validateCompanyCampusAnswers(form.schema, cleaned) : []),
+      ...(form.configuration?.settings.templateKey === CORPORATE_INTERNAL_KEY
+        ? validateCorporateInternalAnswers(form.schema, cleaned) : []),
     ];
     if (problems.length) {
       setError(problems[0]);
@@ -201,6 +229,18 @@ export function PublicResearchForm({ code }: { code: string }) {
     try {
       if (form.configuration) {
         const validJourney = validateJourney(journey, form.configuration.settings);
+        if (form.configuration.settings.templateKey === EVENT_EXIT_MATCH_KEY) {
+          const mismatches=validateEventExitJourney(form.schema, cleaned, validJourney);
+          if (mismatches.length) throw Error(mismatches[0]);
+        }
+        if (form.configuration.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY) {
+          const mismatches=validateCompanyCampusJourney(form.schema, cleaned, validJourney);
+          if (mismatches.length) throw Error(mismatches[0]);
+        }
+        if (form.configuration.settings.templateKey===CORPORATE_INTERNAL_KEY) {
+          const issues=validateCorporateInternalJourney(form.schema,cleaned,validJourney);
+          if(issues.length)throw Error(issues[0]);
+        }
         await submitConfiguredResearch({
           formId: form.id,
           versionId: form.version,
@@ -271,7 +311,8 @@ export function PublicResearchForm({ code }: { code: string }) {
         >
           Tentar novamente
         </button>
-        <p className="text-sm text-muted-foreground">Não é necessário cadastro para responder.</p>
+        <p className="text-sm text-muted-foreground">Se esta for uma pesquisa corporativa, faça login com uma conta autorizada. Apenas possuir o link não concede acesso.</p>
+        <a href={"/auth?mode=login&redirect="+encodeURIComponent("/formulario/"+code)} className="inline-flex rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">Entrar com minha conta</a>
       </main>
     );
   if (complete)
@@ -296,9 +337,19 @@ export function PublicResearchForm({ code }: { code: string }) {
         <div className="rounded-xl border bg-card p-5">
           <h2 className="text-xl font-bold">Resposta registrada!</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sua participação está registrada. Não é obrigatório criar conta.
+            {form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY
+              ? "Participação registrada para este colaborador autorizado. Não foi criada carona nem reserva."
+              : "Sua participação está registrada. Não é obrigatório criar conta."}
           </p>
         </div>
+        {form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY && journey && (
+          <EventExitMatchActions
+            configuration={(submittedConfiguration ?? form.configuration).settings}
+            journey={journey}
+            schema={form.schema}
+            answers={answers}
+          />
+        )}
         {form.configuration && journey && (
           <ResearchInterestActivation
             formId={form.id}
@@ -361,6 +412,34 @@ export function PublicResearchForm({ code }: { code: string }) {
         alt={form.brandAlt}
         brandName={form.brandName}
       />
+      {form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
+        <section aria-label="Apresentação da pesquisa regional" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade · Mobilidade regional</p>
+          <p className="text-sm leading-6">{regionalUniversityIntro(form.configuration.settings)}</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            A carona compartilhada não é mototáxi remunerado. Transporte profissional somente poderá ser oferecido mediante autorização, habilitação e parceria efetivamente verificadas.
+          </p>
+        </section>
+      )}
+      {form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY && (
+        <section aria-label="Apresentação da pesquisa do evento" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA · saída do evento</p>
+          <p className="text-sm leading-6">{eventExitMatchIntro(form.configuration.settings)}</p>
+        </section>
+      )}
+      {form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY && (
+        <section aria-label="Apresentação da iniciativa empresa e universidade" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA · empresa próxima ao campus</p>
+          <p className="text-sm leading-6">{companyCampusDriverIntro(form.configuration.settings)}</p>
+        </section>
+      )}
+      {form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY && (
+        <section aria-label="Pesquisa corporativa de mobilidade" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA Corporativo · Somente colaboradores autorizados</p>
+          <p className="text-sm leading-6">{corporateInternalIntro(form.configuration.settings)}</p>
+          <p className="text-xs text-muted-foreground">Você precisa estar conectado a uma conta autorizada e com e-mail confirmado para participar.</p>
+        </section>
+      )}
       {form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade</p>
