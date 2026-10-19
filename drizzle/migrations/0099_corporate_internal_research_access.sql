@@ -414,3 +414,11 @@ GRANT EXECUTE ON FUNCTION public.get_configured_research_summary(jsonb) TO authe
 
 
 NOTIFY pgrst,'reload schema';
+
+-- Schema readiness probe for the admin catalog; no personal data is returned.
+CREATE OR REPLACE FUNCTION public.get_research_schema_version()
+RETURNS integer LANGUAGE sql STABLE SET search_path=public AS $$
+ SELECT 99;
+$$;
+REVOKE ALL ON FUNCTION public.get_research_schema_version() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_research_schema_version() TO authenticated;
