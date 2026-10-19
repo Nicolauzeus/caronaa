@@ -30,6 +30,7 @@ describe("Modelo 03 — pesquisa rápida e match de saída", () => {
     expect(config.modes).toEqual(["CARONA"]);
     expect(validateEventConfiguration(config).length).toBeGreaterThan(0);
     expect(validateEventConfiguration(ready)).toEqual([]);
+    expect(validateEventConfiguration({...ready, days:[1,2,3]}).join(" ")).toMatch(/dia da semana/);
     const text=eventExitMatchIntro(ready);
     expect(text).toContain("Encontro de Tecnologia");
     expect(text).not.toMatch(/garantida|mais barata|confirmada/i);
@@ -42,7 +43,7 @@ describe("Modelo 03 — pesquisa rápida e match de saída", () => {
   it("uses a single event day and defaults to an outbound event-exit route", () => {
     const j=initialResearchJourney(ready);
     expect(j.direction).toBe("VOLTA");
-    expect(j.originArea).toBe("Centro de Eventos");
+    expect(j.originArea).toBe("Av. de Exemplo 100");
     expect(j.destinationArea).toBe("");
     expect(j.days).toHaveLength(1);
     expect(j.mode).toBe("CARONA");
@@ -83,7 +84,7 @@ describe("Modelo 03 — pesquisa rápida e match de saída", () => {
     const find=new URL(links.search,"https://caronaa.example");
     const offer=new URL(links.offer,"https://caronaa.example");
     expect(find.pathname).toBe("/buscar");
-    expect(find.searchParams.get("origem")).toBe("Centro de Eventos");
+    expect(find.searchParams.get("origem")).toBe("Av. de Exemplo 100");
     expect(find.searchParams.get("destino")).toBe("Meireles");
     expect(find.searchParams.get("data")).toBe("2027-03-12");
     expect(find.searchParams.get("horario")).toBe(j.outboundTime);
