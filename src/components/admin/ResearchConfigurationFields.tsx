@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { COMPANY_CAMPUS_DRIVER_KEY } from "@/lib/formulario/company-campus-driver";
 import {
   SUGGESTED_RESEARCH_TIMES,
   SERVICE_STATES,
@@ -80,7 +81,8 @@ export function ResearchConfigurationFields({
           {text("institutionId", "Identificador institucional")}
           {text("institutionName", "Instituição, empresa ou evento")}
           {text("publicName", "Nome público da pesquisa")}
-          {text("campus", "Campus ou unidade")}
+          {text("campus", value.templateKey === COMPANY_CAMPUS_DRIVER_KEY ? "Unidade da empresa" : "Campus ou unidade")}
+          {value.templateKey === COMPANY_CAMPUS_DRIVER_KEY && text("nearbyUniversity","Universidade ou instituto próximo")}
           {text("region", "Município ou região")}
           {text("address", "Endereço institucional")}
           {(["latitude", "longitude"] as const).map((key) => (
