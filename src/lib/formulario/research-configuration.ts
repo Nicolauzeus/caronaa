@@ -278,6 +278,7 @@ export function validateJourney(
 }
 
 export const RESEARCH_SEMANTICS = {
+  RESEARCH_PARTICIPANT_ROLE: "Perfil inicial: passageiro, ofertante ou profissional",
   RIDE_OFFER_INTENT: "Disponibilidade declarada para oferecer carona",
   BOOKING_INTENT: "Intenção declarada de solicitar carona",
   MOBILITY_MODE: "Modalidade pretendida",
@@ -290,6 +291,7 @@ export const RESEARCH_SEMANTICS = {
   LAUNCH_PARTICIPATION_INTENT: "Intenção declarada de participar do lançamento",
 } as const;
 export const RESEARCH_SEMANTIC_TYPES: Record<string, string> = {
+  RESEARCH_PARTICIPANT_ROLE: "single_choice",
   RIDE_OFFER_INTENT: "yes_no",
   BOOKING_INTENT: "yes_no",
   MOBILITY_MODE: "single_choice",

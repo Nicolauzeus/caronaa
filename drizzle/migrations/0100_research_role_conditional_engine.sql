@@ -111,6 +111,9 @@ BEGIN
  quote_literal('{showWhen,questionId}')||')=q.value#>>'||quote_literal('{showWhen,equals}')||')';
  IF strpos(code,target)=0 THEN RAISE EXCEPTION 'Unexpected BI eligibility version'; END IF;
  code:=replace(code,target,'AND public.research_question_visible(b.schema_json,b.answers,q.value->>'||quote_literal('id')||')');
+ -- Keep public/passenger, private-driver and professional-interest metrics distinct.
+ code:=replace(code,quote_literal('WORK_SHIFT')||')',
+   quote_literal('WORK_SHIFT')||','||quote_literal('RESEARCH_PARTICIPANT_ROLE')||')');
  EXECUTE code;
 
  SELECT pg_get_functiondef('public.submit_configured_research_answer(uuid,uuid,uuid,jsonb,integer,jsonb,boolean)'::regprocedure) INTO code;
