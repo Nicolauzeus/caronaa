@@ -16,6 +16,10 @@ const labels: Record<string, string> = {
   ...RESEARCH_SEMANTICS,
   TRANSPORT_MODE: "Transporte atual",
   COST_PER_TRIP: "Custo por trecho (R$)",
+  SEATS_AVAILABLE: "Lugares potencialmente disponíveis (declarados)",
+  COMPANY_DRIVES_CAR: "Colaboradores que dirigem carro",
+  COMPANY_DRIVING_FREQUENCY: "Frequência de deslocamento de carro",
+  COMPANY_MAX_DETOUR: "Desvio máximo aceitável (declarado)",
   TRAVEL_TIME: "Duração (minutos)",
   MOBILITY_PAINS: "Dificuldades de mobilidade",
   PERCEIVED_SAFETY: "Segurança percebida",
@@ -25,7 +29,7 @@ const labels: Record<string, string> = {
   JOURNEY_MODE: "Modalidade do trajeto declarado",
   JOURNEY_DEPARTURE_TIME: "Horário declarado do trajeto",
   PASSENGER_INTEREST_REGISTERED: "Interesse confirmado em procurar carona",
-  DRIVER_AVAILABILITY_REGISTERED: "Disponibilidade confirmada para oferecer carona",
+  DRIVER_AVAILABILITY_REGISTERED: "Disponibilidade registrada para possível carona (não publicada)",
 };
 export function ConfiguredResearchInsights({ forms }: { forms: ResearchForm[] }) {
   const [filters, setFilters] = useState<Record<string, string>>({}),
@@ -170,6 +174,7 @@ export function ConfiguredResearchInsights({ forms }: { forms: ResearchForm[] })
         </label>
         {input("time", "Horário local de saída", "time")}
         {input("region", "Região institucional")}
+        {input("nearbyUniversity", "Universidade ou instituto próximo")}
         {input("acquisitionSource", "Origem da campanha")}
         {(["periodStart", "periodEnd"] as const).map((key) => (
           <label key={key} className="text-sm">
