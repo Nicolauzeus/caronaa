@@ -120,7 +120,7 @@ export function validateEventExitAnswers(schema: SurveySchema, answers: Answers)
 
 /** Build links only when the event is operational and date is usable. The other
  * side still verifies auth, availability, route, quote and explicitly confirms. */
-export function eventRideActionLinks(config: PublicResearchConfiguration["settings"], journey: ResearchJourney, today: string) {
+export function eventRideActionLinks(config: PublicResearchConfiguration["settings"], journey: ResearchJourney, today: string, seats?: number) {
   if (config.templateKey !== EVENT_EXIT_MATCH_KEY || config.serviceState !== "EM_OPERACAO") return null;
   const day=config.launchDate;
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || day < today) return null;
@@ -135,6 +135,7 @@ export function eventRideActionLinks(config: PublicResearchConfiguration["settin
   });
   // Do not add private residential coordinates to URLs; the user reviews the route
   // in the authenticated/public booking flow before making a real request.
-  const params=base.toString();
-  return { search: "/buscar?"+params, offer: "/oferecer?"+params };
+  const offerParams = new URLSearchParams(base);
+  if (seats !== undefined && Number.isInteger(seats) && seats>=1 && seats<=4) offerParams.set("vagas", String(seats));
+  return { search: "/buscar?"+base.toString(), offer: "/oferecer?"+offerParams.toString() };
 }
