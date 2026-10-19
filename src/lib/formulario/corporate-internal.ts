@@ -1,4 +1,5 @@
 import type { ResearchTemplate, SurveySchema } from "./research-templates";
+import { researchRoleQuestion, roleCondition } from "./research-conditions";
 import type { Answers } from "./research-schema";
 import { newResearchConfiguration, type ResearchConfiguration, type ResearchJourney } from "./research-configuration";
 
@@ -12,6 +13,7 @@ export const corporateInternalTemplate: ResearchTemplate = {
   estimatedMinutes: 4,
   schema: { sections: [
     { title: "Seu deslocamento para o trabalho", description: "Somente colaboradores autorizados participam. Não informe endereço residencial completo.", questions: [
+          researchRoleQuestion(false),
       { id: "corp_shift", label: "Qual turno você costuma cumprir?", type: "single_choice", required: true,
         options: ["MANHA","TARDE","NOITE","MADRUGADA","ESCALA","OUTRO"], semanticCode: "WORK_SHIFT" },
       { id: "corp_transport", label: "Quais meios utiliza para ir ou voltar da empresa?", type: "multiple_choice", required: true,
@@ -24,7 +26,8 @@ export const corporateInternalTemplate: ResearchTemplate = {
         options: ["TODOS_DIAS","ALGUNS_DIAS","ESCALA","EVENTUALMENTE"], semanticCode: "TRAVEL_FREQUENCY" },
     ]},
     { title: "Caronas entre colegas", description: "Queremos estudar viagens compatíveis, sem presumir que existe vaga, preço ou carona confirmada.", questions: [
-      { id: "corp_drives", label: "Você costuma dirigir carro para trabalhar?", type: "single_choice", required: true,
+      { id: "corp_drives", condition: roleCondition("MOTORISTA","AMBOS"),
+          label: "Você costuma dirigir carro para trabalhar?", type: "single_choice", required: true,
         options: ["SIM","NAO"], semanticCode: "CORP_DRIVES_CAR" },
       { id: "corp_seats", label: "Quantos lugares livres costuma ter no carro?", type: "number", required: true,
         options: [], minValue: 0, maxValue: 4, integerOnly: true, semanticCode: "SEATS_AVAILABLE",

@@ -1,0 +1,140 @@
+-- 0100: Nested survey conditions, stable published versions, no data rewrites.
+-- Must run after 0099. Backup first; execute migration in a transaction.
+CREATE OR REPLACE FUNCTION public.research_condition_matches(
+ v_schema jsonb, v_answers jsonb, v_condition jsonb, v_depth integer DEFAULT 0
+) RETURNS boolean LANGUAGE plpgsql STABLE SET search_path=pg_catalog,public AS $$
+DECLARE rule jsonb; comparison text; answer jsonb; qid text; target text;
+BEGIN
+ IF v_depth>12 OR jsonb_typeof(v_condition)<>'object' THEN RETURN false; END IF;
+ IF v_condition ? 'rules' THEN
+  IF jsonb_typeof(v_condition->'rules')<>'array' OR jsonb_array_length(v_condition->'rules') NOT BETWEEN 1 AND 10 THEN RETURN false; END IF;
+  IF v_condition->>'op'='ALL' THEN
+   FOR rule IN SELECT value FROM jsonb_array_elements(v_condition->'rules') LOOP
+    IF NOT public.research_condition_matches(v_schema,v_answers,rule,v_depth+1) THEN RETURN false; END IF;
+   END LOOP;
+   RETURN true;
+  ELSIF v_condition->>'op'='ANY' THEN
+   FOR rule IN SELECT value FROM jsonb_array_elements(v_condition->'rules') LOOP
+    IF public.research_condition_matches(v_schema,v_answers,rule,v_depth+1) THEN RETURN true; END IF;
+   END LOOP;
+  END IF;
+  RETURN false;
+ END IF;
+ qid:=v_condition->>'questionId'; comparison:=v_condition->>'comparison';
+ IF qid IS NULL OR NOT public.research_question_visible(v_schema,v_answers,qid,v_depth+1) THEN RETURN false; END IF;
+ answer:=v_answers->qid; target:=v_condition->>'value';
+ IF comparison='ANSWERED' THEN RETURN answer IS NOT NULL AND answer NOT IN ('null'::jsonb,'""'::jsonb,'[]'::jsonb); END IF;
+ IF target IS NULL THEN RETURN false; END IF;
+ IF comparison='EQ' THEN RETURN jsonb_typeof(answer)='string' AND answer#>>'{}'=target; END IF;
+ IF comparison='NEQ' THEN RETURN jsonb_typeof(answer)='string' AND answer#>>'{}'<>''
+    AND answer#>>'{}'<>target; END IF;
+ IF comparison='INCLUDES' THEN RETURN jsonb_typeof(answer)='array' AND answer ? target; END IF;
+ RETURN false;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.research_question_visible(
+ v_schema jsonb, v_answers jsonb, v_id text, v_depth integer DEFAULT 0
+) RETURNS boolean LANGUAGE plpgsql STABLE SET search_path=pg_catalog,public AS $$
+DECLARE section jsonb; q jsonb; parent_id text; found boolean:=false;
+BEGIN
+ IF v_depth>12 OR v_id IS NULL THEN RETURN false; END IF;
+ FOR section IN SELECT value FROM jsonb_array_elements(v_schema->'sections') LOOP
+  FOR q IN SELECT value FROM jsonb_array_elements(section->'questions') LOOP
+   IF q->>'id'=v_id THEN found:=true; EXIT; END IF;
+  END LOOP;
+  IF found THEN EXIT; END IF;
+ END LOOP;
+ IF NOT found THEN RETURN false; END IF;
+ IF section ? 'condition' AND section->'condition'<>'null'::jsonb AND
+   NOT public.research_condition_matches(v_schema,v_answers,section->'condition',v_depth+1)
+ THEN RETURN false; END IF;
+ IF q ? 'showWhen' AND q->'showWhen'<>'null'::jsonb THEN
+  parent_id:=q#>>'{showWhen,questionId}';
+  IF NOT public.research_question_visible(v_schema,v_answers,parent_id,v_depth+1)
+   OR v_answers->>parent_id IS DISTINCT FROM q#>>'{showWhen,equals}'
+  THEN RETURN false; END IF;
+ END IF;
+ IF q ? 'condition' AND q->'condition'<>'null'::jsonb AND
+   NOT public.research_condition_matches(v_schema,v_answers,q->'condition',v_depth+1)
+ THEN RETURN false; END IF;
+ RETURN true;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.research_remap_condition(c jsonb, ids jsonb)
+RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path=pg_catalog,public AS $$
+DECLARE r jsonb; rules jsonb:='[]'::jsonb; key text;
+BEGIN
+ IF jsonb_typeof(c)<>'object' THEN RAISE EXCEPTION 'Condição inválida'; END IF;
+ IF c ? 'rules' THEN
+  FOR r IN SELECT value FROM jsonb_array_elements(c->'rules') LOOP
+   rules:=rules||jsonb_build_array(public.research_remap_condition(r,ids));
+  END LOOP;
+  RETURN jsonb_set(c,'{rules}',rules);
+ END IF;
+ key:=c->>'questionId';
+ IF key IS NULL OR NOT ids ? key THEN RAISE EXCEPTION 'Referência condicional inválida'; END IF;
+ RETURN jsonb_set(c,'{questionId}',ids->key);
+END $$;
+
+-- Preserve existing production validation, original grants, triggers, RLS and all
+-- existing survey data. Fail the transaction if baseline contracts have changed.
+DO $migration$
+DECLARE code text; p integer; q integer; target text;
+BEGIN
+ SELECT pg_get_functiondef('public.validate_research_answer()'::regprocedure) INTO code;
+ p:=strpos(code,'v_visible:=true;'); q:=strpos(code,'IF NOT v_visible THEN');
+ IF p=0 OR q<=p THEN RAISE EXCEPTION 'Unexpected answer validation version'; END IF;
+ code:=substr(code,1,p-1)||
+  'v_visible:=public.research_question_visible(v_schema,NEW.answers,v_key);' || E'\n    ' ||
+  substr(code,q);
+ EXECUTE code;
+
+ SELECT pg_get_functiondef('public.duplicate_research_form(uuid)'::regprocedure) INTO code;
+ target:='q:=jsonb_set(q,'||quote_literal('{id}')||',ids->(q->>'||quote_literal('id')||'));';
+ IF strpos(code,target)=0 OR strpos(code,'sections:=sections||jsonb_build_array(')=0
+ THEN RAISE EXCEPTION 'Unexpected duplication version'; END IF;
+ code:=replace(code,target,
+ 'IF q ? '||quote_literal('condition')||' AND q->'||quote_literal('condition')||
+ ' <> '||quote_literal('null')||'::jsonb THEN q:=jsonb_set(q,'||
+ quote_literal('{condition}')||',public.research_remap_condition(q->'||
+ quote_literal('condition')||',ids)); END IF; '||target);
+ code:=replace(code,'sections:=sections||jsonb_build_array(',
+ 'IF s ? '||quote_literal('condition')||' AND s->'||quote_literal('condition')||
+ ' <> '||quote_literal('null')||'::jsonb THEN s:=jsonb_set(s,'||
+ quote_literal('{condition}')||',public.research_remap_condition(s->'||
+ quote_literal('condition')||',ids)); END IF; sections:=sections||jsonb_build_array(');
+ EXECUTE code;
+
+ SELECT pg_get_functiondef('public.get_configured_research_summary(jsonb)'::regprocedure) INTO code;
+ target:='AND (q.value->'||quote_literal('showWhen')||' IS NULL OR q.value->'||
+ quote_literal('showWhen')||'='||quote_literal('null')||'::jsonb OR b.answers->>(q.value#>>'||
+ quote_literal('{showWhen,questionId}')||')=q.value#>>'||quote_literal('{showWhen,equals}')||')';
+ IF strpos(code,target)=0 THEN RAISE EXCEPTION 'Unexpected BI eligibility version'; END IF;
+ code:=replace(code,target,'AND public.research_question_visible(b.schema_json,b.answers,q.value->>'||quote_literal('id')||')');
+ EXECUTE code;
+
+ SELECT pg_get_functiondef('public.submit_configured_research_answer(uuid,uuid,uuid,jsonb,integer,jsonb,boolean)'::regprocedure) INTO code;
+ IF strpos(code,'j:=public.validate_research_journey(p_journey,c.settings);')=0 OR strpos(code,'j jsonb;existing')=0
+ THEN RAISE EXCEPTION 'Unexpected configured submission version'; END IF;
+ code:=replace(code,'j jsonb;existing','j jsonb;v_role text;existing');
+ code:=replace(code,'j:=public.validate_research_journey(p_journey,c.settings);',
+ 'j:=public.validate_research_journey(p_journey,c.settings);' || E'\n' ||
+ ' SELECT p_answers->>(q.value->>'||quote_literal('id')||') INTO v_role FROM public.research_form_versions v '||
+ 'CROSS JOIN LATERAL jsonb_array_elements(v.schema_json->'||quote_literal('sections')||') s '||
+ 'CROSS JOIN LATERAL jsonb_array_elements(s.value->'||quote_literal('questions')||') q '||
+ 'WHERE v.id=p_version_id AND v.form_id=p_form_id AND q.value->>'||quote_literal('semanticCode')||'='||
+ quote_literal('RESEARCH_PARTICIPANT_ROLE')||' LIMIT 1;'|| E'\n' ||
+ ' IF v_role IS NOT NULL AND ('||
+ '(v_role='||quote_literal('PROFISSIONAL')||' AND (j->>'||quote_literal('profile')||'<>'||
+ quote_literal('MOTORISTA')||' OR j->>'||quote_literal('mode')||'<>'||
+ quote_literal('TRANSPORTE_PROFISSIONAL_INTERESSE')||')) OR ('||
+ 'v_role IN ('||quote_literal('PASSAGEIRO')||','||quote_literal('MOTORISTA')||','||
+ quote_literal('AMBOS')||') AND (j->>'||quote_literal('profile')||'<>v_role OR j->>'||
+ quote_literal('mode')||'<>'||quote_literal('CARONA')||')) OR '||
+ 'v_role NOT IN ('||quote_literal('PASSAGEIRO')||','||quote_literal('MOTORISTA')||','||
+ quote_literal('AMBOS')||','||quote_literal('PROFISSIONAL')||')) THEN '||
+ 'RAISE EXCEPTION '||quote_literal('Perfil do trajeto não corresponde ao perfil da pesquisa')||
+ '; END IF;');
+ EXECUTE code;
+END $migration$;
+NOTIFY pgrst,'reload schema';

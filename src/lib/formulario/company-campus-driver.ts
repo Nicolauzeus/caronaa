@@ -1,4 +1,5 @@
 import type { ResearchTemplate, SurveySchema } from "./research-templates";
+import { researchRoleQuestion, roleCondition } from "./research-conditions";
 import type { Answers } from "./research-schema";
 import {
   newResearchConfiguration,
@@ -24,6 +25,7 @@ export const companyCampusDriverTemplate: ResearchTemplate = {
         title: "Sua rotina de deslocamento",
         description: "Conte como se desloca atualmente. Não pedimos endereço residencial.",
         questions: [
+          researchRoleQuestion(false),
           {
             id: "company_transport",
             label: "Como você costuma ir e voltar do trabalho?",
@@ -33,7 +35,8 @@ export const companyCampusDriverTemplate: ResearchTemplate = {
           },
           {
             id: "company_drives",
-            label: "Você costuma dirigir um carro até a empresa?",
+            condition: roleCondition("MOTORISTA","AMBOS"),
+          label: "Você costuma dirigir um carro até a empresa?",
             type: "single_choice", required: true, options: ["SIM","NAO"],
             semanticCode: "COMPANY_DRIVES_CAR",
           },

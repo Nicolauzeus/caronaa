@@ -39,11 +39,13 @@ export function ResearchJourneyFields({
   value: j,
   onChange,
   showConsents = true,
+  lockedProfile = false,
 }: {
   config: PublicResearchConfiguration["settings"];
   value: ResearchJourney;
   onChange: (value: ResearchJourney) => void;
   showConsents?: boolean;
+  lockedProfile?: boolean;
 }) {
   const fieldId = useId();
   c = effectiveResearchSchedule(c, j.profile);
@@ -105,7 +107,7 @@ export function ResearchJourneyFields({
   );
   return (
     <div className="space-y-4">
-      <label className="block text-sm">
+      {!lockedProfile && <label className="block text-sm">
         Seu perfil
         <select
           className={cls}
@@ -124,8 +126,8 @@ export function ResearchJourneyFields({
             </option>
           ))}
         </select>
-      </label>
-      <label className="block text-sm">
+      </label>}
+      {!lockedProfile && <label className="block text-sm">
         Modalidade de interesse
         <select
           className={cls}
@@ -138,7 +140,7 @@ export function ResearchJourneyFields({
             </option>
           ))}
         </select>
-      </label>
+      </label>}
       {eventExit ? <p className="rounded-lg bg-primary/5 p-3 text-sm font-medium">Trajeto de saída do evento: local do evento → destino</p> : <label className="block text-sm">
         Sentido do percurso
         <select

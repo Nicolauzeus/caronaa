@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
+import { createResearchVisibility } from "@/lib/formulario/research-conditions";
 import {
   cleanAnswers,
   scheduleWarning,
@@ -161,12 +162,20 @@ export function PublicResearchForm({ code }: { code: string }) {
     return () => cancelAnimationFrame(frame);
   }, [step, form]);
   const allQuestions = form?.schema.sections.flatMap((section) => section.questions) ?? [];
+  const roleId = allQuestions.find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE")?.id;
+  const declaredRole = roleId && typeof answers[roleId] === "string" ? String(answers[roleId]) : null;
+  const visibleStepIndexes = form
+    ? [...form.schema.sections.flatMap((section,index) =>
+        createResearchVisibility(form.schema,answers).sectionVisible(section) ? [index] : []),
+       ...(form.configuration ? [form.schema.sections.length] : [])]
+    : [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   function next() {
     if (!form) return;
     const sec = form.schema.sections[step];
+    if (!sec) return;
     const problems = [
-      ...validatePage(sec, answers, allQuestions),
+      ...validatePage(sec, answers, allQuestions, form.schema),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -181,7 +190,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
       for (const q of sec.questions) {
-        const errors = validatePage({ title: sec.title, questions: [q] }, answers, allQuestions);
+        const errors = validatePage({ title: sec.title, questions: [q] }, answers, allQuestions, form.schema);
         if (errors.length) byQuestion[q.id] = errors[0];
       }
       setFieldErrors(byQuestion);
@@ -204,7 +213,26 @@ export function PublicResearchForm({ code }: { code: string }) {
     if (form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY && step===form.schema.sections.length-1) {
       setJourney(previous => previous ? {...previous, profile:corporateCanOffer(form.schema,answers)?"MOTORISTA":"PASSAGEIRO"} : previous);
     }
-    setStep((i) => Math.min(totalSteps - 1, i + 1));
+    const upcoming = visibleStepIndexes.find(nextIndex => nextIndex > step);
+    if (upcoming === form.schema.sections.length && declaredRole) {
+      const roleProfile = declaredRole === "PROFISSIONAL" ? "MOTORISTA" : declaredRole;
+      if (form.configuration.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY &&
+        roleProfile !== "PASSAGEIRO" && companyCampusSuggestedProfile(form.schema,answers)!=="MOTORISTA") {
+        setError("Para oferecer carona, confirme carro, pelo menos um lugar e intenção de oferecer; ou escolha passageiro.");
+        return;
+      }
+      if (form.configuration.settings.templateKey === CORPORATE_INTERNAL_KEY &&
+        roleProfile !== "PASSAGEIRO" && !corporateCanOffer(form.schema,answers)) {
+        setError("Para oferecer carona, confirme carro, lugar livre e interesse; ou escolha passageiro.");
+        return;
+      }
+      setJourney(previous => previous ? {
+        ...previous,
+        profile: roleProfile as ResearchJourney["profile"],
+        mode: declaredRole === "PROFISSIONAL" ? "TRANSPORTE_PROFISSIONAL_INTERESSE" : "CARONA",
+      } : previous);
+    }
+    setStep(i => visibleStepIndexes.find(nextIndex => nextIndex > i) ?? i);
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -214,8 +242,16 @@ export function PublicResearchForm({ code }: { code: string }) {
       return;
     }
     const cleaned = cleanAnswers(form.schema, answers);
+    const expectedProfile = declaredRole === "PROFISSIONAL" ? "MOTORISTA" : declaredRole;
+    if (declaredRole && form.configuration && (
+      !journey || journey.profile !== expectedProfile ||
+      journey.mode !== (declaredRole === "PROFISSIONAL" ? "TRANSPORTE_PROFISSIONAL_INTERESSE" : "CARONA")
+    )) {
+      setError("O trajeto deve corresponder ao perfil escolhido no início. Volte e revise sua seleção.");
+      return;
+    }
     const problems = [
-      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions)),
+      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions, form.schema)),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -414,7 +450,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       </main>
     );
   const section = form.schema.sections[step],
-    last = step === totalSteps - 1;
+    last = step === visibleStepIndexes[visibleStepIndexes.length - 1];
   return (
     <main className="mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8">
       <ResearchBrandHeader
@@ -483,14 +519,14 @@ export function PublicResearchForm({ code }: { code: string }) {
       <div className="space-y-2" aria-label="Progresso da pesquisa">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            Etapa {step + 1} de {totalSteps}
+            Etapa {Math.max(1,visibleStepIndexes.indexOf(step)+1)} de {visibleStepIndexes.length}
           </span>
-          <span>{Math.round(((step + 1) / totalSteps) * 100)}% do questionário</span>
+          <span>{Math.round(Math.max(1,visibleStepIndexes.indexOf(step)+1)/Math.max(1,visibleStepIndexes.length)*100)}% do questionário</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary transition-all"
-            style={{ width: ((step + 1) / totalSteps) * 100 + "%" }}
+            style={{ width: Math.max(1,visibleStepIndexes.indexOf(step)+1)/Math.max(1,visibleStepIndexes.length)*100 + "%" }}
           />
         </div>
       </div>
@@ -503,6 +539,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           {section ? (
             <ResearchSectionFields
               section={section}
+              schema={form.schema}
               allQuestions={allQuestions}
               answers={answers}
               errors={fieldErrors}
@@ -515,6 +552,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           ) : form.configuration && journey ? (
             <ResearchJourneyFields
               config={form.configuration.settings}
+              lockedProfile={Boolean(declaredRole)}
               value={journey}
               onChange={setJourney}
             />
@@ -556,11 +594,11 @@ export function PublicResearchForm({ code }: { code: string }) {
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
           <button
             type="button"
-            disabled={step === 0 || busy}
+            disabled={step === visibleStepIndexes[0] || busy}
             onClick={() => {
               setError("");
               setFieldErrors({});
-              setStep((s) => s - 1);
+              setStep(s => [...visibleStepIndexes].reverse().find(index => index < s) ?? 0);
             }}
             className="min-h-11 rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40"
           >
