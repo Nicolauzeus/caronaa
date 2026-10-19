@@ -74,15 +74,18 @@ function Buscar() {
     const from = params.get("origem") || "";
     const to = params.get("destino") || "";
     const when = params.get("data") || "";
-    if (from || to || when) {
+    const hour = params.get("horario") || "";
+    const validHour = /^([01]\d|2[0-3]):[0-5]\d$/.test(hour) ? hour : "";
+    if (from || to || when || validHour) {
       setOrigin(from);
       setDestination(to);
       setDate(when);
+      setTime(validHour);
       setSubmitted({
         origin: from,
         destination: to,
         date: when,
-        time: "",
+        time: validHour,
         passengers: "1",
         timeTolerance: 15,
         originLocation: undefined,
