@@ -214,7 +214,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       setJourney(previous => previous ? {...previous, profile:corporateCanOffer(form.schema,answers)?"MOTORISTA":"PASSAGEIRO"} : previous);
     }
     const upcoming = visibleStepIndexes.find(nextIndex => nextIndex > step);
-    if (upcoming === form.schema.sections.length && declaredRole) {
+    if (upcoming === form.schema.sections.length && declaredRole && form.configuration) {
       const roleProfile = declaredRole === "PROFISSIONAL" ? "MOTORISTA" : declaredRole;
       if (form.configuration.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY &&
         roleProfile !== "PASSAGEIRO" && companyCampusSuggestedProfile(form.schema,answers)!=="MOTORISTA") {

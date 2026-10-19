@@ -43,7 +43,7 @@ describe("Profile-first conditional research",()=>{
   it("supports nested ALL / ANY conditions, hidden ancestors, section gates and valid copies",()=>{
     const leaf=(questionId:string,value:string):ResearchCondition=>({questionId,comparison:"EQ",value});
     const condition:ResearchCondition={op:"ALL",rules:[
-      {op:"ANY",rules:[leaf("role","MOTORISTA"),leaf("role","AMBOS")]},
+      {op:"ANY",rules:[leaf("research_participant_role","MOTORISTA"),leaf("research_participant_role","AMBOS")]},
       leaf("vehicle","CARRO"),
     ]};
     const schema:SurveySchema={sections:[

@@ -28,7 +28,7 @@ describe("Modelo 04 — Empresa próxima ao campus", () => {
     expect(t).toEqual(companyCampusDriverTemplate);
     expect(t?.nature).toBe("EMPRESA");
     expect(t?.estimatedMinutes).toBe(4);
-    expect(t?.schema.sections.flatMap(s=>s.questions)).toHaveLength(10);
+    expect(t?.schema.sections.flatMap(s=>s.questions)).toHaveLength(11);
     expect(inspectSchema(companyCampusDriverTemplate.schema)).toEqual([]);
   });
 
