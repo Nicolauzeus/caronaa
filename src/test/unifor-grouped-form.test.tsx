@@ -39,11 +39,11 @@ describe("UNIFOR grouped journey on mobile",()=>{
  it("puts academic role on the same first screen and groups transport with cost",async()=>{
   const {container}=render(<PublicResearchForm code="0K9K09K" />);
   expect(await screen.findByText("Como pretende participar?")).toBeInTheDocument();
-  expect(screen.getByLabelText("Qual é seu vínculo com a universidade?")).toBeInTheDocument();
+  expect(screen.getByLabelText(/Qual é seu vínculo com a universidade/i)).toBeInTheDocument();
   expect(screen.getByText(/Etapa 1 de 6/)).toBeInTheDocument();
   expect(container.querySelector("#research-step-content")?.className).not.toContain("flex-1");
   fireEvent.click(screen.getByRole("radio",{name:/Quero encontrar carona/i}));
-  fireEvent.change(screen.getByLabelText("Qual é seu vínculo com a universidade?"),{target:{value:"ESTUDANTE"}});
+  fireEvent.change(screen.getByLabelText(/Qual é seu vínculo com a universidade/i),{target:{value:"ESTUDANTE"}});
   fireEvent.click(screen.getByRole("button",{name:/Continuar/}));
   expect(await screen.findByText("Como costuma ir ou voltar?")).toBeInTheDocument();
   expect(screen.getByLabelText("Quanto gasta por trecho?")).toBeInTheDocument();
