@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
 import {
@@ -41,6 +41,7 @@ type Form = {
   configuration?: PublicResearchConfiguration | null;
 };
 export function PublicResearchForm({ code }: { code: string }) {
+  const previousStep = useRef(0);
   const [form, setForm] = useState<Form | null>(null),
     [answers, setAnswers] = useState<Answers>({}),
     [submissionKey] = useState(() => crypto.randomUUID());
@@ -150,6 +151,15 @@ export function PublicResearchForm({ code }: { code: string }) {
       window.clearInterval(timer);
     };
   }, [complete, code, hasConfiguration]);
+  useEffect(() => {
+    if (!form || previousStep.current === step) return;
+    previousStep.current = step;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById("research-step-content")?.scrollIntoView({ block: "start", behavior: "auto" });
+      document.getElementById("research-step-heading")?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [step, form]);
   const allQuestions = form?.schema.sections.flatMap((section) => section.questions) ?? [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   function next() {
@@ -485,8 +495,8 @@ export function PublicResearchForm({ code }: { code: string }) {
         </div>
       </div>
       <form onSubmit={submit} className="flex min-w-0 flex-col gap-4">
-        <section className="min-h-[250px] space-y-4 rounded-xl border bg-card p-4 sm:p-5">
-          <h2 className="text-xl font-bold">{section?.title ?? "Seu trajeto"}</h2>
+        <section id="research-step-content" className="min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5">
+          <h2 id="research-step-heading" tabIndex={-1} className="text-xl font-bold outline-none">{section?.title ?? "Seu trajeto"}</h2>
           {section?.description && (
             <p className="text-sm text-muted-foreground">{section.description}</p>
           )}

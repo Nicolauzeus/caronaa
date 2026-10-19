@@ -364,6 +364,11 @@ export function ResearchFormEditor({
           </button>
         </div>
       </header>
+      {!published && !preview && (
+        <p className="rounded-xl border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+          Formulário compacto: prefira até 4 seções e 3–5 perguntas por seção. Agora: <strong className="text-foreground">{schema.sections.length} seções</strong> e <strong className="text-foreground">{schema.sections.reduce((total, section) => total + section.questions.length, 0)} perguntas</strong>. Condições aninhadas exibem só o que se aplica a cada pessoa.
+        </p>
+      )}
       {error && (
         <p
           role="alert"
