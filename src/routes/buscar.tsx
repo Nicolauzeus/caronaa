@@ -76,18 +76,21 @@ function Buscar() {
     const when = params.get("data") || "";
     const hour = params.get("horario") || "";
     const validHour = /^([01]\d|2[0-3]):[0-5]\d$/.test(hour) ? hour : "";
+    const tolerance = Number(params.get("tolerancia"));
+    const selectedTolerance: TimeToleranceMinutes = tolerance===5||tolerance===15||tolerance===30||tolerance===60 ? tolerance : 15;
     if (from || to || when || validHour) {
       setOrigin(from);
       setDestination(to);
       setDate(when);
       setTime(validHour);
+      setTimeTolerance(selectedTolerance);
       setSubmitted({
         origin: from,
         destination: to,
         date: when,
         time: validHour,
         passengers: "1",
-        timeTolerance: 15,
+        timeTolerance: selectedTolerance,
         originLocation: undefined,
         destinationLocation: undefined,
       });
