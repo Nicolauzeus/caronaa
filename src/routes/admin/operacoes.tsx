@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getOperationalMetrics, type OperationalMetrics } from "@/lib/operational-metrics";
 import { InsightChart } from "@/components/admin/InsightChart";
-import { semanticMetricTone } from "@/lib/admin/chart-utils";
+import { statusTextClass } from "@/lib/admin/chart-utils";
 import { ProfessionalLiveMonitor } from "@/components/admin/ProfessionalLiveMonitor";
 
 export const Route = createFileRoute("/admin/operacoes")({ component: MobilityOperationsCenter });
@@ -132,12 +132,7 @@ function MobilityOperationsCenter() {
             <p className="text-sm text-muted-foreground">{m.label}</p>
             <p
               className={
-                "mt-3 text-3xl font-extrabold " +
-                (semanticMetricTone(m.label) === "danger"
-                  ? "text-destructive"
-                  : semanticMetricTone(m.label) === "warning"
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "")
+                "mt-3 text-3xl font-extrabold " + (m.value == null ? "text-foreground" : statusTextClass(m.label))
               }
             >
               {pending ? "…" : display(m.value)}

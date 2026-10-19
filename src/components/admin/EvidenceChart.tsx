@@ -10,10 +10,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { type ChartKind } from "@/lib/admin/chart-utils";
+import { chartSeriesColor, semanticMetricTone, CHART_TONE_LABELS, type ChartKind } from "@/lib/admin/chart-utils";
 type Series = { key: string; label: string };
 type Entry = Record<string, string | number | null>;
-const palette = ["#D6A32A", "#478CE6", "#16A36A", "#E4A238"];
+const tooltipStyle = {
+  backgroundColor: "var(--card)",
+  color: "var(--card-foreground)",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  fontSize: 12,
+};
+const textStyle = { color: "var(--card-foreground)" };
 export function EvidenceChart({
   title,
   rows,
@@ -37,8 +44,7 @@ export function EvidenceChart({
     ["line", "Linha"],
     ["ranking", "Ranking"],
   ];
-  const col = (i: number, label: string) =>
-    /déficit|falha|erro|crític|cancel/i.test(label) ? "#D94B4B" : palette[i % palette.length];
+  const col = (i: number, label: string) => chartSeriesColor(label, i);
   return (
     <section className="min-w-0 space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -65,6 +71,19 @@ export function EvidenceChart({
           ))}
         </div>
       </div>
+      {!!series.length && (
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={"Legenda: " + title}>
+          {series.map((entry,index) => {
+            const tone = semanticMetricTone(entry.label);
+            return (
+              <span key={entry.key} className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-sm" style={{backgroundColor: col(index,entry.label)}} aria-hidden="true"/>
+                <span>{entry.label}{tone === "neutral" ? "" : " · " + CHART_TONE_LABELS[tone]}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
       {!data.length ? (
         <p className="py-10 text-sm text-muted-foreground">Sem dados disponíveis neste recorte.</p>
       ) : kind === "ranking" ? (
@@ -110,7 +129,7 @@ export function EvidenceChart({
                 <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                 <YAxis allowDecimals={false} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={textStyle} itemStyle={textStyle} />
                 {series.map((s, i) => (
                   <Line
                     type="monotone"
@@ -153,7 +172,7 @@ export function EvidenceChart({
                     <YAxis allowDecimals={false} />
                   </>
                 )}
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={textStyle} itemStyle={textStyle} />
                 {series.map((s, i) => (
                   <Bar
                     key={s.key}

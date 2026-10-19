@@ -751,3 +751,30 @@ a:active {
 @media (max-height: 660px) {
   .unifor-form-stage { overflow-y: auto; overscroll-behavior: contain; }
 }
+
+/* Admin indicators: CARONAA gold + grayscale; red/green reserved for
+   genuinely negative/positive states, amber for pending states.
+   Use darker strokes in light mode and brighter ones in dark mode. */
+.admin-workspace {
+  --admin-chart-neutral: #a87800;
+  --admin-chart-warning: #b86b00;
+  --admin-chart-success: #16724b;
+  --admin-chart-danger: #b4232c;
+  --admin-chart-comparison: #475569;
+  --admin-chart-comparison-alt: #727272;
+}
+.dark .admin-workspace {
+  --admin-chart-neutral: #ffbb00;
+  --admin-chart-warning: #ffd36b;
+  --admin-chart-success: #57daa0;
+  --admin-chart-danger: #ff7580;
+  --admin-chart-comparison: #d1d5db;
+  --admin-chart-comparison-alt: #9ca3af;
+}
+.admin-workspace .recharts-cartesian-axis-tick text {
+  fill: var(--muted-foreground);
+}
+.admin-workspace .recharts-cartesian-grid line {
+  stroke: var(--border);
+  opacity: .6;
+}
