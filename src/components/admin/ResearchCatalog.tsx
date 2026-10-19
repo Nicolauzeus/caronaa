@@ -7,7 +7,6 @@ import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInterna
 import { REGIONAL_UNIVERSITY_KEY,regionalUniversityPreset } from "@/lib/formulario/regional-university";
 import { EVENT_EXIT_MATCH_KEY,eventExitMatchPreset,validateEventConfiguration } from "@/lib/formulario/event-exit-match";
 import { COMPANY_CAMPUS_DRIVER_KEY,companyCampusDriverPreset,validateCompanyCampusConfiguration } from "@/lib/formulario/company-campus-driver";
-const configuredTemplateKeys = [URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
 import { validateResearchBrandImage, RESEARCH_BRAND_IMAGE_TYPES } from "@/lib/formulario/research-branding";
 import { ResearchCompare } from "@/components/admin/ResearchCompare";
 import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
@@ -27,8 +26,11 @@ import {
   researchPublicUrl,
   listResearchForms,
   RESEARCH_NATURES,
+  getResearchSchemaVersion,
+  requiredResearchSchemaVersion,
   type ResearchForm,
 } from "@/lib/formulario/research-catalog";
+const configuredTemplateKeys = [URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
 export function ResearchCatalog() {
   const [selected, setSelected] = useState<string | null>(null);
   const [libraryView,setLibraryView] = useState<"library"|"trash">("library");
@@ -83,6 +85,8 @@ export function ResearchCatalog() {
   const [code, setCode] = useState("");
   const [nature, setNature] = useState("EVENTO");
   const [templateKey, setTemplateKey] = useState("");
+  const [schemaVersion,setSchemaVersion]=useState<number | null>(null);
+  useEffect(()=>{let active=true;void getResearchSchemaVersion().then(n=>{if(active)setSchemaVersion(n)}).catch(()=>{if(active)setSchemaVersion(null)});return()=>{active=false};},[]);
   const [configure, setConfigure] = useState(false);
   const [configuration, setConfiguration] = useState(newResearchConfiguration);
   const [institutionLogo, setInstitutionLogo] = useState<File | null>(null);
@@ -345,6 +349,9 @@ export function ResearchCatalog() {
                   }
                 >
                   <span className="font-semibold">{t.label}</span>
+                  {schemaVersion!==null && requiredResearchSchemaVersion(t.key)>schemaVersion && (
+                    <p role="status" className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Aguardando migration {requiredResearchSchemaVersion(t.key)} · criação protegida</p>
+                  )}
                   <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
                   <p className="mt-2 text-xs font-medium text-[#805900] dark:text-[#ffd166]">
                     {t.schema.sections.length} seções ·{" "}
@@ -364,6 +371,11 @@ export function ResearchCatalog() {
             />
             Configurar instituição, horários e interesse em caronas
           </label>
+          {requiredResearchSchemaVersion(templateKey)>95 && schemaVersion!==null && requiredResearchSchemaVersion(templateKey)>schemaVersion && (
+            <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-200 sm:col-span-2">
+              Este modelo já está preparado no código, mas depende da migration {requiredResearchSchemaVersion(templateKey)} no Supabase. O sistema impedirá sua criação até a instalação homologada.
+            </p>
+          )}
           {configuredTemplateKeys.includes(templateKey) && (
             <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:col-span-2">
               <p className="font-semibold">{templateKey === CORPORATE_INTERNAL_KEY ? "Empresa · caronas internas entre colaboradores" : templateKey === REGIONAL_UNIVERSITY_KEY ? "Universidade regional · mobilidade local" : templateKey === EVENT_EXIT_MATCH_KEY ? "Evento · Carona na saída" : templateKey === COMPANY_CAMPUS_DRIVER_KEY ? "Empresa próxima ao campus · captação de motoristas" : "Universidade urbana · modelo institucional"}</p>
