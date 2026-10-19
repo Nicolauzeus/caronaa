@@ -70,12 +70,12 @@ CREATE POLICY research_restricted_versions_guard ON public.research_form_version
 -- The policy must not query the ownership table as the browser role:
 -- direct SELECT on that table is deliberately REVOKED for all browser users.
 CREATE OR REPLACE FUNCTION public.owns_corporate_research_answer(p_answer_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
  SELECT EXISTS (
    SELECT 1 FROM public.corporate_research_answer_owners o
    WHERE o.answer_id=p_answer_id AND o.user_id=auth.uid()
  );
-$;
+$$;
 REVOKE ALL ON FUNCTION public.owns_corporate_research_answer(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.owns_corporate_research_answer(uuid) TO authenticated;
 
