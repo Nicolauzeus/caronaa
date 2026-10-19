@@ -3,6 +3,7 @@ import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
+import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
 import { validateResearchBrandImage, RESEARCH_BRAND_IMAGE_TYPES } from "@/lib/formulario/research-branding";
 import { ResearchCompare } from "@/components/admin/ResearchCompare";
 import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
@@ -125,8 +126,12 @@ export function ResearchCatalog() {
     setCreationNotice("");
     try {
       if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(code)) throw Error("Código inválido");
-      if (templateKey === URBAN_UNIVERSITY_KEY && !configure)
+      if ((templateKey === URBAN_UNIVERSITY_KEY || templateKey === CORPORATE_INTERNAL_KEY) && !configure)
         throw Error("O modelo Universidade Urbana requer a configuração da instituição e dos horários.");
+      if (templateKey === CORPORATE_INTERNAL_KEY) {
+        const issues=validateCorporateInternalConfiguration(configuration);
+        if(issues.length)throw Error(issues[0]);
+      }
       if (institutionLogo) {
         const invalid = validateResearchBrandImage(institutionLogo.type, institutionLogo.size);
         if (invalid) throw Error(invalid);
@@ -141,7 +146,7 @@ export function ResearchCatalog() {
         configuration: configure ? configuration : undefined,
       });
       let logoWarning = "";
-      if (templateKey === URBAN_UNIVERSITY_KEY && institutionLogo) {
+      if ((templateKey === URBAN_UNIVERSITY_KEY || templateKey === CORPORATE_INTERNAL_KEY) && institutionLogo) {
         const extension = RESEARCH_BRAND_IMAGE_TYPES[institutionLogo.type];
         const path = id + "/" + crypto.randomUUID() + "." + extension;
         const storage = supabase.storage.from("research-branding");
@@ -313,7 +318,7 @@ export function ResearchCatalog() {
                   onClick={() => {
                     setTemplateKey(t.key);
                     setConfiguration({
-                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : newResearchConfiguration(t.key)),
+                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : t.key === CORPORATE_INTERNAL_KEY ? corporateInternalPreset() : newResearchConfiguration(t.key)),
                       publicName: title,
                       institutionId: code || "",
                     });
@@ -341,18 +346,18 @@ export function ResearchCatalog() {
             <input
               type="checkbox"
               checked={configure}
-              disabled={templateKey === URBAN_UNIVERSITY_KEY}
+              disabled={templateKey === URBAN_UNIVERSITY_KEY || templateKey === CORPORATE_INTERNAL_KEY}
               onChange={(e) => setConfigure(e.target.checked)}
             />
             Configurar instituição, horários e interesse em caronas
           </label>
-          {templateKey === URBAN_UNIVERSITY_KEY && (
+          {(templateKey === URBAN_UNIVERSITY_KEY || templateKey === CORPORATE_INTERNAL_KEY) && (
             <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:col-span-2">
-              <p className="font-semibold">Universidade urbana · modelo institucional</p>
+              <p className="font-semibold">{templateKey === CORPORATE_INTERNAL_KEY ? "Empresa · caronas internas entre colaboradores" : "Universidade urbana · modelo institucional"}</p>
               <p className="text-sm text-muted-foreground">
-                Configure nome, campus, endereço, data de lançamento e horários sugeridos. Use apenas
-                dados institucionais confirmados. O questionário inclui Uber/99, custos, dificuldades,
-                disponibilidade de carona e orçamento. O trajeto vem da configuração institucional.
+                {templateKey === CORPORATE_INTERNAL_KEY
+                  ? "Configure a empresa, unidade, endereço, turnos e horários reais. O modelo restringe o acesso a contas verificadas de colaboradores. Após criar a pesquisa, autorize as contas através de comprovante de RH na configuração. Não habilite pesquisa pública nem publique caronas neste fluxo."
+                  : "Configure nome, campus, endereço, data de lançamento e horários sugeridos. Use apenas dados institucionais confirmados. O questionário inclui Uber/99, custos, dificuldades, disponibilidade e orçamento."} O trajeto vem da configuração institucional.
               </p>
               <label className="block text-sm">
                 Logomarca autorizada da instituição (opcional, até 2 MB)
