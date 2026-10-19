@@ -150,12 +150,13 @@ export function PublicResearchForm({ code }: { code: string }) {
       window.clearInterval(timer);
     };
   }, [complete, code, hasConfiguration]);
+  const allQuestions = form?.schema.sections.flatMap((section) => section.questions) ?? [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   function next() {
     if (!form) return;
     const sec = form.schema.sections[step];
     const problems = [
-      ...validatePage(sec, answers),
+      ...validatePage(sec, answers, allQuestions),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -170,7 +171,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
       for (const q of sec.questions) {
-        const errors = validatePage({ title: sec.title, questions: [q] }, answers);
+        const errors = validatePage({ title: sec.title, questions: [q] }, answers, allQuestions);
         if (errors.length) byQuestion[q.id] = errors[0];
       }
       setFieldErrors(byQuestion);
@@ -204,7 +205,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     const cleaned = cleanAnswers(form.schema, answers);
     const problems = [
-      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned)),
+      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions)),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -405,14 +406,14 @@ export function PublicResearchForm({ code }: { code: string }) {
   const section = form.schema.sections[step],
     last = step === totalSteps - 1;
   return (
-    <main className="mx-auto max-w-xl space-y-5 p-4 py-8 sm:p-8">
+    <main className="mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8">
       <ResearchBrandHeader
         title={form.configuration?.settings.publicName || form.title}
         imagePath={form.brandImagePath}
         alt={form.brandAlt}
         brandName={form.brandName}
       />
-      {form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
+      {step === 0 && form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa regional" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade · Mobilidade regional</p>
           <p className="text-sm leading-6">{regionalUniversityIntro(form.configuration.settings)}</p>
@@ -421,32 +422,32 @@ export function PublicResearchForm({ code }: { code: string }) {
           </p>
         </section>
       )}
-      {form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY && (
+      {step === 0 && form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY && (
         <section aria-label="Apresentação da pesquisa do evento" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA · saída do evento</p>
           <p className="text-sm leading-6">{eventExitMatchIntro(form.configuration.settings)}</p>
         </section>
       )}
-      {form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY && (
+      {step === 0 && form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY && (
         <section aria-label="Apresentação da iniciativa empresa e universidade" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA · empresa próxima ao campus</p>
           <p className="text-sm leading-6">{companyCampusDriverIntro(form.configuration.settings)}</p>
         </section>
       )}
-      {form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY && (
+      {step === 0 && form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY && (
         <section aria-label="Pesquisa corporativa de mobilidade" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA Corporativo · Somente colaboradores autorizados</p>
           <p className="text-sm leading-6">{corporateInternalIntro(form.configuration.settings)}</p>
           <p className="text-xs text-muted-foreground">Você precisa estar conectado a uma conta autorizada e com e-mail confirmado para participar.</p>
         </section>
       )}
-      {form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
+      {step === 0 && form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade</p>
           <p className="text-sm leading-6">{urbanUniversityIntro(form.configuration.settings)}</p>
         </section>
       )}
-      {form.configuration && (
+      {step === 0 && form.configuration && (
         <div className="space-y-2 border-y py-3">
           <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>
           <p className="text-sm">{form.configuration.settings.usagePolicy}</p>
@@ -483,8 +484,8 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className="space-y-4">
-        <section className="space-y-4 rounded-xl border bg-card p-5">
+      <form onSubmit={submit} className="flex min-w-0 flex-col gap-4">
+        <section className="min-h-[250px] space-y-4 rounded-xl border bg-card p-4 sm:p-5">
           <h2 className="text-xl font-bold">{section?.title ?? "Seu trajeto"}</h2>
           {section?.description && (
             <p className="text-sm text-muted-foreground">{section.description}</p>
@@ -492,6 +493,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           {section ? (
             <ResearchSectionFields
               section={section}
+              allQuestions={allQuestions}
               answers={answers}
               errors={fieldErrors}
               onChange={(id, value) => {
@@ -540,7 +542,8 @@ export function PublicResearchForm({ code }: { code: string }) {
             {error}
           </p>
         )}
-        <div className="flex items-center justify-between gap-3">
+        <div aria-label="Navegação entre etapas" className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] shadow-[0_-8px_28px_rgba(0,0,0,0.10)] backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
           <button
             type="button"
             disabled={step === 0 || busy}
@@ -549,7 +552,7 @@ export function PublicResearchForm({ code }: { code: string }) {
               setFieldErrors({});
               setStep((s) => s - 1);
             }}
-            className="rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40"
+            className="min-h-11 rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40"
           >
             Anterior
           </button>
@@ -557,7 +560,7 @@ export function PublicResearchForm({ code }: { code: string }) {
             <button
               type="submit"
               disabled={busy || !consent}
-              className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
+              className="min-h-11 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50 sm:px-6"
             >
               {busy ? "Enviando…" : "Enviar respostas"}
             </button>
@@ -565,11 +568,12 @@ export function PublicResearchForm({ code }: { code: string }) {
             <button
               type="button"
               onClick={next}
-              className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground"
+              className="min-h-11 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground sm:px-6"
             >
               Próxima etapa →
             </button>
           )}
+          </div>
         </div>
       </form>
     </main>

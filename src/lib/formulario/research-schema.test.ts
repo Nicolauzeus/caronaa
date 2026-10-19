@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
 import {RESEARCH_TEMPLATES} from "./research-templates";
-import {inspectSchema,reorder,cleanAnswers,cloneQuestion,validatePage,scheduleWarning} from "./research-schema";
+import {inspectSchema,reorder,cleanAnswers,cloneQuestion,validatePage,scheduleWarning,isVisible} from "./research-schema";
 describe("Research builder",()=>{
  it("ships useful valid templates for five natures",()=>{
   expect(RESEARCH_TEMPLATES.length).toBeGreaterThanOrEqual(14);
@@ -16,6 +16,27 @@ describe("Research builder",()=>{
   const schema={sections:[{title:"Teste",questions:[{id:"parent",label:"Pergunta pai",type:"single_choice" as const,required:true,options:["SIM","NAO"]},{id:"child",label:"Pergunta filha",type:"short_text" as const,required:true,options:[],showWhen:{questionId:"parent",equals:"SIM"}}]}]};
   expect(cleanAnswers(schema,{parent:"NAO",child:"Privado"})).toEqual({parent:"NAO"});
   expect(validatePage(schema.sections[0],{parent:"NAO"})).toEqual([]);
+ });
+ it("hides all descendants of a collapsed nested condition, including stale answers",()=>{
+  const questions=[
+    {id:"parent",label:"Primeira condição",type:"single_choice" as const,required:true,options:["SIM","NAO"]},
+    {id:"child",label:"Segunda condição",type:"single_choice" as const,required:true,options:["A","B"],showWhen:{questionId:"parent",equals:"SIM"}},
+    {id:"grandchild",label:"Terceira condição",type:"short_text" as const,required:true,options:[],showWhen:{questionId:"child",equals:"A"}},
+  ];
+  const schema={sections:[{title:"Decisões",questions}]};
+  const stale={parent:"NAO",child:"A",grandchild:"Escondido"};
+  expect(isVisible(questions[2],stale,questions)).toBe(false);
+  expect(cleanAnswers(schema,stale)).toEqual({parent:"NAO"});
+  expect(validatePage(schema.sections[0],stale,questions)).toEqual([]);
+  expect(isVisible(questions[2],{parent:"SIM",child:"A"},questions)).toBe(true);
+  expect(validatePage(schema.sections[0],{parent:"SIM",child:"A"},questions)).toContain("Responda: Terceira condição");
+ });
+ it("blocks duplicate question text regardless of accents or capitalization",()=>{
+  const template={sections:[{title:"Bloco",questions:[
+    {id:"first",label:"Qual é a sua região?",type:"short_text" as const,required:false,options:[]},
+    {id:"second",label:"QUAL E A SUA REGIAO?",type:"short_text" as const,required:false,options:[]},
+  ]}]};
+  expect(inspectSchema(template).some(v=>v.includes("pergunta repetida"))).toBe(true);
  });
  it("rejects invalid dependencies",()=>{
   const s=structuredClone(RESEARCH_TEMPLATES[0].schema);

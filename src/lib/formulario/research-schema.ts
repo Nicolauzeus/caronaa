@@ -29,6 +29,7 @@ export function inspectSchema(schema: SurveySchema): string[] {
   if (schema.sections.length === 0) errors.push("Adicione pelo menos uma seção.");
   if (schema.sections.length > 30) errors.push("Limite de 30 seções.");
   const ids = new Set<string>();
+  const questionLabels = new Set<string>();
   const prior = new Map<string, SurveyQuestion>();
   let total = 0;
   schema.sections.forEach((s, si) => {
@@ -40,6 +41,10 @@ export function inspectSchema(schema: SurveySchema): string[] {
       if (ids.has(q.id)) errors.push(name + ": identificador duplicado.");
       ids.add(q.id);
       if (q.label.trim().length < 3) errors.push(name + ": enunciado muito curto.");
+      const normalizedLabel = q.label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+      if (questionLabels.has(normalizedLabel))
+        errors.push(name + ": pergunta repetida. Una as perguntas ou use um enunciado diferente.");
+      questionLabels.add(normalizedLabel);
       if (
         q.semanticCode &&
         RESEARCH_SEMANTIC_TYPES[q.semanticCode] &&
@@ -78,8 +83,29 @@ export function inspectSchema(schema: SurveySchema): string[] {
 }
 export type AnswerValue = string | string[];
 export type Answers = Record<string, AnswerValue>;
-export function isVisible(q: SurveyQuestion, answers: Answers): boolean {
-  return !q.showWhen || String(answers[q.showWhen.questionId] ?? "") === q.showWhen.equals;
+/** Evaluate the whole dependency chain, not just the last parent.
+ * This prevents hidden nested questions from reappearing through stale answers.
+ * When allQuestions is omitted, the caller must pass already cleaned answers.
+ */
+export function isVisible(
+  q: SurveyQuestion,
+  answers: Answers,
+  allQuestions?: SurveyQuestion[],
+): boolean {
+  if (!q.showWhen) return true;
+  const lookup = new Map((allQuestions ?? []).map((question) => [question.id, question]));
+  const seen = new Set<string>();
+  function visible(question: SurveyQuestion): boolean {
+    if (!question.showWhen) return true;
+    if (seen.has(question.id)) return false;
+    seen.add(question.id);
+    const condition = question.showWhen;
+    const parent = lookup.get(condition.questionId);
+    if (allQuestions && (!parent || !visible(parent))) return false;
+    return typeof answers[condition.questionId] === "string" &&
+      answers[condition.questionId] === condition.equals;
+  }
+  return visible(q);
 }
 export function cleanAnswers(schema: SurveySchema, answers: Answers): Answers {
   const result: Answers = {};
@@ -153,9 +179,9 @@ export function scheduleWarning(section: SurveySection, answers: Answers): strin
     ? "O horário de saída é anterior ao de chegada. Confirme se a saída é no dia seguinte; caso contrário, revise os horários."
     : null;
 }
-export function validatePage(section: SurveySection, answers: Answers): string[] {
+export function validatePage(section: SurveySection, answers: Answers, allQuestions?: SurveyQuestion[]): string[] {
   return section.questions
-    .filter((q) => isVisible(q, answers))
+    .filter((q) => isVisible(q, answers, allQuestions))
     .flatMap((q) => {
       const value = answers[q.id];
       if (q.required && (!value || (Array.isArray(value) && !value.length)))
