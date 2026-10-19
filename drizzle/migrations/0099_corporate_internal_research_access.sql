@@ -67,6 +67,32 @@ CREATE POLICY research_restricted_versions_guard ON public.research_form_version
  FOR SELECT TO anon,authenticated USING(
   public.has_role(auth.uid(),'admin') OR public.can_access_restricted_research(form_id));
 
+-- Protect raw response data as well as forms/versions. A public-answer INSERT policy
+-- from older migrations must not permit crafted inserts for corporate forms.
+CREATE POLICY research_restricted_answer_read_guard ON public.research_answers AS RESTRICTIVE
+ FOR SELECT TO anon,authenticated
+ USING (
+  NOT public.is_restricted_research(form_id)
+  OR public.has_role(auth.uid(),'admin')
+  OR (
+    public.can_access_restricted_research(form_id)
+    AND EXISTS (
+      SELECT 1 FROM public.corporate_research_answer_owners o
+      WHERE o.answer_id=id AND o.user_id=auth.uid()
+    )
+  )
+ );
+CREATE POLICY research_restricted_answer_insert_guard ON public.research_answers AS RESTRICTIVE
+ FOR INSERT TO anon,authenticated
+ WITH CHECK(NOT public.is_restricted_research(form_id));
+CREATE POLICY research_restricted_answer_update_guard ON public.research_answers AS RESTRICTIVE
+ FOR UPDATE TO anon,authenticated
+ USING(NOT public.is_restricted_research(form_id))
+ WITH CHECK(NOT public.is_restricted_research(form_id));
+CREATE POLICY research_restricted_answer_delete_guard ON public.research_answers AS RESTRICTIVE
+ FOR DELETE TO anon,authenticated
+ USING(NOT public.is_restricted_research(form_id));
+
 CREATE OR REPLACE FUNCTION public.grant_corporate_research_access(
  p_form_id uuid,p_user_id uuid,p_reference text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
