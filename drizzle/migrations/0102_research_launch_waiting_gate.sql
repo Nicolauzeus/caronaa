@@ -7,13 +7,13 @@
 CREATE TABLE IF NOT EXISTS public.research_launch_releases (
   form_id uuid PRIMARY KEY REFERENCES public.research_forms(id) ON DELETE CASCADE,
   released_at timestamptz,
-  released_by uuid REFERENCES auth.users(id),
+  released_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS public.research_launch_release_audit (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  form_id uuid NOT NULL REFERENCES public.research_forms(id) ON DELETE RESTRICT,
-  actor_id uuid NOT NULL REFERENCES auth.users(id),
+  form_id uuid NOT NULL REFERENCES public.research_forms(id) ON DELETE CASCADE,
+  actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   action text NOT NULL CHECK (action IN ('RELEASE','RELOCK')),
   changed_at timestamptz NOT NULL DEFAULT now()
 );
