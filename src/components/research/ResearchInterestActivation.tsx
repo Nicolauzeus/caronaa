@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { registerResearchInterest } from "@/lib/formulario/research-configuration-service";
+import { CORPORATE_INTERNAL_KEY } from "@/lib/formulario/corporate-internal";
 import {
   effectiveResearchSchedule,
   validateJourney,
@@ -27,6 +28,7 @@ export function ResearchInterestActivation({
     PASSAGEIRO: { ...journey, profile: "PASSAGEIRO" },
     MOTORISTA: { ...journey, profile: "MOTORISTA" },
   }));
+  const isInternalCompany = configuration?.templateKey === CORPORATE_INTERNAL_KEY || configuration?.accessPolicy === "COLABORADORES_DA_EMPRESA";
   if (journey.mode !== "CARONA")
     return (
       <p className="text-sm text-muted-foreground">
@@ -122,13 +124,21 @@ export function ResearchInterestActivation({
           )}
         </div>
       ))}
-      <p className="text-xs text-muted-foreground">
-        Este registro não cria reserva, oferta pública, cobrança ou garantia de atendimento. Para
-        publicar uma carona, entre no CARONAA e confirme os dados, a rota e o preço no fluxo normal.
-      </p>
-      <a href="/home" className="inline-block text-sm font-medium underline">
-        Continuar no CARONAA
-      </a>
+      {isInternalCompany ? (
+        <p role="status" className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm text-muted-foreground">
+          Seu interesse interno pode ser registrado com autorização. Caronas exclusivas entre colaboradores
+          ainda estão em preparação: não use a busca ou as ofertas públicas para organizar uma carona
+          corporativa. Nenhuma viagem foi publicada ou reservada.
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Este registro não cria reserva, oferta pública, cobrança ou garantia de atendimento.
+            Para publicar uma carona, entre no CARONAA e confirme os dados, a rota e o preço no aplicativo.
+          </p>
+          <a href="/home" className="inline-block text-sm font-medium underline">Continuar no CARONAA</a>
+        </>
+      )}
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

@@ -40,13 +40,24 @@ const sql =
   readFileSync(
     new URL("../tests/research-infrastructure.integration.sql", import.meta.url),
     "utf8",
+  ) +
+  // The corporate-only RLS migration is tested in the same disposable cluster.
+  // No production endpoint/credentials are used, and 0099 preserves 0097/0098 BI semantics.
+  read("0097_regional_university_market_metrics.sql") +
+  read("0098_company_campus_research.sql") +
+  read("0099_corporate_internal_research_access.sql") +
+  readFileSync(
+    new URL("../tests/research-corporate-access.integration.sql", import.meta.url),
+    "utf8",
   );
 const result = spawnSync("pg_virtualenv", ["psql", "-X", "-v", "ON_ERROR_STOP=1"], {
   input: sql,
   encoding: "utf8",
   maxBuffer: 8 * 1024 * 1024,
 });
-if (result.error) throw result.error;
-process.stdout.write(result.stdout);
-process.stderr.write(result.stderr);
+process.stdout.write(result.stdout ?? "");
+process.stderr.write(result.stderr ?? "");
+if (result.error) {
+  process.stderr.write("PostgreSQL integration execution error: " + String(result.error) + "\\n");
+}
 process.exitCode = result.status ?? 1;

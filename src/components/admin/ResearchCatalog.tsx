@@ -3,6 +3,10 @@ import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
+import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
+import { REGIONAL_UNIVERSITY_KEY,regionalUniversityPreset } from "@/lib/formulario/regional-university";
+import { EVENT_EXIT_MATCH_KEY,eventExitMatchPreset,validateEventConfiguration } from "@/lib/formulario/event-exit-match";
+import { COMPANY_CAMPUS_DRIVER_KEY,companyCampusDriverPreset,validateCompanyCampusConfiguration } from "@/lib/formulario/company-campus-driver";
 import { validateResearchBrandImage, RESEARCH_BRAND_IMAGE_TYPES } from "@/lib/formulario/research-branding";
 import { ResearchCompare } from "@/components/admin/ResearchCompare";
 import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchOverview";
@@ -22,8 +26,11 @@ import {
   researchPublicUrl,
   listResearchForms,
   RESEARCH_NATURES,
+  getResearchSchemaVersion,
+  requiredResearchSchemaVersion,
   type ResearchForm,
 } from "@/lib/formulario/research-catalog";
+const configuredTemplateKeys = [URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
 export function ResearchCatalog() {
   const [selected, setSelected] = useState<string | null>(null);
   const [libraryView,setLibraryView] = useState<"library"|"trash">("library");
@@ -78,6 +85,8 @@ export function ResearchCatalog() {
   const [code, setCode] = useState("");
   const [nature, setNature] = useState("EVENTO");
   const [templateKey, setTemplateKey] = useState("");
+  const [schemaVersion,setSchemaVersion]=useState<number | null>(null);
+  useEffect(()=>{let active=true;void getResearchSchemaVersion().then(n=>{if(active)setSchemaVersion(n)}).catch(()=>{if(active)setSchemaVersion(null)});return()=>{active=false};},[]);
   const [configure, setConfigure] = useState(false);
   const [configuration, setConfiguration] = useState(newResearchConfiguration);
   const [institutionLogo, setInstitutionLogo] = useState<File | null>(null);
@@ -125,8 +134,21 @@ export function ResearchCatalog() {
     setCreationNotice("");
     try {
       if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(code)) throw Error("Código inválido");
-      if (templateKey === URBAN_UNIVERSITY_KEY && !configure)
-        throw Error("O modelo Universidade Urbana requer a configuração da instituição e dos horários.");
+      if (configuredTemplateKeys.includes(templateKey) && !configure)
+        throw Error("Para este modelo, preencha os dados institucionais e os horários antes de continuar.");
+      if (templateKey === REGIONAL_UNIVERSITY_KEY && !configuration.institutionName.trim()) throw Error("Informe o nome da universidade regional.");
+      if (templateKey === EVENT_EXIT_MATCH_KEY) {
+        const errors=validateEventConfiguration(configuration);
+        if(errors.length) throw Error(errors[0]);
+      }
+      if (templateKey === COMPANY_CAMPUS_DRIVER_KEY) {
+        const errors=validateCompanyCampusConfiguration(configuration);
+        if(errors.length) throw Error(errors[0]);
+      }
+      if (templateKey === CORPORATE_INTERNAL_KEY) {
+        const issues=validateCorporateInternalConfiguration(configuration);
+        if(issues.length)throw Error(issues[0]);
+      }
       if (institutionLogo) {
         const invalid = validateResearchBrandImage(institutionLogo.type, institutionLogo.size);
         if (invalid) throw Error(invalid);
@@ -138,10 +160,10 @@ export function ResearchCatalog() {
         audience,
         municipality,
         templateKey,
-        configuration: configure ? configuration : undefined,
+        configuration: configure ? {...configuration,institutionId:configuration.institutionId.trim()||code.trim()} : undefined,
       });
       let logoWarning = "";
-      if (templateKey === URBAN_UNIVERSITY_KEY && institutionLogo) {
+      if (configuredTemplateKeys.includes(templateKey) && institutionLogo) {
         const extension = RESEARCH_BRAND_IMAGE_TYPES[institutionLogo.type];
         const path = id + "/" + crypto.randomUUID() + "." + extension;
         const storage = supabase.storage.from("research-branding");
@@ -313,7 +335,7 @@ export function ResearchCatalog() {
                   onClick={() => {
                     setTemplateKey(t.key);
                     setConfiguration({
-                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : newResearchConfiguration(t.key)),
+                      ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : t.key === REGIONAL_UNIVERSITY_KEY ? regionalUniversityPreset() : t.key === EVENT_EXIT_MATCH_KEY ? eventExitMatchPreset() : t.key === COMPANY_CAMPUS_DRIVER_KEY ? companyCampusDriverPreset() : t.key === CORPORATE_INTERNAL_KEY ? corporateInternalPreset() : newResearchConfiguration(t.key)),
                       publicName: title,
                       institutionId: code || "",
                     });
@@ -327,6 +349,9 @@ export function ResearchCatalog() {
                   }
                 >
                   <span className="font-semibold">{t.label}</span>
+                  {schemaVersion!==null && requiredResearchSchemaVersion(t.key)>schemaVersion && (
+                    <p role="status" className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Aguardando migration {requiredResearchSchemaVersion(t.key)} · criação protegida</p>
+                  )}
                   <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
                   <p className="mt-2 text-xs font-medium text-[#805900] dark:text-[#ffd166]">
                     {t.schema.sections.length} seções ·{" "}
@@ -341,18 +366,23 @@ export function ResearchCatalog() {
             <input
               type="checkbox"
               checked={configure}
-              disabled={templateKey === URBAN_UNIVERSITY_KEY}
+              disabled={configuredTemplateKeys.includes(templateKey)}
               onChange={(e) => setConfigure(e.target.checked)}
             />
             Configurar instituição, horários e interesse em caronas
           </label>
-          {templateKey === URBAN_UNIVERSITY_KEY && (
+          {requiredResearchSchemaVersion(templateKey)>95 && schemaVersion!==null && requiredResearchSchemaVersion(templateKey)>schemaVersion && (
+            <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-200 sm:col-span-2">
+              Este modelo já está preparado no código, mas depende da migration {requiredResearchSchemaVersion(templateKey)} no Supabase. O sistema impedirá sua criação até a instalação homologada.
+            </p>
+          )}
+          {configuredTemplateKeys.includes(templateKey) && (
             <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:col-span-2">
-              <p className="font-semibold">Universidade urbana · modelo institucional</p>
+              <p className="font-semibold">{templateKey === CORPORATE_INTERNAL_KEY ? "Empresa · caronas internas entre colaboradores" : templateKey === REGIONAL_UNIVERSITY_KEY ? "Universidade regional · mobilidade local" : templateKey === EVENT_EXIT_MATCH_KEY ? "Evento · Carona na saída" : templateKey === COMPANY_CAMPUS_DRIVER_KEY ? "Empresa próxima ao campus · captação de motoristas" : "Universidade urbana · modelo institucional"}</p>
               <p className="text-sm text-muted-foreground">
-                Configure nome, campus, endereço, data de lançamento e horários sugeridos. Use apenas
-                dados institucionais confirmados. O questionário inclui Uber/99, custos, dificuldades,
-                disponibilidade de carona e orçamento. O trajeto vem da configuração institucional.
+                {templateKey === CORPORATE_INTERNAL_KEY
+                  ? "Configure a empresa, unidade, endereço, turnos e horários reais. O modelo restringe o acesso a contas verificadas de colaboradores. Após criar a pesquisa, autorize as contas através de comprovante de RH na configuração. Não habilite pesquisa pública nem publique caronas neste fluxo."
+                  : templateKey === EVENT_EXIT_MATCH_KEY ? "Defina o nome do evento, endereço real, data, horários de saída e pontos seguros. Busca e oferta aparecem somente se o evento estiver operacional; não são criadas reservas." : templateKey === COMPANY_CAMPUS_DRIVER_KEY ? "Defina a empresa e unidade, a universidade próxima e os turnos. Vagas declaradas não são ofertas publicadas." : templateKey === REGIONAL_UNIVERSITY_KEY ? "Defina a universidade, campus e turnos reais. Mototáxi profissional é apenas interesse de pesquisa, sujeito a habilitação e autorização." : "Configure nome, campus, endereço, data e horários. Utilize dados institucionais confirmados, nunca simulados."} O trajeto usa a configuração institucional.
               </p>
               <label className="block text-sm">
                 Logomarca autorizada da instituição (opcional, até 2 MB)

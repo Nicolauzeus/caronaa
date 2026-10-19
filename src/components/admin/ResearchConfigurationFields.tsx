@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { CORPORATE_INTERNAL_KEY } from "@/lib/formulario/corporate-internal";
+import { COMPANY_CAMPUS_DRIVER_KEY } from "@/lib/formulario/company-campus-driver";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   SUGGESTED_RESEARCH_TIMES,
@@ -70,6 +72,11 @@ export function ResearchConfigurationFields({
   );
   return (
     <section aria-label="Configuração institucional" className="min-w-0 space-y-4 border-y py-4">
+      {value.templateKey===CORPORATE_INTERNAL_KEY && (
+        <p className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+          Uso exclusivo de colaboradores com conta verificada. Preencha somente o endereço da unidade e os horários de turnos; não informe endereços residenciais. O acesso não é liberado por domínio de e-mail ou selo de pesquisa.
+        </p>
+      )}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="institution">Instituição</TabsTrigger>
@@ -78,9 +85,10 @@ export function ResearchConfigurationFields({
         </TabsList>
         <TabsContent value="institution" className="grid gap-3 pt-3 sm:grid-cols-2">
           {text("institutionId", "Identificador institucional")}
-          {text("institutionName", "Instituição, empresa ou evento")}
+          {text("institutionName", value.templateKey===CORPORATE_INTERNAL_KEY ? "Nome da empresa" : "Instituição, empresa ou evento")}
           {text("publicName", "Nome público da pesquisa")}
-          {text("campus", "Campus ou unidade")}
+          {text("campus", value.templateKey===CORPORATE_INTERNAL_KEY ? "Unidade ou filial" : value.templateKey===COMPANY_CAMPUS_DRIVER_KEY ? "Unidade da empresa" : "Campus ou unidade")}
+          {value.templateKey===COMPANY_CAMPUS_DRIVER_KEY && text("nearbyUniversity", "Universidade ou instituto próximo")}
           {text("region", "Município ou região")}
           {text("address", "Endereço institucional")}
           {(["latitude", "longitude"] as const).map((key) => (
