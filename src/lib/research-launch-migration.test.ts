@@ -22,7 +22,7 @@ describe("Generic research launch migration security",()=>{
    expect(source).toContain("role='admin'");
    for (const table of ["ride_requests","ride_offers","ride_routines","ride_matches","rides"])
     expect(source).toContain("'"+table+"'");
-   expect(source).toContain("BEFORE INSERT");
+   expect(source).toContain("trg_unifor_prelaunch_guard");
  });
  it("logs manual release and resetting and keeps the intent read-only",()=>{
    expect(source).toContain("research_launch_release_audit");
