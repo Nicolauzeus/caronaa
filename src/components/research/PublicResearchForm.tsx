@@ -284,7 +284,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           Tentar novamente
         </button>
         <p className="text-sm text-muted-foreground">Se esta for uma pesquisa corporativa, faça login com uma conta autorizada. Apenas possuir o link não concede acesso.</p>
-        <a href={"/auth?mode=login&redirect="+encodeURIComponent("/pesquisa/"+code)} className="inline-flex rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">Entrar com minha conta</a>
+        <a href={"/auth?mode=login&redirect="+encodeURIComponent("/formulario/"+code)} className="inline-flex rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">Entrar com minha conta</a>
       </main>
     );
   if (complete)
