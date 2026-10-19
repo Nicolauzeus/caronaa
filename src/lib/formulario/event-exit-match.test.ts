@@ -87,6 +87,8 @@ describe("Modelo 03 — pesquisa rápida e match de saída", () => {
     expect(find.searchParams.get("destino")).toBe("Meireles");
     expect(find.searchParams.get("data")).toBe("2027-03-12");
     expect(find.searchParams.get("horario")).toBe(j.outboundTime);
+    expect(find.searchParams.get("tolerancia")).toBe("5");
+    expect(offer.searchParams.get("tolerancia")).toBe("5");
     expect(offer.pathname).toBe("/oferecer");
     expect(offer.searchParams.get("vagas")).toBe("3");
     expect(links.search).not.toMatch(/lat|lng|email|receipt|submissionKey/);
