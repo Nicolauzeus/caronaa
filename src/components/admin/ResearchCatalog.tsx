@@ -139,16 +139,23 @@ export function ResearchCatalog() {
       if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(code)) throw Error("Código inválido");
       if (configuredModelKeys.includes(templateKey) && !configure)
         throw Error("Este modelo requer configuração institucional de endereços e horários.");
+      const finalConfiguration = {
+        ...configuration,
+        institutionId: code.trim().toUpperCase(),
+        publicName: title.trim(),
+        campaignType: nature === "EVENTO" ? "EVENTO" as const : "INSTITUCIONAL" as const,
+        campaignName: configuration.campaignName.trim() || title.trim(),
+      };
       if (templateKey === EVENT_EXIT_MATCH_KEY) {
-        const issues=validateEventConfiguration(configuration);
+        const issues=validateEventConfiguration(finalConfiguration);
         if(issues.length) throw Error(issues[0]);
       }
       if (templateKey === COMPANY_CAMPUS_DRIVER_KEY) {
-        const issues=validateCompanyCampusConfiguration(configuration);
+        const issues=validateCompanyCampusConfiguration(finalConfiguration);
         if(issues.length) throw Error(issues[0]);
       }
       if (templateKey === CORPORATE_INTERNAL_KEY) {
-        const issues=validateCorporateInternalConfiguration(configuration);
+        const issues=validateCorporateInternalConfiguration(finalConfiguration);
         if(issues.length)throw Error(issues[0]);
       }
       if (institutionLogo) {
@@ -162,7 +169,7 @@ export function ResearchCatalog() {
         audience,
         municipality,
         templateKey,
-        configuration: configure ? configuration : undefined,
+        configuration: configure ? finalConfiguration : undefined,
       });
       let logoWarning = "";
       if (configuredModelKeys.includes(templateKey) && institutionLogo) {
@@ -237,7 +244,7 @@ export function ResearchCatalog() {
         </p>
       )}
       {tab === "pesquisas" && libraryView==="library" && editing && (
-        <form onSubmit={submit} className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2">
+        <form onSubmit={submit} className="grid min-w-0 gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 sm:p-5">
           <label className="text-sm">
             Título
             <input
@@ -384,7 +391,7 @@ export function ResearchCatalog() {
           )}
           {configure && (
             <div className="min-w-0 sm:col-span-2">
-              <ResearchConfigurationFields value={configuration} onChange={setConfiguration} />
+              <ResearchConfigurationFields value={configuration} onChange={setConfiguration} creationMode />
             </div>
           )}
           <button

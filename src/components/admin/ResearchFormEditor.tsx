@@ -14,6 +14,7 @@ import {
   cloneQuestion,
   inspectSchema,
   validatePage,
+  cleanAnswers,
   type Answers,
 } from "@/lib/formulario/research-schema";
 import { ResearchSectionFields, ResearchBrandHeader } from "@/components/research/ResearchFields";
@@ -49,6 +50,7 @@ export function ResearchFormEditor({
     [brandAlt, setBrandAlt] = useState(""),
     [brandPath, setBrandPath] = useState<string | null>(null),
     [brandOpen, setBrandOpen] = useState(false);
+  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
   const [previewAnswers, setPreviewAnswers] = useState<Answers>({}),
     [previewStep, setPreviewStep] = useState(0);
   useEffect(() => {
@@ -285,7 +287,7 @@ export function ResearchFormEditor({
     }
   }
   function continuePreview() {
-    const e = validatePage(schema.sections[previewStep], previewAnswers);
+    const e = validatePage(schema.sections[previewStep], previewAnswers, schema.sections.flatMap(s => s.questions));
     if (e.length) {
       setError(e[0]);
       return;
@@ -362,6 +364,11 @@ export function ResearchFormEditor({
           </button>
         </div>
       </header>
+      {!published && !preview && (
+        <p className="rounded-xl border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+          Formulário compacto: prefira até 4 seções e 3–5 perguntas por seção. Agora: <strong className="text-foreground">{schema.sections.length} seções</strong> e <strong className="text-foreground">{schema.sections.reduce((total, section) => total + section.questions.length, 0)} perguntas</strong>. Condições aninhadas exibem só o que se aplica a cada pessoa.
+        </p>
+      )}
       {error && (
         <p
           role="alert"
@@ -460,7 +467,8 @@ export function ResearchFormEditor({
               <ResearchSectionFields
                 section={schema.sections[previewStep]}
                 answers={previewAnswers}
-                onChange={(id, value) => setPreviewAnswers((a) => ({ ...a, [id]: value }))}
+                allQuestions={schema.sections.flatMap(s => s.questions)}
+                onChange={(id, value) => setPreviewAnswers((a) => cleanAnswers(schema, { ...a, [id]: value }))}
                 idPrefix="preview-"
               />
             </div>
@@ -566,7 +574,15 @@ export function ResearchFormEditor({
                   </button>
                 </div>
                 {section.questions.map((q, qi) => (
-                  <div key={q.id} className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                  <details key={q.id} open={expandedQuestionId === q.id} className="min-w-0 rounded-lg border bg-muted/20 p-3">
+                    <summary
+                      className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium"
+                      onClick={(event) => { event.preventDefault(); setExpandedQuestionId((id) => id === q.id ? null : q.id); }}
+                    >
+                      <span className="min-w-0 truncate">{qi + 1}. {q.label || "Pergunta sem título"}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{q.required ? "Obrigatória" : "Opcional"} · {expandedQuestionId === q.id ? "Fechar" : "Editar"}</span>
+                    </summary>
+                    <div className="mt-3 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs text-muted-foreground">Pergunta {qi + 1}</span>
                       <button
@@ -842,12 +858,13 @@ export function ResearchFormEditor({
                         </select>
                       </label>
                     )}
-                  </div>
+                    </div>
+                  </details>
                 ))}
                 {!published && (
                   <button
                     onClick={() =>
-                      changeSection(si, { questions: [...section.questions, newSurveyQuestion()] })
+                      (() => { const question = newSurveyQuestion(); changeSection(si, { questions: [...section.questions, question] }); setExpandedQuestionId(question.id); })()
                     }
                     className="rounded-lg border px-3 py-2 text-sm"
                   >

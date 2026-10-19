@@ -13,9 +13,11 @@ const inputClass = "mt-1 min-h-11 w-full rounded-lg border bg-background px-3 py
 export function ResearchConfigurationFields({
   value,
   onChange,
+  creationMode = false,
 }: {
   value: ResearchConfiguration;
   onChange: (next: ResearchConfiguration) => void;
+  creationMode?: boolean;
 }) {
   const [tab, setTab] = useState("institution");
   const set = <K extends keyof ResearchConfiguration>(key: K, next: ResearchConfiguration[K]) =>
@@ -84,13 +86,17 @@ export function ResearchConfigurationFields({
           <TabsTrigger value="service">Serviço e política</TabsTrigger>
         </TabsList>
         <TabsContent value="institution" className="grid gap-3 pt-3 sm:grid-cols-2">
-          {text("institutionId", "Identificador institucional")}
+          {!creationMode && text("institutionId", "Identificador institucional")}
           {text("institutionName", value.templateKey===CORPORATE_INTERNAL_KEY ? "Nome da empresa" : "Instituição, empresa ou evento")}
-          {text("publicName", "Nome público da pesquisa")}
+          {!creationMode && text("publicName", "Nome público da pesquisa")}
           {text("campus", value.templateKey===CORPORATE_INTERNAL_KEY ? "Unidade ou filial" : value.templateKey===COMPANY_CAMPUS_DRIVER_KEY ? "Unidade da empresa" : "Campus ou unidade")}
           {value.templateKey===COMPANY_CAMPUS_DRIVER_KEY && text("nearbyUniversity", "Universidade ou instituto próximo")}
           {text("region", "Município ou região")}
           {text("address", "Endereço institucional")}
+          <details className="sm:col-span-2 rounded-xl border border-border/70 bg-muted/20 p-3">
+            <summary className="cursor-pointer text-sm font-semibold">Mais opções (opcional)</summary>
+            <p className="mt-2 text-xs text-muted-foreground">O código e o título já são herdados da etapa anterior. Configure apenas dados adicionais, se necessário.</p>
+            <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">
           {(["latitude", "longitude"] as const).map((key) => (
             <label className="text-sm" key={key}>
               {key === "latitude"
@@ -111,7 +117,7 @@ export function ResearchConfigurationFields({
           ))}
           {text("campaignName", "Campanha")}
           {text("acquisitionSource", "Origem informada da campanha")}
-          <label className="text-sm">
+          {!creationMode && <label className="text-sm">
             Tipo de campanha
             <select
               value={value.campaignType}
@@ -133,11 +139,13 @@ export function ResearchConfigurationFields({
                 </option>
               ))}
             </select>
-          </label>
-          <p className="text-xs text-muted-foreground sm:col-span-2">
-            A imagem autorizada pode ser adicionada na identidade visual da pesquisa após salvar o
-            rascunho.
-          </p>
+          </label>}
+
+            </div>
+          </details>
+          {!creationMode && <p className="text-xs text-muted-foreground sm:col-span-2">
+            A identidade visual autorizada pode ser adicionada na configuração do formulário.
+          </p>}
         </TabsContent>
         <TabsContent value="schedule" className="space-y-5 pt-3">
           <details className="space-y-3 border-b pb-3">

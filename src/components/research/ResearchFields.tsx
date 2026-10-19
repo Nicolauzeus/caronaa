@@ -2,10 +2,10 @@ import {supabase} from "@/integrations/supabase/client";
 import type {Answers} from "@/lib/formulario/research-schema";
 import {isVisible,getNumberBounds} from "@/lib/formulario/research-schema";
 import {formatResearchOption,getRatingScaleContext} from "@/lib/formulario/research-option-labels";
-import type {SurveySection} from "@/lib/formulario/research-templates";
+import type {SurveyQuestion,SurveySection} from "@/lib/formulario/research-templates";
 
-export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={}}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>}){
- return <div className="space-y-5">{section.questions.filter(q=>isVisible(q,answers)).map(q=>{
+export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[]}){
+ return <div className="space-y-5">{section.questions.filter(q=>isVisible(q,answers,allQuestions)).map(q=>{
   const id=idPrefix+q.id;
   const value=answers[q.id];
   const select=(v:string|string[])=>onChange(q.id,v);
