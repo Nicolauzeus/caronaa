@@ -103,6 +103,20 @@ END $$;
 REVOKE ALL ON FUNCTION public.revoke_corporate_research_access(uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.revoke_corporate_research_access(uuid,uuid) TO authenticated;
 
+-- Admin-controlled roster review. No verification references are returned to the UI.
+CREATE OR REPLACE FUNCTION public.list_corporate_research_access(p_form_id uuid)
+RETURNS TABLE(user_id uuid,verified_at timestamptz,revoked_at timestamptz)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin')
+ THEN RAISE EXCEPTION 'Acesso restrito a administradores' USING ERRCODE='42501'; END IF;
+ RETURN QUERY SELECT m.user_id,m.verified_at,m.revoked_at
+ FROM public.corporate_research_memberships m WHERE m.form_id=p_form_id
+ ORDER BY m.verified_at DESC LIMIT 500;
+END $;
+REVOKE ALL ON FUNCTION public.list_corporate_research_access(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.list_corporate_research_access(uuid) TO authenticated;
+
 -- Prevent crafted journeys from creating a DRIVER interest without matching evidence.
 CREATE OR REPLACE FUNCTION public.assert_corporate_research_driver(
  p_form_id uuid,p_version_id uuid,p_answers jsonb,p_journey jsonb)
