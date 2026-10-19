@@ -680,6 +680,27 @@
       "when": 1792353020000,
       "tag": "0096_research_trash_and_guarded_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1792353025000,
+      "tag": "0097_regional_university_market_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1792353030000,
+      "tag": "0098_company_campus_research",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1792353035000,
+      "tag": "0099_corporate_internal_research_access",
+      "breakpoints": true
     }
   ]
 }
