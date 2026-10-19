@@ -78,6 +78,11 @@ SELECT pg_temp.assert_true((SELECT count(*) FROM public.research_forms WHERE id=
  'verified member can read private company survey');
 SELECT pg_temp.assert_true((SELECT public.get_public_research_configuration('EMPRESA-INTERNA-TEST')) IS NOT NULL,
  'verified member can read settings');
+-- A verified member must use the ownership-aware RPC, never a direct table insert.
+SELECT pg_temp.assert_fails(format(
+ 'INSERT INTO public.research_answers(form_id,version_id,answers,consent_accepted,client_submission_key) VALUES(%L,%L,%L::jsonb,true,%L)',
+ id,version,'{"drives":"SIM","seats":"2","offer":"SIM"}',gen_random_uuid()
+),'direct answer INSERT bypass is denied even to a verified employee') FROM corporate_fixture;
 SELECT pg_temp.assert_fails(format(
  'SELECT public.submit_configured_research_answer(%L,%L,%L,%L,1,%L,true)',
  id,version,gen_random_uuid(),'{"drives":"SIM","seats":"0","offer":"SIM"}',journey||'{"profile":"MOTORISTA"}'::jsonb
