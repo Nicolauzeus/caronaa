@@ -379,6 +379,13 @@ export function PublicResearchForm({ code }: { code: string }) {
             "Não foi possível enviar sua resposta. Verifique a conexão e tente novamente.",
           );
       }
+      // People who create an account after answering a scheduled-launch survey
+      // carry their private receipt into registration on this device. The server
+      // validates and binds it only to a confirmed account; nothing is inferred
+      // from a university or company name typed by the visitor.
+      if (form.configuration?.settings.launchDate) {
+        try { storePendingParticipation(submissionKey); } catch { /* Storage may be blocked. */ }
+      }
       setSubmittedConfiguration(form.configuration ?? null);
       setComplete(true);
     } catch (reason) {
@@ -465,6 +472,11 @@ export function PublicResearchForm({ code }: { code: string }) {
             schema={form.schema}
             answers={answers}
           />
+        )}
+        {form.configuration?.settings.launchDate && (
+          <p role="status" className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
+            Ao criar ou entrar na sua conta neste dispositivo com e-mail confirmado, sua participação será vinculada pelo recibo privado para mostrar o calendário de lançamento. Antes da abertura, pedidos e ofertas serão apenas uma prévia.
+          </p>
         )}
         {form.configuration && journey && (
           <ResearchInterestActivation

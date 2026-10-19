@@ -9,8 +9,14 @@ import { ResearchConfigurationFields } from "./ResearchConfigurationFields";
 import { Button } from "@/components/ui/button";
 import { CORPORATE_INTERNAL_KEY, validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
 import { CorporateResearchAccessManager } from "./CorporateResearchAccessManager";
+import {
+  getResearchLaunchAdminState,
+  setResearchLaunchReleased,
+  type ResearchLaunchAdminState,
+} from "@/lib/research-launch";
 export function ResearchConfigurationManager({ formId }: { formId: string }) {
   const [settings, setSettings] = useState<ResearchConfiguration>(newResearchConfiguration);
+  const [launch, setLaunch] = useState<ResearchLaunchAdminState | null>(null);
   const [revision, setRevision] = useState(0),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
@@ -70,6 +76,13 @@ export function ResearchConfigurationManager({ formId }: { formId: string }) {
       active = false;
     };
   }, [formId]);
+  useEffect(() => {
+    let alive = true;
+    void getResearchLaunchAdminState(formId)
+      .then(result => { if (alive) setLaunch(result); })
+      .catch(() => { if (alive) setLaunch(null); });
+    return () => { alive = false; };
+  }, [formId]);
   if (loading) return <p role="status">Carregando configuração…</p>;
   return (
     <section className="space-y-3">
@@ -86,6 +99,40 @@ export function ResearchConfigurationManager({ formId }: { formId: string }) {
       )}
       <ResearchConfigurationFields value={settings} onChange={setSettings} />
       {settings.templateKey===CORPORATE_INTERNAL_KEY && <CorporateResearchAccessManager formId={formId} />}
+      {settings.launchDate && (
+        <section aria-label="Controle de lançamento" className="space-y-2 rounded-xl border border-primary/25 bg-primary/5 p-4">
+          <h4 className="text-sm font-bold">Acesso antes do lançamento</h4>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Participantes vinculados ao formulário verão uma tela de espera até {settings.launchDate},
+            sem acesso a corridas. A data usa o fuso horário definido na configuração.
+            A vinculação comprova participação, não matrícula ou vínculo empregatício.
+          </p>
+          <p className="text-xs font-semibold">{launch ? (launch.released
+            ? "Acesso liberado antecipadamente"
+            : "Acesso bloqueado até a data programada") : "Consultando a situação do lançamento…"}</p>
+          <Button variant="outline" type="button" disabled={busy || !launch || settings.launchDate!==launch.launchDate}
+            onClick={async()=>{
+              if(!launch) return;
+              const next = !launch.released;
+              const question = next
+                ? "Liberar agora o aplicativo para os participantes vinculados a este formulário?"
+                : "Reativar a tela de espera até a data programada?";
+              if(!window.confirm(question)) return;
+              setBusy(true);setNotice("");setError("");
+              try {
+                await setResearchLaunchReleased(formId,next);
+                setLaunch(await getResearchLaunchAdminState(formId));
+                setNotice(next?"Acesso liberado antecipadamente.":"Tela de espera reativada.");
+              } catch(err) {
+                setError(err instanceof Error?err.message:"Não foi possível alterar a liberação.");
+              } finally { setBusy(false); }
+            }}>
+            {launch?.released?"Reativar espera":"Liberar acesso agora"}
+          </Button>
+          {settings.launchDate!==launch?.launchDate &&
+            <p className="text-xs text-amber-600">Salve a nova data antes de alterar a liberação.</p>}
+        </section>
+      )}
       <Button
         disabled={busy || loadFailed}
         onClick={async () => {
@@ -98,6 +145,7 @@ export function ResearchConfigurationManager({ formId }: { formId: string }) {
             }
             const next = await saveResearchConfiguration(formId, settings, revision);
             setRevision(next);
+            setLaunch(await getResearchLaunchAdminState(formId).catch(()=>null));
             setError("");
             setNotice("Configuração salva. As respostas anteriores mantêm o contexto original.");
           } catch (reason) {

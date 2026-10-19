@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyUniforLaunchState } from "@/lib/unifor-launch";
+import { getMyResearchLaunchState } from "@/lib/research-launch";
+import { claimPendingParticipations,readPendingParticipations } from "@/lib/formulario/research-participation";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -12,11 +13,14 @@ export const Route = createFileRoute("/_authenticated")({
         search: { redirect: location.href },
       });
     }
-    // Only the actual participant linked to the immutable UNIFOR research UUID
-    // enters the waiting room. Other CARONAA users remain unaffected.
+    // Link receipts saved by the survey before deciding whether the account
+    // may access the app. A pending link is not itself authorization.
+    if (data.user.email_confirmed_at && readPendingParticipations().length) {
+      await claimPendingParticipations();
+    }
     if (location.pathname !== "/aguardando") {
-      const pilot = await getMyUniforLaunchState();
-      if (pilot.locked) {
+      const launch = await getMyResearchLaunchState();
+      if (launch.locked) {
         throw redirect({ to: "/aguardando", replace: true });
       }
     }
