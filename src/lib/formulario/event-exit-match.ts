@@ -118,6 +118,18 @@ export function validateEventExitAnswers(schema: SurveySchema, answers: Answers)
   return errors;
 }
 
+/** The explicit role picked at the route step cannot contradict willingness to offer. */
+export function validateEventExitJourney(schema: SurveySchema, answers: Answers, journey: ResearchJourney | null): string[] {
+  if (!journey) return ["Preencha seu trajeto de saída do evento."];
+  const eligible=schema.sections.flatMap(s=>s.questions).find(q=>q.semanticCode==="EVENT_OFFER_POSSIBLE");
+  const offer=eligible ? answers[eligible.id] : null;
+  if (journey.direction!=="VOLTA") return ["O trajeto do evento deve partir do local do evento."];
+  if (journey.mode!=="CARONA") return ["Este modelo destina-se apenas a caronas compartilhadas."];
+  if (offer!=="SIM" && (journey.profile==="MOTORISTA"||journey.profile==="AMBOS"))
+    return ["Você marcou que não oferece carona. Selecione passageiro ou altere sua resposta anterior."];
+  return [];
+}
+
 /** Build links only when the event is operational and date is usable. The other
  * side still verifies auth, availability, route, quote and explicitly confirms. */
 export function eventRideActionLinks(config: PublicResearchConfiguration["settings"], journey: ResearchJourney, today: string, seats?: number) {
