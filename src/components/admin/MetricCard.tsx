@@ -28,8 +28,8 @@ export function MetricCard({
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold",
                 positive
-                  ? "bg-primary/10 text-primary"
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "bg-red-500/10 text-red-700 dark:text-red-300",
               )}
             >
               {positive ? <ArrowUpRight size={12} /> : <Minus size={12} />}
