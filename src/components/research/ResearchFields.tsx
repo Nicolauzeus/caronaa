@@ -5,8 +5,8 @@ import {formatResearchOption,getRatingScaleContext} from "@/lib/formulario/resea
 import type {SurveyQuestion,SurveySection,SurveySchema} from "@/lib/formulario/research-templates";
 import {createResearchVisibility} from "@/lib/formulario/research-conditions";
 
-export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions,schema}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[];schema?:SurveySchema}){
- return <div className="space-y-5">{section.questions.filter(q=>schema?createResearchVisibility(schema,answers).questionVisible(q):isVisible(q,answers,allQuestions)).map(q=>{
+export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions,schema,compact=false}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[];schema?:SurveySchema;compact?:boolean}){
+ return <div className={compact?"min-w-0 space-y-2":"space-y-5"}>{section.questions.filter(q=>schema?createResearchVisibility(schema,answers).questionVisible(q):isVisible(q,answers,allQuestions)).map(q=>{
   const id=idPrefix+q.id;
   const value=answers[q.id];
   const select=(v:string|string[])=>onChange(q.id,v);
@@ -14,8 +14,8 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
   const choice=(options:string[])=><fieldset className="grid grid-cols-2 gap-2"><legend className="sr-only">{q.label}</legend>{options.map(opt=><label key={opt} className={"flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring "+(String(value)===opt?"border-primary bg-primary/10 font-semibold":"border-border hover:bg-muted/50")}><input type="radio" name={id} value={opt} checked={String(value??"")===opt} onChange={()=>select(opt)} className="accent-primary"/>{formatResearchOption(opt)}</label>)}</fieldset>;
   const rating=(max:number,min:number)=>{const scores=Array.from({length:max-min+1},(_,i)=>String(i+min));const context=getRatingScaleContext(q);return <fieldset className="space-y-2.5">
    <legend className="sr-only">{q.label}</legend>
-   <div className={max===5?"grid grid-cols-5 gap-1.5 sm:gap-2":"w-full overflow-x-auto pb-1"} role="radiogroup" aria-label={q.label}>
-    <div className={max===5?"contents":"grid min-w-[484px] grid-cols-11 gap-1"}>
+   <div className={compact?"grid w-full grid-cols-1 gap-1":max===5?"grid grid-cols-5 gap-1.5 sm:gap-2":"w-full overflow-x-auto pb-1"} role="radiogroup" aria-label={q.label}>
+    <div className={compact?"grid grid-cols-6 gap-1 sm:grid-cols-11":max===5?"contents":"grid min-w-[484px] grid-cols-11 gap-1"}>
      {scores.map(score=>{
       const checked=String(value??"")===score;
       const scoreNumber=Number(score);
@@ -31,7 +31,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
    </div>
    <div className="flex items-center justify-between gap-3 px-0.5 text-[11px] leading-tight text-muted-foreground sm:text-xs"><span>{min} · {context.low}</span><span className="text-right">{max} · {context.high}</span></div>
   </fieldset>};
-  return <div key={q.id} className="space-y-2">{["multiple_choice","yes_no","rating_1_5","rating_0_10","rating_stars","matrix","ranking"].includes(q.type)?
+  return <div key={q.id} className={compact?"min-w-0 space-y-1.5":"space-y-2"}>{["multiple_choice","yes_no","rating_1_5","rating_0_10","rating_stars","matrix","ranking"].includes(q.type)?
    <p className="text-sm font-semibold" id={id+"-prompt"}>{q.label}{q.required&&<span className="ml-1 text-destructive" aria-label="obrigatória">*</span>}</p>:
    <label htmlFor={id} className="block text-sm font-semibold">{q.label}{q.required&&<span className="ml-1 text-destructive" aria-label="obrigatória">*</span>}</label>}{q.helpText&&<p className="text-xs text-muted-foreground">{q.helpText}</p>}
   {q.type==="long_text"?<textarea id={id} value={String(value??"")} onChange={e=>select(e.target.value)} rows={4} className="w-full rounded-xl border bg-background p-3" maxLength={2000}/>:
@@ -44,9 +44,9 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
     </label>)}
   </fieldset>:
   q.type==="single_choice"?<select id={id} required={q.required} value={String(value??"")} onChange={e=>select(e.target.value)} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione</option>{q.options.map(o=><option key={o} value={o}>{formatResearchOption(o)}</option>)}</select>:
-  q.type==="multiple_choice"?<fieldset className={q.options.every(opt=>formatResearchOption(opt).length<=48)?"grid grid-cols-1 gap-2 sm:grid-cols-2":"grid grid-cols-1 gap-2"}><legend className="sr-only">{q.label}</legend>{q.options.map(opt=>{
+  q.type==="multiple_choice"?<fieldset className={compact?"grid min-w-0 grid-cols-2 gap-1.5":q.options.every(opt=>formatResearchOption(opt).length<=48)?"grid grid-cols-1 gap-2 sm:grid-cols-2":"grid grid-cols-1 gap-2"}><legend className="sr-only">{q.label}</legend>{q.options.map(opt=>{
     const checked=Array.isArray(value)&&value.includes(opt);
-    return <label key={opt} className={"flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm leading-snug transition-colors focus-within:ring-2 focus-within:ring-ring "+(checked?"border-primary bg-primary/10 font-medium":"border-border hover:bg-muted/40")}>
+    return <label key={opt} className={"flex min-w-0 cursor-pointer items-center rounded-xl border leading-tight transition-colors focus-within:ring-2 focus-within:ring-ring "+(compact?"min-h-10 gap-1.5 px-2 py-1.5 text-xs":"min-h-11 gap-2.5 px-3 py-2.5 text-sm")+" "+(checked?"border-primary bg-primary/10 font-medium":"border-border hover:bg-muted/40")}>
      <input type="checkbox" className="shrink-0 accent-primary" checked={checked}
       disabled={!checked && q.maxValue !== undefined && Array.isArray(value) && value.length>=q.maxValue}
       onChange={e=>{const current=Array.isArray(value)?value:[];select(e.target.checked?[...current,opt]:current.filter(v=>v!==opt))}}/>{formatResearchOption(opt)}

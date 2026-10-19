@@ -611,7 +611,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       </div>
       <form onSubmit={submit} className={isUnifor?"flex min-h-0 min-w-0 flex-1 flex-col gap-2":"flex min-w-0 flex-col gap-4"}>
         <section id="research-step-content" className={isUnifor
-          ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border bg-card p-3 sm:p-5 max-[height:560px]:overflow-y-auto"
+          ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border bg-card p-3 sm:p-5 max-[height:660px]:overflow-y-auto"
           : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
           <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 truncate text-base font-bold outline-none":"text-xl font-bold outline-none"}>
             {pilotRoleStep?"Como pretende participar?":section?.title ?? (isUnifor? ["Sentido do trajeto","Dias da semana","Horário de saída","Origem","Destino"][microJourneyIndex] : "Seu trajeto")}
@@ -636,6 +636,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           ) : section ? (
             <ResearchSectionFields
               section={pilotContent!}
+              compact={isUnifor}
               schema={form.schema}
               allQuestions={allQuestions}
               answers={answers}
