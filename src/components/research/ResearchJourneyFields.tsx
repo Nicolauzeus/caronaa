@@ -24,7 +24,7 @@ export function initialResearchJourney(
     otherOutboundTime: false,
     otherReturnTime: false,
     flexibilityMinutes: 0,
-    originArea: isEvent ? c.campus || c.institutionName : "",
+    originArea: isEvent ? c.address || c.campus || c.institutionName : "",
     originLat: isEvent ? c.latitude : null,
     originLng: isEvent ? c.longitude : null,
     destinationArea: isEvent ? "" : c.campus || c.institutionName,
