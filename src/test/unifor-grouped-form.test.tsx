@@ -45,12 +45,12 @@ describe("UNIFOR grouped journey on mobile",()=>{
   fireEvent.click(screen.getByRole("radio",{name:/Quero encontrar carona/i}));
   fireEvent.change(screen.getByLabelText(/Qual é seu vínculo com a universidade/i),{target:{value:"ESTUDANTE"}});
   fireEvent.click(screen.getByRole("button",{name:/Continuar/}));
-  expect(await screen.findByText("Como costuma ir ou voltar?")).toBeInTheDocument();
+  expect(await screen.findByRole("group",{name:/Como costuma ir ou voltar/i})).toBeInTheDocument();
   expect(screen.getByLabelText("Quanto gasta por trecho?")).toBeInTheDocument();
   expect(screen.getByText(/Etapa 2 de 6/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("checkbox",{name:/Ônibus|Onibus/i}));
   fireEvent.click(screen.getByRole("button",{name:/Continuar/}));
-  expect(await screen.findByText("Quais são suas maiores dificuldades no deslocamento?")).toBeInTheDocument();
+  expect(await screen.findByRole("group",{name:/Quais são suas maiores dificuldades no deslocamento/i})).toBeInTheDocument();
   expect(screen.queryByText("Qual a principal dificuldade?")).not.toBeInTheDocument();
   expect(screen.getByText(/primeira escolhida/i)).toBeInTheDocument();
  });
