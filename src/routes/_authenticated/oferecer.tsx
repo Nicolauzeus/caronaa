@@ -111,7 +111,7 @@ function Oferecer() {
     date: search.data ?? "",
     time: search.horario ?? "",
     seats: search.vagas ? String(search.vagas) : initial.seats,
-    timeTolerance: search.tolerancia ?? initial.timeTolerance,
+    timeTolerance: (search.tolerancia ?? initial.timeTolerance) as TimeToleranceMinutes,
     originLocation:
       search.olat != null && search.olng != null
         ? { rawText: search.origem ?? "", lat: search.olat, lng: search.olng }
