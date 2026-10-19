@@ -211,6 +211,17 @@ function RootComponent() {
     };
   }, []);
 
+  // A missing route chunk can reject before the error boundary renders, leaving
+  // a blank page; recover from the global signal too.
+  useEffect(() => {
+    const recover = (event: PromiseRejectionEvent) => {
+      recoverStaleChunk(event.reason, window.sessionStorage, () => window.location.reload());
+    };
+    window.addEventListener("unhandledrejection", recover);
+    return () => window.removeEventListener("unhandledrejection", recover);
+  }, []);
+
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={0}>
