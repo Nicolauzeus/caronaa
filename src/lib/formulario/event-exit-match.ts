@@ -87,6 +87,10 @@ export function validateEventConfiguration(config: ResearchConfiguration): strin
   if (config.templateKey !== EVENT_EXIT_MATCH_KEY) return [];
   const errors: string[] = [];
   if (!config.launchDate) errors.push("Informe a data do evento para permitir buscas por caronas reais.");
+  if (config.launchDate) {
+    const weekday=new Date(config.launchDate+"T12:00:00Z").getUTCDay() || 7;
+    if (!config.days.includes(weekday)) errors.push("Inclua nos dias disponíveis o dia da semana em que ocorrerá o evento.");
+  }
   if (!config.campus.trim()) errors.push("Informe o local de realização do evento.");
   if (!config.address.trim()) errors.push("Informe o endereço do evento.");
   if (!config.safeMeetingPoints.length) errors.push("Informe pelo menos um ponto seguro de embarque.");
