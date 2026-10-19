@@ -5,6 +5,13 @@
  * Legacy pain descriptions follow the CARONAA pain catalog.
  */
 export const RESEARCH_OPTION_LABELS:Record<string,string>={
+ TODOS_DIAS:"Todos os dias úteis",
+ ALGUNS_DIAS:"Alguns dias da semana",
+ SEM_GRANDE_DESVIO:"Não desviar muito do trajeto",
+ NENHUM:"Nenhum desvio",
+ ATE_5_MIN:"Até 5 minutos",
+ ATE_10_MIN:"Até 10 minutos",
+ MAIS_10_MIN:"Mais de 10 minutos",
  DOR_01:"Dificuldade para encontrar transporte para meu trajeto",
  DOR_02:"Transporte lotado ou desconfortável",
  DOR_03:"Preço alto das opções de transporte",
