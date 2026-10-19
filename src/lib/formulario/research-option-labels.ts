@@ -5,6 +5,9 @@
  * Legacy pain descriptions follow the CARONAA pain catalog.
  */
 export const RESEARCH_OPTION_LABELS:Record<string,string>={
+ TODOS_DIAS:"Todos os dias de trabalho",
+ ALGUNS_DIAS:"Alguns dias da semana",
+ EVENTUALMENTE:"Eventualmente",
  DOR_01:"Dificuldade para encontrar transporte para meu trajeto",
  DOR_02:"Transporte lotado ou desconfortável",
  DOR_03:"Preço alto das opções de transporte",
