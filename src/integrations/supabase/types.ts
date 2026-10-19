@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_department_assignment_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          department: string
+          id: string
+          new_can_write: boolean | null
+          operation: string
+          previous_can_write: boolean | null
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          department: string
+          id?: string
+          new_can_write?: boolean | null
+          operation: string
+          previous_can_write?: boolean | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          department?: string
+          id?: string
+          new_can_write?: boolean | null
+          operation?: string
+          previous_can_write?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_department_assignments: {
+        Row: {
+          assigned_by: string | null
+          can_write: boolean
+          created_at: string
+          department: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          can_write?: boolean
+          created_at?: string
+          department: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          can_write?: boolean
+          created_at?: string
+          department?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_driver_reviews: {
         Row: {
           document_verified: boolean
@@ -49,6 +109,278 @@ export type Database = {
           },
         ]
       }
+      compliance_record_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          new_status: string
+          previous_status: string | null
+          record_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          new_status: string
+          previous_status?: string | null
+          record_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          new_status?: string
+          previous_status?: string | null
+          record_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_record_events_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_records: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          id: string
+          kind: string
+          municipality: string | null
+          reference_url: string | null
+          status: string
+          title: string
+          updated_at: string
+          version_label: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          kind: string
+          municipality?: string | null
+          reference_url?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          version_label?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          kind?: string
+          municipality?: string | null
+          reference_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          version_label?: string | null
+        }
+        Relationships: []
+      }
+      corporate_research_access_audit: {
+        Row: {
+          action: string
+          created_at: string
+          form_id: string
+          id: number
+          operator_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          form_id: string
+          id?: number
+          operator_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          form_id?: string
+          id?: number
+          operator_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporate_research_access_audit_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      corporate_research_answer_owners: {
+        Row: {
+          answer_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporate_research_answer_owners_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: true
+            referencedRelation: "research_answers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      corporate_research_memberships: {
+        Row: {
+          form_id: string
+          revoked_at: string | null
+          user_id: string
+          verification_reference: string
+          verified_at: string
+          verified_by: string
+        }
+        Insert: {
+          form_id: string
+          revoked_at?: string | null
+          user_id: string
+          verification_reference: string
+          verified_at?: string
+          verified_by: string
+        }
+        Update: {
+          form_id?: string
+          revoked_at?: string | null
+          user_id?: string
+          verification_reference?: string
+          verified_at?: string
+          verified_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporate_research_memberships_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_campaigns: {
+        Row: {
+          channel: string
+          code: string
+          created_at: string
+          created_by: string
+          id: string
+          institution: string | null
+          name: string
+          status: string
+        }
+        Insert: {
+          channel?: string
+          code: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          institution?: string | null
+          name: string
+          status?: string
+        }
+        Update: {
+          channel?: string
+          code?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          institution?: string | null
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      crm_leads: {
+        Row: {
+          account_id: string | null
+          campaign_id: string | null
+          contact_consent: boolean
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          id: string
+          notes: string
+          source_form_id: string | null
+          status: string
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          campaign_id?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          created_by?: string
+          display_name: string
+          email?: string | null
+          id?: string
+          notes?: string
+          source_form_id?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          campaign_id?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          notes?: string
+          source_form_id?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "crm_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_source_form_id_fkey"
+            columns: ["source_form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_pix_settings: {
         Row: {
           pix_key: string
@@ -74,6 +406,95 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      executive_record_history: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          id: string
+          record_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          record_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          record_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "executive_record_history_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "executive_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      executive_records: {
+        Row: {
+          actual_value: number | null
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          id: string
+          kind: string
+          owner_id: string | null
+          priority: string
+          status: string
+          target_value: number | null
+          title: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_value?: number | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          kind: string
+          owner_id?: string | null
+          priority?: string
+          status?: string
+          target_value?: number | null
+          title: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_value?: number | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          kind?: string
+          owner_id?: string | null
+          priority?: string
+          status?: string
+          target_value?: number | null
+          title?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       form_funnel_events: {
         Row: {
@@ -510,6 +931,114 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_organizations: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          municipality: string
+          name: string
+          notes: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind: string
+          municipality: string
+          name: string
+          notes?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          municipality?: string
+          name?: string
+          notes?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      partner_pilots: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_date: string | null
+          id: string
+          municipality: string
+          objective: string
+          outcomes: string
+          partner_id: string
+          research_form_id: string | null
+          start_date: string | null
+          status: string
+          success_criteria: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          municipality: string
+          objective?: string
+          outcomes?: string
+          partner_id: string
+          research_form_id?: string | null
+          start_date?: string | null
+          status?: string
+          success_criteria?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          municipality?: string
+          objective?: string
+          outcomes?: string
+          partner_id?: string
+          research_form_id?: string | null
+          start_date?: string | null
+          status?: string
+          success_criteria?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_pilots_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_pilots_research_form_id_fkey"
+            columns: ["research_form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -717,6 +1246,33 @@ export type Database = {
           },
         ]
       }
+      professional_presence: {
+        Row: {
+          is_available: boolean
+          last_seen_at: string
+          mode: string
+          municipality: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          is_available?: boolean
+          last_seen_at?: string
+          mode?: string
+          municipality?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          is_available?: boolean
+          last_seen_at?: string
+          mode?: string
+          municipality?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -807,6 +1363,100 @@ export type Database = {
           },
         ]
       }
+      research_configuration_history: {
+        Row: {
+          created_at: string
+          created_by: string
+          form_id: string
+          revision: number
+          settings: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          form_id: string
+          revision: number
+          settings: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          form_id?: string
+          revision?: number
+          settings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_configuration_history_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_configurations: {
+        Row: {
+          form_id: string
+          revision: number
+          settings: Json
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          form_id: string
+          revision: number
+          settings: Json
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          form_id?: string
+          revision?: number
+          settings?: Json
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_configurations_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: true
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_form_lifecycle_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          answer_count: number
+          created_at: string
+          form_code: string
+          form_id: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          answer_count?: number
+          created_at?: string
+          form_code: string
+          form_id: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          answer_count?: number
+          created_at?: string
+          form_code?: string
+          form_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       research_form_versions: {
         Row: {
           form_id: string
@@ -842,41 +1492,168 @@ export type Database = {
       research_forms: {
         Row: {
           audience: string
+          brand_display_name: string | null
+          brand_image_alt: string | null
+          brand_image_path: string | null
           code: string
           created_at: string
           id: string
           is_enabled: boolean
+          mobility_configured: boolean
           mobility_mode: string
           municipality: string | null
           nature: string
           status: string
           title: string
+          trash_previous_status: string | null
+          trashed_at: string | null
+          trashed_by: string | null
         }
         Insert: {
           audience?: string
+          brand_display_name?: string | null
+          brand_image_alt?: string | null
+          brand_image_path?: string | null
           code: string
           created_at?: string
           id?: string
           is_enabled?: boolean
+          mobility_configured?: boolean
           mobility_mode?: string
           municipality?: string | null
           nature: string
           status?: string
           title: string
+          trash_previous_status?: string | null
+          trashed_at?: string | null
+          trashed_by?: string | null
         }
         Update: {
           audience?: string
+          brand_display_name?: string | null
+          brand_image_alt?: string | null
+          brand_image_path?: string | null
           code?: string
           created_at?: string
           id?: string
           is_enabled?: boolean
+          mobility_configured?: boolean
           mobility_mode?: string
           municipality?: string | null
           nature?: string
           status?: string
           title?: string
+          trash_previous_status?: string | null
+          trashed_at?: string | null
+          trashed_by?: string | null
         }
         Relationships: []
+      }
+      research_interest_requests: {
+        Row: {
+          answer_id: string
+          consent_accepted: boolean
+          created_at: string
+          journey: Json
+          profile: string
+          status: string
+        }
+        Insert: {
+          answer_id: string
+          consent_accepted: boolean
+          created_at?: string
+          journey: Json
+          profile: string
+          status: string
+        }
+        Update: {
+          answer_id?: string
+          consent_accepted?: boolean
+          created_at?: string
+          journey?: Json
+          profile?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_interest_requests_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "research_journeys"
+            referencedColumns: ["answer_id"]
+          },
+        ]
+      }
+      research_journeys: {
+        Row: {
+          answer_id: string
+          configuration_revision: number
+          configuration_snapshot: Json
+          created_at: string
+          journey: Json
+        }
+        Insert: {
+          answer_id: string
+          configuration_revision: number
+          configuration_snapshot: Json
+          created_at?: string
+          journey: Json
+        }
+        Update: {
+          answer_id?: string
+          configuration_revision?: number
+          configuration_snapshot?: Json
+          created_at?: string
+          journey?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_journeys_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: true
+            referencedRelation: "research_answers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_participation_badges: {
+        Row: {
+          answer_id: string
+          form_id: string
+          id: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          answer_id: string
+          form_id: string
+          id?: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          answer_id?: string
+          form_id?: string
+          id?: string
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_participation_badges_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: true
+            referencedRelation: "research_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_participation_badges_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_boarding_codes: {
         Row: {
@@ -1601,6 +2378,190 @@ export type Database = {
           },
         ]
       }
+      safety_case_events: {
+        Row: {
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          id: string
+          new_status: string
+          note: string | null
+          previous_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          id?: string
+          new_status: string
+          note?: string | null
+          previous_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          note?: string | null
+          previous_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "safety_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      safety_cases: {
+        Row: {
+          assigned_to: string | null
+          case_number: number
+          created_at: string
+          created_by: string
+          description: string
+          due_at: string | null
+          id: string
+          kind: string
+          priority: string
+          reporter_user_id: string | null
+          resolved_at: string | null
+          status: string
+          subject_user_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          case_number?: never
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_at?: string | null
+          id?: string
+          kind: string
+          priority?: string
+          reporter_user_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          subject_user_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          case_number?: never
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_at?: string | null
+          id?: string
+          kind?: string
+          priority?: string
+          reporter_user_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          subject_user_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tech_work_item_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          id: string
+          item_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          item_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tech_work_item_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "tech_work_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tech_work_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          external_url: string | null
+          id: string
+          kind: string
+          occurred_at: string | null
+          owner_id: string | null
+          resolved_at: string | null
+          service_name: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          external_url?: string | null
+          id?: string
+          kind: string
+          occurred_at?: string | null
+          owner_id?: string | null
+          resolved_at?: string | null
+          service_name?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          external_url?: string | null
+          id?: string
+          kind?: string
+          occurred_at?: string | null
+          owner_id?: string | null
+          resolved_at?: string | null
+          service_name?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       teste_backup_caronaa: {
         Row: {
           criado_em: string
@@ -1733,6 +2694,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      assert_corporate_research_driver: {
+        Args: {
+          p_answers: Json
+          p_form_id: string
+          p_journey: Json
+          p_version_id: string
+        }
+        Returns: undefined
+      }
+      can_access_restricted_research: {
+        Args: { p_form_id: string }
+        Returns: boolean
+      }
       change_ride_routine_occurrence: {
         Args: {
           p_cancel?: boolean
@@ -1742,11 +2716,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      claim_research_participation: {
+        Args: { p_submission_key: string }
+        Returns: Json
+      }
       confirm_form_account_activation: {
         Args: { p_changes?: Json; p_submission_id: string }
         Returns: Json
       }
       confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
+      create_configured_research_form: {
+        Args: { p_metadata: Json; p_schema: Json; p_settings: Json }
+        Returns: string
+      }
       create_preferred_ride: {
         Args: { p_details: Json; p_kind: string; p_preferences?: Json }
         Returns: string
@@ -1759,6 +2741,17 @@ export type Database = {
           p_quote_id: string
           p_ride_date: string
           p_time_tolerance_minutes?: number
+        }
+        Returns: string
+      }
+      create_research_form_draft: {
+        Args: {
+          p_audience: string
+          p_code: string
+          p_municipality: string
+          p_nature: string
+          p_schema: Json
+          p_title: string
         }
         Returns: string
       }
@@ -1816,6 +2809,10 @@ export type Database = {
         Args: { p_form_id: string }
         Returns: boolean
       }
+      delete_unanswered_research_form: {
+        Args: { p_confirm_code: string; p_form_id: string }
+        Returns: boolean
+      }
       distance_km: {
         Args: { lat_a: number; lat_b: number; lng_a: number; lng_b: number }
         Returns: number
@@ -1845,8 +2842,41 @@ export type Database = {
         }
         Returns: Json
       }
+      get_admin_finance_recent: {
+        Args: { p_limit?: number; p_since?: string }
+        Returns: {
+          amount: number
+          created_at: string
+          currency: string
+          payment_id: string
+          payment_status: string
+          provider: string
+        }[]
+      }
+      get_admin_finance_summary: {
+        Args: { p_since?: string }
+        Returns: {
+          currency: string
+          payment_status: string
+          provider: string
+          total_amount: number
+          transactions: number
+        }[]
+      }
       get_admin_operation_data: { Args: never; Returns: Json }
       get_admin_users: { Args: { p_user_id?: string }; Returns: Json }
+      get_configured_research_summary: {
+        Args: { p_filters?: Json }
+        Returns: {
+          answered: number
+          category: string
+          eligible: number
+          semantic_code: string
+          total: number
+          version_id: string
+          version_number: number
+        }[]
+      }
       get_form_account_activation: { Args: never; Returns: Json }
       get_form_funnel_metrics: {
         Args: {
@@ -1902,7 +2932,17 @@ export type Database = {
         Returns: Json
       }
       get_municipal_research_overview: { Args: never; Returns: Json }
+      get_my_admin_scope: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
+      get_my_research_participation_badges: {
+        Args: never
+        Returns: {
+          form_code: string
+          form_id: string
+          form_title: string
+          verified_at: string
+        }[]
+      }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
       get_offer_preference_bonuses: {
@@ -1940,6 +2980,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_public_research_configuration: {
+        Args: { p_code: string }
+        Returns: Json
+      }
       get_research_answer_summary: {
         Args: { p_form_id: string }
         Returns: Json
@@ -1951,6 +2995,10 @@ export type Database = {
           p_occupation?: string
           p_profile?: string
         }
+        Returns: Json
+      }
+      get_research_form_removal_eligibility: {
+        Args: { p_form_id: string }
         Returns: Json
       }
       get_research_legacy_metrics: {
@@ -1972,6 +3020,14 @@ export type Database = {
           p_profile?: string
         }
         Returns: Json
+      }
+      get_research_semantic_summary: {
+        Args: { p_form_id: string }
+        Returns: {
+          category: string
+          semantic_code: string
+          total: number
+        }[]
       }
       get_research_unified_bi: {
         Args: {
@@ -2017,6 +3073,14 @@ export type Database = {
         }
         Returns: Json
       }
+      grant_corporate_research_access: {
+        Args: { p_form_id: string; p_reference: string; p_user_id: string }
+        Returns: boolean
+      }
+      has_admin_department_access: {
+        Args: { p_department: string; p_write?: boolean }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2048,9 +3112,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_restricted_research: { Args: { p_form_id: string }; Returns: boolean }
       issue_ride_boarding_code: {
         Args: { p_ride_id: string }
         Returns: undefined
+      }
+      list_corporate_research_access: {
+        Args: { p_form_id: string }
+        Returns: {
+          revoked_at: string
+          user_id: string
+          verified_at: string
+        }[]
       }
       mark_ride_notification_read: {
         Args: { p_notification_id: string }
@@ -2059,6 +3132,15 @@ export type Database = {
       materialize_ride_routine: {
         Args: { p_routine_id: string }
         Returns: undefined
+      }
+      permanently_delete_trashed_research_form: {
+        Args: {
+          p_confirm_code: string
+          p_confirm_phrase: string
+          p_expected_answers: number
+          p_form_id: string
+        }
+        Returns: boolean
       }
       persist_ride_route_quote: {
         Args: {
@@ -2074,6 +3156,10 @@ export type Database = {
         Args: { p_details: Json; p_preferences?: Json; p_quote_id: string }
         Returns: string
       }
+      publish_research_form: {
+        Args: { p_form_id: string; p_schema: Json; p_version_id: string }
+        Returns: boolean
+      }
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
         Returns: string
@@ -2087,6 +3173,16 @@ export type Database = {
         Returns: undefined
       }
       refresh_ride_routine_occurrences: { Args: never; Returns: undefined }
+      register_research_interest: {
+        Args: {
+          p_consent: boolean
+          p_form_id: string
+          p_journey?: Json
+          p_profile: string
+          p_submission_key: string
+        }
+        Returns: string
+      }
       request_available_ride_offer: {
         Args: { p_offer_id: string; p_passenger_count?: number }
         Returns: string
@@ -2106,6 +3202,14 @@ export type Database = {
         Args: { p_response: string; p_ride_id: string }
         Returns: string
       }
+      restore_trashed_research_form: {
+        Args: { p_form_id: string }
+        Returns: boolean
+      }
+      revoke_corporate_research_access: {
+        Args: { p_form_id: string; p_user_id: string }
+        Returns: boolean
+      }
       revoke_ride_location: { Args: { p_ride_id: string }; Returns: undefined }
       ride_preferences_compatible: {
         Args: { o: Json; q: Json }
@@ -2115,6 +3219,14 @@ export type Database = {
       save_my_travel_preferences: {
         Args: { p_consent: boolean; p_preferences: Json }
         Returns: undefined
+      }
+      save_research_configuration: {
+        Args: {
+          p_expected_revision?: number
+          p_form_id: string
+          p_settings: Json
+        }
+        Returns: number
       }
       save_ride_routine: {
         Args: { p_definition: Json; p_routine_id?: string }
@@ -2155,9 +3267,34 @@ export type Database = {
           verifications: Json
         }[]
       }
+      set_admin_department_assignment: {
+        Args: {
+          p_can_write?: boolean
+          p_department: string
+          p_enabled?: boolean
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      set_professional_presence: {
+        Args: { p_available: boolean; p_municipality?: string }
+        Returns: undefined
+      }
       set_ride_routine_active: {
         Args: { p_active: boolean; p_routine_id: string }
         Returns: undefined
+      }
+      submit_configured_research_answer: {
+        Args: {
+          p_answers: Json
+          p_form_id: string
+          p_journey: Json
+          p_research_consent: boolean
+          p_revision: number
+          p_submission_key: string
+          p_version_id: string
+        }
+        Returns: boolean
       }
       submit_form_response: {
         Args: {
@@ -2175,6 +3312,7 @@ export type Database = {
         Args: { p_next_status: string; p_ride_id: string }
         Returns: string
       }
+      trash_research_form: { Args: { p_form_id: string }; Returns: boolean }
       travel_preference_bonus: { Args: { o: Json; q: Json }; Returns: number }
       travel_route_score: {
         Args: {
@@ -2213,6 +3351,8 @@ export type Database = {
         Args: { p_ride_id: string; p_stage: string }
         Returns: string
       }
+      validate_research_configuration: { Args: { p: Json }; Returns: undefined }
+      validate_research_journey: { Args: { c: Json; p: Json }; Returns: Json }
       validate_ride_boarding: {
         Args: { p_code: string; p_ride_id: string }
         Returns: string
