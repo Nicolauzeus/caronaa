@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
 import { createResearchVisibility } from "@/lib/formulario/research-conditions";
+import { createUniforGroups,setUniforPainAnswers } from "@/lib/formulario/unifor-compact-groups";
 import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
 import {
   cleanAnswers,
@@ -178,23 +179,21 @@ export function PublicResearchForm({ code }: { code: string }) {
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   const isUnifor = Boolean(form && isUniforPilotForm(form.id));
   const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
+  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers) : [];
   const currentSection = form?.schema.sections[step];
-  const displayedQuestions = currentSection && form
-    ? currentSection.questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q))
-    : [];
-  const currentMicroIndex = Math.min(microQuestionIndex,Math.max(0,displayedQuestions.length-1));
-  const currentMicroQuestion = displayedQuestions[currentMicroIndex];
-  const journeyPhases = ["direction","days","time","origin","destination"] as const;
+  const currentGroups = uniforGroups[step] ?? [];
+  const currentMicroIndex = Math.min(microQuestionIndex,Math.max(0,currentGroups.length-1));
+  const currentGroup = currentGroups[currentMicroIndex];
+  const journeyPhases = ["routine","time","locations"] as const;
   const microTotalBase = isUnifor && form
     ? visibleStepIndexes.reduce((n,index)=>n+(
-      index===form.schema.sections.length ? journeyPhases.length :
-      form.schema.sections[index].questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length
+      index===form.schema.sections.length ? journeyPhases.length : uniforGroups[index]?.length ?? 0
     ),0) : totalSteps;
   const microTotal = microTotalBase+(isUnifor&&!roleId?1:0);
   const microCompletedBefore = isUnifor && form ? visibleStepIndexes
     .filter(index=>index<step)
     .reduce((n,index)=>n+(index===form.schema.sections.length?journeyPhases.length:
-      form.schema.sections[index].questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length),0)
+      uniforGroups[index]?.length ?? 0),0)
     : 0;
   const microPosition = isUnifor
     ? (pilotRoleStep ? 1 : microCompletedBefore+(currentSection?currentMicroIndex:microJourneyIndex)+1+(!roleId?1:0))
@@ -221,17 +220,19 @@ export function PublicResearchForm({ code }: { code: string }) {
       }
       return;
     }
-    // A UNIFOR participant receives just one question per view.
-    // Keep the full original schema for server validation and reports.
-    if (isUnifor && currentMicroQuestion) {
-      const one = { ...sec, questions:[currentMicroQuestion] };
+    // Validate every visible question on the current *grouped* screen, not one
+    // field or the entire section before the user has seen the next group.
+    if (isUnifor && currentGroup) {
+      const one = { ...sec, questions:currentGroup.questions };
       const currentErrors = validatePage(one,answers,allQuestions,form.schema);
       if (currentErrors.length) {
-        setFieldErrors({[currentMicroQuestion.id]:currentErrors[0]});
+        const invalid = currentGroup.questions.find(q =>
+          validatePage({...one,questions:[q]},answers,allQuestions,form.schema).length);
+        if(invalid)setFieldErrors({[invalid.id]:currentErrors[0]});
         setError(currentErrors[0]);
         return;
       }
-      if (currentMicroIndex < displayedQuestions.length-1) {
+      if (currentMicroIndex < currentGroups.length-1) {
         setMicroQuestionIndex(index=>index+1);
         setError("");
         setFieldErrors({});
@@ -535,11 +536,11 @@ export function PublicResearchForm({ code }: { code: string }) {
   const section = form.schema.sections[step],
     last = !pilotRoleStep && step === visibleStepIndexes[visibleStepIndexes.length - 1] &&
       (!isUnifor || microJourneyIndex === journeyPhases.length - 1);
-  const pilotContent = isUnifor && section && currentMicroQuestion
-    ? {...section,questions:[currentMicroQuestion]} : section;
+  const pilotContent = isUnifor && section && currentGroup
+    ? {...section,title:currentGroup.title,questions:currentGroup.questions} : section;
   return (
     <main className={isUnifor
-      ? "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-xl min-w-0 flex-col gap-2 overflow-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+76px)] pt-[max(10px,env(safe-area-inset-top))] sm:px-5"
+      ? "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
       : "mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8"}>
       {isUnifor ? (
         <header className="flex min-h-10 shrink-0 items-center justify-between gap-3" aria-label="Pesquisa CARONAA UNIFOR">
@@ -623,12 +624,14 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className={isUnifor?"flex min-h-0 min-w-0 flex-1 flex-col gap-2":"flex min-w-0 flex-col gap-4"}>
+      <form onSubmit={submit} className={isUnifor?"flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-3":"flex min-w-0 flex-col gap-4"}>
         <section id="research-step-content" className={isUnifor
-          ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border bg-card p-3 sm:p-5 unifor-form-stage"
+          ? "min-h-0 max-h-full w-full min-w-0 shrink overflow-y-auto overflow-x-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage"
           : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
-          <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 truncate text-base font-bold outline-none":"text-xl font-bold outline-none"}>
-            {pilotRoleStep?"Como pretende participar?":section?.title ?? (isUnifor? ["Sentido do trajeto","Dias da semana","Horário de saída","Origem","Destino"][microJourneyIndex] : "Seu trajeto")}
+          <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 text-lg font-bold leading-snug outline-none":"text-xl font-bold outline-none"}>
+            {pilotRoleStep?"Como pretende participar?":isUnifor
+              ? (section ? currentGroup?.title : ["Dias e sentido do trajeto","Horários e flexibilidade","Origem e destino"][microJourneyIndex])
+              : section?.title ?? "Seu trajeto"}
           </h2>
           {!isUnifor && section?.description && (
             <p className="text-sm text-muted-foreground">{section.description}</p>
@@ -656,7 +659,8 @@ export function PublicResearchForm({ code }: { code: string }) {
               answers={answers}
               errors={fieldErrors}
               onChange={(id, value) => {
-                setAnswers((a) => cleanAnswers(form.schema, { ...a, [id]: value }));
+                setAnswers((a) => cleanAnswers(form.schema,
+                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value) : { ...a,[id]:value }));
                 setFieldErrors((prev) => ({ ...prev, [id]: "" }));
                 setError("");
               }}
@@ -721,9 +725,7 @@ export function PublicResearchForm({ code }: { code: string }) {
               } else {
                 const previous = [...visibleStepIndexes].reverse().find(index => index < step) ?? 0;
                 if (isUnifor && previous < form.schema.sections.length) {
-                  const previousSection=form.schema.sections[previous];
-                  const count=previousSection.questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length;
-                  setMicroQuestionIndex(Math.max(0,count-1));
+                  setMicroQuestionIndex(Math.max(0,(uniforGroups[previous]?.length ?? 1)-1));
                 }
                 setStep(previous);
               }
