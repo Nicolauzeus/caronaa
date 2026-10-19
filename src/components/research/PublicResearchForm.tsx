@@ -182,6 +182,8 @@ export function PublicResearchForm({ code }: { code: string }) {
   const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers) : [];
   const currentSection = form?.schema.sections[step];
   const currentGroups = uniforGroups[step] ?? [];
+  const joinedAcademicRole = isUnifor && !roleId && uniforGroups[0]?.[0]?.questions.some(
+    question=>question.semanticCode==="ACADEMIC_ROLE") === true;
   const currentMicroIndex = Math.min(microQuestionIndex,Math.max(0,currentGroups.length-1));
   const currentGroup = currentGroups[currentMicroIndex];
   const journeyPhases = ["routine","time","locations"] as const;
@@ -189,14 +191,14 @@ export function PublicResearchForm({ code }: { code: string }) {
     ? visibleStepIndexes.reduce((n,index)=>n+(
       index===form.schema.sections.length ? journeyPhases.length : uniforGroups[index]?.length ?? 0
     ),0) : totalSteps;
-  const microTotal = microTotalBase+(isUnifor&&!roleId?1:0);
+  const microTotal = microTotalBase+(isUnifor&&!roleId&&!joinedAcademicRole?1:0);
   const microCompletedBefore = isUnifor && form ? visibleStepIndexes
     .filter(index=>index<step)
     .reduce((n,index)=>n+(index===form.schema.sections.length?journeyPhases.length:
       uniforGroups[index]?.length ?? 0),0)
     : 0;
   const microPosition = isUnifor
-    ? (pilotRoleStep ? 1 : microCompletedBefore+(currentSection?currentMicroIndex:microJourneyIndex)+1+(!roleId?1:0))
+    ? (pilotRoleStep ? 1 : microCompletedBefore+(currentSection?currentMicroIndex:microJourneyIndex)+1+(!roleId&&!joinedAcademicRole?1:0))
     : visibleStepIndexes.indexOf(step)+1;
   const progressCount = isUnifor ? microTotal : visibleStepIndexes.length;
   const progressNumber = Math.max(1,Math.min(microPosition,Math.max(1,progressCount)));
@@ -207,8 +209,22 @@ export function PublicResearchForm({ code }: { code: string }) {
         setError("Escolha se deseja pedir ou oferecer uma carona.");
         return;
       }
+      if(joinedAcademicRole && form.schema.sections[0]) {
+        const group=uniforGroups[0]?.[0];
+        if(group) {
+          const one={...form.schema.sections[0],questions:group.questions};
+          const problems=validatePage(one,answers,allQuestions,form.schema);
+          if(problems.length) {
+            setFieldErrors({[group.questions[0].id]:problems[0]});
+            setError(problems[0]);
+            return;
+          }
+        }
+      }
       setJourney({...journey,profile:pilotSelectedRole});
       setPilotRoleConfirmed(true);
+      if(joinedAcademicRole)setMicroQuestionIndex(1);
+      setFieldErrors({});
       setError("");
       return;
     }
@@ -637,7 +653,7 @@ export function PublicResearchForm({ code }: { code: string }) {
             <p className="text-sm text-muted-foreground">{section.description}</p>
           )}
           {pilotRoleStep ? (
-            <fieldset className="grid gap-2" aria-label="Perfil para a carona no lançamento">
+            <div className="space-y-4"><fieldset className="grid gap-2" aria-label="Perfil para a carona no lançamento">
               <legend className="mb-2 text-sm font-medium text-muted-foreground">Qual será seu perfil principal?</legend>
               {([
                 ["PASSAGEIRO","Quero encontrar carona"],
@@ -650,6 +666,22 @@ export function PublicResearchForm({ code }: { code: string }) {
                 </label>
               ))}
             </fieldset>
+            {joinedAcademicRole && uniforGroups[0]?.[0] && (
+              <ResearchSectionFields
+                section={{...form.schema.sections[0],questions:uniforGroups[0][0].questions}}
+                compact
+                schema={form.schema}
+                allQuestions={allQuestions}
+                answers={answers}
+                errors={fieldErrors}
+                onChange={(id,value)=>{
+                  setAnswers(previous=>cleanAnswers(form.schema,setUniforPainAnswers(form.schema,previous,id,value)));
+                  setFieldErrors(previous=>({...previous,[id]:""}));
+                  setError("");
+                }}
+              />
+            )}
+            </div>
           ) : section ? (
             <ResearchSectionFields
               section={pilotContent!}
@@ -719,7 +751,10 @@ export function PublicResearchForm({ code }: { code: string }) {
               if (isUnifor && !section && microJourneyIndex > 0) {
                 setMicroJourneyIndex(i=>i-1);
               } else if (isUnifor && section && currentMicroIndex > 0) {
-                setMicroQuestionIndex(i=>i-1);
+                if(joinedAcademicRole && step===visibleStepIndexes[0] && currentMicroIndex===1) {
+                  setPilotRoleConfirmed(false);
+                  setMicroQuestionIndex(0);
+                } else setMicroQuestionIndex(i=>i-1);
               } else if (isUnifor && section && step === visibleStepIndexes[0] && !roleId && pilotRoleConfirmed) {
                 setPilotRoleConfirmed(false);
               } else {
