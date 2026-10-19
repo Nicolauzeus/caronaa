@@ -1,6 +1,8 @@
 -- 0102: Reusable launch waiting room for institutional, corporate and event surveys.
 -- Prerequisite: 0101 is applied. The form UUID is immutable; titles do not grant access.
 -- The form's existing configuration.settings.launchDate and timezone control opening.
+-- Archive/disable/publish status does NOT implicitly lift a waiting gate:
+-- only the date or an audited administrator release can open the cohort.
 -- A verified participation receipt or confirmed form-to-account link identifies cohort
 -- participants, not proof of student/employee affiliation.
 
@@ -52,8 +54,7 @@ BEGIN
   SELECT 1 FROM public.research_configurations c
   JOIN public.research_forms f ON f.id=c.form_id
   LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
-  WHERE f.is_enabled AND f.status='PUBLICADO' AND f.trashed_at IS NULL
-    AND c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+  WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
     AND now() < (
       (c.settings->>'launchDate')::date::timestamp
       AT TIME ZONE COALESCE(
@@ -83,8 +84,7 @@ BEGIN
  FROM public.research_configurations c
  JOIN public.research_forms f ON f.id=c.form_id
  LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
- WHERE f.status='PUBLICADO' AND f.is_enabled AND f.trashed_at IS NULL
-   AND c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+ WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
    AND now() < (
      (c.settings->>'launchDate')::date::timestamp
      AT TIME ZONE COALESCE((SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza')
