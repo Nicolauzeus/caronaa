@@ -745,3 +745,9 @@ a:active {
 .ride-marker-passenger { background:var(--ride-passenger); color:var(--caronaa-white); }
 .ride-marker-meeting { background:var(--caronaa-success); color:var(--caronaa-white); }
 .ride-marker-destination { background:var(--destructive); }
+
+/* Emergency accessibility fallback for very short viewports or an open mobile keyboard.
+   Normal-height UNIFOR microsteps remain non-scrolling. */
+@media (max-height: 660px) {
+  .unifor-form-stage { overflow-y: auto; overscroll-behavior: contain; }
+}
