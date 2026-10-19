@@ -147,6 +147,9 @@ export function eventRideActionLinks(config: PublicResearchConfiguration["settin
   });
   // Do not add private residential coordinates to URLs; the user reviews the route
   // in the authenticated/public booking flow before making a real request.
+  const tolerances=[5,15,30,60];
+  const matchedTolerance=tolerances.reduce((best,n) => Math.abs(n-journey.flexibilityMinutes) < Math.abs(best-journey.flexibilityMinutes) ? n : best,15);
+  base.set("tolerancia",String(matchedTolerance));
   const offerParams = new URLSearchParams(base);
   if (seats !== undefined && Number.isInteger(seats) && seats>=1 && seats<=4) offerParams.set("vagas", String(seats));
   return { search: "/buscar?"+base.toString(), offer: "/oferecer?"+offerParams.toString() };
