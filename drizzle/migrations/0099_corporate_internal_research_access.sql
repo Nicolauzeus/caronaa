@@ -325,6 +325,8 @@ BEGIN
   ORDER BY submitted_at DESC LIMIT 1;
  IF NOT FOUND OR v_answer.submitted_at < now()-interval '90 days'
   THEN RAISE EXCEPTION 'Recibo de participação inválido ou expirado' USING ERRCODE='42501'; END IF;
+ IF NOT public.can_access_restricted_research(v_answer.form_id)
+ THEN RAISE EXCEPTION 'Colaborador não autorizado a vincular participação' USING ERRCODE='42501'; END IF;
  IF public.is_restricted_research(v_answer.form_id) AND NOT EXISTS (
   SELECT 1 FROM public.corporate_research_answer_owners o
   WHERE o.answer_id=v_answer.id AND o.user_id=auth.uid()
