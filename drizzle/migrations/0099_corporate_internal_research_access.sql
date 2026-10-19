@@ -67,6 +67,18 @@ CREATE POLICY research_restricted_versions_guard ON public.research_form_version
  FOR SELECT TO anon,authenticated USING(
   public.has_role(auth.uid(),'admin') OR public.can_access_restricted_research(form_id));
 
+-- The policy must not query the ownership table as the browser role:
+-- direct SELECT on that table is deliberately REVOKED for all browser users.
+CREATE OR REPLACE FUNCTION public.owns_corporate_research_answer(p_answer_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+ SELECT EXISTS (
+   SELECT 1 FROM public.corporate_research_answer_owners o
+   WHERE o.answer_id=p_answer_id AND o.user_id=auth.uid()
+ );
+$;
+REVOKE ALL ON FUNCTION public.owns_corporate_research_answer(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.owns_corporate_research_answer(uuid) TO authenticated;
+
 -- Protect raw response data as well as forms/versions. A public-answer INSERT policy
 -- from older migrations must not permit crafted inserts for corporate forms.
 CREATE POLICY research_restricted_answer_read_guard ON public.research_answers AS RESTRICTIVE
@@ -76,10 +88,7 @@ CREATE POLICY research_restricted_answer_read_guard ON public.research_answers A
   OR public.has_role(auth.uid(),'admin')
   OR (
     public.can_access_restricted_research(form_id)
-    AND EXISTS (
-      SELECT 1 FROM public.corporate_research_answer_owners o
-      WHERE o.answer_id=id AND o.user_id=auth.uid()
-    )
+    AND public.owns_corporate_research_answer(id)
   )
  );
 CREATE POLICY research_restricted_answer_insert_guard ON public.research_answers AS RESTRICTIVE
