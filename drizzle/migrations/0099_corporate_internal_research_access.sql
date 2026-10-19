@@ -60,10 +60,10 @@ GRANT EXECUTE ON FUNCTION public.can_access_restricted_research(uuid) TO anon,au
 -- Restrictive policies ADD to every existing permissive SELECT policy (including
 -- anonymous published, admin and service flows); admin may manage all forms.
 -- RPC submissions require verified MEMBERSHIP, even for CARONAA administrators.
-CREATE POLICY research_restricted_forms_guard AS RESTRICTIVE ON public.research_forms
+CREATE POLICY research_restricted_forms_guard ON public.research_forms AS RESTRICTIVE
  FOR SELECT TO anon,authenticated USING(
   public.has_role(auth.uid(),'admin') OR public.can_access_restricted_research(id));
-CREATE POLICY research_restricted_versions_guard AS RESTRICTIVE ON public.research_form_versions
+CREATE POLICY research_restricted_versions_guard ON public.research_form_versions AS RESTRICTIVE
  FOR SELECT TO anon,authenticated USING(
   public.has_role(auth.uid(),'admin') OR public.can_access_restricted_research(form_id));
 
