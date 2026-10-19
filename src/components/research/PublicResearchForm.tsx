@@ -525,7 +525,9 @@ export function PublicResearchForm({ code }: { code: string }) {
             </button>
           </details>
           <a className="block text-center text-sm text-muted-foreground" href="/home">
-            Conhecer o CARONAA sem vincular
+            {form.configuration?.settings.launchDate
+              ? "Criar conta e acompanhar o lançamento"
+              : "Conhecer o CARONAA sem vincular"}
           </a>
         </section>
       </main>
