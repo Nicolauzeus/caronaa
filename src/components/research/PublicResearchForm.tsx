@@ -25,6 +25,7 @@ import {
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
 import { ResearchInterestActivation } from "./ResearchInterestActivation";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
+import { COMPANY_CAMPUS_DRIVER_KEY, companyCampusDriverIntro, validateCompanyCampusAnswers, validateCompanyCampusJourney, companyCampusSuggestedProfile } from "@/lib/formulario/company-campus-driver";
 type Form = {
   id: string;
   version: string;
@@ -153,6 +154,8 @@ export function PublicResearchForm({ code }: { code: string }) {
       ...validatePage(sec, answers),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
+      ...(form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY
+        ? validateCompanyCampusAnswers(form.schema, answers) : []),
     ];
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
@@ -173,6 +176,10 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     setFieldErrors({});
     setError("");
+    if (form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY && step === form.schema.sections.length - 1) {
+      const recommended = companyCampusSuggestedProfile(form.schema, answers);
+      setJourney((previous) => previous ? { ...previous, profile: recommended } : previous);
+    }
     setStep((i) => Math.min(totalSteps - 1, i + 1));
   }
   async function submit(e: FormEvent) {
@@ -187,6 +194,8 @@ export function PublicResearchForm({ code }: { code: string }) {
       ...form.schema.sections.flatMap((section) => validatePage(section, cleaned)),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
+      ...(form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY
+        ? validateCompanyCampusAnswers(form.schema, cleaned) : []),
     ];
     if (problems.length) {
       setError(problems[0]);
@@ -201,6 +210,10 @@ export function PublicResearchForm({ code }: { code: string }) {
     try {
       if (form.configuration) {
         const validJourney = validateJourney(journey, form.configuration.settings);
+        if (form.configuration.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY) {
+          const mismatches=validateCompanyCampusJourney(form.schema, cleaned, validJourney);
+          if (mismatches.length) throw Error(mismatches[0]);
+        }
         await submitConfiguredResearch({
           formId: form.id,
           versionId: form.version,
@@ -361,6 +374,12 @@ export function PublicResearchForm({ code }: { code: string }) {
         alt={form.brandAlt}
         brandName={form.brandName}
       />
+      {form.configuration?.settings.templateKey === COMPANY_CAMPUS_DRIVER_KEY && (
+        <section aria-label="Apresentação da iniciativa empresa e universidade" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA · empresa próxima ao campus</p>
+          <p className="text-sm leading-6">{companyCampusDriverIntro(form.configuration.settings)}</p>
+        </section>
+      )}
       {form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade</p>
