@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute,redirect } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
+import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, MapPin, Search, SlidersHorizontal, UsersRound } from "lucide-react";
@@ -17,6 +19,12 @@ import { previewRequestFare } from "@/lib/ride-pricing.functions";
 import { formatBrl } from "@/lib/ride-cost";
 
 export const Route = createFileRoute("/buscar")({
+  ssr:false,
+  beforeLoad:async()=>{
+    const {data}=await supabase.auth.getUser();
+    if(!data.user)return;
+    if((await getMyResearchLaunchState()).locked)throw redirect({to:"/aguardando",replace:true});
+  },
   head: () => ({
     meta: [
       { title: "Buscar carona — CARONAA" },

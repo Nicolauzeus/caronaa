@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
 import { createResearchVisibility } from "@/lib/formulario/research-conditions";
+import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
 import {
   cleanAnswers,
   scheduleWarning,
@@ -43,6 +44,10 @@ type Form = {
 };
 export function PublicResearchForm({ code }: { code: string }) {
   const previousStep = useRef(0);
+  const [microQuestionIndex, setMicroQuestionIndex] = useState(0);
+  const [pilotRoleConfirmed,setPilotRoleConfirmed] = useState(false);
+  const [pilotSelectedRole,setPilotSelectedRole] = useState<ResearchJourney["profile"] | null>(null);
+  const [microJourneyIndex, setMicroJourneyIndex] = useState(0);
   const [form, setForm] = useState<Form | null>(null),
     [answers, setAnswers] = useState<Answers>({}),
     [submissionKey] = useState(() => crypto.randomUUID());
@@ -155,6 +160,7 @@ export function PublicResearchForm({ code }: { code: string }) {
   useEffect(() => {
     if (!form || previousStep.current === step) return;
     previousStep.current = step;
+    if (isUniforPilotForm(form.id)) return;
     const frame = requestAnimationFrame(() => {
       document.getElementById("research-step-content")?.scrollIntoView({ block: "start", behavior: "auto" });
       document.getElementById("research-step-heading")?.focus({ preventScroll: true });
@@ -170,10 +176,68 @@ export function PublicResearchForm({ code }: { code: string }) {
        ...(form.configuration ? [form.schema.sections.length] : [])]
     : [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
+  const isUnifor = Boolean(form && isUniforPilotForm(form.id));
+  const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
+  const currentSection = form?.schema.sections[step];
+  const displayedQuestions = currentSection && form
+    ? currentSection.questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q))
+    : [];
+  const currentMicroIndex = Math.min(microQuestionIndex,Math.max(0,displayedQuestions.length-1));
+  const currentMicroQuestion = displayedQuestions[currentMicroIndex];
+  const journeyPhases = ["direction","days","time","origin","destination"] as const;
+  const microTotalBase = isUnifor && form
+    ? visibleStepIndexes.reduce((n,index)=>n+(
+      index===form.schema.sections.length ? journeyPhases.length :
+      form.schema.sections[index].questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length
+    ),0) : totalSteps;
+  const microTotal = microTotalBase+(isUnifor&&!roleId?1:0);
+  const microCompletedBefore = isUnifor && form ? visibleStepIndexes
+    .filter(index=>index<step)
+    .reduce((n,index)=>n+(index===form.schema.sections.length?journeyPhases.length:
+      form.schema.sections[index].questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length),0)
+    : 0;
+  const microPosition = isUnifor
+    ? (pilotRoleStep ? 1 : microCompletedBefore+(currentSection?currentMicroIndex:microJourneyIndex)+1+(!roleId?1:0))
+    : visibleStepIndexes.indexOf(step)+1;
+  const progressCount = isUnifor ? microTotal : visibleStepIndexes.length;
+  const progressNumber = Math.max(1,Math.min(microPosition,Math.max(1,progressCount)));
   function next() {
     if (!form) return;
+    if (pilotRoleStep) {
+      if (!pilotSelectedRole || !journey) {
+        setError("Escolha se deseja pedir ou oferecer uma carona.");
+        return;
+      }
+      setJourney({...journey,profile:pilotSelectedRole});
+      setPilotRoleConfirmed(true);
+      setError("");
+      return;
+    }
     const sec = form.schema.sections[step];
-    if (!sec) return;
+    if (!sec) {
+      if (isUnifor && microJourneyIndex < journeyPhases.length - 1) {
+        setMicroJourneyIndex(i => i + 1);
+        setError("");
+      }
+      return;
+    }
+    // A UNIFOR participant receives just one question per view.
+    // Keep the full original schema for server validation and reports.
+    if (isUnifor && currentMicroQuestion) {
+      const one = { ...sec, questions:[currentMicroQuestion] };
+      const currentErrors = validatePage(one,answers,allQuestions,form.schema);
+      if (currentErrors.length) {
+        setFieldErrors({[currentMicroQuestion.id]:currentErrors[0]});
+        setError(currentErrors[0]);
+        return;
+      }
+      if (currentMicroIndex < displayedQuestions.length-1) {
+        setMicroQuestionIndex(index=>index+1);
+        setError("");
+        setFieldErrors({});
+        return;
+      }
+    }
     const problems = [
       ...validatePage(sec, answers, allQuestions, form.schema),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
@@ -232,6 +296,7 @@ export function PublicResearchForm({ code }: { code: string }) {
         mode: declaredRole === "PROFISSIONAL" ? "TRANSPORTE_PROFISSIONAL_INTERESSE" : "CARONA",
       } : previous);
     }
+    setMicroQuestionIndex(0);
     setStep(i => visibleStepIndexes.find(nextIndex => nextIndex > i) ?? i);
   }
   async function submit(e: FormEvent) {
@@ -239,6 +304,10 @@ export function PublicResearchForm({ code }: { code: string }) {
     if (!form || busy) return;
     if (step < totalSteps - 1) {
       next();
+      return;
+    }
+    if (isUnifor && microJourneyIndex < journeyPhases.length - 1) {
+      setMicroJourneyIndex(i => i + 1);
       return;
     }
     const cleaned = cleanAnswers(form.schema, answers);
@@ -309,6 +378,13 @@ export function PublicResearchForm({ code }: { code: string }) {
           throw new Error(
             "Não foi possível enviar sua resposta. Verifique a conexão e tente novamente.",
           );
+      }
+      // People who create an account after answering a scheduled-launch survey
+      // carry their private receipt into registration on this device. The server
+      // validates and binds it only to a confirmed account; nothing is inferred
+      // from a university or company name typed by the visitor.
+      if (form.configuration?.settings.launchDate) {
+        try { storePendingParticipation(submissionKey, true); } catch { /* Storage may be blocked. */ }
       }
       setSubmittedConfiguration(form.configuration ?? null);
       setComplete(true);
@@ -397,6 +473,11 @@ export function PublicResearchForm({ code }: { code: string }) {
             answers={answers}
           />
         )}
+        {form.configuration?.settings.launchDate && (
+          <p role="status" className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
+            Ao criar ou entrar na sua conta neste dispositivo com e-mail confirmado, sua participação será vinculada pelo recibo privado para mostrar o calendário de lançamento. Antes da abertura, pedidos e ofertas serão apenas uma prévia.
+          </p>
+        )}
         {form.configuration && journey && (
           <ResearchInterestActivation
             formId={form.id}
@@ -444,21 +525,33 @@ export function PublicResearchForm({ code }: { code: string }) {
             </button>
           </details>
           <a className="block text-center text-sm text-muted-foreground" href="/home">
-            Conhecer o CARONAA sem vincular
+            {form.configuration?.settings.launchDate
+              ? "Criar conta e acompanhar o lançamento"
+              : "Conhecer o CARONAA sem vincular"}
           </a>
         </section>
       </main>
     );
   const section = form.schema.sections[step],
-    last = step === visibleStepIndexes[visibleStepIndexes.length - 1];
+    last = !pilotRoleStep && step === visibleStepIndexes[visibleStepIndexes.length - 1] &&
+      (!isUnifor || microJourneyIndex === journeyPhases.length - 1);
+  const pilotContent = isUnifor && section && currentMicroQuestion
+    ? {...section,questions:[currentMicroQuestion]} : section;
   return (
-    <main className="mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8">
-      <ResearchBrandHeader
+    <main className={isUnifor
+      ? "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-xl min-w-0 flex-col gap-2 overflow-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+76px)] pt-[max(10px,env(safe-area-inset-top))] sm:px-5"
+      : "mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8"}>
+      {isUnifor ? (
+        <header className="flex min-h-10 shrink-0 items-center justify-between gap-3" aria-label="Pesquisa CARONAA UNIFOR">
+          <span className="font-display text-base font-black tracking-wide text-primary">CARONAA <span className="text-foreground">· UNIFOR</span></span>
+          <span className="text-[11px] font-semibold text-muted-foreground">Estreia · {UNIFOR_LAUNCH_DAY}</span>
+        </header>
+      ) : <ResearchBrandHeader
         title={form.configuration?.settings.publicName || form.title}
         imagePath={form.brandImagePath}
         alt={form.brandAlt}
         brandName={form.brandName}
-      />
+      />}
       {step === 0 && form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa regional" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade · Mobilidade regional</p>
@@ -487,13 +580,13 @@ export function PublicResearchForm({ code }: { code: string }) {
           <p className="text-xs text-muted-foreground">Você precisa estar conectado a uma conta autorizada e com e-mail confirmado para participar.</p>
         </section>
       )}
-      {step === 0 && form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
+      {!isUnifor && step === 0 && form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade</p>
           <p className="text-sm leading-6">{urbanUniversityIntro(form.configuration.settings)}</p>
         </section>
       )}
-      {step === 0 && form.configuration && (
+      {!isUnifor && step === 0 && form.configuration && (
         <div className="space-y-2 border-y py-3">
           <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>
           <p className="text-sm">{form.configuration.settings.usagePolicy}</p>
@@ -516,29 +609,48 @@ export function PublicResearchForm({ code }: { code: string }) {
           )}
         </div>
       )}
-      <div className="space-y-2" aria-label="Progresso da pesquisa">
+      <div className="shrink-0 space-y-1.5" aria-label="Progresso da pesquisa">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            Etapa {Math.max(1,visibleStepIndexes.indexOf(step)+1)} de {visibleStepIndexes.length}
+            Etapa {progressNumber} de {progressCount}
           </span>
-          <span>{Math.round(Math.max(1,visibleStepIndexes.indexOf(step)+1)/Math.max(1,visibleStepIndexes.length)*100)}% do questionário</span>
+          <span>{Math.round(progressNumber/Math.max(1,progressCount)*100)}% do questionário</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary transition-all"
-            style={{ width: Math.max(1,visibleStepIndexes.indexOf(step)+1)/Math.max(1,visibleStepIndexes.length)*100 + "%" }}
+            style={{ width: progressNumber/Math.max(1,progressCount)*100 + "%" }}
           />
         </div>
       </div>
-      <form onSubmit={submit} className="flex min-w-0 flex-col gap-4">
-        <section id="research-step-content" className="min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5">
-          <h2 id="research-step-heading" tabIndex={-1} className="text-xl font-bold outline-none">{section?.title ?? "Seu trajeto"}</h2>
-          {section?.description && (
+      <form onSubmit={submit} className={isUnifor?"flex min-h-0 min-w-0 flex-1 flex-col gap-2":"flex min-w-0 flex-col gap-4"}>
+        <section id="research-step-content" className={isUnifor
+          ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border bg-card p-3 sm:p-5 unifor-form-stage"
+          : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
+          <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 truncate text-base font-bold outline-none":"text-xl font-bold outline-none"}>
+            {pilotRoleStep?"Como pretende participar?":section?.title ?? (isUnifor? ["Sentido do trajeto","Dias da semana","Horário de saída","Origem","Destino"][microJourneyIndex] : "Seu trajeto")}
+          </h2>
+          {!isUnifor && section?.description && (
             <p className="text-sm text-muted-foreground">{section.description}</p>
           )}
-          {section ? (
+          {pilotRoleStep ? (
+            <fieldset className="grid gap-2" aria-label="Perfil para a carona no lançamento">
+              <legend className="mb-2 text-sm font-medium text-muted-foreground">Qual será seu perfil principal?</legend>
+              {([
+                ["PASSAGEIRO","Quero encontrar carona"],
+                ["MOTORISTA","Posso oferecer lugares"],
+                ["AMBOS","Quero encontrar e oferecer"],
+              ] as const).map(([role,label])=>(
+                <label key={role} className={"flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm "+(pilotSelectedRole===role?"border-primary bg-primary/10 font-semibold":"border-border")}>
+                  <input type="radio" name="unifor-pilot-role" checked={pilotSelectedRole===role} onChange={()=>{setPilotSelectedRole(role);setError("");}} className="accent-primary" />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+          ) : section ? (
             <ResearchSectionFields
-              section={section}
+              section={pilotContent!}
+              compact={isUnifor}
               schema={form.schema}
               allQuestions={allQuestions}
               answers={answers}
@@ -552,12 +664,14 @@ export function PublicResearchForm({ code }: { code: string }) {
           ) : form.configuration && journey ? (
             <ResearchJourneyFields
               config={form.configuration.settings}
-              lockedProfile={Boolean(declaredRole)}
+              phase={isUnifor ? journeyPhases[microJourneyIndex] : undefined}
+              showConsents={!isUnifor}
+              lockedProfile={isUnifor || Boolean(declaredRole)}
               value={journey}
               onChange={setJourney}
             />
           ) : null}
-          {section && scheduleWarning(section, answers) && (
+          {!isUnifor && section && scheduleWarning(section, answers) && (
             <p
               role="status"
               className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-300"
@@ -567,7 +681,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           )}
         </section>
         {last && (
-          <label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm">
+          <label className={isUnifor?"flex shrink-0 items-start gap-2 rounded-xl border bg-card p-2.5 text-xs leading-4":"flex items-start gap-3 rounded-xl border bg-card p-4 text-sm"}>
             <input
               type="checkbox"
               required
@@ -584,7 +698,7 @@ export function PublicResearchForm({ code }: { code: string }) {
         )}
         {error && (
           <p
-            className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive"
+            className={isUnifor?"shrink-0 rounded-lg border border-destructive/40 px-3 py-2 text-xs text-destructive":"rounded-lg border border-destructive/40 p-3 text-sm text-destructive"}
             role="alert"
           >
             {error}
@@ -594,11 +708,25 @@ export function PublicResearchForm({ code }: { code: string }) {
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
           <button
             type="button"
-            disabled={step === visibleStepIndexes[0] || busy}
+            disabled={((step === visibleStepIndexes[0] && (!isUnifor || currentMicroIndex === 0)) && (pilotRoleStep || !isUnifor || Boolean(roleId))) || busy}
             onClick={() => {
               setError("");
               setFieldErrors({});
-              setStep(s => [...visibleStepIndexes].reverse().find(index => index < s) ?? 0);
+              if (isUnifor && !section && microJourneyIndex > 0) {
+                setMicroJourneyIndex(i=>i-1);
+              } else if (isUnifor && section && currentMicroIndex > 0) {
+                setMicroQuestionIndex(i=>i-1);
+              } else if (isUnifor && section && step === visibleStepIndexes[0] && !roleId && pilotRoleConfirmed) {
+                setPilotRoleConfirmed(false);
+              } else {
+                const previous = [...visibleStepIndexes].reverse().find(index => index < step) ?? 0;
+                if (isUnifor && previous < form.schema.sections.length) {
+                  const previousSection=form.schema.sections[previous];
+                  const count=previousSection.questions.filter(q => createResearchVisibility(form.schema,answers).questionVisible(q)).length;
+                  setMicroQuestionIndex(Math.max(0,count-1));
+                }
+                setStep(previous);
+              }
             }}
             className="min-h-11 rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-40"
           >
@@ -618,7 +746,7 @@ export function PublicResearchForm({ code }: { code: string }) {
               onClick={next}
               className="min-h-11 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground sm:px-6"
             >
-              Próxima etapa →
+              {isUnifor ? "Continuar →" : "Próxima etapa →"}
             </button>
           )}
           </div>

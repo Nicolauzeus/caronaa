@@ -708,6 +708,20 @@
       "when": 1792360000000,
       "tag": "0100_research_role_conditional_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1792440000000,
+      "tag": "0101_unifor_prelaunch_pilot",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1792443000000,
+      "tag": "0102_research_launch_waiting_gate",
+      "breakpoints": true
     }
   ]
 }

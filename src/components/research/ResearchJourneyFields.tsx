@@ -40,12 +40,14 @@ export function ResearchJourneyFields({
   onChange,
   showConsents = true,
   lockedProfile = false,
+  phase,
 }: {
   config: PublicResearchConfiguration["settings"];
   value: ResearchJourney;
   onChange: (value: ResearchJourney) => void;
   showConsents?: boolean;
   lockedProfile?: boolean;
+  phase?: "direction" | "days" | "time" | "origin" | "destination";
 }) {
   const fieldId = useId();
   c = effectiveResearchSchedule(c, j.profile);
@@ -141,7 +143,7 @@ export function ResearchJourneyFields({
           ))}
         </select>
       </label>}
-      {eventExit ? <p className="rounded-lg bg-primary/5 p-3 text-sm font-medium">Trajeto de saída do evento: local do evento → destino</p> : <label className="block text-sm">
+      {(!phase || phase === "direction") && (eventExit ? <p className="rounded-lg bg-primary/5 p-3 text-sm font-medium">Trajeto de saída do evento: local do evento → destino</p> : <label className="block text-sm">
         Sentido do percurso
         <select
           className={cls}
@@ -171,8 +173,8 @@ export function ResearchJourneyFields({
           <option value="VOLTA">Volta</option>
           <option value="IDA_E_VOLTA">Ida e volta</option>
         </select>
-      </label>}
-      {!eventExit && <fieldset>
+      </label>)}
+      {(!phase || phase === "days") && !eventExit && <fieldset>
         <legend className="mb-2 text-sm font-medium">Dias do trajeto</legend>
         <div className="flex flex-wrap gap-2">
           {c.days.map((day) => (
@@ -197,15 +199,15 @@ export function ResearchJourneyFields({
           ))}
         </div>
       </fieldset>}
-      {time(
+      {(!phase || phase === "time") && time(
         "outboundTime",
         "Horário de saída",
         j.direction === "VOLTA" && c.returnTimes.length ? c.returnTimes : c.outboundTimes,
         "otherOutboundTime",
       )}
-      {j.direction === "IDA_E_VOLTA" &&
+      {(!phase || phase === "time") && j.direction === "IDA_E_VOLTA" &&
         time("returnTime", "Horário de retorno", c.returnTimes, "otherReturnTime")}
-      <label className="block text-sm">
+      {(!phase || phase === "time") && <label className="block text-sm">
         Flexibilidade em minutos
         <input
           type="number"
@@ -215,23 +217,23 @@ export function ResearchJourneyFields({
           value={j.flexibilityMinutes}
           onChange={(event) => set("flexibilityMinutes", Number(event.target.value))}
         />
-      </label>
-      <LocationAutocomplete
+      </label>}
+      {(!phase || phase === "origin") && <LocationAutocomplete
         id={fieldId + "-origin"}
         label={eventExit ? "Ponto de saída do evento" : "Bairro ou município de origem"}
         value={j.originArea}
         onChange={(text, details) => location("origin", text, details)}
         helperText="Informe uma região aproximada, sem endereço residencial ou número."
         variant="simple"
-      />
-      <LocationAutocomplete
+      />}
+      {(!phase || phase === "destination") && <LocationAutocomplete
         id={fieldId + "-destination"}
         label={eventExit ? "Bairro ou região de destino após o evento" : "Bairro, campus ou ponto de destino"}
         value={j.destinationArea}
         onChange={(text, details) => location("destination", text, details)}
         variant="simple"
-      />
-      {c.safeMeetingPoints.length > 0 && (
+      />}
+      {(!phase || phase === "destination") && c.safeMeetingPoints.length > 0 && (
         <div>
           <p className="text-sm font-medium">Pontos de embarque informados pela organização</p>
           <ul className="mt-2 list-inside list-disc text-sm text-muted-foreground">
@@ -241,10 +243,10 @@ export function ResearchJourneyFields({
           </ul>
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
+      {!phase && <p className="text-xs text-muted-foreground">
         O trajeto indica interesse para análise. Ainda não é uma solicitação, oferta pública ou
         correspondência confirmada.
-      </p>
+      </p>}
       {showConsents && (
         <>
           <label className="flex items-start gap-2 text-sm">
