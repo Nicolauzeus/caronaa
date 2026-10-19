@@ -137,7 +137,7 @@ export function validateCompanyCampusConfiguration(config: ResearchConfiguration
   if (config.institutionName.trim().length < 2) errors.push("Informe o nome da empresa.");
   if (config.campus.trim().length < 2) errors.push("Informe a unidade da empresa.");
   if (config.address.trim().length < 5) errors.push("Informe o endereço institucional da empresa.");
-  if (config.nearbyUniversity.trim().length < 2) errors.push("Informe a universidade ou o instituto próximo.");
+  if ((config.nearbyUniversity ?? "").trim().length < 2) errors.push("Informe a universidade ou o instituto próximo.");
   if (config.region.trim().length < 2) errors.push("Informe a região da iniciativa.");
   if (!config.modes.includes("CARONA") || config.modes.length !== 1)
     errors.push("Este modelo deve usar somente a modalidade de carona compartilhada.");
@@ -149,7 +149,7 @@ export function validateCompanyCampusConfiguration(config: ResearchConfiguration
 export function companyCampusDriverIntro(config: Pick<ResearchConfiguration,
   "institutionName" | "campus" | "nearbyUniversity" | "launchDate" | "serviceState" | "partnershipConfirmed">): string {
   const company=config.institutionName.trim() || "esta empresa";
-  const school=config.nearbyUniversity.trim() || "uma instituição de ensino próxima";
+  const school=(config.nearbyUniversity ?? "").trim() || "uma instituição de ensino próxima";
   const date=config.launchDate
     ? new Date(config.launchDate+"T12:00:00Z").toLocaleDateString("pt-BR",{timeZone:"UTC"})
     : null;
