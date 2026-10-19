@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RESEARCH_TEMPLATES, freshTemplate } from "./research-templates";
 import { cleanAnswers, inspectSchema, isVisible } from "./research-schema";
-import { parseResearchConfiguration } from "./research-configuration";
+import { parseResearchConfiguration, newResearchConfiguration } from "./research-configuration";
 import { initialResearchJourney } from "@/components/research/ResearchJourneyFields";
 import {
   COMPANY_CAMPUS_DRIVER_KEY, companyCampusDriverTemplate,
@@ -45,6 +45,18 @@ describe("Modelo 04 — Empresa próxima ao campus", () => {
     expect(settings.profiles).toContain("PASSAGEIRO");
     expect(settings.profiles).toContain("MOTORISTA");
     expect(validateCompanyCampusConfiguration(settings)).toEqual([]);
+  });
+
+  it("does not send the new field in legacy research settings before migration 0098", () => {
+    const existing=parseResearchConfiguration({
+      ...newResearchConfiguration("UNIVERSIDADE_URBANA_CARONAA"),
+      institutionId:"UNIVERSIDADE_EXEMPLO",
+      institutionName:"Universidade Exemplo",
+      publicName:"Mobilidade universitária",
+      region:"Fortaleza",
+      usagePolicy:"Pesquisa de mobilidade, respostas usadas de forma agregada.",
+    });
+    expect(Object.prototype.hasOwnProperty.call(existing, "nearbyUniversity")).toBe(false);
   });
 
   it("blocks creation when company, adjacent school or route metadata is missing", () => {
