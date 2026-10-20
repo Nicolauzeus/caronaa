@@ -44,7 +44,7 @@ export const eventExitMatchTemplate: ResearchTemplate = {
         },
         {
           id: "event_offer_seats", label: "Quantos lugares para passageiros estariam disponíveis?",
-          type: "number", required: true, options: [], minValue: 1, maxValue: 4, integerOnly: true,
+          type: "number", required: true, options: [], minValue: 1, maxValue: 7, integerOnly: true,
           semanticCode: "EVENT_OFFER_SEATS",
           showWhen: { questionId: "event_offer_possible", equals: "SIM" },
           helpText: "Motocicleta: somente um passageiro, quando permitido e habilitado.",

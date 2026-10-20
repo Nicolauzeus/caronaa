@@ -30,6 +30,7 @@ export const researchConfigurationSchema = z
     latitude: z.number().min(-90).max(90).nullable(),
     longitude: z.number().min(-180).max(180).nullable(),
     campaignName: text(120),
+    emailCaptureEnabled: z.boolean().default(false),
     campaignType: z.enum(["INSTITUCIONAL", "EVENTO", "ORGANICO", "OUTRO"]),
     acquisitionSource: text(80),
     launchDate: z
@@ -177,6 +178,7 @@ export function newResearchConfiguration(templateKey = "CUSTOM"): ResearchConfig
     latitude: null,
     longitude: null,
     campaignName: "",
+    emailCaptureEnabled: false,
     campaignType: "INSTITUCIONAL",
     acquisitionSource: "",
     launchDate: null,

@@ -64,7 +64,7 @@ export const companyCampusDriverTemplate: ResearchTemplate = {
           {
             id: "company_seats",
             label: "Quantos lugares para passageiros costumam ficar livres em seu carro?",
-            type: "number", required: true, options: [], minValue: 0, maxValue: 4, integerOnly: true,
+            type: "number", required: true, options: [], minValue: 0, maxValue: 7, integerOnly: true,
             semanticCode: "SEATS_AVAILABLE",
             showWhen: { questionId: "company_drives", equals: "SIM" },
             helpText: "Pode informar zero. Lugares declarados não são vagas publicadas.",
@@ -179,8 +179,8 @@ export function validateCompanyCampusAnswers(schema: SurveySchema, answers: Answ
   const seats=get("SEATS_AVAILABLE");
   const offer=get("RIDE_OFFER_INTENT");
   const errors:string[]=[];
-  if (drives==="SIM" && seats!==undefined && (Number(seats)<0 || Number(seats)>4 || !Number.isInteger(Number(seats))))
-    errors.push("Informe de zero a quatro lugares disponíveis no carro.");
+  if (drives==="SIM" && seats!==undefined && (Number(seats)<0 || Number(seats)>7 || !Number.isInteger(Number(seats))))
+    errors.push("Informe de zero a sete lugares disponíveis no carro.");
   if (drives==="SIM" && offer==="SIM" && Number(seats)<1)
     errors.push("Para oferecer carona, indique pelo menos um lugar realmente disponível.");
   return errors;

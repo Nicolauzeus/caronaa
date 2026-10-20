@@ -722,6 +722,27 @@
       "when": 1792443000000,
       "tag": "0102_research_launch_waiting_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1792500000000,
+      "tag": "0103_research_lead_capture_crm",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1792500100000,
+      "tag": "0104_seven_passenger_seat_capacity",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1792500200000,
+      "tag": "0105_research_dynamic_field_limits",
+      "breakpoints": true
     }
   ]
 }

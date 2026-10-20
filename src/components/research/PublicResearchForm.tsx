@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { CheckCircle2, CalendarDays, MailCheck } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { captureResearchLead, researchLeadCaptureEnabled, validResearchEmail } from "@/lib/formulario/research-lead";
 import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
 import { createResearchVisibility } from "@/lib/formulario/research-conditions";
@@ -44,6 +47,7 @@ type Form = {
   configuration?: PublicResearchConfiguration | null;
 };
 export function PublicResearchForm({ code }: { code: string }) {
+  const { user } = useAuth();
   const previousStep = useRef(0);
   const [microQuestionIndex, setMicroQuestionIndex] = useState(0);
   const [pilotRoleConfirmed,setPilotRoleConfirmed] = useState(false);
@@ -64,8 +68,10 @@ export function PublicResearchForm({ code }: { code: string }) {
     [busy, setBusy] = useState(false),
     [consent, setConsent] = useState(false),
     [step, setStep] = useState(0),
-    [linking, setLinking] = useState(false),
-    [linkError, setLinkError] = useState("");
+    [email, setEmail] = useState(""),
+    [linkageConsent, setLinkageConsent] = useState(false),
+    [marketingConsent, setMarketingConsent] = useState(false),
+    [captureEnabled, setCaptureEnabled] = useState(false);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -110,6 +116,12 @@ export function PublicResearchForm({ code }: { code: string }) {
         return;
       }
       setJourney(configuration ? initialResearchJourney(configuration.settings) : null);
+      // Graceful staged rollout: the form does not require contact collection
+      // until the migration-backed RPC is available.
+      const canCapture = Boolean(configuration?.settings.emailCaptureEnabled) &&
+        await researchLeadCaptureEnabled(f.id);
+      if (!alive) return;
+      setCaptureEnabled(canCapture);
       setForm({
         id: f.id,
         version: v.id,
@@ -357,6 +369,14 @@ export function PublicResearchForm({ code }: { code: string }) {
       setError("Leia e confirme o consentimento antes de enviar.");
       return;
     }
+    if (captureEnabled && !validResearchEmail(email)) {
+      setError("Confira o formato do e-mail antes de enviar.");
+      return;
+    }
+    if (captureEnabled && !linkageConsent) {
+      setError("Confirme o uso do e-mail para reconhecer sua participação.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -396,12 +416,19 @@ export function PublicResearchForm({ code }: { code: string }) {
             "Não foi possível enviar sua resposta. Verifique a conexão e tente novamente.",
           );
       }
-      // People who create an account after answering a scheduled-launch survey
-      // carry their private receipt into registration on this device. The server
-      // validates and binds it only to a confirmed account; nothing is inferred
-      // from a university or company name typed by the visitor.
-      if (form.configuration?.settings.launchDate) {
-        try { storePendingParticipation(submissionKey, true); } catch { /* Storage may be blocked. */ }
+      if (captureEnabled) {
+        await captureResearchLead({
+          formId: form.id, receipt: submissionKey, email,
+          linkageConsent, marketingConsent,
+        });
+      }
+      // The private receipt works as same-device proof when signing in later.
+      // An email match alone must never grant a participation badge.
+      try { storePendingParticipation(submissionKey, Boolean(form.configuration?.settings.launchDate)); }
+      catch { /* Account recovery remains available via private receipt. */ }
+      if (user?.email_confirmed_at &&
+          (!captureEnabled || user.email?.trim().toLowerCase() === email.trim().toLowerCase())) {
+        try { await claimResearchParticipation(submissionKey); } catch { /* Claim is recoverable. */ }
       }
       setSubmittedConfiguration(form.configuration ?? null);
       setComplete(true);
@@ -409,28 +436,6 @@ export function PublicResearchForm({ code }: { code: string }) {
       setError(reason instanceof Error ? reason.message : "Não foi possível registrar a resposta.");
     } finally {
       setBusy(false);
-    }
-  }
-  async function linkParticipation() {
-    if (linking) return;
-    setLinking(true);
-    setLinkError("");
-    try {
-      storePendingParticipation(submissionKey);
-      const { data } = await supabase.auth.getUser();
-      if (data.user?.email_confirmed_at) {
-        await claimResearchParticipation(submissionKey);
-        window.location.assign("/perfil");
-      } else {
-        window.location.assign("/auth?mode=cadastro&redirect=" + encodeURIComponent("/perfil"));
-      }
-    } catch (err) {
-      setLinkError(
-        err instanceof Error
-          ? err.message
-          : "Não foi possível associar a participação. Guarde o recibo para tentar mais tarde.",
-      );
-      setLinking(false);
     }
   }
   if (loading)
@@ -457,96 +462,72 @@ export function PublicResearchForm({ code }: { code: string }) {
     );
   if (complete)
     return (
-      <main className="mx-auto max-w-xl space-y-4 p-6">
-        <ResearchBrandHeader
+      <main className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col gap-4 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:gap-5 sm:px-6 sm:py-8">
+        <ResearchBrandHeader compact
           title={form.configuration?.settings.publicName || form.title}
           imagePath={form.brandImagePath}
           alt={form.brandAlt}
           brandName={form.brandName}
         />
+        <section aria-label="Confirmação da pesquisa" className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-4 py-6 text-center shadow-sm sm:py-8">
+          <span className="rounded-full bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-300">
+            <CheckCircle2 size={32} aria-hidden="true" />
+          </span>
+          <h2 className="text-2xl font-extrabold tracking-tight">Resposta registrada!</h2>
+          <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+            Sua participação foi salva com sucesso. Não é necessário criar uma conta agora.
+          </p>
+        </section>
         {form.configuration && (
-          <p role="status" className="text-sm font-medium">
-            {launchMessage(form.configuration.settings)}
-          </p>
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
+            <CalendarDays className="mt-0.5 shrink-0 text-primary" size={20} aria-hidden="true" />
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-semibold">Próximos passos</p>
+              <p className="text-sm text-muted-foreground">{launchMessage(form.configuration.settings)}</p>
+              {launchNotice && <p role="status" className="text-xs text-muted-foreground">{launchNotice}</p>}
+            </div>
+          </div>
         )}
-        {launchNotice && (
-          <p role="status" className="text-sm text-muted-foreground">
-            {launchNotice}
-          </p>
-        )}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-xl font-bold">Resposta registrada!</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {form.configuration?.settings.templateKey===CORPORATE_INTERNAL_KEY
-              ? "Participação registrada para este colaborador autorizado. Não foi criada carona nem reserva."
-              : "Sua participação está registrada. Não é obrigatório criar conta."}
-          </p>
-        </div>
+        <section className="flex items-start gap-3 px-1" aria-label="Reconhecimento da participação">
+          <MailCheck className="mt-0.5 shrink-0 text-primary" size={21} aria-hidden="true" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold">Reconhecimento da sua participação</h3>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {captureEnabled
+                ? "O e-mail foi registrado. Ao acessar sua conta confirmada, a participação poderá ser reconhecida com segurança. Em outro dispositivo, a confirmação da participação pode ser necessária."
+                : "Guarde seu recibo privado caso confirme sua conta em outro dispositivo. O reconhecimento exige comprovar sua participação."}
+            </p>
+          </div>
+        </section>
         {form.configuration?.settings.templateKey === EVENT_EXIT_MATCH_KEY && journey && (
           <EventExitMatchActions
             configuration={(submittedConfiguration ?? form.configuration).settings}
-            journey={journey}
-            schema={form.schema}
-            answers={answers}
+            journey={journey} schema={form.schema} answers={answers}
           />
-        )}
-        {form.configuration?.settings.launchDate && (
-          <p role="status" className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
-            Ao criar ou entrar na sua conta neste dispositivo com e-mail confirmado, sua participação será vinculada pelo recibo privado para mostrar o calendário de lançamento. Antes da abertura, pedidos e ofertas serão apenas uma prévia.
-          </p>
         )}
         {form.configuration && journey && (
-          <ResearchInterestActivation
-            formId={form.id}
-            receipt={submissionKey}
-            journey={journey}
-            configuration={submittedConfiguration?.settings ?? form.configuration.settings}
-          />
-        )}
-        <section className="space-y-3 rounded-xl border bg-card p-5">
-          <h2 className="text-lg font-bold">Vincular participação ao meu perfil</h2>
-          <p className="text-sm text-muted-foreground">
-            Se deseja mostrar no seu perfil CARONAA que respondeu a esta pesquisa, pode associar a
-            participação após confirmar seu e-mail. O selo indica{" "}
-            <strong>participação no questionário</strong> — não comprova matrícula, presença no
-            evento nem verificação de identidade.
-          </p>
-          <button
-            type="button"
-            disabled={linking}
-            onClick={() => void linkParticipation()}
-            className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            {linking ? "Preparando vínculo…" : "Vincular participação à minha conta"}
-          </button>
-          {linkError && (
-            <p role="alert" className="text-sm text-destructive">
-              {linkError}
-            </p>
-          )}
-          <details className="rounded-lg border p-3">
-            <summary className="cursor-pointer text-sm font-semibold">
-              Guardar recibo privado da participação
-            </summary>
-            <p className="my-2 text-xs text-muted-foreground">
-              Caso confirme sua conta em outro navegador, pode digitar este recibo em Meu perfil.
-              Não compartilhe: ele permite vincular esta resposta a uma única conta.
-            </p>
-            <code className="block break-all rounded-lg bg-muted p-2 text-xs">{submissionKey}</code>
-            <button
-              type="button"
-              onClick={() => void navigator.clipboard.writeText(submissionKey)}
-              className="mt-2 rounded-lg border px-3 py-2 text-sm"
-            >
-              Copiar recibo
-            </button>
+          <details className="rounded-xl border border-border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-semibold">Registrar interesse no trajeto (opcional)</summary>
+            <div className="pt-3">
+              <ResearchInterestActivation formId={form.id} receipt={submissionKey}
+                journey={journey}
+                configuration={submittedConfiguration?.settings ?? form.configuration.settings} />
+            </div>
           </details>
-          <a className="block text-center text-sm text-muted-foreground" href="/home">
-            {form.configuration?.settings.launchDate
-              ? "Criar conta e acompanhar o lançamento"
-              : "Conhecer o CARONAA sem vincular"}
-          </a>
-        </section>
+        )}
+        <a href={user ? (form.configuration?.settings.launchDate ? "/aguardando" : "/home") :
+          "/auth?mode=cadastro&redirect=" + encodeURIComponent(form.configuration?.settings.launchDate ? "/aguardando" : "/perfil")}
+          className="flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-center text-sm font-extrabold text-primary-foreground transition-colors hover:bg-primary/90">
+          {user ? "Continuar no CARONAA" : "Criar conta e acompanhar no CARONAA"}
+        </a>
+        <p className="text-center text-xs text-muted-foreground">Você também pode criar sua conta mais tarde.</p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="min-h-10 cursor-pointer py-2 underline underline-offset-2">Recuperação da participação</summary>
+          <p className="mt-2">Caso confirme o e-mail em outro navegador e precise comprovar a resposta, utilize o recibo privado na seção Meu perfil. Não compartilhe este código.</p>
+          <code className="mt-2 block break-all rounded-lg bg-muted p-3 text-foreground">{submissionKey}</code>
+          <button type="button" className="mt-2 min-h-10 rounded-lg border px-4 text-sm"
+            onClick={() => void navigator.clipboard.writeText(submissionKey)}>Copiar recibo</button>
+        </details>
       </main>
     );
   const section = form.schema.sections[step],
@@ -556,7 +537,9 @@ export function PublicResearchForm({ code }: { code: string }) {
     ? {...section,title:currentGroup.title,questions:currentGroup.questions} : section;
   return (
     <main className={isUnifor
-      ? "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
+      ? last && captureEnabled
+        ? "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-28 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-6"
+        : "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
       : "mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8"}>
       {isUnifor ? (
         <header className="flex min-h-10 shrink-0 items-center justify-between gap-3" aria-label="Pesquisa CARONAA UNIFOR">
@@ -640,9 +623,11 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className={isUnifor?"flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-3":"flex min-w-0 flex-col gap-4"}>
+      <form onSubmit={submit} className={isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-3"):"flex min-w-0 flex-col gap-4"}>
         <section id="research-step-content" className={isUnifor
-          ? "min-h-0 max-h-full w-full min-w-0 shrink overflow-y-auto overflow-x-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage"
+          ? (last && captureEnabled
+            ? "min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6"
+            : "min-h-0 max-h-full w-full min-w-0 shrink overflow-y-auto overflow-x-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage")
           : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
           <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 text-lg font-bold leading-snug outline-none":"text-xl font-bold outline-none"}>
             {pilotRoleStep?"Como pretende participar?":isUnifor
@@ -716,6 +701,28 @@ export function PublicResearchForm({ code }: { code: string }) {
             </p>
           )}
         </section>
+        {last && captureEnabled && (
+          <section aria-label="Contato para reconhecimento" className="shrink-0 space-y-2 rounded-xl border border-border bg-card p-3 sm:p-4">
+            <h3 className="text-sm font-bold">E-mail para reconhecer sua participação</h3>
+            <input type="email" inputMode="email" autoComplete="email" value={email}
+              onChange={e=>{setEmail(e.target.value);setError("");}}
+              aria-label="E-mail para reconhecimento" aria-invalid={email!==""&&!validResearchEmail(email)}
+              placeholder="seuemail@exemplo.com"
+              className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base"/>
+            {email!==""&&!validResearchEmail(email)&&
+              <p role="alert" className="text-xs text-destructive">Confira o formato do e-mail.</p>}
+            <label className="flex items-start gap-2 text-xs leading-5">
+              <input type="checkbox" required checked={linkageConsent}
+                onChange={e=>setLinkageConsent(e.target.checked)} className="mt-1"/>
+              <span>Autorizo usar este e-mail para registrar e reconhecer minha participação na pesquisa. Não é necessário criar conta agora.</span>
+            </label>
+            <label className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+              <input type="checkbox" checked={marketingConsent}
+                onChange={e=>setMarketingConsent(e.target.checked)} className="mt-1"/>
+              <span>Quero receber novidades e campanhas do CARONAA (opcional).</span>
+            </label>
+          </section>
+        )}
         {last && (
           <label className={isUnifor?"flex shrink-0 items-start gap-2 rounded-xl border bg-card p-2.5 text-xs leading-4":"flex items-start gap-3 rounded-xl border bg-card p-4 text-sm"}>
             <input
@@ -772,7 +779,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           {last ? (
             <button
               type="submit"
-              disabled={busy || !consent}
+              disabled={busy || !consent || (captureEnabled && (!linkageConsent || !validResearchEmail(email)))}
               className="min-h-11 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50 sm:px-6"
             >
               {busy ? "Enviando…" : "Enviar respostas"}
