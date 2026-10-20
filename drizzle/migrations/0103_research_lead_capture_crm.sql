@@ -18,11 +18,14 @@ ALTER TABLE public.research_lead_contacts ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.research_lead_contacts FROM PUBLIC,anon,authenticated;
 -- All contact reads pass through authorized aggregate or paginated RPCs.
 
-CREATE OR REPLACE FUNCTION public.research_contact_capture_enabled()
+CREATE OR REPLACE FUNCTION public.research_contact_capture_enabled(p_form_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
-AS $$ SELECT true $$;
-REVOKE ALL ON FUNCTION public.research_contact_capture_enabled() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.research_contact_capture_enabled() TO anon,authenticated;
+AS $
+ SELECT EXISTS (SELECT 1 FROM public.research_configurations c
+   WHERE c.form_id=p_form_id AND c.settings->>'emailCaptureEnabled'='true')
+$;
+REVOKE ALL ON FUNCTION public.research_contact_capture_enabled(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.research_contact_capture_enabled(uuid) TO anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.capture_research_lead(
   p_form_id uuid,p_submission_key uuid,p_email text,
@@ -41,8 +44,9 @@ BEGIN
      v_email !~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$' THEN
     RAISE EXCEPTION 'Informe um e-mail válido' USING ERRCODE='22023';
   END IF;
-  IF p_form_id IS NULL OR p_submission_key IS NULL THEN
-    RAISE EXCEPTION 'Dados da pesquisa inválidos' USING ERRCODE='22023';
+  IF p_form_id IS NULL OR p_submission_key IS NULL OR
+     NOT public.research_contact_capture_enabled(p_form_id) THEN
+    RAISE EXCEPTION 'Captação não habilitada nesta pesquisa' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_answer FROM public.research_answers
   WHERE form_id=p_form_id AND client_submission_key=p_submission_key
