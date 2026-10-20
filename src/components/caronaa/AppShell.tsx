@@ -332,7 +332,7 @@ export function AppShell({
             <Button asChild size="sm" variant="outline" className="min-h-10 shrink-0 border-primary/30 bg-background">
               <Link to={adminPreview.returnTo as "/admin"} onClick={leaveAdminAppPreview}>
                 <LayoutDashboard size={15} className="mr-1.5" />
-                Voltar ao Admin
+                Painel administrativo
               </Link>
             </Button>
           </div>
