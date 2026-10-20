@@ -37,6 +37,8 @@ export type SurveyQuestion = {
   minValue?: number;
   maxValue?: number;
   integerOnly?: boolean;
+  minLength?: number;
+  maxLength?: number;
 };
 export type SurveySection = {
   title: string;
@@ -1007,7 +1009,7 @@ export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
               options: [],
               semanticCode: "SEATS_AVAILABLE",
               minValue: 0,
-              maxValue: 8,
+              maxValue: 7,
               integerOnly: true,
             },
             {
