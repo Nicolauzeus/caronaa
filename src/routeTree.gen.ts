@@ -16,11 +16,13 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as FormularioRouteImport } from './routes/formulario'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PitchRouteImport } from './routes/pitch'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAguardandoRouteImport } from './routes/_authenticated/aguardando'
 import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
@@ -101,6 +103,11 @@ const FormularioRoute = FormularioRouteImport.update({
   path: '/formulario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PitchRoute = PitchRouteImport.update({
   id: '/pitch',
   path: '/pitch',
@@ -126,6 +133,12 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAguardandoRoute = AuthenticatedAguardandoRouteImport.update({
   id: '/aguardando',
   path: '/aguardando',
@@ -368,11 +381,13 @@ export interface FileRoutesByFullPath {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
+  '/mcp': typeof McpRoute
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
   '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
@@ -424,11 +439,13 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
+  '/mcp': typeof McpRoute
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
   '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
@@ -484,11 +501,13 @@ export interface FileRoutesById {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
+  '/mcp': typeof McpRoute
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/aguardando': typeof AuthenticatedAguardandoRoute
   '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
@@ -544,11 +563,13 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/mcp'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
     | '/termos'
+    | '/.well-known/oauth-protected-resource'
     | '/aguardando'
     | '/disponibilidade-profissional'
     | '/home'
@@ -600,11 +621,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/buscar'
     | '/como-funciona'
+    | '/mcp'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
     | '/termos'
+    | '/.well-known/oauth-protected-resource'
     | '/aguardando'
     | '/disponibilidade-profissional'
     | '/home'
@@ -659,11 +682,13 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/mcp'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
     | '/termos'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/aguardando'
     | '/_authenticated/disponibilidade-profissional'
     | '/_authenticated/home'
@@ -719,11 +744,13 @@ export interface RootRouteChildren {
   BuscarRoute: typeof BuscarRoute
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   FormularioRoute: typeof FormularioRouteWithChildren
+  McpRoute: typeof McpRoute
   PitchRoute: typeof PitchRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   PesquisasCodeRoute: typeof PesquisasCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
@@ -782,6 +809,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormularioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pitch': {
       id: '/pitch'
       path: '/pitch'
@@ -815,6 +849,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/aguardando': {
@@ -1262,11 +1303,14 @@ const rootRouteChildren: RootRouteChildren = {
   BuscarRoute: BuscarRoute,
   ComoFuncionaRoute: ComoFuncionaRoute,
   FormularioRoute: FormularioRouteWithChildren,
+  McpRoute: McpRoute,
   PitchRoute: PitchRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   PesquisasCodeRoute: PesquisasCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
