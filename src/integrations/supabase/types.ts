@@ -1616,6 +1616,67 @@ export type Database = {
           },
         ]
       }
+      research_launch_release_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          changed_at: string
+          form_id: string
+          id: number
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          changed_at?: string
+          form_id: string
+          id?: never
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          changed_at?: string
+          form_id?: string
+          id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_launch_release_audit_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_launch_releases: {
+        Row: {
+          form_id: string
+          released_at: string | null
+          released_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          form_id: string
+          released_at?: string | null
+          released_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          form_id?: string
+          released_at?: string | null
+          released_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_launch_releases_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: true
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_participation_badges: {
         Row: {
           answer_id: string
@@ -2589,6 +2650,60 @@ export type Database = {
         }
         Relationships: []
       }
+      unifor_prelaunch_intents: {
+        Row: {
+          answer_id: string
+          created_at: string
+          departure_time: string | null
+          destination_area: string | null
+          form_id: string
+          intent_kind: string
+          origin_area: string | null
+          scheduled_date: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          answer_id: string
+          created_at?: string
+          departure_time?: string | null
+          destination_area?: string | null
+          form_id: string
+          intent_kind: string
+          origin_area?: string | null
+          scheduled_date?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          answer_id?: string
+          created_at?: string
+          departure_time?: string | null
+          destination_area?: string | null
+          form_id?: string
+          intent_kind?: string
+          origin_area?: string | null
+          scheduled_date?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unifor_prelaunch_intents_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "research_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unifor_prelaunch_intents_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2934,6 +3049,7 @@ export type Database = {
       get_municipal_research_overview: { Args: never; Returns: Json }
       get_my_admin_scope: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
+      get_my_research_launch_state: { Args: never; Returns: Json }
       get_my_research_participation_badges: {
         Args: never
         Returns: {
@@ -2945,6 +3061,7 @@ export type Database = {
       }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
+      get_my_unifor_launch_state: { Args: never; Returns: Json }
       get_offer_preference_bonuses: {
         Args: { p_offer_ids: string[] }
         Returns: {
@@ -2998,6 +3115,10 @@ export type Database = {
         Returns: Json
       }
       get_research_form_removal_eligibility: {
+        Args: { p_form_id: string }
+        Returns: Json
+      }
+      get_research_launch_admin_state: {
         Args: { p_form_id: string }
         Returns: Json
       }
@@ -3112,7 +3233,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_research_launch_locked: { Args: { p_user: string }; Returns: boolean }
       is_restricted_research: { Args: { p_form_id: string }; Returns: boolean }
+      is_unifor_prelaunch_locked: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       issue_ride_boarding_code: {
         Args: { p_ride_id: string }
         Returns: undefined
@@ -3207,6 +3333,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      research_launch_participant: {
+        Args: { p_form: string; p_user: string }
+        Returns: boolean
+      }
       research_question_visible: {
         Args: {
           v_answers: Json
@@ -3299,6 +3429,10 @@ export type Database = {
         Args: { p_available: boolean; p_municipality?: string }
         Returns: undefined
       }
+      set_research_launch_release: {
+        Args: { p_form_id: string; p_released: boolean }
+        Returns: Json
+      }
       set_ride_routine_active: {
         Args: { p_active: boolean; p_routine_id: string }
         Returns: undefined
@@ -3369,6 +3503,10 @@ export type Database = {
       update_ride_transit_stage: {
         Args: { p_ride_id: string; p_stage: string }
         Returns: string
+      }
+      upsert_unifor_prelaunch_intent: {
+        Args: { p_answer: string; p_user: string }
+        Returns: undefined
       }
       validate_research_configuration: { Args: { p: Json }; Returns: undefined }
       validate_research_journey: { Args: { c: Json; p: Json }; Returns: Json }
