@@ -21,7 +21,7 @@ export function ResearchSeatPicker({
 
   return (
     <div id={id} className="min-w-0 space-y-2" role="group" aria-label="Lugares para passageiros">
-      <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
         {quick.map((n) => (
           <button key={n} type="button" aria-pressed={!manual && value === String(n)}
             onClick={() => { setManual(false); onChange(String(n)); }}
