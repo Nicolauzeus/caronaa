@@ -15,9 +15,9 @@ export function validResearchEmail(email: string): boolean {
 }
 
 /** Allows the new flow only after the matching migration is actually available. */
-export async function researchLeadCaptureEnabled(): Promise<boolean> {
+export async function researchLeadCaptureEnabled(formId: string): Promise<boolean> {
   try {
-    const { data, error } = await db.rpc("research_contact_capture_enabled");
+    const { data, error } = await db.rpc("research_contact_capture_enabled", { p_form_id: formId });
     return !error && data === true;
   } catch {
     return false;
