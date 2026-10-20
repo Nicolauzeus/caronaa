@@ -1,3 +1,5 @@
+import { formatPickupAt } from "@/lib/intelligent-match";
+import { RideOpportunities } from "@/components/caronaa/RideOpportunities";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -179,6 +181,7 @@ function GerenciarOferta() {
             </p>
           )}
         </section>
+        <RideOpportunities offerId={offerId} role="driver" />
         {pendingPassenger.length > 0 && (
           <section className="mt-6">
             <h2 className="mb-2 text-base font-bold">
@@ -390,6 +393,7 @@ function PassengerRequest({
       </p>
       <div className="mt-3 grid gap-1 text-sm text-muted-foreground">
         <p>Embarque: {ride.meetingPoint || ride.origin}</p>
+        {ride.pickupEstimatedAt && <p>Horário estimado de embarque: {formatPickupAt(ride.pickupEstimatedAt)}</p>}
         <p>Desembarque: {ride.destination}</p>
         <p className="flex items-center gap-1">
           <UsersRound size={14} />

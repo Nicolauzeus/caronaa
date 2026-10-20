@@ -91,10 +91,10 @@ describe("OSRM ordered multi-stop route query", () => {
     ).rejects.toThrow("inválidas");
     await expect(
       getMultiStopRoute(
-        Array.from({ length: 15 }, (_, i) => ({ lat: i, lng: i })),
+        Array.from({ length: 17 }, (_, i) => ({ lat: i, lng: i })),
         fetchMock as unknown as typeof fetch,
       ),
-    ).rejects.toThrow("14 pontos");
+    ).rejects.toThrow("16 pontos");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

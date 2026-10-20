@@ -100,6 +100,14 @@ describe("administrative match suggestions", () => {
     expect(getMatchSuggestions(empty())).toEqual([]);
     expect(getOperationPeople(empty(), true)).toEqual([]);
   });
+  it("uses backend eligibility without substituting a different local decision", () => {
+    const data = compatibleData();
+    data.matchSuggestionIds = [{ requestId: "request", offerId: "offer" }];
+    data.offers[0].time_tolerance_minutes = 5;
+    expect(getMatchSuggestions(data)).toEqual([{ request: data.requests[0], offer: data.offers[0] }]);
+    data.matchSuggestionIds = [];
+    expect(getMatchSuggestions(data)).toEqual([]);
+  });
   it("uses geographical compatibility with different names", () => {
     expect(getMatchSuggestions(compatibleData(), 0)).toHaveLength(1);
   });

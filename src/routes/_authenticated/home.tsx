@@ -1,3 +1,4 @@
+import { TimeToleranceSelector, type TimeToleranceMinutes } from "@/components/caronaa/TimeToleranceSelector";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound, CalendarDays } from "lucide-react";
@@ -62,6 +63,7 @@ function Home() {
   const [originLocation, setOriginLocation] = useState<FormLocationDetails>();
   const [destinationLocation, setDestinationLocation] = useState<FormLocationDetails>();
   const [date, setDate] = useState("");
+  const [timeTolerance, setTimeTolerance] = useState<TimeToleranceMinutes>(15);
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
   const [requestFare, setRequestFare] = useState<
@@ -411,6 +413,7 @@ function Home() {
                   destino: destination,
                   data: date,
                   horario: time,
+                  tolerancia: String(timeTolerance),
                 });
                 if (originLocation?.lat != null && originLocation.lng != null) {
                   params.set("olat", String(originLocation.lat));
@@ -442,7 +445,7 @@ function Home() {
                     rideDate: date,
                     departureTime: time,
                     passengerCount: Number(count),
-                    timeToleranceMinutes: 15,
+                    timeToleranceMinutes: timeTolerance,
                     preferences,
                   },
                 });
@@ -592,6 +595,7 @@ function Home() {
                 />
               </label>
             </div>
+            <TimeToleranceSelector value={timeTolerance} onChange={setTimeTolerance} baseTime={time} label="Flexibilidade de horário" />
             {role === "request" && (
               <label className="flex min-h-12 items-center justify-between text-sm font-semibold">
                 Passageiros

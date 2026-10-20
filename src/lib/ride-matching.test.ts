@@ -99,7 +99,7 @@ describe("ride compatibility", () => {
     expect(
       isRideRequestCompatibleWithOffer({
         ...compatibleRide,
-        offer: { ...compatibleRide.offer, availableSeats: 7 },
+        offer: { ...compatibleRide.offer, availableSeats: 8 },
       }),
     ).toBe(false);
   });

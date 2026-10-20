@@ -2344,6 +2344,7 @@ export type Database = {
           driver_user_id: string
           match_id: string
           offer_id: string
+          pickup_estimated_at?: string | null
           passenger_accepted_at: string | null
           passenger_contribution: number
           passenger_group_total: number | null
@@ -2368,6 +2369,7 @@ export type Database = {
           driver_user_id: string
           match_id: string
           offer_id: string
+          pickup_estimated_at?: string | null
           passenger_accepted_at?: string | null
           passenger_contribution?: number
           passenger_group_total?: number | null
@@ -2392,6 +2394,7 @@ export type Database = {
           driver_user_id?: string
           match_id?: string
           offer_id?: string
+          pickup_estimated_at?: string | null
           passenger_accepted_at?: string | null
           passenger_contribution?: number
           passenger_group_total?: number | null

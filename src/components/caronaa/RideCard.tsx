@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { requestRideOffer, type RideSummary } from "@/lib/rides.functions";
 import { toast } from "sonner";
+import { MatchOpportunityDetails } from "./MatchOpportunityDetails";
 import { formatBrl } from "@/lib/ride-cost";
 
 function formatDate(value: string) {
@@ -71,6 +72,7 @@ export function RideCard({
   onQuoteExpired?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [adjustmentAccepted, setAdjustmentAccepted] = useState(false);
   const [requested, setRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const requestOffer = useServerFn(requestRideOffer);
@@ -80,11 +82,18 @@ export function RideCard({
   const canRequest = ride.kind === "offer" && ride.role === "available" && ride.offerId;
 
   async function requestRide() {
-    if (!ride.offerId || !segmentRequest) return;
+    if (
+      !ride.offerId ||
+      !segmentRequest ||
+      (ride.matchEvaluation?.requiresAdjustment && !adjustmentAccepted)
+    )
+      return;
     setRequesting(true);
     try {
       await requestOffer({
         data: {
+          acceptAdjustment: adjustmentAccepted,
+          expectedPickup: ride.matchEvaluation?.pickupAt,
           offerId: ride.offerId,
           quoteId: segmentRequest.quoteId,
           rideDate: segmentRequest.rideDate,
@@ -99,7 +108,7 @@ export function RideCard({
           "Seu trecho e preço foram enviados. A viagem só será confirmada após os dois aceites.",
       });
     } catch (error) {
-      if (error instanceof Error && /cotação expirou|quote.*expired/i.test(error.message))
+      if (error instanceof Error && /cotação.*expir|quote.*expired/i.test(error.message))
         onQuoteExpired?.();
       toast.error(error instanceof Error ? error.message : "Não foi possível solicitar a carona.");
     } finally {
@@ -151,6 +160,7 @@ export function RideCard({
           <span className="font-semibold text-primary">Adequação {ride.matchScore}/100</span>
         )}
       </div>
+      {ride.matchEvaluation && <MatchOpportunityDetails fit={ride.matchEvaluation} />}
       {ride.pricePerPassenger != null && ride.routeDistanceKm != null && (
         <div className="mt-2.5 border-t border-border pt-2">
           <p className="font-bold text-primary">
@@ -203,6 +213,18 @@ export function RideCard({
           ) : null}
         </div>
       )}
+      {canRequest && segmentRequest && ride.matchEvaluation?.requiresAdjustment && (
+        <label className="mt-3 flex items-start gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={adjustmentAccepted}
+            onChange={(event) => setAdjustmentAccepted(event.target.checked)}
+            className="mt-0.5"
+          />
+          Posso embarcar no horário estimado acima e aceito ajustar meu pedido para solicitar esta
+          proposta.
+        </label>
+      )}
       <div className="mt-3 flex gap-2">
         <Button
           type="button"
@@ -217,7 +239,12 @@ export function RideCard({
           <Button
             type="button"
             className="h-10 flex-1"
-            disabled={requested || requesting || !segmentRequest}
+            disabled={
+              requested ||
+              requesting ||
+              !segmentRequest ||
+              (!!ride.matchEvaluation?.requiresAdjustment && !adjustmentAccepted)
+            }
             onClick={requestRide}
           >
             {requested ? (

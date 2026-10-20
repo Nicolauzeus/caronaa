@@ -743,6 +743,20 @@
       "when": 1792500200000,
       "tag": "0105_research_dynamic_field_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1792500200001,
+      "tag": "0106_intelligent_ride_opportunities",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1792500200002,
+      "tag": "0107_verified_opportunity_road_assessments",
+      "breakpoints": true
     }
   ]
 }
