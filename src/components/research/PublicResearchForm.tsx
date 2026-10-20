@@ -118,7 +118,8 @@ export function PublicResearchForm({ code }: { code: string }) {
       setJourney(configuration ? initialResearchJourney(configuration.settings) : null);
       // Graceful staged rollout: the form does not require contact collection
       // until the migration-backed RPC is available.
-      const canCapture = await researchLeadCaptureEnabled(f.id);
+      const canCapture = Boolean(configuration?.settings.emailCaptureEnabled) &&
+        await researchLeadCaptureEnabled(f.id);
       if (!alive) return;
       setCaptureEnabled(canCapture);
       setForm({
