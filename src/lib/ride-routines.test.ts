@@ -37,7 +37,9 @@ describe("weekly routine input", () => {
       routineDefinitionSchema.safeParse({ ...definition, endDate: "2029-12-31" }).success,
     ).toBe(false);
     expect(routineDefinitionSchema.safeParse({ ...definition, seats: 0 }).success).toBe(false);
-    expect(routineDefinitionSchema.safeParse({ ...definition, seats: 7 }).success).toBe(false);
+    expect(routineDefinitionSchema.safeParse({ ...definition, seats: 7 }).success).toBe(true);
+    expect(routineDefinitionSchema.safeParse({ ...definition, seats: 8 }).success).toBe(false);
+    expect(routineDefinitionSchema.safeParse({ ...definition, kind: "request", seats: 7 }).success).toBe(false);
   });
   it("keeps occurrence edits independent of weekly days", () => {
     const edited = occurrenceDefinitionSchema.parse({
