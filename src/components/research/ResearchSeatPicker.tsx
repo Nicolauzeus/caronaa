@@ -14,7 +14,7 @@ export function ResearchSeatPicker({
 }) {
   const [manual, setManual] = useState(() => Number(value) > 4);
   const count = Number(value);
-  const valid = value.trim() !== "" && /^\\d+$/.test(value)
+  const valid = value.trim() !== "" && /^\d+$/.test(value)
     && Number.isInteger(count) && count >= min && count <= max;
   const quick = Array.from({ length: 5 - min }, (_, index) => min + index)
     .filter((n) => n <= max);
