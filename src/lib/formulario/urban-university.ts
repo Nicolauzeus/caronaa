@@ -48,7 +48,7 @@ export const urbanUniversityTemplate: ResearchTemplate = {
           { id: "urban_offer_vehicle", label: "Qual veículo usaria para oferecer carona?", type: "single_choice", required: true,
             options: ["CARRO","MOTO"], showWhen: { questionId: "urban_offer_possible", equals: "SIM" }, semanticCode: "URBAN_OFFER_VEHICLE" },
           { id: "urban_seats", label: "Quantos lugares para passageiros teria disponíveis?", type: "number", required: true,
-            options: [], minValue: 1, maxValue: 4, integerOnly: true, semanticCode: "SEATS_AVAILABLE",
+            options: [], minValue: 1, maxValue: 7, integerOnly: true, semanticCode: "SEATS_AVAILABLE",
             showWhen: { questionId: "urban_offer_possible", equals: "SIM" },
             helpText: "Para uma motocicleta, considere apenas um passageiro, quando a modalidade for permitida." },
           { id: "urban_adoption", label: "Se uma carona tiver rota, horário e condições claras, consideraria participar?", type: "single_choice",
