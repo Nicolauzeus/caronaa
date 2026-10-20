@@ -48,7 +48,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     return data;
   },
   pendingComponent: () => <main className="p-8 text-center text-foreground" role="status">Carregando pedido de conexão...</main>,
-  errorComponent: ({ error }) => <main className="mx-auto max-w-lg space-y-4 px-6 py-16 text-foreground"><h1 className="font-display text-2xl">Não foi possível conectar</h1><p role="alert">{error.message}</p><Button asChild variant="outline"><Link to="/">Voltar para CARONAA</Link></Button></main>,
+  errorComponent: ({ error }) => <main className="mx-auto max-w-lg space-y-4 px-6 py-16 text-foreground"><h1 className="font-display text-2xl">Não foi possível conectar</h1><p role="alert">{error instanceof Error ? error.message : "Não foi possível carregar este pedido de conexão."}</p><Button asChild variant="outline"><Link to="/">Voltar para CARONAA</Link></Button></main>,
   component: Consent,
 });
 
