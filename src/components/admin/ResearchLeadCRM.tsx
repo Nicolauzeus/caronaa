@@ -135,7 +135,7 @@ export function ResearchLeadCRM() {
       {listLoading ? <p role="status" className="py-4 text-sm text-muted-foreground">Carregando contatos…</p> :
         rows.length === 0 ? <p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">Nenhum contato encontrado neste recorte.</p> : (
           <>
-            <div className="space-y-2 md:hidden">
+            <div className="grid gap-2 sm:grid-cols-2 xl:hidden">
               {rows.map((lead) => (
                 <article key={lead.email} className="min-w-0 rounded-xl border border-border bg-card p-3">
                   <p className="break-all text-sm font-semibold">{lead.email}</p>
@@ -147,7 +147,7 @@ export function ResearchLeadCRM() {
                 </article>
               ))}
             </div>
-            <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+            <div className="hidden overflow-x-auto rounded-xl border border-border xl:block">
               <table className="w-full min-w-[700px] border-collapse text-left text-sm">
                 <thead className="bg-muted/60 text-xs text-muted-foreground">
                   <tr><th className="p-3">E-mail</th><th className="p-3">Pesquisa</th>
