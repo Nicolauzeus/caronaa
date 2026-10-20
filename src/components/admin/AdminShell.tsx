@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Building2,
@@ -17,8 +17,11 @@ import {
   LayoutDashboard,
   Menu,
   Search,
+  LogOut,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
@@ -30,6 +33,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/admin/departments";
 import { useAdminAccess, hasDepartmentAccess } from "@/lib/admin/access";
+import { enterAdminAppPreview, type AdminEntryRoute } from "@/lib/admin/entry";
 import { getDepartmentHome, getDepartmentOfPath } from "@/lib/admin/module-navigation";
 import { AdminDepartmentTabs } from "@/components/admin/AdminDepartmentTabs";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -185,6 +189,8 @@ function getInitials(name: string) {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const scope = useAdminAccess();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -290,6 +296,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [profile?.avatar_url, user]);
 
   const adminInitials = useMemo(() => getInitials(adminName), [adminName]);
+  async function signOut() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    const { error } = await supabase.auth.signOut();
+    if (error) { toast.error("Não foi possível encerrar a sessão. Tente novamente."); return; }
+    void navigate({ to: "/auth", replace: true });
+  }
+  function switchToApp() {
+    if (!user?.id) return;
+    const returnTo: AdminEntryRoute = scope.isGlobalAdmin
+      ? "/admin" : getDepartmentHome(scope.departments[0]?.id ?? "technology") as AdminEntryRoute;
+    enterAdminAppPreview(user.id, returnTo);
+  }
 
   return (
     <div className="admin-workspace min-h-screen bg-background">
@@ -371,11 +390,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
+                  <Button type="button" variant="ghost" size="icon"
+                    aria-label="Sair do painel administrativo" title="Sair do painel"
+                    onClick={() => void signOut()}>
+                    <LogOut size={17} />
+                  </Button>
 
                   <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
-                    <Link to="/home">
+                    <Link to="/home" preload={false} onClick={switchToApp}>
                       <ArrowLeft size={14} className="mr-1" />
-                      Voltar ao app
+                      Visualizar aplicativo
                     </Link>
                   </Button>
 
@@ -389,7 +413,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     <div className="hidden max-w-[150px] text-left sm:block">
                       <p className="truncate text-xs font-semibold text-foreground">{adminName}</p>
 
-                      <p className="text-[10px] text-muted-foreground">Administrador</p>
+                      <p className="text-[10px] text-muted-foreground">{scope.isGlobalAdmin ? "Administrador" : "Equipe administrativa"}</p>
                     </div>
                   </div>
                 </div>
@@ -434,6 +458,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             className="mb-4"
           />
           <AdminNav mobile query={navQuery} onNavigate={() => setMobileOpen(false)} />
+          <div className="mt-5 border-t border-border pt-4">
+            <Button asChild variant="outline" className="min-h-11 w-full justify-start">
+              <Link to="/home" preload={false} onClick={() => { switchToApp(); setMobileOpen(false); }}>
+                <ArrowLeft size={16} className="mr-2" />
+                Visualizar aplicativo
+              </Link>
+            </Button>
+          </div>
+          <Button type="button" variant="ghost" className="mt-3 min-h-11 w-full justify-start text-destructive"
+            onClick={() => { setMobileOpen(false); void signOut(); }}>
+            <LogOut size={16} className="mr-2" />
+            Sair da conta
+          </Button>
         </SheetContent>
       </Sheet>
     </div>
