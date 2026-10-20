@@ -13,6 +13,12 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
   const select=(v:string|string[])=>onChange(q.id,v);
   const bounds=q.type==="number"?getNumberBounds(q):null;
   const seatQuestion=q.type==="number"&&["SEATS_AVAILABLE","EVENT_OFFER_SEATS"].includes(q.semanticCode??"");
+  // A motorcycle may take only one passenger: show the restriction while the
+  // respondent is typing rather than at the end of the survey.
+  const motorcycle = Boolean((allQuestions??section.questions).some((item) =>
+    ["URBAN_OFFER_VEHICLE","REGIONAL_OFFER_VEHICLE","EVENT_OFFER_VEHICLE"].includes(item.semanticCode??"")
+    && answers[item.id]==="MOTO"));
+  const seatMax = motorcycle ? 1 : bounds?.max ?? 7;
   const isText=q.type==="short_text"||q.type==="long_text"||q.type==="location";
   const charCount=isText?Array.from(String(value??"").trim()).length:0;
   const charMax=q.maxLength??(q.type==="long_text"?2000:240);
@@ -70,7 +76,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
   q.type==="matrix"?<div className="space-y-2">{(q.rows??[]).map(row=>{const found=Array.isArray(value)?value.find(x=>x.startsWith(row+"::")):undefined;return <label key={row} className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm"><span className="min-w-28 flex-1 font-medium">{row}</span><select value={found?.slice(row.length+2)??""} onChange={e=>{const current=Array.isArray(value)?value.filter(x=>!x.startsWith(row+"::")):[];select(e.target.value?[...current,row+"::"+e.target.value]:current)}} className="min-w-32 rounded-lg border bg-background p-2"><option value="">Escolha</option>{q.options.map(opt=><option key={opt}>{opt}</option>)}</select></label>})}</div>:
   q.type==="rating_1_5"||q.type==="rating_0_10"||q.type==="rating_stars"?rating(q.type==="rating_0_10"?10:5,q.type==="rating_0_10"?0:1):
   seatQuestion&&bounds?
-  <ResearchSeatPicker id={id} value={String(value??"")} min={bounds.min} max={bounds.max}
+  <ResearchSeatPicker id={id} value={String(value??"")} min={bounds.min} max={seatMax}
     onChange={select} error={errors[q.id]} />:
   q.type==="number"&&bounds?.integerOnly&&bounds.max-bounds.min<=10?
   <><select id={id} value={String(value??"")} onChange={e=>select(e.target.value)} required={q.required} aria-describedby={id+"-limits"} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione a quantidade</option>{Array.from({length:bounds.max-bounds.min+1},(_,i)=>i+bounds.min).map(n=><option key={n} value={String(n)}>{n}</option>)}</select><p id={id+"-limits"} className="text-xs text-muted-foreground">Escolha entre {bounds.min} e {bounds.max}.</p></>:
