@@ -9,11 +9,13 @@ import {
   UserRound,
   X,
   ShieldCheck,
+  LayoutDashboard,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { getAdminAppPreview, leaveAdminAppPreview } from "@/lib/admin/entry";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
@@ -49,6 +51,7 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { user, loading } = useAuth();
+  const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -319,6 +322,22 @@ export function AppShell({
           </nav>
         )}
       </header>
+
+      {adminPreview && (
+        <div role="status" className="border-b border-primary/25 bg-primary/10 px-4 py-2.5">
+          <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-foreground sm:text-sm">
+              <strong>Modo aplicativo</strong> — as ações realizadas no aplicativo continuam sendo reais.
+            </p>
+            <Button asChild size="sm" variant="outline" className="min-h-10 shrink-0 border-primary/30 bg-background">
+              <Link to={adminPreview.returnTo as "/admin"} onClick={leaveAdminAppPreview}>
+                <LayoutDashboard size={15} className="mr-1.5" />
+                Voltar ao Admin
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Conteúdo Principal */}
       <main
