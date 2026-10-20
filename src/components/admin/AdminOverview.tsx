@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, RefreshCw } from "lucide-react";
 import { AdminPageHeader } from "./AdminPageHeader";
@@ -14,6 +14,14 @@ import { getRetentionMetrics } from "@/lib/retention-metrics";
 import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
 import { AdminDataError as SourceError } from "./AdminDataError";
 
+const createPeriod = () => {
+  const end = new Date();
+  return {
+    periodStart: new Date(end.getTime() - 30 * 86400000).toISOString(),
+    periodEnd: end.toISOString(),
+  };
+};
+
 const number = (value: number | null | undefined, suffix = "") =>
   typeof value === "number" && Number.isFinite(value)
     ? value.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + suffix
@@ -23,9 +31,12 @@ function Values({ rows }: { rows: [string, string][] }) {
   return (
     <dl className="divide-y divide-border">
       {rows.map(([label, value]) => (
-        <div key={label} className="flex items-baseline justify-between gap-4 py-3 text-sm">
+        <div
+          key={label}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1 py-2.5 text-sm"
+        >
           <dt className="min-w-0 text-muted-foreground">{label}</dt>
-          <dd className="shrink-0 font-semibold tabular-nums">{value}</dd>
+          <dd className="min-w-0 text-right font-semibold tabular-nums">{value}</dd>
         </div>
       ))}
     </dl>
@@ -33,13 +44,9 @@ function Values({ rows }: { rows: [string, string][] }) {
 }
 
 export function AdminOverview() {
-  const [period] = useState(() => {
-    const end = new Date();
-    return {
-      periodStart: new Date(end.getTime() - 30 * 86400000).toISOString(),
-      periodEnd: end.toISOString(),
-    };
-  });
+  const queryClient = useQueryClient();
+  const [period, setPeriod] = useState(createPeriod);
+  const pendingAttentionQueries = useIsFetching({ queryKey: ["admin", "attention"] });
   const [tab, setTab] = useAdminModuleSection(
     { funnel: "funnel", results: "results", people: "people" },
     "funnel",
@@ -105,6 +112,7 @@ export function AdminOverview() {
     user.verifications.some((v) => v.status === "VERIFIED"),
   ).length;
   const queries = [users, operations, forms, funnel, retention];
+  const refreshing = queries.some((query) => query.isFetching) || pendingAttentionQueries > 0;
   const date = (value: string) =>
     new Date(value).toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" });
 
@@ -117,34 +125,41 @@ export function AdminOverview() {
           <Button
             variant="outline"
             size="sm"
-            disabled={queries.some((query) => query.isFetching)}
+            disabled={refreshing}
             onClick={() => {
-              queries.forEach((query) => {
-                void query.refetch();
-              });
+              // Advancing the period key re-queries every time-windowed metric.
+              // Users and attention queues have independent, current-state keys.
+              setPeriod(createPeriod());
+              void users.refetch();
+              void queryClient.invalidateQueries({ queryKey: ["admin", "attention"] });
             }}
           >
-            <RefreshCw size={15} /> Atualizar indicadores
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : undefined} />
+            {refreshing ? "Atualizando indicadores…" : "Atualizar indicadores"}
           </Button>
         }
       />
       <section
         aria-label="Indicadores essenciais"
-        className="grid grid-cols-2 border-y border-border xl:grid-cols-4"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border xl:grid-cols-4"
       >
         {essential.map((metric) => (
           <Link
             key={metric.label}
             to={metric.to}
-            className="min-w-0 p-4 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-primary"
+            className="min-w-0 bg-card p-3 transition-colors hover:bg-muted/40 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-primary sm:p-4"
             aria-label={`${metric.label}: ${metric.query.isPending ? "Carregando" : metric.query.isError ? "Dados indisponíveis" : number(metric.value)}`}
           >
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span>{metric.label}</span>
+            <div className="flex items-start justify-between gap-2 text-xs leading-snug sm:text-sm">
+              <span className="min-w-0">{metric.label}</span>
               <ArrowUpRight size={15} className="shrink-0 text-muted-foreground" />
             </div>
             <p
-              className="my-3 min-h-9 text-xl font-bold tabular-nums sm:text-2xl"
+              className={`my-2 min-h-8 font-bold tabular-nums sm:my-3 ${
+                metric.query.isPending || metric.query.isError
+                  ? "text-sm sm:text-base"
+                  : "text-xl sm:text-2xl"
+              }`}
               aria-busy={metric.query.isPending}
             >
               {metric.query.isPending
