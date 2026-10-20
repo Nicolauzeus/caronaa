@@ -14,7 +14,7 @@ const rideInput = z
     rideDate: z.string().date(),
     departureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     passengerCount: z.number().int().min(1).max(6).optional(),
-    availableSeats: z.number().int().min(1).max(6).optional(),
+    availableSeats: z.number().int().min(1).max(7).optional(),
     timeToleranceMinutes: z
       .union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)])
       .optional(),
