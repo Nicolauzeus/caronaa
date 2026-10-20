@@ -5,7 +5,7 @@ const db = supabase as unknown as {
     PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 };
 
-const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function normalizeResearchEmail(email: string): string {
   return email.trim().toLowerCase();
 }
