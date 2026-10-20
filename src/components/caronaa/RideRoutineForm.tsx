@@ -173,7 +173,7 @@ export function RideRoutineForm({ kind, initial, routineId, occurrence, onSaved 
           <Input
             type="number"
             min={1}
-            max={6}
+            max={kind === "offer" ? 7 : 6}
             required
             value={form.seats}
             onChange={(event) => update("seats", Number(event.target.value))}
