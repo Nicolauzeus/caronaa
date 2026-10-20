@@ -131,8 +131,8 @@ export function getNumberBounds(q: SurveyQuestion): {
     integerOnly = true;
   } else if (id === "cost" || semantic === "COST_PER_TRIP") {
     max = 10000;
-  } else if (id === "seats" || semantic === "SEATS_AVAILABLE") {
-    max = 8;
+  } else if (id === "seats" || semantic === "SEATS_AVAILABLE" || semantic === "EVENT_OFFER_SEATS") {
+    max = 7;
     integerOnly = true;
   } else if (id === "group") {
     min = 1;
