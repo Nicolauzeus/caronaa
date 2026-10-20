@@ -21,8 +21,8 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as TermosRouteImport } from './routes/termos'
-import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
 import { Route as AuthenticatedAguardandoRouteImport } from './routes/_authenticated/aguardando'
+import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
@@ -125,17 +125,17 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAguardandoRoute = AuthenticatedAguardandoRouteImport.update({
+  id: '/aguardando',
+  path: '/aguardando',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDisponibilidadeProfissionalRoute =
   AuthenticatedDisponibilidadeProfissionalRouteImport.update({
     id: '/disponibilidade-profissional',
     path: '/disponibilidade-profissional',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAguardandoRoute = AuthenticatedAguardandoRouteImport.update({
-  id: '/aguardando',
-  path: '/aguardando',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -367,8 +367,8 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
-  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
+  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
@@ -422,8 +422,8 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
-  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
+  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
@@ -481,8 +481,8 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
-  '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/_authenticated/aguardando': typeof AuthenticatedAguardandoRoute
+  '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
@@ -540,8 +540,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguranca'
     | '/termos'
-    | '/disponibilidade-profissional'
     | '/aguardando'
+    | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
@@ -595,8 +595,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguranca'
     | '/termos'
-    | '/disponibilidade-profissional'
     | '/aguardando'
+    | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
@@ -653,8 +653,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguranca'
     | '/termos'
-    | '/_authenticated/disponibilidade-profissional'
     | '/_authenticated/aguardando'
+    | '/_authenticated/disponibilidade-profissional'
     | '/_authenticated/home'
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
@@ -804,18 +804,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/disponibilidade-profissional': {
-      id: '/_authenticated/disponibilidade-profissional'
-      path: '/disponibilidade-profissional'
-      fullPath: '/disponibilidade-profissional'
-      preLoaderRoute: typeof AuthenticatedDisponibilidadeProfissionalRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/aguardando': {
       id: '/_authenticated/aguardando'
       path: '/aguardando'
       fullPath: '/aguardando'
       preLoaderRoute: typeof AuthenticatedAguardandoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/disponibilidade-profissional': {
+      id: '/_authenticated/disponibilidade-profissional'
+      path: '/disponibilidade-profissional'
+      fullPath: '/disponibilidade-profissional'
+      preLoaderRoute: typeof AuthenticatedDisponibilidadeProfissionalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/home': {
@@ -1116,8 +1116,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDisponibilidadeProfissionalRoute: typeof AuthenticatedDisponibilidadeProfissionalRoute
   AuthenticatedAguardandoRoute: typeof AuthenticatedAguardandoRoute
+  AuthenticatedDisponibilidadeProfissionalRoute: typeof AuthenticatedDisponibilidadeProfissionalRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
   AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
@@ -1128,9 +1128,9 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAguardandoRoute: AuthenticatedAguardandoRoute,
   AuthenticatedDisponibilidadeProfissionalRoute:
     AuthenticatedDisponibilidadeProfissionalRoute,
-  AuthenticatedAguardandoRoute: AuthenticatedAguardandoRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
