@@ -43,5 +43,6 @@ describe("Institutional cohort access regression",()=>{
  it("does not send every existing user to the waiting page when they complete a form",()=>{
    expect(form).toContain('<a href={user ? "/home"');
    expect(form).not.toContain('form.configuration?.settings.launchDate ? "/aguardando" : "/home"');
+   expect(form).toContain('form.configuration?.settings.launchDate ? "/aguardando" : "/perfil"');
  });
 });
