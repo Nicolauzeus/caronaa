@@ -536,7 +536,9 @@ export function PublicResearchForm({ code }: { code: string }) {
     ? {...section,title:currentGroup.title,questions:currentGroup.questions} : section;
   return (
     <main className={isUnifor
-      ? "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
+      ? last && captureEnabled
+        ? "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-28 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-6"
+        : "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
       : "mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8"}>
       {isUnifor ? (
         <header className="flex min-h-10 shrink-0 items-center justify-between gap-3" aria-label="Pesquisa CARONAA UNIFOR">
@@ -620,9 +622,11 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className={isUnifor?"flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-3":"flex min-w-0 flex-col gap-4"}>
+      <form onSubmit={submit} className={isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-3"):"flex min-w-0 flex-col gap-4"}>
         <section id="research-step-content" className={isUnifor
-          ? "min-h-0 max-h-full w-full min-w-0 shrink overflow-y-auto overflow-x-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage"
+          ? (last && captureEnabled
+            ? "min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6"
+            : "min-h-0 max-h-full w-full min-w-0 shrink overflow-y-auto overflow-x-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage")
           : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
           <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 text-lg font-bold leading-snug outline-none":"text-xl font-bold outline-none"}>
             {pilotRoleStep?"Como pretende participar?":isUnifor
