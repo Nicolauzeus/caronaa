@@ -55,8 +55,8 @@ export type ResearchLeadMetrics = {
   confirmedAccounts: number;
   marketingOptIn: number;
 };
-export async function getAdminResearchLeadMetrics(): Promise<ResearchLeadMetrics> {
-  const { data, error } = await db.rpc("get_admin_research_lead_metrics");
+export async function getAdminResearchLeadMetrics(formId?: string): Promise<ResearchLeadMetrics> {
+  const { data, error } = await db.rpc("get_admin_research_lead_metrics", { p_form_id: formId || null });
   if (error || !data || typeof data !== "object")
     throw new Error("Indicadores da captação indisponíveis. Confira a migration 0103.");
   const value = data as Record<string, unknown>;
@@ -70,13 +70,25 @@ export async function getAdminResearchLeadMetrics(): Promise<ResearchLeadMetrics
 }
 export async function getAdminResearchLeads(input: {
   limit: number; offset: number; status: ResearchLeadStatus | "ALL";
+  formId?: string; marketingOnly?: boolean;
 }): Promise<{ rows: ResearchLeadRow[]; total: number }> {
   const { data, error } = await db.rpc("get_admin_research_leads", {
     p_limit: Math.min(100, Math.max(1, input.limit)),
     p_offset: Math.max(0, input.offset),
     p_status: input.status,
+    p_form_id: input.formId || null,
+    p_marketing_only: Boolean(input.marketingOnly),
   });
   if (error || !Array.isArray(data)) throw new Error("Não foi possível consultar os leads das pesquisas.");
   const rows = data as ResearchLeadRow[];
   return { rows, total: Number(rows[0]?.total_count ?? 0) };
+}
+
+export type ResearchLeadSource = {
+  form_id: string; form_title: string; source_code: string; contact_count: number;
+};
+export async function getAdminResearchLeadSources(): Promise<ResearchLeadSource[]> {
+  const { data, error } = await db.rpc("get_admin_research_lead_sources");
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar os formulários de origem.");
+  return data as ResearchLeadSource[];
 }
