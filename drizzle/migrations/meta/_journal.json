@@ -729,6 +729,13 @@
       "when": 1792500000000,
       "tag": "0103_research_lead_capture_crm",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1792500100000,
+      "tag": "0104_seven_passenger_seat_capacity",
+      "breakpoints": true
     }
   ]
 }
