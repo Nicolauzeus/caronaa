@@ -29,6 +29,27 @@ export function preferredAdminEntry(scope: AdminScope): AdminEntryRoute | null {
   return null;
 }
 
+/**
+ * Preserve an intentional deep link while choosing the verified role's home
+ * for ordinary sign-in. /admin belongs only to authorized administrators;
+ * a departmental grant never implies access to the global overview.
+ */
+export function authenticatedLanding(
+  requested: string,
+  adminHome: AdminEntryRoute | null,
+): string {
+  if (requested === "/home" || requested === "/home/" || requested === "/auth") {
+    return adminHome ?? "/home";
+  }
+  if (requested === "/admin" || requested === "/admin/") {
+    return adminHome ?? "/home";
+  }
+  if (requested.startsWith("/admin/") && !adminHome) {
+    return "/home";
+  }
+  return requested;
+}
+
 /** Uses the authenticated user's server-calculated scope, never profile metadata. */
 export async function getMyAdminEntry(): Promise<AdminEntryRoute | null> {
   const { data, error } = await supabase.rpc("get_my_admin_scope" as never);
