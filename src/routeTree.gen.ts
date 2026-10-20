@@ -16,13 +16,15 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as FormularioRouteImport } from './routes/formulario'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PitchRouteImport } from './routes/pitch'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as TermosRouteImport } from './routes/termos'
-import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAguardandoRouteImport } from './routes/_authenticated/aguardando'
+import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
@@ -50,6 +52,7 @@ import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as FormularioIndexRouteImport } from './routes/formulario/index'
 import { Route as FormularioCodeRouteImport } from './routes/formulario/$code'
 import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
 import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
 import { Route as AdminDepartamentosIndexRouteImport } from './routes/admin/departamentos/index'
@@ -100,6 +103,11 @@ const FormularioRoute = FormularioRouteImport.update({
   path: '/formulario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PitchRoute = PitchRouteImport.update({
   id: '/pitch',
   path: '/pitch',
@@ -125,17 +133,23 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDisponibilidadeProfissionalRoute =
-  AuthenticatedDisponibilidadeProfissionalRouteImport.update({
-    id: '/disponibilidade-profissional',
-    path: '/disponibilidade-profissional',
-    getParentRoute: () => AuthenticatedRouteRoute,
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const AuthenticatedAguardandoRoute = AuthenticatedAguardandoRouteImport.update({
   id: '/aguardando',
   path: '/aguardando',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDisponibilidadeProfissionalRoute =
+  AuthenticatedDisponibilidadeProfissionalRouteImport.update({
+    id: '/disponibilidade-profissional',
+    path: '/disponibilidade-profissional',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -273,6 +287,11 @@ const PesquisasCodeRoute = PesquisasCodeRouteImport.update({
   path: '/pesquisas/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMinhaCaronaOfferIdRoute =
   AuthenticatedMinhaCaronaOfferIdRouteImport.update({
     id: '/minha-carona/$offerId',
@@ -362,13 +381,15 @@ export interface FileRoutesByFullPath {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
+  '/mcp': typeof McpRoute
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
-  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
+  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
@@ -396,6 +417,7 @@ export interface FileRoutesByFullPath {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/formulario/': typeof FormularioIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -417,13 +439,15 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
+  '/mcp': typeof McpRoute
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
-  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
+  '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/oferecer': typeof AuthenticatedOferecerRoute
@@ -451,6 +475,7 @@ export interface FileRoutesByTo {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin': typeof AdminIndexRoute
   '/formulario': typeof FormularioIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -476,13 +501,15 @@ export interface FileRoutesById {
   '/buscar': typeof BuscarRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
+  '/mcp': typeof McpRoute
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
-  '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/aguardando': typeof AuthenticatedAguardandoRoute
+  '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
@@ -510,6 +537,7 @@ export interface FileRoutesById {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/formulario/': typeof FormularioIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -535,13 +563,15 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/mcp'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
     | '/termos'
-    | '/disponibilidade-profissional'
+    | '/.well-known/oauth-protected-resource'
     | '/aguardando'
+    | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
@@ -569,6 +599,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin/'
     | '/formulario/'
+    | '/.lovable/oauth/consent'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -590,13 +621,15 @@ export interface FileRouteTypes {
     | '/auth'
     | '/buscar'
     | '/como-funciona'
+    | '/mcp'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
     | '/termos'
-    | '/disponibilidade-profissional'
+    | '/.well-known/oauth-protected-resource'
     | '/aguardando'
+    | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
     | '/oferecer'
@@ -624,6 +657,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin'
     | '/formulario'
+    | '/.lovable/oauth/consent'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -648,13 +682,15 @@ export interface FileRouteTypes {
     | '/buscar'
     | '/como-funciona'
     | '/formulario'
+    | '/mcp'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
     | '/seguranca'
     | '/termos'
-    | '/_authenticated/disponibilidade-profissional'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/aguardando'
+    | '/_authenticated/disponibilidade-profissional'
     | '/_authenticated/home'
     | '/_authenticated/minhas-caronas'
     | '/_authenticated/oferecer'
@@ -682,6 +718,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin/'
     | '/formulario/'
+    | '/.lovable/oauth/consent'
     | '/_authenticated/minha-carona/$offerId'
     | '/_authenticated/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -707,12 +744,15 @@ export interface RootRouteChildren {
   BuscarRoute: typeof BuscarRoute
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   FormularioRoute: typeof FormularioRouteWithChildren
+  McpRoute: typeof McpRoute
   PitchRoute: typeof PitchRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   PesquisasCodeRoute: typeof PesquisasCodeRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -769,6 +809,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormularioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pitch': {
       id: '/pitch'
       path: '/pitch'
@@ -804,18 +851,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/disponibilidade-profissional': {
-      id: '/_authenticated/disponibilidade-profissional'
-      path: '/disponibilidade-profissional'
-      fullPath: '/disponibilidade-profissional'
-      preLoaderRoute: typeof AuthenticatedDisponibilidadeProfissionalRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/aguardando': {
       id: '/_authenticated/aguardando'
       path: '/aguardando'
       fullPath: '/aguardando'
       preLoaderRoute: typeof AuthenticatedAguardandoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/disponibilidade-profissional': {
+      id: '/_authenticated/disponibilidade-profissional'
+      path: '/disponibilidade-profissional'
+      fullPath: '/disponibilidade-profissional'
+      preLoaderRoute: typeof AuthenticatedDisponibilidadeProfissionalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/home': {
@@ -1007,6 +1061,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PesquisasCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/minha-carona/$offerId': {
       id: '/_authenticated/minha-carona/$offerId'
       path: '/minha-carona/$offerId'
@@ -1116,8 +1177,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDisponibilidadeProfissionalRoute: typeof AuthenticatedDisponibilidadeProfissionalRoute
   AuthenticatedAguardandoRoute: typeof AuthenticatedAguardandoRoute
+  AuthenticatedDisponibilidadeProfissionalRoute: typeof AuthenticatedDisponibilidadeProfissionalRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
   AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
@@ -1128,9 +1189,9 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAguardandoRoute: AuthenticatedAguardandoRoute,
   AuthenticatedDisponibilidadeProfissionalRoute:
     AuthenticatedDisponibilidadeProfissionalRoute,
-  AuthenticatedAguardandoRoute: AuthenticatedAguardandoRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMinhasCaronasRoute: AuthenticatedMinhasCaronasRoute,
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
@@ -1242,12 +1303,16 @@ const rootRouteChildren: RootRouteChildren = {
   BuscarRoute: BuscarRoute,
   ComoFuncionaRoute: ComoFuncionaRoute,
   FormularioRoute: FormularioRouteWithChildren,
+  McpRoute: McpRoute,
   PitchRoute: PitchRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   PesquisasCodeRoute: PesquisasCodeRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,

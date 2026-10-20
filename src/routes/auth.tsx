@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { oauthReturnPath } from "@/lib/oauth-return-path";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/location/regional-access";
 
 const authSearchSchema = z.object({
+  next: z.string().optional().catch(undefined),
   redirect: z.string().optional().catch(undefined),
   mode: z.enum(["entrar", "cadastro"]).optional().catch(undefined),
   submissionId: z.string().optional().catch(undefined),
@@ -82,10 +84,7 @@ function AuthPage() {
   );
   const isGoogleCallback = search.regionCheck === "1";
 
-  const destination =
-    search.redirect?.startsWith("/") && !search.redirect.startsWith("//")
-      ? search.redirect
-      : "/home";
+  const destination = oauthReturnPath(search.next ?? search.redirect ?? "/home");
 
   useEffect(() => {
     if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
@@ -127,7 +126,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: new URL(destination, window.location.origin).href,
             data: {
               full_name: name.trim(),
               gender,
