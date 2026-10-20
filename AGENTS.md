@@ -31,3 +31,6 @@
 - Keep admin analytical sections tabbed and lists paginated, and render saved supplemental form answers only within authorized detail views; this keeps the workspace compact without discarding captured content.
 - Authorize fare reads through the participant client before privileged persistence, and return the saved quote; this prevents unauthorized access and divergent results under concurrent quoting.
 - Persist server-issued expiring offer quotes and attach them transactionally on publication; only these new offers consent to automatic driver acceptance when a passenger quote is saved, preserving historical bilateral proposals.
+- Keep app MCP tools read-only and caller-scoped through verified OAuth tokens and existing RLS; the SDK generates transport routes, preventing duplicated endpoints or privileged data access.
+- Keep browser-local WebMCP registrations in the visible shell with fail-open static telemetry; navigation actions preserve the existing app guards.
+- Canonicalize authentication return paths once and retain them across password, signup and social login; delegated consent must survive every sign-in method without open redirects.

@@ -20,6 +20,8 @@ import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 import { NotificationControls } from "@/components/caronaa/NotificationControls";
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
+import { useWebMCP } from "use-webmcp-tool";
+import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 
 const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
@@ -51,6 +53,25 @@ export function AppShell({
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useWebMCP({
+    name: "read_navigation",
+    description: "Mostra a página atual e as opções de navegação visíveis da CARONAA.",
+    enabled: !loading,
+    annotations: { readOnlyHint: true },
+    execute: () => runWebMCPTool("read_navigation", () =>
+      `Página: ${pathname}. ${publicPage ? "Como funciona, Segurança, Entrar." : user ? "Início, Viagens, Perfil." : "Entrar, Criar conta."}`),
+  });
+  useWebMCP({
+    name: "open_my_rides",
+    description: "Abre a página Viagens, como a opção Viagens da navegação visível.",
+    enabled: !publicPage && !loading && Boolean(user),
+    execute: () => runWebMCPTool("open_my_rides", async () => {
+      if (!user || loading || publicPage) throw new Error("Entre na CARONAA para abrir suas viagens.");
+      await navigate({ to: "/minhas-caronas" });
+      return "Página Viagens aberta.";
+    }),
+  });
 
   async function signOut() {
     await queryClient.cancelQueries();

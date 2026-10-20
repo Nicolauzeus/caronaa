@@ -8,6 +8,7 @@ import path from "node:path";
 import { loadEnv } from "vite";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { publicConnectionDefines } from "./config/public-connection";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
 // Preserve deployment bindings; local files must not overwrite them with blanks.
 const localEnv = loadEnv(process.env["NODE_ENV"] ?? "development", process.cwd(), "");
@@ -30,6 +31,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    plugins: [mcpPlugin()],
     define: connectionDefines,
     resolve: {
       alias: {

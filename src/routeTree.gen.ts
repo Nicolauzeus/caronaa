@@ -50,6 +50,7 @@ import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as FormularioIndexRouteImport } from './routes/formulario/index'
 import { Route as FormularioCodeRouteImport } from './routes/formulario/$code'
 import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
 import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
 import { Route as AdminDepartamentosIndexRouteImport } from './routes/admin/departamentos/index'
@@ -273,6 +274,11 @@ const PesquisasCodeRoute = PesquisasCodeRouteImport.update({
   path: '/pesquisas/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMinhaCaronaOfferIdRoute =
   AuthenticatedMinhaCaronaOfferIdRouteImport.update({
     id: '/minha-carona/$offerId',
@@ -396,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/formulario/': typeof FormularioIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -451,6 +458,7 @@ export interface FileRoutesByTo {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin': typeof AdminIndexRoute
   '/formulario': typeof FormularioIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -510,6 +518,7 @@ export interface FileRoutesById {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/formulario/': typeof FormularioIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -569,6 +578,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin/'
     | '/formulario/'
+    | '/.lovable/oauth/consent'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -624,6 +634,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin'
     | '/formulario'
+    | '/.lovable/oauth/consent'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -682,6 +693,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin/'
     | '/formulario/'
+    | '/.lovable/oauth/consent'
     | '/_authenticated/minha-carona/$offerId'
     | '/_authenticated/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -713,6 +725,7 @@ export interface RootRouteChildren {
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
   PesquisasCodeRoute: typeof PesquisasCodeRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -1007,6 +1020,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PesquisasCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/minha-carona/$offerId': {
       id: '/_authenticated/minha-carona/$offerId'
       path: '/minha-carona/$offerId'
@@ -1248,6 +1268,7 @@ const rootRouteChildren: RootRouteChildren = {
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
   PesquisasCodeRoute: PesquisasCodeRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
