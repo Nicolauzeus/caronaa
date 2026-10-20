@@ -237,6 +237,22 @@ function AuthPage() {
     }
   }
 
+  // An authenticated account should never briefly see the sign-in form again
+  // while its server-authorized destination is being resolved.
+  if (user && !entryError && (!isGoogleCallback || regionStatus === "allowed")) {
+    return (
+      <AuthFrame>
+        <div role="status" className="flex flex-col items-center gap-4 py-8 text-center">
+          <ShieldCheck size={32} className="text-primary" aria-hidden="true" />
+          <h1 className="font-display text-xl font-bold">Preparando seu espaço no CARONAA</h1>
+          <p className="text-sm text-muted-foreground">
+            Identificando suas permissões e direcionando para a área correspondente.
+          </p>
+        </div>
+      </AuthFrame>
+    );
+  }
+
   if (confirmationSent) {
     return (
       <AuthFrame>
