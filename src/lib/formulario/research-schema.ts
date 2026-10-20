@@ -172,6 +172,21 @@ export function validatePage(section: SurveySection, answers: Answers, allQuesti
       if (q.required && (!value || (Array.isArray(value) && !value.length)))
         return ["Responda: " + q.label];
       if (value === undefined || value === "") return [];
+      if (q.type === "short_text" || q.type === "long_text" || q.type === "location") {
+        const length = Array.from(String(value).trim()).length;
+        const minLength = q.minLength ?? 0;
+        const maxLength = q.maxLength ?? (q.type === "long_text" ? 2000 : 240);
+        if (length < minLength)
+          return [q.label + ": faltam " + (minLength - length) + " caracteres."];
+        if (length > maxLength)
+          return [q.label + ": máximo de " + maxLength + " caracteres."];
+      }
+      if (q.type === "multiple_choice" && Array.isArray(value)) {
+        if (q.maxValue !== undefined && value.length > q.maxValue)
+          return [q.label + ": escolha no máximo " + q.maxValue + " opções."];
+        if (q.minValue !== undefined && value.length < q.minValue)
+          return [q.label + ": escolha pelo menos " + q.minValue + " opções."];
+      }
       if (q.type === "number") {
         const bounds = getNumberBounds(q);
         const number = Number(value);
