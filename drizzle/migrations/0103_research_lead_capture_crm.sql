@@ -72,7 +72,8 @@ GRANT EXECUTE ON FUNCTION public.capture_research_lead(uuid,uuid,text,boolean,bo
 -- Auth status is queried live, never computed from the first 300 displayed records.
 CREATE OR REPLACE FUNCTION public.get_admin_research_leads(
   p_limit integer DEFAULT 40,p_offset integer DEFAULT 0,
-  p_status text DEFAULT 'ALL',p_form_id uuid DEFAULT NULL)
+  p_status text DEFAULT 'ALL',p_form_id uuid DEFAULT NULL,
+  p_marketing_only boolean DEFAULT false)
 RETURNS TABLE (
   email text,form_id uuid,form_title text,source_code text,
   captured_at timestamptz,marketing_consent boolean,
@@ -91,7 +92,8 @@ BEGIN
     SELECT DISTINCT ON (c.normalized_email)
       c.normalized_email,c.form_id,c.captured_at,c.marketing_consent
     FROM public.research_lead_contacts c
-    WHERE p_form_id IS NULL OR c.form_id=p_form_id
+    WHERE (p_form_id IS NULL OR c.form_id=p_form_id)
+      AND (NOT p_marketing_only OR c.marketing_consent)
     ORDER BY c.normalized_email,c.captured_at DESC,c.answer_id DESC
   ), identified AS (
     SELECT d.*,f.title AS form_title,f.code AS source_code,
@@ -113,8 +115,8 @@ BEGIN
   ORDER BY i.captured_at DESC,i.normalized_email
   LIMIT p_limit OFFSET p_offset;
 END $$;
-REVOKE ALL ON FUNCTION public.get_admin_research_leads(integer,integer,text,uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_admin_research_leads(integer,integer,text,uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_admin_research_leads(integer,integer,text,uuid,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_research_leads(integer,integer,text,uuid,boolean) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_admin_research_lead_metrics(p_form_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
@@ -145,4 +147,19 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.get_admin_research_lead_metrics(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_admin_research_lead_metrics(uuid) TO authenticated;
+CREATE OR REPLACE FUNCTION public.get_admin_research_lead_sources()
+RETURNS TABLE(form_id uuid,form_title text,source_code text,contact_count bigint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $
+BEGIN
+  IF NOT public.has_admin_department_access('growth') THEN
+    RAISE EXCEPTION 'Acesso restrito ao CRM' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY SELECT f.id,f.title,f.code,count(DISTINCT c.normalized_email)
+    FROM public.research_lead_contacts c
+    JOIN public.research_forms f ON f.id=c.form_id
+    GROUP BY f.id,f.title,f.code ORDER BY f.title;
+END $;
+REVOKE ALL ON FUNCTION public.get_admin_research_lead_sources() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_research_lead_sources() TO authenticated;
 NOTIFY pgrst,'reload schema';
