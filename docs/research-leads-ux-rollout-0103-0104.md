@@ -8,10 +8,10 @@
 - CRM > Crescimento: novos contatos de pesquisa separados dos leads manuais; filtro de conta e consentimento; paginação de 20 itens; totais no servidor.
 
 ## Pré-requisitos de banco
-As migrations `0103_research_lead_capture_crm.sql` e `0104_seven_passenger_seat_capacity.sql` foram somente versionadas. **Não estão aplicadas em produção**. Executar após backup, no ambiente de homologação, em ordem, uma a uma.
+As migrations `0103_research_lead_capture_crm.sql`, `0104_seven_passenger_seat_capacity.sql` e `0105_research_dynamic_field_limits.sql` foram somente versionadas. **Não estão aplicadas em produção**. Executar após backup, no ambiente de homologação, em ordem, uma a uma.
 
 O SQL 0103 depende de 0094, 0095 e 0099.
-O SQL 0104 exige as funções do modelo de pesquisas e de oferta de caronas já instaladas. Se a implementação local dessas funções difere, o upgrade aborta com erro e requer revisão explícita; não ignore.
+O SQL 0104 exige as funções do modelo de pesquisas e de oferta de caronas já instaladas. O SQL 0105 protege no servidor os limites dinâmicos de caracteres e múltipla escolha. Se a implementação local dessas funções difere, o upgrade aborta com erro e requer revisão explícita; não ignore.
 
 ## Ativação do formulário
 1. Confirmar o deploy das migrations e os testes de permissões.
@@ -19,6 +19,11 @@ O SQL 0104 exige as funções do modelo de pesquisas e de oferta de caronas já 
 3. Ativar **Captura de e-mail e inteligência de leads** e salvar.
 4. A UI consulta `research_contact_capture_enabled(form_id)` e só solicita e-mail se banco **e** configuração estiverem prontos.
 5. Não reescrever respostas ou versões publicadas. A mudança de política de contato requer aviso atualizado e autorização apropriada.
+
+## Limites da integração
+- A seção de leads de pesquisas usa tabela privada `research_lead_contacts`, sem criar automaticamente registros duplicados em `crm_leads` (cadastro administrativo legado).
+- A simples correspondência de e-mail com uma conta serve para indicadores de **existência de conta**, não prova autoria da pesquisa.
+- Reconhecimento automático entre aparelhos depende de mecanismo seguro para comprovar controle do **recibo/resposta**. O envio de confirmação específica de pesquisa não está implementado neste PR; o recibo permanece como recuperação.
 
 ## Segurança
 - `research_lead_contacts` é tabela privada (RLS ligado, sem SELECT direto por navegador).
