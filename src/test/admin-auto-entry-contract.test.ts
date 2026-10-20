@@ -29,7 +29,7 @@ describe("Administrative first-entry navigation contract", () => {
     expect(admin).toContain("enterAdminAppPreview(user.id");
     expect(admin).toContain("Sair da conta");
     expect(app).toContain("getAdminAppPreview(user?.id)");
-    expect(app).toContain("Voltar ao Admin");
+    expect(app).toContain("Painel administrativo");
     expect(app).toContain("leaveAdminAppPreview");
     expect(app).toContain("as ações realizadas no aplicativo continuam sendo reais");
   });

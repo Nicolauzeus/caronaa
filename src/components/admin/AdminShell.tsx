@@ -413,7 +413,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     <div className="hidden max-w-[150px] text-left sm:block">
                       <p className="truncate text-xs font-semibold text-foreground">{adminName}</p>
 
-                      <p className="text-[10px] text-muted-foreground">{scope.isGlobalAdmin ? "Administrador" : "Equipe administrativa"}</p>
+                      <p className="text-[10px] text-muted-foreground">{scope.isGlobalAdmin ? "Administrador global" : "Administrador departamental"}</p>
                     </div>
                   </div>
                 </div>

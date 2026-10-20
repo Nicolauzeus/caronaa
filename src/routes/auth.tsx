@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { authenticatedLanding, getMyAdminEntry } from "@/lib/admin/entry";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
@@ -77,6 +78,8 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [regionNotice, setRegionNotice] = useState("");
+  const [entryError, setEntryError] = useState(false);
+  const [entryRetry, setEntryRetry] = useState(0);
   const [regionStatus, setRegionStatus] = useState<"idle" | "checking" | "allowed" | "blocked">(
     search.regionCheck === "1" ? "checking" : "idle",
   );
@@ -88,10 +91,24 @@ function AuthPage() {
       : "/home";
 
   useEffect(() => {
-    if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
-      void navigate({ to: destination });
-    }
-  }, [destination, isGoogleCallback, loading, navigate, regionStatus, user]);
+    if (loading || !user?.id || (isGoogleCallback && regionStatus !== "allowed")) return;
+    let active = true;
+    setEntryError(false);
+    void getMyAdminEntry()
+      .then((adminHome) => {
+        if (!active) return;
+        void navigate({
+          to: authenticatedLanding(destination, adminHome) as "/home",
+          replace: true,
+        });
+      })
+      .catch(() => {
+        if (active) setEntryError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [destination, entryRetry, isGoogleCallback, loading, navigate, regionStatus, user?.id]);
 
   useEffect(() => {
     if (!isGoogleCallback || loading || !user || regionStatus !== "checking") return;
@@ -144,7 +161,8 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      await navigate({ to: destination });
+      // AuthProvider receives the verified session and the effect above
+      // chooses the appropriate role-based landing before any dashboard renders.
     } catch (error) {
       toast.error(authErrorMessage(error));
     } finally {
@@ -219,6 +237,22 @@ function AuthPage() {
     }
   }
 
+  // An authenticated account should never briefly see the sign-in form again
+  // while its server-authorized destination is being resolved.
+  if (user && !entryError && (!isGoogleCallback || regionStatus === "allowed")) {
+    return (
+      <AuthFrame>
+        <div role="status" className="flex flex-col items-center gap-4 py-8 text-center">
+          <ShieldCheck size={32} className="text-primary" aria-hidden="true" />
+          <h1 className="font-display text-xl font-bold">Preparando seu espaço no CARONAA</h1>
+          <p className="text-sm text-muted-foreground">
+            Identificando suas permissões e direcionando para a área correspondente.
+          </p>
+        </div>
+      </AuthFrame>
+    );
+  }
+
   if (confirmationSent) {
     return (
       <AuthFrame>
@@ -276,6 +310,18 @@ function AuthPage() {
         >
           <MapPinned className="mt-0.5 shrink-0 text-caronaa-primary" size={20} />
           <p>{regionNotice}</p>
+        </div>
+      )}
+
+      {entryError && user && (
+        <div role="alert" className="mb-5 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+          <p className="text-sm font-medium text-foreground">
+            Não foi possível confirmar as permissões da sua conta.
+          </p>
+          <Button type="button" variant="outline" size="sm" className="mt-3"
+            onClick={() => setEntryRetry((value) => value + 1)}>
+            Tentar novamente
+          </Button>
         </div>
       )}
 

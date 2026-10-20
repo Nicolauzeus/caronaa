@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enterAdminAppPreview, getAdminAppPreview, getMyAdminEntry, leaveAdminAppPreview,
-  preferredAdminEntry,
+  preferredAdminEntry, authenticatedLanding,
 } from "./entry";
 import { parseAdminScope } from "./access";
 
@@ -28,6 +28,20 @@ describe("Role-aware CARONAA landing and administrator preview mode", () => {
       departments: [{ id: "finance", can_write: false }, { id: "technology", can_write: true }],
     }, error: null });
     await expect(getMyAdminEntry()).resolves.toBe("/admin/tecnologia");
+  });
+
+  it("lands in the verified home without showing the passenger home first", () => {
+    expect(authenticatedLanding("/home", "/admin")).toBe("/admin");
+    expect(authenticatedLanding("/home", "/admin/financeiro")).toBe("/admin/financeiro");
+    expect(authenticatedLanding("/admin", "/admin/tecnologia")).toBe("/admin/tecnologia");
+    expect(authenticatedLanding("/admin/", null)).toBe("/home");
+    expect(authenticatedLanding("/admin/financeiro", null)).toBe("/home");
+    expect(authenticatedLanding("/home", null)).toBe("/home");
+  });
+
+  it("preserves intended deep links rather than changing unrelated journeys", () => {
+    expect(authenticatedLanding("/minhas-caronas", "/admin")).toBe("/minhas-caronas");
+    expect(authenticatedLanding("/formulario/UNIFOR-2026", null)).toBe("/formulario/UNIFOR-2026");
   });
 
   it("keeps regular passengers, drivers and moderators on the regular app", async () => {

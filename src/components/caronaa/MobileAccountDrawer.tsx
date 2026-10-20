@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/integrations/supabase/client";
+import { getMyAdminEntry, type AdminEntryRoute } from "@/lib/admin/entry";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationControls } from "./NotificationControls";
 import { getMyUserVerifications } from "@/lib/user-verifications";
@@ -33,21 +33,21 @@ import { getMyUserVerifications } from "@/lib/user-verifications";
 export function MobileAccountDrawer({ signOut }: { signOut: () => Promise<void> }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [admin, setAdmin] = useState(false);
+  const [adminDestination, setAdminDestination] = useState<AdminEntryRoute | null>(null);
   const [hasVerification, setHasVerification] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    setAdmin(false);
+    setAdminDestination(null);
+    setHasVerification(false);
 
     if (open && user) {
-      void supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .then(({ data }) => {
-          if (alive) setAdmin(Boolean(data?.length));
+      void getMyAdminEntry()
+        .then((destination) => {
+          if (alive) setAdminDestination(destination);
+        })
+        .catch(() => {
+          if (alive) setAdminDestination(null);
         });
 
       void getMyUserVerifications()
@@ -234,14 +234,14 @@ export function MobileAccountDrawer({ signOut }: { signOut: () => Promise<void> 
             Configurações
           </Link>
 
-          {admin && (
+          {adminDestination && (
             <Link
-              to="/admin"
+              to={adminDestination}
               onClick={() => setOpen(false)}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+              className="flex min-h-11 items-center gap-3 rounded-xl bg-primary/10 px-2.5 text-sm font-bold text-foreground hover:bg-primary/15"
             >
-              <LayoutDashboard size={19} className="text-muted-foreground" />
-              Administração
+              <LayoutDashboard size={19} className="text-primary" />
+              Painel administrativo
             </Link>
           )}
         </div>
