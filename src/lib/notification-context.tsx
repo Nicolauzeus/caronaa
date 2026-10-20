@@ -1,3 +1,4 @@
+import { syncOpportunityAlerts, markOpportunityAlertsRead } from "./ride-opportunity-alerts";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -158,6 +159,66 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, queryClient]);
 
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    let pending = false;
+    const refreshOpportunities = async () => {
+      if (pending || document.visibilityState === "hidden") return;
+      pending = true;
+      try {
+        const rows = await syncOpportunityAlerts();
+        if (!active) return;
+        const live = rows
+          .map((row) => createRideAlert("ride_opportunity_alerts", "INSERT", row, {}, userId))
+          .filter((alert): alert is RideAlert => Boolean(alert));
+        const fresh = live.filter((alert) => !seen.current.has(alert.id) && !alert.read);
+        live.forEach((alert) => seen.current.add(alert.id));
+        setInbox((current) => {
+          const previous = current.userId === userId ? current.alerts : [];
+          const byId = new Map(previous.map((alert) => [alert.id, alert]));
+          const next = [
+            ...live.map((alert) => ({ ...alert, read: alert.read || !!byId.get(alert.id)?.read })),
+            ...previous.filter((alert) => !alert.opportunityAlertId),
+          ]
+            .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+            .slice(0, 50);
+          try {
+            localStorage.setItem(`caronaa-alerts:${userId}`, JSON.stringify(next));
+          } catch {
+            /* Session inbox remains available. */
+          }
+          return { userId, alerts: next };
+        });
+        if (fresh.length) {
+          toast("Oportunidades no seu trajeto", {
+            id: "ride-opportunities",
+            description: `${fresh.length} alternativa(s) com embarque em até uma hora de diferença.`,
+            action: { label: "Avaliar", onClick: () => window.location.assign("/minhas-caronas") },
+          });
+          void playNotificationSound("request");
+        }
+      } catch (error) {
+        console.warn("Opportunity notifications unavailable:", error);
+      } finally {
+        pending = false;
+      }
+    };
+    const refresh = () => void refreshOpportunities();
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("caronaa:rides-updated", refresh);
+    window.addEventListener("caronaa:opportunity-settings-updated", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("caronaa:rides-updated", refresh);
+      window.removeEventListener("caronaa:opportunity-settings-updated", refresh);
+    };
+  }, [userId]);
+
   const setSoundEnabled = (soundEnabled: boolean) => {
     const next = { ...settings, soundEnabled };
     try {
@@ -171,6 +232,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
   const markAllRead = () => {
     if (!userId) return;
+    void markOpportunityAlertsRead(
+      alerts.flatMap((alert) => (alert.opportunityAlertId ? [alert.opportunityAlertId] : [])),
+    ).catch((error) => toast.error(error.message));
     const next = alerts.map((alert) => ({ ...alert, read: true }));
     try {
       localStorage.setItem(`caronaa-alerts:${userId}`, JSON.stringify(next));

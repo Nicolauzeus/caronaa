@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { setOpportunityAlerts } from "@/lib/ride-opportunity-alerts";
+import { toast } from "sonner";
 import { Bell, CheckCheck, Volume2, VolumeX } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -8,20 +11,64 @@ import { useNotifications } from "@/lib/notification-context";
 
 export function NotificationPreferences() {
   const { settings, setSoundEnabled } = useNotifications();
+  const [opportunities, setOpportunities] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    setOpportunityAlerts()
+      .then((value) => {
+        if (active) setOpportunities(value);
+      })
+      .catch((cause) => {
+        if (active) setError(cause.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   return (
-    <section
-      className="mb-6 flex items-center justify-between gap-4 border-y border-border py-4"
-      aria-label="Preferências de notificações"
-    >
-      <label htmlFor="notification-sound" className="text-sm font-medium">
-        Som das notificações
-      </label>
-      <Switch
-        id="notification-sound"
-        checked={settings.soundEnabled}
-        onCheckedChange={setSoundEnabled}
-      />
-    </section>
+    <div className="mb-6 space-y-3">
+      <section
+        className="mb-6 flex items-center justify-between gap-4 border-y border-border py-4"
+        aria-label="Preferências de notificações"
+      >
+        <label htmlFor="notification-sound" className="text-sm font-medium">
+          Som das notificações
+        </label>
+        <Switch
+          id="notification-sound"
+          checked={settings.soundEnabled}
+          onCheckedChange={setSoundEnabled}
+        />
+      </section>
+      <section className="flex items-center justify-between gap-4 border-b border-border pb-4">
+        <label htmlFor="opportunity-alerts" className="text-sm font-medium">
+          Avisos de oportunidades de até uma hora
+        </label>
+        <Switch
+          id="opportunity-alerts"
+          checked={opportunities ?? false}
+          disabled={opportunities == null || saving}
+          onCheckedChange={async (enabled) => {
+            setSaving(true);
+            try {
+              setOpportunities(await setOpportunityAlerts(enabled));
+              setError("");
+            } catch (cause) {
+              toast.error(cause instanceof Error ? cause.message : "Não foi possível salvar.");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        />
+      </section>
+      {error && (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

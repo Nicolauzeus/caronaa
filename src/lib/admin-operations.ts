@@ -5,6 +5,7 @@ import { isRideRequestCompatibleWithOffer } from "@/lib/ride-matching";
 
 type Row<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
 export type OperationData = {
+  matchSuggestionIds?: { requestId: string; offerId: string }[];
   offers: Row<"ride_offers">[];
   requests: Row<"ride_requests">[];
   matches: Row<"ride_matches">[];
@@ -48,6 +49,8 @@ export async function loadAdminOperations(): Promise<OperationData> {
   if (error) throw new Error(error.message);
   if (!data || typeof data !== "object" || !Array.isArray((data as OperationData).offers))
     throw new Error("Resposta administrativa invalida.");
+  if (!Array.isArray((data as OperationData).matchSuggestionIds))
+    throw new Error("Atualize as funções de match do banco para carregar as sugestões administrativas.");
   return data as OperationData;
 }
 export async function operateAdminRide(
@@ -72,6 +75,16 @@ export async function operateAdminRide(
 }
 
 export function getMatchSuggestions(data: OperationData, now = Date.now()) {
+  if (data.matchSuggestionIds) {
+    return data.matchSuggestionIds.flatMap(({ requestId, offerId }) => {
+      const request = data.requests.find((row) => row.request_id === requestId);
+      const offer = data.offers.find((row) => row.offer_id === offerId);
+      return request && offer ? [{ request, offer }] : [];
+    });
+  }
+  // Isolated historical snapshots retain the old local evaluator; live loads above
+  // require the authoritative candidate list from migration 0103.
+
   return data.requests
     .filter((r) => r.status === "open" && !data.matches.some((m) => m.request_id === r.request_id))
     .flatMap((request) =>
@@ -107,6 +120,9 @@ export function getMatchSuggestions(data: OperationData, now = Date.now()) {
                 availableSeats: offer.available_seats,
                 seatsRemaining: offer.seats_remaining,
                 userId: offer.user_id,
+                timeToleranceMinutes: offer.time_tolerance_minutes,
+                routePath: Array.isArray(offer.route_path) ? offer.route_path as { lat: number; lng: number }[] : undefined,
+                routeDurationMinutes: offer.route_duration_minutes ?? undefined,
               },
             }),
         )

@@ -4,6 +4,7 @@ export type RideAlert = {
   id: string;
   rideId?: string;
   notificationId?: string;
+  opportunityAlertId?: string;
   title: string;
   description: string;
   sound: NotificationSound;
@@ -33,7 +34,12 @@ export function createRideAlert(
   let title: string;
   let description: string;
   let sound: NotificationSound;
-  if (table === "ride_matches" && event === "INSERT" && participant) {
+  if (table === "ride_opportunity_alerts" && row["user_id"] === userId) {
+    title = "Oportunidade no seu trajeto";
+    description =
+      "Há uma alternativa com diferença de até uma hora no embarque. Avalie em suas viagens.";
+    sound = "request";
+  } else if (table === "ride_matches" && event === "INSERT" && participant) {
     const driver = row["driver_user_id"] === userId;
     title = driver ? "Nova solicitação de carona" : "Carona encontrada";
     description = driver
@@ -110,7 +116,9 @@ export function createRideAlert(
   const id =
     table === "ride_notifications"
       ? String(row["notification_id"] ?? `${row["ride_id"]}:${row["event_name"]}`)
-      : row[table === "rides" ? "ride_id" : "match_id"];
+      : table === "ride_opportunity_alerts"
+        ? row["alert_id"]
+        : row[table === "rides" ? "ride_id" : "match_id"];
   if (typeof id !== "string" || !id) return null;
 
   const stateToken =
@@ -126,11 +134,12 @@ export function createRideAlert(
     ...(table === "ride_notifications" && typeof row["notification_id"] === "string"
       ? { notificationId: row["notification_id"] }
       : {}),
+    ...(table === "ride_opportunity_alerts" ? { opportunityAlertId: String(row["alert_id"]) } : {}),
     title,
     description,
     sound,
-    createdAt: new Date().toISOString(),
-    read: false,
+    createdAt: typeof row["created_at"] === "string" ? row["created_at"] : new Date().toISOString(),
+    read: Boolean(row["read_at"]),
   };
 }
 

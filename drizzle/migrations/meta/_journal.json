@@ -722,6 +722,20 @@
       "when": 1792443000000,
       "tag": "0102_research_launch_waiting_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1792461772568,
+      "tag": "0103_intelligent_ride_opportunities",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1792461772569,
+      "tag": "0104_verified_opportunity_road_assessments",
+      "breakpoints": true
     }
   ]
 }
