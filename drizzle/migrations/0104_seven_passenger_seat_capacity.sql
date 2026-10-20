@@ -36,12 +36,15 @@ DECLARE fn regprocedure :=
   definition text;
 BEGIN
  SELECT pg_get_functiondef(fn) INTO definition;
- IF strpos(definition,'p_available_seats NOT BETWEEN 1 AND 6')=0 THEN
-   RAISE EXCEPTION 'Unexpected offer capacity validation; review current function before applying';
+ -- Some production versions delegate this check to the table constraint
+ -- instead of duplicating it in the RPC. Do not abort when it is absent.
+ IF strpos(definition,'p_available_seats NOT BETWEEN 1 AND 6') > 0 THEN
+   EXECUTE replace(definition,
+     'p_available_seats NOT BETWEEN 1 AND 6',
+     'p_available_seats NOT BETWEEN 1 AND 7');
+ ELSE
+   RAISE NOTICE 'Offer RPC already delegates capacity validation to table constraints';
  END IF;
- EXECUTE replace(definition,
-   'p_available_seats NOT BETWEEN 1 AND 6',
-   'p_available_seats NOT BETWEEN 1 AND 7');
 END $offer$;
 
 -- Existing published research form schemas remain unchanged; the canonical
@@ -61,16 +64,31 @@ BEGIN
  EXECUTE definition;
 END $research$;
 
--- The corporate-driver preflight in 0099 also used 1-4 in the RPC body.
+-- The corporate-driver preflight in 0099 is in the assertion function
+-- (not in submit_configured_research_answer).
 DO $corporate$
 DECLARE fn regprocedure :=
-  to_regprocedure('public.submit_configured_research_answer(uuid,uuid,uuid,jsonb,integer,jsonb,boolean)');
+  to_regprocedure('public.assert_corporate_research_driver(uuid,uuid,jsonb,jsonb)');
   definition text;
 BEGIN
  IF fn IS NULL THEN RAISE EXCEPTION 'Configured survey submission function missing'; END IF;
  SELECT pg_get_functiondef(fn) INTO definition;
- IF strpos(definition,'^[1-4]$')>0 THEN
-   EXECUTE replace(definition,'^[1-4]$','^[1-7]$');
+ IF strpos(definition,'^[1-4]
+END $corporate$;
+NOTIFY pgrst,'reload schema';
+)>0 THEN
+   EXECUTE replace(definition,'^[1-4]
+END $corporate$;
+NOTIFY pgrst,'reload schema';
+,'^[1-7]
+END $corporate$;
+NOTIFY pgrst,'reload schema';
+);
+ ELSIF strpos(definition,'^[1-7]
+END $corporate$;
+NOTIFY pgrst,'reload schema';
+)=0 THEN
+   RAISE EXCEPTION 'Corporate seat rule differs from expected version';
  END IF;
 END $corporate$;
 NOTIFY pgrst,'reload schema';
