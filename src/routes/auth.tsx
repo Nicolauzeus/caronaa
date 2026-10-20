@@ -91,7 +91,7 @@ function AuthPage() {
       : "/home";
 
   useEffect(() => {
-    if (loading || !user || (isGoogleCallback && regionStatus !== "allowed")) return;
+    if (loading || !user?.id || (isGoogleCallback && regionStatus !== "allowed")) return;
     let active = true;
     setEntryError(false);
     void getMyAdminEntry()
