@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CalendarClock, Clock3, LockKeyhole, MapPin, RefreshCw } from "lucide-react";
+import { CalendarClock, Clock3, LockKeyhole, MapPin, RefreshCw, UserRound, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyResearchLaunchState, type ResearchLaunchState } from "@/lib/research-launch";
 
@@ -75,8 +75,8 @@ function ResearchWaitingRoom() {
     : "Participação registrada";
 
   return (
-    <main className="h-[100dvh] w-full overflow-hidden bg-[#111111] text-white" aria-label="Aguardando lançamento CARONAA">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-xl flex-col justify-between gap-2 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))] sm:px-6">
+    <main className="min-h-[100dvh] w-full bg-[#111111] text-white" aria-label="Aguardando lançamento CARONAA">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col justify-between gap-3 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:gap-5 sm:px-6">
         <header className="flex min-h-9 shrink-0 items-center justify-between gap-3">
           <span className="font-display text-lg font-black tracking-[.12em] text-[#ffc451]">CARONAA</span>
           <span className="max-w-[58%] truncate rounded-full border border-white/20 px-3 py-1.5 text-[11px] font-semibold text-white/80">
@@ -92,8 +92,8 @@ function ResearchWaitingRoom() {
               Seu caminho começa em breve.
             </h1>
             <p className="text-sm leading-5 text-white/70">
-              Sua participação já está registrada. Até a liberação, você pode apenas visualizar seu interesse.
-              Pedidos, ofertas, reservas e combinações não estão disponíveis.
+              Sua participação já está registrada. Enquanto espera, personalize seu perfil e suas preferências.
+              Pedidos, ofertas e reservas serão liberados na data da campanha.
             </p>
           </div>
           <section aria-label="Prévia da carona planejada" className="space-y-2 rounded-2xl border border-[#ffc451]/35 bg-white/[.06] p-3.5 sm:p-5">
@@ -126,6 +126,15 @@ function ResearchWaitingRoom() {
             </div>
             <Clock3 aria-hidden="true" size={22} className="text-[#ffc451]"/>
           </div>
+          <Link to="/perfil"
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#ffc451] px-4 py-3 text-sm font-extrabold text-[#141414] shadow-lg transition-colors hover:bg-[#ffd886] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffc451]">
+            <UserRound size={19} aria-hidden="true" />
+            Personalizar meu perfil
+            <ArrowRight size={17} aria-hidden="true" />
+          </Link>
+          <p className="text-center text-xs leading-5 text-white/65">
+            Sua foto, informações pessoais, veículo e preferências já podem ser configurados.
+          </p>
           {error && <button type="button" onClick={() => window.location.reload()}
             className="inline-flex min-h-10 items-center gap-2 self-start rounded-lg border border-white/30 px-4 text-sm">
             <RefreshCw size={15}/> Tentar novamente
