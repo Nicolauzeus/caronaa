@@ -144,7 +144,7 @@ export function getNumberBounds(q: SurveyQuestion): {
   }
   return {
     min: q.minValue ?? min,
-    max: q.maxValue ?? max,
+    max: semantic === "SEATS_AVAILABLE" || semantic === "EVENT_OFFER_SEATS" ? 7 : q.maxValue ?? max,
     integerOnly: q.integerOnly ?? integerOnly,
   };
 }
