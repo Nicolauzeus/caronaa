@@ -126,6 +126,7 @@ describe("Configured public research", () => {
     );
     expect(api.insert).not.toHaveBeenCalled();
     expect(api.rpc.mock.calls.some(([name]) => name === "register_research_interest")).toBe(false);
+    fireEvent.click(screen.getByText("Registrar interesse no trajeto (opcional)"));
     expect(
       screen.getByRole("button", { name: "Quero encontrar uma carona para este trajeto" }),
     ).toBeDisabled();
