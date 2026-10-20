@@ -30,7 +30,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { NotificationControls } from "./NotificationControls";
 import { getMyUserVerifications } from "@/lib/user-verifications";
 
-export function MobileAccountDrawer({ signOut }: { signOut: () => Promise<void> }) {
+export function MobileAccountDrawer({ signOut, prelaunchMode = false }: { signOut: () => Promise<void>; prelaunchMode?: boolean }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
@@ -124,6 +124,24 @@ export function MobileAccountDrawer({ signOut }: { signOut: () => Promise<void> 
           </div>
         </div>
 
+        {prelaunchMode ? (
+          <nav aria-label="Acesso durante o pré-lançamento" className="space-y-2 border-t border-border py-4">
+            <p className="text-xs leading-5 text-muted-foreground">Enquanto sua campanha não começa, personalize seus dados e acompanhe a contagem regressiva.</p>
+            <Link to="/aguardando" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-muted">
+              <House size={19} /> Acompanhar lançamento
+            </Link>
+            <Link to="/perfil" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl bg-primary/10 px-3 text-sm font-semibold text-foreground">
+              <UserRound size={19} className="text-primary" /> Personalizar meu perfil
+            </Link>
+            <Link to="/perfil" search={{editPhoto:true}} onClick={() => setOpen(false)}
+              className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted">
+              <Camera size={17} /> Alterar foto
+            </Link>
+          </nav>
+        ) : (
+          <>
         {/* Grupo 1: Navegação principal */}
         <nav aria-label="Menu principal" className="py-2.5">
           <Link
@@ -246,6 +264,8 @@ export function MobileAccountDrawer({ signOut }: { signOut: () => Promise<void> 
           )}
         </div>
 
+          </>
+        )}
         <div className="flex items-center gap-3 border-t border-border py-4">
           <ThemeToggle />
           <NotificationControls />

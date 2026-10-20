@@ -18,13 +18,15 @@ export const Route = createFileRoute("/_authenticated")({
     if (data.user.email_confirmed_at && readPendingParticipations().length) {
       await claimPendingParticipations();
     }
-    if (location.pathname !== "/aguardando") {
-      const launch = await getMyResearchLaunchState();
-      if (launch.locked) {
-        throw redirect({ to: "/aguardando", replace: true });
-      }
+    const launch = await getMyResearchLaunchState();
+    // New campaign participants may personalize their account before launch.
+    // All other app routes remain restricted, backed by the database ride guards.
+    const accessibleWhileWaiting = location.pathname === "/aguardando" ||
+      location.pathname === "/perfil";
+    if (launch.locked && !accessibleWhileWaiting) {
+      throw redirect({ to: "/aguardando", replace: true });
     }
-    return { user: data.user };
+    return { user: data.user, launchLocked: launch.locked };
   },
   component: () => <Outlet />,
 });
