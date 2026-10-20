@@ -516,7 +516,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           </details>
         )}
         <a href={user ? "/home" :
-          "/auth?mode=cadastro&redirect=" + encodeURIComponent("/perfil")}
+          "/auth?mode=cadastro&redirect=" + encodeURIComponent(form.configuration?.settings.launchDate ? "/aguardando" : "/perfil")}
           className="flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-center text-sm font-extrabold text-primary-foreground transition-colors hover:bg-primary/90">
           {user ? "Continuar no CARONAA" : "Criar conta e acompanhar no CARONAA"}
         </a>
