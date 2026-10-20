@@ -1,6 +1,7 @@
 import { RESEARCH_TEMPLATES, freshTemplate } from "@/lib/formulario/research-templates";
 import { supabase } from "@/integrations/supabase/client";
 import { parseResearchConfiguration, type ResearchConfiguration } from "./research-configuration";
+import { friendlyResearchCreationError, normalizeResearchFormCode } from "./research-form-code";
 
 export const RESEARCH_NATURES = [
   { value: "EVENTO", label: "Evento" },
@@ -62,7 +63,7 @@ export async function createResearchForm(input: {
     const { data, error } = await db.rpc("create_configured_research_form", {
       p_metadata: {
         title: input.title.trim(),
-        code: input.code.trim().toUpperCase(),
+        code: normalizeResearchFormCode(input.code),
         nature: input.nature,
         audience: input.audience,
         municipality: input.municipality?.trim() ?? "",
@@ -70,18 +71,18 @@ export async function createResearchForm(input: {
       p_schema: schema,
       p_settings: settings,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyResearchCreationError(error));
     return data as string;
   }
   const { data, error } = await db.rpc("create_research_form_draft", {
     p_title: input.title.trim(),
-    p_code: input.code.trim().toUpperCase(),
+    p_code: normalizeResearchFormCode(input.code),
     p_nature: input.nature,
     p_audience: input.audience,
     p_municipality: input.municipality?.trim() ?? "",
     p_schema: schema,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(friendlyResearchCreationError(error));
   return data as string;
 }
 
