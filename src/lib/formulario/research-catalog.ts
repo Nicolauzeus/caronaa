@@ -28,6 +28,7 @@ export type ResearchForm = {
   created_at: string;
   survey_starts_on?: string | null;
   survey_ends_on?: string | null;
+  caronaa_presence_on?: string | null;
   mobility_configured?: boolean;
   trashed_at?: string | null;
   trashed_by?: string | null;
@@ -56,9 +57,12 @@ export async function createResearchForm(input: {
   configuration?: ResearchConfiguration;
   startsOn: string;
   endsOn: string;
+  caronaaPresenceOn?: string | null;
 }) {
   const scheduleError = validateSurveyWindow(input.startsOn,input.endsOn);
   if (scheduleError) throw new Error(scheduleError);
+  if (input.caronaaPresenceOn && !/^\d{4}-\d{2}-\d{2}$/.test(input.caronaaPresenceOn))
+    throw new Error("Informe uma data válida para a presença do CARONAA.");
   const selected = RESEARCH_TEMPLATES.find(
     (t) => t.key === input.templateKey && t.nature === input.nature,
   );
@@ -77,6 +81,7 @@ export async function createResearchForm(input: {
     p_settings: input.configuration ? parseResearchConfiguration(input.configuration) : null,
     p_starts_on: input.startsOn,
     p_ends_on: input.endsOn,
+    p_caronaa_on: input.caronaaPresenceOn || null,
   });
   if (error) {
     if (error.code === "PGRST202" || /create_scheduled_research_form/.test(error.message))
