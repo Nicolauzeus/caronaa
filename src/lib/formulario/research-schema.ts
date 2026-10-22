@@ -109,9 +109,9 @@ export function isVisible(q: SurveyQuestion, answers: Answers, allQuestions?: Su
   if (!allQuestions) return !q.showWhen || answers[q.showWhen.questionId] === q.showWhen.equals;
   return createResearchVisibility({sections:[{title:"Condicional",questions:allQuestions}]},answers).questionVisible(q);
 }
-export function cleanAnswers(schema: SurveySchema, answers: Answers): Answers {
+export function cleanAnswers(schema: SurveySchema, answers: Answers, externalRole?: string | null): Answers {
   const result: Answers = {};
-  const visibility = createResearchVisibility(schema, answers);
+  const visibility = createResearchVisibility(schema, answers, externalRole);
   for (const section of schema.sections)
     for (const q of section.questions)
       if (visibility.questionVisible(q) && answers[q.id] !== undefined &&
@@ -178,8 +178,8 @@ export function scheduleWarning(section: SurveySection, answers: Answers): strin
     ? "O horário de saída é anterior ao de chegada. Confirme se a saída é no dia seguinte; caso contrário, revise os horários."
     : null;
 }
-export function validatePage(section: SurveySection, answers: Answers, allQuestions?: SurveyQuestion[], schema?: SurveySchema): string[] {
-  const visible = createResearchVisibility(schema ?? {sections:[{...section,questions:allQuestions ?? section.questions}]},answers);
+export function validatePage(section: SurveySection, answers: Answers, allQuestions?: SurveyQuestion[], schema?: SurveySchema, externalRole?: string | null): string[] {
+  const visible = createResearchVisibility(schema ?? {sections:[{...section,questions:allQuestions ?? section.questions}]},answers,externalRole);
   return section.questions
     .filter(q => visible.questionVisible(q))
     .flatMap((q) => {
