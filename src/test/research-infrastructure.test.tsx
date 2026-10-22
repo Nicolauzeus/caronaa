@@ -83,7 +83,9 @@ describe("Configured public research", () => {
     api.rpc.mockImplementation(async (name: string) => ({
       error: null,
       data:
-        name === "get_public_research_configuration"
+        name === "get_research_window_state"
+          ? { startsOn: null, endsOn: null, state: "ABERTO" }
+          : name === "get_public_research_configuration"
           ? { revision: 1, settings }
           : name === "register_research_interest"
             ? "INTERESSE_REGISTRADO"
@@ -137,7 +139,9 @@ describe("Configured public research", () => {
   it("captures verified-intent research contact before success without enrolling in marketing", async () => {
     api.rpc.mockImplementation(async (name: string) => ({
       error: null,
-      data: name === "get_public_research_configuration"
+      data: name === "get_research_window_state"
+        ? { startsOn: null, endsOn: null, state: "ABERTO" }
+        : name === "get_public_research_configuration"
         ? { revision: 1, settings: { ...settings, emailCaptureEnabled: true } }
         : name === "research_contact_capture_enabled"
           ? true
