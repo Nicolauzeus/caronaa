@@ -342,15 +342,17 @@ export function ResearchConfigurationFields({
           </label>
         </TabsContent>
         <TabsContent value="service" className="grid gap-3 pt-3 sm:grid-cols-2">
-          <label className="text-sm">
-            Data de início
-            <input
-              type="date"
-              value={value.launchDate ?? ""}
-              onChange={(event) => set("launchDate", event.target.value || null)}
-              className={inputClass}
-            />
-          </label>
+          {!creationMode && (
+            <label className="text-sm">
+              Data prevista de presença ou início de operação do CARONAA (opcional)
+              <input
+                type="date"
+                value={value.launchDate ?? ""}
+                onChange={(event) => set("launchDate", event.target.value || null)}
+                className={inputClass}
+              />
+            </label>
+          )}
           {text("timezone", "Fuso horário")}
           <label className="text-sm">
             Situação do serviço
