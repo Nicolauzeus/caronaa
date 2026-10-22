@@ -6,8 +6,8 @@ import {formatResearchOption,getRatingScaleContext} from "@/lib/formulario/resea
 import type {SurveyQuestion,SurveySection,SurveySchema} from "@/lib/formulario/research-templates";
 import {createResearchVisibility} from "@/lib/formulario/research-conditions";
 
-export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions,schema,compact=false}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[];schema?:SurveySchema;compact?:boolean}){
- return <div className={compact?"min-w-0 space-y-2":"space-y-5"}>{section.questions.filter(q=>schema?createResearchVisibility(schema,answers).questionVisible(q):isVisible(q,answers,allQuestions)).map(q=>{
+export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions,schema,compact=false,externalRole}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[];schema?:SurveySchema;compact?:boolean;externalRole?:string|null}){
+ return <div className={compact?"min-w-0 space-y-2":"space-y-5"}>{section.questions.filter(q=>schema?createResearchVisibility(schema,answers,externalRole).questionVisible(q):isVisible(q,answers,allQuestions)).map(q=>{
   const id=idPrefix+q.id;
   const value=answers[q.id];
   const select=(v:string|string[])=>onChange(q.id,v);
@@ -23,7 +23,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
   const charCount=isText?Array.from(String(value??"").trim()).length:0;
   const charMax=q.maxLength??(q.type==="long_text"?2000:240);
   const liveError=value===undefined||value===""||!schema?null:
-    validatePage({title:"Campo",questions:[q]},answers,allQuestions,schema)[0]??null;
+    validatePage({title:"Campo",questions:[q]},answers,allQuestions,schema,externalRole)[0]??null;
   const choice=(options:string[])=><fieldset className="grid grid-cols-2 gap-2"><legend className="sr-only">{q.label}</legend>{options.map(opt=><label key={opt} className={"flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring "+(String(value)===opt?"border-primary bg-primary/10 font-semibold":"border-border hover:bg-muted/50")}><input type="radio" name={id} value={opt} checked={String(value??"")===opt} onChange={()=>select(opt)} className="accent-primary"/>{formatResearchOption(opt)}</label>)}</fieldset>;
   const rating=(max:number,min:number)=>{const scores=Array.from({length:max-min+1},(_,i)=>String(i+min));const context=getRatingScaleContext(q);return <fieldset className="space-y-2.5">
    <legend className="sr-only">{q.label}</legend>
