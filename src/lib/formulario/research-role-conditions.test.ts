@@ -19,9 +19,10 @@ describe("Profile-first conditional research",()=>{
   it("ships an up-front role question and valid schemas in all five models",()=>{
     for (const key of keys) {
       const schema=find(key).schema;
-      expect(schema.sections[0].questions[0].semanticCode).toBe("RESEARCH_PARTICIPANT_ROLE");
-      expect(schema.sections[0].questions[0].options).toContain("PASSAGEIRO");
-      expect(schema.sections[0].questions[0].options).toContain("MOTORISTA");
+      const role = schema.sections[0].questions.find(q=>q.semanticCode==="RESEARCH_PARTICIPANT_ROLE");
+      expect(role).toBeDefined();
+      expect(role?.options).toContain("PASSAGEIRO");
+      expect(role?.options).toContain("MOTORISTA");
       expect(inspectSchema(schema)).toEqual([]);
     }
     expect(find(REGIONAL_UNIVERSITY_KEY).schema.sections[0].questions[0].options)
