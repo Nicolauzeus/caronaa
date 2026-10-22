@@ -16,7 +16,7 @@ describe("four/five stage university express questionnaire",()=>{
   it("has no redundant pain/price-intention questions and exactly 4 or 5 stages",()=>{
     expect(isAcademicExpress(schema)).toBe(true);
     expect(inspectSchema(schema)).toEqual([]);
-    expect(all).toHaveLength(9);
+    expect(all).toHaveLength(10);
     expect(academicExpressSteps("PASSAGEIRO")).toEqual(["identity","route","passenger","activation"]);
     expect(academicExpressSteps("MOTORISTA")).toEqual(["identity","route","driver","activation"]);
     expect(academicExpressSteps("AMBOS")).toEqual(["identity","route","driver","passenger","activation"]);
