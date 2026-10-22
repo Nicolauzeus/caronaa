@@ -96,6 +96,15 @@ export function ResearchConfigurationFields({
             </span>
           </label>
 
+          {value.templateKey !== CORPORATE_INTERNAL_KEY && (
+            <label className="block text-sm sm:col-span-2">
+              Domínios institucionais de e-mail (opcional, separados por vírgula)
+              <input className={inputClass} placeholder="universidade.br"
+                value={(value.institutionalEmailDomains??[]).join(", ")}
+                onChange={event=>set("institutionalEmailDomains",event.target.value.split(/[,;\s]+/).map(v=>v.trim().toLowerCase()).filter(Boolean))}/>
+              <span className="mt-1 block text-xs text-muted-foreground">Reconhecer o domínio não comprova vínculo acadêmico nem libera acesso.</span>
+            </label>
+          )}
           {!creationMode && text("institutionId", "Identificador institucional")}
           {text("institutionName", value.templateKey===CORPORATE_INTERNAL_KEY ? "Nome da empresa" : "Instituição, empresa ou evento")}
           {!creationMode && text("publicName", "Nome público da pesquisa")}
