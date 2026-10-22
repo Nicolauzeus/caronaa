@@ -23,7 +23,7 @@ function InstitutionalDomainsInput({value,onChange}:{value:string[];onChange:(do
       onChange={event=>{
         const next=event.target.value;
         setDraft(next);
-        onChange(next.split(/[,;\\s]+/).map(v=>v.trim().toLowerCase()).filter(Boolean));
+        onChange(next.split(/[,;\s]+/).map(v=>v.trim().toLowerCase()).filter(Boolean));
       }}/>
     <span className="mt-1 block text-xs text-muted-foreground">
       Reconhecer o domínio não comprova vínculo acadêmico nem libera acesso.
