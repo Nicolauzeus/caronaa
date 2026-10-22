@@ -34,7 +34,8 @@ export function inspectSchema(schema: SurveySchema): string[] {
   const prior = new Map<string, SurveyQuestion>();
   let total = 0;
   schema.sections.forEach((s, si) => {
-    if (s.condition) errors.push(...inspectResearchCondition(s.condition, prior, "Seção " + (si + 1)));
+    if (s.condition)
+      errors.push(...inspectResearchCondition(s.condition, prior, "Seção " + (si + 1)));
     if (s.title.trim().length < 2) errors.push("A seção " + (si + 1) + " precisa de título.");
     if (!s.questions.length) errors.push("A seção " + (si + 1) + " está vazia.");
     s.questions.forEach((q, qi) => {
@@ -43,7 +44,12 @@ export function inspectSchema(schema: SurveySchema): string[] {
       if (ids.has(q.id)) errors.push(name + ": identificador duplicado.");
       ids.add(q.id);
       if (q.label.trim().length < 3) errors.push(name + ": enunciado muito curto.");
-      const normalizedLabel = q.label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+      const normalizedLabel = q.label
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLocaleLowerCase("pt-BR");
       if (questionLabels.has(normalizedLabel))
         errors.push(name + ": pergunta repetida. Una as perguntas ou use um enunciado diferente.");
       questionLabels.add(normalizedLabel);
@@ -57,15 +63,27 @@ export function inspectSchema(schema: SurveySchema): string[] {
         const limit = q.type === "long_text" ? 2000 : 240;
         const min = q.minLength ?? 0;
         const max = q.maxLength ?? limit;
-        if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 ||
-            max < 1 || min > max || max > limit)
+        if (
+          !Number.isInteger(min) ||
+          !Number.isInteger(max) ||
+          min < 0 ||
+          max < 1 ||
+          min > max ||
+          max > limit
+        )
           errors.push(name + ": limite de caracteres inválido.");
       }
       if (q.type === "multiple_choice") {
         const min = q.minValue ?? 0;
         const max = q.maxValue ?? q.options.length;
-        if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 ||
-            max < 1 || min > max || max > q.options.length)
+        if (
+          !Number.isInteger(min) ||
+          !Number.isInteger(max) ||
+          min < 0 ||
+          max < 1 ||
+          min > max ||
+          max > q.options.length
+        )
           errors.push(name + ": limite de alternativas inválido.");
       }
       if (q.type === "number") {
@@ -99,18 +117,31 @@ export function inspectSchema(schema: SurveySchema): string[] {
     // The express UI renders only this fixed, semantically versioned contract.
     // Prevent publishing an invisible newly-required question via the builder.
     const requiredSemantics = [
-      "ACADEMIC_PARTICIPANT_NAME", "ACADEMIC_ROLE", "RESEARCH_PARTICIPANT_ROLE",
-      "TRANSPORT_MODE", "COST_PER_TRIP", "ACADEMIC_PASSENGER_PRIORITY",
-      "URBAN_OFFER_VEHICLE", "ACADEMIC_VEHICLE_MODEL", "SEATS_AVAILABLE", "ACADEMIC_DRIVER_PRIORITY",
+      "ACADEMIC_PARTICIPANT_NAME",
+      "ACADEMIC_ROLE",
+      "RESEARCH_PARTICIPANT_ROLE",
+      "TRANSPORT_MODE",
+      "ACADEMIC_PASSENGER_PRIORITY",
+      "URBAN_OFFER_VEHICLE",
+      "ACADEMIC_VEHICLE_MODEL",
+      "SEATS_AVAILABLE",
+      "ACADEMIC_DRIVER_PRIORITY",
     ];
-    const questions = schema.sections.flatMap(section => section.questions);
-    if (questions.length !== requiredSemantics.length ||
-        requiredSemantics.some(code => questions.filter(q => q.semanticCode === code).length !== 1)) {
-      errors.push("O modelo acadêmico rápido exige os dez campos originais. Para adicionar perguntas, use um modelo tradicional.");
+    const questions = schema.sections.flatMap((section) => section.questions);
+    if (
+      questions.length !== requiredSemantics.length ||
+      requiredSemantics.some(
+        (code) => questions.filter((q) => q.semanticCode === code).length !== 1,
+      )
+    ) {
+      errors.push(
+        "O modelo acadêmico rápido exige os nove campos originais. Para adicionar perguntas, use um modelo tradicional.",
+      );
     }
-    for (const code of requiredSemantics.filter(code => code !== "COST_PER_TRIP" && code !== "ACADEMIC_VEHICLE_MODEL")) {
-      const q = questions.find(q => q.semanticCode === code);
-      if (q && !q.required) errors.push("No modelo acadêmico rápido, o campo " + code + " deve continuar obrigatório.");
+    for (const code of requiredSemantics.filter((code) => code !== "ACADEMIC_VEHICLE_MODEL")) {
+      const q = questions.find((q) => q.semanticCode === code);
+      if (q && !q.required)
+        errors.push("No modelo acadêmico rápido, o campo " + code + " deve continuar obrigatório.");
     }
   }
   if (total > 200) errors.push("Limite de 200 perguntas.");
@@ -123,17 +154,32 @@ export type Answers = Record<string, AnswerValue>;
  * This prevents hidden nested questions from reappearing through stale answers.
  * When allQuestions is omitted, the caller must pass already cleaned answers.
  */
-export function isVisible(q: SurveyQuestion, answers: Answers, allQuestions?: SurveyQuestion[]): boolean {
+export function isVisible(
+  q: SurveyQuestion,
+  answers: Answers,
+  allQuestions?: SurveyQuestion[],
+): boolean {
   if (!allQuestions) return !q.showWhen || answers[q.showWhen.questionId] === q.showWhen.equals;
-  return createResearchVisibility({sections:[{title:"Condicional",questions:allQuestions}]},answers).questionVisible(q);
+  return createResearchVisibility(
+    { sections: [{ title: "Condicional", questions: allQuestions }] },
+    answers,
+  ).questionVisible(q);
 }
-export function cleanAnswers(schema: SurveySchema, answers: Answers, externalRole?: string | null): Answers {
+export function cleanAnswers(
+  schema: SurveySchema,
+  answers: Answers,
+  externalRole?: string | null,
+): Answers {
   const result: Answers = {};
   const visibility = createResearchVisibility(schema, answers, externalRole);
   for (const section of schema.sections)
     for (const q of section.questions)
-      if (visibility.questionVisible(q) && answers[q.id] !== undefined &&
-        answers[q.id] !== "" && (!Array.isArray(answers[q.id]) || answers[q.id].length))
+      if (
+        visibility.questionVisible(q) &&
+        answers[q.id] !== undefined &&
+        answers[q.id] !== "" &&
+        (!Array.isArray(answers[q.id]) || answers[q.id].length)
+      )
         result[q.id] = answers[q.id];
   return result;
 }
@@ -177,7 +223,8 @@ export function getNumberBounds(q: SurveyQuestion): {
   }
   return {
     min: q.minValue ?? min,
-    max: semantic === "SEATS_AVAILABLE" || semantic === "EVENT_OFFER_SEATS" ? 7 : q.maxValue ?? max,
+    max:
+      semantic === "SEATS_AVAILABLE" || semantic === "EVENT_OFFER_SEATS" ? 7 : (q.maxValue ?? max),
     integerOnly: q.integerOnly ?? integerOnly,
   };
 }
@@ -196,10 +243,20 @@ export function scheduleWarning(section: SurveySection, answers: Answers): strin
     ? "O horário de saída é anterior ao de chegada. Confirme se a saída é no dia seguinte; caso contrário, revise os horários."
     : null;
 }
-export function validatePage(section: SurveySection, answers: Answers, allQuestions?: SurveyQuestion[], schema?: SurveySchema, externalRole?: string | null): string[] {
-  const visible = createResearchVisibility(schema ?? {sections:[{...section,questions:allQuestions ?? section.questions}]},answers,externalRole);
+export function validatePage(
+  section: SurveySection,
+  answers: Answers,
+  allQuestions?: SurveyQuestion[],
+  schema?: SurveySchema,
+  externalRole?: string | null,
+): string[] {
+  const visible = createResearchVisibility(
+    schema ?? { sections: [{ ...section, questions: allQuestions ?? section.questions }] },
+    answers,
+    externalRole,
+  );
   return section.questions
-    .filter(q => visible.questionVisible(q))
+    .filter((q) => visible.questionVisible(q))
     .flatMap((q) => {
       const value = answers[q.id];
       if (q.required && (!value || (Array.isArray(value) && !value.length)))
@@ -211,8 +268,7 @@ export function validatePage(section: SurveySection, answers: Answers, allQuesti
         const maxLength = q.maxLength ?? (q.type === "long_text" ? 2000 : 240);
         if (length < minLength)
           return [q.label + ": faltam " + (minLength - length) + " caracteres."];
-        if (length > maxLength)
-          return [q.label + ": máximo de " + maxLength + " caracteres."];
+        if (length > maxLength) return [q.label + ": máximo de " + maxLength + " caracteres."];
       }
       if (q.type === "multiple_choice" && Array.isArray(value)) {
         if (q.maxValue !== undefined && value.length > q.maxValue)
