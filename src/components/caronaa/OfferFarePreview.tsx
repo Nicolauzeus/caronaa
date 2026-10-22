@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { quoteOfferRoute } from "@/lib/offer-pricing.functions";
 import { formatBrl } from "@/lib/ride-cost";
 import { Button } from "@/components/ui/button";
+import type { FormLocationDetails } from "@/lib/location/types";
 
 export type OfferQuote = {
   quoteId: string;
@@ -17,11 +18,15 @@ export function OfferFarePreview({
   destination,
   seats,
   onQuote,
+  originLocation,
+  destinationLocation,
 }: {
   origin: string;
   destination: string;
   seats: number;
   onQuote: (quote: OfferQuote | null) => void;
+  originLocation?: FormLocationDetails;
+  destinationLocation?: FormLocationDetails;
 }) {
   const calculate = useServerFn(quoteOfferRoute);
   const [quote, setQuote] = useState<OfferQuote | null>(null);
@@ -34,7 +39,7 @@ export function OfferFarePreview({
     onQuote(null);
     if (!origin.trim() || !destination.trim()) return;
     const timer = setTimeout(() => {
-      void calculate({ data: { origin, destination } })
+      void calculate({ data: { origin, destination, originLat: originLocation?.lat, originLng: originLocation?.lng, destinationLat: destinationLocation?.lat, destinationLng: destinationLocation?.lng } })
         .then((result) => {
           if (!active) return;
           const value = { ...result, origin, destination };
@@ -52,7 +57,7 @@ export function OfferFarePreview({
       active = false;
       clearTimeout(timer);
     };
-  }, [origin, destination, retry, calculate, onQuote]);
+  }, [origin, destination, originLocation?.lat, originLocation?.lng, destinationLocation?.lat, destinationLocation?.lng, retry, calculate, onQuote]);
   return (
     <section className="border-y border-border py-4" aria-label="Preço da oferta">
       <p className="text-sm font-semibold">Preço por passageiro · percurso completo</p>
