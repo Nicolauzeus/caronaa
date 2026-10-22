@@ -86,6 +86,8 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
   const stage=steps[Math.min(index,steps.length-1)] as Stage;
   const hasVerifiedEmail=Boolean(user?.email_confirmed_at && user.email?.toLowerCase()===email.trim().toLowerCase());
   const allowedDomains=((config.settings as typeof config.settings & {institutionalEmailDomains?:string[]}).institutionalEmailDomains??[]);
+  // Backward-compatible hint for the existing UNIFOR campaign; not authorization.
+  if(!allowedDomains.length && config.settings.institutionName.trim().toUpperCase()==="UNIFOR") allowedDomains.push("unifor.br");
   const domain=email.trim().split("@")[1]?.toLowerCase();
   const hasRecognizedDomain=Boolean(domain&&allowedDomains.some(allowed=>allowed.toLowerCase()===domain));
   const institution=config.settings.institutionName||form.title;
