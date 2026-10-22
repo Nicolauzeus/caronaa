@@ -58,6 +58,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
   const costQuestion = bySemantic("COST_PER_TRIP");
   const passengerPriority = bySemantic("ACADEMIC_PASSENGER_PRIORITY");
   const vehicleQuestion = bySemantic("URBAN_OFFER_VEHICLE");
+  const vehicleModelQuestion = bySemantic("ACADEMIC_VEHICLE_MODEL");
   const seatsQuestion = bySemantic("SEATS_AVAILABLE");
   const driverPriority = bySemantic("ACADEMIC_DRIVER_PRIORITY");
 
@@ -141,7 +142,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
         return "Escolha também o horário habitual de retorno.";
     } else if(stage==="driver" || stage==="passenger") {
       const questions=stage==="driver"
-        ?[vehicleQuestion,seatsQuestion,driverPriority]
+        ?[vehicleQuestion,vehicleModelQuestion,seatsQuestion,driverPriority]
         :[transportQuestion,costQuestion,passengerPriority];
       const section={title:"Sua preferência",questions:questions.filter((q):q is SurveyQuestion=>Boolean(q))};
       const issues=validatePage(section,answers,allQuestions,schema,role);
@@ -371,6 +372,11 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
 
             {stage==="driver"&&<>
               <div className="space-y-2"><p className={label}>Qual veículo usaria?</p>{selectable(vehicleQuestion,true)}</div>
+              <label className={label}>Marca / modelo (opcional)
+                <input className={field+" mt-2"} maxLength={80} value={selected(vehicleModelQuestion)}
+                  onChange={e=>updateAnswer(vehicleModelQuestion,e.target.value)}
+                  placeholder="Ex.: Honda Fit"/>
+              </label>
               <div className="space-y-2"><p className={label}>Vagas livres, sem contar o motorista</p>
                 <div className="grid grid-cols-5 gap-2">
                   {[1,2,3,4].map(n=><button key={n} type="button"
