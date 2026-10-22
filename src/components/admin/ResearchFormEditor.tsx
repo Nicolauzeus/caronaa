@@ -865,6 +865,7 @@ export function ResearchFormEditor({
                     </label>
                     <ResearchConditionEditor
                       label="Regras condicionais (E / OU)"
+                      semanticCode={q.semanticCode}
                       value={q.condition}
                       parents={schema.sections.flatMap((s, i) => s.questions.filter(
                         (other, j) => (i < si || (i === si && j < qi)) &&
@@ -881,7 +882,11 @@ export function ResearchFormEditor({
                         onChange={(e) =>
                           changeQuestion(si, qi, {
                             showWhen: e.target.value
-                              ? { questionId: e.target.value, equals: "" }
+                              ? {
+                                  questionId: e.target.value,
+                                  equals: schema.sections.flatMap(section => section.questions)
+                                    .find(parent => parent.id === e.target.value)?.options[0] ?? "",
+                                }
                               : undefined,
                           })
                         }

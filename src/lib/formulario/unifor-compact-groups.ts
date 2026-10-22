@@ -39,8 +39,8 @@ export function setUniforPainAnswers(schema:SurveySchema,previous:Answers,id:str
 }
 
 /** Group adjacent, related questions; never discard unrecognized fields. */
-export function createUniforGroups(schema:SurveySchema,answers:Answers,combineUnknown=false):CompactResearchGroup[][] {
- const visibility=createResearchVisibility(schema,answers);
+export function createUniforGroups(schema:SurveySchema,answers:Answers,combineUnknown=false,externalRole?:string|null):CompactResearchGroup[][] {
+ const visibility=createResearchVisibility(schema,answers,externalRole);
  const {pains,primary}=getUniforPainQuestions(schema);
  const consolidate=Boolean(pains&&primary);
  return schema.sections.map((section,sectionIndex)=>{

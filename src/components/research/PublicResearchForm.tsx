@@ -198,15 +198,17 @@ export function PublicResearchForm({ code }: { code: string }) {
   const allQuestions = form?.schema.sections.flatMap((section) => section.questions) ?? [];
   const roleId = allQuestions.find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE")?.id;
   const declaredRole = roleId && typeof answers[roleId] === "string" ? String(answers[roleId]) : null;
+  // In published legacy university versions, the profile belongs to the journey step.
+  const participantRole = declaredRole ?? (pilotRoleConfirmed ? pilotSelectedRole : null);
   const visibleStepIndexes = form
     ? [...form.schema.sections.flatMap((section,index) =>
-        createResearchVisibility(form.schema,answers).sectionVisible(section) ? [index] : []),
+        createResearchVisibility(form.schema,answers,participantRole).sectionVisible(section) ? [index] : []),
        ...(form.configuration ? [form.schema.sections.length] : [])]
     : [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   const isUnifor = Boolean(form && academicResearchTemplate(form.configuration?.settings.templateKey,isUniforPilotForm(form.id)));
   const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
-  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers,!isUniforPilotForm(form.id)) : [];
+  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers,!isUniforPilotForm(form.id),participantRole) : [];
   const currentSection = form?.schema.sections[step];
   const currentGroups = uniforGroups[step] ?? [];
   const joinedAcademicRole = isUnifor && !roleId && uniforGroups[0]?.[0]?.questions.some(
@@ -240,7 +242,7 @@ export function PublicResearchForm({ code }: { code: string }) {
         const group=uniforGroups[0]?.[0];
         if(group) {
           const one={...form.schema.sections[0],questions:group.questions};
-          const problems=validatePage(one,answers,allQuestions,form.schema);
+          const problems=validatePage(one,answers,allQuestions,form.schema,participantRole);
           if(problems.length) {
             setFieldErrors({[group.questions[0].id]:problems[0]});
             setError(problems[0]);
@@ -267,10 +269,10 @@ export function PublicResearchForm({ code }: { code: string }) {
     // field or the entire section before the user has seen the next group.
     if (isUnifor && currentGroup) {
       const one = { ...sec, questions:currentGroup.questions };
-      const currentErrors = validatePage(one,answers,allQuestions,form.schema);
+      const currentErrors = validatePage(one,answers,allQuestions,form.schema,participantRole);
       if (currentErrors.length) {
         const invalid = currentGroup.questions.find(q =>
-          validatePage({...one,questions:[q]},answers,allQuestions,form.schema).length);
+          validatePage({...one,questions:[q]},answers,allQuestions,form.schema,participantRole).length);
         if(invalid)setFieldErrors({[invalid.id]:currentErrors[0]});
         setError(currentErrors[0]);
         return;
@@ -283,7 +285,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       }
     }
     const problems = [
-      ...validatePage(sec, answers, allQuestions, form.schema),
+      ...validatePage(sec, answers, allQuestions, form.schema,participantRole),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -298,7 +300,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     if (problems.length) {
       const byQuestion: Record<string, string> = {};
       for (const q of sec.questions) {
-        const errors = validatePage({ title: sec.title, questions: [q] }, answers, allQuestions, form.schema);
+        const errors = validatePage({ title: sec.title, questions: [q] }, answers, allQuestions, form.schema,participantRole);
         if (errors.length) byQuestion[q.id] = errors[0];
       }
       setFieldErrors(byQuestion);
@@ -354,7 +356,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       setMicroJourneyIndex(i => i + 1);
       return;
     }
-    const cleaned = cleanAnswers(form.schema, answers);
+    const cleaned = cleanAnswers(form.schema, answers,participantRole);
     const expectedProfile = declaredRole === "PROFISSIONAL" ? "MOTORISTA" : declaredRole;
     if (declaredRole && form.configuration && (
       !journey || journey.profile !== expectedProfile ||
@@ -364,7 +366,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       return;
     }
     const problems = [
-      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions, form.schema)),
+      ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions, form.schema,participantRole)),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -663,7 +665,7 @@ export function PublicResearchForm({ code }: { code: string }) {
                 ["AMBOS","Quero encontrar e oferecer"],
               ] as const).map(([role,label])=>(
                 <label key={role} className={"flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm "+(pilotSelectedRole===role?"border-primary bg-primary/10 font-semibold":"border-border")}>
-                  <input type="radio" name="unifor-pilot-role" checked={pilotSelectedRole===role} onChange={()=>{setPilotSelectedRole(role);setError("");}} className="accent-primary" />
+                  <input type="radio" name="unifor-pilot-role" checked={pilotSelectedRole===role} onChange={()=>{setPilotSelectedRole(role);setAnswers(previous=>cleanAnswers(form.schema,previous,role));setFieldErrors({});setError("");}} className="accent-primary" />
                   {label}
                 </label>
               ))}
@@ -673,11 +675,12 @@ export function PublicResearchForm({ code }: { code: string }) {
                 section={{...form.schema.sections[0],questions:uniforGroups[0][0].questions}}
                 compact
                 schema={form.schema}
+                externalRole={participantRole}
                 allQuestions={allQuestions}
                 answers={answers}
                 errors={fieldErrors}
                 onChange={(id,value)=>{
-                  setAnswers(previous=>cleanAnswers(form.schema,setUniforPainAnswers(form.schema,previous,id,value)));
+                  setAnswers(previous=>cleanAnswers(form.schema,setUniforPainAnswers(form.schema,previous,id,value),participantRole));
                   setFieldErrors(previous=>({...previous,[id]:""}));
                   setError("");
                 }}
@@ -689,12 +692,13 @@ export function PublicResearchForm({ code }: { code: string }) {
               section={pilotContent!}
               compact={isUnifor}
               schema={form.schema}
+              externalRole={participantRole}
               allQuestions={allQuestions}
               answers={answers}
               errors={fieldErrors}
               onChange={(id, value) => {
                 setAnswers((a) => cleanAnswers(form.schema,
-                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value) : { ...a,[id]:value }));
+                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value) : { ...a,[id]:value },participantRole));
                 setFieldErrors((prev) => ({ ...prev, [id]: "" }));
                 setError("");
               }}
