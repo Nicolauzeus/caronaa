@@ -108,18 +108,19 @@ describe("Home mobile", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
     expect(screen.getByRole("heading", { name: "Para onde vamos?" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Oferecer carona" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Oferecer" })).toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
   it("permite alternar os dois papéis da viagem", () => {
     render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Oferecer carona" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oferecer" }));
     expect(screen.getByRole("button", { name: "Continuar" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Pedir carona", pressed: false }));
-    expect(screen.getByRole("combobox", { name: "Passageiros" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Aumentar passageiros" })).toBeInTheDocument();
   });
   it("publica a solicitação com os campos informados", async () => {
     const { container } = render(<Home />);
+    fireEvent.click(screen.getByRole("button", { name: "Editar origem" }));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Aldeota" } });
     fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
@@ -143,7 +144,7 @@ describe("Home mobile", () => {
     });
     render(<Home />);
     act(() => fix(position()));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
+    await waitFor(() => expect(screen.getByText("Rua A, Fortaleza")).toBeInTheDocument());
     expect(screen.getByText("Localização atual")).toBeInTheDocument();
     expect(api.reverse).toHaveBeenCalledWith({ data: { lat: -3.73, lng: -38.52 } });
   });
@@ -154,7 +155,7 @@ describe("Home mobile", () => {
     });
     render(<Home />);
     act(() => gpsFailure({ code: 1 } as GeolocationPositionError));
-    expect(screen.getByRole("button", { name: "Informar saída" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Informar saída" }));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
     expect(screen.getByLabelText("Saída")).toHaveValue("CEC");
     expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
@@ -166,7 +167,8 @@ describe("Home mobile", () => {
     });
     render(<Home />);
     act(() => fix(position()));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
+    await waitFor(() => expect(screen.getByText("Rua A, Fortaleza")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Editar origem" }));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Centro de Eventos" } });
     act(() => move(position(-3.74)));
     expect(screen.getByLabelText("Saída")).toHaveValue("Centro de Eventos");
@@ -200,7 +202,7 @@ describe("Home mobile", () => {
   });
   it("não apresenta opções de saída vinculadas à inscrição do evento", () => {
     render(<Home />);
-    fireEvent.click(screen.getByText("Opções de saída"));
+    expect(screen.queryByText("Opções de saída")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /inscrição STS/i })).not.toBeInTheDocument();
   });
 });

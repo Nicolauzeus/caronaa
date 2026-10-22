@@ -22,6 +22,7 @@ export type ResearchLaunchState = {
   locked: boolean;
   formId?: string;
   formCode?: string;
+  title?: string;
   institution?: string;
   nature?: string;
   launchAt?: string;
@@ -32,6 +33,7 @@ export type ResearchLaunchState = {
 export type ResearchLaunchCampaign = {
   formId: string;
   formCode: string;
+  title: string;
   institution: string;
   nature: string;
   launchAt: string;
@@ -42,71 +44,85 @@ export type ResearchLaunchCampaign = {
  * Database time and controlled account-to-form links are authoritative.
  * A research participation badge demonstrates receipt ownership, not affiliation.
  */
+
+/** Return every verified, pending campaign even when app access is unrestricted. */
 export async function getMyResearchLaunchState(): Promise<ResearchLaunchState> {
   const { data: response, error } = await launchRpc.rpc("get_my_research_launch_state");
   const data = asRecord(response);
   if (error || !data || typeof data.locked !== "boolean") {
     throw new Error("Não foi possível verificar o acesso ao CARONAA. Tente novamente.");
   }
-  if (!data.locked) return { locked: false, preview: null, launches: [] };
-  if (
-    typeof data.formId !== "string" ||
-    typeof data.formCode !== "string" ||
-    typeof data.launchAt !== "string" ||
-    !Number.isFinite(Date.parse(data.launchAt))
-  ) {
+  const parsePreview = (value: unknown): LaunchPreview | null => {
+    const preview = asRecord(value);
+    if (
+      !preview ||
+      !["PEDIDO", "OFERTA", "AMBOS"].includes(String(preview.kind)) ||
+      preview.status !== "VISUALIZACAO"
+    ) return null;
+    return {
+      kind: preview.kind as LaunchPreview["kind"],
+      scheduledDate: typeof preview.scheduledDate === "string" ? preview.scheduledDate : "",
+      origin: typeof preview.origin === "string" ? preview.origin : null,
+      destination: typeof preview.destination === "string" ? preview.destination : null,
+      departureTime: typeof preview.departureTime === "string" ? preview.departureTime : null,
+      status: "VISUALIZACAO",
+    };
+  };
+  const parseCampaign = (value: unknown): ResearchLaunchCampaign | null => {
+    const campaign = asRecord(value);
+    if (
+      !campaign ||
+      typeof campaign.formId !== "string" || !campaign.formId.trim() ||
+      typeof campaign.formCode !== "string" ||
+      typeof campaign.launchAt !== "string" ||
+      !Number.isFinite(Date.parse(campaign.launchAt))
+    ) return null;
+    const institution = typeof campaign.institution === "string" && campaign.institution.trim()
+      ? campaign.institution : "sua instituição";
+    return {
+      formId: campaign.formId,
+      formCode: campaign.formCode,
+      title: typeof campaign.title === "string" && campaign.title.trim()
+        ? campaign.title : institution,
+      institution,
+      nature: typeof campaign.nature === "string" ? campaign.nature : "",
+      launchAt: campaign.launchAt,
+      preview: parsePreview(campaign.preview),
+    };
+  };
+  const parsed = Array.isArray(data.launches)
+    ? data.launches.flatMap((value): ResearchLaunchCampaign[] => {
+        const campaign = parseCampaign(value);
+        return campaign ? [campaign] : [];
+      }) : [];
+  // A pre-0114 database returns one campaign through the legacy aliases.
+  if (!parsed.length) {
+    const legacy = parseCampaign(data);
+    if (legacy) parsed.push(legacy);
+  }
+  const unique = new Map<string, ResearchLaunchCampaign>();
+  for (const campaign of parsed) {
+    if (!unique.has(campaign.formId)) unique.set(campaign.formId, campaign);
+  }
+  const launches = [...unique.values()].sort(
+    (a, b) => Date.parse(a.launchAt) - Date.parse(b.launchAt) ||
+      a.formCode.localeCompare(b.formCode),
+  );
+  if (data.locked && !launches.length) {
     throw new Error("Configuração de lançamento incompleta. Entre em contato com o suporte.");
   }
-  const parsePreview = (value: unknown): LaunchPreview | null => {
-    const preview = value as LaunchPreview | null;
-    return preview &&
-      ["PEDIDO", "OFERTA", "AMBOS"].includes(preview.kind) &&
-      preview.status === "VISUALIZACAO"
-      ? preview
-      : null;
-  };
-  const launches: ResearchLaunchCampaign[] = Array.isArray(data.launches)
-    ? data.launches.flatMap((value): ResearchLaunchCampaign[] => {
-        const campaign = asRecord(value);
-        if (
-          !campaign ||
-          typeof campaign.formId !== "string" ||
-          typeof campaign.formCode !== "string" ||
-          typeof campaign.launchAt !== "string" ||
-          !Number.isFinite(Date.parse(campaign.launchAt))
-        )
-          return [];
-        return [
-          {
-            formId: String(campaign.formId),
-            formCode: String(campaign.formCode),
-            institution: String(campaign.institution || "sua instituição"),
-            nature: String(campaign.nature || ""),
-            launchAt: campaign.launchAt,
-            preview: parsePreview(campaign.preview),
-          },
-        ];
-      })
-    : [];
-  const preview = parsePreview(data.preview);
-  if (!launches.length) {
-    launches.push({
-      formId: String(data.formId),
-      formCode: String(data.formCode),
-      institution: String(data.institution || "sua instituição"),
-      nature: String(data.nature || ""),
-      launchAt: String(data.launchAt),
-      preview,
-    });
-  }
+  const primary = launches[0];
   return {
-    locked: true,
-    formId: String(data.formId),
-    formCode: String(data.formCode),
-    institution: String(data.institution || "sua instituição"),
-    nature: String(data.nature || ""),
-    launchAt: String(data.launchAt),
-    preview,
+    locked: data.locked,
+    ...(primary && {
+      formId: primary.formId,
+      formCode: primary.formCode,
+      title: primary.title,
+      institution: primary.institution,
+      nature: primary.nature,
+      launchAt: primary.launchAt,
+    }),
+    preview: primary?.preview ?? null,
     launches,
   };
 }

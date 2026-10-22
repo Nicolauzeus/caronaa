@@ -21,6 +21,7 @@ function compatibleData(): OperationData & {
     requests: [
       {
         request_id: "request",
+        original_requested_at: null,
         idempotency_key: null,
         notes: null,
         pickup_lat: null,
@@ -186,6 +187,7 @@ describe("administrative people", () => {
       ride_id: "ride",
       total_price: 30,
       passenger_contribution: 15,
+      pickup_estimated_at: null,
       route_distance_km: null,
       passenger_price: null,
       passenger_group_total: null,

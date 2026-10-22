@@ -66,7 +66,9 @@ function ResearchWaitingRoom() {
         if (!mounted) return;
         setState(result);
         setError("");
-        if (!result.locked) {
+        // Established accounts can follow campaigns without losing their
+        // normal app access. Redirect only when there is nothing to follow.
+        if (!result.locked && result.launches.length === 0) {
           await router.invalidate();
           if (mounted) void navigate({ to: "/home", replace: true });
         }
@@ -104,7 +106,7 @@ function ResearchWaitingRoom() {
       className="min-h-[100dvh] w-full bg-[#111111] text-white"
       aria-label="Aguardando lançamento CARONAA"
     >
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col justify-between gap-3 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:gap-5 sm:px-6">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col justify-between gap-3 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:gap-5 sm:px-6">
         <header className="flex min-h-9 shrink-0 items-center justify-between gap-3">
           <span className="font-display text-lg font-black tracking-[.12em] text-[#ffc451]">
             CARONAA
@@ -118,15 +120,17 @@ function ResearchWaitingRoom() {
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-3 sm:gap-5">
           <div className="space-y-2">
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#ffc451]">
-              <CalendarClock size={16} aria-hidden="true" /> Abertura: {launchDate(state?.launchAt)}
+              <CalendarClock size={16} aria-hidden="true" /> {launches.length > 1 ? "Próxima abertura" : "Abertura"}: {launchDate(state?.launchAt)}
             </p>
             <h1 className="font-display text-[clamp(1.65rem,5vw,2.4rem)] font-black leading-tight">
-              Seu caminho começa em breve.
+              {launches.length > 1 ? "Seus lançamentos, em um só lugar." : "Seu caminho começa em breve."}
             </h1>
             <p className="text-sm leading-5 text-white/70">
-              Sua participação já está registrada. Acompanhe cada campanha e personalize seu perfil
-              enquanto espera. Pedidos, ofertas e reservas só serão liberados quando cada
-              organização abrir o acesso.
+              Acompanhe {launches.length > 1 ? "todas as campanhas" : "sua campanha"} de que
+              você participa, com datas e contagens regressivas independentes.
+              {state?.locked
+                ? " Pedidos, ofertas e reservas serão liberados conforme a programação."
+                : " Seu acesso habitual ao aplicativo permanece disponível."}
             </p>
           </div>
           {busy && (
@@ -139,12 +143,17 @@ function ResearchWaitingRoom() {
               {error}
             </p>
           )}
-          {!busy &&
-            !error &&
-            launches.map((launch) => (
+          {!busy && !error && launches.length > 0 && (
+            <div
+              role="list"
+              aria-label="Lançamentos de pesquisas vinculados à conta"
+              className={`grid grid-cols-1 gap-3 ${launches.length > 1 ? "md:grid-cols-2" : ""}`}
+            >
+              {launches.map((launch) => (
               <section
                 key={launch.formId}
-                aria-label={`Lançamento ${launch.institution}`}
+                role="listitem"
+                aria-label={`Lançamento ${launch.title} · ${launch.formCode}`}
                 className="space-y-2 rounded-2xl border border-[#ffc451]/35 bg-white/[.06] p-3.5 sm:p-5"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -152,8 +161,11 @@ function ResearchWaitingRoom() {
                     <p className="text-xs font-bold uppercase tracking-wide text-[#ffc451]">
                       {launch.institution}
                     </p>
+                    <p className="mt-1 text-sm font-semibold leading-snug text-white">
+                      {launch.title}
+                    </p>
                     <p className="mt-1 text-xs text-white/55">
-                      Abertura: {launchDate(launch.launchAt)}
+                      Pesquisa {launch.formCode} · Abertura: {launchDate(launch.launchAt)}
                     </p>
                   </div>
                   <LockKeyhole
@@ -162,6 +174,9 @@ function ResearchWaitingRoom() {
                     className="mt-1 shrink-0 text-[#ffc451]"
                   />
                 </div>
+                <p className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-[#ffc451]">
+                  <LockKeyhole size={12} aria-hidden="true" /> SOMENTE VISUALIZAÇÃO
+                </p>
                 <p className="text-xl font-extrabold">{previewKind(launch.preview?.kind)}</p>
                 {launch.preview ? (
                   <>
@@ -199,7 +214,24 @@ function ResearchWaitingRoom() {
                   <Clock3 aria-hidden="true" size={22} className="text-[#ffc451]" />
                 </div>
               </section>
-            ))}
+              ))}
+            </div>
+          )}
+          {!busy && !error && launches.length > 0 && (
+            <p className="text-center text-xs leading-5 text-white/60">
+              Não aparece alguma pesquisa? No seu perfil, vincule o recibo privado
+              da participação à sua conta.
+            </p>
+          )}
+          {!state?.locked && launches.length > 0 && (
+            <Link
+              to="/home"
+              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-white/25 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Ir ao aplicativo
+              <ArrowRight size={17} aria-hidden="true" />
+            </Link>
+          )}
           <Link
             to="/perfil"
             className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#ffc451] px-4 py-3 text-sm font-extrabold text-[#141414] shadow-lg transition-colors hover:bg-[#ffd886] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffc451]"
@@ -222,7 +254,11 @@ function ResearchWaitingRoom() {
           )}
         </div>
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 pt-2 text-[11px] leading-4 text-white/50">
-          <p>O acesso abre na data programada ou quando a organização liberar.</p>
+          <p>
+            {state?.locked
+              ? "O acesso abre na data programada ou quando a organização liberar."
+              : "Acompanhar uma campanha não restringe seu acesso atual."}
+          </p>
           <button
             type="button"
             className="min-h-9 shrink-0 rounded-lg border border-white/25 px-3 font-semibold text-white/85"
