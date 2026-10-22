@@ -7,6 +7,7 @@ import type { SurveySchema } from "@/lib/formulario/research-templates";
 import { createResearchVisibility } from "@/lib/formulario/research-conditions";
 import { createUniforGroups,setUniforPainAnswers } from "@/lib/formulario/unifor-compact-groups";
 import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
+import { academicResearchTemplate,displaySurveyDate,getResearchWindowState } from "@/lib/formulario/research-window";
 import {
   cleanAnswers,
   scheduleWarning,
@@ -41,6 +42,7 @@ type Form = {
   version: string;
   title: string;
   schema: SurveySchema;
+  caronaaPresenceOn: string | null;
   brandImagePath: string | null;
   brandAlt: string | null;
   brandName: string | null;
@@ -92,6 +94,18 @@ export function PublicResearchForm({ code }: { code: string }) {
         setLoading(false);
         return;
       }
+      const windowState=await getResearchWindowState(code);
+      if (!alive) return;
+      if (windowState?.state === "AGENDADO") {
+        setError("Esta pesquisa abrirá para respostas em "+displaySurveyDate(windowState.startsOn!)+".");
+        setLoading(false);
+        return;
+      }
+      if (windowState?.state === "ENCERRADO") {
+        setError("Esta pesquisa encerrou o recebimento de respostas em "+displaySurveyDate(windowState.endsOn!)+".");
+        setLoading(false);
+        return;
+      }
       const { data: v, error: ve } = await (supabase as any)
         .from("research_form_versions")
         .select("id,schema_json")
@@ -127,6 +141,7 @@ export function PublicResearchForm({ code }: { code: string }) {
         version: v.id,
         title: f.title,
         schema: v.schema_json,
+        caronaaPresenceOn: f.caronaa_presence_on ?? null,
         brandImagePath: f.brand_image_path,
         brandAlt: f.brand_image_alt,
         brandName: f.brand_display_name,
@@ -173,7 +188,7 @@ export function PublicResearchForm({ code }: { code: string }) {
   useEffect(() => {
     if (!form || previousStep.current === step) return;
     previousStep.current = step;
-    if (isUniforPilotForm(form.id)) return;
+    if (academicResearchTemplate(form.configuration?.settings.templateKey,isUniforPilotForm(form.id))) return;
     const frame = requestAnimationFrame(() => {
       document.getElementById("research-step-content")?.scrollIntoView({ block: "start", behavior: "auto" });
       document.getElementById("research-step-heading")?.focus({ preventScroll: true });
@@ -189,9 +204,9 @@ export function PublicResearchForm({ code }: { code: string }) {
        ...(form.configuration ? [form.schema.sections.length] : [])]
     : [];
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
-  const isUnifor = Boolean(form && isUniforPilotForm(form.id));
+  const isUnifor = Boolean(form && academicResearchTemplate(form.configuration?.settings.templateKey,isUniforPilotForm(form.id)));
   const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
-  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers) : [];
+  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers,!isUniforPilotForm(form.id)) : [];
   const currentSection = form?.schema.sections[step];
   const currentGroups = uniforGroups[step] ?? [];
   const joinedAcademicRole = isUnifor && !roleId && uniforGroups[0]?.[0]?.questions.some(
@@ -478,12 +493,14 @@ export function PublicResearchForm({ code }: { code: string }) {
             Sua participação foi salva com sucesso. Não é necessário criar uma conta agora.
           </p>
         </section>
-        {form.configuration && (
+        {(form.caronaaPresenceOn || form.configuration?.settings.launchDate) && (
           <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
             <CalendarDays className="mt-0.5 shrink-0 text-primary" size={20} aria-hidden="true" />
             <div className="min-w-0 space-y-1">
               <p className="text-sm font-semibold">Próximos passos</p>
-              <p className="text-sm text-muted-foreground">{launchMessage(form.configuration.settings)}</p>
+              <p className="text-sm text-muted-foreground">{form.configuration?.settings.launchDate
+                ? launchMessage(form.configuration.settings)
+                : "Presença prevista do CARONAA · " + displaySurveyDate(form.caronaaPresenceOn!)}</p>
               {launchNotice && <p role="status" className="text-xs text-muted-foreground">{launchNotice}</p>}
             </div>
           </div>
@@ -541,12 +558,12 @@ export function PublicResearchForm({ code }: { code: string }) {
         ? "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-28 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-6"
         : "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
       : "mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8"}>
-      {isUnifor ? (
+      {isUniforPilotForm(form.id) ? (
         <header className="flex min-h-10 shrink-0 items-center justify-between gap-3" aria-label="Pesquisa CARONAA UNIFOR">
           <span className="font-display text-base font-black tracking-wide text-primary">CARONAA <span className="text-foreground">· UNIFOR</span></span>
           <span className="text-[11px] font-semibold text-muted-foreground">Estreia · {UNIFOR_LAUNCH_DAY}</span>
         </header>
-      ) : <ResearchBrandHeader
+      ) : <ResearchBrandHeader compact={isUnifor}
         title={form.configuration?.settings.publicName || form.title}
         imagePath={form.brandImagePath}
         alt={form.brandAlt}
@@ -588,7 +605,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       )}
       {!isUnifor && step === 0 && form.configuration && (
         <div className="space-y-2 border-y py-3">
-          <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>
+          {form.configuration.settings.launchDate && <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>}
           <p className="text-sm">{form.configuration.settings.usagePolicy}</p>
           {form.configuration.settings.priceReference && (
             <p className="text-sm">{form.configuration.settings.priceReference}</p>

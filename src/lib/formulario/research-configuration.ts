@@ -146,7 +146,7 @@ export function parseResearchConfiguration(input: ResearchConfiguration): Resear
       usagePolicy: "Política de uso",
       profiles: "Público-alvo",
       modes: "Modalidades",
-      launchDate: "Data de início",
+      launchDate: "Previsão de presença do CARONAA",
       latitude: "Latitude",
       longitude: "Longitude",
       safeMeetingPoints: "Pontos de embarque",
@@ -202,9 +202,8 @@ export function newResearchConfiguration(templateKey = "CUSTOM"): ResearchConfig
   };
 }
 export function launchMessage(config: PublicResearchConfiguration["settings"]) {
-  const date = config.launchDate
-    ? new Date(config.launchDate + "T12:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" })
-    : "Data ainda não informada";
+  if (!config.launchDate) return "";
+  const date = new Date(config.launchDate + "T12:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" });
   const status = {
     PLANEJADO: "Início planejado",
     CONFIRMADO: "Início confirmado",

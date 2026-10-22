@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
+import { validateSurveyWindow } from "@/lib/formulario/research-window";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
 import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
 import { REGIONAL_UNIVERSITY_KEY,regionalUniversityPreset } from "@/lib/formulario/regional-university";
@@ -89,6 +90,8 @@ export function ResearchCatalog() {
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [code, setCode] = useState("");
+  const [surveyStartsOn, setSurveyStartsOn] = useState("");
+  const [surveyEndsOn, setSurveyEndsOn] = useState("");
   const [codeLookup, setCodeLookup] = useState<{
     code: string; checking: boolean; availability?: ResearchCodeAvailability; failed?: boolean;
   } | null>(null);
@@ -180,6 +183,8 @@ export function ResearchCatalog() {
         setCodeLookup({ code: normalizedCode, checking: false, availability: currentAvailability });
         throw Error(describeResearchCodeConflict(currentAvailability.status, currentAvailability.inTrash));
       }
+      const scheduleIssue = validateSurveyWindow(surveyStartsOn,surveyEndsOn);
+      if (scheduleIssue) throw Error(scheduleIssue);
       if (configuredModelKeys.includes(templateKey) && !configure)
         throw Error("Este modelo requer configuração institucional de endereços e horários.");
       const finalConfiguration = {
@@ -212,6 +217,9 @@ export function ResearchCatalog() {
         audience,
         municipality,
         templateKey,
+        startsOn: surveyStartsOn,
+        endsOn: surveyEndsOn,
+        caronaaPresenceOn: configuration.launchDate,
         configuration: configure ? finalConfiguration : undefined,
       });
       let logoWarning = "";
@@ -237,6 +245,9 @@ export function ResearchCatalog() {
       setInstitutionLogo(null);
       setSelected(id);
       setTemplateKey("");
+      setSurveyStartsOn("");
+      setSurveyEndsOn("");
+      setConfiguration(newResearchConfiguration());
       setEditing(false);
       setTitle("");
       setCode("");
@@ -376,6 +387,44 @@ export function ResearchCatalog() {
               ))}
             </select>
           </label>
+          <fieldset className="min-w-0 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3 sm:col-span-2 sm:p-4">
+            <legend className="px-1 text-sm font-bold">Período da pesquisa</legend>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Defina quando o formulário começa e termina de receber respostas.
+              O encerramento é inclusivo, pelo horário de Fortaleza, e não representa o início das caronas.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium">
+                Início das respostas *
+                <input type="date" required value={surveyStartsOn}
+                  onChange={(e)=>{setSurveyStartsOn(e.target.value);setError("");}}
+                  aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
+                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+              </label>
+              <label className="block text-sm font-medium">
+                Encerramento das respostas *
+                <input type="date" required min={surveyStartsOn||undefined}
+                  value={surveyEndsOn}
+                  onChange={(e)=>{setSurveyEndsOn(e.target.value);setError("");}}
+                  aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
+                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+              </label>
+            </div>
+            {surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn&&
+              <p role="alert" className="text-xs font-semibold text-destructive">
+                O encerramento não pode ser anterior ao início.
+              </p>}
+            <label className="block text-sm font-medium">
+              Data prevista de presença ou operação do CARONAA (opcional)
+              <input type="date" value={configuration.launchDate??""}
+                onChange={e=>setConfiguration(previous=>({...previous,launchDate:e.target.value||null}))}
+                className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+            </label>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Deixe em branco se ainda não existe previsão de presença do CARONAA.
+              Isso não impedirá a publicação da pesquisa.
+            </p>
+          </fieldset>
           {nature === "MOBILIDADE_LOCAL" && (
             <label className="text-sm sm:col-span-2">
               Município
@@ -427,6 +476,7 @@ export function ResearchCatalog() {
                       ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : t.key === REGIONAL_UNIVERSITY_KEY ? regionalUniversityPreset() : t.key === EVENT_EXIT_MATCH_KEY ? eventExitMatchPreset() : t.key === COMPANY_CAMPUS_DRIVER_KEY ? companyCampusDriverPreset() : t.key === CORPORATE_INTERNAL_KEY ? corporateInternalPreset() : newResearchConfiguration(t.key)),
                       publicName: title,
                       institutionId: code || "",
+                      launchDate: configuration.launchDate,
                     });
                     setInstitutionLogo(null);
                     setConfigure(true);
@@ -475,7 +525,7 @@ export function ResearchCatalog() {
             </div>
           )}
           <button
-            disabled={saving || codeTaken || (code.length > 0 && !validResearchFormCode(code))}
+            disabled={saving || codeTaken || (code.length > 0 && !validResearchFormCode(code)) || (Boolean(surveyStartsOn&&surveyEndsOn)&&surveyEndsOn<surveyStartsOn)}
             className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2"
           >
             {saving ? "Criando..." : "Criar rascunho"}

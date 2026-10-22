@@ -83,7 +83,9 @@ describe("Configured public research", () => {
     api.rpc.mockImplementation(async (name: string) => ({
       error: null,
       data:
-        name === "get_public_research_configuration"
+        name === "get_research_window_state"
+          ? { startsOn: null, endsOn: null, state: "ABERTO" }
+          : name === "get_public_research_configuration"
           ? { revision: 1, settings }
           : name === "register_research_interest"
             ? "INTERESSE_REGISTRADO"
@@ -137,7 +139,9 @@ describe("Configured public research", () => {
   it("captures verified-intent research contact before success without enrolling in marketing", async () => {
     api.rpc.mockImplementation(async (name: string) => ({
       error: null,
-      data: name === "get_public_research_configuration"
+      data: name === "get_research_window_state"
+        ? { startsOn: null, endsOn: null, state: "ABERTO" }
+        : name === "get_public_research_configuration"
         ? { revision: 1, settings: { ...settings, emailCaptureEnabled: true } }
         : name === "research_contact_capture_enabled"
           ? true
@@ -186,7 +190,8 @@ describe("Configured public research", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enviar respostas" }));
     await screen.findByText("Resposta registrada!");
     expect(api.insert).toHaveBeenCalledOnce();
-    expect(api.rpc).not.toHaveBeenCalled();
+    expect(api.rpc).toHaveBeenCalledTimes(1);
+    expect(api.rpc).toHaveBeenCalledWith("get_research_window_state", { p_code: "OLD" });
   });
   it("requires independent pre-registration consent for both passenger and driver", async () => {
     render(
