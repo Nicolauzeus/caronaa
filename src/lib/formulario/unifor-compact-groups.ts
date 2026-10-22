@@ -3,7 +3,7 @@ import type { Answers } from "./research-schema";
 import type { SurveyQuestion, SurveySchema } from "./research-templates";
 
 /**
- * Presentation-only grouping for the published UNIFOR survey. Question UUIDs,
+ * Presentation-only grouping for university research, based on the UNIFOR design. Question UUIDs,
  * required flags and the published schema remain intact for analytics/history.
  * Dynamic rules still determine which dependent questions can be displayed.
  */
@@ -59,9 +59,11 @@ export function createUniforGroups(schema:SurveySchema,answers:Answers):CompactR
    for(const q of questions)used.add(q.id);
    list.push({title:definition.title,sectionIndex,questions:decorated});
   }
-  // Keep unexpected questions visible and mandatory instead of silently dropping them.
-  for(const question of visible)if(!used.has(question.id)){
-   list.push({title:section.title,sectionIndex,questions:[question]});
+  // Use the same compact presentation for university models, without
+  // hiding unexpected or required questions and without changing stored schema.
+  const remaining=visible.filter(question=>!used.has(question.id));
+  for(let i=0;i<remaining.length;i+=2) {
+   list.push({title:section.title,sectionIndex,questions:remaining.slice(i,i+2)});
   }
   return list;
  });
