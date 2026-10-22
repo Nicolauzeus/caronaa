@@ -11,14 +11,30 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
       .object({
         origin: z.string().trim().min(1).max(160),
         destination: z.string().trim().min(1).max(160),
+        originLat: z.number().finite().min(-90).max(90).optional(),
+        originLng: z.number().finite().min(-180).max(180).optional(),
+        destinationLat: z.number().finite().min(-90).max(90).optional(),
+        destinationLng: z.number().finite().min(-180).max(180).optional(),
+      })
+      .superRefine((value, ctx) => {
+        if ((value.originLat == null) !== (value.originLng == null) ||
+            (value.destinationLat == null) !== (value.destinationLng == null)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Coordenadas incompletas." });
+        }
       })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
     const { geocodeAddressService } = await import("./location/service");
+    // Use the driver's exact chosen coordinates when provided (GPS or autocomplete).
+    // Falling back to text geocoding preserves existing callers.
     const [origin, destination] = await Promise.all([
-      geocodeAddressService(data.origin),
-      geocodeAddressService(data.destination),
+      data.originLat != null && data.originLng != null
+        ? Promise.resolve({ lat: data.originLat, lng: data.originLng, isApproximate: false })
+        : geocodeAddressService(data.origin),
+      data.destinationLat != null && data.destinationLng != null
+        ? Promise.resolve({ lat: data.destinationLat, lng: data.destinationLng, isApproximate: false })
+        : geocodeAddressService(data.destination),
     ]);
     if (
       !origin ||
