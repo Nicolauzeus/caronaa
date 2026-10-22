@@ -162,6 +162,9 @@ function ResearchWaitingRoom() {
                     className="mt-1 shrink-0 text-[#ffc451]"
                   />
                 </div>
+                <p className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-[#ffc451]">
+                  <LockKeyhole size={12} aria-hidden="true" /> SOMENTE VISUALIZAÇÃO
+                </p>
                 <p className="text-xl font-extrabold">{previewKind(launch.preview?.kind)}</p>
                 {launch.preview ? (
                   <>

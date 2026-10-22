@@ -207,7 +207,7 @@ export function AcademicExpressForm({
         role === "MOTORISTA"
           ? [vehicleQuestion, vehicleModelQuestion, seatsQuestion, driverPriority]
           : role === "AMBOS"
-            ? [vehicleQuestion, vehicleModelQuestion, seatsQuestion, passengerPriority]
+            ? [transportQuestion, passengerPriority, vehicleQuestion, vehicleModelQuestion, seatsQuestion, driverPriority]
             : [transportQuestion, passengerPriority];
       const section = {
         title: "Sua preferência",
@@ -807,17 +807,23 @@ export function AcademicExpressForm({
                     />
                   )}
                 </div>
-                {role === "MOTORISTA" && (
+                {(role === "MOTORISTA" || role === "AMBOS") && (
                   <div className="space-y-2">
-                    <p className={label}>O que é mais importante para você?</p>
+                    <p className={label}>O que é mais importante para você ao dirigir?</p>
                     {selectable(driverPriority, true)}
                   </div>
                 )}
                 {role === "AMBOS" && (
-                  <div className="space-y-2">
-                    <p className={label}>Como passageiro, qual é sua prioridade?</p>
-                    {selectable(passengerPriority, true)}
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <p className={label}>Como você costuma se deslocar como passageiro?</p>
+                      {selectable(transportQuestion, true)}
+                    </div>
+                    <div className="space-y-2">
+                      <p className={label}>Como passageiro, qual é sua prioridade?</p>
+                      {selectable(passengerPriority, true)}
+                    </div>
+                  </>
                 )}
                 <p className="text-xs leading-5 text-white/50">
                   O CARONAA calculará valores pelo trajeto real; não há promessa de ganhos, Pix ou

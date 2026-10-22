@@ -38,9 +38,9 @@ const common = [
   researchRoleQuestion(false),
 ] satisfies SurveyQuestion[];
 
-const passengerOnly = roleCondition("PASSAGEIRO");
+const passengerOnly = roleCondition("PASSAGEIRO", "AMBOS");
 const driverOnly = roleCondition("MOTORISTA", "AMBOS");
-const driverPriorityOnly = roleCondition("MOTORISTA");
+const driverPriorityOnly = roleCondition("MOTORISTA", "AMBOS");
 
 export const academicExpressUrbanSchema: SurveySchema = {
   experience: ACADEMIC_EXPRESS_EXPERIENCE,

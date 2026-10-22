@@ -191,7 +191,10 @@ function Home() {
     });
   }, [originSource, location.position, resolvedAddress]);
   function focusOrigin() {
-    document.getElementById("home-origin")?.focus();
+    setPanelOpen(true);
+    setOriginSource("MANUAL_ORIGIN");
+    setOriginEditing(true);
+    window.requestAnimationFrame(() => document.getElementById("home-origin")?.focus());
   }
 
   function setToday() {
@@ -502,6 +505,11 @@ function Home() {
               className="space-y-4"
               onSubmit={async (event) => {
                 event.preventDefault();
+                if (!origin.trim() || !destination.trim()) {
+                  setError("Informe origem e destino antes de continuar.");
+                  if (!origin.trim()) focusOrigin();
+                  return;
+                }
                 if (role === "offer") {
                   const params = new URLSearchParams({
                     origem: origin,
@@ -637,11 +645,7 @@ function Home() {
                     <button
                       type="button"
                       aria-label="Editar origem"
-                      onClick={() => {
-                        setOriginEditing((editing) => !editing);
-                        setOriginSource("MANUAL_ORIGIN");
-                        window.requestAnimationFrame(focusOrigin);
-                      }}
+                      onClick={focusOrigin}
                       className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-gray-300 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
                     >
                       <Pencil size={16} />
@@ -661,15 +665,7 @@ function Home() {
                   </div>
                 </div>
               </div>
-              <input
-                id="home-origin"
-                aria-label="Saída"
-                required
-                tabIndex={-1}
-                value={origin}
-                readOnly
-                className="sr-only"
-              />
+              <input type="hidden" name="origin" value={origin} />
               {reverseFailed && originSource === "CURRENT_LOCATION" && (
                 <p role="status" className="text-xs text-muted-foreground">
                   Não conseguimos identificar o endereço. Suas coordenadas estão disponíveis; você

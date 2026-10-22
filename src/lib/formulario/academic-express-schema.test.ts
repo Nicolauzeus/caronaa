@@ -11,15 +11,15 @@ describe("four/five stage university express questionnaire",()=>{
   const by=(code:string)=>all.find(q=>q.semanticCode===code)!;
   const role=by("RESEARCH_PARTICIPANT_ROLE");
   const qDriver=[by("URBAN_OFFER_VEHICLE"),by("SEATS_AVAILABLE"),by("ACADEMIC_DRIVER_PRIORITY")];
-  const qPassenger=[by("TRANSPORT_MODE"),by("COST_PER_TRIP"),by("ACADEMIC_PASSENGER_PRIORITY")];
+  const qPassenger=[by("TRANSPORT_MODE"),by("ACADEMIC_PASSENGER_PRIORITY")];
 
   it("has no redundant pain/price-intention questions and exactly 4 or 5 stages",()=>{
     expect(isAcademicExpress(schema)).toBe(true);
     expect(inspectSchema(schema)).toEqual([]);
-    expect(all).toHaveLength(10);
-    expect(academicExpressSteps("PASSAGEIRO")).toEqual(["identity","route","passenger","activation"]);
-    expect(academicExpressSteps("MOTORISTA")).toEqual(["identity","route","driver","activation"]);
-    expect(academicExpressSteps("AMBOS")).toEqual(["identity","route","driver","passenger","activation"]);
+    expect(all).toHaveLength(9);
+    expect(academicExpressSteps("PASSAGEIRO")).toEqual(["identity","role","route","specific","activation"]);
+    expect(academicExpressSteps("MOTORISTA")).toEqual(["identity","role","route","specific","activation"]);
+    expect(academicExpressSteps("AMBOS")).toEqual(["identity","role","route","specific","activation"]);
     expect(all.some(q=>["URBAN_PRIMARY_PAIN","MOBILITY_PAINS","ACCEPTABLE_FARE_RANGE","BOOKING_INTENT","LAUNCH_PARTICIPATION_INTENT"].includes(q.semanticCode??""))).toBe(false);
   });
   it("hides all driver questions from passengers and vice versa; AMBOS shares both",()=>{

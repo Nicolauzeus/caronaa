@@ -32,7 +32,7 @@ describe("Reusable institutional launch gate",()=>{
  });
  it("keeps unrestricted accounts out of the waiting experience",async()=>{
   api.rpc.mockResolvedValue({error:null,data:{locked:false}});
-  expect(await getMyResearchLaunchState()).toEqual({locked:false,preview:null});
+  expect(await getMyResearchLaunchState()).toEqual({locked:false,preview:null,launches:[]});
  });
  it("fails closed when the gateway is unavailable or malformed",async()=>{
   api.rpc.mockResolvedValueOnce({error:{message:"offline"},data:null})
