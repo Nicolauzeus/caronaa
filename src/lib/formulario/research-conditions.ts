@@ -73,7 +73,33 @@ export function inspectResearchCondition(
     ? [] : [subject + ": condição deve usar resposta válida de escolha única."];
 }
 
-export function createResearchVisibility(schema: SurveySchema, answers: ResearchAnswers) {
+/** Semantic role gates apply even to old published versions whose initial role
+ * was captured in the journey instead of a RESEARCH_PARTICIPANT_ROLE question.
+ * Keep this list aligned with the server-side configured-submission guard. */
+export const DRIVER_ONLY_RESEARCH_SEMANTICS = new Set([
+  "URBAN_OFFER_POSSIBLE", "URBAN_OFFER_VEHICLE", "URBAN_DRIVER_MOTIVATION",
+  "REGIONAL_OFFER_POSSIBLE", "REGIONAL_OFFER_VEHICLE",
+  "EVENT_OFFER_POSSIBLE", "EVENT_OFFER_VEHICLE", "EVENT_OFFER_SEATS",
+  "SEATS_AVAILABLE", "RIDE_OFFER_INTENT", "COMPANY_DRIVES_CAR",
+  "COMPANY_DRIVING_FREQUENCY", "COMPANY_MAX_DETOUR", "CORP_DRIVES_CAR",
+]);
+
+export function resolveResearchParticipantRole(
+  schema: SurveySchema, answers: ResearchAnswers, externalRole?: string | null,
+): string | null {
+  const explicit = schema.sections.flatMap(section => section.questions)
+    .find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE");
+  if (explicit) return typeof answers[explicit.id] === "string" ? answers[explicit.id] : null;
+  return externalRole ?? null;
+}
+
+export function createResearchVisibility(
+  schema: SurveySchema, answers: ResearchAnswers, externalRole?: string | null,
+) {
+  const role = resolveResearchParticipantRole(schema, answers, externalRole);
+  const hasRoleChoice = schema.sections.some(section => section.questions.some(
+    question => question.semanticCode === "RESEARCH_PARTICIPANT_ROLE"
+  )) || externalRole != null;
   const questionMap = new Map<string, SurveyQuestion>();
   const sectionMap = new Map<string, SurveySection>();
   for (const section of schema.sections)
@@ -105,7 +131,12 @@ export function createResearchVisibility(schema: SurveySchema, answers: Research
     if (visiting.has(q.id)) return false;
     visiting.add(q.id);
     const section = sectionMap.get(q.id);
-    const result = evaluate(section?.condition) && evaluate(q.condition) &&
+    // Fail closed while a role question has not been answered; passenger-only
+    // respondents must never see driver-only fields even in published v1/v2.
+    const driverQuestion = DRIVER_ONLY_RESEARCH_SEMANTICS.has(q.semanticCode ?? "");
+    const correctRole = !driverQuestion || !hasRoleChoice ||
+      role === "MOTORISTA" || role === "AMBOS";
+    const result = correctRole && evaluate(section?.condition) && evaluate(q.condition) &&
       (!q.showWhen || (
         questionMap.has(q.showWhen.questionId) &&
         visible(questionMap.get(q.showWhen.questionId)!) &&
