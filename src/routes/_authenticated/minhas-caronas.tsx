@@ -1,5 +1,3 @@
-import { formatPickupAt } from "@/lib/intelligent-match";
-import { RideOpportunities } from "@/components/caronaa/RideOpportunities";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -275,7 +273,6 @@ function MinhasCaronas() {
           </Tab>
         </div>
       </div>
-      {tab !== "rotinas" && <RideOpportunities role={tab === "disponiveis" ? "driver" : "passenger"} />}
       {tab === "rotinas" ? (
         <RideRoutineManager onChanged={() => refreshRides(false)} />
       ) : loading ? (
@@ -777,7 +774,7 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
         <span className="line-clamp-2 break-words">{ride.destination}</span>
       </div>
       <p className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-        <Clock3 size={14} /> {ride.pickupEstimatedAt ? `Embarque estimado: ${formatPickupAt(ride.pickupEstimatedAt)}` : `Saída às ${ride.departureTime}`}
+        <Clock3 size={14} /> Saída às {ride.departureTime}
       </p>
 
       {ride.status === "MATCHED" && (

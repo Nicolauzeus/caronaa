@@ -114,13 +114,13 @@ export function CompletedRidePix({ rideId }: { rideId: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4" aria-label="Pix da viagem concluída">
       <p className="text-center text-sm font-semibold">
-        Chave Pix do motorista (modo legado) ·{" "}
+        Pix disponível. O pagamento ainda não foi confirmado ·{" "}
         {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
           Number(data.amount),
         )}
       </p>
       <p className="text-center text-xs text-muted-foreground">
-        QR manual legado: não é uma cobrança Asaas, não confirma recebimento nem aplica o repasse automático da plataforma. Não utilize este QR para testar pagamentos.
+        A CARONAA não verifica o recebimento. Gerar, copiar ou abrir o QR não confirma pagamento.
       </p>
       {image && (
         <img

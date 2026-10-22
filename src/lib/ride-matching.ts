@@ -49,7 +49,6 @@ export type RideCompatibilityInput = {
     timeToleranceMinutes?: number;
     /** Polilinha rodoviária opcional do motorista; quando presente, substitui a reta A→F. */
     routePath?: Coordinate[];
-    routeDurationMinutes?: number;
   };
   timeToleranceMinutes?: number;
 };
@@ -306,28 +305,6 @@ export function isTimeWithinTolerance(
   return diff <= toleranceMinutes;
 }
 
-/** Estimated pickup along the stored route. Full timestamps preserve midnight crossings. */
-export function getRidePickupAt(input: RideCompatibilityInput): number | null {
-  const base = Date.parse(`${input.offer.rideDate}T${input.offer.departureTime}-03:00`);
-  if (!Number.isFinite(base)) return null;
-  const origin = input.request.originCoordinate;
-  const path = (input.offer.routePath ?? []).filter(isValidCoordinate);
-  const duration = input.offer.routeDurationMinutes;
-  if (!isValidCoordinate(origin) || path.length < 2 || !duration || duration <= 0) return base;
-  const pickup = projectOntoRoutePath(origin, path);
-  let total = 0;
-  for (let i = 1; i < path.length; i++) total += calculateRideDistanceKm(path[i - 1], path[i]);
-  return total > 0 ? base + Math.round((duration * 60 * pickup.progressKm) / total) * 1000 : base;
-}
-
-export function getRidePickupDifferenceMinutes(input: RideCompatibilityInput): number | null {
-  const pickup = getRidePickupAt(input);
-  const requested = Date.parse(`${input.request.rideDate}T${input.request.departureTime}-03:00`);
-  return pickup != null && Number.isFinite(requested)
-    ? Math.abs(pickup - requested) / 60_000
-    : null;
-}
-
 /** A transparent ordering signal for results that already passed hard compatibility rules. */
 export function calculateRideMatchScore(
   input: RideCompatibilityInput,
@@ -344,10 +321,17 @@ export function calculateRideMatchScore(
     isValidCoordinate(offerOrigin) &&
     isValidCoordinate(offerDestination)
   ) {
-    const path = (input.offer.routePath ?? []).filter(isValidCoordinate);
-    const route = path.length >= 2 ? path : [offerOrigin, offerDestination];
-    const pickupDistance = projectOntoRoutePath(origin, route).distanceKm;
-    const destinationDistance = projectOntoRoutePath(destination, route).distanceKm;
+    const pickupDistance = calculateRideDistanceKm(offerOrigin, origin);
+    const destinationDistance = calculateRideDistanceKm(destination, offerDestination);
+    const directRouteDistance = calculateRideDistanceKm(offerOrigin, offerDestination);
+    const withPassengerDistance =
+      pickupDistance + calculateRideDistanceKm(origin, destination) + destinationDistance;
+    const estimatedDetour = Math.max(0, withPassengerDistance - directRouteDistance);
+
+    score -= Math.min(
+      RIDE_MATCH_SCORE_CONFIG.maximumDetourPenalty,
+      Math.round(estimatedDetour * RIDE_MATCH_SCORE_CONFIG.detourPenaltyPerKm),
+    );
     score -= Math.min(
       RIDE_MATCH_SCORE_CONFIG.maximumPickupPenalty,
       Math.round(pickupDistance * RIDE_MATCH_SCORE_CONFIG.pickupPenaltyPerKm),
@@ -361,9 +345,7 @@ export function calculateRideMatchScore(
     score -= RIDE_MATCH_SCORE_CONFIG.missingCoordinatesPenalty;
   }
   const timeDifference =
-    getRidePickupDifferenceMinutes(input) ??
-    timeDifferenceInMinutes(input.request.departureTime, input.offer.departureTime) ??
-    60;
+    timeDifferenceInMinutes(input.request.departureTime, input.offer.departureTime) ?? 60;
   score -= Math.min(
     RIDE_MATCH_SCORE_CONFIG.maximumTimePenalty,
     Math.round(timeDifference * RIDE_MATCH_SCORE_CONFIG.timePenaltyPerMinute),
@@ -428,19 +410,15 @@ export function getTimeWindowRange(
 ): { start: string; end: string } | null {
   const baseMinutes = parseTimeToMinutes(baseTime);
   if (baseMinutes === null) return null;
-  const startMinutes = baseMinutes - toleranceMinutes;
-  const endMinutes = baseMinutes + toleranceMinutes;
-  const start =
-    formatMinutesToTime((startMinutes + 1440) % 1440) + (startMinutes < 0 ? " (dia anterior)" : "");
-  const end =
-    formatMinutesToTime(endMinutes % 1440) + (endMinutes >= 1440 ? " (dia seguinte)" : "");
+  const start = formatMinutesToTime(Math.max(0, baseMinutes - toleranceMinutes));
+  const end = formatMinutesToTime(Math.min(1439, baseMinutes + toleranceMinutes));
   return { start, end };
 }
 
 /**
  * Regra de compatibilidade do CARONAA:
  * - Mesma rota normalizada (origem e destino compatíveis e distintos entre si)
- * - Data e hora completas, incluindo embarques próximos à meia-noite
+ * - Mesma data de viagem (requisito separado)
  * - Janela temporal configurável (padrão ±15m; opções ±5m, ±15m, ±30m, ±60m)
  * - Capacidade de vagas suficiente
  * - Usuários distintos
@@ -465,13 +443,16 @@ export function isRideRequestCompatibleWithOffer(
     input.offer.timeToleranceMinutes ?? requestedTolerance,
   );
 
-  const difference = getRidePickupDifferenceMinutes(input);
-  const isTimeCompatible = difference !== null && difference <= Math.min(tolerance, 60);
+  const isTimeCompatible = isTimeWithinTolerance(
+    input.request.departureTime,
+    input.offer.departureTime,
+    tolerance,
+  );
 
   return (
     areRideLocationsCompatible(input, options) &&
     input.request.rideDate.length > 0 &&
-    input.offer.rideDate.length > 0 &&
+    input.offer.rideDate === input.request.rideDate &&
     input.request.departureTime.length > 0 &&
     isTimeCompatible &&
     Number.isInteger(input.request.passengerCount) &&
@@ -480,7 +461,7 @@ export function isRideRequestCompatibleWithOffer(
     input.request.passengerCount >= 1 &&
     input.request.passengerCount <= 6 &&
     input.offer.availableSeats >= 1 &&
-    input.offer.availableSeats <= 7 &&
+    input.offer.availableSeats <= 6 &&
     input.offer.seatsRemaining >= input.request.passengerCount &&
     input.offer.seatsRemaining <= input.offer.availableSeats &&
     input.request.userId !== input.offer.userId

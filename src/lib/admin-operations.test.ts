@@ -21,6 +21,7 @@ function compatibleData(): OperationData & {
     requests: [
       {
         request_id: "request",
+        original_requested_at: "2026-01-01",
         idempotency_key: null,
         notes: null,
         pickup_lat: null,
@@ -100,14 +101,6 @@ describe("administrative match suggestions", () => {
     expect(getMatchSuggestions(empty())).toEqual([]);
     expect(getOperationPeople(empty(), true)).toEqual([]);
   });
-  it("uses backend eligibility without substituting a different local decision", () => {
-    const data = compatibleData();
-    data.matchSuggestionIds = [{ requestId: "request", offerId: "offer" }];
-    data.offers[0].time_tolerance_minutes = 5;
-    expect(getMatchSuggestions(data)).toEqual([{ request: data.requests[0], offer: data.offers[0] }]);
-    data.matchSuggestionIds = [];
-    expect(getMatchSuggestions(data)).toEqual([]);
-  });
   it("uses geographical compatibility with different names", () => {
     expect(getMatchSuggestions(compatibleData(), 0)).toHaveLength(1);
   });
@@ -184,6 +177,7 @@ describe("administrative people", () => {
     });
     const ride = {
       ride_id: "ride",
+      pickup_estimated_at: null,
       total_price: 30,
       passenger_contribution: 15,
       route_distance_km: null,

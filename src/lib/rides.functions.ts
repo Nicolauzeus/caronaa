@@ -8,10 +8,16 @@ import {
   normalizeRideVerification as normalizeVerification,
   type RideVerification,
 } from "@/lib/ride-verifications";
+import {
+  DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
+  areRideLocationsCompatible,
+  calculateRideMatchScore,
+  getRideMatchReasons,
+  isTimeWithinTolerance,
+} from "@/lib/ride-matching";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
 import { sumConfirmedGroupFares } from "@/lib/ride-cost";
 import { canViewRideCounterpartProfile } from "@/lib/ride-profile-access";
-import { rideMatchEvaluationSchema, type RideMatchEvaluation } from "./intelligent-match";
 import { compareRideRecency } from "@/lib/ride-order";
 export type { RideVerification } from "@/lib/ride-verifications";
 
@@ -60,8 +66,6 @@ export type RideSummary = {
   passengerAcceptedAt?: string | null;
   responseExpiresAt?: string | null;
   matchScore?: number;
-  matchEvaluation?: RideMatchEvaluation;
-  pickupEstimatedAt?: string | null;
   preferenceBonus?: number;
   matchReasons?: string[];
   vehicleDescription?: string | null;
@@ -88,7 +92,6 @@ const searchInput = z.object({
   timeToleranceMinutes: z
     .union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)])
     .optional(),
-  includeOpportunities: z.boolean().default(true),
 });
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -332,8 +335,6 @@ function mapRide(
       typeof ri["driver_accepted_at"] === "string" ? ri["driver_accepted_at"] : null,
     passengerAcceptedAt:
       typeof ri["passenger_accepted_at"] === "string" ? ri["passenger_accepted_at"] : null,
-    pickupEstimatedAt:
-      typeof ri["pickup_estimated_at"] === "string" ? ri["pickup_estimated_at"] : null,
     responseExpiresAt:
       typeof ri["response_expires_at"] === "string" ? ri["response_expires_at"] : null,
     vehicleDescription:
@@ -383,37 +384,75 @@ async function discoverOffers(
 ) {
   const { error: routineError } = await client.rpc("refresh_ride_routine_occurrences");
   if (routineError) throw new Error(routineError.message);
-  const origin = coordinateFromInput(data.originLat, data.originLng, data.origin);
-  const destination = coordinateFromInput(
-    data.destinationLat,
-    data.destinationLng,
-    data.destination,
-  );
-  const discoveryClient = client as unknown as {
-    rpc(
-      name: string,
-      args: Record<string, unknown>,
-    ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
-  };
-  const { data: rows, error } = await discoveryClient.rpc("discover_ride_opportunities", {
-    p_search: {
-      origin: data.origin,
-      destination: data.destination,
-      origin_lat: origin?.lat,
-      origin_lng: origin?.lng,
-      destination_lat: destination?.lat,
-      destination_lng: destination?.lng,
-      ride_date: data.rideDate || undefined,
-      departure_time: data.departureTime || undefined,
-      passenger_count: data.passengerCount,
-      limit,
-      time_tolerance_minutes: data.timeToleranceMinutes ?? 15,
-      include_opportunities: data.includeOpportunities,
-    },
+  const tolerance = data.timeToleranceMinutes ?? 15;
+  const { data: rows, error } = await client.rpc("search_available_ride_offers", {
+    p_origin: data.origin || undefined,
+    p_destination: data.destination || undefined,
+    p_origin_lat: data.originLat,
+    p_origin_lng: data.originLng,
+    p_destination_lat: data.destinationLat,
+    p_destination_lng: data.destinationLng,
+    p_ride_date: data.rideDate || undefined,
+    p_departure_time: data.departureTime || undefined,
+    p_passenger_count: data.passengerCount,
+    p_limit: limit,
+    p_time_tolerance_minutes: tolerance,
   });
   if (error) throw new Error(error.message || "Não foi possível buscar caronas.");
-  if (!Array.isArray(rows)) throw new Error("Resposta de busca inválida.");
-  let resultRows = rows as Record<string, unknown>[];
+  let resultRows = (rows ?? []) as unknown as Record<string, unknown>[];
+  if (data.departureTime) {
+    resultRows = resultRows.filter((row) =>
+      isTimeWithinTolerance(
+        String(row.departure_time ?? "").slice(0, 5),
+        data.departureTime ?? "",
+        tolerance,
+      ),
+    );
+  }
+  if (data.origin || data.destination) {
+    const requestOriginCoordinate = coordinateFromInput(
+      data.originLat,
+      data.originLng,
+      data.origin,
+    );
+    const requestDestinationCoordinate = coordinateFromInput(
+      data.destinationLat,
+      data.destinationLng,
+      data.destination,
+    );
+    resultRows = resultRows.filter((row) =>
+      areRideLocationsCompatible(
+        {
+          request: {
+            origin: data.origin || "",
+            destination: data.destination || "",
+            originCoordinate: requestOriginCoordinate,
+            destinationCoordinate: requestDestinationCoordinate,
+            rideDate: data.rideDate || "",
+            departureTime: data.departureTime || "00:00",
+            passengerCount: data.passengerCount,
+            userId: userId,
+          },
+          offer: {
+            origin: String(row.origin ?? ""),
+            destination: String(row.destination ?? ""),
+            originCoordinate: coordinateFromRow(row, "origin"),
+            destinationCoordinate: coordinateFromRow(row, "destination"),
+            rideDate: String(row.ride_date ?? ""),
+            departureTime: String(row.departure_time ?? "").slice(0, 5),
+            availableSeats: Number(row.available_seats ?? 0),
+            seatsRemaining: Number(row.seats_remaining ?? 0),
+            userId: String(row.user_id ?? ""),
+          },
+        },
+        {
+          originToleranceKm: DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
+          destinationToleranceKm: DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
+          routeToleranceKm: DEFAULT_GEOGRAPHIC_TOLERANCE_KM,
+        },
+      ),
+    );
+  }
   if (resultRows.length) {
     const { data: schedules, error: scheduleError } = await client.rpc("get_offer_schedule_types", {
       p_offer_ids: resultRows.map((row) => String(row.offer_id)),
@@ -431,6 +470,7 @@ async function discoverOffers(
         : row,
     );
   }
+  const bonuses = new Map<string, number>();
   if (resultRows.length) {
     const { data: prices, error: priceError } = await client.rpc("get_offer_publication_prices", {
       p_offer_ids: resultRows.map((row) => String(row.offer_id)),
@@ -438,10 +478,51 @@ async function discoverOffers(
     if (priceError) throw new Error("Não foi possível carregar os preços das ofertas.");
     const priceMap = new Map((prices ?? []).map((row) => [row.offer_id, row]));
     resultRows = resultRows.map((row) => ({ ...row, ...priceMap.get(String(row.offer_id)) }));
+    const { data: matches, error: bonusError } = await client.rpc("get_offer_preference_bonuses", {
+      p_offer_ids: resultRows.map((row) => String(row.offer_id)),
+    });
+    if (bonusError) throw new Error(bonusError.message);
+    for (const item of matches ?? []) bonuses.set(String(item.offer_id), Number(item.bonus));
   }
   return resultRows
-    .map((row) => ({ row, fit: rideMatchEvaluationSchema.parse(row.fit) }))
-    .map(({ row, fit }) => ({
+    .map((row) => {
+      const input = {
+        request: {
+          origin: data.origin || "",
+          destination: data.destination || "",
+          originCoordinate: coordinateFromInput(data.originLat, data.originLng, data.origin),
+          destinationCoordinate: coordinateFromInput(
+            data.destinationLat,
+            data.destinationLng,
+            data.destination,
+          ),
+          rideDate: data.rideDate || "",
+          departureTime: data.departureTime || String(row.departure_time ?? "").slice(0, 5),
+          passengerCount: data.passengerCount,
+          userId,
+        },
+        offer: {
+          origin: String(row.origin ?? ""),
+          destination: String(row.destination ?? ""),
+          originCoordinate: coordinateFromRow(row, "origin"),
+          destinationCoordinate: coordinateFromRow(row, "destination"),
+          rideDate: String(row.ride_date ?? ""),
+          departureTime: String(row.departure_time ?? "").slice(0, 5),
+          availableSeats: Number(row.available_seats ?? 0),
+          seatsRemaining: Number(row.seats_remaining ?? 0),
+          userId: String(row.user_id ?? ""),
+        },
+      };
+      const preferenceBonus = bonuses.get(String(row.offer_id)) ?? 0;
+      return {
+        row,
+        input,
+        preferenceBonus,
+        score: calculateRideMatchScore(input, preferenceBonus),
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ row, input, score, preferenceBonus }) => ({
       ...mapOffer(
         row as OfferRow,
         {
@@ -458,10 +539,9 @@ async function discoverOffers(
         },
         userId,
       ),
-      matchScore: fit.score ?? undefined,
-      matchEvaluation: fit,
-      preferenceBonus: fit.preferenceBonus,
-      matchReasons: fit.reasons,
+      matchScore: score,
+      preferenceBonus,
+      matchReasons: getRideMatchReasons(input, preferenceBonus),
     }));
 }
 
@@ -511,7 +591,7 @@ export const getMyRides = createServerFn({ method: "GET" })
     const { data: rides, error: ridesError } = await client
       .from("rides")
       .select(
-        "ride_id, match_id, request_id, offer_id, passenger_user_id, driver_user_id, status, created_at, updated_at, completed_at, total_price, passenger_contribution, passenger_accepted_at, driver_accepted_at, response_expires_at, pickup_estimated_at, route_distance_km, passenger_price, passenger_group_total, tariff_reference",
+        "ride_id, match_id, request_id, offer_id, passenger_user_id, driver_user_id, status, created_at, updated_at, completed_at, total_price, passenger_contribution, passenger_accepted_at, driver_accepted_at, response_expires_at, route_distance_km, passenger_price, passenger_group_total, tariff_reference",
       )
       .or(`passenger_user_id.eq.${context.userId},driver_user_id.eq.${context.userId}`)
       .order("created_at", { ascending: false });
@@ -664,7 +744,8 @@ export const getMyRides = createServerFn({ method: "GET" })
             confirmedFareTotalByOffer.get(String(ride.offer_id)) ?? 0,
           ),
         ),
-      ...(offers ?? []).map((offer) => mapOffer(offer, currentProfile, context.userId)),
+      ...(offers ?? [])
+        .map((offer) => mapOffer(offer, currentProfile, context.userId)),
     ];
 
     return {
@@ -678,8 +759,6 @@ export const requestRideOffer = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        acceptAdjustment: z.boolean().default(false),
-        expectedPickup: z.string().datetime({ offset: true }).optional(),
         offerId: z.string().uuid(),
         quoteId: z.string().uuid(),
         rideDate: z.string().date(),
@@ -698,14 +777,7 @@ export const requestRideOffer = createServerFn({ method: "POST" })
         args: Record<string, unknown>,
       ) => Promise<{ data: unknown; error: { message: string } | null }>;
     };
-    const { assessOpportunityRoadRoute } = await import("./opportunity-road-assessment");
-    await assessOpportunityRoadRoute(client, context.userId, {
-      offerId: data.offerId,
-      quoteId: data.quoteId,
-    });
-    const { data: requestId, error } = await client.rpc("request_intelligent_ride_segment", {
-      p_accept_adjustment: data.acceptAdjustment,
-      p_expected_pickup: data.expectedPickup,
+    const { data: requestId, error } = await client.rpc("request_available_ride_segment", {
       p_offer_id: data.offerId,
       p_quote_id: data.quoteId,
       p_ride_date: data.rideDate,

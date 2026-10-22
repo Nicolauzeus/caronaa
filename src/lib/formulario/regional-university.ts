@@ -128,7 +128,7 @@ export const regionalUniversityTemplate: ResearchTemplate = {
             id: "regional_seats",
             label: "Quantos lugares para passageiros realmente teria disponíveis?",
             type: "number", required: true, options: [],
-            minValue: 1, maxValue: 7, integerOnly: true,
+            minValue: 1, maxValue: 4, integerOnly: true,
             semanticCode: "SEATS_AVAILABLE",
             showWhen: { questionId: "regional_offer_possible", equals: "SIM" },
             helpText: "Na moto, no máximo um passageiro e apenas se o serviço for permitido e habilitado.",

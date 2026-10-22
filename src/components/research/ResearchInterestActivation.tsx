@@ -126,6 +126,9 @@ export function ResearchInterestActivation({
         Este registro não cria reserva, oferta pública, cobrança ou garantia de atendimento. Para
         publicar uma carona, entre no CARONAA e confirme os dados, a rota e o preço no fluxo normal.
       </p>
+      <a href="/home" className="inline-block text-sm font-medium underline">
+        Continuar no CARONAA
+      </a>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

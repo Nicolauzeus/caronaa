@@ -10,16 +10,13 @@ const state = vi.hoisted(() => ({ pathname: "/admin", hash: "" }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/components/caronaa/ThemeToggle", () => ({ ThemeToggle: () => null }));
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ cancelQueries: vi.fn(), clear: vi.fn() }) }));
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
   useRouterState: ({ select }: { select: (s: unknown) => unknown }) => select({ location: state }),
   Link: ({
     to,
     hash,
     search: _search,
     activeOptions: _activeOptions,
-    preload: _preload,
     children,
     ...props
   }: {
@@ -27,7 +24,6 @@ vi.mock("@tanstack/react-router", () => ({
     hash?: string;
     search?: unknown;
     activeOptions?: unknown;
-    preload?: unknown;
     children: ReactNode;
   }) => (
     <a href={to + (hash ? `#${hash}` : "")} {...props}>

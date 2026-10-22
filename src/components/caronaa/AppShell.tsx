@@ -3,31 +3,25 @@ import {
   ArrowUpRight,
   CarFront,
   House,
-  CalendarClock,
   LogIn,
   LogOut,
   Menu,
   UserRound,
   X,
   ShieldCheck,
-  LayoutDashboard,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
-import { getAdminAppPreview, leaveAdminAppPreview } from "@/lib/admin/entry";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
 import { NotificationControls } from "@/components/caronaa/NotificationControls";
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
-
-const waitingNav = [
-  { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
-  { to: "/perfil" as const, label: "Meu perfil", icon: UserRound },
-];
+import { useWebMCP } from "use-webmcp-tool";
+import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 
 const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
@@ -50,19 +44,34 @@ export function Brand({ light = false }: { light?: boolean }) {
 export function AppShell({
   children,
   publicPage = false,
-  prelaunchMode = false,
 }: {
   children: ReactNode;
   publicPage?: boolean;
-  prelaunchMode?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const navigation = prelaunchMode ? waitingNav : authenticatedNav;
   const { user, loading } = useAuth();
-  const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useWebMCP({
+    name: "read_navigation",
+    description: "Mostra a página atual e as opções de navegação visíveis da CARONAA.",
+    enabled: !loading,
+    annotations: { readOnlyHint: true },
+    execute: () => runWebMCPTool("read_navigation", () =>
+      `Página: ${pathname}. ${publicPage ? "Como funciona, Segurança, Entrar." : user ? "Início, Viagens, Perfil." : "Entrar, Criar conta."}`),
+  });
+  useWebMCP({
+    name: "open_my_rides",
+    description: "Abre a página Viagens, como a opção Viagens da navegação visível.",
+    enabled: !publicPage && !loading && Boolean(user),
+    execute: () => runWebMCPTool("open_my_rides", async () => {
+      if (!user || loading || publicPage) throw new Error("Entre na CARONAA para abrir suas viagens.");
+      await navigate({ to: "/minhas-caronas" });
+      return "Página Viagens aberta.";
+    }),
+  });
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -140,7 +149,7 @@ export function AppShell({
           ) : (
             /* Navegação DESKTOP para Área Autenticada */
             <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
-              {navigation.map(({ to, label }) => (
+              {authenticatedNav.map(({ to, label }) => (
                 <Link
                   key={to}
                   to={to}
@@ -246,7 +255,7 @@ export function AppShell({
 
             {/* Botão de Menu para MOBILE */}
             {!publicPage ? (
-              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} />
+              <MobileAccountDrawer signOut={signOut} />
             ) : (
               <Button
                 variant="ghost"
@@ -332,29 +341,6 @@ export function AppShell({
         )}
       </header>
 
-      {adminPreview && (
-        <div role="status" className="border-b border-primary/25 bg-primary/10 px-4 py-2.5">
-          <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium text-foreground sm:text-sm">
-              <strong>Modo aplicativo</strong> — as ações realizadas no aplicativo continuam sendo reais.
-            </p>
-            <Button asChild size="sm" variant="outline" className="min-h-10 shrink-0 border-primary/30 bg-background">
-              <Link to={adminPreview.returnTo as "/admin"} onClick={leaveAdminAppPreview}>
-                <LayoutDashboard size={15} className="mr-1.5" />
-                Voltar ao Admin
-              </Link>
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {prelaunchMode && (
-        <div role="status" className="border-b border-primary/25 bg-primary/5 px-4 py-2">
-          <p className="mx-auto max-w-[1280px] text-xs leading-5 text-muted-foreground sm:px-2">
-            Pré-lançamento: você já pode personalizar seu perfil. Pedidos e ofertas estarão disponíveis após a abertura.
-          </p>
-        </div>
-      )}
       {/* Conteúdo Principal */}
       <main
         className={
@@ -372,8 +358,8 @@ export function AppShell({
           aria-label="Navegação principal mobile"
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-xl md:hidden"
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : "grid-cols-3"}`}>
-            {navigation.map(({ to, label, icon: Icon }) => {
+          <div className="mx-auto grid max-w-lg grid-cols-3 gap-1 px-3 pt-2">
+            {authenticatedNav.map(({ to, label, icon: Icon }) => {
               const selected = pathname === to || pathname.startsWith(`${to}/`);
               return (
                 <Link

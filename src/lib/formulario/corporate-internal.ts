@@ -30,7 +30,7 @@ export const corporateInternalTemplate: ResearchTemplate = {
           label: "Você costuma dirigir carro para trabalhar?", type: "single_choice", required: true,
         options: ["SIM","NAO"], semanticCode: "CORP_DRIVES_CAR" },
       { id: "corp_seats", label: "Quantos lugares livres costuma ter no carro?", type: "number", required: true,
-        options: [], minValue: 0, maxValue: 7, integerOnly: true, semanticCode: "SEATS_AVAILABLE",
+        options: [], minValue: 0, maxValue: 4, integerOnly: true, semanticCode: "SEATS_AVAILABLE",
         showWhen: { questionId: "corp_drives", equals: "SIM" }, helpText: "Pode informar zero. São lugares declarados, não ofertas publicadas." },
       { id: "corp_offer", label: "Consideraria oferecer carona a colegas do seu turno?", type: "yes_no", required: true, options: [],
         semanticCode: "RIDE_OFFER_INTENT", showWhen: { questionId: "corp_drives", equals: "SIM" },

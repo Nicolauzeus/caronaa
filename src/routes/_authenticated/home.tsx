@@ -1,5 +1,4 @@
-import { TimeToleranceSelector, type TimeToleranceMinutes } from "@/components/caronaa/TimeToleranceSelector";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound, CalendarDays } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,19 +15,8 @@ import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
-import { supabase } from "@/integrations/supabase/client";
-import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 
 export const Route = createFileRoute("/_authenticated/home")({
-  // Parent route already verifies login and applies institution waiting gates.
-  // Resolve role before any passenger/driver dashboard renders.
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return;
-    if (getAdminAppPreview(data.user.id)) return;
-    const destination = await getMyAdminEntry();
-    if (destination) throw redirect({ to: destination as "/admin", replace: true });
-  },
   head: () => ({
     meta: [
       { title: "Início — CARONAA" },
@@ -63,7 +51,6 @@ function Home() {
   const [originLocation, setOriginLocation] = useState<FormLocationDetails>();
   const [destinationLocation, setDestinationLocation] = useState<FormLocationDetails>();
   const [date, setDate] = useState("");
-  const [timeTolerance, setTimeTolerance] = useState<TimeToleranceMinutes>(15);
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
   const [requestFare, setRequestFare] = useState<
@@ -413,7 +400,6 @@ function Home() {
                   destino: destination,
                   data: date,
                   horario: time,
-                  tolerancia: String(timeTolerance),
                 });
                 if (originLocation?.lat != null && originLocation.lng != null) {
                   params.set("olat", String(originLocation.lat));
@@ -445,7 +431,7 @@ function Home() {
                     rideDate: date,
                     departureTime: time,
                     passengerCount: Number(count),
-                    timeToleranceMinutes: timeTolerance,
+                    timeToleranceMinutes: 15,
                     preferences,
                   },
                 });
@@ -595,7 +581,6 @@ function Home() {
                 />
               </label>
             </div>
-            <TimeToleranceSelector value={timeTolerance} onChange={setTimeTolerance} baseTime={time} label="Flexibilidade de horário" />
             {role === "request" && (
               <label className="flex min-h-12 items-center justify-between text-sm font-semibold">
                 Passageiros

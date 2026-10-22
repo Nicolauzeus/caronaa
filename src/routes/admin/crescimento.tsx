@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminModuleSection } from "@/lib/admin/use-admin-module-section";
 import { InsightChart } from "@/components/admin/InsightChart";
-import { ResearchLeadCRM } from "@/components/admin/ResearchLeadCRM";
 export const Route = createFileRoute("/admin/crescimento")({ component: GrowthCenter });
 type Lead = {
   id: string;
@@ -151,8 +150,8 @@ function GrowthCenter() {
       <AdminDataError error={error} />
       <div className="grid gap-3 sm:grid-cols-3">
         {[
-          ["Leads administrativos exibidos", leads.length],
-          ["Marcados convertidos (lista)", leads.filter((x) => x.status === "CONVERTIDO").length],
+          ["Leads registrados", leads.length],
+          ["Convertidos", leads.filter((x) => x.status === "CONVERTIDO").length],
           ["Campanhas ativas", campaigns.filter((x) => x.status === "ATIVA").length],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-xl border bg-card p-4">
@@ -166,11 +165,10 @@ function GrowthCenter() {
 
       {tab === "leads" ? (
         <>
-          <ResearchLeadCRM />
           {!loading && !error && (
             <InsightChart
               title="Funil de leads"
-              description="Até 300 registros administrativos carregados; esta distribuição não representa o total histórico. Converter aqui não comprova cadastro nem primeira viagem."
+              description="Registros administrativos por situação. Converter aqui significa marcar o lead como convertido, não comprova a primeira viagem."
               rows={STATES.map((status) => ({
                 name: status.replaceAll("_", " "),
                 value: leads.filter((lead) => lead.status === status).length,
@@ -388,8 +386,9 @@ function GrowthCenter() {
         </>
       )}
       <p className="text-xs text-muted-foreground">
-        Leads captados em pesquisas são exibidos separadamente dos registros administrativos.
-        Os status de conta são verificados no servidor; autorização de marketing e reconhecimento de participação continuam independentes.
+        Pesquisas públicas continuam independentes de cadastro. Vinculação automática à conta e
+        deduplicação ainda exigem identidade verificada e implementação específica; nenhuma
+        conversão é presumida.
       </p>
     </main>
   );

@@ -7,8 +7,8 @@ export type DrivingRoute = {
 };
 
 function validateRoutePoints(points: RoadPoint[]) {
-  if (points.length < 2 || points.length > 16) {
-    throw new Error("Informe de 2 a 16 pontos para calcular o percurso.");
+  if (points.length < 2 || points.length > 14) {
+    throw new Error("Informe de 2 a 14 pontos para calcular o percurso.");
   }
   for (const point of points) {
     if (

@@ -83,7 +83,7 @@ describe("secure discovery migration contracts (not database integration)", () =
       functions.indexOf("export const getCurrentProfile"),
     );
     expect(discovery).not.toContain("getAdminClient");
-    expect(discovery).toContain('discoveryClient.rpc("discover_ride_opportunities"');
+    expect(discovery).toContain('client.rpc("search_available_ride_offers"');
     expect(discovery.match(/discoverOffers\(context.supabase/g)).toHaveLength(2);
     const requestStart = functions.indexOf("export const requestRideOffer");
     const profileStart = functions.indexOf("const rideParticipantProfileInput", requestStart);
@@ -92,7 +92,7 @@ describe("secure discovery migration contracts (not database integration)", () =
       profileStart > requestStart ? profileStart : undefined,
     );
     // Modern priced segment requests require an authenticated quote and do not downgrade to legacy RPCs.
-    expect(request).toContain('"request_intelligent_ride_segment"');
+    expect(request).toContain('"request_available_ride_segment"');
     expect(request).toContain("p_quote_id: data.quoteId");
     expect(request).not.toContain('client.rpc("request_available_ride_offer"');
     expect(request).not.toContain(".from(");

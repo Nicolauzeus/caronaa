@@ -83,9 +83,7 @@ describe("Configured public research", () => {
     api.rpc.mockImplementation(async (name: string) => ({
       error: null,
       data:
-        name === "get_research_window_state"
-          ? { startsOn: null, endsOn: null, state: "ABERTO" }
-          : name === "get_public_research_configuration"
+        name === "get_public_research_configuration"
           ? { revision: 1, settings }
           : name === "register_research_interest"
             ? "INTERESSE_REGISTRADO"
@@ -128,7 +126,6 @@ describe("Configured public research", () => {
     );
     expect(api.insert).not.toHaveBeenCalled();
     expect(api.rpc.mock.calls.some(([name]) => name === "register_research_interest")).toBe(false);
-    fireEvent.click(screen.getByText("Registrar interesse no trajeto (opcional)"));
     expect(
       screen.getByRole("button", { name: "Quero encontrar uma carona para este trajeto" }),
     ).toBeDisabled();
@@ -136,49 +133,6 @@ describe("Configured public research", () => {
       screen.getByRole("button", { name: "Quero disponibilizar lugares neste trajeto" }),
     ).toBeDisabled();
   });
-  it("captures verified-intent research contact before success without enrolling in marketing", async () => {
-    api.rpc.mockImplementation(async (name: string) => ({
-      error: null,
-      data: name === "get_research_window_state"
-        ? { startsOn: null, endsOn: null, state: "ABERTO" }
-        : name === "get_public_research_configuration"
-        ? { revision: 1, settings: { ...settings, emailCaptureEnabled: true } }
-        : name === "research_contact_capture_enabled"
-          ? true
-          : name === "capture_research_lead"
-            ? "captured"
-            : name === "register_research_interest"
-              ? "INTERESSE_REGISTRADO"
-              : true,
-    }));
-    render(<PublicResearchForm code="TEST" />);
-    await screen.findByText(/Início planejado.*10\/01\/2027/);
-    fireEvent.click(screen.getByRole("radio", { name: "Sim" }));
-    fireEvent.click(screen.getByRole("button", { name: /Próxima etapa/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Seg" }));
-    fireEvent.change(screen.getByLabelText("Bairro ou município de origem"), {
-      target: { value: "Aldeota" },
-    });
-    fireEvent.change(screen.getByLabelText("Horário de saída", { exact: true }), {
-      target: { value: "OTHER" },
-    });
-    fireEvent.change(screen.getByLabelText("Horário de saída: outro horário"), {
-      target: { value: "08:30" },
-    });
-    fireEvent.click(screen.getByRole("checkbox", { name: /Concordo em participar desta pesquisa/ }));
-    const emailField = screen.getByRole("textbox", { name: "E-mail para reconhecimento" });
-    fireEvent.change(emailField, { target: { value: "lead@example.com" } });
-    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo usar este e-mail/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Enviar respostas" }));
-    await screen.findByText("Resposta registrada!");
-    expect(api.rpc).toHaveBeenCalledWith("capture_research_lead", expect.objectContaining({
-      p_email: "lead@example.com",
-      p_linkage_consent: true,
-      p_marketing_consent: false,
-    }));
-    expect(api.rpc.mock.calls.some(([name]) => name === "register_research_interest")).toBe(false);
-  });
-
   it("preserves the established submission path for unconfigured published surveys", async () => {
     api.configured = false;
     render(<PublicResearchForm code="OLD" />);
@@ -190,8 +144,7 @@ describe("Configured public research", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enviar respostas" }));
     await screen.findByText("Resposta registrada!");
     expect(api.insert).toHaveBeenCalledOnce();
-    expect(api.rpc).toHaveBeenCalledTimes(1);
-    expect(api.rpc).toHaveBeenCalledWith("get_research_window_state", { p_code: "OLD" });
+    expect(api.rpc).not.toHaveBeenCalled();
   });
   it("requires independent pre-registration consent for both passenger and driver", async () => {
     render(

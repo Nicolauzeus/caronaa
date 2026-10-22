@@ -12,9 +12,7 @@ describe("Generic launch waiting room",()=>{
  });
  it("is read-only, full viewport and permits signing out",()=>{
   expect(waiting).toContain("h-[100dvh]");
-  expect(waiting).not.toContain("overflow-hidden");
-  expect(waiting).toContain('to="/perfil"');
-  expect(waiting).toContain("Personalizar meu perfil");
+  expect(waiting).toContain("overflow-hidden");
   expect(waiting).toContain("SOMENTE VISUALIZAÇÃO");
   expect(waiting).toContain("supabase.auth.signOut()");
   expect(waiting).not.toContain("createRideRequest(");

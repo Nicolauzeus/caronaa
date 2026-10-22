@@ -64,7 +64,6 @@ function Buscar() {
     originLocation: undefined as FormLocationDetails | undefined,
     destinationLocation: undefined as FormLocationDetails | undefined,
   });
-  const [includeOpportunities, setIncludeOpportunities] = useState(true);
   const [matches, setMatches] = useState<RideSummary[]>([]);
   const [requestQuote, setRequestQuote] = useState<{
     quoteId: string;
@@ -122,7 +121,6 @@ function Buscar() {
         departureTime: submitted.time || undefined,
         passengerCount: Number(submitted.passengers) || 1,
         timeToleranceMinutes: submitted.timeTolerance,
-        includeOpportunities,
       },
     })
       .then((data) => {
@@ -142,7 +140,7 @@ function Buscar() {
     return () => {
       active = false;
     };
-  }, [searchOffers, submitted, includeOpportunities]);
+  }, [searchOffers, submitted]);
 
   useEffect(() => {
     let active = true;
@@ -329,10 +327,6 @@ function Buscar() {
           )}
         </div>
       )}
-      <label className="mt-5 flex items-start gap-2 text-sm">
-        <input type="checkbox" checked={includeOpportunities} onChange={(event) => setIncludeOpportunities(event.target.checked)} className="mt-1" />
-        Mostrar também oportunidades com embarque até uma hora antes ou depois. Ajustes exigem minha confirmação.
-      </label>
       <div className="mb-5 mt-9 flex items-end justify-between">
         <div>
           <h2 className="font-display text-xl font-extrabold">Caronas disponíveis</h2>
@@ -357,7 +351,7 @@ function Buscar() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {matches.map((ride) => (
             <RideCard
-              key={`${ride.id}:${requestQuote?.quoteId}:${ride.matchEvaluation?.pickupAt}:${submitted.time}:${submitted.date}:${submitted.passengers}`}
+              key={ride.id}
               ride={ride}
               passengerCount={Number(submitted.passengers) || 1}
               segmentRequest={

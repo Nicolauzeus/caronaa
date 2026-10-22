@@ -736,43 +736,6 @@ export function ResearchFormEditor({
                         />
                       </label>
                     )}
-                    {["short_text", "long_text", "location"].includes(q.type) && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <label className="text-xs">
-                          Mínimo de caracteres
-                          <input type="number" min={0} max={q.type==="long_text"?2000:240}
-                            disabled={published} value={q.minLength ?? 0}
-                            onChange={(e)=>changeQuestion(si,qi,{minLength:Number(e.target.value)})}
-                            className="mt-1 min-h-11 w-full rounded-lg border bg-background p-2"/>
-                        </label>
-                        <label className="text-xs">
-                          Máximo de caracteres
-                          <input type="number" min={1} max={q.type==="long_text"?2000:240}
-                            disabled={published} value={q.maxLength ?? (q.type==="long_text"?2000:240)}
-                            onChange={(e)=>changeQuestion(si,qi,{maxLength:Number(e.target.value)})}
-                            className="mt-1 min-h-11 w-full rounded-lg border bg-background p-2"/>
-                        </label>
-                        <p className="text-xs text-muted-foreground sm:col-span-2">
-                          O respondente verá um contador e instruções antes de enviar.
-                        </p>
-                      </div>
-                    )}
-                    {q.type==="multiple_choice" && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <label className="text-xs">Mínimo de opções
-                          <input type="number" min={0} max={q.options.length} disabled={published}
-                            value={q.minValue ?? 0}
-                            onChange={(e)=>changeQuestion(si,qi,{minValue:Number(e.target.value)})}
-                            className="mt-1 min-h-11 w-full rounded-lg border bg-background p-2"/>
-                        </label>
-                        <label className="text-xs">Máximo de opções
-                          <input type="number" min={1} max={q.options.length} disabled={published}
-                            value={q.maxValue ?? q.options.length}
-                            onChange={(e)=>changeQuestion(si,qi,{maxValue:Number(e.target.value)})}
-                            className="mt-1 min-h-11 w-full rounded-lg border bg-background p-2"/>
-                        </label>
-                      </div>
-                    )}
                     {q.type === "number" && (
                       <div className="grid gap-2 sm:grid-cols-3">
                         <label className="text-xs">

@@ -1,8 +1,6 @@
 import { RESEARCH_TEMPLATES, freshTemplate } from "@/lib/formulario/research-templates";
 import { supabase } from "@/integrations/supabase/client";
 import { parseResearchConfiguration, type ResearchConfiguration } from "./research-configuration";
-import { friendlyResearchCreationError, normalizeResearchFormCode } from "./research-form-code";
-import { validateSurveyWindow } from "./research-window";
 
 export const RESEARCH_NATURES = [
   { value: "EVENTO", label: "Evento" },
@@ -26,9 +24,6 @@ export type ResearchForm = {
   brand_image_alt?: string | null;
   brand_display_name?: string | null;
   created_at: string;
-  survey_starts_on?: string | null;
-  survey_ends_on?: string | null;
-  caronaa_presence_on?: string | null;
   mobility_configured?: boolean;
   trashed_at?: string | null;
   trashed_by?: string | null;
@@ -55,39 +50,38 @@ export async function createResearchForm(input: {
   municipality?: string;
   templateKey?: string;
   configuration?: ResearchConfiguration;
-  startsOn: string;
-  endsOn: string;
-  caronaaPresenceOn?: string | null;
 }) {
-  const scheduleError = validateSurveyWindow(input.startsOn,input.endsOn);
-  if (scheduleError) throw new Error(scheduleError);
-  if (input.caronaaPresenceOn && !/^\d{4}-\d{2}-\d{2}$/.test(input.caronaaPresenceOn))
-    throw new Error("Informe uma data válida para a presença do CARONAA.");
   const selected = RESEARCH_TEMPLATES.find(
     (t) => t.key === input.templateKey && t.nature === input.nature,
   );
   const schema = selected
     ? freshTemplate(selected)
     : { sections: [{ id: crypto.randomUUID(), title: "Primeira seção", questions: [] }] };
-  const { data,error } = await db.rpc("create_scheduled_research_form",{
-    p_metadata: {
-      title: input.title.trim(),
-      code: normalizeResearchFormCode(input.code),
-      nature: input.nature,
-      audience: input.audience,
-      municipality: input.municipality?.trim() ?? "",
-    },
-    p_schema: schema,
-    p_settings: input.configuration ? parseResearchConfiguration(input.configuration) : null,
-    p_starts_on: input.startsOn,
-    p_ends_on: input.endsOn,
-    p_caronaa_on: input.caronaaPresenceOn || null,
-  });
-  if (error) {
-    if (error.code === "PGRST202" || /create_scheduled_research_form/.test(error.message))
-      throw new Error("A programação da pesquisa ainda não foi instalada no banco. Aplique a migration 0110.");
-    throw new Error(friendlyResearchCreationError(error));
+  if (input.configuration) {
+    const settings = parseResearchConfiguration(input.configuration);
+    const { data, error } = await db.rpc("create_configured_research_form", {
+      p_metadata: {
+        title: input.title.trim(),
+        code: input.code.trim().toUpperCase(),
+        nature: input.nature,
+        audience: input.audience,
+        municipality: input.municipality?.trim() ?? "",
+      },
+      p_schema: schema,
+      p_settings: settings,
+    });
+    if (error) throw new Error(error.message);
+    return data as string;
   }
+  const { data, error } = await db.rpc("create_research_form_draft", {
+    p_title: input.title.trim(),
+    p_code: input.code.trim().toUpperCase(),
+    p_nature: input.nature,
+    p_audience: input.audience,
+    p_municipality: input.municipality?.trim() ?? "",
+    p_schema: schema,
+  });
+  if (error) throw new Error(error.message);
   return data as string;
 }
 

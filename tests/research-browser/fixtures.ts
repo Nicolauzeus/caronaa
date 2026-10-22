@@ -52,8 +52,6 @@ export const supabase = {
     return chain;
   },
   rpc: async (name: string, args: Record<string, unknown>) => {
-    if (name === "get_research_window_state")
-      return { error: null, data: { startsOn: null, endsOn: null, state: "ABERTO" } };
     if (name === "get_public_research_configuration")
       return { error: null, data: { revision: 1, settings } };
     if (name === "register_research_interest")

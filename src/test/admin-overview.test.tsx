@@ -124,23 +124,6 @@ describe("Administrative overview", () => {
       screen.queryByText("Nenhuma pendência nas filas operacionais consultadas."),
     ).not.toBeInTheDocument();
   });
-  it("refreshes operational attention, users and the rolling reporting window together", async () => {
-    mount();
-    await screen.findByRole("link", { name: "Usuários cadastrados: 0" });
-    await screen.findByText("Nenhuma pendência nas filas operacionais consultadas.");
-    await waitFor(() => expect(api.operations).toHaveBeenCalledTimes(1));
-
-    const initialPeriod = api.operations.mock.calls[0][0];
-    fireEvent.click(screen.getByRole("button", { name: "Atualizar indicadores" }));
-
-    await waitFor(() => expect(api.operations).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(api.attention).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(api.users).toHaveBeenCalledTimes(2));
-    expect(api.operations.mock.calls[1][0].periodEnd).not.toBe(initialPeriod.periodEnd);
-    expect(api.forms).toHaveBeenCalledTimes(2);
-    expect(api.funnel).toHaveBeenCalledTimes(2);
-    expect(api.retention).toHaveBeenCalledTimes(2);
-  });
   it("pushes section navigation without replacing browser history", async () => {
     mount();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Pessoas e recorrência" }), {

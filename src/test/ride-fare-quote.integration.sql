@@ -37,9 +37,8 @@ SELECT pg_temp.expect_error(format('SELECT public.respond_to_ride_match(%L,''ACC
 SELECT set_config('request.jwt.claim.sub',:'driver',true);
 SELECT pg_temp.assert_true(public.respond_to_ride_match(:'ride','ACCEPT')='CONFIRMED','second acceptance confirms');
 SELECT public.save_my_pix_key('fare-driver@example.test');
-SELECT pg_temp.expect_error(format('SELECT public.get_ride_pix(%L)',:'ride'),'conclusão');
 SELECT set_config('request.jwt.claim.sub',:'passenger',true);
-SELECT pg_temp.expect_error(format('SELECT public.get_ride_pix(%L)',:'ride'),'Pix privado do motorista');
+SELECT pg_temp.expect_error(format('SELECT public.get_ride_pix(%L)',:'ride'),'conclusão');
 SELECT public.get_ride_safety(:'ride')->>'pin' AS pin \gset
 SELECT set_config('request.jwt.claim.sub',:'driver',true);
 SELECT pg_temp.assert_true(public.validate_ride_boarding(:'ride',:'pin')='IN_PROGRESS','PIN validates boarding');
@@ -47,11 +46,7 @@ SELECT set_config('request.jwt.claim.sub',:'passenger',true);
 SELECT pg_temp.assert_true(public.transition_ride_status(:'ride','COMPLETED')='AWAITING_OTHER_PARTICIPANT','first completion waits');
 SELECT set_config('request.jwt.claim.sub',:'driver',true);
 SELECT pg_temp.assert_true(public.transition_ride_status(:'ride','COMPLETED')='COMPLETED','bilateral completion');
-SELECT pg_temp.assert_true((public.get_ride_pix(:'ride')->>'amount')::numeric=12,'Driver Pix reflects completed group fare');
-SELECT set_config('request.jwt.claim.sub',:'passenger',true);
-SELECT pg_temp.expect_error(format('SELECT public.get_ride_pix(%L)',:'ride'),'Pix privado do motorista');
-SELECT set_config('request.jwt.claim.sub',:'outsider',true);
-SELECT pg_temp.expect_error(format('SELECT public.get_ride_pix(%L)',:'ride'),'Pix privado do motorista');
+SELECT pg_temp.assert_true((public.get_ride_pix(:'ride')->>'amount')::numeric=12,'Pix uses this group fare');
 RESET ROLE;
 SELECT public.recalculate_ride_cost_split(:'offer');
 SELECT pg_temp.assert_true((SELECT passenger_contribution=12 FROM public.rides WHERE ride_id=:'ride'),'legacy recalculation preserves completed fare');

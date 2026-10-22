@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   ArrowRight,
@@ -70,7 +70,6 @@ type ProfileData = {
 };
 
 function Perfil() {
-  const { launchLocked } = useRouteContext({ from: "/_authenticated" });
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -514,7 +513,7 @@ function Perfil() {
 
   if (loading) {
     return (
-      <AppShell prelaunchMode={launchLocked}>
+      <AppShell>
         <PageHeading
           eyebrow="SUA COMUNIDADE"
           title="Meu perfil"
@@ -531,7 +530,7 @@ function Perfil() {
 
   if (!profile) {
     return (
-      <AppShell prelaunchMode={launchLocked}>
+      <AppShell>
         <PageHeading
           eyebrow="SUA COMUNIDADE"
           title="Meu perfil"
@@ -558,28 +557,12 @@ function Perfil() {
       .join("") || "C";
 
   return (
-    <AppShell prelaunchMode={launchLocked}>
+    <AppShell>
       <PageHeading
         eyebrow="SUA COMUNIDADE"
         title="Meu perfil"
-        description={launchLocked
-          ? "Seu espaço para personalizar o CARONAA antes do lançamento."
-          : "Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."}
+        description="Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."
       />
-      {launchLocked && (
-        <section role="status" aria-label="Acesso ao perfil durante o pré-lançamento"
-          className="mb-5 flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-extrabold text-foreground">Seu perfil já está liberado</p>
-            <p className="text-xs leading-5 text-muted-foreground">
-              Adicione sua foto, cidade, preferências e veículo. Sua campanha ainda não permite pedir ou oferecer caronas.
-            </p>
-          </div>
-          <Button asChild variant="outline" className="min-h-11 w-full shrink-0 border-primary/30 sm:w-auto">
-            <Link to="/aguardando">Voltar à contagem regressiva</Link>
-          </Button>
-        </section>
-      )}
 
       <section
         className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft"
@@ -796,14 +779,12 @@ function Perfil() {
           <ResearchParticipationCard />
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            {!launchLocked && (
-              <Button variant="outline" asChild>
-                <Link to="/minhas-caronas">
-                  Ver viagens
-                  <ArrowRight size={16} />
-                </Link>
-              </Button>
-            )}
+            <Button variant="outline" asChild>
+              <Link to="/minhas-caronas">
+                Ver viagens
+                <ArrowRight size={16} />
+              </Link>
+            </Button>
 
             <Button onClick={saveProfile} disabled={saving}>
               {saving ? "Salvando..." : "Salvar alterações"}

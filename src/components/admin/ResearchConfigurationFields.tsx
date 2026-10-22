@@ -86,16 +86,6 @@ export function ResearchConfigurationFields({
           <TabsTrigger value="service">Serviço e política</TabsTrigger>
         </TabsList>
         <TabsContent value="institution" className="grid gap-3 pt-3 sm:grid-cols-2">
-          <label className="flex min-h-12 items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm sm:col-span-2">
-            <input type="checkbox" className="mt-1" checked={value.emailCaptureEnabled}
-              onChange={(event)=>set("emailCaptureEnabled",event.target.checked)}/>
-            <span><strong>Captura de e-mail e inteligência de leads</strong>
-              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                Solicita e-mail e autorização específica antes da conclusão. Não adiciona automaticamente participantes a campanhas. Ative somente após instalar a migration 0103 e revisar o aviso de privacidade.
-              </span>
-            </span>
-          </label>
-
           {!creationMode && text("institutionId", "Identificador institucional")}
           {text("institutionName", value.templateKey===CORPORATE_INTERNAL_KEY ? "Nome da empresa" : "Instituição, empresa ou evento")}
           {!creationMode && text("publicName", "Nome público da pesquisa")}
@@ -342,17 +332,15 @@ export function ResearchConfigurationFields({
           </label>
         </TabsContent>
         <TabsContent value="service" className="grid gap-3 pt-3 sm:grid-cols-2">
-          {!creationMode && (
-            <label className="text-sm">
-              Data prevista de presença ou início de operação do CARONAA (opcional)
-              <input
-                type="date"
-                value={value.launchDate ?? ""}
-                onChange={(event) => set("launchDate", event.target.value || null)}
-                className={inputClass}
-              />
-            </label>
-          )}
+          <label className="text-sm">
+            Data de início
+            <input
+              type="date"
+              value={value.launchDate ?? ""}
+              onChange={(event) => set("launchDate", event.target.value || null)}
+              className={inputClass}
+            />
+          </label>
           {text("timezone", "Fuso horário")}
           <label className="text-sm">
             Situação do serviço

@@ -722,69 +722,6 @@
       "when": 1792443000000,
       "tag": "0102_research_launch_waiting_gate",
       "breakpoints": true
-    },
-    {
-      "idx": 103,
-      "version": "7",
-      "when": 1792500000000,
-      "tag": "0103_research_lead_capture_crm",
-      "breakpoints": true
-    },
-    {
-      "idx": 104,
-      "version": "7",
-      "when": 1792500100000,
-      "tag": "0104_seven_passenger_seat_capacity",
-      "breakpoints": true
-    },
-    {
-      "idx": 105,
-      "version": "7",
-      "when": 1792500200000,
-      "tag": "0105_research_dynamic_field_limits",
-      "breakpoints": true
-    },
-    {
-      "idx": 106,
-      "version": "7",
-      "when": 1792500200001,
-      "tag": "0106_intelligent_ride_opportunities",
-      "breakpoints": true
-    },
-    {
-      "idx": 107,
-      "version": "7",
-      "when": 1792500200002,
-      "tag": "0107_verified_opportunity_road_assessments",
-      "breakpoints": true
-    },
-    {
-      "idx": 108,
-      "version": "7",
-      "when": 1792500200003,
-      "tag": "0108_research_launch_cohorts_profile_access",
-      "breakpoints": true
-    },
-    {
-      "idx": 109,
-      "version": "7",
-      "when": 1792500200004,
-      "tag": "0109_research_unique_code_feedback",
-      "breakpoints": true
-    },
-    {
-      "idx": 110,
-      "version": "7",
-      "when": 1792590000000,
-      "tag": "0110_research_survey_window",
-      "breakpoints": true
-    },
-    {
-      "idx": 111,
-      "version": "7",
-      "when": 1792615200001,
-      "tag": "0111_driver_only_completed_ride_pix",
-      "breakpoints": true
     }
   ]
 }

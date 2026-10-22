@@ -29,7 +29,6 @@ import {
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
 import { supabase } from "@/integrations/supabase/client";
-import { ResearchSeatPicker } from "@/components/research/ResearchSeatPicker";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
   validateSearch: z.object({
@@ -37,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/oferecer")({
     destino: z.string().max(160).optional(),
     data: z.string().optional(),
     horario: z.string().optional(),
-    vagas: z.coerce.number().int().min(1).max(7).optional(),
+    vagas: z.coerce.number().int().min(1).max(6).optional(),
     tolerancia: z.coerce.number().int().refine((n)=>[5,15,30,60].includes(n)).optional(),
     olat: z.coerce.number().min(-90).max(90).optional(),
     olng: z.coerce.number().min(-180).max(180).optional(),
@@ -153,11 +152,6 @@ function Oferecer() {
     if (step === 1) {
       if (!quote || quote.origin !== form.origin || quote.destination !== form.destination) {
         toast.error("Aguarde a cotação rodoviária do percurso ou tente novamente.");
-        return;
-      }
-      const seats = Number(form.seats);
-      if (!Number.isInteger(seats) || seats < 1 || seats > 7) {
-        toast.error("Informe entre 1 e 7 vagas reais para passageiros.");
         return;
       }
       setStep((current) => current + 1);
@@ -381,11 +375,18 @@ function Oferecer() {
                       showApproximateMetrics={false}
                     />
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="min-w-0 space-y-2">
-                        <p className="text-sm font-semibold">Vagas disponíveis</p>
-                        <ResearchSeatPicker id="offer-seats" value={form.seats} min={1} max={7}
-                          onChange={(value) => update("seats", value)} />
-                      </div>
+                      <label className="block text-sm font-semibold">
+                        Vagas disponíveis
+                        <select
+                          value={form.seats}
+                          onChange={(event) => update("seats", event.target.value)}
+                          className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3"
+                        >
+                          {[1, 2, 3, 4].map((count) => (
+                            <option key={count}>{count}</option>
+                          ))}
+                        </select>
+                      </label>
                       <Field
                         label="Veículo desta viagem"
                         value={form.vehicle}
@@ -442,11 +443,19 @@ function Oferecer() {
                   </div>
                 ) : step === 99 ? (
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="min-w-0 space-y-2">
-                      <p className="text-sm font-semibold">Vagas disponíveis</p>
-                      <ResearchSeatPicker id="offer-legacy-seats" value={form.seats} min={1} max={7}
-                        onChange={(value) => update("seats", value)} />
-                    </div>
+                    <label className="block text-sm font-semibold">
+                      Vagas disponíveis
+                      <select
+                        value={form.seats}
+                        onChange={(e) => update("seats", e.target.value)}
+                        className="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option>1</option>
+                        <option>2</option>
+                        <option>3</option>
+                        <option>4</option>
+                      </select>
+                    </label>
                     <Field
                       label="Veículo desta viagem"
                       value={form.vehicle}

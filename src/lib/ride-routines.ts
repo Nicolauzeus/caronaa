@@ -26,7 +26,7 @@ const routeFields = {
   destinationLat: z.number().finite().min(-90).max(90).nullable(),
   destinationLng: z.number().finite().min(-180).max(180).nullable(),
   departureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  seats: z.number().int().min(1).max(7),
+  seats: z.number().int().min(1).max(6),
   timeToleranceMinutes: z.union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)]),
   totalPrice: z.number().finite().min(0).max(1000),
   preferences: travelPreferencesSchema.nullish().transform((value) => value ?? undefined),
@@ -44,8 +44,6 @@ export const routineDefinitionSchema = z
     endDate: z.string().date().nullable(),
     active: z.boolean(),
   })
-  .refine((value) => value.kind === "offer" || value.seats <= 6,
-    "Solicitações recorrentes continuam limitadas a 6 passageiros.")
   .refine(
     (value) => !value.endDate || value.endDate >= value.startDate,
     "A data final deve ser igual ou posterior à inicial.",

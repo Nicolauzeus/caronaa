@@ -3,7 +3,7 @@ import type { Answers } from "./research-schema";
 import type { SurveyQuestion, SurveySchema } from "./research-templates";
 
 /**
- * Presentation-only grouping for university research, based on the UNIFOR design. Question UUIDs,
+ * Presentation-only grouping for the published UNIFOR survey. Question UUIDs,
  * required flags and the published schema remain intact for analytics/history.
  * Dynamic rules still determine which dependent questions can be displayed.
  */
@@ -39,7 +39,7 @@ export function setUniforPainAnswers(schema:SurveySchema,previous:Answers,id:str
 }
 
 /** Group adjacent, related questions; never discard unrecognized fields. */
-export function createUniforGroups(schema:SurveySchema,answers:Answers,combineUnknown=false):CompactResearchGroup[][] {
+export function createUniforGroups(schema:SurveySchema,answers:Answers):CompactResearchGroup[][] {
  const visibility=createResearchVisibility(schema,answers);
  const {pains,primary}=getUniforPainQuestions(schema);
  const consolidate=Boolean(pains&&primary);
@@ -59,12 +59,9 @@ export function createUniforGroups(schema:SurveySchema,answers:Answers,combineUn
    for(const q of questions)used.add(q.id);
    list.push({title:definition.title,sectionIndex,questions:decorated});
   }
-  // Use the same compact presentation for university models, without
-  // hiding unexpected or required questions and without changing stored schema.
-  const remaining=visible.filter(question=>!used.has(question.id));
-  const chunk=combineUnknown?2:1;
-  for(let i=0;i<remaining.length;i+=chunk) {
-   list.push({title:section.title,sectionIndex,questions:remaining.slice(i,i+chunk)});
+  // Keep unexpected questions visible and mandatory instead of silently dropping them.
+  for(const question of visible)if(!used.has(question.id)){
+   list.push({title:section.title,sectionIndex,questions:[question]});
   }
   return list;
  });

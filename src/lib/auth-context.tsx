@@ -3,7 +3,6 @@ import { useRouter } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {claimPendingParticipations,readPendingParticipations,clearPendingLaunchReceipts} from "@/lib/formulario/research-participation";
-import { leaveAdminAppPreview } from "@/lib/admin/entry";
 
 type AuthContextValue = {
   user: User | null;
@@ -29,7 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       setUser(session?.user ?? null);
       setLoading(false);
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") leaveAdminAppPreview();
       if (event === "SIGNED_OUT") clearPendingLaunchReceipts();
       void router.invalidate();
     });

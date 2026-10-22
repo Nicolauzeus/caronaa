@@ -30,7 +30,6 @@ export const researchConfigurationSchema = z
     latitude: z.number().min(-90).max(90).nullable(),
     longitude: z.number().min(-180).max(180).nullable(),
     campaignName: text(120),
-    emailCaptureEnabled: z.boolean().default(false),
     campaignType: z.enum(["INSTITUCIONAL", "EVENTO", "ORGANICO", "OUTRO"]),
     acquisitionSource: text(80),
     launchDate: z
@@ -146,7 +145,7 @@ export function parseResearchConfiguration(input: ResearchConfiguration): Resear
       usagePolicy: "Política de uso",
       profiles: "Público-alvo",
       modes: "Modalidades",
-      launchDate: "Previsão de presença do CARONAA",
+      launchDate: "Data de início",
       latitude: "Latitude",
       longitude: "Longitude",
       safeMeetingPoints: "Pontos de embarque",
@@ -178,7 +177,6 @@ export function newResearchConfiguration(templateKey = "CUSTOM"): ResearchConfig
     latitude: null,
     longitude: null,
     campaignName: "",
-    emailCaptureEnabled: false,
     campaignType: "INSTITUCIONAL",
     acquisitionSource: "",
     launchDate: null,
@@ -202,8 +200,9 @@ export function newResearchConfiguration(templateKey = "CUSTOM"): ResearchConfig
   };
 }
 export function launchMessage(config: PublicResearchConfiguration["settings"]) {
-  if (!config.launchDate) return "";
-  const date = new Date(config.launchDate + "T12:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" });
+  const date = config.launchDate
+    ? new Date(config.launchDate + "T12:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" })
+    : "Data ainda não informada";
   const status = {
     PLANEJADO: "Início planejado",
     CONFIRMADO: "Início confirmado",

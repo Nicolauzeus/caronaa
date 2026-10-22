@@ -53,21 +53,6 @@ export function inspectSchema(schema: SurveySchema): string[] {
         RESEARCH_SEMANTIC_TYPES[q.semanticCode] !== q.type
       )
         errors.push(name + ": a classificação analítica não corresponde ao tipo da pergunta.");
-      if (["short_text", "long_text", "location"].includes(q.type)) {
-        const limit = q.type === "long_text" ? 2000 : 240;
-        const min = q.minLength ?? 0;
-        const max = q.maxLength ?? limit;
-        if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 ||
-            max < 1 || min > max || max > limit)
-          errors.push(name + ": limite de caracteres inválido.");
-      }
-      if (q.type === "multiple_choice") {
-        const min = q.minValue ?? 0;
-        const max = q.maxValue ?? q.options.length;
-        if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 ||
-            max < 1 || min > max || max > q.options.length)
-          errors.push(name + ": limite de alternativas inválido.");
-      }
       if (q.type === "number") {
         const bounds = getNumberBounds(q);
         if (!Number.isFinite(bounds.min) || !Number.isFinite(bounds.max) || bounds.min > bounds.max)
@@ -146,8 +131,8 @@ export function getNumberBounds(q: SurveyQuestion): {
     integerOnly = true;
   } else if (id === "cost" || semantic === "COST_PER_TRIP") {
     max = 10000;
-  } else if (id === "seats" || semantic === "SEATS_AVAILABLE" || semantic === "EVENT_OFFER_SEATS") {
-    max = 7;
+  } else if (id === "seats" || semantic === "SEATS_AVAILABLE") {
+    max = 8;
     integerOnly = true;
   } else if (id === "group") {
     min = 1;
@@ -159,7 +144,7 @@ export function getNumberBounds(q: SurveyQuestion): {
   }
   return {
     min: q.minValue ?? min,
-    max: semantic === "SEATS_AVAILABLE" || semantic === "EVENT_OFFER_SEATS" ? 7 : q.maxValue ?? max,
+    max: q.maxValue ?? max,
     integerOnly: q.integerOnly ?? integerOnly,
   };
 }
@@ -187,21 +172,6 @@ export function validatePage(section: SurveySection, answers: Answers, allQuesti
       if (q.required && (!value || (Array.isArray(value) && !value.length)))
         return ["Responda: " + q.label];
       if (value === undefined || value === "") return [];
-      if (q.type === "short_text" || q.type === "long_text" || q.type === "location") {
-        const length = Array.from(String(value).trim()).length;
-        const minLength = q.minLength ?? 0;
-        const maxLength = q.maxLength ?? (q.type === "long_text" ? 2000 : 240);
-        if (length < minLength)
-          return [q.label + ": faltam " + (minLength - length) + " caracteres."];
-        if (length > maxLength)
-          return [q.label + ": máximo de " + maxLength + " caracteres."];
-      }
-      if (q.type === "multiple_choice" && Array.isArray(value)) {
-        if (q.maxValue !== undefined && value.length > q.maxValue)
-          return [q.label + ": escolha no máximo " + q.maxValue + " opções."];
-        if (q.minValue !== undefined && value.length < q.minValue)
-          return [q.label + ": escolha pelo menos " + q.minValue + " opções."];
-      }
       if (q.type === "number") {
         const bounds = getNumberBounds(q);
         const number = Number(value);

@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "sdk_version": "3.1.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://zlzopkitvfmydceylugq.supabase.co/auth/v1",
+    "require_oauth_client_claim": true,
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "caronaa",
+      "version": "0.1.0",
+      "title": "Caronaa"
+    },
+    "tools": [
+      {
+        "name": "list_my_offers",
+        "title": "Minhas ofertas de carona",
+        "description": "Lista até 20 ofertas recentes do usuário conectado, sem dados de outros usuários ou pagamento.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_requests",
+        "title": "Meus pedidos de carona",
+        "description": "Lista até 20 pedidos recentes do usuário conectado, respeitando suas permissões.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

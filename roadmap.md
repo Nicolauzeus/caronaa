@@ -1,4 +1,5 @@
 - [ ] Repair public research deep links; verify anonymous direct access, refresh, submission, disabled forms and app guards without production publishing or historical mutations.
+- [ ] Agent integrations code and catalog implemented; 20 tests passed. External OAuth remains blocked by declined signing-key activation; full consent unverified and production not republished.
 - [x] Rebuild the sign-in screen from the supplied visual reference.
 - [x] Add persistent light and dark modes across the app and admin area.
 - [x] Verify administrator access uses the secure database role.

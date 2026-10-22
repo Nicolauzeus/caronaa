@@ -70,7 +70,6 @@ try {
         await page.getByRole("checkbox", { name: /Concordo em participar/ }).check();
         await page.getByRole("button", { name: "Enviar respostas", exact: true }).click();
         await page.getByRole("heading", { name: "Resposta registrada!" }).waitFor();
-        await page.getByText("Registrar interesse no trajeto (opcional)", { exact: true }).click();
         await page.getByRole("checkbox", { name: /Autorizo registrar meu interesse/ }).check();
         await page
           .getByRole("button", { name: "Quero encontrar uma carona para este trajeto" })
