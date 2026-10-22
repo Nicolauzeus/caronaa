@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { URBAN_UNIVERSITY_KEY } from "./urban-university";
+import { REGIONAL_UNIVERSITY_KEY } from "./regional-university";
 
 const dayPattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -37,5 +39,5 @@ export async function getResearchWindowState(code: string): Promise<SurveyWindow
 
 /** A schedule never implies launch, access release or an authorized partnership. */
 export function academicResearchTemplate(templateKey?: string | null, pilot = false): boolean {
-  return pilot || templateKey === "URBAN_UNIVERSITY" || templateKey === "REGIONAL_UNIVERSITY";
+  return pilot || templateKey === URBAN_UNIVERSITY_KEY || templateKey === REGIONAL_UNIVERSITY_KEY;
 }
