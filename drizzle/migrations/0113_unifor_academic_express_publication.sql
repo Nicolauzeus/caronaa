@@ -1,0 +1,101 @@
+-- 0113: short UNIFOR v3 plus institution email domain display hints (not access).
+DO $domain_setup$
+DECLARE source_sql text;
+BEGIN
+ SELECT pg_get_functiondef('public.validate_research_configuration(jsonb)'::regprocedure)
+ INTO source_sql;
+ IF source_sql IS NULL THEN RAISE EXCEPTION 'Missing research configuration validator'; END IF;
+ IF strpos(source_sql, $marker$'institutionalEmailDomains'$marker$)=0 THEN
+   IF strpos(source_sql, $marker$'pricing','emailCaptureEnabled')$marker$)=0
+     OR strpos(source_sql, 'FOR k IN SELECT jsonb_object_keys(p) LOOP')=0 THEN
+      RAISE EXCEPTION 'Unexpected research configuration validator revision';
+   END IF;
+   source_sql:=replace(source_sql,
+     $marker$'pricing','emailCaptureEnabled')$marker$,
+     $marker$'pricing','emailCaptureEnabled','institutionalEmailDomains')$marker$);
+   source_sql:=replace(source_sql,
+     'FOR k IN SELECT jsonb_object_keys(p) LOOP',
+     $domaincheck$IF p ? 'institutionalEmailDomains' THEN
+        IF jsonb_typeof(p->'institutionalEmailDomains') IS DISTINCT FROM 'array'
+        OR jsonb_array_length(p->'institutionalEmailDomains')>8
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(p->'institutionalEmailDomains') domain_item(value)
+          WHERE domain_item.value !~ '^[a-z0-9-]+(\.[a-z0-9-]+)+$'
+        ) THEN RAISE EXCEPTION 'Domínios institucionais inválidos'; END IF;
+      END IF;
+      FOR k IN SELECT jsonb_object_keys(p) LOOP$domaincheck$);
+   EXECUTE source_sql;
+ END IF;
+END $domain_setup$;
+
+DO $academic_release$
+DECLARE target_form_id uuid; latest_version integer; previous_schema jsonb;
+BEGIN
+ SELECT id INTO target_form_id FROM public.research_forms WHERE code='0K9K09K'
+   AND status='PUBLICADO' AND is_enabled=true
+ FOR UPDATE;
+ IF target_form_id IS NULL THEN
+   RAISE EXCEPTION 'Published UNIFOR survey 0K9K09K not found';
+ END IF;
+ SELECT version_number,schema_json INTO latest_version,previous_schema
+   FROM public.research_form_versions WHERE form_id=target_form_id
+   AND published_at IS NOT NULL ORDER BY version_number DESC LIMIT 1;
+ IF previous_schema->>'experience'='ACADEMIC_EXPRESS_V1' THEN RETURN; END IF;
+ IF latest_version IS DISTINCT FROM 2 THEN
+   RAISE EXCEPTION 'Unexpected UNIFOR version %, expected v2 before express migration',latest_version;
+ END IF;
+ IF EXISTS (SELECT 1 FROM public.research_form_versions
+   WHERE form_id = target_form_id AND published_at IS NULL) THEN
+   RAISE EXCEPTION 'Unpublished UNIFOR draft exists; resolve before changing the live version';
+ END IF;
+ INSERT INTO public.research_form_versions(form_id,version_number,schema_json,published_at)
+ VALUES(target_form_id,latest_version+1,$academic${"experience":"ACADEMIC_EXPRESS_V1","sections":[{"id":"academic_identity","title":"Sua comunidade","questions":[{"id":"academic_full_name","label":"Como podemos chamar você?","type":"short_text","required":true,"options":[],"semanticCode":"ACADEMIC_PARTICIPANT_NAME","minLength":2,"maxLength":80},{"id":"academic_affiliation","label":"Qual é seu vínculo com a universidade?","type":"single_choice","required":true,"options":["ESTUDANTE","ESTUDANTE_TRABALHADOR","PROFESSOR","COLABORADOR","TERCEIRIZADO","OUTRO"],"semanticCode":"ACADEMIC_ROLE"},{"id":"research_participant_role","label":"Como pretende participar?","type":"single_choice","required":true,"options":["PASSAGEIRO","MOTORISTA","AMBOS"],"semanticCode":"RESEARCH_PARTICIPANT_ROLE"}]},{"id":"academic_passenger","title":"Sua experiência como passageiro","questions":[{"id":"academic_transport","label":"Como você costuma se deslocar?","type":"multiple_choice","required":true,"options":["ONIBUS","APLICATIVO","CARONA","CARRO","MOTO","BICICLETA","A_PE","OUTRO"],"semanticCode":"TRANSPORT_MODE","minValue":1,"maxValue":1,"condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"PASSAGEIRO"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}},{"id":"academic_current_cost","label":"Quanto gasta hoje, por trecho? (R$)","type":"number","required":false,"options":[],"semanticCode":"COST_PER_TRIP","minValue":0,"maxValue":10000,"condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"PASSAGEIRO"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}},{"id":"academic_passenger_priority","label":"O que é indispensável para pegar uma carona?","type":"single_choice","required":true,"options":["PREFERENCIA_MULHERES","PONTO_NO_CAMPUS","PERFIL_VERIFICADO","ECONOMIA"],"semanticCode":"ACADEMIC_PASSENGER_PRIORITY","condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"PASSAGEIRO"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}}]},{"id":"academic_driver","title":"Sua disponibilidade como motorista","questions":[{"id":"academic_vehicle","label":"Qual veículo usaria para oferecer carona?","type":"single_choice","required":true,"options":["CARRO","MOTO"],"semanticCode":"URBAN_OFFER_VEHICLE","condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"MOTORISTA"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}},{"id":"academic_vehicle_model","label":"Marca e modelo do veículo (opcional)","type":"short_text","required":false,"options":[],"maxLength":80,"semanticCode":"ACADEMIC_VEHICLE_MODEL","condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"MOTORISTA"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}},{"id":"academic_seats","label":"Quantas vagas livres para passageiros?","type":"number","required":true,"options":[],"semanticCode":"SEATS_AVAILABLE","minValue":1,"maxValue":7,"integerOnly":true,"condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"MOTORISTA"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}},{"id":"academic_driver_priority","label":"O que lhe daria mais tranquilidade ao dirigir?","type":"single_choice","required":true,"options":["SEM_DESVIOS","PAGAMENTO_VERIFICADO","MESMA_UNIVERSIDADE"],"semanticCode":"ACADEMIC_DRIVER_PRIORITY","condition":{"op":"ANY","rules":[{"questionId":"research_participant_role","comparison":"EQ","value":"MOTORISTA"},{"questionId":"research_participant_role","comparison":"EQ","value":"AMBOS"}]}}]}]}$academic$::jsonb,now());
+END $academic_release$;
+
+-- Enforce motorcycle capacity in the database, not only in the survey UI.
+CREATE OR REPLACE FUNCTION public.guard_academic_express_capacity()
+RETURNS trigger LANGUAGE plpgsql SET search_path=''
+AS $guard$
+DECLARE
+  survey_schema jsonb;
+  name_id text;
+  vehicle_id text;
+  seats_id text;
+BEGIN
+  SELECT v.schema_json INTO survey_schema
+    FROM public.research_form_versions v WHERE v.id=NEW.version_id;
+  IF survey_schema->>'experience' IS DISTINCT FROM 'ACADEMIC_EXPRESS_V1' THEN
+    RETURN NEW;
+  END IF;
+  SELECT q.value->>'id' INTO name_id
+    FROM jsonb_array_elements(survey_schema->'sections') s
+    CROSS JOIN LATERAL jsonb_array_elements(s.value->'questions') q
+    WHERE q.value->>'semanticCode'='ACADEMIC_PARTICIPANT_NAME' LIMIT 1;
+  SELECT q.value->>'id' INTO vehicle_id
+    FROM jsonb_array_elements(survey_schema->'sections') s
+    CROSS JOIN LATERAL jsonb_array_elements(s.value->'questions') q
+    WHERE q.value->>'semanticCode'='URBAN_OFFER_VEHICLE' LIMIT 1;
+  SELECT q.value->>'id' INTO seats_id
+    FROM jsonb_array_elements(survey_schema->'sections') s
+    CROSS JOIN LATERAL jsonb_array_elements(s.value->'questions') q
+    WHERE q.value->>'semanticCode'='SEATS_AVAILABLE' LIMIT 1;
+  IF name_id IS NULL OR vehicle_id IS NULL OR seats_id IS NULL THEN
+    RAISE EXCEPTION 'Estrutura acadêmica incompleta';
+  END IF;
+  IF char_length(btrim(coalesce(NEW.answers->>name_id,''))) NOT BETWEEN 2 AND 80 THEN
+    RAISE EXCEPTION 'Nome do participante inválido';
+  END IF;
+  IF NEW.answers->>vehicle_id='MOTO'
+      AND NEW.answers->>seats_id IS DISTINCT FROM '1'
+  THEN
+    RAISE EXCEPTION 'Motocicleta admite somente uma vaga de passageiro, quando permitida';
+  END IF;
+  RETURN NEW;
+END $guard$;
+REVOKE ALL ON FUNCTION public.guard_academic_express_capacity() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS research_academic_express_capacity ON public.research_answers;
+CREATE TRIGGER research_academic_express_capacity
+BEFORE INSERT ON public.research_answers
+FOR EACH ROW EXECUTE FUNCTION public.guard_academic_express_capacity();
+
+NOTIFY pgrst,'reload schema';

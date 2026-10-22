@@ -95,6 +95,24 @@ export function inspectSchema(schema: SurveySchema): string[] {
       prior.set(q.id, q);
     });
   });
+  if (schema.experience === "ACADEMIC_EXPRESS_V1") {
+    // The express UI renders only this fixed, semantically versioned contract.
+    // Prevent publishing an invisible newly-required question via the builder.
+    const requiredSemantics = [
+      "ACADEMIC_PARTICIPANT_NAME", "ACADEMIC_ROLE", "RESEARCH_PARTICIPANT_ROLE",
+      "TRANSPORT_MODE", "COST_PER_TRIP", "ACADEMIC_PASSENGER_PRIORITY",
+      "URBAN_OFFER_VEHICLE", "ACADEMIC_VEHICLE_MODEL", "SEATS_AVAILABLE", "ACADEMIC_DRIVER_PRIORITY",
+    ];
+    const questions = schema.sections.flatMap(section => section.questions);
+    if (questions.length !== requiredSemantics.length ||
+        requiredSemantics.some(code => questions.filter(q => q.semanticCode === code).length !== 1)) {
+      errors.push("O modelo acadêmico rápido exige os dez campos originais. Para adicionar perguntas, use um modelo tradicional.");
+    }
+    for (const code of requiredSemantics.filter(code => code !== "COST_PER_TRIP" && code !== "ACADEMIC_VEHICLE_MODEL")) {
+      const q = questions.find(q => q.semanticCode === code);
+      if (q && !q.required) errors.push("No modelo acadêmico rápido, o campo " + code + " deve continuar obrigatório.");
+    }
+  }
   if (total > 200) errors.push("Limite de 200 perguntas.");
   if (total === 0) errors.push("Adicione perguntas antes de publicar.");
   return errors;
