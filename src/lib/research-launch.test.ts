@@ -40,6 +40,50 @@ describe("Reusable institutional launch gate",()=>{
   await expect(getMyResearchLaunchState()).rejects.toThrow(/verificar o acesso/);
   await expect(getMyResearchLaunchState()).rejects.toThrow(/incompleta/);
  });
+
+ it("shows two pending campaigns with independent dates, sorted by launch",async()=>{
+  api.rpc.mockResolvedValue({error:null,data:{locked:true,
+   launches:[
+    {formId:"b",formCode:"B",title:"Pesquisa B",institution:"Campus B",nature:"EVENTO",
+     launchAt:"2027-04-01T03:00:00Z",preview:null},
+    {formId:"a",formCode:"A",title:"Pesquisa A",institution:"Campus A",nature:"EDUCACAO",
+     launchAt:"2027-02-01T03:00:00Z",
+     preview:{kind:"PEDIDO",status:"VISUALIZACAO",scheduledDate:"2027-02-01",
+      origin:"Aldeota",destination:"Campus A",departureTime:"07:00"}}
+   ]
+  }});
+  const state=await getMyResearchLaunchState();
+  expect(state.locked).toBe(true);
+  expect(state.launches.map(x=>x.formId)).toEqual(["a","b"]);
+  expect(state.launches.map(x=>x.launchAt)).toEqual([
+    "2027-02-01T03:00:00Z","2027-04-01T03:00:00Z"
+  ]);
+  expect(state.formCode).toBe("A");
+  expect(state.launches[0].preview?.kind).toBe("PEDIDO");
+ });
+ it("does not hide participations of an unrestricted, established account",async()=>{
+  api.rpc.mockResolvedValue({error:null,data:{locked:false,
+   launches:[
+    {formId:"a",formCode:"A",title:"Pesquisa A",institution:"Campus",
+     launchAt:"2027-02-01T03:00:00Z",
+     preview:{kind:"OFERTA",status:"MATCHED"}},
+    {formId:"b",formCode:"B",title:"Pesquisa B",institution:"Evento",
+     launchAt:"2027-04-01T03:00:00Z",preview:null}
+   ]
+  }});
+  const state=await getMyResearchLaunchState();
+  expect(state.locked).toBe(false);
+  expect(state.launches.map(x=>x.formId)).toEqual(["a","b"]);
+  expect(state.launches[0].preview).toBeNull();
+ });
+ it("deduplicates multiple responses to the same form and rejects malformed campaigns",async()=>{
+  const valid={formId:"a",formCode:"A",title:"Pesquisa A",institution:"Campus",
+   launchAt:"2027-04-01T03:00:00Z",preview:null};
+  api.rpc.mockResolvedValue({error:null,data:{locked:true,
+   launches:[valid,valid,{formId:"invalid",formCode:"C",launchAt:"not-a-date"}]
+  }});
+  expect((await getMyResearchLaunchState()).launches).toHaveLength(1);
+ });
  it("keeps early release behind a dedicated administrator RPC",async()=>{
   api.rpc.mockResolvedValueOnce({error:null,data:{launchDate:"2026-11-04",released:false,linkedUsers:2}})
    .mockResolvedValueOnce({error:null,data:{released:true}});
