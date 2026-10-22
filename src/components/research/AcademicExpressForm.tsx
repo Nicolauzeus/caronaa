@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 import type { SurveySchema, SurveyQuestion } from "@/lib/formulario/research-templates";
 import type { PublicResearchConfiguration, ResearchJourney } from "@/lib/formulario/research-configuration";
-import { validateJourney } from "@/lib/formulario/research-configuration";
+import { effectiveResearchSchedule, validateJourney } from "@/lib/formulario/research-configuration";
 import { academicExpressSteps, type AcademicRole } from "@/lib/formulario/academic-express-schema";
 import { cleanAnswers, validatePage, type Answers } from "@/lib/formulario/research-schema";
 import { validResearchEmail, captureResearchLead } from "@/lib/formulario/research-lead";
@@ -84,6 +84,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
   const candidateRole=roleQuestion?answers[roleQuestion.id]:null;
   const role: AcademicRole|null = candidateRole==="PASSAGEIRO" || candidateRole==="MOTORISTA" || candidateRole==="AMBOS" ? candidateRole : null;
   const steps=academicExpressSteps(role);
+  const roleSettings=effectiveResearchSchedule(config.settings,role??config.settings.profiles[0]);
   const stage=steps[Math.min(index,steps.length-1)] as Stage;
   const hasVerifiedEmail=Boolean(user?.email_confirmed_at && user.email?.toLowerCase()===email.trim().toLowerCase());
   const allowedDomains=[...((config.settings as typeof config.settings & {institutionalEmailDomains?:string[]}).institutionalEmailDomains??[])];
@@ -296,7 +297,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
                     onClick={()=>{
                       choice(roleQuestion,value,false);
                       if(identityReady(value)){
-                        setJourney(previous=>({...previous,profile:value,mode:"CARONA"}));
+                        setJourney(previous=>({...previous,profile:value,mode:"CARONA",days:[],outboundTime:"",returnTime:"",otherOutboundTime:false,otherReturnTime:false}));
                         setIndex(1);setError("");
                       }else{
                         setError("Complete nome, vínculo e e-mail antes de avançar.");
@@ -325,8 +326,8 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
                 <p className={label}>Dias habituais</p>
                 <div className="flex flex-wrap gap-1.5">
                   <button type="button" className={"min-h-11 rounded-xl border px-3 text-xs font-semibold "+([1,2,3,4,5].every(d=>journey.days.includes(d))?"border-[#FFBB00] text-[#FFBB00]":"border-white/20")}
-                    onClick={()=>setJourney(p=>({...p,days:[1,2,3,4,5].filter(d=>config.settings.days.includes(d))}))}>Seg–Sex</button>
-                  {config.settings.days.map(day=><button type="button" key={day}
+                    onClick={()=>setJourney(p=>({...p,days:[1,2,3,4,5].filter(d=>roleSettings.days.includes(d))}))}>Seg–Sex</button>
+                  {roleSettings.days.map(day=><button type="button" key={day}
                     aria-pressed={journey.days.includes(day)}
                     className={"min-h-11 min-w-11 rounded-xl border px-2 text-xs font-semibold "+(journey.days.includes(day)?"border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]":"border-white/20 text-white/70")}
                     onClick={()=>setJourney(p=>({...p,days:p.days.includes(day)?p.days.filter(d=>d!==day):[...p.days,day].sort()}))}>
@@ -339,7 +340,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
                     value={journey.otherOutboundTime?"OUTRO":journey.outboundTime}
                     onChange={e=>setJourney(p=>({...p,outboundTime:e.target.value==="OUTRO"?"":e.target.value,otherOutboundTime:e.target.value==="OUTRO"}))}>
                     <option value="">Selecione</option>
-                    {config.settings.outboundTimes.map(t=><option key={t}>{t}</option>)}
+                    {roleSettings.outboundTimes.map(t=><option key={t}>{t}</option>)}
                     <option value="OUTRO">Outro horário</option>
                   </select>
                   {journey.otherOutboundTime&&<input aria-label="Outro horário de ida" type="time" value={journey.outboundTime}
@@ -350,7 +351,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
                     value={journey.otherReturnTime?"OUTRO":journey.returnTime}
                     onChange={e=>setJourney(p=>({...p,returnTime:e.target.value==="OUTRO"?"":e.target.value,otherReturnTime:e.target.value==="OUTRO",direction:e.target.value?"IDA_E_VOLTA":"IDA"}))}>
                     <option value="">Sem retorno fixo</option>
-                    {config.settings.returnTimes.map(t=><option key={t}>{t}</option>)}
+                    {roleSettings.returnTimes.map(t=><option key={t}>{t}</option>)}
                     <option value="OUTRO">Outro horário</option>
                   </select>
                   {journey.otherReturnTime&&<input aria-label="Outro horário de retorno" type="time" value={journey.returnTime}
