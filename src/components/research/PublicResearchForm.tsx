@@ -206,7 +206,7 @@ export function PublicResearchForm({ code }: { code: string }) {
   const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
   const isUnifor = Boolean(form && academicResearchTemplate(form.configuration?.settings.templateKey,isUniforPilotForm(form.id)));
   const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
-  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers) : [];
+  const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers,!isUniforPilotForm(form.id)) : [];
   const currentSection = form?.schema.sections[step];
   const currentGroups = uniforGroups[step] ?? [];
   const joinedAcademicRole = isUnifor && !roleId && uniforGroups[0]?.[0]?.questions.some(
