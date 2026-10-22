@@ -192,8 +192,9 @@ function Oferecer() {
   }, [location.addressPosition, reverseGeocode, originSource]);
   // Origem padrão: localização atual do motorista.
   useEffect(() => {
-    if (originSource !== "CURRENT_LOCATION" || !location.position) return;
-    const { lat, lng } = location.position;
+    const position = location.position;
+    if (originSource !== "CURRENT_LOCATION" || !position) return;
+    const { lat, lng } = position;
     const addressStillNear =
       resolvedAddress?.lat != null &&
       resolvedAddress.lng != null &&
@@ -210,7 +211,7 @@ function Oferecer() {
         formattedAddress: label,
         lat,
         lng,
-        isApproximate: location.position.accuracy > 100,
+        isApproximate: position.accuracy > 100,
       },
     }));
   }, [originSource, location.position, resolvedAddress]);
