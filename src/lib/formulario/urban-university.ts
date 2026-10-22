@@ -85,6 +85,7 @@ export function urbanUniversityPreset(): ResearchConfiguration {
   return {
     ...initial,
     campaignType: "INSTITUCIONAL",
+    emailCaptureEnabled: true,
     modes: ["CARONA"],
     profiles: ["PASSAGEIRO", "MOTORISTA", "AMBOS"],
     accessPolicy: "PESQUISA_PUBLICA",
