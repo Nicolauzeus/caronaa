@@ -39,7 +39,7 @@ export function setUniforPainAnswers(schema:SurveySchema,previous:Answers,id:str
 }
 
 /** Group adjacent, related questions; never discard unrecognized fields. */
-export function createUniforGroups(schema:SurveySchema,answers:Answers):CompactResearchGroup[][] {
+export function createUniforGroups(schema:SurveySchema,answers:Answers,combineUnknown=false):CompactResearchGroup[][] {
  const visibility=createResearchVisibility(schema,answers);
  const {pains,primary}=getUniforPainQuestions(schema);
  const consolidate=Boolean(pains&&primary);
@@ -62,8 +62,9 @@ export function createUniforGroups(schema:SurveySchema,answers:Answers):CompactR
   // Use the same compact presentation for university models, without
   // hiding unexpected or required questions and without changing stored schema.
   const remaining=visible.filter(question=>!used.has(question.id));
-  for(let i=0;i<remaining.length;i+=2) {
-   list.push({title:section.title,sectionIndex,questions:remaining.slice(i,i+2)});
+  const chunk=combineUnknown?2:1;
+  for(let i=0;i<remaining.length;i+=chunk) {
+   list.push({title:section.title,sectionIndex,questions:remaining.slice(i,i+chunk)});
   }
   return list;
  });
