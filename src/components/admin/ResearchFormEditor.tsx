@@ -132,11 +132,11 @@ export function ResearchFormEditor({
   }, [dirty]);
 
   const issues = useMemo(() => inspectSchema(schema), [schema]);
-  function apply(next: SurveySchema) {
+  function apply(next: SurveySchema, replaceTemplate = false) {
     if (published) return;
     setUndo((u) => [...u.slice(-29), structuredClone(schema)]);
     setRedo([]);
-    setSchema(next);
+    setSchema(replaceTemplate ? next : { ...next, experience: next.experience ?? schema.experience });
   }
   function revert() {
     const previous = undo.at(-1);
@@ -222,7 +222,7 @@ export function ResearchFormEditor({
       )
     )
       return;
-    apply(freshTemplate(model));
+    apply(freshTemplate(model), true);
     setPreviewStep(0);
     setPreviewAnswers({});
   }

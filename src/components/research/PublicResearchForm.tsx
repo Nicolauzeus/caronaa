@@ -15,6 +15,8 @@ import {
   type Answers,
 } from "@/lib/formulario/research-schema";
 import { ResearchBrandHeader, ResearchSectionFields } from "@/components/research/ResearchFields";
+import { isAcademicExpress } from "@/lib/formulario/academic-express-schema";
+import { AcademicExpressForm } from "./AcademicExpressForm";
 import {
   storePendingParticipation,
   claimResearchParticipation,
@@ -477,6 +479,11 @@ export function PublicResearchForm({ code }: { code: string }) {
         <a href={"/auth?mode=login&redirect="+encodeURIComponent("/formulario/"+code)} className="inline-flex rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">Entrar com minha conta</a>
       </main>
     );
+  // New university versions use the independent, accessible 4/5-screen flow.
+  // Legacy published versions continue with their original validated renderer.
+  if (isAcademicExpress(form.schema) && form.configuration) {
+    return <AcademicExpressForm form={form} captureEnabled={captureEnabled} user={user} />;
+  }
   if (complete)
     return (
       <main className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col gap-4 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:gap-5 sm:px-6 sm:py-8">

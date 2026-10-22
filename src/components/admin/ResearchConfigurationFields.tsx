@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CORPORATE_INTERNAL_KEY } from "@/lib/formulario/corporate-internal";
 import { COMPANY_CAMPUS_DRIVER_KEY } from "@/lib/formulario/company-campus-driver";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,6 +10,26 @@ import {
 
 const dayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border bg-background px-3 py-2 text-sm";
+
+function InstitutionalDomainsInput({value,onChange}:{value:string[];onChange:(domains:string[])=>void}) {
+  const normalized=value.join(", ");
+  const [draft,setDraft]=useState(normalized);
+  const [focused,setFocused]=useState(false);
+  useEffect(()=>{if(!focused)setDraft(normalized);},[normalized,focused]);
+  return <label className="block text-sm sm:col-span-2">
+    Domínios institucionais de e-mail (opcional, separados por vírgula)
+    <input className={inputClass} placeholder="universidade.br"
+      value={draft} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+      onChange={event=>{
+        const next=event.target.value;
+        setDraft(next);
+        onChange(next.split(/[,;\s]+/).map(v=>v.trim().toLowerCase()).filter(Boolean));
+      }}/>
+    <span className="mt-1 block text-xs text-muted-foreground">
+      Reconhecer o domínio não comprova vínculo acadêmico nem libera acesso.
+    </span>
+  </label>;
+}
 export function ResearchConfigurationFields({
   value,
   onChange,
@@ -96,6 +116,11 @@ export function ResearchConfigurationFields({
             </span>
           </label>
 
+          {value.templateKey !== CORPORATE_INTERNAL_KEY && (
+            <InstitutionalDomainsInput key={value.templateKey+":"+value.institutionId}
+              value={value.institutionalEmailDomains??[]}
+              onChange={domains=>set("institutionalEmailDomains",domains)}/>
+          )}
           {!creationMode && text("institutionId", "Identificador institucional")}
           {text("institutionName", value.templateKey===CORPORATE_INTERNAL_KEY ? "Nome da empresa" : "Instituição, empresa ou evento")}
           {!creationMode && text("publicName", "Nome público da pesquisa")}
