@@ -19,6 +19,8 @@ on:
       - "src/test/research-infrastructure.test.tsx"
       - "tests/research-infrastructure.integration.sql"
       - "scripts/test-research-infrastructure.mjs"
+      - "scripts/test-research-launch-campaigns.mjs"
+      - "tests/research-multi-launch.integration.sql"
       - "scripts/test-research-navigation.mjs"
       - "tests/research-browser/**"
       - ".github/workflows/research-quality.yml"
@@ -43,6 +45,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql postgresql-common
       - name: Research configuration, RLS and publication integration
         run: node scripts/test-research-infrastructure.mjs
+      - name: Multi-campaign launch cohort integration
+        run: node scripts/test-research-launch-campaigns.mjs
       - name: Install isolated browser test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/research-browser-tools" playwright --no-save --package-lock=false
