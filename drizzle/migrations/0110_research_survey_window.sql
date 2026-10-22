@@ -3,7 +3,8 @@
 -- New forms use the atomic, admin-scoped scheduled creation RPC.
 ALTER TABLE public.research_forms
  ADD COLUMN IF NOT EXISTS survey_starts_on date,
- ADD COLUMN IF NOT EXISTS survey_ends_on date;
+ ADD COLUMN IF NOT EXISTS survey_ends_on date,
+ ADD COLUMN IF NOT EXISTS caronaa_presence_on date;
 
 ALTER TABLE public.research_forms
  DROP CONSTRAINT IF EXISTS research_survey_window_order;
@@ -17,12 +18,14 @@ ALTER TABLE public.research_forms
 
 COMMENT ON COLUMN public.research_forms.survey_starts_on IS
  'First local calendar day on which the research accepts submissions (America/Fortaleza).';
+COMMENT ON COLUMN public.research_forms.caronaa_presence_on IS
+ 'Optional predicted CARONAA availability, distinct from research intake and not an access grant.';
 COMMENT ON COLUMN public.research_forms.survey_ends_on IS
  'Last local calendar day on which the research accepts submissions, inclusive.';
 
 CREATE OR REPLACE FUNCTION public.create_scheduled_research_form(
  p_metadata jsonb, p_schema jsonb, p_settings jsonb,
- p_starts_on date, p_ends_on date
+ p_starts_on date, p_ends_on date, p_caronaa_on date
 )
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $scheduled$
@@ -45,16 +48,17 @@ BEGIN
      p_metadata,p_schema,p_settings);
  END IF;
  UPDATE public.research_forms
-    SET survey_starts_on=p_starts_on,survey_ends_on=p_ends_on
+    SET survey_starts_on=p_starts_on,survey_ends_on=p_ends_on,
+        caronaa_presence_on=p_caronaa_on
   WHERE id=result_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'A pesquisa não foi criada'; END IF;
  RETURN result_id;
 END $scheduled$;
 
 REVOKE ALL ON FUNCTION public.create_scheduled_research_form(
- jsonb,jsonb,jsonb,date,date) FROM PUBLIC,anon;
+ jsonb,jsonb,jsonb,date,date,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.create_scheduled_research_form(
- jsonb,jsonb,jsonb,date,date) TO authenticated;
+ jsonb,jsonb,jsonb,date,date,date) TO authenticated;
 
 -- Enforce actual intake dates on both configured and ordinary questionnaires.
 -- No effect on already stored answers or existing undated legacy surveys.
@@ -93,6 +97,7 @@ AS $window_state$
  SELECT jsonb_build_object(
    'startsOn',f.survey_starts_on,
    'endsOn',f.survey_ends_on,
+   'caronaaPresenceOn',f.caronaa_presence_on,
    'state',CASE
      WHEN f.survey_starts_on IS NOT NULL AND
        (clock_timestamp() AT TIME ZONE 'America/Fortaleza')::date < f.survey_starts_on
