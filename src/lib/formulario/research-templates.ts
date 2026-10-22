@@ -2,7 +2,7 @@ import { regionalUniversityTemplate } from "./regional-university";
 import { eventExitMatchTemplate } from "./event-exit-match";
 import { companyCampusDriverTemplate } from "./company-campus-driver";
 import { corporateInternalTemplate } from "./corporate-internal";
-import { urbanUniversityTemplate } from "./urban-university";
+import { academicExpressUrbanTemplate } from "./academic-express-schema";
 import { getNumberBounds } from "./research-schema";
 import type { ResearchCondition } from "./research-conditions";
 import { remapResearchCondition } from "./research-conditions";
@@ -47,7 +47,7 @@ export type SurveySection = {
   description?: string;
   condition?: ResearchCondition;
 };
-export type SurveySchema = { sections: SurveySection[] };
+export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" };
 export type ResearchTemplate = {
   key: string;
   nature: string;
@@ -57,7 +57,7 @@ export type ResearchTemplate = {
   schema: SurveySchema;
 };
 export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
-  urbanUniversityTemplate,
+  academicExpressUrbanTemplate,
   regionalUniversityTemplate,
   eventExitMatchTemplate,
   companyCampusDriverTemplate,
@@ -1554,6 +1554,7 @@ export function freshTemplate(template: ResearchTemplate): SurveySchema {
     ),
   );
   return {
+    experience: template.schema.experience,
     sections: sections.map((section) => ({
       ...section,
       id: crypto.randomUUID(),
