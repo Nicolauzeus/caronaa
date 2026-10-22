@@ -10,6 +10,13 @@ describe("Generic launch waiting room",()=>{
   expect(waiting).not.toContain("UNIFOR_LAUNCH_DAY");
   expect(waiting).toContain("state?.institution");
  });
+ it("keeps every linked campaign visible with its own timer and form identity",()=>{
+  expect(waiting).toContain("launches.map((launch)");
+  expect(waiting).toContain("launch.formCode");
+  expect(waiting).toContain("launch.title");
+  expect(waiting).toContain("countdown(launch.launchAt, now)");
+  expect(waiting).toContain("!result.locked && result.launches.length === 0");
+ });
  it("is read-only, full viewport and permits signing out",()=>{
   expect(waiting).toContain("h-[100dvh]");
   expect(waiting).not.toContain("overflow-hidden");

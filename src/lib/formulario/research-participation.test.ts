@@ -25,6 +25,16 @@ describe("survey participation receipt safety",()=>{
   removePendingParticipation(token);
   expect(readPendingParticipations()).toEqual([]);
  });
+ it("persists two distinct campaign receipts, and removing one leaves the other",()=>{
+  const first="10975917-c190-4928-a466-5bd76959fd6f";
+  const second="12d64e74-5c70-487a-9f1a-f7d59c07f8a0";
+  storePendingParticipation(first,true);
+  storePendingParticipation(second,true);
+  sessionStorage.clear();
+  expect(readPendingParticipations()).toEqual([first,second]);
+  removePendingParticipation(first);
+  expect(readPendingParticipations()).toEqual([second]);
+ });
  it("does not accept an expired stored launch receipt",()=>{
   localStorage.setItem("caronaa.researchLaunch.pending.v1",JSON.stringify([
    {receipt:"10975917-c190-4928-a466-5bd76959fd6f",expires:Date.now()-1000}
