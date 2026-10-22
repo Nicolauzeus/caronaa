@@ -37,8 +37,8 @@ const textChoices: Record<string,string> = {
   PAGAMENTO_VERIFICADO:"Pagamento confirmado antes de considerar recebido",
   MESMA_UNIVERSIDADE:"Pessoas da mesma universidade",
 };
-const shell = "flex min-h-13 w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]";
-const field = "min-h-12 w-full min-w-0 rounded-xl border border-white/20 bg-[#202020] px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-[#FFBB00] focus:ring-2 focus:ring-[#FFBB00]/30";
+const shell = "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]";
+const field = "min-h-[52px] w-full min-w-0 rounded-xl border border-white/20 bg-[#202020] px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-[#FFBB00] focus:ring-2 focus:ring-[#FFBB00]/30";
 const label = "block text-xs font-semibold tracking-wide text-white/75";
 
 export function AcademicExpressForm({ form, captureEnabled, user }:{
@@ -85,7 +85,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
   const steps=academicExpressSteps(role);
   const stage=steps[Math.min(index,steps.length-1)] as Stage;
   const hasVerifiedEmail=Boolean(user?.email_confirmed_at && user.email?.toLowerCase()===email.trim().toLowerCase());
-  const allowedDomains=((config.settings as typeof config.settings & {institutionalEmailDomains?:string[]}).institutionalEmailDomains??[]);
+  const allowedDomains=[...((config.settings as typeof config.settings & {institutionalEmailDomains?:string[]}).institutionalEmailDomains??[])];
   // Backward-compatible hint for the existing UNIFOR campaign; not authorization.
   if(!allowedDomains.length && config.settings.institutionName.trim().toUpperCase()==="UNIFOR") allowedDomains.push("unifor.br");
   const domain=email.trim().split("@")[1]?.toLowerCase();
@@ -239,7 +239,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
             {interestRegistered===true&&<p className="text-sm text-emerald-300">Interesse no trajeto registrado separadamente.</p>}
             {interestRegistered===false&&<p role="status" className="text-sm text-amber-300">A pesquisa foi salva, mas o interesse adicional não pôde ser registrado. Você poderá fazê-lo depois.</p>}
             {plannedLaunch&&<p className="text-sm text-white/75">Presença prevista do CARONAA: {displaySurveyDate(plannedLaunch)}. Sujeita a confirmação.</p>}
-            <a href={user?"/perfil":"/auth"} className="mt-4 flex min-h-13 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-5 font-semibold text-[#121212]">
+            <a href={user?"/perfil":"/auth?mode=cadastro&redirect="+encodeURIComponent("/perfil")} className="mt-4 flex min-h-13 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-5 font-semibold text-[#121212]">
               {user?"Personalizar meu perfil":"Criar conta para acompanhar"}
             </a>
             <p className="text-xs text-white/50">O cadastro e a verificação institucional são etapas independentes.</p>
@@ -374,11 +374,11 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
               <div className="space-y-2"><p className={label}>Vagas livres, sem contar o motorista</p>
                 <div className="grid grid-cols-5 gap-2">
                   {[1,2,3,4].map(n=><button key={n} type="button"
-                    className={"min-h-13 rounded-xl border text-base font-semibold "+(selected(seatsQuestion)===String(n)?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20")}
+                    className={"min-h-[52px] rounded-xl border text-base font-semibold "+(selected(seatsQuestion)===String(n)?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20")}
                     onClick={()=>{updateAnswer(seatsQuestion,String(n));setCustomSeats(false);}}>{n}</button>)}
                   <button type="button" aria-label="Informar outra quantidade de vagas" aria-pressed={customSeats}
                     onClick={()=>setCustomSeats(true)}
-                    className={"min-h-13 rounded-xl border text-base "+(customSeats?"border-[#FFBB00]":"border-white/20")}>5–7</button>
+                    className={"min-h-[52px] rounded-xl border text-base "+(customSeats?"border-[#FFBB00]":"border-white/20")}>5–7</button>
                 </div>
                 {customSeats&&<input aria-label="Quantidade personalizada de vagas" type="number" min={1} max={7} step={1}
                   value={selected(seatsQuestion)} onChange={e=>updateAnswer(seatsQuestion,e.target.value)}
