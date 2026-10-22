@@ -109,6 +109,116 @@ export type Database = {
           },
         ]
       }
+      asaas_checkout_intents: {
+        Row: {
+          accepted_at: string
+          actual_fee_cents: number | null
+          asaas_customer_id: string | null
+          asaas_net_cents: number | null
+          asaas_payment_id: string | null
+          created_at: string
+          driver_fixed_cents: number
+          driver_user_id: string
+          driver_wallet_id: string
+          fare_cents: number
+          fee_source: string
+          id: string
+          passenger_total_cents: number
+          payer_user_id: string
+          platform_target_cents: number
+          processing_fee_cents: number
+          quote_expires_at: string
+          ride_id: string
+          split_settled_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at: string
+          actual_fee_cents?: number | null
+          asaas_customer_id?: string | null
+          asaas_net_cents?: number | null
+          asaas_payment_id?: string | null
+          created_at?: string
+          driver_fixed_cents: number
+          driver_user_id: string
+          driver_wallet_id: string
+          fare_cents: number
+          fee_source: string
+          id?: string
+          passenger_total_cents: number
+          payer_user_id: string
+          platform_target_cents: number
+          processing_fee_cents: number
+          quote_expires_at: string
+          ride_id: string
+          split_settled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string
+          actual_fee_cents?: number | null
+          asaas_customer_id?: string | null
+          asaas_net_cents?: number | null
+          asaas_payment_id?: string | null
+          created_at?: string
+          driver_fixed_cents?: number
+          driver_user_id?: string
+          driver_wallet_id?: string
+          fare_cents?: number
+          fee_source?: string
+          id?: string
+          passenger_total_cents?: number
+          payer_user_id?: string
+          platform_target_cents?: number
+          processing_fee_cents?: number
+          quote_expires_at?: string
+          ride_id?: string
+          split_settled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asaas_checkout_intents_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["ride_id"]
+          },
+        ]
+      }
+      asaas_webhook_inbox: {
+        Row: {
+          event_id: string
+          event_type: string
+          payload: Json
+          payment_id: string
+          process_error: string | null
+          processed_at: string | null
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          payload: Json
+          payment_id: string
+          process_error?: string | null
+          processed_at?: string | null
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          payload?: Json
+          payment_id?: string
+          process_error?: string | null
+          processed_at?: string | null
+          received_at?: string
+        }
+        Relationships: []
+      }
       compliance_record_events: {
         Row: {
           actor_id: string | null
@@ -1281,6 +1391,7 @@ export type Database = {
           full_name: string
           gender: string | null
           id: string
+          ride_opportunity_alerts_enabled: boolean
           travel_preferences: Json
           travel_preferences_consented_at: string | null
           updated_at: string
@@ -1295,6 +1406,7 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id: string
+          ride_opportunity_alerts_enabled?: boolean
           travel_preferences?: Json
           travel_preferences_consented_at?: string | null
           updated_at?: string
@@ -1309,6 +1421,7 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id?: string
+          ride_opportunity_alerts_enabled?: boolean
           travel_preferences?: Json
           travel_preferences_consented_at?: string | null
           updated_at?: string
@@ -1495,6 +1608,7 @@ export type Database = {
           brand_display_name: string | null
           brand_image_alt: string | null
           brand_image_path: string | null
+          caronaa_presence_on: string | null
           code: string
           created_at: string
           id: string
@@ -1504,6 +1618,8 @@ export type Database = {
           municipality: string | null
           nature: string
           status: string
+          survey_ends_on: string | null
+          survey_starts_on: string | null
           title: string
           trash_previous_status: string | null
           trashed_at: string | null
@@ -1514,6 +1630,7 @@ export type Database = {
           brand_display_name?: string | null
           brand_image_alt?: string | null
           brand_image_path?: string | null
+          caronaa_presence_on?: string | null
           code: string
           created_at?: string
           id?: string
@@ -1523,6 +1640,8 @@ export type Database = {
           municipality?: string | null
           nature: string
           status?: string
+          survey_ends_on?: string | null
+          survey_starts_on?: string | null
           title: string
           trash_previous_status?: string | null
           trashed_at?: string | null
@@ -1533,6 +1652,7 @@ export type Database = {
           brand_display_name?: string | null
           brand_image_alt?: string | null
           brand_image_path?: string | null
+          caronaa_presence_on?: string | null
           code?: string
           created_at?: string
           id?: string
@@ -1542,6 +1662,8 @@ export type Database = {
           municipality?: string | null
           nature?: string
           status?: string
+          survey_ends_on?: string | null
+          survey_starts_on?: string | null
           title?: string
           trash_previous_status?: string | null
           trashed_at?: string | null
@@ -1672,6 +1794,51 @@ export type Database = {
             foreignKeyName: "research_launch_releases_form_id_fkey"
             columns: ["form_id"]
             isOneToOne: true
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_lead_contacts: {
+        Row: {
+          answer_id: string
+          captured_at: string
+          consent_version: string
+          form_id: string
+          linkage_consent: boolean
+          marketing_consent: boolean
+          normalized_email: string
+        }
+        Insert: {
+          answer_id: string
+          captured_at?: string
+          consent_version?: string
+          form_id: string
+          linkage_consent: boolean
+          marketing_consent?: boolean
+          normalized_email: string
+        }
+        Update: {
+          answer_id?: string
+          captured_at?: string
+          consent_version?: string
+          form_id?: string
+          linkage_consent?: boolean
+          marketing_consent?: boolean
+          normalized_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_lead_contacts_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: true
+            referencedRelation: "research_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_lead_contacts_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
             referencedRelation: "research_forms"
             referencedColumns: ["id"]
           },
@@ -2037,6 +2204,48 @@ export type Database = {
           },
         ]
       }
+      ride_opportunity_alerts: {
+        Row: {
+          alert_id: string
+          created_at: string
+          offer_id: string
+          read_at: string | null
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          alert_id?: string
+          created_at?: string
+          offer_id: string
+          read_at?: string | null
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          alert_id?: string
+          created_at?: string
+          offer_id?: string
+          read_at?: string | null
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_opportunity_alerts_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "ride_offers"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "ride_opportunity_alerts_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
       ride_qr_tokens: {
         Row: {
           consumed_at: string | null
@@ -2113,6 +2322,7 @@ export type Database = {
           origin: string
           origin_lat: number | null
           origin_lng: number | null
+          original_requested_at: string | null
           passenger_count: number
           passenger_group_total: number | null
           passenger_price: number | null
@@ -2147,6 +2357,7 @@ export type Database = {
           origin: string
           origin_lat?: number | null
           origin_lng?: number | null
+          original_requested_at?: string | null
           passenger_count: number
           passenger_group_total?: number | null
           passenger_price?: number | null
@@ -2181,6 +2392,7 @@ export type Database = {
           origin?: string
           origin_lat?: number | null
           origin_lng?: number | null
+          original_requested_at?: string | null
           passenger_count?: number
           passenger_group_total?: number | null
           passenger_price?: number | null
@@ -2225,6 +2437,61 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ride_offers"
             referencedColumns: ["offer_id"]
+          },
+        ]
+      }
+      ride_road_assessments: {
+        Row: {
+          added_duration_minutes: number
+          assessment_id: string
+          expires_at: string
+          inventory_version: string
+          offer_id: string
+          quote_id: string | null
+          request_id: string | null
+          user_id: string
+        }
+        Insert: {
+          added_duration_minutes: number
+          assessment_id?: string
+          expires_at?: string
+          inventory_version: string
+          offer_id: string
+          quote_id?: string | null
+          request_id?: string | null
+          user_id: string
+        }
+        Update: {
+          added_duration_minutes?: number
+          assessment_id?: string
+          expires_at?: string
+          inventory_version?: string
+          offer_id?: string
+          quote_id?: string | null
+          request_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_road_assessments_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "ride_offers"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "ride_road_assessments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "offer_route_quotes"
+            referencedColumns: ["quote_id"]
+          },
+          {
+            foreignKeyName: "ride_road_assessments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["request_id"]
           },
         ]
       }
@@ -2349,6 +2616,7 @@ export type Database = {
           passenger_group_total: number | null
           passenger_price: number | null
           passenger_user_id: string
+          pickup_estimated_at: string | null
           request_id: string
           response_expires_at: string
           ride_id: string
@@ -2373,6 +2641,7 @@ export type Database = {
           passenger_group_total?: number | null
           passenger_price?: number | null
           passenger_user_id: string
+          pickup_estimated_at?: string | null
           request_id: string
           response_expires_at?: string
           ride_id?: string
@@ -2397,6 +2666,7 @@ export type Database = {
           passenger_group_total?: number | null
           passenger_price?: number | null
           passenger_user_id?: string
+          pickup_estimated_at?: string | null
           request_id?: string
           response_expires_at?: string
           ride_id?: string
@@ -2822,6 +3092,16 @@ export type Database = {
         Args: { p_form_id: string }
         Returns: boolean
       }
+      capture_research_lead: {
+        Args: {
+          p_email: string
+          p_form_id: string
+          p_linkage_consent: boolean
+          p_marketing_consent?: boolean
+          p_submission_key: string
+        }
+        Returns: string
+      }
       change_ride_routine_occurrence: {
         Args: {
           p_cancel?: boolean
@@ -2830,6 +3110,14 @@ export type Database = {
           p_kind: string
         }
         Returns: undefined
+      }
+      choose_ride_opportunity: {
+        Args: {
+          p_expected_pickup: string
+          p_offer_id: string
+          p_request_id: string
+        }
+        Returns: string
       }
       claim_research_participation: {
         Args: { p_submission_key: string }
@@ -2920,6 +3208,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_scheduled_research_form: {
+        Args: {
+          p_caronaa_on: string
+          p_ends_on: string
+          p_metadata: Json
+          p_schema: Json
+          p_settings: Json
+          p_starts_on: string
+        }
+        Returns: string
+      }
       delete_empty_research_draft: {
         Args: { p_form_id: string }
         Returns: boolean
@@ -2928,6 +3227,7 @@ export type Database = {
         Args: { p_confirm_code: string; p_form_id: string }
         Returns: boolean
       }
+      discover_ride_opportunities: { Args: { p_search?: Json }; Returns: Json }
       distance_km: {
         Args: { lat_a: number; lat_b: number; lng_a: number; lng_b: number }
         Returns: number
@@ -2944,6 +3244,10 @@ export type Database = {
         Returns: number
       }
       duplicate_research_form: { Args: { p_form_id: string }; Returns: string }
+      evaluate_ride_candidate: {
+        Args: { o: Database["public"]["Tables"]["ride_offers"]["Row"]; q: Json }
+        Returns: Json
+      }
       expire_ride_match_proposals: { Args: never; Returns: number }
       generate_ride_qr_token: { Args: { p_ride_id: string }; Returns: Json }
       get_acquisition_funnel_metrics: {
@@ -2979,6 +3283,38 @@ export type Database = {
         }[]
       }
       get_admin_operation_data: { Args: never; Returns: Json }
+      get_admin_research_lead_metrics: {
+        Args: { p_form_id?: string }
+        Returns: Json
+      }
+      get_admin_research_lead_sources: {
+        Args: never
+        Returns: {
+          contact_count: number
+          form_id: string
+          form_title: string
+          source_code: string
+        }[]
+      }
+      get_admin_research_leads: {
+        Args: {
+          p_form_id?: string
+          p_limit?: number
+          p_marketing_only?: boolean
+          p_offset?: number
+          p_status?: string
+        }
+        Returns: {
+          captured_at: string
+          email: string
+          form_id: string
+          form_title: string
+          marketing_consent: boolean
+          registration_status: string
+          source_code: string
+          total_count: number
+        }[]
+      }
       get_admin_users: { Args: { p_user_id?: string }; Returns: Json }
       get_configured_research_summary: {
         Args: { p_filters?: Json }
@@ -3059,6 +3395,10 @@ export type Database = {
           verified_at: string
         }[]
       }
+      get_my_ride_opportunities: {
+        Args: { p_offer_id?: string }
+        Returns: Json
+      }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
       get_my_unifor_launch_state: { Args: never; Returns: Json }
@@ -3097,6 +3437,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_opportunity_route_context: {
+        Args: { p_offer_id: string; p_quote_id?: string; p_request_id?: string }
+        Returns: Json
+      }
       get_public_research_configuration: {
         Args: { p_code: string }
         Returns: Json
@@ -3112,6 +3456,10 @@ export type Database = {
           p_occupation?: string
           p_profile?: string
         }
+        Returns: Json
+      }
+      get_research_form_code_availability: {
+        Args: { p_code: string }
         Returns: Json
       }
       get_research_form_removal_eligibility: {
@@ -3160,6 +3508,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_research_window_state: { Args: { p_code: string }; Returns: Json }
       get_retention_metrics: {
         Args: {
           p_campaign?: string
@@ -3255,9 +3604,20 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      mark_ride_opportunity_alerts_read: {
+        Args: { p_ids: string[] }
+        Returns: undefined
+      }
       materialize_ride_routine: {
         Args: { p_routine_id: string }
         Returns: undefined
+      }
+      opportunity_request_input: {
+        Args: {
+          p_gender: string
+          r: Database["public"]["Tables"]["ride_requests"]["Row"]
+        }
+        Returns: Json
       }
       permanently_delete_trashed_research_form: {
         Args: {
@@ -3277,6 +3637,10 @@ export type Database = {
           p_tariff_reference: string
         }
         Returns: boolean
+      }
+      project_ride_route: {
+        Args: { p_lat: number; p_lng: number; p_path: Json }
+        Returns: Json
       }
       publish_priced_offer: {
         Args: { p_details: Json; p_preferences?: Json; p_quote_id: string }
@@ -3324,6 +3688,23 @@ export type Database = {
         }
         Returns: string
       }
+      request_intelligent_ride_segment: {
+        Args: {
+          p_accept_adjustment?: boolean
+          p_departure_time: string
+          p_expected_pickup?: string
+          p_offer_id: string
+          p_passenger_count?: number
+          p_quote_id: string
+          p_ride_date: string
+          p_time_tolerance_minutes?: number
+        }
+        Returns: string
+      }
+      require_opportunity_road_assessment: {
+        Args: { p_offer_id: string; p_quote_id: string; p_request_id: string }
+        Returns: undefined
+      }
       research_condition_matches: {
         Args: {
           v_answers: Json
@@ -3333,7 +3714,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      research_contact_capture_enabled: {
+        Args: { p_form_id: string }
+        Returns: boolean
+      }
       research_launch_participant: {
+        Args: { p_form: string; p_user: string }
+        Returns: boolean
+      }
+      research_launch_wait_eligible: {
         Args: { p_form: string; p_user: string }
         Returns: boolean
       }
@@ -3363,6 +3752,10 @@ export type Database = {
       ride_preferences_compatible: {
         Args: { o: Json; q: Json }
         Returns: boolean
+      }
+      ride_route_inventory_version: {
+        Args: { p_offer_id: string }
+        Returns: string
       }
       save_my_pix_key: { Args: { p_key: string }; Returns: undefined }
       save_my_travel_preferences: {
@@ -3433,6 +3826,10 @@ export type Database = {
         Args: { p_form_id: string; p_released: boolean }
         Returns: Json
       }
+      set_ride_opportunity_alerts: {
+        Args: { p_enabled?: boolean }
+        Returns: boolean
+      }
       set_ride_routine_active: {
         Args: { p_active: boolean; p_routine_id: string }
         Returns: undefined
@@ -3457,6 +3854,7 @@ export type Database = {
         }
         Returns: string
       }
+      sync_my_ride_opportunity_alerts: { Args: never; Returns: Json }
       sync_user_verifications: {
         Args: { _user_id: string }
         Returns: undefined
