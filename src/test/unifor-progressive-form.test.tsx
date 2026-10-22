@@ -6,6 +6,7 @@ import { UNIFOR_FORM_ID } from "@/lib/unifor-launch";
 const api=vi.hoisted(()=>({config:vi.fn()}));
 vi.mock("@/integrations/supabase/client",()=>({
   supabase:{
+    rpc: async () => ({ error: null, data: { startsOn: null, endsOn: null, state: "ABERTO" } }),
     from:(table:string)=>{
       const chain={
         select:()=>chain,ilike:()=>chain,eq:()=>chain,not:()=>chain,
