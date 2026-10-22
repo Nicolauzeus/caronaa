@@ -38,11 +38,13 @@ BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL: %',label; END IF;
 -- The first form predates this user's first accepted account? Here the user's
 -- account predates the form, so this campaign must be visible but not cause a lock.
 SELECT set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
-SET ROLE authenticated;
+-- Helper functions are intentionally private. Inspect the cohort calculation
+-- as the SQL test owner, then exercise the public RPC as authenticated.
 SELECT pg_temp.assert_true(NOT public.research_launch_wait_eligible(
  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111'), 'pre-existing account is not cohort locked for newer form');
 SELECT pg_temp.assert_true(public.research_launch_wait_eligible(
  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','11111111-1111-4111-8111-111111111111'), 'same account may be restricted for older form');
+SET ROLE authenticated;
 SELECT pg_temp.assert_true(
  (public.get_my_research_launch_state()->>'locked')::boolean AND
  jsonb_array_length(public.get_my_research_launch_state()->'launches')=2,
