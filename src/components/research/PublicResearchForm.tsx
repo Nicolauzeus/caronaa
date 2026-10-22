@@ -665,7 +665,7 @@ export function PublicResearchForm({ code }: { code: string }) {
                 ["AMBOS","Quero encontrar e oferecer"],
               ] as const).map(([role,label])=>(
                 <label key={role} className={"flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm "+(pilotSelectedRole===role?"border-primary bg-primary/10 font-semibold":"border-border")}>
-                  <input type="radio" name="unifor-pilot-role" checked={pilotSelectedRole===role} onChange={()=>{setPilotSelectedRole(role);setError("");}} className="accent-primary" />
+                  <input type="radio" name="unifor-pilot-role" checked={pilotSelectedRole===role} onChange={()=>{setPilotSelectedRole(role);setAnswers(previous=>cleanAnswers(form.schema,previous,role));setFieldErrors({});setError("");}} className="accent-primary" />
                   {label}
                 </label>
               ))}
