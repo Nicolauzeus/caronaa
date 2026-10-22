@@ -89,7 +89,10 @@ export function resolveResearchParticipantRole(
 ): string | null {
   const explicit = schema.sections.flatMap(section => section.questions)
     .find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE");
-  if (explicit) return typeof answers[explicit.id] === "string" ? answers[explicit.id] : null;
+  if (explicit) {
+    const roleAnswer = answers[explicit.id];
+    return typeof roleAnswer === "string" ? roleAnswer : null;
+  }
   return externalRole ?? null;
 }
 
