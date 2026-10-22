@@ -361,7 +361,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
 
             {stage==="passenger"&&<>
               <div className="space-y-2"><p className={label}>Como você vai hoje?</p>{selectable(transportQuestion,true)}</div>
-              <div className="space-y-2"><p className={label}>Sua prioridade ao pegar carona</p>{selectable(passengerPriority)}</div>
+              <div className="space-y-2"><p className={label}>Sua prioridade ao pegar carona</p>{selectable(passengerPriority,true)}</div>
               <label className={label}>Gasto atual por trecho (opcional)
                 <input type="number" min={0} max={10000} step="0.01" inputMode="decimal"
                   aria-label="Gasto atual por trecho" className={field+" mt-2"}
@@ -384,7 +384,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
                   value={selected(seatsQuestion)} onChange={e=>updateAnswer(seatsQuestion,e.target.value)}
                   className={field+" mt-2"}/>}
               </div>
-              <div className="space-y-2"><p className={label}>O que é mais importante para você?</p>{selectable(driverPriority)}</div>
+              <div className="space-y-2"><p className={label}>O que é mais importante para você?</p>{selectable(driverPriority,true)}</div>
               <p className="text-xs leading-5 text-white/50">O CARONAA calculará valores pelo trajeto real; não há promessa de ganhos, Pix ou passageiro confirmado.</p>
             </>}
 
