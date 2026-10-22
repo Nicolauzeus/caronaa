@@ -1,0 +1,70 @@
+-- 0112: Enforce driver-only visibility using the respondent's actual journey role.
+-- Published research schema_json is immutable: no versions or historical answers change.
+-- The temporary role is available only during the configured-submission transaction.
+-- Uses the same semantic set as src/lib/formulario/research-conditions.ts.
+DO $role_engine$
+DECLARE
+  visibility_sql text;
+  submit_sql text;
+  semantic_gate text := $gate$
+  IF q->>'semanticCode' IN (
+    'URBAN_OFFER_POSSIBLE','URBAN_OFFER_VEHICLE','URBAN_DRIVER_MOTIVATION',
+    'REGIONAL_OFFER_POSSIBLE','REGIONAL_OFFER_VEHICLE',
+    'EVENT_OFFER_POSSIBLE','EVENT_OFFER_VEHICLE','EVENT_OFFER_SEATS',
+    'SEATS_AVAILABLE','RIDE_OFFER_INTENT','COMPANY_DRIVES_CAR',
+    'COMPANY_DRIVING_FREQUENCY','COMPANY_MAX_DETOUR','CORP_DRIVES_CAR'
+  ) THEN
+    SELECT v_answers->>(question->>'id') INTO selected_role
+    FROM jsonb_array_elements(v_schema->'sections') AS sec
+    CROSS JOIN LATERAL jsonb_array_elements(sec.value->'questions') AS question
+    WHERE question->>'semanticCode'='RESEARCH_PARTICIPANT_ROLE'
+    LIMIT 1;
+    selected_role := COALESCE(selected_role,
+      NULLIF(current_setting('app.research_journey_role',true),''));
+    IF selected_role='PASSAGEIRO' THEN RETURN false; END IF;
+  END IF;
+$gate$;
+BEGIN
+  SELECT pg_get_functiondef(
+    'public.research_question_visible(jsonb,jsonb,text,integer)'::regprocedure
+  ) INTO visibility_sql;
+  IF visibility_sql IS NULL THEN
+    RAISE EXCEPTION 'The research role visibility function is missing';
+  END IF;
+  IF strpos(visibility_sql, 'selected_role := COALESCE')=0 THEN
+    IF strpos(visibility_sql,'found boolean:=false;')=0 OR
+       strpos(visibility_sql,'IF NOT found THEN RETURN false; END IF;')=0 THEN
+      RAISE EXCEPTION 'Unexpected research visibility function revision';
+    END IF;
+    visibility_sql := replace(visibility_sql,
+      'found boolean:=false;',
+      'found boolean:=false;selected_role text;');
+    visibility_sql := replace(visibility_sql,
+      'IF NOT found THEN RETURN false; END IF;',
+      'IF NOT found THEN RETURN false; END IF;' || E'\n' || semantic_gate);
+    EXECUTE visibility_sql;
+  END IF;
+
+  SELECT pg_get_functiondef(
+    'public.submit_configured_research_answer(uuid,uuid,uuid,jsonb,integer,jsonb,boolean)'::regprocedure
+  ) INTO submit_sql;
+  IF submit_sql IS NULL THEN
+    RAISE EXCEPTION 'Configured research submission is missing';
+  END IF;
+  IF strpos(submit_sql,'app.research_journey_role')=0 THEN
+    IF strpos(submit_sql,'INSERT INTO public.research_answers(')=0
+       OR strpos(submit_sql,'INSERT INTO public.research_journeys(')=0 THEN
+      RAISE EXCEPTION 'Unexpected configured submission revision';
+    END IF;
+    submit_sql := replace(submit_sql,
+      'INSERT INTO public.research_answers(',
+      'PERFORM set_config(''app.research_journey_role'',j->>''profile'',true);' ||
+      E'\n INSERT INTO public.research_answers(');
+    submit_sql := replace(submit_sql,
+      'INSERT INTO public.research_journeys(',
+      'PERFORM set_config(''app.research_journey_role'','''',true);' ||
+      E'\n INSERT INTO public.research_journeys(');
+    EXECUTE submit_sql;
+  END IF;
+END $role_engine$;
+NOTIFY pgrst, 'reload schema';
