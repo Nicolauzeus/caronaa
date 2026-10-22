@@ -71,7 +71,7 @@ export type AcademicRole = "PASSAGEIRO" | "MOTORISTA" | "AMBOS";
 export function academicExpressSteps(role: AcademicRole | null): Array<"identity" | "route" | "driver" | "passenger" | "activation"> {
   const steps: Array<"identity" | "route" | "driver" | "passenger" | "activation"> = ["identity", "route"];
   if (role === "MOTORISTA" || role === "AMBOS") steps.push("driver");
-  if (role === "PASSAGEIRO" || role === "AMBOS") steps.push("passenger");
+  if (role === null || role === "PASSAGEIRO" || role === "AMBOS") steps.push("passenger");
   steps.push("activation");
   return steps;
 }
