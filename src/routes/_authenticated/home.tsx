@@ -1,7 +1,22 @@
-import { TimeToleranceSelector, type TimeToleranceMinutes } from "@/components/caronaa/TimeToleranceSelector";
+import {
+  TimeToleranceSelector,
+  type TimeToleranceMinutes,
+} from "@/components/caronaa/TimeToleranceSelector";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, LocateFixed, MapPin, CarFront, UserRound, CalendarDays } from "lucide-react";
+import {
+  ArrowRight,
+  LocateFixed,
+  MapPin,
+  CarFront,
+  UserRound,
+  CalendarDays,
+  Mic,
+  Pencil,
+  Minus,
+  Plus,
+  Navigation2,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
@@ -77,6 +92,15 @@ function Home() {
     [origin, destination],
   );
   const [busy, setBusy] = useState(false);
+  const [originEditing, setOriginEditing] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const recognitionRef = useRef<{
+    start: () => void;
+    stop: () => void;
+    onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+    onend: (() => void) | null;
+    onerror: (() => void) | null;
+  } | null>(null);
   const requestSubmitting = useRef(false);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const refresh = useCallback(() => {
@@ -172,7 +196,13 @@ function Home() {
 
   function setToday() {
     const now = new Date();
-    setDate([now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-"));
+    setDate(
+      [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+      ].join("-"),
+    );
   }
 
   function startJourney(nextRole: "request" | "offer") {
@@ -180,9 +210,47 @@ function Home() {
     setPanelOpen(true);
     setError(null);
     const destinationInput = document.getElementById("home-destination");
-    window.requestAnimationFrame(() => destinationInput?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    window.requestAnimationFrame(() =>
+      destinationInput?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
     // Allow the form to become visible before opening the mobile keyboard.
     window.setTimeout(() => destinationInput?.focus({ preventScroll: true }), 100);
+  }
+
+  function dictateOrigin() {
+    const SpeechRecognition =
+      (
+        window as Window & {
+          SpeechRecognition?: new () => typeof recognitionRef.current;
+          webkitSpeechRecognition?: new () => typeof recognitionRef.current;
+        }
+      ).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: new () => typeof recognitionRef.current })
+        .webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("A busca por voz não está disponível neste navegador.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    if (!recognition) return;
+    recognitionRef.current = recognition;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript?.trim();
+      if (transcript) {
+        setOriginSource("MANUAL_ORIGIN");
+        setOrigin(transcript);
+        setOriginLocation(undefined);
+        setOriginEditing(true);
+      }
+    };
+    recognition.onend = () => setVoiceListening(false);
+    recognition.onerror = () => setVoiceListening(false);
+    setVoiceListening(true);
+    recognition.start();
+  }
+
+  function adjustPassengerCount(delta: number) {
+    setCount((value) => String(Math.max(1, Math.min(6, Number(value) + delta))));
   }
 
   return (
@@ -190,10 +258,10 @@ function Home() {
       <div className="mx-auto max-w-4xl">
         <section className="mb-4 space-y-3 sm:hidden" aria-label="Começar uma carona">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#FFBB00]">
               Sua próxima viagem começa aqui
             </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+            <h1 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight">
               Para onde vamos?
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -294,18 +362,29 @@ function Home() {
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {recent.slice(0, 4).map((item) => (
-                <button key={item.destination} type="button"
+                <button
+                  key={item.destination}
+                  type="button"
                   className="inline-flex min-h-11 max-w-56 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-sm"
                   onClick={() => {
                     setDestination(item.destination);
-                    setDestinationLocation(item.destination_lat != null && item.destination_lng != null
-                      ? { rawText: item.destination, lat: item.destination_lat, lng: item.destination_lng }
-                      : undefined);
+                    setDestinationLocation(
+                      item.destination_lat != null && item.destination_lng != null
+                        ? {
+                            rawText: item.destination,
+                            lat: item.destination_lat,
+                            lng: item.destination_lng,
+                          }
+                        : undefined,
+                    );
                     setPanelOpen(true);
                     window.requestAnimationFrame(() =>
-                      document.getElementById("home-destination")?.scrollIntoView({ behavior: "smooth", block: "center" })
+                      document
+                        .getElementById("home-destination")
+                        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
                     );
-                  }}>
+                  }}
+                >
                   <MapPin size={15} aria-hidden="true" className="shrink-0 text-primary" />
                   <span className="truncate">{item.destination}</span>
                 </button>
@@ -326,311 +405,422 @@ function Home() {
             Escolher destino <ArrowRight size={14} aria-hidden="true" />
           </button>
         </div>
-        <HomeRideMap
-          userPosition={location.position}
-          origin={point}
-          destination={destinationLocation}
-          originIsCurrent={originSource === "CURRENT_LOCATION" && Boolean(location.position)}
-          following={location.isFollowingUser}
-          recenterVersion={location.recenterVersion}
-          locating={location.locating}
-          onDrag={() => location.setFollowing(false)}
-          onRecenter={location.locate}
-        />
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#121212] shadow-2xl [&_*]:focus-visible:outline-offset-2">
+          <HomeRideMap
+            userPosition={location.position}
+            origin={point}
+            destination={destinationLocation}
+            originIsCurrent={originSource === "CURRENT_LOCATION" && Boolean(location.position)}
+            following={location.isFollowingUser}
+            recenterVersion={location.recenterVersion}
+            locating={location.locating}
+            onDrag={() => location.setFollowing(false)}
+            onRecenter={location.locate}
+          />
+        </div>
         <section
           aria-labelledby="journey-title"
-          className="relative -mx-4 -mt-5 rounded-t-3xl border-t border-border/60 bg-background px-4 pb-5 pt-5 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] sm:mx-0 sm:mt-0 sm:rounded-none sm:border-0 sm:px-0 sm:pt-6 sm:shadow-none"
+          className="relative -mx-4 -mt-5 rounded-t-3xl border border-white/10 bg-[#121212]/95 px-4 pb-28 pt-5 text-white shadow-2xl backdrop-blur-2xl sm:mx-0 sm:mt-5 sm:rounded-3xl sm:px-6 sm:pt-6"
         >
-          <button type="button" aria-controls="caronaa-journey-details" aria-expanded={panelOpen}
+          <button
+            type="button"
+            aria-controls="caronaa-journey-details"
+            aria-expanded={panelOpen}
             onClick={() => setPanelOpen((open) => !open)}
-            className="mb-4 flex min-h-11 w-full flex-col items-center justify-center gap-2 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:hidden">
+            className="mb-4 flex min-h-11 w-full flex-col items-center justify-center gap-2 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:hidden"
+          >
             <span className="h-1 w-10 rounded-full bg-border" aria-hidden="true" />
-            <span className="text-xs font-bold text-muted-foreground">{panelOpen ? "Recolher detalhes" : "Expandir e planejar viagem"}</span>
+            <span className="text-xs font-bold text-muted-foreground">
+              {panelOpen ? "Recolher detalhes" : "Expandir e planejar viagem"}
+            </span>
           </button>
-          <h2 id="journey-title" className="text-xl font-extrabold sm:text-3xl">
+          <h2
+            id="journey-title"
+            className="font-[family-name:var(--font-display)] text-xl font-extrabold sm:text-3xl"
+          >
             <span className="sm:hidden">Planeje sua carona</span>
             <span className="hidden sm:inline">Para onde vamos?</span>
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground sm:hidden">
+          <p className="mt-1 text-sm text-gray-300 sm:hidden">
             Informe o trajeto, escolha quando sair e confira os detalhes antes de continuar.
           </p>
           {!panelOpen && (
-            <button type="button" onClick={() => startJourney(role)}
-              className="mt-4 flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 text-left sm:hidden">
+            <button
+              type="button"
+              onClick={() => startJourney(role)}
+              className="mt-4 flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 text-left sm:hidden"
+            >
               <span className="min-w-0">
                 <span className="block text-xs font-medium text-muted-foreground">Destino</span>
-                <span className="block truncate font-semibold">{destination || "Para onde você vai?"}</span>
+                <span className="block truncate font-semibold">
+                  {destination || "Para onde você vai?"}
+                </span>
               </span>
               <ArrowRight size={20} className="shrink-0 text-primary" aria-hidden="true" />
             </button>
           )}
           <div id="caronaa-journey-details" className={panelOpen ? "block" : "hidden sm:block"}>
-          {location.failure && (
-            <div role="alert" className="mt-3 text-sm text-muted-foreground">
-              <p>{locationFailureMessages[location.failure]}</p>
-              <div className="mt-1 flex flex-wrap gap-2">
-                <Button type="button" variant="ghost" onClick={focusOrigin}>
-                  Informar saída
-                </Button>
-                {location.failure !== "UNSUPPORTED" && location.failure !== "INSECURE" && (
-                  <Button type="button" variant="ghost" onClick={location.locate}>
-                    Tentar novamente
+            {location.failure && (
+              <div role="status" className="mt-3 text-sm text-gray-300">
+                <p>{locationFailureMessages[location.failure]}</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <Button type="button" variant="ghost" onClick={focusOrigin}>
+                    Informar saída
                   </Button>
-                )}
-              </div>
-            </div>
-          )}
-          <div
-            role="group"
-            aria-label="Papel nesta viagem"
-            className="my-4 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:my-5"
-          >
-            {(
-              [
-                ["request", "Pedir carona", UserRound],
-                ["offer", "Oferecer carona", CarFront],
-              ] as const
-            ).map(([value, label, Icon]) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={role === value}
-                onClick={() => setRole(value)}
-                className={`flex min-h-12 items-center justify-center gap-2 rounded-md px-2 text-sm font-semibold ${role === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-              >
-                <Icon size={18} />
-                {label}
-              </button>
-            ))}
-          </div>
-          <form
-            className="space-y-4"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (role === "offer") {
-                const params = new URLSearchParams({
-                  origem: origin,
-                  destino: destination,
-                  data: date,
-                  horario: time,
-                  tolerancia: String(timeTolerance),
-                });
-                if (originLocation?.lat != null && originLocation.lng != null) {
-                  params.set("olat", String(originLocation.lat));
-                  params.set("olng", String(originLocation.lng));
-                }
-                if (destinationLocation?.lat != null && destinationLocation.lng != null) {
-                  params.set("dlat", String(destinationLocation.lat));
-                  params.set("dlng", String(destinationLocation.lng));
-                }
-                window.location.assign(`/oferecer?${params}`);
-                return;
-              }
-              if (
-                !requestFare ||
-                requestFare.origin !== origin ||
-                requestFare.destination !== destination
-              ) {
-                setError("Aguarde a cotação atual do seu trecho antes de pedir a carona.");
-                return;
-              }
-              if (requestSubmitting.current) return;
-              requestSubmitting.current = true;
-              setBusy(true);
-              setError(null);
-              try {
-                await requestRide({
-                  data: {
-                    quoteId: requestFare.quoteId,
-                    rideDate: date,
-                    departureTime: time,
-                    passengerCount: Number(count),
-                    timeToleranceMinutes: timeTolerance,
-                    preferences,
-                  },
-                });
-                toast.success("Sua solicitação foi publicada.");
-                setRequestFare(null);
-                refresh();
-              } catch (reason) {
-                setError("Não foi possível pedir a carona. Confira os dados e tente novamente.");
-                if (
-                  reason instanceof Error &&
-                  /cotação.*expir|quote.*expired/i.test(reason.message)
-                ) {
-                  setRequestFare(null);
-                  setRequestFareRefresh((value) => value + 1);
-                }
-              } finally {
-                requestSubmitting.current = false;
-                setBusy(false);
-              }
-            }}
-          >
-            <LocationAutocomplete
-              id="home-origin"
-              label="Saída"
-              value={origin}
-              onChange={(text, details) => {
-                setOriginSource("MANUAL_ORIGIN");
-                setOrigin(details?.formattedAddress || text);
-                setOriginLocation(details);
-              }}
-              variant="simple"
-              required
-              placeholder="De onde você sai?"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>
-                {originSource === "CURRENT_LOCATION" && location.position
-                  ? location.position.accuracy > 100
-                    ? "Localização aproximada"
-                    : "Localização atual"
-                  : "Saída escolhida por você"}
-              </span>
-              <details className="relative">
-                <summary className="cursor-pointer py-2 font-semibold text-foreground">
-                  Opções de saída
-                </summary>
-                <div className="absolute right-0 z-20 w-60 rounded-lg border border-border bg-background p-1 shadow-lg">
-                  <button
-                    type="button"
-                    className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm"
-                    onClick={() => {
-                      setOriginSource("CURRENT_LOCATION");
-                      location.locate();
-                    }}
-                  >
-                    <LocateFixed size={16} />
-                    Usar localização atual
-                  </button>
-                  <button
-                    type="button"
-                    className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm"
-                    onClick={() => {
-                      setOriginSource("MANUAL_ORIGIN");
-                      focusOrigin();
-                    }}
-                  >
-                    <MapPin size={16} />
-                    Digitar endereço
-                  </button>
+                  {location.failure !== "UNSUPPORTED" && location.failure !== "INSECURE" && (
+                    <Button type="button" variant="ghost" onClick={location.locate}>
+                      Tentar novamente
+                    </Button>
+                  )}
                 </div>
-              </details>
-            </div>
-            {reverseFailed && originSource === "CURRENT_LOCATION" && (
-              <p role="status" className="text-xs text-muted-foreground">
-                Não conseguimos identificar o endereço. Suas coordenadas estão disponíveis; você
-                pode ajustar a saída.
-              </p>
-            )}
-            <LocationAutocomplete
-              id="home-destination"
-              label="Destino"
-              value={destination}
-              onChange={(text, details) => {
-                setDestination(details?.formattedAddress || text);
-                setDestinationLocation(details);
-              }}
-              variant="simple"
-              required
-              placeholder="Para onde você vai?"
-            />
-            {recent.length > 0 && (
-              <div aria-label="Destinos recentes" className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Seus destinos recentes
-                </p>
-                {recent.map((item) => (
-                  <button
-                    key={item.destination}
-                    type="button"
-                    className="flex min-h-11 w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      setDestination(item.destination);
-                      setDestinationLocation(
-                        item.destination_lat != null && item.destination_lng != null
-                          ? {
-                              rawText: item.destination,
-                              lat: item.destination_lat,
-                              lng: item.destination_lng,
-                            }
-                          : undefined,
-                      );
-                    }}
-                  >
-                    <MapPin size={16} className="shrink-0" />
-                    <span className="truncate">{item.destination}</span>
-                  </button>
-                ))}
               </div>
             )}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">Quando pretende sair?</span>
-              <button type="button" onClick={setToday} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 text-xs font-bold text-foreground hover:bg-primary/20">
-                <CalendarDays size={15} aria-hidden="true" /> Hoje
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm font-semibold">
-                Data
-                <input
-                  aria-label="Data da viagem"
-                  required
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="mt-1 h-12 w-full min-w-0 rounded-xl border border-input bg-background px-2 text-sm font-normal sm:px-3"
-                />
-              </label>
-              <label className="text-sm font-semibold">
-                Horário
-                <input
-                  aria-label="Horário de saída"
-                  required
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="mt-1 h-12 w-full min-w-0 rounded-xl border border-input bg-background px-2 text-sm font-normal sm:px-3"
-                />
-              </label>
-            </div>
-            <TimeToleranceSelector value={timeTolerance} onChange={setTimeTolerance} baseTime={time} label="Flexibilidade de horário" />
-            {role === "request" && (
-              <label className="flex min-h-12 items-center justify-between text-sm font-semibold">
-                Passageiros
-                <select
-                  aria-label="Passageiros"
-                  value={count}
-                  onChange={(e) => setCount(e.target.value)}
-                  className="h-11 rounded-lg border border-input bg-background px-3"
+            <div
+              role="group"
+              aria-label="Papel nesta viagem"
+              className="my-4 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/5 p-1 sm:my-5"
+            >
+              {(
+                [
+                  ["request", "Pedir carona", UserRound],
+                  ["offer", "Oferecer carona", CarFront],
+                ] as const
+              ).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={role === value}
+                  onClick={() => setRole(value)}
+                  className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${role === value ? "bg-white/10 text-white shadow-sm" : "text-gray-400"}`}
                 >
-                  {[1, 2, 3, 4, 5, 6].map((n) => (
-                    <option key={n}>{n}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {role === "request" && (
-              <RequestFarePreview
-                origin={origin}
-                destination={destination}
-                passengerCount={Number(count)}
-                onQuote={receiveRequestFare}
-                refreshKey={requestFareRefresh}
+                  <Icon size={18} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <form
+              className="space-y-4"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                if (role === "offer") {
+                  const params = new URLSearchParams({
+                    origem: origin,
+                    destino: destination,
+                    data: date,
+                    horario: time,
+                    tolerancia: String(timeTolerance),
+                  });
+                  if (originLocation?.lat != null && originLocation.lng != null) {
+                    params.set("olat", String(originLocation.lat));
+                    params.set("olng", String(originLocation.lng));
+                  }
+                  if (destinationLocation?.lat != null && destinationLocation.lng != null) {
+                    params.set("dlat", String(destinationLocation.lat));
+                    params.set("dlng", String(destinationLocation.lng));
+                  }
+                  window.location.assign(`/oferecer?${params}`);
+                  return;
+                }
+                if (
+                  !requestFare ||
+                  requestFare.origin !== origin ||
+                  requestFare.destination !== destination
+                ) {
+                  setError("Aguarde a cotação atual do seu trecho antes de pedir a carona.");
+                  return;
+                }
+                if (requestSubmitting.current) return;
+                requestSubmitting.current = true;
+                setBusy(true);
+                setError(null);
+                try {
+                  await requestRide({
+                    data: {
+                      quoteId: requestFare.quoteId,
+                      rideDate: date,
+                      departureTime: time,
+                      passengerCount: Number(count),
+                      timeToleranceMinutes: timeTolerance,
+                      preferences,
+                    },
+                  });
+                  toast.success("Sua solicitação foi publicada.");
+                  setRequestFare(null);
+                  refresh();
+                } catch (reason) {
+                  setError("Não foi possível pedir a carona. Confira os dados e tente novamente.");
+                  if (
+                    reason instanceof Error &&
+                    /cotação.*expir|quote.*expired/i.test(reason.message)
+                  ) {
+                    setRequestFare(null);
+                    setRequestFareRefresh((value) => value + 1);
+                  }
+                } finally {
+                  requestSubmitting.current = false;
+                  setBusy(false);
+                }
+              }}
+            >
+              <div className="rounded-3xl border border-white/10 bg-white/[0.055] p-4 shadow-2xl backdrop-blur-2xl">
+                <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] gap-x-3">
+                  <div className="flex flex-col items-center pt-1" aria-hidden="true">
+                    <span
+                      className={`h-3 w-3 rounded-full ${location.position && originSource === "CURRENT_LOCATION" ? "animate-pulse bg-emerald-400 ring-4 ring-emerald-400/15" : "bg-[#FFBB00]"}`}
+                    />
+                    <span className="my-2 h-10 border-l border-dashed border-[#FFBB00]/70" />
+                    <MapPin size={17} className="text-[#FFBB00]" />
+                  </div>
+                  <div className="min-w-0 space-y-4">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">
+                        Origem
+                      </p>
+                      <p className="mt-1 truncate text-sm font-medium text-white">
+                        {origin ||
+                          (location.locating ? "Localizando você…" : "De onde você vai sair?")}
+                      </p>
+                      {originSource === "CURRENT_LOCATION" && location.position && (
+                        <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
+                          <Navigation2 size={12} className="text-[#FFBB00]" />
+                          Localização atual{location.position.accuracy > 100 ? " · aproximada" : ""}
+                        </p>
+                      )}
+                      {originEditing && (
+                        <div className="mt-2">
+                          <LocationAutocomplete
+                            id="home-origin"
+                            label="Saída"
+                            value={origin}
+                            onChange={(text, details) => {
+                              setOriginSource("MANUAL_ORIGIN");
+                              setOrigin(details?.formattedAddress || text);
+                              setOriginLocation(details);
+                            }}
+                            variant="simple"
+                            required
+                            placeholder="De onde você vai sair?"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">
+                        Destino
+                      </p>
+                      <LocationAutocomplete
+                        id="home-destination"
+                        label="Destino"
+                        value={destination}
+                        onChange={(text, details) => {
+                          setDestination(details?.formattedAddress || text);
+                          setDestinationLocation(details);
+                        }}
+                        variant="simple"
+                        required
+                        placeholder="Para onde você vai?"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      aria-label={voiceListening ? "Ouvindo origem" : "Ditar origem por voz"}
+                      onClick={dictateOrigin}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-gray-300 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                    >
+                      <Mic
+                        size={17}
+                        className={voiceListening ? "animate-pulse text-[#FFBB00]" : ""}
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Editar origem"
+                      onClick={() => {
+                        setOriginEditing((editing) => !editing);
+                        setOriginSource("MANUAL_ORIGIN");
+                        window.requestAnimationFrame(focusOrigin);
+                      }}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-gray-300 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Usar localização atual"
+                      onClick={() => {
+                        setOriginSource("CURRENT_LOCATION");
+                        setOriginEditing(false);
+                        location.locate();
+                      }}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-gray-300 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                    >
+                      <LocateFixed size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <input
+                id="home-origin"
+                aria-label="Saída"
+                required
+                tabIndex={-1}
+                value={origin}
+                readOnly
+                className="sr-only"
               />
-            )}
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            {role === "request" && <JourneyPreferences kind="request" onChange={setPreferences} />}
-            <Button type="submit" disabled={busy} className="min-h-14 w-full rounded-xl text-base font-bold shadow-sm">
-              {busy ? "Publicando..." : role === "request" ? "Pedir carona" : "Continuar"}
-              <ArrowRight size={18} />
-            </Button>
-          </form>
+              {reverseFailed && originSource === "CURRENT_LOCATION" && (
+                <p role="status" className="text-xs text-muted-foreground">
+                  Não conseguimos identificar o endereço. Suas coordenadas estão disponíveis; você
+                  pode ajustar a saída.
+                </p>
+              )}
+              {recent.length > 0 && (
+                <div aria-label="Destinos recentes" className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Seus destinos recentes
+                  </p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {recent.slice(0, 6).map((item) => (
+                      <button
+                        key={item.destination}
+                        type="button"
+                        className="flex min-h-11 max-w-56 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                        onClick={() => {
+                          setDestination(item.destination);
+                          setDestinationLocation(
+                            item.destination_lat != null && item.destination_lng != null
+                              ? {
+                                  rawText: item.destination,
+                                  lat: item.destination_lat,
+                                  lng: item.destination_lng,
+                                }
+                              : undefined,
+                          );
+                        }}
+                      >
+                        <MapPin size={15} className="shrink-0 text-[#FFBB00]" />
+                        <span className="truncate">{item.destination}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-gray-300">Quando pretende sair?</span>
+                <button
+                  type="button"
+                  onClick={setToday}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-xs font-bold text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                >
+                  <CalendarDays size={15} aria-hidden="true" /> Hoje
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm font-semibold text-gray-200">
+                  Data
+                  <input
+                    aria-label="Data da viagem"
+                    required
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="mt-1 h-12 w-full min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2 text-sm font-normal text-white [color-scheme:dark] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] sm:px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold text-gray-200">
+                  Horário
+                  <input
+                    aria-label="Horário de saída"
+                    required
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="mt-1 h-12 w-full min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2 text-sm font-normal text-white [color-scheme:dark] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] sm:px-3"
+                  />
+                </label>
+              </div>
+              <div className="text-white [&_button]:border-white/15 [&_button]:text-gray-200">
+                <TimeToleranceSelector
+                  value={timeTolerance}
+                  onChange={setTimeTolerance}
+                  baseTime={time}
+                  label="Flexibilidade de horário"
+                />
+              </div>
+              {role === "request" && (
+                <label className="flex min-h-12 items-center justify-between text-sm font-semibold text-gray-200">
+                  Passageiros
+                  <span className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1">
+                    <button
+                      type="button"
+                      aria-label="Diminuir passageiros"
+                      onClick={() => adjustPassengerCount(-1)}
+                      disabled={Number(count) <= 1}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-white/10 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                    >
+                      <Minus size={15} />
+                    </button>
+                    <span className="min-w-4 text-center text-sm text-white">{count}</span>
+                    <button
+                      type="button"
+                      aria-label="Aumentar passageiros"
+                      onClick={() => adjustPassengerCount(1)}
+                      disabled={Number(count) >= 6}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-white/10 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </span>
+                </label>
+              )}
+              {role === "request" && (
+                <div className="[&_section]:rounded-2xl [&_section]:border-white/10 [&_section]:bg-white/5 [&_p]:text-gray-300 [&_section_p.text-lg]:font-[family-name:var(--font-display)] [&_section_p.text-lg]:text-[#FFBB00]">
+                  <RequestFarePreview
+                    origin={origin}
+                    destination={destination}
+                    passengerCount={Number(count)}
+                    onQuote={receiveRequestFare}
+                    refreshKey={requestFareRefresh}
+                  />
+                </div>
+              )}
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+              {role === "request" && (
+                <div className="text-white [&_button]:border-white/15 [&_label]:text-gray-200">
+                  <JourneyPreferences kind="request" onChange={setPreferences} />
+                </div>
+              )}
+              <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-3xl border border-white/15 bg-[#121212]/95 p-3 shadow-2xl backdrop-blur-2xl sm:static sm:mt-2 sm:max-w-none sm:rounded-2xl sm:border-white/10 sm:bg-white/5 sm:backdrop-blur-0">
+                <div className="min-w-0 pl-2">
+                  <p className="text-[10px] font-semibold text-gray-400">Rateio de combustível</p>
+                  <p className="truncate font-[family-name:var(--font-display)] text-lg font-bold text-[#FFBB00]">
+                    {requestFare &&
+                    requestFare.origin === origin &&
+                    requestFare.destination === destination
+                      ? `R$ ${requestFare.pricePerPassenger.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                      : "—"}
+                  </p>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={busy || (role === "request" && !requestFare)}
+                  className="min-h-14 flex-1 rounded-2xl bg-[#FFBB00] text-base font-bold text-[#121212] shadow-lg hover:bg-[#ffd04d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 sm:flex-none sm:px-8"
+                >
+                  {busy
+                    ? "Buscando motoristas…"
+                    : role === "request"
+                      ? "Confirmar Pedido"
+                      : "Continuar"}
+                  <ArrowRight size={18} />
+                </Button>
+              </div>
+            </form>
           </div>
         </section>
         {/*
