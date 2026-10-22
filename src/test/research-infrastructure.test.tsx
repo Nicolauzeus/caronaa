@@ -190,7 +190,8 @@ describe("Configured public research", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enviar respostas" }));
     await screen.findByText("Resposta registrada!");
     expect(api.insert).toHaveBeenCalledOnce();
-    expect(api.rpc).not.toHaveBeenCalled();
+    expect(api.rpc).toHaveBeenCalledTimes(1);
+    expect(api.rpc).toHaveBeenCalledWith("get_research_window_state", { p_code: "OLD" });
   });
   it("requires independent pre-registration consent for both passenger and driver", async () => {
     render(
