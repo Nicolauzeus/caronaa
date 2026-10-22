@@ -181,7 +181,17 @@ export function RideSafetyPanel({
           )}
         </div>
       )}
-      {currentStatus === "COMPLETED" && <CompletedRidePix rideId={rideId} />}
+      {/* The driver's legacy Pix code is for the driver only. The passenger
+          follows the payer-only Asaas preview, never a duplicate bank-key QR. */}
+      {currentStatus === "COMPLETED" && role === "driver" && (
+        <CompletedRidePix rideId={rideId} />
+      )}
+      {currentStatus === "COMPLETED" && role === "passenger" && (
+        <p role="status" className="rounded-xl border border-border bg-card/50 px-4 py-3 text-sm leading-6 text-muted-foreground">
+          Viagem concluída. Consulte a situação do pagamento no painel de cobrança.
+          O checkout Asaas ainda está em testes: nenhuma cobrança automática foi confirmada.
+        </p>
+      )}
 
       {/* Validação de Embarque com QR Code ou PIN para Passageiro */}
       {currentStatus === "CONFIRMED" && role === "passenger" && (
