@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const dayPattern = /^\\d{4}-\\d{2}-\\d{2}$/;
+const dayPattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export function validSurveyDate(value: string): boolean {
   if (!dayPattern.test(value)) return false;
