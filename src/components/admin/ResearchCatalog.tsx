@@ -219,6 +219,7 @@ export function ResearchCatalog() {
         templateKey,
         startsOn: surveyStartsOn,
         endsOn: surveyEndsOn,
+        caronaaPresenceOn: configuration.launchDate,
         configuration: configure ? finalConfiguration : undefined,
       });
       let logoWarning = "";
