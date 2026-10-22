@@ -17,6 +17,8 @@ INSERT INTO public.research_configurations(form_id,settings) VALUES
  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','{"launchDate":"2099-03-10","timezone":"America/Fortaleza","publicName":"Evento"}'),
  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','{"launchDate":"2099-04-10","timezone":"America/Fortaleza","publicName":"Liberada"}');
 INSERT INTO public.research_launch_releases(form_id,released_at) VALUES
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',NULL),
+ ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',NULL),
  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc',now());
 INSERT INTO public.research_participation_badges(user_id,form_id,answer_id) VALUES
  ('11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaa1111-1111-4111-8111-111111111111'),
