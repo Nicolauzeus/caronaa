@@ -792,6 +792,13 @@
       "when": 1792626000000,
       "tag": "0112_research_role_conditional_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1792700000000,
+      "tag": "0113_unifor_academic_express_publication",
+      "breakpoints": true
     }
   ]
 }
