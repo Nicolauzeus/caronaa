@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 import type { SurveySchema, SurveyQuestion } from "@/lib/formulario/research-templates";
 import type { PublicResearchConfiguration, ResearchJourney } from "@/lib/formulario/research-configuration";
@@ -9,7 +9,6 @@ import { validResearchEmail, captureResearchLead } from "@/lib/formulario/resear
 import { submitConfiguredResearch, registerResearchInterest } from "@/lib/formulario/research-configuration-service";
 import { storePendingParticipation, claimResearchParticipation } from "@/lib/formulario/research-participation";
 import { initialResearchJourney } from "./ResearchJourneyFields";
-import { ResearchBrandHeader } from "./ResearchFields";
 import { displaySurveyDate } from "@/lib/formulario/research-window";
 
 type AcademicForm = {
@@ -159,8 +158,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
   }
   function back(){setIndex(i=>Math.max(0,i-1));setError("");}
 
-  async function submit(event:FormEvent) {
-    event.preventDefault();
+  async function submit() {
     if(stage!=="activation"){next();return;}
     if(busy||!role)return;
     const cleaned=cleanAnswers(schema,answers,role);
@@ -347,7 +345,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
                 <label className={label}>Horário de retorno
                   <select className={field+" mt-2"} aria-label="Horário habitual de retorno"
                     value={journey.otherReturnTime?"OUTRO":journey.returnTime}
-                    onChange={e=>setJourney(p=>({...p,returnTime:e.target.value==="OUTRO"?"":e.target.value,otherReturnTime:e.target.value==="OUTRO",direction:"IDA_E_VOLTA"}))}>
+                    onChange={e=>setJourney(p=>({...p,returnTime:e.target.value==="OUTRO"?"":e.target.value,otherReturnTime:e.target.value==="OUTRO",direction:e.target.value?"IDA_E_VOLTA":"IDA"}))}>
                     <option value="">Sem retorno fixo</option>
                     {config.settings.returnTimes.map(t=><option key={t}>{t}</option>)}
                     <option value="OUTRO">Outro horário</option>
@@ -428,7 +426,7 @@ export function AcademicExpressForm({ form, captureEnabled, user }:{
           <ArrowLeft size={20}/>
         </button>
         <button type="button" disabled={busy||(stage==="activation"&&(!consent||(captureEnabled&&!linkageConsent)))}
-          onClick={stage==="activation"?()=>{void submit({preventDefault:()=>{}} as FormEvent);}:next}
+          onClick={stage==="activation"?()=>{void submit();}:next}
           className="flex min-h-13 flex-1 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-bold text-[#121212] disabled:opacity-50">
           {busy?"Registrando…":stage==="activation"?"Registrar participação":"Continuar"}
           {stage!=="activation"&&<ArrowRight size={18}/>}
