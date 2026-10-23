@@ -565,7 +565,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     <main className={isUnifor
       ? last && captureEnabled
         ? "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-28 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-6"
-        : "mx-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 overflow-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+78px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
+        : "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-[calc(env(safe-area-inset-bottom)+96px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
       : "mx-auto max-w-2xl space-y-4 px-3 pb-28 pt-5 sm:px-6 sm:pt-8"}>
       {isUniforPilotForm(form.id) ? (
         <header className="flex min-h-10 shrink-0 items-center justify-between gap-3" aria-label="Pesquisa CARONAA UNIFOR">
@@ -578,11 +578,11 @@ export function PublicResearchForm({ code }: { code: string }) {
         alt={form.brandAlt}
         brandName={form.brandName}
       />}
-      {step === 0 && form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
+      {step === 0 && currentMicroIndex === 0 && !pilotRoleStep && form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY && (
         <section aria-label="Apresentação da pesquisa regional" className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">CARONAA na universidade · Mobilidade regional</p>
-          <p className="text-sm leading-6">{regionalUniversityIntro(form.configuration.settings)}</p>
-          <p className="text-xs leading-5 text-muted-foreground">
+          <p className="text-sm leading-6 line-clamp-4 sm:line-clamp-none">{regionalUniversityIntro(form.configuration.settings)}</p>
+          <p className="hidden text-xs leading-5 text-muted-foreground sm:block">
             A carona compartilhada não é mototáxi remunerado. Transporte profissional somente poderá ser oferecido mediante autorização, habilitação e parceria efetivamente verificadas.
           </p>
         </section>
@@ -649,11 +649,11 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className={isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-3"):"flex min-w-0 flex-col gap-4"}>
+      <form onSubmit={submit} className={isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-w-0 flex-1 flex-col gap-3"):"flex min-w-0 flex-col gap-4"}>
         <section id="research-step-content" className={isUnifor
           ? (last && captureEnabled
             ? "min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6"
-            : "min-h-0 max-h-full w-full min-w-0 shrink overflow-y-auto overflow-x-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage")
+            : "w-full min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage")
           : "min-h-[250px] scroll-mt-20 space-y-4 rounded-xl border bg-card p-4 sm:p-5"}>
           <h2 id="research-step-heading" tabIndex={-1} className={isUnifor?"mb-3 text-lg font-bold leading-snug outline-none":"text-xl font-bold outline-none"}>
             {pilotRoleStep?"Como pretende participar?":isUnifor
