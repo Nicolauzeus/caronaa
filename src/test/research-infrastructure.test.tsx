@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { PublicResearchForm } from "@/components/research/PublicResearchForm";
-import { ResearchInterestActivation } from "@/components/research/ResearchInterestActivation";
-import { initialResearchJourney } from "@/components/research/ResearchJourneyFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 
 const api = vi.hoisted(() => ({ rpc: vi.fn(), insert: vi.fn(), configured: true }));
@@ -192,41 +190,5 @@ describe("Configured public research", () => {
     expect(api.insert).toHaveBeenCalledOnce();
     expect(api.rpc).toHaveBeenCalledTimes(1);
     expect(api.rpc).toHaveBeenCalledWith("get_research_window_state", { p_code: "OLD" });
-  });
-  it("requires independent pre-registration consent for both passenger and driver", async () => {
-    render(
-      <ResearchInterestActivation
-        formId="form"
-        receipt="private-receipt"
-        journey={{ ...initialResearchJourney(settings), profile: "AMBOS" }}
-      />,
-    );
-    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo registrar meu interesse/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Quero encontrar uma carona para este trajeto" }),
-    );
-    await screen.findByText("Interesse registrado");
-    expect(
-      screen.getByRole("button", { name: "Quero disponibilizar lugares neste trajeto" }),
-    ).toBeDisabled();
-    await waitFor(() => expect(api.rpc).toHaveBeenCalledTimes(1));
-    expect(api.rpc).toHaveBeenCalledWith("register_research_interest", {
-      p_form_id: "form",
-      p_submission_key: "private-receipt",
-      p_profile: "PASSAGEIRO",
-      p_consent: true,
-    });
-  });
-  it("does not activate a professional service without regulation and enablement", () => {
-    render(
-      <ResearchInterestActivation
-        formId="form"
-        receipt="private"
-        journey={{ ...initialResearchJourney(settings), mode: "TRANSPORTE_PROFISSIONAL_INTERESSE" }}
-      />,
-    );
-    expect(screen.getByText(/depende de aprovação e habilitação/)).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    expect(api.rpc).not.toHaveBeenCalled();
   });
 });

@@ -32,7 +32,6 @@ import {
   type ResearchJourney,
 } from "@/lib/formulario/research-configuration";
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
-import { ResearchInterestActivation } from "./ResearchInterestActivation";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
 import { REGIONAL_UNIVERSITY_KEY, regionalUniversityIntro, validateRegionalUniversityAnswers } from "@/lib/formulario/regional-university";
 import { EVENT_EXIT_MATCH_KEY, eventExitMatchIntro, validateEventExitAnswers, validateEventExitJourney } from "@/lib/formulario/event-exit-match";
@@ -530,16 +529,6 @@ export function PublicResearchForm({ code }: { code: string }) {
             configuration={(submittedConfiguration ?? form.configuration).settings}
             journey={journey} schema={form.schema} answers={answers}
           />
-        )}
-        {form.configuration && journey && (
-          <details className="rounded-xl border border-border bg-card p-4">
-            <summary className="cursor-pointer text-sm font-semibold">Registrar interesse no trajeto (opcional)</summary>
-            <div className="pt-3">
-              <ResearchInterestActivation formId={form.id} receipt={submissionKey}
-                journey={journey}
-                configuration={submittedConfiguration?.settings ?? form.configuration.settings} />
-            </div>
-          </details>
         )}
         <a href={user ? "/home" :
           "/auth?mode=cadastro&redirect=" + encodeURIComponent(form.configuration?.settings.launchDate ? "/aguardando" : "/perfil")}
