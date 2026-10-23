@@ -9,10 +9,12 @@ import type { SurveyQuestion, SurveySchema } from "./research-templates";
  */
 const GROUPS = [
   { title:"Sua rotina universitária", semantics:["ACADEMIC_ROLE"] },
-  { title:"Como você se desloca", semantics:["TRANSPORT_MODE","COST_PER_TRIP"] },
+  { title:"Como você se desloca", semantics:["TRANSPORT_MODE","COST_PER_TRIP","WAIT_TIME"] },
   { title:"Desafios do seu percurso", semantics:["MOBILITY_PAINS"] },
-  { title:"Disponibilidade para oferecer", semantics:["URBAN_OFFER_POSSIBLE","URBAN_OFFER_VEHICLE","SEATS_AVAILABLE"] },
-  { title:"Confiança e preferência", semantics:["ADOPTION_INTENT","TRUST_FACTORS"] },
+  { title:"Disponibilidade para oferecer", semantics:["URBAN_OFFER_POSSIBLE","URBAN_OFFER_VEHICLE","REGIONAL_OFFER_POSSIBLE","REGIONAL_OFFER_VEHICLE","SEATS_AVAILABLE"] },
+  { title:"Transporte profissional local", semantics:["REGIONAL_PROFESSIONAL_ROLE","REGIONAL_PROFESSIONAL_INTEREST"] },
+  { title:"O que ajudaria você", semantics:["REGIONAL_SERVICE_PREFERENCE","ADOPTION_INTENT"] },
+  { title:"Confiança e orçamento", semantics:["TRUST_FACTORS","REGIONAL_BARRIER","ACCEPTABLE_FARE_RANGE"] },
   { title:"Lançamento CARONAA", semantics:["URBAN_DRIVER_MOTIVATION","LAUNCH_PARTICIPATION_INTENT","BOOKING_INTENT"] },
 ] as const;
 
@@ -22,7 +24,7 @@ export function getUniforPainQuestions(schema:SurveySchema){
  const questions=schema.sections.flatMap(section=>section.questions);
  return {
   pains:questions.find(q=>q.semanticCode==="MOBILITY_PAINS"),
-  primary:questions.find(q=>q.semanticCode==="URBAN_PRIMARY_PAIN"),
+  primary:questions.find(q=>q.semanticCode==="URBAN_PRIMARY_PAIN"||q.semanticCode==="REGIONAL_PRIMARY_PAIN"),
  };
 }
 

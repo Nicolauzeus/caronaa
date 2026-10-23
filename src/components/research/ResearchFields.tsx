@@ -57,7 +57,7 @@ export function ResearchSectionFields({section,answers,onChange,idPrefix="",erro
     </label>)}
   </fieldset>:
   q.type==="single_choice"?<select id={id} required={q.required} value={String(value??"")} onChange={e=>select(e.target.value)} className="w-full rounded-xl border bg-background p-3"><option value="">Selecione</option>{q.options.map(o=><option key={o} value={o}>{formatResearchOption(o)}</option>)}</select>:
-  q.type==="multiple_choice"?<fieldset className={compact?"grid min-w-0 grid-cols-2 gap-1.5":q.options.every(opt=>formatResearchOption(opt).length<=48)?"grid grid-cols-1 gap-2 sm:grid-cols-2":"grid grid-cols-1 gap-2"}><legend className="sr-only">{q.label}</legend>{q.options.map(opt=>{
+  q.type==="multiple_choice"?<fieldset className={compact?"grid min-w-0 grid-cols-2 gap-1.5 lg:grid-cols-3":q.options.every(opt=>formatResearchOption(opt).length<=48)?"grid grid-cols-1 gap-2 sm:grid-cols-2":"grid grid-cols-1 gap-2"}><legend className="sr-only">{q.label}</legend>{q.options.map(opt=>{
     const checked=Array.isArray(value)&&value.includes(opt);
     return <label key={opt} className={"flex min-w-0 cursor-pointer items-center rounded-xl border leading-tight transition-colors focus-within:ring-2 focus-within:ring-ring "+(compact?"min-h-10 gap-1.5 px-2 py-1.5 text-xs":"min-h-11 gap-2.5 px-3 py-2.5 text-sm")+" "+(checked?"border-primary bg-primary/10 font-medium":"border-border hover:bg-muted/40")}>
      <input type="checkbox" className="shrink-0 accent-primary" checked={checked}
