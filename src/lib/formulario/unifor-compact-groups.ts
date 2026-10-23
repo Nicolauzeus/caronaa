@@ -8,6 +8,7 @@ import type { SurveyQuestion, SurveySchema } from "./research-templates";
  * Dynamic rules still determine which dependent questions can be displayed.
  */
 const GROUPS = [
+  { title:"Como pretende participar?", semantics:["RESEARCH_PARTICIPANT_ROLE"] },
   { title:"Sua rotina universitária", semantics:["ACADEMIC_ROLE"] },
   { title:"Como você se desloca", semantics:["TRANSPORT_MODE","COST_PER_TRIP","WAIT_TIME"] },
   { title:"Desafios do seu percurso", semantics:["MOBILITY_PAINS"] },
