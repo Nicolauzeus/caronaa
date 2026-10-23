@@ -13,8 +13,8 @@ const GROUPS = [
   { title:"Desafios do seu percurso", semantics:["MOBILITY_PAINS"] },
   { title:"Disponibilidade para oferecer", semantics:["URBAN_OFFER_POSSIBLE","URBAN_OFFER_VEHICLE","REGIONAL_OFFER_POSSIBLE","REGIONAL_OFFER_VEHICLE","SEATS_AVAILABLE"] },
   { title:"Transporte profissional local", semantics:["REGIONAL_PROFESSIONAL_ROLE","REGIONAL_PROFESSIONAL_INTEREST"] },
-  { title:"O que ajudaria você", semantics:["REGIONAL_SERVICE_PREFERENCE","ADOPTION_INTENT"] },
-  { title:"Confiança e orçamento", semantics:["TRUST_FACTORS","REGIONAL_BARRIER","ACCEPTABLE_FARE_RANGE"] },
+  { title:"O que ajudaria você", semantics:["REGIONAL_SERVICE_PREFERENCE","ADOPTION_INTENT","TRUST_FACTORS"] },
+  { title:"Confiança e orçamento", semantics:["REGIONAL_BARRIER","ACCEPTABLE_FARE_RANGE"] },
   { title:"Lançamento CARONAA", semantics:["URBAN_DRIVER_MOTIVATION","LAUNCH_PARTICIPATION_INTENT","BOOKING_INTENT"] },
 ] as const;
 
