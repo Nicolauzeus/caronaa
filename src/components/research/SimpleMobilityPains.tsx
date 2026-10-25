@@ -18,11 +18,11 @@ export function SimpleMobilityPains({ schema, answers, errors, onChange }: Props
   const currentPrimary = String(answers[primary.id] ?? "");
   const otherSelected = selected.includes("OUTRA");
   const toggle = (option: string) => {
-    if (option === "NENHUMA") {
-      onChange(pains.id, selected.includes(option) ? [] : ["NENHUMA"]);
+    if (option === "SEM_DIFICULDADES") {
+      onChange(pains.id, selected.includes(option) ? [] : ["SEM_DIFICULDADES"]);
       return;
     }
-    const existing = selected.filter(value => value !== "NENHUMA");
+    const existing = selected.filter(value => value !== "SEM_DIFICULDADES");
     onChange(pains.id,
       existing.includes(option)
         ? existing.filter(value => value !== option)
@@ -37,7 +37,7 @@ export function SimpleMobilityPains({ schema, answers, errors, onChange }: Props
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {pains.options.map(option => {
             const checked = selected.includes(option);
-            const disabled = !checked && option !== "NENHUMA" && selected.length >= 3 && !selected.includes("NENHUMA");
+            const disabled = !checked && option !== "SEM_DIFICULDADES" && selected.length >= 3 && !selected.includes("SEM_DIFICULDADES");
             return (
               <label key={option} className={"flex min-h-20 cursor-pointer flex-col justify-between gap-2 rounded-xl border px-3 py-3 text-xs leading-5 transition-colors sm:text-sm " +
                 (checked ? "border-primary bg-primary/10 font-semibold" : "border-border bg-background hover:border-primary/50") +
@@ -65,7 +65,7 @@ export function SimpleMobilityPains({ schema, answers, errors, onChange }: Props
           {errors[other.id] && <span role="alert" className="block text-xs text-destructive">{errors[other.id]}</span>}
         </label>
       )}
-      {selected.length > 0 && !selected.includes("NENHUMA") && (
+      {selected.length > 0 && !selected.includes("SEM_DIFICULDADES") && (
         <fieldset className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
           <legend className="px-1 text-sm font-semibold">{primary.label}</legend>
           <p className="text-xs text-muted-foreground">{selected.length === 1
@@ -84,7 +84,7 @@ export function SimpleMobilityPains({ schema, answers, errors, onChange }: Props
           {errors[primary.id] && <p role="alert" className="text-xs text-destructive">{errors[primary.id]}</p>}
         </fieldset>
       )}
-      {selected.includes("NENHUMA") && (
+      {selected.includes("SEM_DIFICULDADES") && (
         <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
           Obrigado. Registrar que você não enfrenta essas dificuldades também é importante para a pesquisa.
         </p>
