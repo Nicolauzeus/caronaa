@@ -1,4 +1,5 @@
 import { RESEARCH_TEMPLATES, freshTemplate } from "@/lib/formulario/research-templates";
+import { F01_TEMPLATE_KEYS } from "./mobility-simple";
 import { supabase } from "@/integrations/supabase/client";
 import { parseResearchConfiguration, type ResearchConfiguration } from "./research-configuration";
 import { friendlyResearchCreationError, normalizeResearchFormCode } from "./research-form-code";
@@ -63,6 +64,9 @@ export async function createResearchForm(input: {
   if (scheduleError) throw new Error(scheduleError);
   if (input.caronaaPresenceOn && !/^\d{4}-\d{2}-\d{2}$/.test(input.caronaaPresenceOn))
     throw new Error("Informe uma data válida para a presença do CARONAA.");
+  if (F01_TEMPLATE_KEYS.some(key=>key===input.templateKey) &&
+      (!input.configuration || input.configuration.emailCaptureEnabled !== true))
+    throw new Error("O F01 exige configuração institucional e captura consentida de leads no CRM.");
   const selected = RESEARCH_TEMPLATES.find(
     (t) => t.key === input.templateKey && t.nature === input.nature,
   );
