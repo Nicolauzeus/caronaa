@@ -24,7 +24,7 @@ describe("F01 — seleção de dores no celular",()=>{
     render(<Harness/>);
     fireEvent.click(screen.getByRole("checkbox",{name:/Ônibus lotados/i}));
     fireEvent.click(screen.getByRole("checkbox",{name:/Preço alto/i}));
-    expect(screen.getByRole("radiogroup",{name:/Qual dessas é a principal/i})).toBeInTheDocument();
+    expect(screen.getByRole("group",{name:/Qual dessas é a principal/i})).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio",{name:/Preço alto/i}));
     expect(screen.getByTestId("answers").textContent).toContain('"primary":"PRECO_ALTO"');
     fireEvent.click(screen.getByRole("checkbox",{name:/Nenhuma dessas dificuldades/i}));
