@@ -566,7 +566,9 @@ export function PublicResearchForm({ code }: { code: string }) {
   const pilotContent = isUnifor && section && currentGroup
     ? {...section,title:currentGroup.title,questions:currentGroup.questions} : section;
   return (
-    <main className={isUnifor
+    <main className={isSimple
+      ? "mx-auto flex min-h-[100dvh] w-full max-w-lg min-w-0 flex-col gap-3 px-3 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-5"
+      : isUnifor
       ? last && captureEnabled
         ? "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-28 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-6"
         : "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-[calc(env(safe-area-inset-bottom)+96px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
@@ -576,7 +578,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           <span className="font-display text-base font-black tracking-wide text-primary">CARONAA <span className="text-foreground">· UNIFOR</span></span>
           <span className="text-[11px] font-semibold text-muted-foreground">Estreia · {UNIFOR_LAUNCH_DAY}</span>
         </header>
-      ) : <ResearchBrandHeader compact={isUnifor}
+      ) : <ResearchBrandHeader compact={isUnifor || isSimple}
         title={form.configuration?.settings.publicName || form.title}
         imagePath={form.brandImagePath}
         alt={form.brandAlt}
@@ -616,7 +618,12 @@ export function PublicResearchForm({ code }: { code: string }) {
           <p className="text-sm leading-6">{urbanUniversityIntro(form.configuration.settings)}</p>
         </section>
       )}
-      {!isUnifor && step === 0 && form.configuration && (
+      {isSimple && step === 0 && (
+        <p className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs leading-5">
+          Carona compartilhada: referência de R$ 6,00 a cada 11 km rodoviários. O valor depende do trecho; esta pesquisa não cobra nem publica viagens.
+        </p>
+      )}
+      {!isUnifor && !isSimple && step === 0 && form.configuration && (
         <div className="space-y-2 border-y py-3">
           {form.configuration.settings.launchDate && <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>}
           <p className="text-sm">{form.configuration.settings.usagePolicy}</p>
@@ -653,8 +660,10 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className={isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-w-0 flex-1 flex-col gap-3"):"flex min-w-0 flex-col gap-4"}>
-        <section id="research-step-content" className={isUnifor
+      <form onSubmit={submit} className={isSimple?"flex min-w-0 flex-col gap-3":isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-w-0 flex-1 flex-col gap-3"):"flex min-w-0 flex-col gap-4"}>
+        <section id="research-step-content" className={isSimple
+          ? "min-w-0 space-y-3 rounded-2xl border border-border/80 bg-card p-3 shadow-sm sm:p-5"
+          : isUnifor
           ? (last && captureEnabled
             ? "min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6"
             : "w-full min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage")
@@ -701,7 +710,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           ) : section ? (
             <ResearchSectionFields
               section={pilotContent!}
-              compact={isUnifor}
+              compact={isUnifor || isSimple}
               schema={form.schema}
               externalRole={participantRole}
               allQuestions={allQuestions}
