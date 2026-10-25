@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
 import { createResearchVisibility } from "@/lib/formulario/research-conditions";
 import { createUniforGroups,setUniforPainAnswers } from "@/lib/formulario/unifor-compact-groups";
+import { isSimpleMobility, applySimplePainAnswer, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
 import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
 import { academicResearchTemplate,displaySurveyDate,getResearchWindowState } from "@/lib/formulario/research-window";
 import {
@@ -201,12 +202,14 @@ export function PublicResearchForm({ code }: { code: string }) {
   const declaredRole = roleId && typeof answers[roleId] === "string" ? String(answers[roleId]) : null;
   // In published legacy university versions, the profile belongs to the journey step.
   const participantRole = declaredRole ?? (pilotRoleConfirmed ? pilotSelectedRole : null);
+  const hasStandaloneJourney = Boolean(form?.configuration) && !isSimpleMobility(form?.schema);
+  const isSimple = isSimpleMobility(form?.schema);
   const visibleStepIndexes = form
     ? [...form.schema.sections.flatMap((section,index) =>
         createResearchVisibility(form.schema,answers,participantRole).sectionVisible(section) ? [index] : []),
-       ...(form.configuration ? [form.schema.sections.length] : [])]
+       ...(hasStandaloneJourney ? [form.schema.sections.length] : [])]
     : [];
-  const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
+  const totalSteps = (form?.schema.sections.length ?? 0) + (hasStandaloneJourney ? 1 : 0);
   const isUnifor = Boolean(form && academicResearchTemplate(form.configuration?.settings.templateKey,isUniforPilotForm(form.id)));
   const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
   const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers,!isUniforPilotForm(form.id),participantRole) : [];
@@ -287,6 +290,8 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     const problems = [
       ...validatePage(sec, answers, allQuestions, form.schema,participantRole),
+      ...(isSimple && sec.questions.some(q=>q.semanticCode==="MOBILITY_PAINS")
+        ? validateSimpleMobilityPains(form.schema,answers) : []),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -368,6 +373,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     const problems = [
       ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions, form.schema,participantRole)),
+      ...validateSimpleMobilityPains(form.schema, cleaned),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -694,7 +700,11 @@ export function PublicResearchForm({ code }: { code: string }) {
               errors={fieldErrors}
               onChange={(id, value) => {
                 setAnswers((a) => cleanAnswers(form.schema,
-                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value) : { ...a,[id]:value },participantRole));
+                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value)
+                    : isSimple ? applySimplePainAnswer(form.schema,a,id,value) : { ...a,[id]:value },participantRole));
+                if (isSimple && id === roleId && typeof value === "string") {
+                  setJourney(previous=>previous ? {...previous,profile:value as ResearchJourney["profile"],mode:"CARONA"}:previous);
+                }
                 setFieldErrors((prev) => ({ ...prev, [id]: "" }));
                 setError("");
               }}
@@ -718,6 +728,14 @@ export function PublicResearchForm({ code }: { code: string }) {
             </p>
           )}
         </section>
+        {isSimple && last && form.configuration && journey && (
+          <section aria-label="Sua rotina e trajeto" className="space-y-3 rounded-xl border border-border bg-card p-4">
+            <h3 className="font-semibold">Seu trajeto habitual</h3>
+            <p className="text-xs text-muted-foreground">Dias, horário e locais ajudam a entender a demanda por caronas na sua região.</p>
+            <ResearchJourneyFields config={form.configuration.settings} value={journey}
+              lockedProfile showConsents={false} onChange={setJourney} />
+          </section>
+        )}
         {last && captureEnabled && (
           <section aria-label="Contato para reconhecimento" className="shrink-0 space-y-2 rounded-xl border border-border bg-card p-3 sm:p-4">
             <h3 className="text-sm font-bold">E-mail para reconhecer sua participação</h3>
