@@ -81,6 +81,19 @@ describe("F01 — formulários simplificados", () => {
     expect(applySimplePainAnswer(schema, wrong, primary!.id, "ATRASOS")).toEqual(wrong);
   });
 
+  it("impede publicar um novo F01 quando o editor apaga a etapa social", () => {
+    const draft = freshTemplate(simpleMobilityTemplates[0]);
+    draft.sections.splice(1,1);
+    expect(inspectSchema(draft).join(" ")).toMatch(/três etapas|dificuldades/);
+  });
+
+  it("impede separar a principal da seleção e remover a opção nenhuma", () => {
+    const draft = freshTemplate(simpleMobilityTemplates[1]);
+    const selected = draft.sections[1].questions.find(q=>q.semanticCode==="MOBILITY_PAINS")!;
+    selected.options = selected.options.filter(option=>option!=="SEM_DIFICULDADES");
+    expect(inspectSchema(draft).join(" ")).toMatch(/seleção de dores|alternativas obrigatórias/);
+  });
+
   it("campos ocultos de outra dificuldade não são enviados", () => {
     const schema = freshTemplate(simpleMobilityTemplates[2]);
     const { pains, primary, other } = simplePainFields(schema);
