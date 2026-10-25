@@ -31,3 +31,19 @@
 - Keep admin analytical sections tabbed and lists paginated, and render saved supplemental form answers only within authorized detail views; this keeps the workspace compact without discarding captured content.
 - Authorize fare reads through the participant client before privileged persistence, and return the saved quote; this prevents unauthorized access and divergent results under concurrent quoting.
 - Persist server-issued expiring offer quotes and attach them transactionally on publication; only these new offers consent to automatic driver acceptance when a passenger quote is saved, preserving historical bilateral proposals.
+
+
+## Mandatory CARONAA product specification — all coding agents (ChatGPT, Codex, Lovable)
+
+**Read `README.md` in full at the start of every implementation, refactor, migration, bug fix or UX change.** Then inspect the affected code, existing tests and this AGENTS.md. Treat README.md as the canonical **product contract** for flows **F01–F09**, and the repository code/tests as evidence of actual implementation status. Do not assume the README means a flow has already shipped.
+
+Required workflow:
+1. Identify the F01–F09 module(s) being changed and state the corresponding README rules before coding.
+2. Audit existing implementations and data contracts; reuse proven services, migrations, permissions and components. Do not duplicate a flow.
+3. In this MVP **do not add or require CPF** in forms, signup, profiles, APIs or new validations. Driver/mototaxi document-related details remain **textual/declaratory only**, with **no mandatory uploads or rigid automated document checks** unless product scope is explicitly updated. Continue enforcing normal authentication/security and do not launch regulated professional transport without appropriate operational/legal review.
+4. Preserve the **R$ 6 per 11 road-km** shared-ride pricing rule, charging for each passenger's contracted subroute; professional fares are a separate policy. Preserve explicit consent for recurrent publishing, alerts, location sharing and detour changes.
+5. Maintain design tokens **#FFBB00** and **#121212**, Sora/Manrope, mobile-first four-tab navigation (Início, Oferecer, Viagens, Perfil), concise forms and transparent states. No fake production metrics.
+6. Run appropriate automated and guided tests, check regression and authorization, and report what was verified vs. pending. Do not claim untested functionality is completed.
+7. Do not silently override README rules. If a change conflicts, request a product decision, then amend documentation only when approved. Never remove this reading requirement when updating agent instructions.
+
+End each development report with: **module, current status, changes/files, tests/results, pending risks, README alignment**. These requirements apply equally to code generated directly or through Lovable, Codex, ChatGPT or collaborators. Existing rules above remain in effect.
