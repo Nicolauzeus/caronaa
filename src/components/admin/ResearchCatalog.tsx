@@ -15,6 +15,7 @@ import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchO
 import { Link } from "@tanstack/react-router";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
 import { ResearchFormEditor } from "@/components/admin/ResearchFormEditor";
+import { SimpleResearchCreator } from "@/components/admin/SimpleResearchCreator";
 import { ResearchFormRemovalDialog } from "@/components/admin/ResearchFormRemovalDialog";
 import { useEffect, useState, type FormEvent } from "react";
 import { checkResearchFormCode, describeResearchCodeConflict, normalizeResearchFormCode, suggestResearchFormCode, validResearchFormCode, type ResearchCodeAvailability } from "@/lib/formulario/research-form-code";
@@ -106,6 +107,7 @@ export function ResearchCatalog() {
   const [audience, setAudience] = useState("GERAL");
   const [municipality, setMunicipality] = useState("");
   const [editing, setEditing] = useState(false);
+  const [simpleCreating, setSimpleCreating] = useState(false);
   const normalizedCode = normalizeResearchFormCode(code);
   const localCodeConflict = items.find((item) => item.code === normalizedCode);
   const remoteCodeConflict = codeLookup?.code === normalizedCode &&
@@ -274,7 +276,8 @@ export function ResearchCatalog() {
           type="button"
           onClick={() => {
             setTab("pesquisas");
-            setEditing(!editing);
+            setSimpleCreating(value => !value);
+            setEditing(false);
           }}
           className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"
         >
@@ -299,6 +302,19 @@ export function ResearchCatalog() {
         <p role="alert" className="rounded-lg border p-3 text-sm">
           {error}
         </p>
+      )}
+      {tab === "pesquisas" && libraryView==="library" && simpleCreating && (
+        <SimpleResearchCreator
+          occupiedCodes={items.map(item=>item.code)}
+          onCreated={(id)=>{
+            setSimpleCreating(false);
+            setCreationNotice("Rascunho F01 criado. Revise as perguntas e publique quando estiver pronto.");
+            setSelected(id);
+            void refresh();
+          }}
+          onAdvanced={()=>{setSimpleCreating(false);setEditing(true);}}
+          onCancel={()=>setSimpleCreating(false)}
+        />
       )}
       {tab === "pesquisas" && libraryView==="library" && editing && (
         <form onSubmit={submit} className="grid min-w-0 gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 sm:p-5">
