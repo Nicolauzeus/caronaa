@@ -1,37 +1,319 @@
-                                                              # Caronaa
+# CARONAA — Especificação oficial do produto
 
-Crie o MVP visual do aplicativo CARONAA (plataforma comunitária de caronas compartilhadas urbanas e intermunicipais).
+> **Documento de referência para ChatGPT, Codex, Lovable e demais desenvolvedores.**  
+> **Versão:** 2.0 — especificação funcional inicial • **Data:** 25/10/2026  
+> **Status:** visão-alvo e requisitos de produto. **Este documento NÃO significa que todas as funcionalidades já estejam implementadas.**
+>
+> **LEITURA OBRIGATÓRIA:** antes de criar, alterar, corrigir ou testar qualquer fluxo ou funcionalidade, leia este `README.md` e o `AGENTS.md`. Confirme no código o que já existe, preserve o que funciona e evite duplicar soluções. Em caso de conflito entre uma proposta técnica e as regras de produto aqui descritas, interrompa a alteração conflitante e registre a divergência antes de prosseguir.
 
-Foco deste primeiro passo:
+## 1. O que é o CARONAA
 
-1. Design: Mobile-first moderno, limpo, paleta com verde/esmeralda e tons escuros/neutros de mobilidade e confiança, cantos arredondados e boa densidade de informação.
-2. Navegação: Header simples e Bottom Navigation fixa para mobile com abas: Início, Buscar, Oferecer, Minhas Caronas e Perfil.
-3. Páginas (todas navegáveis com dados mockados em um arquivo centralizado mockData.ts):
-   - Landing pública ("/") com proposta de valor, CTA para buscar carona e banner para o formulário de validação.
-   - Home ("/home") com busca rápida (origem, destino, data) e lista de caronas sugeridas.
-   - Buscar Carona ("/buscar") com filtros rápidos e cards de motorista (foto, avaliação, trajeto, horário, vagas).
-   - Oferecer Carona ("/oferecer") formulário passo a passo visual.
-   - Minhas Caronas ("/minhas-caronas") com abas "Como passageiro" e "Como motorista".
-   - Perfil ("/perfil") com resumo do usuário.
-4. Rota reservada para o formulário: crie um botão de destaque "Validação Siará Tech Summit" levando para "/formulario" (deixe uma tela placeholder elegante para implementarmos no próximo passo).
+O CARONAA é uma plataforma de mobilidade **mobile-first** que reúne, numa única conta e no mesmo aplicativo:
 
-This project was built with [Lovable](https://lovable.dev).
+1. **Carona compartilhada:** o condutor já pretende fazer um trajeto; o sistema encontra passageiros compatíveis, inclusive em subtrechos e horários próximos. Pode ser pontual ou recorrente.
+2. **Viagem imediata / transporte profissional:** o passageiro solicita um deslocamento para agora; motoristas e mototaxistas disponíveis podem atender, conforme a região e as condições para operação.
 
-## Build with Lovable
+**Princípio de UX:** o passageiro informa de onde sai, aonde vai e quando precisa viajar. A inteligência de matching, recorrência, preços e desvios atua em segundo plano. **Não criar dois aplicativos, duas contas ou dois fluxos de cadastro redundantes.**
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/a55d36f2-9ca3-417b-b6b0-2f968a65d3a2).
+### Regiões prioritárias
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- **Fortaleza / Edson Queiroz:** foco inicial na comunidade da **UNIFOR**, sem limitar trajetos ao bairro.
+- **Maciço de Baturité:** foco na comunidade da **UNILAB** e na mobilidade regional, incluindo Redenção, Acarape e municípios habilitados; estudar especialmente carro e moto sob demanda.
 
-## Development
+A região é uma configuração de disponibilidade do serviço, **não** uma restrição automática da origem/destino de todas as viagens. Não presumir lançamento, cobertura integral ou autorização de operação em municípios que ainda não tenham sido habilitados.
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## 2. Regras de produto inegociáveis para o MVP
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+1. **Não solicitar, exigir, armazenar como requisito novo ou bloquear acesso por CPF.** CPF está **fora do escopo do cadastro neste momento**. Não adicionar novamente o campo em formulários, onboarding, perfil, APIs ou validações novas sem decisão explícita.
+2. **Documentação de motoristas e mototaxistas é apenas informativa/textual nesta fase.** Marca, modelo, placa e informações declaradas podem ser campos de texto. **Não implementar upload obrigatório de documentos, OCR, verificações externas ou bloqueio automático por validação documental rígida no MVP** sem nova definição. Isto **não dispensa** a avaliação de obrigações legais e de segurança antes de disponibilizar transporte profissional ao público.
+3. **Uma conta, múltiplos papéis:** passageiro; condutor de carona compartilhada; motorista/mototaxista profissional, quando a modalidade estiver habilitada. O usuário não precisa criar outra conta para mudar ou acumular papéis.
+4. **Nenhum dado fictício como se fosse real:** indicadores, preços reais, mapas, demanda, avaliações e disponibilidades devem vir de fontes reais/autorizadas. Mocks só em testes ou exemplos explicitamente identificados.
+5. **Respeitar escolhas e consentimentos:** publicação recorrente, notificações, localização e propostas de desvio não podem ser ativadas silenciosamente.
+6. **Nunca afirmar conclusão por tela pronta:** requer validação funcional, persistência, permissões, estados de erro, testes e confirmação de que o fluxo não quebrou módulos existentes.
+
+## 3. Estrutura de navegação e UX
+
+### Menu inferior — quatro destinos
+
+- **Início:** mapa, origem/destino, modos de viagem e atalhos.
+- **Oferecer:** publicar carona; ferramentas de disponibilidade profissional apenas para usuários habilitados.
+- **Viagens:** futuras, em andamento, histórico, reservas e recorrências.
+- **Perfil:** dados pessoais, veículos, papéis, preferências, avaliações e ajustes.
+
+### Tela inicial do passageiro
+
+1. Informar origem (GPS autorizado ou digitação).
+2. Informar destino.
+3. Escolher **Compartilhar carona** ou **Viajar agora**.
+4. Visualizar opções elegíveis com **preço, horário/ETA, embarque, tipo de veículo e avaliação**.
+5. Confirmar e acompanhar no mapa.
+
+Não exigir que o passageiro entenda o algoritmo de matching para viajar.
+
+### Identidade visual obrigatória
+
+- Primária: **`#FFBB00`**; dark: **`#121212`**; fontes **Sora / Manrope**.
+- Layout minimalista, moderno, mobile-first, campos claros, poucas etapas e feedback de carregamento/vazio/erro/sucesso.
+- Priorizar acessibilidade, contraste, alvos de toque confortáveis e textos curtos em português correto.
+- Não reintroduzir a identidade verde, telas excessivas, cards aninhados, espaços vazios desnecessários ou perguntas repetidas.
+
+## 4. Fluxos de produto — desenvolver e testar um por vez
+
+> **Convenção:** cada módulo inclui objetivo, fluxo, regras e aceite mínimo. As descrições abaixo são **requisitos**, não relatório de implementação. A sequência recomendada é **F01 → F02 → F03 → F04 → F05 → F06 → F07 → F08 → F09**, respeitando dependências reais já existentes.
+
+### F01 — Formulários simples, dores sociais e participação
+
+**Objetivo:** identificar problemas reais de mobilidade, formar uma base de pesquisa qualificada e alimentar o CRM.
+
+**Modelos:** **universidade**, **rua/comunidade** e **empresa**. Compartilham motor, componentes e códigos padronizados das dores; apresentam apenas perguntas contextuais necessárias.
+
+**Fluxo do respondente (ideal: três etapas sem rolagem excessiva):**
+
+```text
+Abrir formulário → Identificação/vínculo e intenção
+→ Tela única de dores sociais → Rotina, trajeto e horários
+→ Contato e consentimento → Salvar resposta e participação no CRM
+→ Confirmação / tela de pré-lançamento, se aplicável
 ```
+
+**Tela de dores — obrigatória nos três modelos:**
+
+- Pergunta única: **“O que mais dificulta seu deslocamento?”**
+- Respostas multi-seleção: **ônibus lotados; preço alto do transporte; tempo de espera prolongado; atrasos frequentes; insegurança no trajeto; falta de transporte disponível; desconforto nas viagens; horários incompatíveis; outra dificuldade; nenhuma dessas dificuldades**.
+- Selecionar **até três** dores; caso selecione duas ou três, indicar **qual é a principal na mesma tela**.
+- A opção **“nenhuma dessas dificuldades”** é exclusiva e mantém a pesquisa honesta; a opção **“outra”** apresenta campo livre curto.
+- **Não duplicar** a pergunta de dificuldades noutra etapa. Separar dores reais de preferências de viagem.
+- Permitir respostas condicionais por papel: passageiro não responde perguntas irrelevantes sobre veículo.
+
+**Criação de formulário no admin:** título, tipo/modelo, instituição/organização quando houver, campus/unidade, região, código/chave única, logomarca/ícone quando fornecido, datas de inscrição/publicação e lançamento opcional. Preservar estados de publicação e histórico. A identidade da participação/selo deve usar a **chave estável do formulário**, não um texto editável.
+
+**CRM:** capturar respostas, dor principal, demais dores, região, origem/destino aproximados, horários, intenção (pedir/oferecer), contexto institucional, consentimento e origem do lead; associar múltiplas participações a **um contato**, sem fundir formulários. Usuário participante de duas pesquisas ainda em pré-lançamento deve visualizar **as duas contagens regressivas** separadamente.
+
+**Indicadores:** ranking de dores por região/instituição/perfil, demanda por horários e trajetos, interesse na solução e, posteriormente, métricas reais de impacto. **Respostas de pesquisa validam a existência de problemas percebidos; o impacto do CARONAA precisa ser medido posteriormente com dados observados.**
+
+**Aceite F01:** três modelos respondíveis; seleção e dor principal persistidas; CRM organizado; sem duplicidade indevida; branch por perfil correto; selos e contagens independentes; testes de validação/permissões e UX mobile.
+
+### F02 — Cadastro, conta única e perfis
+
+```text
+Criar conta → Nome, contato, região e foto (progressivamente)
+→ Acesso como passageiro → (opcional) ativar Oferecer
+→ Informar veículo e modalidade → Usar recursos do papel autorizado
+```
+
+- **Passageiro:** nome, região, foto, contato/login e avaliação baseada em viagens realizadas.
+- **Motorista de carro / mototaxista:** nome, região, foto, tipo de veículo, **modelo e placa em texto**, avaliações; demais informações do condutor **declaratórias e textuais** neste MVP.
+- **CPF não é campo deste MVP**; **sem validação documental rígida** como condição técnica geral de cadastro.
+- Uma pessoa pode ser passageira e condutora. Dados já fornecidos não são pedidos a cada oferta.
+- Profissionais e modalidades só ficam **efetivamente disponíveis ao público** após a decisão de habilitação da operação regional e análise de conformidade aplicável. Não confundir essa condição operacional com implementar agora uma checagem documental automatizada.
+
+**Aceite F02:** conta única, passagem de passageiro para condutor sem segundo cadastro, atualização de veículo, persistência e controle adequado de acesso.
+
+### F03 — Oferecer carona pontual e cálculo do valor compartilhado
+
+```text
+Oferecer → Origem/destino → Data, hora e vagas
+→ Mapa com rota rodoviária e preço estimado → Confirmar publicação
+→ Receber solicitações → Aceitar passageiros
+```
+
+**Regra-base de preço da carona compartilhada:**
+
+```text
+Tarifa do trecho (R$) = distância rodoviária do trecho (km) × 6 / 11
+Referência: 11 km = R$ 6,00
+```
+
+- Calcular por **trecho efetivamente contratado por cada passageiro**, e não necessariamente pela distância total do condutor.
+- Usar distância **pela malha viária**, não linha reta. Arredondar somente no resultado monetário, em centavos.
+- Exemplos: **5,5 km = R$ 3,00; 11 km = R$ 6,00; 22 km = R$ 12,00**; trecho de 5 km ≈ **R$ 2,73**.
+- Mostrar valor antes da confirmação. Não impor tarifa mínima, valor dinâmico ou extras não especificados.
+- Exibir veículo previamente salvo, capacidade/vagas e pontos de embarque; não repetir dados do perfil.
+
+**Aceite F03:** tarifa de 11 km exata, subtrechos corretos, arredondamento, mapa, limites de vagas e publicação persistida.
+
+### F04 — Caronas recorrentes, publicação autorizada e alertas
+
+```text
+Publicar oferta → Sugerir rotina quando houver intenção/padrão de uso
+→ Motorista escolhe dias e horário → Autoriza publicação automática
+→ Sistema cria ocorrências futuras → Identifica interessados compatíveis
+→ Envia alertas consentidos → Passageiros solicitam vagas
+```
+
+- Repetir por **dias da semana**, horário e período; permitir pausa, edição e cancelamento de **uma ocorrência** sem apagar toda a rotina.
+- Reconhecer padrões a partir de ofertas fornecidas pelo próprio usuário; **não rastrear viagens privadas para inferir rotinas sem permissão**.
+- Configurar antecedência de publicação, limite de vagas por ocorrência e prevenção de duplicatas.
+- Notificar passageiros com mesmo destino ou **subtrechos compatíveis**, considerando proximidade e hora de embarque.
+- Notificações dependem de preferências/consentimento e precisam evitar spam, incluindo opções de silêncio.
+- Publicação recorrente **nunca habilitada por padrão**.
+
+**Aceite F04:** programar dias úteis, omitir uma quarta-feira, pausar rotina, verificar vagas e notificações corretas sem duplicidade.
+
+### F05 — Pedir carona e matching por rota/subtrechos
+
+```text
+Origem + destino + quando viajar → Consultar caronas
+→ Comparar trajetos viários, sentido, horários e vagas
+→ Classificar melhores opções → Mostrar preço e embarque
+→ Solicitar/confirmar vaga → Acompanhar viagem
+```
+
+- Comparar posições e progresso **ao longo da rota**, sem exigir origem/destino exatamente iguais.
+- Permitir embarque e desembarque intermediários, respeitando a **ordem do trajeto**.
+- Avaliar janela de horário no ponto do passageiro, caminhada aceitável, desvio e ETA.
+- Controlar lotação por **segmentos do percurso** e proteger a última vaga contra concorrência.
+- Classificar sugestões: **compatível, aproximada, indisponível**. Nunca mostrar match incompatível como confirmação garantida.
+- Priorizar viagens com menor inconveniência, horário confiável e preço transparente.
+
+**Aceite F05:** A→E atende passageiros A→C e B→D quando viáveis; rejeita sentido oposto e horário incompatível; não vende mais vagas que a capacidade.
+
+### F06 — Desvios inteligentes e oportunidades de rota
+
+```text
+Oferta publicada → Encontrar demanda próxima → Agrupar interessados
+→ Calcular alternativas em vias reais → Estimar km e minutos adicionais
+→ Comparar receita incremental e custo do desvio
+→ Oferecer sugestão clara ao motorista → Aceitar/rejeitar
+→ Se aceita, reconfirmar passageiros impactados e atualizar oferta
+```
+
+- A plataforma identifica pontos próximos à rota com demanda suficiente e **sugere** trajetos alternativos potencialmente úteis.
+- A comparação considera **passageiros adicionais, tempo, distância extra, combustível/custo estimado, preço dos subtrechos, disponibilidade de vagas e impacto nas reservas atuais**.
+- Não confundir **receita bruta adicional** com vantagem econômica. Em carona compartilhada, respeitar a finalidade de compartilhamento de custos e verificar aderência regulatória.
+- O motorista define/desativa a tolerância a desvios; **o sistema nunca altera unilateralmente uma viagem confirmada**.
+- Não revelar localização precisa de potenciais passageiros a motoristas não autorizados antes da etapa adequada de confirmação.
+- Limitar alertas a oportunidades relevantes e explicar o benefício e o custo de cada opção.
+
+**Aceite F06:** demanda simulada próxima gera alternativas calculadas, com diferenças explícitas; rejeição preserva rota; aceite respeita tempo, vagas e reservas existentes.
+
+### F07 — Encontrar viagem imediata (carro e mototáxi)
+
+```text
+Passageiro → Viajar agora → Origem/destino → Carro ou moto elegível
+→ Exibir estimativa de preço → Solicitar
+→ Buscar profissionais online com base em ETA e elegibilidade operacional
+→ Profissional aceita → Acompanhar chegada
+→ Viagem → Encerramento, pagamento e avaliação
+```
+
+- O serviço profissional é **distinto** da carona compartilhada: destino é definido pela demanda do passageiro.
+- Condutor controla **Ficar online/offline** e aceita ou recusa solicitações.
+- Mostrar identidade/veículo, localização permitida, ETA, preço e cancelamento claros.
+- Evitar estado de busca infinito: limites, timeouts, ausência de profissionais e recuperação de erro.
+- **Preço das viagens profissionais é independente da tarifa de R$ 6/11 km**; exige especificação comercial antes de cobrança.
+- **Informações/documentação textual sem validação rígida automatizada neste MVP**. Antes do serviço real, definir processos proporcionais de segurança, requisitos municipais, seguro/habilitação e regras de transporte profissional aplicáveis. Não declarar essas exigências como concluídas.
+
+**Aceite F07:** simular disponibilidade, pedido, despacho, aceite, corrida, estados, cancelamento e ausência de profissional; validar conformidade antes de habilitar operação real.
+
+### F08 — Acompanhar viagem, notificações, pagamentos e avaliação
+
+```text
+Reserva confirmada → Aviso e dados do embarque → Condutor a caminho
+→ Embarque → Rastreamento durante viagem → Desembarque
+→ Pagamento/liquidação conforme modalidade → Avaliação → Histórico
+```
+
+- Mapa acompanha posição/ETA com permissões explícitas; preservar privacidade e encerrar compartilhamento quando a viagem terminar.
+- Estados sincronizados e consistentes entre condutor/passageiro; permitir suporte, cancelamento e tratamento de falhas de conexão.
+- Notificações: nova oportunidade, vaga solicitada/confirmada, alteração de rota, chegada, início e conclusão.
+- Avaliações apenas de viagens concluídas, sem notas inventadas.
+- **Modelo financeiro acordado para viagens comerciais elegíveis:** plataforma busca **15% líquidos**, motorista **85%**, e passageiro paga a tarifa de processamento separadamente (**Modelo B**). Validar a implementação real do split, webhooks, estornos e regras por modalidade antes de afirmar a liquidação.
+- Não transpor automaticamente o modelo financeiro profissional para a carona compartilhada sem decisão de negócio e avaliação de conformidade.
+
+**Aceite F08:** testar eventos de ponta a ponta, notificações sem duplicações, mapa, cancelamento, repasses e avaliações consistentes.
+
+### F09 — CRM, BI e mensuração de impacto social
+
+```text
+Formulários + perfis + ofertas + solicitações + viagens concluídas
+→ Identidade e permissões → CRM/BI por instituição e região
+→ Dores, demanda, oferta, conversão e impacto observado
+→ Decisões de produto/expansão
+```
+
+- **Uma identidade, múltiplas participações** em formulários distintos.
+- Segmentos: universidade, rua, empresa, região, intenção passageiro/condutor, dor principal, horário e demanda.
+- Métricas: distribuição das dores, trechos procurados, oferta recorrente, taxa de match, conversão pesquisa→viagem, espera, economia estimada e utilização real.
+- Separar **resposta declarada**, **estimativa** e **resultado verificado**. Agregações devem minimizar exposição de dados pessoais/rotas individuais.
+- Nunca alimentar dashboards reais com dados mockados ou métricas inventadas.
+
+**Aceite F09:** participantes de dois formulários aparecem corretamente, BI agrega sem contar a pessoa duas vezes como contato e indicadores distinguem estimativas de resultados reais.
+
+## 5. Princípios técnicos e integração com o projeto existente
+
+- **Não reescrever tudo do zero.** Inspecionar e reaproveitar serviços, componentes, migrations, testes e permissões já existentes.
+- Referências a examinar antes de mexer em fluxos: `src/lib/ride-cost.ts` (tarifa), `src/lib/ride-matching.ts` (matching), `src/lib/ride-routines.ts` (recorrências), `src/lib/ride-opportunities.functions.ts` (oportunidades), `src/routes/_authenticated/oferecer.tsx`, `src/routes/_authenticated/home.tsx` e `src/components/research/` (formulários).
+- Manter integrações reais existentes (autenticação, banco, CRM, mapas, pagamentos, Lovable). Não mudar contratos, migrations ou regras de acesso sem analisar consumidores e consequências.
+- Banco: privilégios por perfil, RLS/autorizações no servidor, idempotência, concorrência de reserva de vaga e proteção de dados sensíveis.
+- Formulários publicados e pesquisas antigas exigem compatibilidade, migrações planejadas e testes; não apagar respostas para simplificar UI.
+- Sem validação documental rígida **não significa** dispensar autenticação, validação básica dos campos, segurança da aplicação, políticas de privacidade ou adequação legal.
+- Mudanças grandes devem ser modulares, testáveis, com rollback quando envolverem dados/infraestrutura. Não realizar migrations destrutivas sem plano e autorização.
+
+## 6. Definition of Done por fluxo
+
+Antes de declarar qualquer F01–F09 como concluído:
+
+- [ ] Leu **README.md e AGENTS.md** e identificou o fluxo/versão envolvidos.
+- [ ] Auditou a implementação real, distinguindo **existe / parcial / ausente**.
+- [ ] Definiu alterações mínimas, dependências, riscos e o que será preservado.
+- [ ] Implementou frontend mobile-first, backend/persistência e permissões necessários.
+- [ ] Cobriu estados loading, vazio, erro, offline/cancelamento quando aplicáveis.
+- [ ] Executou testes unitários, integração e testes orientados a fluxo, ou relatou o que não foi possível testar.
+- [ ] Verificou que não reapareceram **CPF**, **validação documental rígida**, mocks disfarçados de reais ou telas duplicadas.
+- [ ] Documentou resultado, testes executados, arquivos alterados e pendências, **sem declarar sucesso não comprovado**.
+- [ ] Atualizou o README e o AGENTS.md **quando houver decisão aprovada que altere o contrato de produto**.
+
+**Roteiro obrigatório de resposta de agentes ao trabalhar num módulo:**
+
+```text
+1. Módulo: F0X — objetivo e regras do README aplicadas
+2. Situação atual: implementado / parcial / ausente (com arquivos examinados)
+3. Alterações feitas: arquivos, migrações, contratos e UX
+4. Testes: comandos, cenários e resultados verificáveis
+5. Pendências/riscos: o que ainda NÃO está pronto
+6. Documentação: conflito com README? houve atualização autorizada?
+```
+
+## 7. Ordem recomendada
+
+| Etapa | Módulo | Principal teste |
+| --- | --- | --- |
+| 1 | **F01** Formulários e dores sociais | Tela única de dores, CRM e participações |
+| 2 | **F02** Cadastro e perfis | Conta única, sem CPF, sem validação documental rígida |
+| 3 | **F03** Oferta e preço compartilhado | 11 km = R$ 6,00; tarifa por subtrecho |
+| 4 | **F04** Carona recorrente | Dias, exceções, permissão e notificações |
+| 5 | **F05** Matching por rota | Subtrechos, sentido, ETA e vagas |
+| 6 | **F06** Desvios inteligentes | Oportunidades, custo/benefício e consentimento |
+| 7 | **F07** Transporte profissional | Online, solicitação, despacho e segurança |
+| 8 | **F08** Viagem/pagamento/avaliação | GPS, estados, cobrança e pós-viagem |
+| 9 | **F09** CRM e BI | Impacto, conversão, privacidade e segmentação |
+
+A ordem é orientação de organização; corrigir previamente um bloqueio de segurança ou uma dependência técnica é permitido, desde que relatado.
+
+## 8. Desenvolvimento, Lovable e governança das alterações
+
+Projeto: [Nicolauzeus/caronaa](https://github.com/Nicolauzeus/caronaa). Editor [Lovable](https://lovable.dev/projects/a55d36f2-9ca3-417b-b6b0-2f968a65d3a2).
+
+**Para todo agente — ChatGPT, Codex, Lovable ou colaborador:**
+
+1. **Ler este README antes de propor ou executar mudanças.** Depois, ler `AGENTS.md` e verificar o código do módulo.
+2. Identificar qual fluxo **F01–F09** será afetado e confrontar a implementação com as regras.
+3. Quando houver conflito com este documento, **não substituir silenciosamente a regra**: solicitar decisão do responsável pelo produto.
+4. Não criar funcionalidades fora do escopo, não reintroduzir CPF/checagem documental rígida e não alterar a tarifa da carona por iniciativa própria.
+5. Preferir mudanças pequenas com testes objetivos e preservar dados reais e compatibilidade.
+6. Atualizar a documentação após decisões de produto aprovadas. O README é a **fonte de verdade de intenção funcional**, e o código/testes são a fonte de verdade do **estado realmente implementado**.
+
+A integração Lovable–GitHub requer preservar histórico compartilhado; **não usar force-push, rebase de commits já publicados ou operações que apaguem histórico**.
+
+### Comandos locais
+
+```bash
+npm ci
+npm run dev
+npm run test
+npm run lint
+npm run build
+```
+
+> **Regra final:** **CARONAA simples na interface, inteligente na operação, mensurável no impacto.** Nenhum desenvolvimento novo deve contrariar estes fluxos sem autorização de uma revisão do produto.
