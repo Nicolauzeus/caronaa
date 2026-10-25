@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CarFront, CheckCircle2, Clock3, Leaf, MapPin, Route as RouteIcon, UsersRound, Wallet } from "lucide-react";
+import { ArrowRight, CarFront, CheckCircle2, Clock3, Leaf, MapPin, UsersRound, Wallet } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { AppShell } from "@/components/caronaa/AppShell";
-import { Brand } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { getCampaignAttribution, trackFunnelEvent } from "@/lib/funnel-events";
