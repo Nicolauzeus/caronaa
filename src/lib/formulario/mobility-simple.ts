@@ -65,10 +65,6 @@ function template(key: string, nature: string, label: string, affiliationLabel: 
         {
           id: "f01_routine", title: "Sua rotina",
           questions: [
-            { id: "f01_frequency", label: "Com que frequência você se desloca?",
-              type: "single_choice", required: true,
-              options: ["DIARIAMENTE", "ALGUNS_DIAS", "EVENTUALMENTE"],
-              semanticCode: "TRAVEL_FREQUENCY" },
             { id: "f01_adoption", label: "Você experimentaria o CARONAA?",
               type: "single_choice", required: true,
               options: ["SIM", "TALVEZ", "NAO"], semanticCode: "ADOPTION_INTENT" },
