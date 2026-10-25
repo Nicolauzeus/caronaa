@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { SurveySchema } from "@/lib/formulario/research-templates";
 import { createResearchVisibility } from "@/lib/formulario/research-conditions";
 import { createUniforGroups,setUniforPainAnswers } from "@/lib/formulario/unifor-compact-groups";
+import { isSimpleMobility, applySimplePainAnswer, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
 import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
 import { academicResearchTemplate,displaySurveyDate,getResearchWindowState } from "@/lib/formulario/research-window";
 import {
@@ -32,6 +33,7 @@ import {
   type ResearchJourney,
 } from "@/lib/formulario/research-configuration";
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
+import { SimpleResearchJourney } from "./SimpleResearchJourney";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
 import { REGIONAL_UNIVERSITY_KEY, regionalUniversityIntro, validateRegionalUniversityAnswers } from "@/lib/formulario/regional-university";
 import { EVENT_EXIT_MATCH_KEY, eventExitMatchIntro, validateEventExitAnswers, validateEventExitJourney } from "@/lib/formulario/event-exit-match";
@@ -130,12 +132,20 @@ export function PublicResearchForm({ code }: { code: string }) {
         setLoading(false);
         return;
       }
-      setJourney(configuration ? initialResearchJourney(configuration.settings) : null);
+      if (configuration && isSimpleMobility(v.schema_json)) {
+        const initial=initialResearchJourney(configuration.settings);
+        setJourney({ ...initial, originArea:"", destinationArea:"", outboundTime:"", otherOutboundTime:true });
+      } else setJourney(configuration ? initialResearchJourney(configuration.settings) : null);
       // Graceful staged rollout: the form does not require contact collection
       // until the migration-backed RPC is available.
       const canCapture = Boolean(configuration?.settings.emailCaptureEnabled) &&
         await researchLeadCaptureEnabled(f.id);
       if (!alive) return;
+      if (isSimpleMobility(v.schema_json) && !canCapture) {
+        setError("O CRM e a captura de e-mail ainda não estão habilitados para este novo formulário. Contate a equipe responsável.");
+        setLoading(false);
+        return;
+      }
       setCaptureEnabled(canCapture);
       setForm({
         id: f.id,
@@ -201,12 +211,14 @@ export function PublicResearchForm({ code }: { code: string }) {
   const declaredRole = roleId && typeof answers[roleId] === "string" ? String(answers[roleId]) : null;
   // In published legacy university versions, the profile belongs to the journey step.
   const participantRole = declaredRole ?? (pilotRoleConfirmed ? pilotSelectedRole : null);
+  const hasStandaloneJourney = Boolean(form?.configuration) && !isSimpleMobility(form?.schema);
+  const isSimple = isSimpleMobility(form?.schema);
   const visibleStepIndexes = form
     ? [...form.schema.sections.flatMap((section,index) =>
         createResearchVisibility(form.schema,answers,participantRole).sectionVisible(section) ? [index] : []),
-       ...(form.configuration ? [form.schema.sections.length] : [])]
+       ...(hasStandaloneJourney ? [form.schema.sections.length] : [])]
     : [];
-  const totalSteps = (form?.schema.sections.length ?? 0) + (form?.configuration ? 1 : 0);
+  const totalSteps = (form?.schema.sections.length ?? 0) + (hasStandaloneJourney ? 1 : 0);
   const isUnifor = Boolean(form && academicResearchTemplate(form.configuration?.settings.templateKey,isUniforPilotForm(form.id)));
   const pilotRoleStep = isUnifor && !roleId && !pilotRoleConfirmed;
   const uniforGroups = isUnifor && form ? createUniforGroups(form.schema,answers,!isUniforPilotForm(form.id),participantRole) : [];
@@ -287,6 +299,8 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     const problems = [
       ...validatePage(sec, answers, allQuestions, form.schema,participantRole),
+      ...(isSimple && sec.questions.some(q=>q.semanticCode==="MOBILITY_PAINS")
+        ? validateSimpleMobilityPains(form.schema,answers) : []),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, answers) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -368,6 +382,7 @@ export function PublicResearchForm({ code }: { code: string }) {
     }
     const problems = [
       ...form.schema.sections.flatMap((section) => validatePage(section, cleaned, allQuestions, form.schema,participantRole)),
+      ...validateSimpleMobilityPains(form.schema, cleaned),
       ...(form.configuration?.settings.templateKey === URBAN_UNIVERSITY_KEY
         ? validateUrbanUniversityAnswers(form.schema, cleaned) : []),
       ...(form.configuration?.settings.templateKey === REGIONAL_UNIVERSITY_KEY
@@ -551,7 +566,9 @@ export function PublicResearchForm({ code }: { code: string }) {
   const pilotContent = isUnifor && section && currentGroup
     ? {...section,title:currentGroup.title,questions:currentGroup.questions} : section;
   return (
-    <main className={isUnifor
+    <main className={isSimple
+      ? "mx-auto flex min-h-[100dvh] w-full max-w-lg min-w-0 flex-col gap-3 px-3 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-5"
+      : isUnifor
       ? last && captureEnabled
         ? "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-28 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-6"
         : "mx-auto flex min-h-[100dvh] w-full max-w-2xl min-w-0 flex-col gap-3 px-4 pb-[calc(env(safe-area-inset-bottom)+96px)] pt-[max(12px,env(safe-area-inset-top))] sm:px-6"
@@ -561,7 +578,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           <span className="font-display text-base font-black tracking-wide text-primary">CARONAA <span className="text-foreground">· UNIFOR</span></span>
           <span className="text-[11px] font-semibold text-muted-foreground">Estreia · {UNIFOR_LAUNCH_DAY}</span>
         </header>
-      ) : <ResearchBrandHeader compact={isUnifor}
+      ) : <ResearchBrandHeader compact={isUnifor || isSimple}
         title={form.configuration?.settings.publicName || form.title}
         imagePath={form.brandImagePath}
         alt={form.brandAlt}
@@ -601,7 +618,12 @@ export function PublicResearchForm({ code }: { code: string }) {
           <p className="text-sm leading-6">{urbanUniversityIntro(form.configuration.settings)}</p>
         </section>
       )}
-      {!isUnifor && step === 0 && form.configuration && (
+      {isSimple && step === 0 && (
+        <p className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs leading-5">
+          Carona compartilhada: referência de R$ 6,00 a cada 11 km rodoviários. O valor depende do trecho; esta pesquisa não cobra nem publica viagens.
+        </p>
+      )}
+      {!isUnifor && !isSimple && step === 0 && form.configuration && (
         <div className="space-y-2 border-y py-3">
           {form.configuration.settings.launchDate && <p className="text-sm font-medium">{launchMessage(form.configuration.settings)}</p>}
           <p className="text-sm">{form.configuration.settings.usagePolicy}</p>
@@ -638,8 +660,10 @@ export function PublicResearchForm({ code }: { code: string }) {
           />
         </div>
       </div>
-      <form onSubmit={submit} className={isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-w-0 flex-1 flex-col gap-3"):"flex min-w-0 flex-col gap-4"}>
-        <section id="research-step-content" className={isUnifor
+      <form onSubmit={submit} className={isSimple?"flex min-w-0 flex-col gap-3":isUnifor?(last&&captureEnabled?"flex min-w-0 flex-col gap-3":"flex min-w-0 flex-1 flex-col gap-3"):"flex min-w-0 flex-col gap-4"}>
+        <section id="research-step-content" className={isSimple
+          ? "min-w-0 space-y-3 rounded-2xl border border-border/80 bg-card p-3 shadow-sm sm:p-5"
+          : isUnifor
           ? (last && captureEnabled
             ? "min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6"
             : "w-full min-w-0 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-6 unifor-form-stage")
@@ -686,7 +710,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           ) : section ? (
             <ResearchSectionFields
               section={pilotContent!}
-              compact={isUnifor}
+              compact={isUnifor || isSimple}
               schema={form.schema}
               externalRole={participantRole}
               allQuestions={allQuestions}
@@ -694,7 +718,11 @@ export function PublicResearchForm({ code }: { code: string }) {
               errors={fieldErrors}
               onChange={(id, value) => {
                 setAnswers((a) => cleanAnswers(form.schema,
-                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value) : { ...a,[id]:value },participantRole));
+                  isUnifor ? setUniforPainAnswers(form.schema,a,id,value)
+                    : isSimple ? applySimplePainAnswer(form.schema,a,id,value) : { ...a,[id]:value },participantRole));
+                if (isSimple && id === roleId && typeof value === "string") {
+                  setJourney(previous=>previous ? {...previous,profile:value as ResearchJourney["profile"],mode:"CARONA"}:previous);
+                }
                 setFieldErrors((prev) => ({ ...prev, [id]: "" }));
                 setError("");
               }}
@@ -718,6 +746,13 @@ export function PublicResearchForm({ code }: { code: string }) {
             </p>
           )}
         </section>
+        {isSimple && last && form.configuration && journey && (
+          <section aria-label="Sua rotina e trajeto" className="space-y-3 rounded-xl border border-border bg-card p-4">
+            <h3 className="font-semibold">Seu trajeto habitual</h3>
+            <p className="text-xs text-muted-foreground">Dias, horário e locais ajudam a entender a demanda por caronas na sua região.</p>
+            <SimpleResearchJourney config={form.configuration.settings} value={journey} onChange={setJourney} />
+          </section>
+        )}
         {last && captureEnabled && (
           <section aria-label="Contato para reconhecimento" className="shrink-0 space-y-2 rounded-xl border border-border bg-card p-3 sm:p-4">
             <h3 className="text-sm font-bold">E-mail para reconhecer sua participação</h3>

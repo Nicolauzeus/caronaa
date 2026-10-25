@@ -144,6 +144,35 @@ export function inspectSchema(schema: SurveySchema): string[] {
         errors.push("No modelo acadêmico rápido, o campo " + code + " deve continuar obrigatório.");
     }
   }
+  if (schema.experience === "MOBILITY_SIMPLE_V1") {
+    // Preserve the 3-stage UX and the social-pain data contract when editing new drafts.
+    if (schema.sections.length !== 3)
+      errors.push("O formulário simples F01 deve manter três etapas.");
+    const painSection = schema.sections[1];
+    const all = schema.sections.flatMap(section => section.questions);
+    const pains = all.filter(q=>q.semanticCode==="MOBILITY_PAINS");
+    const primary = all.filter(q=>q.semanticCode==="MOBILITY_PRIMARY_PAIN");
+    const other = all.filter(q=>q.semanticCode==="MOBILITY_OTHER_PAIN");
+    if (pains.length!==1 || primary.length!==1 || other.length!==1 ||
+        !painSection || !pains.every(q=>painSection.questions.includes(q)) ||
+        !primary.every(q=>painSection.questions.includes(q)) ||
+        !other.every(q=>painSection.questions.includes(q)))
+      errors.push("O F01 exige uma única etapa com dificuldades, principal e campo Outra.");
+    if(pains.length===1 && (pains[0].type!=="multiple_choice" ||
+      !pains[0].required || pains[0].minValue!==1 || pains[0].maxValue!==3 ||
+      !pains[0].options.includes("SEM_DIFICULDADES") ||
+      !pains[0].options.includes("OUTRA")))
+      errors.push("A seleção de dores do F01 deve permitir até três opções, incluindo Nenhuma e Outra.");
+    if(primary.length===1 && (primary[0].type!=="single_choice" ||
+      !primary[0].required || (pains.length===1 &&
+      JSON.stringify(primary[0].options)!==JSON.stringify(pains[0].options))))
+      errors.push("A dor principal deve usar as mesmas alternativas obrigatórias das dores selecionadas.");
+    if(other.length===1 && (!other[0].required || other[0].type!=="short_text" ||
+      !other[0].condition || !("questionId" in other[0].condition) ||
+      other[0].condition.questionId!==pains[0]?.id ||
+      other[0].condition.comparison!=="INCLUDES" || other[0].condition.value!=="OUTRA"))
+      errors.push("O campo Outra deve depender da opção Outra na mesma tela.");
+  }
   if (total > 200) errors.push("Limite de 200 perguntas.");
   if (total === 0) errors.push("Adicione perguntas antes de publicar.");
   return errors;

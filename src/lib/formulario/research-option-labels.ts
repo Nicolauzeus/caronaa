@@ -5,6 +5,19 @@
  * Legacy pain descriptions follow the CARONAA pain catalog.
  */
 export const RESEARCH_OPTION_LABELS:Record<string,string>={
+ LOTACAO:"Ônibus lotados",
+ PRECO_ALTO:"Preço alto do transporte",
+ ESPERA_LONGA:"Tempo de espera prolongado",
+ ATRASOS:"Atrasos frequentes",
+ INSEGURANCA_NO_TRAJETO:"Insegurança no trajeto",
+ SEM_TRANSPORTE:"Falta de transporte disponível",
+ DESCONFORTO:"Desconforto nas viagens",
+ HORARIO_INCOMPATIVEL:"Horários incompatíveis",
+ SEM_DIFICULDADES:"Nenhuma dessas dificuldades",
+ DIARIAMENTE:"Diariamente",
+ MORADOR:"Morador(a)",
+ GESTOR:"Gestor(a)",
+ PRESTADOR:"Prestador(a) de serviço",
  CARONA_COMPARTILHADA:"Carona compartilhada no mesmo trajeto",
  MOTOTAXI_REGULARIZADO:"Mototáxi profissional regularizado",
  AMBAS_MODALIDADES:"Ambas, dependendo do trajeto",

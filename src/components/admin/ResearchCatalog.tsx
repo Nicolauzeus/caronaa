@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
+import { F01_TEMPLATE_KEYS } from "@/lib/formulario/mobility-simple";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { validateSurveyWindow } from "@/lib/formulario/research-window";
@@ -14,6 +15,7 @@ import { MunicipalResearchOverview } from "@/components/admin/MunicipalResearchO
 import { Link } from "@tanstack/react-router";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
 import { ResearchFormEditor } from "@/components/admin/ResearchFormEditor";
+import { SimpleResearchCreator } from "@/components/admin/SimpleResearchCreator";
 import { ResearchFormRemovalDialog } from "@/components/admin/ResearchFormRemovalDialog";
 import { useEffect, useState, type FormEvent } from "react";
 import { checkResearchFormCode, describeResearchCodeConflict, normalizeResearchFormCode, suggestResearchFormCode, validResearchFormCode, type ResearchCodeAvailability } from "@/lib/formulario/research-form-code";
@@ -30,8 +32,9 @@ import {
   RESEARCH_NATURES,
   type ResearchForm,
 } from "@/lib/formulario/research-catalog";
-const configuredModelKeys = [URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
+const configuredModelKeys = [...F01_TEMPLATE_KEYS,URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
 const modelDescription:Record<string,{title:string,description:string}>={
+ ...Object.fromEntries(F01_TEMPLATE_KEYS.map(key=>[key,{title:"Pesquisa F01 simplificada",description:"Três etapas com dores sociais em tela única. Configure a região, os horários e habilite a captura consentida de leads no CRM."} ])),
  [URBAN_UNIVERSITY_KEY]:{title:"Universidade urbana · modelo institucional",description:"Informe nome, campus, endereço, lançamento e horários confirmados."},
  [REGIONAL_UNIVERSITY_KEY]:{title:"Universidade regional · mobilidade local",description:"Configure campus, município, turnos e lançamento. Carona e interesse em mototáxi profissional são pesquisas distintas; nenhuma parceria ou serviço profissional é automaticamente autorizado."},
  [EVENT_EXIT_MATCH_KEY]:{title:"Evento · carona na saída",description:"Informe o local, endereço, dia, horários e pontos seguros do evento. Uma resposta nunca representa corrida ou reserva confirmada."},
@@ -104,6 +107,7 @@ export function ResearchCatalog() {
   const [audience, setAudience] = useState("GERAL");
   const [municipality, setMunicipality] = useState("");
   const [editing, setEditing] = useState(false);
+  const [simpleCreating, setSimpleCreating] = useState(false);
   const normalizedCode = normalizeResearchFormCode(code);
   const localCodeConflict = items.find((item) => item.code === normalizedCode);
   const remoteCodeConflict = codeLookup?.code === normalizedCode &&
@@ -272,7 +276,8 @@ export function ResearchCatalog() {
           type="button"
           onClick={() => {
             setTab("pesquisas");
-            setEditing(!editing);
+            setSimpleCreating(value => !value);
+            setEditing(false);
           }}
           className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"
         >
@@ -297,6 +302,19 @@ export function ResearchCatalog() {
         <p role="alert" className="rounded-lg border p-3 text-sm">
           {error}
         </p>
+      )}
+      {tab === "pesquisas" && libraryView==="library" && simpleCreating && (
+        <SimpleResearchCreator
+          occupiedCodes={items.map(item=>item.code)}
+          onCreated={(id)=>{
+            setSimpleCreating(false);
+            setCreationNotice("Rascunho F01 criado. Revise as perguntas e publique quando estiver pronto.");
+            setSelected(id);
+            void refresh();
+          }}
+          onAdvanced={()=>{setSimpleCreating(false);setEditing(true);}}
+          onCancel={()=>setSimpleCreating(false)}
+        />
       )}
       {tab === "pesquisas" && libraryView==="library" && editing && (
         <form onSubmit={submit} className="grid min-w-0 gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 sm:p-5">
@@ -474,6 +492,7 @@ export function ResearchCatalog() {
                     setTemplateKey(t.key);
                     setConfiguration({
                       ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : t.key === REGIONAL_UNIVERSITY_KEY ? regionalUniversityPreset() : t.key === EVENT_EXIT_MATCH_KEY ? eventExitMatchPreset() : t.key === COMPANY_CAMPUS_DRIVER_KEY ? companyCampusDriverPreset() : t.key === CORPORATE_INTERNAL_KEY ? corporateInternalPreset() : newResearchConfiguration(t.key)),
+                      emailCaptureEnabled: F01_TEMPLATE_KEYS.some(key=>key===t.key) ? true : configuration.emailCaptureEnabled,
                       publicName: title,
                       institutionId: code || "",
                       launchDate: configuration.launchDate,

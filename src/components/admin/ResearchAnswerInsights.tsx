@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { InsightChart } from "@/components/admin/InsightChart";
+import { formatResearchOption } from "@/lib/formulario/research-option-labels";
 type Entry = { versionId: string; questionId: string; answer: string; count: number };
 type Summary = { total: number; versions: { id: string; total: number }[]; distributions: Entry[] };
 type Question = {
@@ -74,6 +75,20 @@ export function ResearchAnswerInsights({ formId }: { formId: string }) {
   );
   const current = groups.find((g) => g.key === selected) ?? groups[0];
   const openCount = questions.filter((q) => ["short_text", "long_text"].includes(q.type)).length;
+  const socialPainMetrics = useMemo(() => {
+    const summarize = (semanticCode: string) => {
+      const keys = new Set(questions.filter(q=>q.semanticCode===semanticCode).map(q=>q.versionId+":"+q.id));
+      const counts = new Map<string,number>();
+      for(const row of data?.distributions ?? []) {
+        if(!keys.has(row.versionId+":"+row.questionId)) continue;
+        counts.set(row.answer,(counts.get(row.answer)??0)+row.count);
+      }
+      return [...counts.entries()].map(([name,value])=>({name:formatResearchOption(name),value}))
+        .sort((a,b)=>b.value-a.value);
+    };
+    const hasSimple = questions.some(q=>q.semanticCode==="MOBILITY_PRIMARY_PAIN");
+    return hasSimple ? { selected:summarize("MOBILITY_PAINS"), primary:summarize("MOBILITY_PRIMARY_PAIN") } : null;
+  },[data,questions]);
   const denominator = current
     ? (data?.versions?.find((x) => x.id === current.versionId)?.total ?? null)
     : null;
@@ -104,6 +119,12 @@ export function ResearchAnswerInsights({ formId }: { formId: string }) {
               {data?.versions?.length ?? 0} versões com registros
             </span>
           </div>
+          {socialPainMetrics && (
+            <div className="grid min-w-0 gap-3 lg:grid-cols-2" aria-label="Dores sociais F01">
+              <InsightChart title="Dificuldades relatadas" description="Uma pessoa pode marcar até três dores; dados observados na pesquisa." rows={socialPainMetrics.selected} metricLabel="Respostas"/>
+              <InsightChart title="Dificuldade principal" description="Uma principal por participante; não inclui classificações inferidas." rows={socialPainMetrics.primary} metricLabel="Respostas"/>
+            </div>
+          )}
           {groups.length > 0 && (
             <>
               <label className="block text-sm font-medium">
@@ -131,7 +152,7 @@ export function ResearchAnswerInsights({ formId }: { formId: string }) {
                     ". Em múltipla escolha, a soma pode ultrapassar 100%."
                   }
                   rows={current.entries.map((e) => ({
-                    name: e.answer.replaceAll("_", " "),
+                    name: formatResearchOption(e.answer),
                     value: e.count,
                   }))}
                   metricLabel="Respostas"
