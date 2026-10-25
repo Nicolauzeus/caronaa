@@ -13,7 +13,7 @@ export const F01_TEMPLATE_KEYS = [F01_UNIVERSITY, F01_STREET, F01_COMPANY] as co
 
 export const MOBILITY_PAIN_OPTIONS = [
   "LOTACAO", "PRECO_ALTO", "ESPERA_LONGA", "ATRASOS", "INSEGURANCA",
-  "SEM_TRANSPORTE", "DESCONFORTO", "HORARIO_INCOMPATIVEL", "OUTRA", "NENHUMA",
+  "SEM_TRANSPORTE", "DESCONFORTO", "HORARIO_INCOMPATIVEL", "OUTRA", "SEM_DIFICULDADES",
 ] as const;
 
 const painQuestions: SurveyQuestion[] = [
@@ -104,7 +104,7 @@ export function simplePainFields(schema: SurveySchema) {
 export function normalizeSimplePains(input: string[]): string[] {
   const allowed = new Set<string>(MOBILITY_PAIN_OPTIONS);
   const values = [...new Set(input.filter(value => allowed.has(value)))];
-  return values.includes("NENHUMA") ? ["NENHUMA"] : values.slice(0, 3);
+  return values.includes("SEM_DIFICULDADES") ? ["SEM_DIFICULDADES"] : values.slice(0, 3);
 }
 
 /** Atomic reducer: the primary pain remains consistent with the selected pains. */
@@ -141,7 +141,7 @@ export function validateSimpleMobilityPains(schema: SurveySchema, answers: Answe
   if (!Array.isArray(selected) || selected.length < 1 || selected.length > 3 ||
       new Set(selected).size !== selected.length ||
       selected.some(value => !pains.options.includes(value)) ||
-      (selected.includes("NENHUMA") && selected.length > 1))
+      (selected.includes("SEM_DIFICULDADES") && selected.length > 1))
     return ["Escolha até três dificuldades ou apenas Nenhuma dessas dificuldades."];
   if (typeof answers[primary.id] !== "string" || !selected.includes(answers[primary.id] as string))
     return ["Escolha a principal dificuldade entre as opções marcadas."];
