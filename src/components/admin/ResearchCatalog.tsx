@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
+import { F01_TEMPLATE_KEYS } from "@/lib/formulario/mobility-simple";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { validateSurveyWindow } from "@/lib/formulario/research-window";
@@ -30,8 +31,9 @@ import {
   RESEARCH_NATURES,
   type ResearchForm,
 } from "@/lib/formulario/research-catalog";
-const configuredModelKeys = [URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
+const configuredModelKeys = [...F01_TEMPLATE_KEYS,URBAN_UNIVERSITY_KEY,REGIONAL_UNIVERSITY_KEY,EVENT_EXIT_MATCH_KEY,COMPANY_CAMPUS_DRIVER_KEY,CORPORATE_INTERNAL_KEY];
 const modelDescription:Record<string,{title:string,description:string}>={
+ ...Object.fromEntries(F01_TEMPLATE_KEYS.map(key=>[key,{title:"Pesquisa F01 simplificada",description:"Três etapas com dores sociais em tela única. Configure a região, os horários e habilite a captura consentida de leads no CRM."} ])),
  [URBAN_UNIVERSITY_KEY]:{title:"Universidade urbana · modelo institucional",description:"Informe nome, campus, endereço, lançamento e horários confirmados."},
  [REGIONAL_UNIVERSITY_KEY]:{title:"Universidade regional · mobilidade local",description:"Configure campus, município, turnos e lançamento. Carona e interesse em mototáxi profissional são pesquisas distintas; nenhuma parceria ou serviço profissional é automaticamente autorizado."},
  [EVENT_EXIT_MATCH_KEY]:{title:"Evento · carona na saída",description:"Informe o local, endereço, dia, horários e pontos seguros do evento. Uma resposta nunca representa corrida ou reserva confirmada."},
@@ -474,6 +476,7 @@ export function ResearchCatalog() {
                     setTemplateKey(t.key);
                     setConfiguration({
                       ...(t.key === URBAN_UNIVERSITY_KEY ? urbanUniversityPreset() : t.key === REGIONAL_UNIVERSITY_KEY ? regionalUniversityPreset() : t.key === EVENT_EXIT_MATCH_KEY ? eventExitMatchPreset() : t.key === COMPANY_CAMPUS_DRIVER_KEY ? companyCampusDriverPreset() : t.key === CORPORATE_INTERNAL_KEY ? corporateInternalPreset() : newResearchConfiguration(t.key)),
+                      emailCaptureEnabled: F01_TEMPLATE_KEYS.some(key=>key===t.key) ? true : configuration.emailCaptureEnabled,
                       publicName: title,
                       institutionId: code || "",
                       launchDate: configuration.launchDate,
