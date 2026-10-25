@@ -2,11 +2,16 @@ import {supabase} from "@/integrations/supabase/client";
 import type {Answers} from "@/lib/formulario/research-schema";
 import {isVisible,getNumberBounds,validatePage} from "@/lib/formulario/research-schema";
 import {ResearchSeatPicker} from "./ResearchSeatPicker";
+import {SimpleMobilityPains} from "./SimpleMobilityPains";
+import {isSimpleMobility} from "@/lib/formulario/mobility-simple";
 import {formatResearchOption,getRatingScaleContext} from "@/lib/formulario/research-option-labels";
 import type {SurveyQuestion,SurveySection,SurveySchema} from "@/lib/formulario/research-templates";
 import {createResearchVisibility} from "@/lib/formulario/research-conditions";
 
 export function ResearchSectionFields({section,answers,onChange,idPrefix="",errors={},allQuestions,schema,compact=false,externalRole}:{section:SurveySection;answers:Answers;onChange:(id:string,value:string|string[])=>void;idPrefix?:string;errors?:Record<string,string>;allQuestions?:SurveyQuestion[];schema?:SurveySchema;compact?:boolean;externalRole?:string|null}){
+ if(schema && isSimpleMobility(schema) && section.questions.some(q=>q.semanticCode==="MOBILITY_PAINS")){
+   return <SimpleMobilityPains schema={schema} answers={answers} errors={errors} onChange={onChange}/>;
+ }
  return <div className={compact?"min-w-0 space-y-2":"space-y-5"}>{section.questions.filter(q=>schema?createResearchVisibility(schema,answers,externalRole).questionVisible(q):isVisible(q,answers,allQuestions)).map(q=>{
   const id=idPrefix+q.id;
   const value=answers[q.id];
