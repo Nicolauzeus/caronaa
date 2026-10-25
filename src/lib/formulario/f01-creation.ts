@@ -57,7 +57,7 @@ export function buildF01Draft(input: F01DraftInput): {
     // Informational only. Registration and travel are independent of answering.
     usagePolicy: "Pesquisa voluntária sobre mobilidade. As respostas são usadas para analisar dificuldades e interesse em caronas; não representam reserva ou oferta de viagem.",
     priceReference: "Carona compartilhada: referência de R$ 6,00 para 11 km rodoviários. O valor individual depende do trecho contratado; esta pesquisa não realiza cobrança.",
-    profiles: ["PASSAGEIRO", "MOTORISTA", "AMBOS"] as ResearchConfiguration["profiles"],
+    profiles: ["PASSAGEIRO", "MOTORISTA"] as ResearchConfiguration["profiles"],
     modes: ["CARONA"] as ResearchConfiguration["modes"],
     accessPolicy: "PESQUISA_PUBLICA" as const,
     partnershipConfirmed: false,
