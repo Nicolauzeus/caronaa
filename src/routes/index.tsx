@@ -55,7 +55,7 @@ function LandingPage() {
       <section aria-labelledby="landing-heading" className="relative isolate overflow-hidden bg-[#111111] text-white">
         <img src={caronaaHeroAsset} alt="" aria-hidden="true" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-45" />
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/95 via-black/75 to-black/25" />
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 pb-16 pt-14 sm:px-8 sm:py-20 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:py-28">
+        <div className="mx-auto max-w-7xl px-5 pb-16 pt-14 sm:px-8 sm:py-20 lg:py-28">
           <div className="max-w-2xl">
             <p className="mb-5 text-xs font-extrabold uppercase tracking-[.2em] text-[#f6be49]">
               Viagens compartilhadas. Mais possibilidades.
@@ -77,28 +77,6 @@ function LandingPage() {
             <p className="mt-5 text-sm text-white/70">
               Já tem conta? <Link to="/auth" className="font-bold text-[#ffc451] underline underline-offset-4">Entre aqui</Link>
             </p>
-          </div>
-          <div className="rounded-[2rem] border border-white/20 bg-white/95 p-5 text-[#171717] shadow-2xl sm:p-7">
-            <div className="flex items-center justify-between gap-3 border-b border-black/10 pb-4">
-              <Brand />
-              <span className="rounded-full bg-[#fff3d3] px-3 py-1 text-xs font-bold">Na web</span>
-            </div>
-            <h2 className="mt-6 text-2xl font-extrabold tracking-tight">Encontre caronas na sua rota</h2>
-            <p className="mt-2 text-sm text-neutral-600">Escolha seu trajeto e encontre uma combinação para viajar.</p>
-            <div className="mt-6 space-y-3">
-              <div className="flex min-h-14 items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4">
-                <MapPin size={19} className="text-[#b98100]" />
-                <span className="text-sm text-neutral-600">De onde você vai sair?</span>
-              </div>
-              <div className="flex min-h-14 items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4">
-                <RouteIcon size={19} className="text-[#b98100]" />
-                <span className="text-sm text-neutral-600">Para onde você quer ir?</span>
-              </div>
-            </div>
-            <Button asChild variant="strong" className="mt-5 min-h-12 w-full rounded-xl font-bold">
-              <Link to="/auth" search={{ mode: "cadastro" }}>Buscar caronas <ArrowRight size={18} /></Link>
-            </Button>
-            <p className="mt-3 text-center text-xs text-neutral-500">Cadastre-se ou entre para pesquisar trajetos reais.</p>
           </div>
         </div>
       </section>
