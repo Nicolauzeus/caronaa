@@ -33,6 +33,7 @@ import {
   type ResearchJourney,
 } from "@/lib/formulario/research-configuration";
 import { ResearchJourneyFields, initialResearchJourney } from "./ResearchJourneyFields";
+import { SimpleResearchJourney } from "./SimpleResearchJourney";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityIntro, validateUrbanUniversityAnswers } from "@/lib/formulario/urban-university";
 import { REGIONAL_UNIVERSITY_KEY, regionalUniversityIntro, validateRegionalUniversityAnswers } from "@/lib/formulario/regional-university";
 import { EVENT_EXIT_MATCH_KEY, eventExitMatchIntro, validateEventExitAnswers, validateEventExitJourney } from "@/lib/formulario/event-exit-match";
@@ -131,12 +132,20 @@ export function PublicResearchForm({ code }: { code: string }) {
         setLoading(false);
         return;
       }
-      setJourney(configuration ? initialResearchJourney(configuration.settings) : null);
+      if (configuration && isSimpleMobility(v.schema_json)) {
+        const initial=initialResearchJourney(configuration.settings);
+        setJourney({ ...initial, originArea:"", destinationArea:"", outboundTime:"", otherOutboundTime:true });
+      } else setJourney(configuration ? initialResearchJourney(configuration.settings) : null);
       // Graceful staged rollout: the form does not require contact collection
       // until the migration-backed RPC is available.
       const canCapture = Boolean(configuration?.settings.emailCaptureEnabled) &&
         await researchLeadCaptureEnabled(f.id);
       if (!alive) return;
+      if (isSimpleMobility(v.schema_json) && !canCapture) {
+        setError("O CRM e a captura de e-mail ainda não estão habilitados para este novo formulário. Contate a equipe responsável.");
+        setLoading(false);
+        return;
+      }
       setCaptureEnabled(canCapture);
       setForm({
         id: f.id,
@@ -732,8 +741,7 @@ export function PublicResearchForm({ code }: { code: string }) {
           <section aria-label="Sua rotina e trajeto" className="space-y-3 rounded-xl border border-border bg-card p-4">
             <h3 className="font-semibold">Seu trajeto habitual</h3>
             <p className="text-xs text-muted-foreground">Dias, horário e locais ajudam a entender a demanda por caronas na sua região.</p>
-            <ResearchJourneyFields config={form.configuration.settings} value={journey}
-              lockedProfile showConsents={false} onChange={setJourney} />
+            <SimpleResearchJourney config={form.configuration.settings} value={journey} onChange={setJourney} />
           </section>
         )}
         {last && captureEnabled && (
