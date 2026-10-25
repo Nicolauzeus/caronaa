@@ -53,7 +53,7 @@ function template(key: string, nature: string, label: string, affiliationLabel: 
             { id: "f01_affiliation", label: affiliationLabel, type: "single_choice",
               required: true, options: affiliations, semanticCode: "MOBILITY_AFFILIATION" },
             { id: "f01_role", label: "Como pretende usar o CARONAA?", type: "single_choice",
-              required: true, options: ["PASSAGEIRO", "MOTORISTA", "AMBOS"],
+              required: true, options: ["PASSAGEIRO", "MOTORISTA"],
               semanticCode: "RESEARCH_PARTICIPANT_ROLE" },
           ],
         },
