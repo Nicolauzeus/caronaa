@@ -1,4 +1,5 @@
 import { regionalUniversityTemplate } from "./regional-university";
+import { simpleMobilityTemplates, MOBILITY_SIMPLE_EXPERIENCE } from "./mobility-simple";
 import { eventExitMatchTemplate } from "./event-exit-match";
 import { companyCampusDriverTemplate } from "./company-campus-driver";
 import { corporateInternalTemplate } from "./corporate-internal";
@@ -47,7 +48,7 @@ export type SurveySection = {
   description?: string;
   condition?: ResearchCondition;
 };
-export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" };
+export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" | typeof MOBILITY_SIMPLE_EXPERIENCE };
 export type ResearchTemplate = {
   key: string;
   nature: string;
@@ -57,6 +58,7 @@ export type ResearchTemplate = {
   schema: SurveySchema;
 };
 export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
+  ...simpleMobilityTemplates,
   academicExpressUrbanTemplate,
   regionalUniversityTemplate,
   eventExitMatchTemplate,
@@ -1543,7 +1545,7 @@ export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
   },
 ];
 export const MUNICIPAL_TEMPLATES = RESEARCH_TEMPLATES.filter(
-  (t) => t.nature === "MOBILIDADE_LOCAL",
+  (t) => t.nature === "MOBILIDADE_LOCAL" && t.schema.experience !== MOBILITY_SIMPLE_EXPERIENCE,
 );
 export function freshTemplate(template: ResearchTemplate): SurveySchema {
   // Remap dependencies as well as IDs; published sources are never changed.
