@@ -55,7 +55,7 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  </div>
  <div className="space-y-4 rounded-xl border p-4"><h3 className="text-lg font-bold">Ranking das seis dores</h3>
  {pains.map(p=>{const eligible=data?.painEligible??0;const percent=eligible?p.selectedCount/eligible*100:null;return <div key={p.code}><div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{p.label}</span><span className="font-bold">{p.selectedCount} · {percent===null?"N/D":percent.toFixed(1)+"%"}</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{width:(percent??0)+"%"}}/></div><p className="mt-1 text-xs text-muted-foreground">{p.normalized?"Códigos padronizados · ": ""}Principal: {p.principalCount || "N/D"} · Intensidade média: {p.averageIntensity??"N/D"}</p></div>})}
- <p className="text-xs text-muted-foreground">Dores oficiais são consolidadas de respostas históricas e questionários novos compatíveis. Denominador elegível à pergunta: {data?.painEligible??0}. </p>
+ <p className="text-xs text-muted-foreground">Este ranking utiliza os seis códigos históricos. Os novos modelos F01 usam categorias mais específicas, exibidas em Resultados do questionário, sem misturar bases não equivalentes. Denominador elegível à pergunta: {data?.painEligible??0}. </p>
  <p className="text-xs text-muted-foreground">Percentual = respondentes que relataram a dor ÷ respondentes elegíveis à questão. Não somamos percentuais entre formulários.</p>
  </div></>}
  </section>;
