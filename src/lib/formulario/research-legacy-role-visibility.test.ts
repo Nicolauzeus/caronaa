@@ -44,7 +44,14 @@ describe("legacy and newly published university profile filtering",()=>{
  it("keeps regional published role-aware conditional flow and ordinary passenger questions",()=>{
   const schema=freshTemplate(regionalUniversityTemplate),q=schema.sections.flatMap(s=>s.questions);
   const role=q.find(v=>v.semanticCode==="RESEARCH_PARTICIPANT_ROLE")!;
-  const offered=q.find(v=>v.semanticCode==="REGIONAL_OFFER_POSSIBLE")!;
+  const offered=q.find(v=>v.semanticCode==="SEATS_AVAILABLE")!;
+  const wait=q.find(v=>v.semanticCode==="WAIT_TIME")!;
+  const v=(role:string)=>createResearchVisibility(schema,{[q.find(x=>x.semanticCode==="RESEARCH_PARTICIPANT_ROLE")!.id]:role});
+  // Passengers and drivers answer different questions.
+  expect(v("PASSAGEIRO").questionVisible(wait)).toBe(true);
+  expect(v("MOTORISTA").questionVisible(wait)).toBe(false);
+  expect(v("AMBOS").questionVisible(wait)).toBe(true);
+  expect(v("PROFISSIONAL").questionVisible(offered)).toBe(false);
   const academic=q.find(v=>v.semanticCode==="ACADEMIC_ROLE")!;
   expect(createResearchVisibility(schema,{[role.id]:"PASSAGEIRO"}).questionVisible(offered)).toBe(false);
   expect(createResearchVisibility(schema,{[role.id]:"PASSAGEIRO"}).questionVisible(academic)).toBe(true);

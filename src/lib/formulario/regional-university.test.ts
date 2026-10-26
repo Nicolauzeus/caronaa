@@ -55,14 +55,11 @@ describe("Modelo 02 — Universidade Regional", () => {
     const second = freshTemplate(regionalUniversityTemplate);
     const questions = first.sections.flatMap((section) => section.questions);
     const q = (semantic: string) => questions.find((question) => question.semanticCode === semantic)!;
-    const offered = q("REGIONAL_OFFER_POSSIBLE");
     const seats = q("SEATS_AVAILABLE");
     const professional = q("REGIONAL_PROFESSIONAL_ROLE");
     const professionalInterest = q("REGIONAL_PROFESSIONAL_INTEREST");
     expect(first.sections[0].questions[0].id).not.toBe(second.sections[0].questions[0].id);
-    expect(seats.showWhen?.questionId).toBe(offered.id);
-    expect(isVisible(seats, { [offered.id]: "SIM" })).toBe(true);
-    expect(isVisible(seats, { [offered.id]: "NAO" })).toBe(false);
+    expect(seats.condition).toBeDefined();
     expect(professionalInterest.showWhen?.questionId).toBe(professional.id);
     expect(isVisible(professionalInterest, { [professional.id]: "SIM" })).toBe(true);
     expect(isVisible(professionalInterest, { [professional.id]: "NAO" })).toBe(false);
@@ -98,7 +95,7 @@ describe("Modelo 02 — Universidade Regional", () => {
     const schema = freshTemplate(regionalUniversityTemplate);
     const qs = schema.sections.flatMap((section) => section.questions);
     const q = (code: string) => qs.find((it) => it.semanticCode === code)!.id;
-    const base = { [q("REGIONAL_OFFER_POSSIBLE")]: "SIM" };
+    const base = {};
     expect(validateRegionalUniversityAnswers(schema, {
       ...base, [q("REGIONAL_OFFER_VEHICLE")]: "MOTO", [q("SEATS_AVAILABLE")]: "2",
     }).join(" ")).toMatch(/um lugar/);
