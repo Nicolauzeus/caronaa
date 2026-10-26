@@ -14,7 +14,7 @@ const GROUPS = [
   { title:"Desafios do seu percurso", semantics:["MOBILITY_PAINS"] },
   { title:"Disponibilidade para oferecer", semantics:["URBAN_OFFER_POSSIBLE","URBAN_OFFER_VEHICLE","REGIONAL_OFFER_POSSIBLE","REGIONAL_OFFER_VEHICLE","SEATS_AVAILABLE"] },
   { title:"Sua rotina ao volante", semantics:["COMPANY_DRIVING_FREQUENCY","DRIVER_MONTHLY_COST"] },
-  { title:"Motivação e desvios", semantics:["URBAN_DRIVER_MOTIVATION","COMPANY_MAX_DETOUR"] },
+  { title:"Desvios no trajeto", semantics:["COMPANY_MAX_DETOUR"] },
   { title:"Transporte profissional local", semantics:["REGIONAL_PROFESSIONAL_ROLE","REGIONAL_PROFESSIONAL_INTEREST"] },
   { title:"O que ajudaria você", semantics:["REGIONAL_SERVICE_PREFERENCE","ADOPTION_INTENT","TRUST_FACTORS"] },
   { title:"Confiança e orçamento", semantics:["REGIONAL_BARRIER","ACCEPTABLE_FARE_RANGE"] },
