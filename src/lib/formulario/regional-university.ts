@@ -263,7 +263,6 @@ export function validateRegionalUniversityAnswers(schema: SurveySchema, answers:
   const id = (semantic: string) => questions.find((q) => q.semanticCode === semantic)?.id;
   const pains = answers[id("MOBILITY_PAINS") ?? ""];
   const primary = answers[id("REGIONAL_PRIMARY_PAIN") ?? ""];
-  const offered = answers[id("REGIONAL_OFFER_POSSIBLE") ?? ""];
   const vehicle = answers[id("REGIONAL_OFFER_VEHICLE") ?? ""];
   const seats = answers[id("SEATS_AVAILABLE") ?? ""];
   const professional = answers[id("REGIONAL_PROFESSIONAL_ROLE") ?? ""];
@@ -272,7 +271,7 @@ export function validateRegionalUniversityAnswers(schema: SurveySchema, answers:
   if (Array.isArray(pains) && pains.length > 2) errors.push("Escolha no máximo duas dificuldades.");
   if (Array.isArray(pains) && typeof primary === "string" && !pains.includes(primary))
     errors.push("A dificuldade principal deve ser uma das opções escolhidas.");
-  if (offered === "SIM" && vehicle === "MOTO" && seats !== undefined && Number(seats) !== 1)
+  if (vehicle === "MOTO" && seats !== undefined && Number(seats) !== 1)
     errors.push("Motocicletas podem oferecer apenas um lugar para passageiro, quando permitido.");
   if (professional !== "SIM" && professionalInterest === "SIM")
     errors.push("O interesse profissional é exclusivo para quem declarou atuar como mototaxista.");

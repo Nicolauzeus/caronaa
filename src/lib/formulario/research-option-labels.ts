@@ -118,7 +118,11 @@ export const RESEARCH_OPTION_LABELS:Record<string,string>={
  DE_10_A_15:"De R$ 10 a R$ 15",
  DE_15_A_20:"De R$ 15 a R$ 20",
  ACIMA_20:"Acima de R$ 20",
- DEPENDE_DA_ROTA:"Depende da rota"
+ DEPENDE_DA_ROTA:"Depende da rota",
+ ATE_150:"Até R$ 150",
+ DE_150_A_300:"De R$ 150 a R$ 300",
+ DE_300_A_500:"De R$ 300 a R$ 500",
+ ACIMA_500:"Acima de R$ 500"
 };
 
 /** Safe fallback for administrator-authored options that have no dictionary entry. */
