@@ -21,7 +21,7 @@ import { ResearchSectionFields, ResearchBrandHeader } from "@/components/researc
 import { AcademicExpressForm } from "@/components/research/AcademicExpressForm";
 import type { PublicResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { ResearchBrandManager } from "@/components/admin/ResearchBrandManager";
-import { academicExpressF01Template, isAcademicExpressF01 } from "@/lib/formulario/academic-express-schema";
+import { academicExpressF01Template, isAcademicExpress, isAcademicExpressF01 } from "@/lib/formulario/academic-express-schema";
 import { ResearchConditionEditor } from "@/components/admin/ResearchConditionEditor";
 import {
   RESEARCH_SEMANTICS,
@@ -402,7 +402,7 @@ export function ResearchFormEditor({
             className="rounded-lg border px-3 py-2 text-sm"
             onClick={() => setPreview((v) => !v)}
           >
-            {preview ? "Voltar ao editor" : isAcademicExpressF01(schema) ? "Prévia real · 5 etapas" : "Pré-visualizar como participante"}
+            {preview ? "Voltar ao editor" : isAcademicExpress(schema) ? "Prévia real · 5 etapas" : "Pré-visualizar como participante"}
           </button>
           <button
             className="rounded-lg border px-3 py-2 text-sm"
@@ -512,7 +512,7 @@ export function ResearchFormEditor({
           </button>
         </div>
       )}
-      {preview && isAcademicExpressF01(schema) && expressConfiguration ? (
+      {preview && isAcademicExpress(schema) && expressConfiguration ? (
         <div className="mx-auto flex w-full flex-col items-center gap-3">
           <p className="max-w-lg text-center text-xs text-white/65">
             Prévia interativa real em largura de iPhone. Respostas, leads, interesses e permissões
