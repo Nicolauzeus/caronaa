@@ -50,7 +50,10 @@ BEGIN
   FOR item IN SELECT value FROM jsonb_array_elements(previous->'sections') LOOP
     questions := '[]'::jsonb;
     FOR question IN SELECT value FROM jsonb_array_elements(item->'questions') LOOP
-      IF question->>'semanticCode' = 'COST_PER_TRIP' THEN CONTINUE; END IF;
+      IF question->>'semanticCode' IN (
+        'COST_PER_TRIP', 'TRANSPORT_MODE', 'ACADEMIC_VEHICLE_MODEL',
+        'ACADEMIC_DRIVER_PRIORITY'
+      ) THEN CONTINUE; END IF;
       IF question->>'semanticCode' = 'ACADEMIC_PARTICIPANT_NAME' THEN
         question := jsonb_set(question, '{label}', to_jsonb('Nome completo'::text), true);
       ELSIF question->>'semanticCode' = 'ACADEMIC_ROLE' THEN
@@ -68,8 +71,8 @@ BEGIN
     END LOOP;
     sections := sections || jsonb_build_array(jsonb_set(item, '{questions}', questions, true));
   END LOOP;
-  IF kept_count <> 9 THEN
-    RAISE EXCEPTION 'Unexpected V3 question count after removing COST_PER_TRIP: %', kept_count;
+  IF kept_count <> 6 THEN
+    RAISE EXCEPTION 'Unexpected V3 essential question count: %', kept_count;
   END IF;
 
   sections := sections || jsonb_build_array(
