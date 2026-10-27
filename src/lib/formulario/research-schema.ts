@@ -117,18 +117,17 @@ export function inspectSchema(schema: SurveySchema): string[] {
     const isF01Express = schema.experience === "ACADEMIC_EXPRESS_F01_V2";
     // The express UI renders only this fixed, semantically versioned contract.
     // Prevent publishing an invisible newly-required question via the builder.
-    const requiredSemantics = [
-      "ACADEMIC_PARTICIPANT_NAME",
-      "ACADEMIC_ROLE",
-      "RESEARCH_PARTICIPANT_ROLE",
-      "TRANSPORT_MODE",
-      "ACADEMIC_PASSENGER_PRIORITY",
-      "URBAN_OFFER_VEHICLE",
-      "ACADEMIC_VEHICLE_MODEL",
-      "SEATS_AVAILABLE",
-      "ACADEMIC_DRIVER_PRIORITY",
-      ...(isF01Express ? ["MOBILITY_PAINS", "MOBILITY_PRIMARY_PAIN", "MOBILITY_OTHER_PAIN"] : []),
-    ];
+    const requiredSemantics = isF01Express
+      ? [
+          "ACADEMIC_PARTICIPANT_NAME", "ACADEMIC_ROLE", "RESEARCH_PARTICIPANT_ROLE",
+          "ACADEMIC_PASSENGER_PRIORITY", "URBAN_OFFER_VEHICLE", "SEATS_AVAILABLE",
+          "MOBILITY_PAINS", "MOBILITY_PRIMARY_PAIN", "MOBILITY_OTHER_PAIN",
+        ]
+      : [
+          "ACADEMIC_PARTICIPANT_NAME", "ACADEMIC_ROLE", "RESEARCH_PARTICIPANT_ROLE",
+          "TRANSPORT_MODE", "ACADEMIC_PASSENGER_PRIORITY", "URBAN_OFFER_VEHICLE",
+          "ACADEMIC_VEHICLE_MODEL", "SEATS_AVAILABLE", "ACADEMIC_DRIVER_PRIORITY",
+        ];
     const questions = schema.sections.flatMap((section) => section.questions);
     if (
       questions.length !== requiredSemantics.length ||
@@ -138,13 +137,12 @@ export function inspectSchema(schema: SurveySchema): string[] {
     ) {
       errors.push(
         isF01Express
-          ? "O modelo acadêmico F01 exige os nove campos de perfil e as três perguntas de dores sociais."
+          ? "O modelo acadêmico F01 exige seis campos essenciais de perfil e três campos de dores sociais."
           : "O modelo acadêmico rápido exige os nove campos originais. Para adicionar perguntas, use um modelo tradicional.",
       );
     }
     for (const code of requiredSemantics.filter((code) =>
-      code !== "ACADEMIC_VEHICLE_MODEL" && code !== "MOBILITY_OTHER_PAIN" &&
-      (!isF01Express || code !== "ACADEMIC_DRIVER_PRIORITY")
+      code !== "ACADEMIC_VEHICLE_MODEL" && code !== "MOBILITY_OTHER_PAIN"
     )) {
       const q = questions.find((q) => q.semanticCode === code);
       if (q && !q.required)
