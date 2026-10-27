@@ -17,7 +17,7 @@ vi.mock("@/lib/formulario/research-configuration-service", () => ({
   registerResearchInterest: calls.interest,
 }));
 vi.mock("@/lib/formulario/research-lead", () => ({
-  validResearchEmail: (value: string) => /^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$/i.test(value),
+  validResearchEmail: (value: string) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(value),
   captureResearchLead: calls.capture,
 }));
 
@@ -84,9 +84,9 @@ describe("Academic express UX – five compact steps", () => {
 
 describe("University route search + consented GPS", () => {
   const v2 = { ...mockForm, schema: freshTemplate(academicExpressF01Template) };
-  it.each([["UNILAB-style V1", mockForm], ["F01 V2", v2]])(
-    "shows both mobile location actions for %s and permits manual search without GPS",
-    (_, sample) => {
+  it.each([{ label: "UNILAB-style V1", sample: mockForm }, { label: "F01 V2", sample: v2 }])(
+    "shows both mobile location actions for $label and permits manual search without GPS",
+    ({ sample }) => {
       render(<AcademicExpressForm form={sample} captureEnabled user={null}/>);
       fireEvent.change(screen.getByPlaceholderText(sample.schema.experience === "ACADEMIC_EXPRESS_F01_V2"
         ? "Seu nome completo" : "Como prefere ser chamado(a)"), { target: { value: "Pessoa Teste" } });
