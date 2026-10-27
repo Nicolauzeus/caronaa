@@ -49,6 +49,28 @@ describe("F01 — criação rápida mobile-first",()=>{
     }));
   });
 
+  it("permite criar TESTE-CAMPUS fora das regiões padrão e configurar e-mail institucional",async()=>{
+    render(<SimpleResearchCreator occupiedCodes={[]} onCreated={vi.fn()} onAdvanced={vi.fn()} onCancel={vi.fn()}/>);
+    fireEvent.change(screen.getByPlaceholderText("Nome da universidade"),{target:{value:"Campus Teste"}});
+    fireEvent.change(screen.getByLabelText(/Região \*/),{target:{value:"OUTRA"}});
+    fireEvent.change(screen.getByPlaceholderText(/Região Metropolitana/),{target:{value:"Interior do estado"}});
+    fireEvent.change(screen.getByPlaceholderText("Ex.: Recife"),{target:{value:"Recife"}});
+    fireEvent.change(screen.getByPlaceholderText(/Como você se desloca/i),{target:{value:"Pesquisa Campus Teste"}});
+    fireEvent.change(screen.getByPlaceholderText("Ex.: universidade.edu.br"),{target:{value:"campus.teste.br"}});
+    fireEvent.change(screen.getByLabelText(/Início das respostas/i),{target:{value:"2026-10-26"}});
+    fireEvent.change(screen.getByLabelText(/Encerramento das respostas/i),{target:{value:"2026-12-10"}});
+    fireEvent.click(screen.getByText(/Mais opções: código/i));
+    fireEvent.change(screen.getByLabelText(/Código exclusivo/i),{target:{value:"teste-campus"}});
+    fireEvent.click(screen.getByRole("button",{name:/Criar rascunho e revisar/i}));
+    await waitFor(()=>expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
+      code:"TESTE-CAMPUS", municipality:"Recife", academicExpress:true,
+      configuration:expect.objectContaining({
+        region:"Interior do estado", institutionalEmailDomains:["campus.teste.br"],
+        profiles:["PASSAGEIRO","MOTORISTA","AMBOS"],
+      }),
+    })));
+  });
+
   it("não permite reutilizar um código ocupado",()=>{
     render(<SimpleResearchCreator occupiedCodes={["PESQUISA-2026"]} onCreated={vi.fn()} onAdvanced={vi.fn()} onCancel={vi.fn()}/>);
     fireEvent.click(screen.getByText(/Mais opções: código/i));
