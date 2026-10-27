@@ -1,4 +1,5 @@
 import { SavedAnswers } from "@/components/admin/SavedAnswers";
+import { UnifiedCrmWorkspace } from "@/components/admin/UnifiedCrmWorkspace";
 import { ListPagination } from "@/components/admin/ListPagination";
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import {
@@ -67,6 +68,27 @@ import {
 import { cn } from "@/lib/utils";
 
 export function AdminRelacionamentosPage() {
+  const [section, setSection] = useState<"unificado"|"pitch">("unificado");
+  return <div className="space-y-3">
+    <nav aria-label="Áreas do CRM" className="flex flex-wrap gap-2">
+      <button type="button" aria-pressed={section==="unificado"}
+        onClick={()=>setSection("unificado")}
+        className={"min-h-11 rounded-xl border px-4 text-sm font-semibold " +
+          (section==="unificado" ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]" : "border-border")}>
+        CRM unificado
+      </button>
+      <button type="button" aria-pressed={section==="pitch"}
+        onClick={()=>setSection("pitch")}
+        className={"min-h-11 rounded-xl border px-4 text-sm font-semibold " +
+          (section==="pitch" ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]" : "border-border")}>
+        Gestão de Pitch / Cadastro manual
+      </button>
+    </nav>
+    {section === "unificado" ? <UnifiedCrmWorkspace/> : <LegacyPitchRelationshipPage/>}
+  </div>;
+}
+
+function LegacyPitchRelationshipPage() {
   const [page, setPage] = useState(0);
   const [contacts, setContacts] = useState<PitchContact[]>([]);
   const [loading, setLoading] = useState(true);
