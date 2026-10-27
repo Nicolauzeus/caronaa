@@ -74,7 +74,7 @@ describe("CRM unificado — preservação de origens e participações", () => {
     const contacts = consolidateCrmContacts(records, [{contact_key:key,status:"EM_ACOMPANHAMENTO"}]);
     expect(contacts.find(c => c.name==="Ana Silva")?.status).toBe("EM_ACOMPANHAMENTO");
     expect(unifiedCrmMetrics(contacts)).toEqual({
-      total: 2, drivers: 1, passengers: 1, institutionalPercent: 50, newContacts: 0,
+      total: 2, anonymousParticipations: 0, drivers: 1, passengers: 1, institutionalPercent: 50, newContacts: 0,
     });
   });
 
@@ -87,6 +87,9 @@ describe("CRM unificado — preservação de origens e participações", () => {
     ],sts:[],pitch:[]});
     expect(consolidateCrmContacts(anonymous)).toHaveLength(2);
     expect(anonymous.every(r=>r.email===null && r.whatsapp===null)).toBe(true);
+    const metrics = unifiedCrmMetrics(consolidateCrmContacts(anonymous));
+    expect(metrics.total).toBe(0);
+    expect(metrics.anonymousParticipations).toBe(2);
   });
 
   it("trata exportações potencialmente perigosas e formata WhatsApp brasileiro", () => {
