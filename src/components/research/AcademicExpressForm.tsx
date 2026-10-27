@@ -347,19 +347,18 @@ export function AcademicExpressForm({
     }
     if (busy || !role) return;
     const cleaned = cleanAnswers(schema, answers, role);
+    // A published V2 still requiring pains for everyone needs a new version
+    // before a driver can submit without passenger questions.
+    if (isF01Express && role === "MOTORISTA" && painFields.pains?.required &&
+        !painFields.pains.condition) {
+      setError("Este formulário precisa da atualização do fluxo do motorista. Avise a equipe CARONAA.");
+      return;
+    }
     const problems = schema.sections.flatMap((section) =>
       validatePage(section, cleaned, allQuestions, schema, role),
     );
     if (problems.length) {
       setError(problems[0]);
-      return;
-    }
-    // Existing published V2 versions can require pains for everyone until the
-    // versioned driver migration has been applied. Fail with an explicit notice
-    // instead of submitting a payload the server would reject.
-    if (isF01Express && role === "MOTORISTA" && painFields.pains?.required &&
-        !painFields.pains.condition) {
-      setError("Este formulário precisa da atualização do fluxo do motorista. Avise a equipe CARONAA.");
       return;
     }
     const socialErrors = isF01Express ? validateSimpleMobilityPains(schema, cleaned) : [];
