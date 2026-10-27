@@ -56,10 +56,12 @@ describe("F01 academic express v2 — published v1 remains unchanged", () => {
     expect(inspectSchema(schema)).toEqual([]);
     const questions = schema.sections.flatMap(section => section.questions);
     expect(questions.filter(q => q.semanticCode?.startsWith("MOBILITY_"))).toHaveLength(3);
+    expect(questions).toHaveLength(9);
+    expect(questions.some(q => ["TRANSPORT_MODE", "ACADEMIC_DRIVER_PRIORITY", "ACADEMIC_VEHICLE_MODEL", "COST_PER_TRIP", "ACCEPTABLE_FARE_RANGE"].includes(q.semanticCode ?? ""))).toBe(false);
     const role = questions.find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE")!;
     const both = createResearchVisibility(schema, { [role.id]: "AMBOS" });
     expect(both.questionVisible(questions.find(q => q.semanticCode === "SEATS_AVAILABLE")!)).toBe(true);
-    expect(both.questionVisible(questions.find(q => q.semanticCode === "TRANSPORT_MODE")!)).toBe(false);
+    expect(questions.some(q => q.semanticCode === "TRANSPORT_MODE")).toBe(false);
     expect(both.questionVisible(questions.find(q => q.semanticCode === "ACADEMIC_PASSENGER_PRIORITY")!)).toBe(true);
   });
 });
@@ -81,5 +83,18 @@ describe("dynamic calendar-day countdown", () => {
     expect(daysUntilCommunityLaunch("2026-11-04","America/Fortaleza",now)).toBe(1);
     expect(daysUntilCommunityLaunch("2026-11-04","Asia/Tokyo",now)).toBe(0);
     expect(daysUntilCommunityLaunch(null,"America/Fortaleza",now)).toBeNull();
+  });
+});
+
+describe("UNILAB versioned Express rollout", () => {
+  it("retains V1-V4 and excludes budget/price and technical pain labels from V5", () => {
+    const migration = readFileSync("drizzle/migrations/0118_unilab_f01_v5_rollout.sql", "utf8");
+    expect(migration).toContain("UNILAB-1");
+    expect(migration).toContain("ACADEMIC_EXPRESS_F01_V2");
+    expect(migration).toContain("latest+1");
+    expect(migration).toContain("unilab.edu.br");
+    expect(migration).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
+    expect(migration).not.toContain("DOR_01");
+    expect(migration).not.toContain("ACCEPTABLE_FARE_RANGE");
   });
 });

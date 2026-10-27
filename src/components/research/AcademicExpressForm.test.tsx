@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { AcademicExpressForm } from "./AcademicExpressForm";
 import { academicExpressUrbanTemplate, academicExpressF01Template } from "@/lib/formulario/academic-express-schema";
 import { freshTemplate } from "@/lib/formulario/research-templates";
@@ -7,6 +7,19 @@ import { newResearchConfiguration } from "@/lib/formulario/research-configuratio
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
 vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: vi.fn() }));
+const calls = vi.hoisted(() => ({
+  submit: vi.fn(async () => undefined),
+  interest: vi.fn(async () => "INTERESSE_REGISTRADO"),
+  capture: vi.fn(async () => undefined),
+}));
+vi.mock("@/lib/formulario/research-configuration-service", () => ({
+  submitConfiguredResearch: calls.submit,
+  registerResearchInterest: calls.interest,
+}));
+vi.mock("@/lib/formulario/research-lead", () => ({
+  validResearchEmail: (value: string) => /^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$/i.test(value),
+  captureResearchLead: calls.capture,
+}));
 
 const settings = {
   ...newResearchConfiguration("UNIVERSIDADE_URBANA_CARONAA"),
@@ -37,7 +50,7 @@ describe("Academic express UX – five compact steps", () => {
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: "lead@unifor.br" },
     });
-    expect(screen.getByText(/Domínio institucional reconhecido/)).toBeInTheDocument();
+    expect(screen.getByText(/Domínio de UNIFOR reconhecido imediatamente/)).toBeInTheDocument();
     expect(screen.queryByText(/Comunidade acadêmica verificada/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
@@ -99,12 +112,12 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: "pessoa@campus.test.br" },
     });
-    expect(screen.getByText(/Domínio da comunidade Campus Teste reconhecido/)).toBeInTheDocument();
-    expect(screen.getByText(/a titularidade e o acesso dependem de autenticação/)).toBeInTheDocument();
+    expect(screen.getByText(/Domínio de Campus Teste reconhecido imediatamente/)).toBeInTheDocument();
+    expect(screen.getByText(/O vínculo e o acesso dependem da verificação do e-mail/)).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: "pessoa@gmail.com" },
     });
-    expect(screen.getByText(/Link de ativação será necessário/)).toBeInTheDocument();
+    expect(screen.getByText(/será necessário ativar sua conta/)).toBeInTheDocument();
   });
 
   it("keeps the mandatory social pains together in stage 4 of 5", () => {
@@ -114,9 +127,8 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fillRoute();
     expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
     expect(screen.queryByText("Qual veículo usaria?")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ônibus" }));
+    expect(screen.queryByText("Como você vai hoje?")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
     expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
     const painGroup = screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ });
@@ -139,7 +151,66 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(screen.getByRole("button", { name: "Carro" }));
     fireEvent.click(screen.getByRole("button", { name: "2" }));
     fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+  });
+
+
+  it("requires explicit research consent, then records one-tap interest without a real booking", async () => {
+    calls.submit.mockClear();
+    calls.interest.mockClear();
+    calls.capture.mockClear();
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity("pessoa@unifor.br");
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar carona/i }));
+    fillRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    fireEvent.click(within(screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ }))
+      .getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    const primary = screen.getByRole("button", { name: /Pré-agendar meu interesse/i });
+    expect(primary).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Concordo em participar da pesquisa/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular minha participação/i }));
+    expect(primary).toBeEnabled();
+    fireEvent.click(primary);
+    await waitFor(() => expect(calls.interest).toHaveBeenCalledTimes(1));
+    expect(calls.interest).toHaveBeenCalledWith("f", expect.any(String), "PASSAGEIRO", true, expect.any(Object));
+    expect(calls.submit).toHaveBeenCalledTimes(1);
+    expect(calls.capture).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Interesse no trajeto registrado separadamente/)).toBeInTheDocument();
+  });
+
+
+  it("never sends a research answer or lead from the admin preview", async () => {
+    calls.submit.mockClear();
+    calls.interest.mockClear();
+    calls.capture.mockClear();
+    render(<AcademicExpressForm form={form} captureEnabled user={null} previewMode/>);
+    fillIdentity("preview@unifor.br");
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar carona/i }));
+    fillRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    fireEvent.click(within(screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ }))
+      .getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Li o aviso de privacidade/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular esta participação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pré-agendar meu interesse/i }));
+    expect(screen.getByText(/Prévia finalizada/)).toBeInTheDocument();
+    expect(calls.submit).not.toHaveBeenCalled();
+    expect(calls.interest).not.toHaveBeenCalled();
+    expect(calls.capture).not.toHaveBeenCalled();
+  });
+
+  it("automatically advances a driver after selecting the vehicle and a seat count", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity("condutor@gmail.com");
+    fireEvent.click(screen.getByRole("button", { name: /Quero oferecer carona/i }));
+    fillRoute();
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Carro" }));
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
+    expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+    expect(screen.queryByText("Qual veículo usaria?")).not.toBeInTheDocument();
   });
 });

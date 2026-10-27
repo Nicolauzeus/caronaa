@@ -143,13 +143,17 @@ export const academicExpressUrbanTemplate: ResearchTemplate = {
 
 /** F01 v2 adds social pains. Published academic V1 data and schemas remain unchanged. */
 const f01Sections = structuredClone(academicExpressUrbanSchema.sections);
+// V2 asks only the essential profile questions. Keep V1 intact for historical answers.
+for (const section of f01Sections) {
+  section.questions = section.questions.filter(question => ![
+    "TRANSPORT_MODE", "ACADEMIC_VEHICLE_MODEL", "ACADEMIC_DRIVER_PRIORITY",
+  ].includes(question.semanticCode ?? ""));
+}
 for (const question of f01Sections.flatMap(section => section.questions)) {
   if (question.semanticCode === "ACADEMIC_ROLE")
     question.options = ["ESTUDANTE", "PROFESSOR", "COLABORADOR", "OUTRO"];
-  if (question.semanticCode === "TRANSPORT_MODE")
-    question.condition = roleCondition("PASSAGEIRO");
-  if (question.semanticCode === "ACADEMIC_DRIVER_PRIORITY")
-    question.required = false;
+  // No transport, spending, vehicle-model or generic driver-motivation questions
+  // are required in the express flow. V2 is semantically versioned.
 }
 export const academicExpressF01Schema: SurveySchema = {
   experience: ACADEMIC_EXPRESS_F01_EXPERIENCE,
@@ -185,7 +189,7 @@ export const academicExpressF01Template: ResearchTemplate = {
   nature: "EDUCACAO",
   label: "Universidade · Expressa F01 (5 etapas)",
   description: "Perfil, rotina e dificuldades sociais em cinco etapas, sem repetir perguntas.",
-  estimatedMinutes: 2,
+  estimatedMinutes: 1,
   schema: academicExpressF01Schema,
 };
 export function isAcademicExpressF01(schema?: SurveySchema | null): boolean {

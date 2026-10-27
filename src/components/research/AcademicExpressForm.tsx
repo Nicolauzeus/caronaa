@@ -86,19 +86,22 @@ const textChoices: Record<string, string> = {
   SEM_DIFICULDADES: "Nenhuma dessas dificuldades",
 };
 const shell =
-  "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]";
+  "flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#121212]/90 px-3 py-2 text-left text-sm font-medium backdrop-blur-2xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]";
 const field =
-  "min-h-[52px] w-full min-w-0 rounded-xl border border-white/20 bg-[#202020] px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-[#FFBB00] focus:ring-2 focus:ring-[#FFBB00]/30";
+  "min-h-11 w-full min-w-0 rounded-2xl border border-white/10 bg-[#121212]/90 px-3 text-base text-white backdrop-blur-2xl outline-none placeholder:text-white/40 focus:border-[#FFBB00] focus:ring-2 focus:ring-[#FFBB00]/30";
 const label = "block text-xs font-semibold tracking-wide text-white/75";
 
 export function AcademicExpressForm({
   form,
   captureEnabled,
   user,
+  previewMode = false,
 }: {
   form: AcademicForm;
   captureEnabled: boolean;
   user?: { email?: string | null; email_confirmed_at?: string | null } | null;
+  /** Inert editor preview. It must never call the persistence/lead/interest APIs. */
+  previewMode?: boolean;
 }) {
   const config = form.configuration!;
   const schema = form.schema;
@@ -165,7 +168,7 @@ export function AcademicExpressForm({
   ];
   const domain = email.trim().split("@")[1]?.toLowerCase();
   const hasRecognizedDomain = Boolean(
-    domain && allowedDomains.some((allowed) => allowed.toLowerCase() === domain),
+    domain && allowedDomains.some((allowed) => allowed.trim().toLowerCase() === domain),
   );
   const institution = config.settings.institutionName || form.title;
   const suggestedTimes = [
@@ -173,7 +176,9 @@ export function AcademicExpressForm({
     roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 12 && Number(t.slice(0, 2)) < 18),
     roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 18),
   ].filter((t): t is string => Boolean(t));
-  const plannedLaunch = form.caronaaPresenceOn || config.settings.launchDate;
+  // The admin configuration is authoritative: changing or clearing launchDate
+  // must immediately affect this public experience, regardless of old form metadata.
+  const plannedLaunch = config.settings.launchDate;
   const daysToLaunch = daysUntilCommunityLaunch(plannedLaunch, config.settings.timezone);
 
   useEffect(() => {
@@ -187,6 +192,18 @@ export function AcademicExpressForm({
       const next = q.semanticCode?.startsWith("MOBILITY_")
         ? applySimplePainAnswer(schema, previous, q.id, value)
         : { ...previous, [q.id]: value };
+      // A participant selecting two or three pains must explicitly choose the
+      // main one. A single selected pain already identifies itself.
+      if (isF01Express && q.semanticCode === "MOBILITY_PAINS" && painFields.primary) {
+        const pains = Array.isArray(next[q.id]) ? next[q.id] as string[] : [];
+        const oldPrimary = previous[painFields.primary.id];
+        const previousPains = Array.isArray(previous[q.id]) ? previous[q.id] as string[] : [];
+        if (pains.length === 1) next[painFields.primary.id] = pains[0];
+        else if (previousPains.length > 1 &&
+                 typeof oldPrimary === "string" && pains.includes(oldPrimary))
+          next[painFields.primary.id] = oldPrimary;
+        else delete next[painFields.primary.id];
+      }
       if (q.semanticCode === "URBAN_OFFER_VEHICLE" && value === "MOTO" && seatsQuestion)
         next[seatsQuestion.id] = "1";
       const roleValue = roleQuestion ? next[roleQuestion.id] : null;
@@ -314,7 +331,7 @@ export function AcademicExpressForm({
     );
   }
 
-  async function submit() {
+  async function submit(requestInterest = false) {
     if (stage !== "activation") {
       next();
       return;
@@ -354,6 +371,11 @@ export function AcademicExpressForm({
       setIndex(2);
       return;
     }
+    if (previewMode) {
+      setComplete(true);
+      setError("");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -390,7 +412,7 @@ export function AcademicExpressForm({
           /* Recoverable later. */
         }
       }
-      if (prepareInterest) {
+      if (requestInterest || prepareInterest) {
         try {
           const profiles: Array<"PASSAGEIRO" | "MOTORISTA"> = role === "AMBOS"
             ? interestRole === "AMBOS" ? ["PASSAGEIRO", "MOTORISTA"] : [interestRole]
@@ -400,6 +422,10 @@ export function AcademicExpressForm({
           setInterestRegistered(true);
         } catch {
           setInterestRegistered(false);
+          if (isF01Express) {
+            setError("Sua pesquisa foi salva, mas o interesse não foi confirmado. Você pode tentar novamente.");
+            return;
+          }
         }
       }
       setComplete(true);
@@ -412,7 +438,7 @@ export function AcademicExpressForm({
     }
   }
 
-  const selectable = (q: SurveyQuestion | undefined, columns = false) => (
+  const selectable = (q: SurveyQuestion | undefined, columns = false) => !q ? null : (
     <div
       role="group"
       aria-label={q?.label}
@@ -432,7 +458,13 @@ export function AcademicExpressForm({
                 ? "border-[#FFBB00] bg-[#FFBB00]/10 text-white"
                 : "border-white/15 bg-white/[.04] text-white hover:border-white/40")
             }
-            onClick={() => choice(q, option)}
+            onClick={() => {
+              choice(q, option);
+              if (isF01Express && q.semanticCode === "ACADEMIC_PASSENGER_PRIORITY" &&
+                  (role === "PASSAGEIRO" ||
+                   (role === "AMBOS" && selected(vehicleQuestion) && selected(seatsQuestion))))
+                setSpecificPane("pains");
+            }}
           >
             <span>{textChoices[option] ?? option}</span>
             {active && <CheckCircle2 size={18} className="shrink-0 text-[#FFBB00]" />}
@@ -443,7 +475,7 @@ export function AcademicExpressForm({
   );
 
   const heading = {
-    identity: "Sua universidade, seu caminho",
+    identity: isF01Express ? "Sua comunidade, seu caminho" : "Sua universidade, seu caminho",
     role: "Como você quer se deslocar?",
     route: "Qual é seu trajeto?",
     specific:
@@ -456,8 +488,10 @@ export function AcademicExpressForm({
     activation: "Tudo pronto para participar",
   }[stage];
   return (
-    <main className="relative isolate flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#121212] font-['Manrope'] text-white">
-      <div className="mx-auto flex w-full max-w-3xl shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-5">
+    <main
+      style={{ height: previewMode ? "min(667px, 100dvh)" : "100dvh" }}
+      className="relative isolate flex min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#121212] font-['Manrope'] text-white">
+      <div className="mx-auto flex w-full max-w-3xl shrink-0 items-center justify-between gap-3 px-4 py-2 sm:px-8 sm:py-4">
         <span className="font-bold tracking-tight text-[#FFBB00]">
           CARONAA <span className="font-normal text-white/75">· {institution}</span>
         </span>
@@ -480,25 +514,30 @@ export function AcademicExpressForm({
       </div>
 
       <section
-        className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-2 pt-3 sm:px-8 sm:pt-7"
+        className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-1 pt-2 sm:px-8 sm:pt-5"
         aria-label="Etapa do questionário"
       >
         {complete ? (
-          <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-4 text-center">
+          <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-3 text-center">
             <CheckCircle2 size={48} className="text-emerald-400" aria-hidden="true" />
             <h1 className="font-['Sora'] text-2xl font-bold sm:text-3xl">
-              {interestRegistered === true && plannedLaunch ? "Você está na lista da viagem inaugural!" : "Sua participação foi registrada"}
+              {previewMode
+                ? "Prévia finalizada — nenhuma resposta enviada"
+                : interestRegistered === true && daysToLaunch !== null && daysToLaunch > 0
+                  ? "Seu interesse está registrado para o lançamento!"
+                  : "Sua participação foi registrada"}
             </h1>
             <p className="max-w-sm text-sm leading-6 text-white/70">
-              Seu trajeto de interesse foi salvo para encontrar compatibilidades futuras.
-              Isso não cria reserva, pedido ou oferta confirmada.
+              {previewMode
+                ? "Prévia local do questionário. Nenhum lead, resposta ou interesse foi gravado."
+                : "Seu trajeto de interesse foi salvo para encontrar compatibilidades futuras. Isso não cria reserva, pedido ou oferta confirmada."}
             </p>
-            {interestRegistered === true && (
+            {!previewMode && interestRegistered === true && (
               <p className="text-sm text-emerald-300">
                 Interesse no trajeto registrado separadamente.
               </p>
             )}
-            {interestRegistered === false && (
+            {!previewMode && interestRegistered === false && (
               <p role="status" className="text-sm text-amber-300">
                 A pesquisa foi salva, mas o interesse adicional não pôde ser registrado. Você poderá
                 fazê-lo depois.
@@ -506,27 +545,31 @@ export function AcademicExpressForm({
             )}
             {plannedLaunch && (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-center">
-                <p className="text-3xl font-bold text-[#FFBB00]">{daysToLaunch} dias</p>
+                <p className="text-3xl font-bold text-[#FFBB00]">
+                  {daysToLaunch !== null && daysToLaunch > 0
+                    ? daysToLaunch + (daysToLaunch === 1 ? " dia" : " dias")
+                    : "Data prevista alcançada"}
+                </p>
                 <p className="text-sm text-white/75">{institution} · previsão de início: {displaySurveyDate(plannedLaunch)}</p>
                 <p className="mt-1 text-xs text-white/60">Você poderá acompanhar oportunidades compatíveis após a liberação da comunidade. A data está sujeita a confirmação.</p>
               </div>
             )}
-            {typeof window !== "undefined" && (
+            {!previewMode && typeof window !== "undefined" && (
               <a className="text-sm font-semibold text-[#FFBB00] underline underline-offset-4"
                 href={`https://wa.me/?text=${encodeURIComponent("Participe da pesquisa de mobilidade: " + window.location.href)}`}
                 target="_blank" rel="noopener noreferrer">Compartilhar com colegas no WhatsApp</a>
             )}
-            <a
+            {!previewMode && <a
               href={
                 user ? "/perfil" : "/auth?mode=cadastro&redirect=" + encodeURIComponent("/perfil")
               }
               className="mt-4 flex min-h-13 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-5 font-semibold text-[#121212]"
             >
               {user ? "Personalizar meu perfil" : "Criar conta para acompanhar"}
-            </a>
-            <p className="text-xs text-white/50">
+            </a>}
+            {!previewMode && <p className="text-xs text-white/50">
               O cadastro e a verificação institucional são etapas independentes.
-            </p>
+            </p>}
           </div>
         ) : (
           <div
@@ -574,7 +617,7 @@ export function AcademicExpressForm({
                 <div className="space-y-2">
                   <p className={label}>Seu vínculo</p>
                   {isF01Express ? (
-                    <div role="group" aria-label="Vínculo com a universidade" className="grid grid-cols-2 gap-2">
+                    <div role="group" aria-label="Vínculo com a universidade" className="grid grid-cols-2 gap-1.5">
                       {affiliationQuestion?.options.map(value => (
                         <button key={value} type="button" aria-pressed={selected(affiliationQuestion) === value}
                           onClick={() => updateAnswer(affiliationQuestion, value)}
@@ -619,17 +662,16 @@ export function AcademicExpressForm({
                   </label>
                 )}
                 {captureEnabled && validResearchEmail(email) && (
-                  <p
-                    role="status"
-                    className={`rounded-xl border px-3 py-2 text-xs leading-5 ${hasRecognizedDomain ? "border-[#FFBB00]/25 bg-[#FFBB00]/[.06] text-[#FFBB00]" : "border-white/10 bg-white/[.03] text-white/65"}`}
-                  >
-                    {hasRecognizedDomain
-                      ? isF01Express
-                        ? "✓ Domínio da comunidade " + institution + " reconhecido · a titularidade e o acesso dependem de autenticação."
-                        : "Domínio institucional reconhecido. Confirme a titularidade para validar seu acesso."
+                  <p role="status"
+                    className={`flex items-start gap-2 rounded-xl border px-3 py-2 text-xs leading-5 ${hasRecognizedDomain
+                      ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                      : "border-white/10 bg-white/[.03] text-white/65"}`}>
+                    {hasRecognizedDomain && <CheckCircle2 className="mt-0.5 shrink-0" size={15} aria-hidden="true" />}
+                    <span>{hasRecognizedDomain
+                      ? "Domínio de " + institution + " reconhecido imediatamente. O vínculo e o acesso dependem da verificação do e-mail."
                       : hasVerifiedEmail
-                        ? "E-mail confirmado na conta; vínculo institucional não verificado."
-                        : "Link de ativação será necessário após o cadastro. E-mail informado não libera acesso."}
+                        ? "E-mail confirmado na conta; vínculo institucional ainda não verificado."
+                        : "E-mail externo: será necessário ativar sua conta para acessar a plataforma."}</span>
                   </p>
                 )}
               </>
@@ -872,10 +914,10 @@ export function AcademicExpressForm({
 
             {stage === "specific" && (!isF01Express || specificPane === "profile") && role === "PASSAGEIRO" && (
               <>
-                <div className="space-y-2">
+                {!isF01Express && <div className="space-y-2">
                   <p className={label}>Como você vai hoje?</p>
                   {selectable(transportQuestion, true)}
-                </div>
+                </div>}
                 <div className="space-y-2">
                   <p className={label}>Sua prioridade ao pegar carona</p>
                   {selectable(passengerPriority, true)}
@@ -889,7 +931,7 @@ export function AcademicExpressForm({
                   <p className={label}>Qual veículo usaria?</p>
                   {selectable(vehicleQuestion, true)}
                 </div>
-                <label className={label}>
+                {!isF01Express && <label className={label}>
                   Marca / modelo (opcional)
                   <input
                     className={field + " mt-2"}
@@ -898,7 +940,7 @@ export function AcademicExpressForm({
                     onChange={(e) => updateAnswer(vehicleModelQuestion, e.target.value)}
                     placeholder="Ex.: Honda Fit"
                   />
-                </label>
+                </label>}
                 <div className="space-y-2">
                   <p className={label}>Vagas livres, sem contar o motorista</p>
                   <div className={isF01Express ? "grid grid-cols-4 gap-2" : "grid grid-cols-5 gap-2"}>
@@ -915,6 +957,9 @@ export function AcademicExpressForm({
                         onClick={() => {
                           updateAnswer(seatsQuestion, String(n));
                           setCustomSeats(false);
+                          if (isF01Express && (role === "MOTORISTA" ||
+                              (role === "AMBOS" && selected(passengerPriority) && selected(vehicleQuestion))))
+                            setSpecificPane("pains");
                         }}
                       >
                         {n}
@@ -1026,7 +1071,16 @@ export function AcademicExpressForm({
                     {role ? roleNames[role] : ""} · {journey.days.map(day => ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][day - 1]).join(", ")} · {journey.outboundTime}
                   </p>
                 </div>
-                {plannedLaunch && (
+                {plannedLaunch && (isF01Express ? (
+                  <p className="rounded-xl border border-[#FFBB00]/25 bg-[#FFBB00]/[.06] px-3 py-2 text-xs text-white/75">
+                    <span className="font-semibold text-[#FFBB00]">
+                      {daysToLaunch !== null && daysToLaunch > 0
+                        ? `${daysToLaunch} ${daysToLaunch === 1 ? "dia" : "dias"} para o início previsto`
+                        : "Data prevista alcançada"}
+                    </span>
+                    {" · "}{displaySurveyDate(plannedLaunch)} · {institution}. Sujeito a confirmação.
+                  </p>
+                ) : (
                   <div className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/[.06] p-4">
                     <p className="text-sm font-semibold">
                       Previsão de presença: {displaySurveyDate(plannedLaunch)}
@@ -1036,20 +1090,20 @@ export function AcademicExpressForm({
                       agendada automaticamente.
                     </p>
                   </div>
+                ))}
+                {isF01Express ? (
+                  <p className="text-xs leading-5 text-white/60">
+                    Pré-agendar registra só sua intenção de carona, com seu consentimento. Não é reserva ou match confirmado.
+                  </p>
+                ) : (
+                  <label className="flex min-h-13 items-start gap-3 text-sm leading-6">
+                    <input type="checkbox" className="mt-1.5 accent-[#FFBB00]"
+                      checked={prepareInterest} onChange={(e) => setPrepareInterest(e.target.checked)}/>
+                    <span>Quero registrar interesse no meu trajeto quando houver disponibilidade
+                      (opcional). Não é uma reserva.</span>
+                  </label>
                 )}
-                <label className="flex min-h-13 items-start gap-3 text-sm leading-6">
-                  <input
-                    type="checkbox"
-                    className="mt-1.5 accent-[#FFBB00]"
-                    checked={prepareInterest}
-                    onChange={(e) => setPrepareInterest(e.target.checked)}
-                  />
-                  <span>
-                    Quero registrar interesse no meu trajeto quando houver disponibilidade
-                    (opcional). Não é uma reserva.
-                  </span>
-                </label>
-                {prepareInterest && role === "AMBOS" && (
+                {(prepareInterest || isF01Express) && role === "AMBOS" && (
                   <div className="flex gap-2" role="group" aria-label="Tipo de interesse inicial">
                     {(isF01Express ? (["PASSAGEIRO", "MOTORISTA", "AMBOS"] as const) : (["PASSAGEIRO", "MOTORISTA"] as const)).map((r) => (
                       <button
@@ -1075,10 +1129,9 @@ export function AcademicExpressForm({
                     onChange={(e) => setConsent(e.target.checked)}
                     className="mt-1 accent-[#FFBB00]"
                   />
-                  <span>
-                    Concordo em participar da pesquisa e com o tratamento das respostas conforme o
-                    aviso de privacidade.
-                  </span>
+                  <span>{isF01Express
+                    ? "Li o aviso de privacidade e aceito participar da pesquisa."
+                    : "Concordo em participar da pesquisa e com o tratamento das respostas conforme o aviso de privacidade."}</span>
                 </label>
                 {captureEnabled && (
                   <label className="flex items-start gap-3 text-xs leading-5">
@@ -1089,13 +1142,22 @@ export function AcademicExpressForm({
                       onChange={(e) => setLinkageConsent(e.target.checked)}
                       className="mt-1 accent-[#FFBB00]"
                     />
-                    <span>
-                      Autorizo vincular minha participação ao e-mail informado. Não é necessário
-                      criar uma conta.
-                    </span>
+                    <span>{isF01Express
+                      ? "Autorizo vincular esta participação ao meu e-mail."
+                      : "Autorizo vincular minha participação ao e-mail informado. Não é necessário criar uma conta."}</span>
                   </label>
                 )}
-                {captureEnabled && (
+                {captureEnabled && (isF01Express ? (
+                  <details className="rounded-xl border border-white/10 bg-white/[.03] px-3 py-2">
+                    <summary className="cursor-pointer text-xs text-white/70">Preferências de comunicação (opcional)</summary>
+                    <label className="mt-2 flex items-start gap-2 text-xs text-white/70">
+                      <input type="checkbox" checked={marketingConsent}
+                        onChange={(event) => setMarketingConsent(event.target.checked)}
+                        className="mt-1 accent-[#FFBB00]"/>
+                      Aceito receber novidades do CARONAA por e-mail.
+                    </label>
+                  </details>
+                ) : (
                   <label className="flex items-start gap-3 text-xs leading-5 text-white/65">
                     <input
                       type="checkbox"
@@ -1105,12 +1167,12 @@ export function AcademicExpressForm({
                     />
                     <span>Quero receber novidades do CARONAA por e-mail (opcional).</span>
                   </label>
-                )}
-                <p className="flex items-start gap-2 text-xs leading-5 text-white/55">
+                ))}
+                {!isF01Express && <p className="flex items-start gap-2 text-xs leading-5 text-white/55">
                   <ShieldCheck size={16} className="shrink-0 text-[#FFBB00]" />
                   Responder à pesquisa não comprova matrícula, não cria conta, nem libera acesso
                   antecipado à plataforma.
-                </p>
+                </p>}
               </>
             )}
             {error && (
@@ -1126,13 +1188,13 @@ export function AcademicExpressForm({
       </section>
 
       {!complete && (
-        <div className="z-10 mx-auto flex w-full max-w-3xl shrink-0 gap-3 border-t border-white/10 bg-[#121212] px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 sm:px-8">
+        <div className="z-10 mx-auto flex w-full max-w-3xl shrink-0 flex-wrap gap-2 border-t border-white/10 bg-[#121212]/90 px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl sm:px-8">
           <button
             type="button"
             onClick={back}
             disabled={index === 0 || busy}
             aria-label="Voltar etapa"
-            className="flex min-h-13 min-w-13 items-center justify-center rounded-xl border border-white/20 disabled:opacity-30"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/20 disabled:opacity-30"
           >
             <ArrowLeft size={20} />
           </button>
@@ -1143,22 +1205,27 @@ export function AcademicExpressForm({
             }
             onClick={
               stage === "activation"
-                ? () => {
-                    void submit();
-                  }
+                ? () => { void submit(isF01Express); }
                 : next
             }
-            className="flex min-h-13 flex-1 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-bold text-[#121212] disabled:opacity-50"
+            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-bold text-[#121212] disabled:opacity-50"
           >
             {busy
               ? "Registrando…"
               : stage === "activation"
                 ? isF01Express
-                  ? prepareInterest ? "Ativar Minha Carona" : "Registrar minha participação"
+                  ? "Pré-agendar meu interesse"
                   : "Registrar participação"
                 : "Continuar"}
             {stage !== "activation" && <ArrowRight size={18} />}
           </button>
+          {isF01Express && stage === "activation" && (
+            <button type="button" disabled={busy || !consent || (captureEnabled && !linkageConsent)}
+              onClick={() => void submit(false)}
+              className="min-h-9 w-full rounded-xl border border-white/10 text-xs text-white/70 disabled:opacity-40">
+              Enviar apenas a pesquisa (sem registrar trajeto)
+            </button>
+          )}
         </div>
       )}
     </main>

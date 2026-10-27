@@ -193,6 +193,7 @@ function ResearchDetail() {
                     <ResearchFormEditor
                       formId={form.id}
                       onClose={() => setEditing(false)}
+                      onEditSettings={() => { setEditing(false); setTab("config"); }}
                       onPublished={() => {
                         setEditing(false);
                         void reload();
@@ -203,7 +204,13 @@ function ResearchDetail() {
               </TabsContent>
               <TabsContent value="config">
                 <div className="space-y-4">
-                  {form.status !== "ENCERRADO" && <ResearchConfigurationManager formId={form.id} />}
+                  {form.status !== "ENCERRADO" && <>
+                    <p className="rounded-2xl border border-[#FFBB00]/20 bg-[#FFBB00]/[.05] p-3 text-sm">
+                      Configure aqui o nome exibido, campus, domínio institucional, horários e data de lançamento.
+                      Os campos são específicos desta pesquisa e não dependem do código UNIFOR ou UNILAB.
+                    </p>
+                    <ResearchConfigurationManager formId={form.id} />
+                  </>}
                   <ResearchBrandManager
                     form={form}
                     onSaved={(updated) =>
