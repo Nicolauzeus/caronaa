@@ -73,7 +73,7 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
   const form = { ...mockForm, schema: freshTemplate(academicExpressF01Template) };
 
   function fillIdentity(institutionEmail = "lead@unifor.br") {
-    fireEvent.change(screen.getByPlaceholderText("Como prefere ser chamado(a)"), {
+    fireEvent.change(screen.getByPlaceholderText("Seu nome completo"), {
       target: { value: "Pessoa acadêmica" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Estudante" }));
@@ -84,7 +84,7 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
   }
 
   function fillRoute() {
-    fireEvent.change(screen.getByPlaceholderText("Ex.: Maracanaú"), { target: { value: "Messejana" } });
+    fireEvent.change(screen.getByPlaceholderText("Bairro ou região de origem"), { target: { value: "Messejana" } });
     fireEvent.click(screen.getByRole("button", { name: "Seg–Sex" }));
     fireEvent.click(screen.getByRole("button", { name: /Manhã.*07:00/i }));
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
