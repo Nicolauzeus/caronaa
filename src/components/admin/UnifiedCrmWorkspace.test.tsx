@@ -61,7 +61,7 @@ describe("CRM multiformulários admin", () => {
     render(<UnifiedCrmWorkspace/>);
     await screen.findByText("Ana");
     expect(screen.getByText("CRM & Relacionamentos CARONAA")).toBeInTheDocument();
-    expect(screen.getByRole("region",{name:"Indicadores CRM"})).toHaveTextContent("Total de contatos2");
+    expect(screen.getByRole("region",{name:"Indicadores CRM"})).toHaveTextContent("Total de leads2");
     fireEvent.change(screen.getByRole("combobox",{name:"Filtrar origem"}),{target:{value:"0K9K09K"}});
     expect(screen.getByText("Ana")).toBeInTheDocument();
     expect(screen.queryByText("Investidor")).not.toBeInTheDocument();
