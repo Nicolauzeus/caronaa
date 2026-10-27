@@ -144,6 +144,8 @@ export const academicExpressUrbanTemplate: ResearchTemplate = {
 /** F01 v2 adds social pains. Published academic V1 data and schemas remain unchanged. */
 const f01Sections = structuredClone(academicExpressUrbanSchema.sections);
 for (const question of f01Sections.flatMap(section => section.questions)) {
+  if (question.semanticCode === "ACADEMIC_ROLE")
+    question.options = ["ESTUDANTE", "PROFESSOR", "COLABORADOR", "OUTRO"];
   if (question.semanticCode === "TRANSPORT_MODE")
     question.condition = roleCondition("PASSAGEIRO");
   if (question.semanticCode === "ACADEMIC_DRIVER_PRIORITY")
