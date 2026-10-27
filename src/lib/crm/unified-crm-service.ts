@@ -256,6 +256,8 @@ export function consolidateCrmContacts(
     if (row.whatsapp && row.contact_consent && !current.consented_whatsapp)
       current.consented_whatsapp = row.whatsapp;
     current.can_contact ||= row.contact_consent;
+    if (!overrides.has(key) && current.status === "NOVO" && row.status !== "NOVO")
+      current.status = row.status;
     current.institutional_email ||= row.institutional_email;
     if (current.name.startsWith("Participante") && !row.name.startsWith("Participante"))
       current.name = row.name;
@@ -367,8 +369,8 @@ export function unifiedCrmWhatsappLink(number: string | null): string | null {
 }
 
 function csvCell(value: unknown): string {
-  const s = String(value ?? "").replace(/^[ \t\r\n]+/,"");
-  const escaped = /^[=+\-@]/.test(s) ? "'" + s : s;
+  const s = String(value ?? "");
+  const escaped = /^[ \t\r\n]*[=+\-@]/.test(s) ? "'" + s : s;
   return '"' + escaped.replace(/"/g,'""') + '"';
 }
 export function unifiedCrmCsv(contacts: UnifiedCrmContact[]): string {
