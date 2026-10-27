@@ -55,6 +55,8 @@ export type UnifiedCrmContact = {
   name: string;
   email: string | null;
   whatsapp: string | null;
+  /** Only an explicitly approved messaging number may generate a WhatsApp action. */
+  consented_whatsapp: string | null;
   can_contact: boolean;
   institutional_email: boolean;
   source_form: string;
@@ -133,7 +135,9 @@ export function normalizeUnifiedCrmRows(input: {
       seats: Number(row.seats) >= 1 ? Number(row.seats) : null,
       pains: stringArray(row.pains),
       created_at: stamp(row.created_at),
-      contact_consent: row.contact_consent === true,
+      // Linkage consent means associating a research answer to an email,
+      // NOT permission to initiate unsolicited outreach.
+      contact_consent: false,
       institutional_email: row.institutional_email === true,
       status: statusOrNew(row.status),
       raw_payload: raw,
@@ -228,7 +232,8 @@ export function consolidateCrmContacts(
     if (!current) {
       mapped.set(key, {
         id: row.id, contact_key: key, name: row.name, email: row.email,
-        whatsapp: row.whatsapp, can_contact: row.contact_consent,
+        whatsapp: row.whatsapp, consented_whatsapp: row.contact_consent ? row.whatsapp : null,
+        can_contact: row.contact_consent,
         institutional_email: row.institutional_email, source_form: row.source_form,
         source_forms: [row.source_form],
         academic_role: row.academic_role, mobility_role: row.mobility_role,
@@ -248,6 +253,8 @@ export function consolidateCrmContacts(
     if (row.academic_role && !current.academic_role) current.academic_role = row.academic_role;
     if (row.email && !current.email) current.email = row.email;
     if (row.whatsapp && !current.whatsapp) current.whatsapp = row.whatsapp;
+    if (row.whatsapp && row.contact_consent && !current.consented_whatsapp)
+      current.consented_whatsapp = row.whatsapp;
     current.can_contact ||= row.contact_consent;
     current.institutional_email ||= row.institutional_email;
     if (current.name.startsWith("Participante") && !row.name.startsWith("Participante"))
