@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { AcademicExpressForm } from "./AcademicExpressForm";
 import { academicExpressUrbanTemplate, academicExpressF01Template } from "@/lib/formulario/academic-express-schema";
 import { freshTemplate } from "@/lib/formulario/research-templates";
@@ -7,6 +7,19 @@ import { newResearchConfiguration } from "@/lib/formulario/research-configuratio
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
 vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: vi.fn() }));
+const calls = vi.hoisted(() => ({
+  submit: vi.fn(async () => undefined),
+  interest: vi.fn(async () => "INTERESSE_REGISTRADO"),
+  capture: vi.fn(async () => undefined),
+}));
+vi.mock("@/lib/formulario/research-configuration-service", () => ({
+  submitConfiguredResearch: calls.submit,
+  registerResearchInterest: calls.interest,
+}));
+vi.mock("@/lib/formulario/research-lead", () => ({
+  validResearchEmail: (value: string) => /^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$/i.test(value),
+  captureResearchLead: calls.capture,
+}));
 
 const settings = {
   ...newResearchConfiguration("UNIVERSIDADE_URBANA_CARONAA"),
@@ -139,6 +152,32 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(screen.getByRole("button", { name: "2" }));
     fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
     expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+  });
+
+
+  it("requires explicit research consent, then records one-tap interest without a real booking", async () => {
+    calls.submit.mockClear();
+    calls.interest.mockClear();
+    calls.capture.mockClear();
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity("pessoa@unifor.br");
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar carona/i }));
+    fillRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    fireEvent.click(within(screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ }))
+      .getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    const primary = screen.getByRole("button", { name: /Pré-agendar meu interesse/i });
+    expect(primary).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Concordo em participar da pesquisa/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular minha participação/i }));
+    expect(primary).toBeEnabled();
+    fireEvent.click(primary);
+    await waitFor(() => expect(calls.interest).toHaveBeenCalledTimes(1));
+    expect(calls.interest).toHaveBeenCalledWith("f", expect.any(String), "PASSAGEIRO", true, expect.any(Object));
+    expect(calls.submit).toHaveBeenCalledTimes(1);
+    expect(calls.capture).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Interesse no trajeto registrado separadamente/)).toBeInTheDocument();
   });
 
   it("automatically advances a driver after selecting the vehicle and a seat count", () => {
