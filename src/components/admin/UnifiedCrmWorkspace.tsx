@@ -139,13 +139,13 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
     </header>
 
     <section aria-label="Indicadores CRM" className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-      <Metric label="Total de contatos" value={metrics.total}/>
+      <Metric label="Total de leads" value={metrics.total}/>
       <Metric label="Motoristas potenciais" value={metrics.drivers}/>
       <Metric label="Passageiros" value={metrics.passengers}/>
       <Metric label="E-mails institucionais" value={metrics.institutionalPercent + "%"}/>
       <Metric label="Contatos novos" value={metrics.newContacts}/>
     </section>
-    <p className="text-xs text-white/45">Indicadores calculados sobre os contatos filtrados; percentual institucional entre os contatos com e-mail informado e domínio reconhecido.</p>
+    <p className="text-xs text-white/45">Indicadores do filtro atual. Percentual institucional entre os e-mails com domínio reconhecido. {metrics.anonymousParticipations > 0 && metrics.anonymousParticipations + " participação(ões) sem contato permanecem na lista, mas não são contadas como lead."}</p>
 
     <section aria-label="Filtros combinados CRM" className="grid gap-2 rounded-2xl border border-white/10 bg-white/[.04] p-3 sm:grid-cols-2 lg:grid-cols-6">
       <label className="relative sm:col-span-2 lg:col-span-1">
