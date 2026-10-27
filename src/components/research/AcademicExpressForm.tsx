@@ -638,7 +638,7 @@ export function AcademicExpressForm({
             {stage === "role" && (
               <fieldset className="space-y-2">
                 <legend className={label + " mb-2"}>Como pretende usar o CARONAA?</legend>
-                {(["PASSAGEIRO", "MOTORISTA", "AMBOS"] as const).map((value) => {
+                {(["PASSAGEIRO", "MOTORISTA", "AMBOS"] as const).filter(value => config.settings.profiles.includes(value)).map((value) => {
                   const active = role === value;
                   return (
                     <button
@@ -870,7 +870,7 @@ export function AcademicExpressForm({
               </>
             )}
 
-            {stage === "specific" && role === "PASSAGEIRO" && (
+            {stage === "specific" && (!isF01Express || specificPane === "profile") && role === "PASSAGEIRO" && (
               <>
                 <div className="space-y-2">
                   <p className={label}>Como você vai hoje?</p>
@@ -883,7 +883,7 @@ export function AcademicExpressForm({
               </>
             )}
 
-            {stage === "specific" && (role === "MOTORISTA" || role === "AMBOS") && (
+            {stage === "specific" && (!isF01Express || specificPane === "profile") && (role === "MOTORISTA" || role === "AMBOS") && (
               <>
                 <div className="space-y-2">
                   <p className={label}>Qual veículo usaria?</p>
@@ -901,7 +901,7 @@ export function AcademicExpressForm({
                 </label>
                 <div className="space-y-2">
                   <p className={label}>Vagas livres, sem contar o motorista</p>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className={isF01Express ? "grid grid-cols-4 gap-2" : "grid grid-cols-5 gap-2"}>
                     {[1, 2, 3, 4].map((n) => (
                       <button
                         key={n}
@@ -920,7 +920,7 @@ export function AcademicExpressForm({
                         {n}
                       </button>
                     ))}
-                    <button
+                    {!isF01Express && <button
                       type="button"
                       aria-label="Informar outra quantidade de vagas"
                       aria-pressed={customSeats}
@@ -931,9 +931,9 @@ export function AcademicExpressForm({
                       }
                     >
                       5–7
-                    </button>
+                    </button>}
                   </div>
-                  {customSeats && (
+                  {customSeats && !isF01Express && (
                     <input
                       aria-label="Quantidade personalizada de vagas"
                       type="number"
@@ -946,7 +946,7 @@ export function AcademicExpressForm({
                     />
                   )}
                 </div>
-                {(role === "MOTORISTA" || role === "AMBOS") && (
+                {!isF01Express && (role === "MOTORISTA" || role === "AMBOS") && (
                   <div className="space-y-2">
                     <p className={label}>O que é mais importante para você ao dirigir?</p>
                     {selectable(driverPriority, true)}
@@ -954,25 +954,78 @@ export function AcademicExpressForm({
                 )}
                 {role === "AMBOS" && (
                   <>
-                    <div className="space-y-2">
+                    {!isF01Express && <div className="space-y-2">
                       <p className={label}>Como você costuma se deslocar como passageiro?</p>
                       {selectable(transportQuestion, true)}
-                    </div>
+                    </div>}
                     <div className="space-y-2">
                       <p className={label}>Como passageiro, qual é sua prioridade?</p>
                       {selectable(passengerPriority, true)}
                     </div>
                   </>
                 )}
-                <p className="text-xs leading-5 text-white/50">
+                {!isF01Express && <p className="text-xs leading-5 text-white/50">
                   O CARONAA calculará valores pelo trajeto real; não há promessa de ganhos, Pix ou
                   passageiro confirmado.
-                </p>
+                </p>}
               </>
+            )}
+
+            {stage === "specific" && isF01Express && specificPane === "pains" && painFields.pains && painFields.primary && (
+              <div className="space-y-3">
+                <div role="group" aria-label="O que mais dificulta seu deslocamento?" className="grid grid-cols-2 gap-1.5">
+                  {painFields.pains.options.map(option => {
+                    const active = selectedPains.includes(option);
+                    return <button key={option} type="button" aria-pressed={active}
+                      onClick={() => {
+                        const next = active ? selectedPains.filter(pain => pain !== option)
+                          : option === "SEM_DIFICULDADES" ? [option]
+                          : [...selectedPains.filter(pain => pain !== "SEM_DIFICULDADES"), option];
+                        updateAnswer(painFields.pains, next);
+                      }}
+                      className={"min-h-11 rounded-xl border px-2 py-1.5 text-xs leading-4 transition-colors " +
+                        (active ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]"
+                          : "border-white/10 bg-white/[.04] text-white/80")}>
+                      {textChoices[option] ?? option}
+                    </button>;
+                  })}
+                </div>
+                {selectedPains.length > 1 && (
+                  <fieldset className="space-y-1">
+                    <legend className={label}>Qual dessas é a principal?</legend>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {selectedPains.map(option => (
+                        <button key={option} type="button" aria-pressed={selected(painFields.primary) === option}
+                          onClick={() => updateAnswer(painFields.primary, option)}
+                          className={"min-h-10 rounded-xl border px-2 text-xs " +
+                            (selected(painFields.primary) === option
+                              ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]" : "border-white/10")}>
+                          {textChoices[option] ?? option}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+                {selectedPains.includes("OUTRA") && painFields.other && (
+                  <label className={label}>
+                    Outra dificuldade
+                    <input value={selected(painFields.other)} maxLength={140}
+                      onChange={event => updateAnswer(painFields.other, event.target.value)}
+                      placeholder="Escreva em poucas palavras" className={field + " mt-1"}/>
+                  </label>
+                )}
+              </div>
             )}
 
             {stage === "activation" && (
               <>
+                <div className="rounded-2xl border border-white/10 bg-white/[.04] p-3">
+                  <p className="text-sm font-semibold text-[#FFBB00]">Resumo do seu interesse</p>
+                  <p className="mt-1 text-sm text-white/85">{journey.originArea} → {journey.destinationArea}</p>
+                  <p className="mt-1 text-xs text-white/60">
+                    {role ? roleNames[role] : ""} · {journey.days.map(day => ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][day - 1]).join(", ")} · {journey.outboundTime}
+                  </p>
+                </div>
                 {plannedLaunch && (
                   <div className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/[.06] p-4">
                     <p className="text-sm font-semibold">
@@ -998,7 +1051,7 @@ export function AcademicExpressForm({
                 </label>
                 {prepareInterest && role === "AMBOS" && (
                   <div className="flex gap-2" role="group" aria-label="Tipo de interesse inicial">
-                    {(["PASSAGEIRO", "MOTORISTA"] as const).map((r) => (
+                    {(isF01Express ? ["PASSAGEIRO", "MOTORISTA", "AMBOS"] : ["PASSAGEIRO", "MOTORISTA"] as const).map((r) => (
                       <button
                         key={r}
                         type="button"
@@ -1009,7 +1062,7 @@ export function AcademicExpressForm({
                           (interestRole === r ? "border-[#FFBB00]" : "border-white/20")
                         }
                       >
-                        {r === "PASSAGEIRO" ? "Encontrar" : "Oferecer"}
+                        {r === "PASSAGEIRO" ? "Encontrar" : r === "MOTORISTA" ? "Oferecer" : "Ambos"}
                       </button>
                     ))}
                   </div>
