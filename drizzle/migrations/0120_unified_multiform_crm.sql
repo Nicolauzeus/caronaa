@@ -112,7 +112,7 @@ BEGIN
       ) FILTER (WHERE coalesce(q.value->>'semanticCode','')<>''),'{}'::jsonb) AS semantic,
       coalesce(jsonb_object_agg(
         q.value->>'label',a.answers->(q.value->>'id')
-      ),'{}'::jsonb) AS labeled
+      ) FILTER (WHERE nullif(q.value->>'label','') IS NOT NULL),'{}'::jsonb) AS labeled
     FROM jsonb_array_elements(v.schema_json->'sections') s
     CROSS JOIN LATERAL jsonb_array_elements(s.value->'questions') q
     WHERE a.answers ? (q.value->>'id')
