@@ -22,6 +22,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
     startsOn: "", endsOn: "", launchOn: null,
   });
   const [codeEdited, setCodeEdited] = useState(false);
+  const [domainsDraft, setDomainsDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = <K extends keyof F01DraftInput>(key: K, value: F01DraftInput[K]) => {
@@ -64,7 +65,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
         <div className="space-y-1">
           <p className="text-xs font-bold uppercase tracking-wide text-primary">Novo formulário · F01</p>
           <h3 className="text-xl font-bold">Comece com um modelo simples</h3>
-          <p className="max-w-lg text-sm text-muted-foreground">Três etapas, dores sociais na mesma tela e respostas organizadas automaticamente no CRM.</p>
+          <p className="max-w-lg text-sm text-muted-foreground">Universidade expressa: cinco etapas. Rua e empresa: três. Dores sociais e consentimento integrados ao CRM.</p>
         </div>
         <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border px-3 text-sm">Fechar</button>
       </div>
@@ -134,8 +135,11 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
               </label>
               <label className="block text-sm font-medium">
                 Domínios de e-mail reconhecidos (opcional)
-                <input value={(values.institutionalEmailDomains || []).join(", ")}
-                  onChange={event => set("institutionalEmailDomains", event.target.value.split(/[,;\s]+/).filter(Boolean))}
+                <input value={domainsDraft}
+                  onChange={event => {
+                    setDomainsDraft(event.target.value);
+                    set("institutionalEmailDomains", event.target.value.split(/[,;\s]+/).filter(Boolean));
+                  }}
                   placeholder="Ex.: universidade.edu.br" className={inputClass} autoCapitalize="none"/>
                 <span className="mt-1 block text-xs text-muted-foreground">Apenas indicação visual; não concede acesso nem comprova vínculo.</span>
               </label>
@@ -159,7 +163,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
               value={values.endsOn} onChange={event => set("endsOn", event.target.value)} className={inputClass}/>
           </label>
         </div>
-        <details className="rounded-xl border border-border bg-background px-3 py-2" open={undefined}>
+        <details className="rounded-xl border border-border bg-background px-3 py-2">
           <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold">
             Mais opções: código e lançamento
           </summary>
