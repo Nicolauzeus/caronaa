@@ -20,7 +20,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const testContacts: UnifiedCrmContact[] = [
   {
     id:"research:r1",contact_key:"email:ana@example.edu.br",name:"Ana",email:"ana@example.edu.br",
-    whatsapp:"85999998888",can_contact:true,institutional_email:true,
+    whatsapp:"85999998888",consented_whatsapp:"85999998888",can_contact:true,institutional_email:true,
     source_form:"UNILAB-1",source_forms:["UNILAB-1","0K9K09K"],
     academic_role:"ESTUDANTE",mobility_role:"PASSAGEIRO",mobility_roles:["PASSAGEIRO","AMBOS"],
     route_origin:"Redenção",route_destination:"Campus",outbound_time:"07:30",
@@ -40,7 +40,7 @@ const testContacts: UnifiedCrmContact[] = [
   },
   {
     id:"pitch:p1",contact_key:"email:investidor@example.com",name:"Investidor",
-    email:"investidor@example.com",whatsapp:"85977776666",can_contact:false,institutional_email:false,
+    email:"investidor@example.com",whatsapp:"85977776666",consented_whatsapp:null,can_contact:false,institutional_email:false,
     source_form:"PITCH",source_forms:["PITCH"],academic_role:null,mobility_role:"INVESTIDOR",
     mobility_roles:["INVESTIDOR"],route_origin:null,route_destination:null,outbound_time:null,
     vehicle_type:null,seats:null,pains:[],created_at:"2026-10-25T10:00:00Z",status:"CONTACTADO",
