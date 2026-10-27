@@ -204,8 +204,12 @@ export function AcademicExpressForm({
           next[painFields.primary.id] = oldPrimary;
         else delete next[painFields.primary.id];
       }
-      if (q.semanticCode === "URBAN_OFFER_VEHICLE" && value === "MOTO" && seatsQuestion)
-        next[seatsQuestion.id] = "1";
+      if (q.semanticCode === "URBAN_OFFER_VEHICLE" && seatsQuestion) {
+        if (value === "MOTO") next[seatsQuestion.id] = "1";
+        // A new car selection must be a deliberate declaration of free seats.
+        else if (value === "CARRO" && previous[q.id] === "MOTO")
+          delete next[seatsQuestion.id];
+      }
       const roleValue = roleQuestion ? next[roleQuestion.id] : null;
       return cleanAnswers(schema, next, typeof roleValue === "string" ? roleValue : null);
     });
@@ -249,6 +253,7 @@ export function AcademicExpressForm({
       if (!journey.outboundTime) return "Escolha o horário habitual de saída.";
     } else if (stage === "specific") {
       if (isF01Express && specificPane === "pains") {
+        if (role === "MOTORISTA") return null;
         const socialErrors = validateSimpleMobilityPains(schema, answers);
         return socialErrors[0] ?? null;
       }
@@ -284,6 +289,10 @@ export function AcademicExpressForm({
       setJourney((previous) => ({ ...previous, profile: role, mode: "CARONA" }));
     setError("");
     if (stage === "specific" && isF01Express && specificPane === "profile") {
+      if (role === "MOTORISTA") {
+        setIndex(4);
+        return;
+      }
       setSpecificPane("pains");
       return;
     }
@@ -292,7 +301,7 @@ export function AcademicExpressForm({
   function back() {
     if (index === 3 && isF01Express && specificPane === "pains") setSpecificPane("profile");
     else if (index === 4 && isF01Express) {
-      setSpecificPane("pains");
+      setSpecificPane(role === "MOTORISTA" ? "profile" : "pains");
       setIndex(3);
     } else setIndex((i) => Math.max(0, i - 1));
     setError("");
@@ -343,6 +352,14 @@ export function AcademicExpressForm({
     );
     if (problems.length) {
       setError(problems[0]);
+      return;
+    }
+    // Existing published V2 versions can require pains for everyone until the
+    // versioned driver migration has been applied. Fail with an explicit notice
+    // instead of submitting a payload the server would reject.
+    if (isF01Express && role === "MOTORISTA" && painFields.pains?.required &&
+        !painFields.pains.condition) {
+      setError("Este formulário precisa da atualização do fluxo do motorista. Avise a equipe CARONAA.");
       return;
     }
     const socialErrors = isF01Express ? validateSimpleMobilityPains(schema, cleaned) : [];
@@ -464,6 +481,9 @@ export function AcademicExpressForm({
                   (role === "PASSAGEIRO" ||
                    (role === "AMBOS" && selected(vehicleQuestion) && selected(seatsQuestion))))
                 setSpecificPane("pains");
+              if (isF01Express && role === "MOTORISTA" &&
+                  q.semanticCode === "URBAN_OFFER_VEHICLE" && option === "MOTO")
+                setIndex(4);
             }}
           >
             <span>{textChoices[option] ?? option}</span>
@@ -941,6 +961,12 @@ export function AcademicExpressForm({
                     placeholder="Ex.: Honda Fit"
                   />
                 </label>}
+                {isF01Express && selected(vehicleQuestion) === "MOTO" ? (
+                  <p role="status" className="rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 px-4 py-3 text-sm text-[#FFBB00]">
+                    <CheckCircle2 className="mr-2 inline h-4 w-4" />
+                    Moto: 1 vaga de passageiro definida automaticamente.
+                  </p>
+                ) : (
                 <div className="space-y-2">
                   <p className={label}>Vagas livres, sem contar o motorista</p>
                   <div className={isF01Express ? "grid grid-cols-4 gap-2" : "grid grid-cols-5 gap-2"}>
@@ -957,8 +983,10 @@ export function AcademicExpressForm({
                         onClick={() => {
                           updateAnswer(seatsQuestion, String(n));
                           setCustomSeats(false);
-                          if (isF01Express && (role === "MOTORISTA" ||
-                              (role === "AMBOS" && selected(passengerPriority) && selected(vehicleQuestion))))
+                          if (isF01Express && role === "MOTORISTA")
+                            setIndex(4);
+                          else if (isF01Express && role === "AMBOS" &&
+                                   selected(passengerPriority) && selected(vehicleQuestion))
                             setSpecificPane("pains");
                         }}
                       >
@@ -990,7 +1018,24 @@ export function AcademicExpressForm({
                       className={field + " mt-2"}
                     />
                   )}
+                  {isF01Express && selected(vehicleQuestion) === "CARRO" && (
+                    <label className={label}>
+                      Ou digite as vagas disponíveis (1 a 4)
+                      <input
+                        aria-label="Quantidade de vagas do carro"
+                        type="number" inputMode="numeric" min={1} max={4} step={1}
+                        value={selected(seatsQuestion)}
+                        onChange={e => {
+                          const value = e.target.value;
+                          if (value === "" || /^[1-4]$/.test(value))
+                            updateAnswer(seatsQuestion, value);
+                        }}
+                        className={field + " mt-1"}
+                      />
+                    </label>
+                  )}
                 </div>
+                )}
                 {!isF01Express && (role === "MOTORISTA" || role === "AMBOS") && (
                   <div className="space-y-2">
                     <p className={label}>O que é mais importante para você ao dirigir?</p>
@@ -1016,7 +1061,7 @@ export function AcademicExpressForm({
               </>
             )}
 
-            {stage === "specific" && isF01Express && specificPane === "pains" && painFields.pains && painFields.primary && (
+            {stage === "specific" && isF01Express && specificPane === "pains" && role !== "MOTORISTA" && painFields.pains && painFields.primary && (
               <div className="space-y-3">
                 <div role="group" aria-label="O que mais dificulta seu deslocamento?" className="grid grid-cols-2 gap-1.5">
                   {painFields.pains.options.map(option => {
