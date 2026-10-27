@@ -118,6 +118,8 @@ describe("University route search + consented GPS", () => {
   );
   it("never requests GPS before an explicit tap and keeps manual entry after denial", () => {
     const previous = Object.getOwnPropertyDescriptor(navigator, "geolocation");
+    const previousSecure = Object.getOwnPropertyDescriptor(window, "isSecureContext");
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
     const getCurrentPosition = vi.fn((_success: unknown, fail: (reason: unknown) => void) =>
       fail({ code: 1, message: "Permission denied" }));
     Object.defineProperty(navigator, "geolocation", {
@@ -144,6 +146,8 @@ describe("University route search + consented GPS", () => {
     } finally {
       if (previous) Object.defineProperty(navigator, "geolocation", previous);
       else Reflect.deleteProperty(navigator, "geolocation");
+      if (previousSecure) Object.defineProperty(window, "isSecureContext", previousSecure);
+      else Reflect.deleteProperty(window, "isSecureContext");
     }
   });
 });
