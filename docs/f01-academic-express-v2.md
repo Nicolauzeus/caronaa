@@ -35,3 +35,13 @@ O pré-lançamento exibe dias até a data configurada e preserva separação ent
 - Não liberar cadastro sem verificação por coincidência do domínio.
 - Não ocultar campos num aparelho com teclado aberto só para afirmar 'zero scroll'; a página usa altura do viewport e contém o formulário, com rolagem interna apenas quando estritamente necessária.
 - Testes e screenshots devem ser executados de fato; a existência dos testes no repositório não equivale a uma execução aprovada.
+
+## Revisão 27/10/2026 — Express Glass e UNILAB-1
+
+- A experiência acadêmica Express F01 V2 foi reduzida a **nove campos no schema**: nome, vínculo, papel, prioridade do passageiro, veículo, vagas e as três perguntas semânticas de dores (incluindo Outro). Valores `DOR_XX`, custo/orçamento, modelo do veículo e demais perguntas legadas não aparecem na versão nova.
+- Uma seleção de prioridade do passageiro ou vagas do motorista avança para o painel único de dores sociais da etapa 4. A etapa 5 apresenta opção principal de **pré-agendar interesse** (autorização pelo próprio clique, com os demais consentimentos) e alternativa para enviar **somente a pesquisa**. Não cria nem promete uma viagem real.
+- A identificação visual do domínio aparece em verde imediatamente para qualquer domínio cadastrado em `research_configurations.settings.institutionalEmailDomains`, **sem autorizar acesso, verificar matrícula ou dispensar autenticação**. Nome da instituição, título, campus, data e fuso vêm da configuração do Admin, não da URL.
+- O editor `/admin/formularios/:codigo` permite criar uma versão Express V2 nova ou aplicar o modelo ao rascunho, com atalho para edição de campanha, datas e domínios. Nunca sobrescreve versões publicadas.
+- Nova migration `0118_unilab_f01_v5_rollout.sql`: somente `UNILAB-1`, espera V4 publicada e guarda server-side 0116 já instalada. Publica V5 com Express V2, acrescenta `unilab.edu.br` à lista de domínios reconhecíveis, preserva a data de lançamento existente e mantém as respostas e versões V1–V4. **Não foi aplicada nesta alteração do GitHub**.
+- A migration ainda pendente `0117_unifor_f01_v4_rollout.sql` foi alinhada à mesma versão essencial de nove campos, conservando a V3 histórica.
+- Browser checks reforçados para 375×667 e 393×852: overflow horizontal, rolagem da página **e do painel de cada etapa**, screenshots. Requerem execução real com Playwright, TypeScript e Vite; adição de testes não comprova aprovação.
