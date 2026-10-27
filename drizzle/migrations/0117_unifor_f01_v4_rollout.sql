@@ -88,7 +88,11 @@ BEGIN
             'LOTACAO','PRECO_ALTO','ESPERA_LONGA','ATRASOS','INSEGURANCA_NO_TRAJETO',
             'SEM_TRANSPORTE','DESCONFORTO','HORARIO_INCOMPATIVEL','OUTRA','SEM_DIFICULDADES'
           ]::text[]),
-          'minValue',1,'maxValue',3,'semanticCode','MOBILITY_PAINS'
+          'minValue',1,'maxValue',3,'semanticCode','MOBILITY_PAINS',
+          'condition',jsonb_build_object('op','ANY','rules',jsonb_build_array(
+            jsonb_build_object('questionId',role_id,'comparison','EQ','value','PASSAGEIRO'),
+            jsonb_build_object('questionId',role_id,'comparison','EQ','value','AMBOS')
+          ))
         ),
         jsonb_build_object(
           'id',primary_id,'label','Qual dificuldade é a principal?',
@@ -97,7 +101,11 @@ BEGIN
             'LOTACAO','PRECO_ALTO','ESPERA_LONGA','ATRASOS','INSEGURANCA_NO_TRAJETO',
             'SEM_TRANSPORTE','DESCONFORTO','HORARIO_INCOMPATIVEL','OUTRA','SEM_DIFICULDADES'
           ]::text[]),
-          'semanticCode','MOBILITY_PRIMARY_PAIN'
+          'semanticCode','MOBILITY_PRIMARY_PAIN',
+          'condition',jsonb_build_object('op','ANY','rules',jsonb_build_array(
+            jsonb_build_object('questionId',role_id,'comparison','EQ','value','PASSAGEIRO'),
+            jsonb_build_object('questionId',role_id,'comparison','EQ','value','AMBOS')
+          ))
         ),
         jsonb_build_object(
           'id',other_id,'label','Descreva brevemente a outra dificuldade',

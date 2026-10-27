@@ -1,4 +1,5 @@
 import { ListPagination } from "@/components/admin/ListPagination";
+import { UnifiedCrmWorkspace } from "@/components/admin/UnifiedCrmWorkspace";
 import { Download, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -68,6 +69,25 @@ function exportCsv(rows: FormSubmissionRow[]) {
 }
 
 function AdminResponsesPage() {
+  const [view, setView] = useState<"unificado"|"sts">("unificado");
+  return <div className="space-y-3">
+    <nav aria-label="Visões das respostas" className="flex flex-wrap gap-2">
+      <button type="button" onClick={()=>setView("unificado")} aria-pressed={view==="unificado"}
+        className={"min-h-11 rounded-xl border px-4 text-sm font-semibold " +
+          (view==="unificado" ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]" : "border-border")}>
+        Todas as pesquisas e contatos
+      </button>
+      <button type="button" onClick={()=>setView("sts")} aria-pressed={view==="sts"}
+        className={"min-h-11 rounded-xl border px-4 text-sm font-semibold " +
+          (view==="sts" ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]" : "border-border")}>
+        Respostas originais STS
+      </button>
+    </nav>
+    {view === "unificado" ? <UnifiedCrmWorkspace mode="responses"/> : <LegacyStsResponsesPage/>}
+  </div>;
+}
+
+function LegacyStsResponsesPage() {
   const [page, setPage] = useState(0);
   const [source, setSource] = useState("all");
   const [query, setQuery] = useState("");

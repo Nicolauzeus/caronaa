@@ -63,6 +63,11 @@ describe("F01 academic express v2 — published v1 remains unchanged", () => {
     expect(both.questionVisible(questions.find(q => q.semanticCode === "SEATS_AVAILABLE")!)).toBe(true);
     expect(questions.some(q => q.semanticCode === "TRANSPORT_MODE")).toBe(false);
     expect(both.questionVisible(questions.find(q => q.semanticCode === "ACADEMIC_PASSENGER_PRIORITY")!)).toBe(true);
+    const driver = createResearchVisibility(schema, { [role.id]: "MOTORISTA" });
+    expect(["MOBILITY_PAINS","MOBILITY_PRIMARY_PAIN","MOBILITY_OTHER_PAIN"].every(code =>
+      !driver.questionVisible(questions.find(q => q.semanticCode === code)!))).toBe(true);
+    const passenger = createResearchVisibility(schema, { [role.id]: "PASSAGEIRO" });
+    expect(passenger.questionVisible(questions.find(q => q.semanticCode === "MOBILITY_PAINS")!)).toBe(true);
   });
 });
 

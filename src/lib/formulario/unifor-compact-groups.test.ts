@@ -72,3 +72,14 @@ describe("UNIFOR compact questionnaire preserving published data contracts",()=>
   expect(createUniforGroups(original,{})[0].flatMap(group=>group.questions)[0]).toBe(primary);
  });
 });
+
+// New V2 roles use a versioned pain gate. Legacy required fields stay visible.
+it("keeps required historical pains visible, but skips optional driver-only pains",()=>{
+ const legacy=createUniforGroups(schema,{},false,"MOTORISTA");
+ expect(legacy.flatMap(x=>x).flatMap(g=>g.questions).some(q=>q.semanticCode==="MOBILITY_PAINS")).toBe(true);
+ const optional:SurveySchema={sections:schema.sections.map(s=>({
+   ...s,questions:s.questions.map(q=>q.semanticCode==="MOBILITY_PAINS"?{...q,required:false}:q),
+ }))};
+ const driver=createUniforGroups(optional,{},false,"MOTORISTA");
+ expect(driver.flatMap(x=>x).flatMap(g=>g.questions).some(q=>q.semanticCode==="MOBILITY_PAINS")).toBe(false);
+});

@@ -27,7 +27,7 @@ export function getUniforPainQuestions(schema:SurveySchema){
  const questions=schema.sections.flatMap(section=>section.questions);
  return {
   pains:questions.find(q=>q.semanticCode==="MOBILITY_PAINS"),
-  primary:questions.find(q=>q.semanticCode==="URBAN_PRIMARY_PAIN"||q.semanticCode==="REGIONAL_PRIMARY_PAIN"),
+  primary:questions.find(q=>["URBAN_PRIMARY_PAIN","REGIONAL_PRIMARY_PAIN","MOBILITY_PRIMARY_PAIN"].includes(q.semanticCode??"")),
  };
 }
 
@@ -48,9 +48,17 @@ export function createUniforGroups(schema:SurveySchema,answers:Answers,combineUn
  const visibility=createResearchVisibility(schema,answers,externalRole);
  const {pains,primary}=getUniforPainQuestions(schema);
  const consolidate=Boolean(pains&&primary);
+ // Published V4 schemas may still require the old pain questions for everyone.
+ // Never hide a required historical question unless its versioned condition
+ // explicitly excludes the motorist. V2 makes them passenger-only in the schema.
+ const onlyOffering=externalRole==="MOTORISTA" ||
+  schema.sections.flatMap(s=>s.questions)
+    .some(q=>q.semanticCode==="RESEARCH_PARTICIPANT_ROLE"&&answers[q.id]==="MOTORISTA");
  return schema.sections.map((section,sectionIndex)=>{
   const visible=section.questions.filter(q=>visibility.questionVisible(q) &&
-   !(consolidate&&q.id===primary?.id));
+   !(consolidate&&q.id===primary?.id) &&
+   !(onlyOffering && !q.required &&
+     ["MOBILITY_PAINS","MOBILITY_PRIMARY_PAIN","MOBILITY_OTHER_PAIN"].includes(q.semanticCode??"")));
   const used=new Set<string>();
   const list:CompactResearchGroup[]=[];
   for(const definition of GROUPS) {
