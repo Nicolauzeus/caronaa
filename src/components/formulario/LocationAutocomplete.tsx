@@ -12,6 +12,8 @@ export interface LocationAutocompleteProps {
   selectedLocation?: FormLocationDetails | undefined;
   placeholder?: string;
   onChange: (value: string, details?: FormLocationDetails) => void;
+  /** Fires only when a suggested location was confirmed by a tap. */
+  onSelect?: (value: string, details: FormLocationDetails) => void;
   helperText?: string;
   shortcutButton?: React.ReactNode;
   required?: boolean;
@@ -70,6 +72,7 @@ export function LocationAutocomplete({
   selectedLocation,
   placeholder = "Digite o bairro, universidade, rua ou local...",
   onChange,
+  onSelect,
   helperText,
   shortcutButton,
   required = false,
@@ -294,12 +297,13 @@ export function LocationAutocomplete({
       };
 
       onChange(displayAddress, locationDetails);
+      onSelect?.(displayAddress, locationDetails);
       setIsEditing(false);
     } catch {
       // Fallback usando a sugestão básica já recebida
       const displayAddress = sug.neighborhood || sug.mainText || sug.formattedAddress;
       setQuery(displayAddress);
-      onChange(displayAddress, {
+      const fallbackDetails: FormLocationDetails = {
         rawText: query || displayAddress,
         formattedAddress: sug.formattedAddress,
         city: sug.city,
@@ -308,7 +312,9 @@ export function LocationAutocomplete({
         lat: sug.lat,
         lng: sug.lng,
         providerId: sug.providerId,
-      });
+      };
+      onChange(displayAddress, fallbackDetails);
+      onSelect?.(displayAddress, fallbackDetails);
       setIsEditing(false);
     } finally {
       setIsLoading(false);
