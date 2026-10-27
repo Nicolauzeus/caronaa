@@ -3,7 +3,7 @@ import { simpleMobilityTemplates, MOBILITY_SIMPLE_EXPERIENCE } from "./mobility-
 import { eventExitMatchTemplate } from "./event-exit-match";
 import { companyCampusDriverTemplate } from "./company-campus-driver";
 import { corporateInternalTemplate } from "./corporate-internal";
-import { academicExpressUrbanTemplate } from "./academic-express-schema";
+import { academicExpressUrbanTemplate, academicExpressF01Template } from "./academic-express-schema";
 import { getNumberBounds } from "./research-schema";
 import type { ResearchCondition } from "./research-conditions";
 import { remapResearchCondition } from "./research-conditions";
@@ -48,7 +48,7 @@ export type SurveySection = {
   description?: string;
   condition?: ResearchCondition;
 };
-export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" | typeof MOBILITY_SIMPLE_EXPERIENCE };
+export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" | "ACADEMIC_EXPRESS_F01_V2" | typeof MOBILITY_SIMPLE_EXPERIENCE };
 export type ResearchTemplate = {
   key: string;
   nature: string;
@@ -60,6 +60,7 @@ export type ResearchTemplate = {
 export const RESEARCH_TEMPLATES: ResearchTemplate[] = [
   ...simpleMobilityTemplates,
   academicExpressUrbanTemplate,
+  academicExpressF01Template,
   regionalUniversityTemplate,
   eventExitMatchTemplate,
   companyCampusDriverTemplate,
