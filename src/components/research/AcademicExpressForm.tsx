@@ -95,10 +95,13 @@ export function AcademicExpressForm({
   form,
   captureEnabled,
   user,
+  previewMode = false,
 }: {
   form: AcademicForm;
   captureEnabled: boolean;
   user?: { email?: string | null; email_confirmed_at?: string | null } | null;
+  /** Inert editor preview. It must never call the persistence/lead/interest APIs. */
+  previewMode?: boolean;
 }) {
   const config = form.configuration!;
   const schema = form.schema;
@@ -366,6 +369,11 @@ export function AcademicExpressForm({
       setIndex(2);
       return;
     }
+    if (previewMode) {
+      setComplete(true);
+      setError("");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -478,7 +486,9 @@ export function AcademicExpressForm({
     activation: "Tudo pronto para participar",
   }[stage];
   return (
-    <main className="relative isolate flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#121212] font-['Manrope'] text-white">
+    <main
+      style={{ height: previewMode ? "min(667px, 100dvh)" : "100dvh" }}
+      className="relative isolate flex min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#121212] font-['Manrope'] text-white">
       <div className="mx-auto flex w-full max-w-3xl shrink-0 items-center justify-between gap-3 px-4 py-2 sm:px-8 sm:py-4">
         <span className="font-bold tracking-tight text-[#FFBB00]">
           CARONAA <span className="font-normal text-white/75">· {institution}</span>
@@ -509,20 +519,23 @@ export function AcademicExpressForm({
           <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-3 text-center">
             <CheckCircle2 size={48} className="text-emerald-400" aria-hidden="true" />
             <h1 className="font-['Sora'] text-2xl font-bold sm:text-3xl">
-              {interestRegistered === true && daysToLaunch !== null && daysToLaunch > 0
-                ? "Seu interesse está registrado para o lançamento!"
-                : "Sua participação foi registrada"}
+              {previewMode
+                ? "Prévia finalizada — nenhuma resposta enviada"
+                : interestRegistered === true && daysToLaunch !== null && daysToLaunch > 0
+                  ? "Seu interesse está registrado para o lançamento!"
+                  : "Sua participação foi registrada"}
             </h1>
             <p className="max-w-sm text-sm leading-6 text-white/70">
-              Seu trajeto de interesse foi salvo para encontrar compatibilidades futuras.
-              Isso não cria reserva, pedido ou oferta confirmada.
+              {previewMode
+                ? "Prévia local do questionário. Nenhum lead, resposta ou interesse foi gravado."
+                : "Seu trajeto de interesse foi salvo para encontrar compatibilidades futuras. Isso não cria reserva, pedido ou oferta confirmada."}
             </p>
-            {interestRegistered === true && (
+            {!previewMode && interestRegistered === true && (
               <p className="text-sm text-emerald-300">
                 Interesse no trajeto registrado separadamente.
               </p>
             )}
-            {interestRegistered === false && (
+            {!previewMode && interestRegistered === false && (
               <p role="status" className="text-sm text-amber-300">
                 A pesquisa foi salva, mas o interesse adicional não pôde ser registrado. Você poderá
                 fazê-lo depois.
@@ -539,22 +552,22 @@ export function AcademicExpressForm({
                 <p className="mt-1 text-xs text-white/60">Você poderá acompanhar oportunidades compatíveis após a liberação da comunidade. A data está sujeita a confirmação.</p>
               </div>
             )}
-            {typeof window !== "undefined" && (
+            {!previewMode && typeof window !== "undefined" && (
               <a className="text-sm font-semibold text-[#FFBB00] underline underline-offset-4"
                 href={`https://wa.me/?text=${encodeURIComponent("Participe da pesquisa de mobilidade: " + window.location.href)}`}
                 target="_blank" rel="noopener noreferrer">Compartilhar com colegas no WhatsApp</a>
             )}
-            <a
+            {!previewMode && <a
               href={
                 user ? "/perfil" : "/auth?mode=cadastro&redirect=" + encodeURIComponent("/perfil")
               }
               className="mt-4 flex min-h-13 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-5 font-semibold text-[#121212]"
             >
               {user ? "Personalizar meu perfil" : "Criar conta para acompanhar"}
-            </a>
-            <p className="text-xs text-white/50">
+            </a>}
+            {!previewMode && <p className="text-xs text-white/50">
               O cadastro e a verificação institucional são etapas independentes.
-            </p>
+            </p>}
           </div>
         ) : (
           <div
