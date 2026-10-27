@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {freshTemplate} from "./research-templates";
-import {academicExpressSteps,academicExpressUrbanTemplate,isAcademicExpress} from "./academic-express-schema";
+import {academicExpressSteps,academicExpressUrbanTemplate,academicExpressF01Template,isAcademicExpress} from "./academic-express-schema";
 import {inspectSchema,cleanAnswers,validatePage} from "./research-schema";
 import {createResearchVisibility} from "./research-conditions";
 
@@ -45,5 +45,21 @@ describe("four/five stage university express questionnaire",()=>{
     expect(migration).toContain("ACADEMIC_EXPRESS_V1");
     expect(migration).toContain("UNIFOR version");
     expect(migration).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
+  });
+});
+
+describe("F01 academic express v2 — published v1 remains unchanged", () => {
+  it("captures pains once and preserves role-specific questions", () => {
+    const schema = freshTemplate(academicExpressF01Template);
+    expect(schema.experience).toBe("ACADEMIC_EXPRESS_F01_V2");
+    expect(isAcademicExpress(schema)).toBe(true);
+    expect(inspectSchema(schema)).toEqual([]);
+    const questions = schema.sections.flatMap(section => section.questions);
+    expect(questions.filter(q => q.semanticCode?.startsWith("MOBILITY_"))).toHaveLength(3);
+    const role = questions.find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE")!;
+    const both = createResearchVisibility(schema, { [role.id]: "AMBOS" });
+    expect(both.questionVisible(questions.find(q => q.semanticCode === "SEATS_AVAILABLE")!)).toBe(true);
+    expect(both.questionVisible(questions.find(q => q.semanticCode === "TRANSPORT_MODE")!)).toBe(false);
+    expect(both.questionVisible(questions.find(q => q.semanticCode === "ACADEMIC_PASSENGER_PRIORITY")!)).toBe(true);
   });
 });
