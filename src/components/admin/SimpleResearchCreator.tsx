@@ -55,7 +55,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
     }
   }
   const model = F01_CREATION_MODELS.find(option => option.key === values.modelKey)!;
-  const duplicate = occupiedCodes.includes(values.code.trim().toUpperCase());
+  const duplicate = occupiedCodes.some(code => code.trim().toUpperCase() === values.code.trim().toUpperCase());
   return (
     <section aria-label="Criar novo formulário simples" className="min-w-0 space-y-4 rounded-2xl border border-border bg-card p-3 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -124,7 +124,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
               value={values.endsOn} onChange={event => set("endsOn", event.target.value)} className={inputClass}/>
           </label>
         </div>
-        <details className="rounded-xl border border-border bg-background px-3 py-2">
+        <details className="rounded-xl border border-border bg-background px-3 py-2" open={undefined}>
           <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold">
             Mais opções: código e lançamento
           </summary>
