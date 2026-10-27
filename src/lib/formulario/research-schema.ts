@@ -113,7 +113,8 @@ export function inspectSchema(schema: SurveySchema): string[] {
       prior.set(q.id, q);
     });
   });
-  if (schema.experience === "ACADEMIC_EXPRESS_V1") {
+  if (schema.experience === "ACADEMIC_EXPRESS_V1" || schema.experience === "ACADEMIC_EXPRESS_F01_V2") {
+    const isF01Express = schema.experience === "ACADEMIC_EXPRESS_F01_V2";
     // The express UI renders only this fixed, semantically versioned contract.
     // Prevent publishing an invisible newly-required question via the builder.
     const requiredSemantics = [
@@ -126,6 +127,7 @@ export function inspectSchema(schema: SurveySchema): string[] {
       "ACADEMIC_VEHICLE_MODEL",
       "SEATS_AVAILABLE",
       "ACADEMIC_DRIVER_PRIORITY",
+      ...(isF01Express ? ["MOBILITY_PAINS", "MOBILITY_PRIMARY_PAIN", "MOBILITY_OTHER_PAIN"] : []),
     ];
     const questions = schema.sections.flatMap((section) => section.questions);
     if (
@@ -135,13 +137,33 @@ export function inspectSchema(schema: SurveySchema): string[] {
       )
     ) {
       errors.push(
-        "O modelo acadêmico rápido exige os nove campos originais. Para adicionar perguntas, use um modelo tradicional.",
+        isF01Express
+          ? "O modelo acadêmico F01 exige os nove campos de perfil e as três perguntas de dores sociais."
+          : "O modelo acadêmico rápido exige os nove campos originais. Para adicionar perguntas, use um modelo tradicional.",
       );
     }
-    for (const code of requiredSemantics.filter((code) => code !== "ACADEMIC_VEHICLE_MODEL")) {
+    for (const code of requiredSemantics.filter((code) =>
+      code !== "ACADEMIC_VEHICLE_MODEL" && code !== "MOBILITY_OTHER_PAIN" &&
+      (!isF01Express || code !== "ACADEMIC_DRIVER_PRIORITY")
+    )) {
       const q = questions.find((q) => q.semanticCode === code);
       if (q && !q.required)
         errors.push("No modelo acadêmico rápido, o campo " + code + " deve continuar obrigatório.");
+    }
+    if (isF01Express) {
+      const painSection = schema.sections.find(section => section.questions.some(q => q.semanticCode === "MOBILITY_PAINS"));
+      const pains = painSection?.questions.find(q => q.semanticCode === "MOBILITY_PAINS");
+      const primary = painSection?.questions.find(q => q.semanticCode === "MOBILITY_PRIMARY_PAIN");
+      const other = painSection?.questions.find(q => q.semanticCode === "MOBILITY_OTHER_PAIN");
+      if (!pains || !primary || !other || pains.type !== "multiple_choice" ||
+          pains.minValue !== 1 || pains.maxValue !== 3 ||
+          !pains.options.includes("OUTRA") || !pains.options.includes("SEM_DIFICULDADES") ||
+          primary.type !== "single_choice" ||
+          JSON.stringify(primary.options) !== JSON.stringify(pains.options) ||
+          other.type !== "short_text" || !other.required ||
+          !other.condition || !("questionId" in other.condition) ||
+          other.condition.questionId !== pains.id || other.condition.comparison !== "INCLUDES")
+        errors.push("A experiência acadêmica F01 exige uma única tela de dores, principal e opção Outra.");
     }
   }
   if (schema.experience === "MOBILITY_SIMPLE_V1") {
