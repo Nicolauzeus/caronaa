@@ -56,6 +56,8 @@ describe("F01 academic express v2 — published v1 remains unchanged", () => {
     expect(inspectSchema(schema)).toEqual([]);
     const questions = schema.sections.flatMap(section => section.questions);
     expect(questions.filter(q => q.semanticCode?.startsWith("MOBILITY_"))).toHaveLength(3);
+    expect(questions).toHaveLength(9);
+    expect(questions.some(q => ["TRANSPORT_MODE", "ACADEMIC_DRIVER_PRIORITY", "ACADEMIC_VEHICLE_MODEL", "COST_PER_TRIP", "ACCEPTABLE_FARE_RANGE"].includes(q.semanticCode ?? ""))).toBe(false);
     const role = questions.find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE")!;
     const both = createResearchVisibility(schema, { [role.id]: "AMBOS" });
     expect(both.questionVisible(questions.find(q => q.semanticCode === "SEATS_AVAILABLE")!)).toBe(true);
