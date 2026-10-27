@@ -195,6 +195,19 @@ export function isAcademicExpress(schema?: SurveySchema | null): boolean {
   return schema?.experience === ACADEMIC_EXPRESS_EXPERIENCE || isAcademicExpressF01(schema);
 }
 
+/** Calendar-day countdown in the configured community timezone, not the device timezone. */
+export function daysUntilCommunityLaunch(date: string | null, timezone: string, now = new Date()): number | null {
+  if (!date) return null;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find(item => item.type === type)?.value);
+  const currentDay = Date.UTC(part("year"), part("month") - 1, part("day"));
+  const launchDay = Date.parse(date + "T00:00:00Z");
+  return Number.isFinite(launchDay) ? Math.max(0, Math.round((launchDay - currentDay) / 86_400_000)) : null;
+}
+
 export type AcademicRole = "PASSAGEIRO" | "MOTORISTA" | "AMBOS";
 
 export function academicExpressSteps(
