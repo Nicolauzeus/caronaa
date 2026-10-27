@@ -141,6 +141,38 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     expect(screen.getByText("Resumo do seu interesse")).toBeInTheDocument();
   });
 
+
+  it("skips all driver pain questions and keeps moto at one passenger", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null} />);
+    fillIdentity("motorista@example.com");
+    fireEvent.click(screen.getByRole("button", { name: /Quero oferecer carona/i }));
+    fillRoute();
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Moto" }));
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    expect(screen.queryByText("Seus desafios no trajeto")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", {name:/O que mais dificulta seu deslocamento/})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar etapa" }));
+    expect(screen.getByText(/Moto: 1 vaga de passageiro/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", {name:"2"})).not.toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton", {name:/Quantidade de vagas/})).not.toBeInTheDocument();
+  });
+
+  it("accepts manual one-to-four seats for a car but never five", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null} />);
+    fillIdentity("motorista@example.com");
+    fireEvent.click(screen.getByRole("button", { name: /Quero oferecer carona/i }));
+    fillRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Carro" }));
+    const input=screen.getByRole("spinbutton",{name:"Quantidade de vagas do carro"});
+    fireEvent.change(input,{target:{value:"3"}});
+    expect(input).toHaveValue(3);
+    fireEvent.change(input,{target:{value:"5"}});
+    expect(input).toHaveValue(3);
+    fireEvent.click(screen.getByRole("button", {name:/Continuar/i}));
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+  });
+
   it("routes AMBOS through driver fields and passenger preference, not passenger transit", () => {
     render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
     fillIdentity();
