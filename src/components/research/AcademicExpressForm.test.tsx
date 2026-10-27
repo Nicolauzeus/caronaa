@@ -82,6 +82,32 @@ describe("Academic express UX – five compact steps", () => {
   });
 });
 
+describe("University route search + consented GPS", () => {
+  const v2 = { ...mockForm, schema: freshTemplate(academicExpressF01Template) };
+  it.each([["UNILAB-style V1", mockForm], ["F01 V2", v2]])(
+    "shows both mobile location actions for %s and permits manual search without GPS",
+    (_, sample) => {
+      render(<AcademicExpressForm form={sample} captureEnabled user={null}/>);
+      fireEvent.change(screen.getByPlaceholderText(sample.schema.experience === "ACADEMIC_EXPRESS_F01_V2"
+        ? "Seu nome completo" : "Como prefere ser chamado(a)"), { target: { value: "Pessoa Teste" } });
+      fireEvent.change(screen.getByRole("combobox", {name:"Vínculo com a universidade"}),
+        { target: { value: "ESTUDANTE" } });
+      fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"),
+        { target: { value: "pessoa@unifor.br" } });
+      fireEvent.click(screen.getByRole("button", {name:/Continuar/i}));
+      fireEvent.click(screen.getByRole("button", {name:/Quero pegar carona/i}));
+      expect(screen.getByRole("button", {name:"Usar localização atual"})).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", {name:"Buscar localização"}));
+      expect(screen.getByRole("dialog", {name:"Buscar bairro ou região"})).toBeInTheDocument();
+      fireEvent.change(screen.getByPlaceholderText("Digite o bairro, município ou local..."),
+        {target:{value:"PAJUÇARA"}});
+      fireEvent.click(screen.getByRole("button", {name:"Usar localidade digitada"}));
+      expect(screen.getByRole("textbox",{name:"Bairro ou região de origem"})).toHaveValue("PAJUÇARA");
+      expect(screen.getByRole("combobox",{name:"Horário habitual de retorno"})).toBeInTheDocument();
+    }
+  );
+});
+
 describe("F01 academic express (dynamic institutions, no extra public pages)", () => {
   const form = { ...mockForm, schema: freshTemplate(academicExpressF01Template) };
 
@@ -89,7 +115,9 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.change(screen.getByPlaceholderText("Seu nome completo"), {
       target: { value: "Pessoa acadêmica" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Estudante" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Vínculo com a universidade" }), {
+      target: { value: "ESTUDANTE" },
+    });
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: institutionEmail },
     });
@@ -99,7 +127,9 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
   function fillRoute() {
     fireEvent.change(screen.getByPlaceholderText("Bairro ou região de origem"), { target: { value: "Messejana" } });
     fireEvent.click(screen.getByRole("button", { name: "Seg–Sex" }));
-    fireEvent.click(screen.getByRole("button", { name: /Manhã.*07:00/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Horário habitual de saída" }), {
+      target: { value: "07:00" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
   }
 
@@ -201,8 +231,8 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     const primary = screen.getByRole("button", { name: /Pré-agendar meu interesse/i });
     expect(primary).toBeDisabled();
-    fireEvent.click(screen.getByRole("checkbox", { name: /Concordo em participar da pesquisa/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular minha participação/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Li o aviso de privacidade/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular esta participação/i }));
     expect(primary).toBeEnabled();
     fireEvent.click(primary);
     await waitFor(() => expect(calls.interest).toHaveBeenCalledTimes(1));
@@ -242,7 +272,23 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Carro" }));
     fireEvent.click(screen.getByRole("button", { name: "2" }));
-    expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    expect(screen.queryByText("Seus desafios no trajeto")).not.toBeInTheDocument();
     expect(screen.queryByText("Qual veículo usaria?")).not.toBeInTheDocument();
+  });
+
+  it("keeps passenger and both profiles' social pains in one pane without hiding the primary difficulty", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity();
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar carona/i }));
+    fillRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    const group = screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ });
+    fireEvent.click(within(group).getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(within(group).getByRole("button", { name: "Preço alto do transporte" }));
+    expect(screen.getByRole("group", { name: /Qual dessas é a principal/ })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("group", { name: /Qual dessas é a principal/ }))
+      .getByRole("button", { name: "Preço alto do transporte" }));
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
   });
 });
