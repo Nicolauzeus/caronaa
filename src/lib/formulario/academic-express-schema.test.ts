@@ -91,6 +91,42 @@ describe("dynamic calendar-day countdown", () => {
   });
 });
 
+
+describe("Approved UNILAB Glass UX + passenger pains preserved in both universities", () => {
+  it("creates new academic V2 versions without rewriting legacy answers", () => {
+    const sql = readFileSync(
+      "drizzle/migrations/0121_university_express_passenger_pains_unification.sql", "utf8");
+    expect(sql).toContain("'UNILAB-1'");
+    expect(sql).toContain("'0K9K09K'");
+    expect(sql).toContain("ACADEMIC_EXPRESS_F01_V2");
+    expect(sql).toContain("MOBILITY_PAINS");
+    expect(sql).toContain("MOBILITY_PRIMARY_PAIN");
+    expect(sql).toContain("MOBILITY_OTHER_PAIN");
+    expect(sql).toContain("'PASSAGEIRO'");
+    expect(sql).toContain("'AMBOS'");
+    expect(sql).toContain("gen_random_uuid()");
+    expect(sql).not.toMatch(/(?:UPDATE|DELETE\s+FROM)\s+public\.research_answers/i);
+    expect(sql).toContain("published_at IS NULL");
+    expect(sql).toContain("draft_schema IS DISTINCT FROM previous_schema");
+  });
+
+  it("keeps passenger + ambos pains required in schema; driver-only cannot see them", () => {
+    const schema=freshTemplate(academicExpressF01Template);
+    const questions=schema.sections.flatMap(s=>s.questions);
+    const role=questions.find(q=>q.semanticCode==="RESEARCH_PARTICIPANT_ROLE")!;
+    for (const value of ["PASSAGEIRO","AMBOS"]) {
+      const access=createResearchVisibility(schema,{[role.id]:value});
+      for (const code of ["MOBILITY_PAINS","MOBILITY_PRIMARY_PAIN"]) {
+        const pain=questions.find(q=>q.semanticCode===code)!;
+        expect(pain.required).toBe(true);
+        expect(access.questionVisible(pain)).toBe(true);
+      }
+    }
+    const driver=createResearchVisibility(schema,{[role.id]:"MOTORISTA"});
+    expect(driver.questionVisible(questions.find(q=>q.semanticCode==="MOBILITY_PAINS")!)).toBe(false);
+  });
+});
+
 describe("UNILAB versioned Express rollout", () => {
   it("retains V1-V4 and excludes budget/price and technical pain labels from V5", () => {
     const migration = readFileSync("drizzle/migrations/0118_unilab_f01_v5_rollout.sql", "utf8");
