@@ -152,6 +152,9 @@ for (const section of f01Sections) {
 for (const question of f01Sections.flatMap(section => section.questions)) {
   if (question.semanticCode === "ACADEMIC_ROLE")
     question.options = ["ESTUDANTE", "PROFESSOR", "COLABORADOR", "OUTRO"];
+  // Asking about bus crowding and fares has no meaning to someone who only offers rides.
+  // Only PASSAGEIRO/AMBOS can see and answer pain questions.
+
   // No transport, spending, vehicle-model or generic driver-motivation questions
   // are required in the express flow. V2 is semantically versioned.
 }
@@ -168,11 +171,13 @@ export const academicExpressF01Schema: SurveySchema = {
           id: "academic_pains", label: "O que mais dificulta seu deslocamento?",
           type: "multiple_choice", required: true, options: [...MOBILITY_PAIN_OPTIONS],
           minValue: 1, maxValue: 3, semanticCode: "MOBILITY_PAINS",
+          condition: roleCondition("PASSAGEIRO", "AMBOS"),
         },
         {
           id: "academic_primary_pain", label: "Qual dificuldade é a principal?",
           type: "single_choice", required: true, options: [...MOBILITY_PAIN_OPTIONS],
           semanticCode: "MOBILITY_PRIMARY_PAIN",
+          condition: roleCondition("PASSAGEIRO", "AMBOS"),
         },
         {
           id: "academic_other_pain", label: "Descreva brevemente a outra dificuldade",
