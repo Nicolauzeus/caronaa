@@ -324,7 +324,7 @@ export function AcademicExpressForm({
     );
   }
 
-  async function submit() {
+  async function submit(requestInterest = false) {
     if (stage !== "activation") {
       next();
       return;
@@ -400,7 +400,7 @@ export function AcademicExpressForm({
           /* Recoverable later. */
         }
       }
-      if (prepareInterest) {
+      if (requestInterest || prepareInterest) {
         try {
           const profiles: Array<"PASSAGEIRO" | "MOTORISTA"> = role === "AMBOS"
             ? interestRole === "AMBOS" ? ["PASSAGEIRO", "MOTORISTA"] : [interestRole]
@@ -410,6 +410,10 @@ export function AcademicExpressForm({
           setInterestRegistered(true);
         } catch {
           setInterestRegistered(false);
+          if (isF01Express) {
+            setError("Sua pesquisa foi salva, mas o interesse não foi confirmado. Você pode tentar novamente.");
+            return;
+          }
         }
       }
       setComplete(true);
@@ -1061,19 +1065,20 @@ export function AcademicExpressForm({
                     </p>
                   </div>
                 )}
-                <label className="flex min-h-13 items-start gap-3 text-sm leading-6">
-                  <input
-                    type="checkbox"
-                    className="mt-1.5 accent-[#FFBB00]"
-                    checked={prepareInterest}
-                    onChange={(e) => setPrepareInterest(e.target.checked)}
-                  />
-                  <span>
-                    Quero registrar interesse no meu trajeto quando houver disponibilidade
-                    (opcional). Não é uma reserva.
-                  </span>
-                </label>
-                {prepareInterest && role === "AMBOS" && (
+                {isF01Express ? (
+                  <p className="rounded-xl border border-white/10 bg-white/[.04] px-3 py-2 text-xs leading-5 text-white/70">
+                    Ao tocar em <strong>Pré-agendar meu interesse</strong>, autorizo registrar minha
+                    intenção de encontrar/oferecer carona. Não há reserva, viagem ou match garantido.
+                  </p>
+                ) : (
+                  <label className="flex min-h-13 items-start gap-3 text-sm leading-6">
+                    <input type="checkbox" className="mt-1.5 accent-[#FFBB00]"
+                      checked={prepareInterest} onChange={(e) => setPrepareInterest(e.target.checked)}/>
+                    <span>Quero registrar interesse no meu trajeto quando houver disponibilidade
+                      (opcional). Não é uma reserva.</span>
+                  </label>
+                )}
+                {(prepareInterest || isF01Express) && role === "AMBOS" && (
                   <div className="flex gap-2" role="group" aria-label="Tipo de interesse inicial">
                     {(isF01Express ? (["PASSAGEIRO", "MOTORISTA", "AMBOS"] as const) : (["PASSAGEIRO", "MOTORISTA"] as const)).map((r) => (
                       <button
@@ -1160,7 +1165,7 @@ export function AcademicExpressForm({
       </section>
 
       {!complete && (
-        <div className="z-10 mx-auto flex w-full max-w-3xl shrink-0 gap-2 border-t border-white/10 bg-[#121212]/90 px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl sm:px-8">
+        <div className="z-10 mx-auto flex w-full max-w-3xl shrink-0 flex-wrap gap-2 border-t border-white/10 bg-[#121212]/90 px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl sm:px-8">
           <button
             type="button"
             onClick={back}
@@ -1177,9 +1182,7 @@ export function AcademicExpressForm({
             }
             onClick={
               stage === "activation"
-                ? () => {
-                    void submit();
-                  }
+                ? () => { void submit(isF01Express); }
                 : next
             }
             className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-bold text-[#121212] disabled:opacity-50"
@@ -1188,11 +1191,18 @@ export function AcademicExpressForm({
               ? "Registrando…"
               : stage === "activation"
                 ? isF01Express
-                  ? prepareInterest ? "Ativar Minha Carona" : "Registrar minha participação"
+                  ? "Pré-agendar meu interesse"
                   : "Registrar participação"
                 : "Continuar"}
             {stage !== "activation" && <ArrowRight size={18} />}
           </button>
+          {isF01Express && stage === "activation" && (
+            <button type="button" disabled={busy || !consent || (captureEnabled && !linkageConsent)}
+              onClick={() => void submit(false)}
+              className="min-h-9 w-full rounded-xl border border-white/10 text-xs text-white/70 disabled:opacity-40">
+              Enviar apenas a pesquisa (sem registrar trajeto)
+            </button>
+          )}
         </div>
       )}
     </main>
