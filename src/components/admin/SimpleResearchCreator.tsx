@@ -17,7 +17,9 @@ const inputClass = "mt-1 block min-h-12 w-full min-w-0 rounded-xl border border-
 export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, onCancel }: Props) {
   const [values, setValues] = useState<F01DraftInput>({
     modelKey: "F01_UNIVERSIDADE", name: "", title: "", code: "",
-    region: "FORTALEZA_EDSON_QUEIROZ", campus: "", startsOn: "", endsOn: "", launchOn: null,
+    region: "FORTALEZA_EDSON_QUEIROZ", customRegion: "", customMunicipality: "",
+    campus: "", institutionalEmailDomains: [], academicExpress: true,
+    startsOn: "", endsOn: "", launchOn: null,
   });
   const [codeEdited, setCodeEdited] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,14 +99,47 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
             <select value={values.region} onChange={event => set("region", event.target.value as F01DraftInput["region"])}
               className={inputClass}>
               {F01_REGIONS.map(region => <option key={region.id} value={region.id}>{region.label}</option>)}
+              <option value="OUTRA">Outra região / município</option>
             </select>
           </label>
+          {values.region === "OUTRA" && (
+            <>
+              <label className="block min-w-0 text-sm font-medium">
+                Nome da região *
+                <input required minLength={2} maxLength={120} value={values.customRegion || ""}
+                  onChange={event => set("customRegion", event.target.value)}
+                  placeholder="Ex.: Região Metropolitana de Recife" className={inputClass}/>
+              </label>
+              <label className="block min-w-0 text-sm font-medium">
+                Município (opcional)
+                <input maxLength={120} value={values.customMunicipality || ""}
+                  onChange={event => set("customMunicipality", event.target.value)}
+                  placeholder="Ex.: Recife" className={inputClass}/>
+              </label>
+            </>
+          )}
           {values.modelKey === "F01_UNIVERSIDADE" && (
             <label className="block min-w-0 text-sm font-medium sm:col-span-2">
               Campus (opcional)
               <input maxLength={120} value={values.campus} onChange={event => set("campus", event.target.value)}
                 placeholder="Ex.: campus principal" className={inputClass} />
             </label>
+          )}
+          {values.modelKey === "F01_UNIVERSIDADE" && (
+            <div className="sm:col-span-2 space-y-3 rounded-xl border border-border/80 p-3">
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" checked={values.academicExpress !== false}
+                  onChange={event => set("academicExpress", event.target.checked)} className="mt-1 accent-[#FFBB00]"/>
+                <span>Experiência acadêmica expressa — cinco etapas compactas, com dores sociais e escolhas por perfil</span>
+              </label>
+              <label className="block text-sm font-medium">
+                Domínios de e-mail reconhecidos (opcional)
+                <input value={(values.institutionalEmailDomains || []).join(", ")}
+                  onChange={event => set("institutionalEmailDomains", event.target.value.split(/[,;\\s]+/).filter(Boolean))}
+                  placeholder="Ex.: universidade.edu.br" className={inputClass} autoCapitalize="none"/>
+                <span className="mt-1 block text-xs text-muted-foreground">Apenas indicação visual; não concede acesso nem comprova vínculo.</span>
+              </label>
+            </div>
           )}
           <label className="block min-w-0 text-sm font-medium sm:col-span-2">
             Título do formulário *

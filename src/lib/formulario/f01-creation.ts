@@ -11,7 +11,7 @@ export const F01_CREATION_MODELS = [
 ] as const;
 
 export type F01ModelKey = typeof F01_CREATION_MODELS[number]["key"];
-export type F01Region = "FORTALEZA_EDSON_QUEIROZ" | "MACICO_BATURITE";
+export type F01Region = "FORTALEZA_EDSON_QUEIROZ" | "MACICO_BATURITE" | "OUTRA";
 
 export const F01_REGIONS = [
   { id: "FORTALEZA_EDSON_QUEIROZ", label: "Fortaleza · Edson Queiroz", municipality: "Fortaleza" },
@@ -24,7 +24,11 @@ export type F01DraftInput = {
   title: string;
   code: string;
   region: F01Region;
+  customRegion?: string;
+  customMunicipality?: string;
   campus?: string;
+  institutionalEmailDomains?: string[];
+  academicExpress?: boolean;
   startsOn: string;
   endsOn: string;
   launchOn?: string | null;
@@ -34,10 +38,21 @@ export function buildF01Draft(input: F01DraftInput): {
   title: string; code: string; nature: string; audience: string; municipality: string;
   templateKey: F01ModelKey; startsOn: string; endsOn: string;
   caronaaPresenceOn: string | null; configuration: ResearchConfiguration;
+  academicExpress: boolean;
 } {
   const model = F01_CREATION_MODELS.find(value => value.key === input.modelKey);
-  const region = F01_REGIONS.find(value => value.id === input.region);
-  if (!model || !region) throw new Error("Escolha um modelo e uma região.");
+  const knownRegion = F01_REGIONS.find(value => value.id === input.region);
+  const customRegion = input.customRegion?.trim() || "";
+  const customMunicipality = input.customMunicipality?.trim() || customRegion;
+  if (!model || (!knownRegion && input.region !== "OUTRA"))
+    throw new Error("Escolha um modelo e uma região.");
+  if (input.region === "OUTRA" && (customRegion.length < 2 || customRegion.length > 120 || customMunicipality.length > 120))
+    throw new Error("Informe a região e o município da comunidade.");
+  const regionLabel = knownRegion?.label ?? customRegion;
+  const municipality = knownRegion?.municipality ?? customMunicipality;
+  const institutionalEmailDomains = [...new Set((input.institutionalEmailDomains ?? [])
+    .map(domain => domain.trim().toLowerCase()).filter(Boolean))];
+  const academicExpress = model.key === F01_UNIVERSITY && input.academicExpress !== false;
   const name = input.name.trim();
   const title = input.title.trim();
   if (name.length < 2 || title.length < 2)
@@ -48,16 +63,17 @@ export function buildF01Draft(input: F01DraftInput): {
     institutionName: name,
     publicName: title,
     campus: input.campus?.trim() || "",
-    region: region.label,
+    region: regionLabel,
     campaignName: title,
     campaignType: "INSTITUCIONAL" as const,
     acquisitionSource: "FORMULARIO_F01",
     emailCaptureEnabled: true,
+    institutionalEmailDomains,
     launchDate: input.launchOn || null,
     // Informational only. Registration and travel are independent of answering.
     usagePolicy: "Pesquisa voluntária sobre mobilidade. As respostas são usadas para analisar dificuldades e interesse em caronas; não representam reserva ou oferta de viagem.",
     priceReference: "Carona compartilhada: referência de R$ 6,00 para 11 km rodoviários. O valor individual depende do trecho contratado; esta pesquisa não realiza cobrança.",
-    profiles: ["PASSAGEIRO", "MOTORISTA"] as ResearchConfiguration["profiles"],
+    profiles: (academicExpress ? ["PASSAGEIRO", "MOTORISTA", "AMBOS"] : ["PASSAGEIRO", "MOTORISTA"]) as ResearchConfiguration["profiles"],
     modes: ["CARONA"] as ResearchConfiguration["modes"],
     accessPolicy: "PESQUISA_PUBLICA" as const,
     partnershipConfirmed: false,
@@ -65,8 +81,9 @@ export function buildF01Draft(input: F01DraftInput): {
   };
   return {
     title, code: input.code.trim().toUpperCase(), nature: model.nature,
-    audience: "GERAL", municipality: region.municipality,
+    audience: "GERAL", municipality,
     templateKey: model.key, startsOn: input.startsOn, endsOn: input.endsOn,
     caronaaPresenceOn: input.launchOn || null, configuration: config,
+    academicExpress,
   };
 }

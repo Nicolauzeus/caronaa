@@ -1,5 +1,6 @@
 import { RESEARCH_TEMPLATES, freshTemplate } from "@/lib/formulario/research-templates";
 import { F01_TEMPLATE_KEYS } from "./mobility-simple";
+import { academicExpressF01Template } from "./academic-express-schema";
 import { supabase } from "@/integrations/supabase/client";
 import { parseResearchConfiguration, type ResearchConfiguration } from "./research-configuration";
 import { friendlyResearchCreationError, normalizeResearchFormCode } from "./research-form-code";
@@ -55,6 +56,7 @@ export async function createResearchForm(input: {
   audience: string;
   municipality?: string;
   templateKey?: string;
+  academicExpress?: boolean;
   configuration?: ResearchConfiguration;
   startsOn: string;
   endsOn: string;
@@ -67,9 +69,11 @@ export async function createResearchForm(input: {
   if (F01_TEMPLATE_KEYS.some(key=>key===input.templateKey) &&
       (!input.configuration || input.configuration.emailCaptureEnabled !== true))
     throw new Error("O F01 exige configuração institucional e captura consentida de leads no CRM.");
-  const selected = RESEARCH_TEMPLATES.find(
-    (t) => t.key === input.templateKey && t.nature === input.nature,
-  );
+  if (input.academicExpress && (input.nature !== "EDUCACAO" || !input.configuration))
+    throw new Error("A pesquisa acadêmica expressa exige uma universidade com configuração institucional.");
+  const selected = input.academicExpress
+    ? academicExpressF01Template
+    : RESEARCH_TEMPLATES.find((t) => t.key === input.templateKey && t.nature === input.nature);
   const schema = selected
     ? freshTemplate(selected)
     : { sections: [{ id: crypto.randomUUID(), title: "Primeira seção", questions: [] }] };
