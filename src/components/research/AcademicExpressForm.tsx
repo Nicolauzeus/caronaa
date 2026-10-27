@@ -4,6 +4,9 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
+  CarFront,
+  SteeringWheel,
+  ArrowLeftRight,
   MapPin,
   ShieldCheck,
 } from "lucide-react";
@@ -108,7 +111,7 @@ export function AcademicExpressForm({
     days: [],
     outboundTime: "",
     returnTime: "",
-    direction: config.settings.returnTimes.length ? "IDA_E_VOLTA" : "IDA",
+    direction: "IDA",
   }));
   const [index, setIndex] = useState(0);
   const [error, setError] = useState("");
@@ -141,15 +144,15 @@ export function AcademicExpressForm({
     ...((config.settings as typeof config.settings & { institutionalEmailDomains?: string[] })
       .institutionalEmailDomains ?? []),
   ];
-  // Backward-compatible hint for the existing UNIFOR campaign; not authorization.
-  if (!allowedDomains.length && config.settings.institutionName.trim().toUpperCase() === "UNIFOR")
-    allowedDomains.push("unifor.br");
   const domain = email.trim().split("@")[1]?.toLowerCase();
   const hasRecognizedDomain = Boolean(
     domain && allowedDomains.some((allowed) => allowed.toLowerCase() === domain),
   );
   const institution = config.settings.institutionName || form.title;
   const plannedLaunch = form.caronaaPresenceOn || config.settings.launchDate;
+  const daysToLaunch = plannedLaunch
+    ? Math.max(0, Math.ceil((new Date(plannedLaunch + "T00:00:00-03:00").getTime() - Date.now()) / 86_400_000))
+    : null;
 
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
@@ -200,8 +203,6 @@ export function AcademicExpressForm({
         return "Informe uma região de origem e o campus de destino.";
       if (!journey.days.length) return "Selecione os dias em que costuma se deslocar.";
       if (!journey.outboundTime) return "Escolha o horário habitual de saída.";
-      if (journey.direction === "IDA_E_VOLTA" && !journey.returnTime)
-        return "Escolha também o horário habitual de retorno.";
     } else if (stage === "specific") {
       const questions =
         role === "MOTORISTA"
@@ -377,7 +378,7 @@ export function AcademicExpressForm({
     activation: "Tudo pronto para participar",
   }[stage];
   return (
-    <main className="relative isolate flex h-[100dvh] min-h-[440px] w-full flex-col overflow-hidden bg-[#121212] font-sans text-white">
+    <main className="relative isolate flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#121212] font-['Manrope'] text-white">
       <div className="mx-auto flex w-full max-w-3xl shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-5">
         <span className="font-bold tracking-tight text-[#FFBB00]">
           CARONAA <span className="font-normal text-white/75">· {institution}</span>
@@ -401,18 +402,18 @@ export function AcademicExpressForm({
       </div>
 
       <section
-        className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 pt-5 sm:px-8 sm:pt-9"
+        className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-2 pt-3 sm:px-8 sm:pt-7"
         aria-label="Etapa do questionário"
       >
         {complete ? (
           <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-4 text-center">
             <CheckCircle2 size={48} className="text-emerald-400" aria-hidden="true" />
-            <h1 className="font-display text-2xl font-bold sm:text-3xl">
-              Sua resposta foi registrada
+            <h1 className="font-['Sora'] text-2xl font-bold sm:text-3xl">
+              Você está na lista da viagem inaugural!
             </h1>
             <p className="max-w-sm text-sm leading-6 text-white/70">
-              Seu trajeto de interesse foi salvo para análise. Isso ainda não cria pedido, oferta ou
-              reserva de carona.
+              Seu trajeto de interesse foi salvo para encontrar compatibilidades futuras.
+              Isso não cria reserva, pedido ou oferta confirmada.
             </p>
             {interestRegistered === true && (
               <p className="text-sm text-emerald-300">
@@ -426,10 +427,16 @@ export function AcademicExpressForm({
               </p>
             )}
             {plannedLaunch && (
-              <p className="text-sm text-white/75">
-                Presença prevista do CARONAA: {displaySurveyDate(plannedLaunch)}. Sujeita a
-                confirmação.
-              </p>
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-center">
+                <p className="text-3xl font-bold text-[#FFBB00]">{daysToLaunch} dias</p>
+                <p className="text-sm text-white/75">{institution} · previsão de início: {displaySurveyDate(plannedLaunch)}</p>
+                <p className="mt-1 text-xs text-white/60">Você poderá acompanhar oportunidades compatíveis após a liberação da comunidade. A data está sujeita a confirmação.</p>
+              </div>
+            )}
+            {typeof window !== "undefined" && (
+              <a className="text-sm font-semibold text-[#FFBB00] underline underline-offset-4"
+                href={`https://wa.me/?text=${encodeURIComponent("Participe da pesquisa de mobilidade: " + window.location.href)}`}
+                target="_blank" rel="noopener noreferrer">Compartilhar com colegas no WhatsApp</a>
             )}
             <a
               href={
@@ -446,13 +453,13 @@ export function AcademicExpressForm({
         ) : (
           <div
             key={stage}
-            className="mx-auto flex w-full max-w-xl flex-col justify-center gap-5 py-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:my-auto"
+            className="mx-auto flex w-full max-w-xl flex-col justify-center gap-3 py-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:my-auto"
           >
             <div className="space-y-2">
               <h1
                 tabIndex={-1}
                 ref={titleRef}
-                className="font-display text-[clamp(1.4rem,4.5vw,2.25rem)] font-bold leading-tight tracking-tight outline-none"
+                className="font-['Sora'] text-[clamp(1.3rem,4.5vw,2.25rem)] font-bold leading-tight tracking-tight outline-none"
               >
                 {heading}
               </h1>
@@ -523,12 +530,10 @@ export function AcademicExpressForm({
                     className={`text-xs leading-5 ${hasRecognizedDomain && hasVerifiedEmail ? "text-emerald-300" : "text-white/65"}`}
                   >
                     {hasRecognizedDomain
-                      ? hasVerifiedEmail
-                        ? "✓ E-mail institucional confirmado pela sua conta."
-                        : "Domínio institucional reconhecido. Confirme a titularidade para validar seu acesso."
+                      ? "✓ Domínio da comunidade " + institution + " reconhecido · a titularidade e o acesso dependem de autenticação."
                       : hasVerifiedEmail
-                        ? "E-mail confirmado na sua conta; vínculo acadêmico ainda não verificado."
-                        : "E-mail válido. Informá-lo não verifica vínculo nem libera acesso."}
+                        ? "E-mail confirmado na conta; vínculo institucional não verificado."
+                        : "Link de ativação será necessário após o cadastro. E-mail informado não libera acesso."}
                   </p>
                 )}
               </>
@@ -566,7 +571,7 @@ export function AcademicExpressForm({
                         setError("");
                       }}
                     >
-                      <span>{roleNames[value]}</span>
+                      <span className="flex items-center gap-3">{value === "PASSAGEIRO" ? <CarFront size={21} /> : value === "MOTORISTA" ? <SteeringWheel size={21} /> : <ArrowLeftRight size={21} />}{roleNames[value]}</span>
                       <ChevronRight size={18} className="text-[#FFBB00]" />
                     </button>
                   );
@@ -693,7 +698,7 @@ export function AcademicExpressForm({
                     )}
                   </label>
                   <label className={label}>
-                    Horário de retorno
+                    Horário de retorno (opcional)
                     <select
                       className={field + " mt-2"}
                       aria-label="Horário habitual de retorno"
@@ -961,7 +966,7 @@ export function AcademicExpressForm({
             {busy
               ? "Registrando…"
               : stage === "activation"
-                ? "Registrar participação"
+                ? "Ativar Minha Carona"
                 : "Continuar"}
             {stage !== "activation" && <ArrowRight size={18} />}
           </button>
