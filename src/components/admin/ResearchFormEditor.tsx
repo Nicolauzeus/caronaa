@@ -18,6 +18,8 @@ import {
   type Answers,
 } from "@/lib/formulario/research-schema";
 import { ResearchSectionFields, ResearchBrandHeader } from "@/components/research/ResearchFields";
+import { AcademicExpressForm } from "@/components/research/AcademicExpressForm";
+import type { PublicResearchConfiguration } from "@/lib/formulario/research-configuration";
 import { ResearchBrandManager } from "@/components/admin/ResearchBrandManager";
 import { academicExpressF01Template, isAcademicExpressF01 } from "@/lib/formulario/academic-express-schema";
 import { ResearchConditionEditor } from "@/components/admin/ResearchConditionEditor";
@@ -55,6 +57,8 @@ export function ResearchFormEditor({
     [brandPath, setBrandPath] = useState<string | null>(null),
     [brandOpen, setBrandOpen] = useState(false);
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
+  const [expressConfiguration, setExpressConfiguration] = useState<PublicResearchConfiguration | null>(null);
+  const [caronaaPresenceOn, setCaronaaPresenceOn] = useState<string | null>(null);
   const [previewAnswers, setPreviewAnswers] = useState<Answers>({}),
     [previewStep, setPreviewStep] = useState(0);
   useEffect(() => {
@@ -70,11 +74,16 @@ export function ResearchFormEditor({
         .single(),
       db
         .from("research_forms")
-        .select("title,nature,brand_image_path,brand_image_alt,brand_display_name")
+        .select("title,nature,brand_image_path,brand_image_alt,brand_display_name,caronaa_presence_on")
         .eq("id", formId)
         .single(),
+      db
+        .from("research_configurations")
+        .select("revision,settings")
+        .eq("form_id", formId)
+        .maybeSingle(),
     ])
-      .then(([v, f]: any[]) => {
+      .then(([v, f, c]: any[]) => {
         if (!alive) return;
         if (v.error || f.error) {
           setError(v.error?.message ?? f.error?.message);
@@ -93,6 +102,11 @@ export function ResearchFormEditor({
         setBrandName(f.data.brand_display_name ?? "");
         setBrandAlt(f.data.brand_image_alt ?? "");
         setBrandPath(f.data.brand_image_path ?? null);
+        setCaronaaPresenceOn(f.data.caronaa_presence_on ?? null);
+        setExpressConfiguration(c?.data?.settings ? {
+          revision: Number(c.data.revision),
+          settings: c.data.settings,
+        } : null);
       })
       .finally(() => {
         if (alive) setBusy(false);
@@ -388,7 +402,7 @@ export function ResearchFormEditor({
             className="rounded-lg border px-3 py-2 text-sm"
             onClick={() => setPreview((v) => !v)}
           >
-            {preview ? "Voltar ao editor" : "Pré-visualizar como participante"}
+            {preview ? "Voltar ao editor" : isAcademicExpressF01(schema) ? "Prévia real · 5 etapas" : "Pré-visualizar como participante"}
           </button>
           <button
             className="rounded-lg border px-3 py-2 text-sm"
@@ -498,7 +512,27 @@ export function ResearchFormEditor({
           </button>
         </div>
       )}
-      {preview ? (
+      {preview && isAcademicExpressF01(schema) && expressConfiguration ? (
+        <div className="mx-auto flex w-full flex-col items-center gap-3">
+          <p className="max-w-lg text-center text-xs text-white/65">
+            Prévia interativa real em largura de iPhone. Respostas, leads, interesses e permissões
+            não serão alterados nesta visualização.
+          </p>
+          <div className="w-full max-w-[393px] overflow-hidden rounded-3xl border border-white/15 shadow-2xl">
+            <AcademicExpressForm
+              key={versionId}
+              previewMode
+              form={{
+                id: formId, version: versionId, title: formTitle, schema,
+                brandImagePath: brandPath, brandAlt, brandName,
+                caronaaPresenceOn, configuration: expressConfiguration,
+              }}
+              captureEnabled={expressConfiguration.settings.emailCaptureEnabled === true}
+              user={null}
+            />
+          </div>
+        </div>
+      ) : preview ? (
         <div className="mx-auto max-w-xl space-y-4">
           <ResearchBrandHeader
             title={formTitle}
