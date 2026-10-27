@@ -1051,7 +1051,7 @@ export function AcademicExpressForm({
                 </label>
                 {prepareInterest && role === "AMBOS" && (
                   <div className="flex gap-2" role="group" aria-label="Tipo de interesse inicial">
-                    {(isF01Express ? ["PASSAGEIRO", "MOTORISTA", "AMBOS"] : ["PASSAGEIRO", "MOTORISTA"] as const).map((r) => (
+                    {(isF01Express ? (["PASSAGEIRO", "MOTORISTA", "AMBOS"] as const) : (["PASSAGEIRO", "MOTORISTA"] as const)).map((r) => (
                       <button
                         key={r}
                         type="button"
