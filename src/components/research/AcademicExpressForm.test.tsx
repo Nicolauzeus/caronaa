@@ -7,6 +7,16 @@ import { newResearchConfiguration } from "@/lib/formulario/research-configuratio
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
 vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: vi.fn() }));
+vi.mock("@/components/formulario/LocationAutocomplete", () => ({
+  LocationAutocomplete: ({ value, placeholder, onChange }: {
+    value?: string;
+    placeholder?: string;
+    onChange: (value: string) => void;
+  }) => (
+    <input value={value ?? ""} placeholder={placeholder}
+      onChange={event => onChange(event.target.value)}/>
+  ),
+}));
 const calls = vi.hoisted(() => ({
   submit: vi.fn(async () => undefined),
   interest: vi.fn(async () => "INTERESSE_REGISTRADO"),
