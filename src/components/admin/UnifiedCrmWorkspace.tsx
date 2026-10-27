@@ -256,8 +256,8 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
           <DetailField label="Horário" value={selected.outbound_time}/>
           <DetailField label="Veículo e vagas" value={[selected.vehicle_type,selected.seats ? selected.seats+" vaga(s)" : ""].filter(Boolean).join(" · ")}/>
         </div>
-        {selected.whatsapp && selected.can_contact && unifiedCrmWhatsappLink(selected.whatsapp) &&
-          <a href={unifiedCrmWhatsappLink(selected.whatsapp)!} target="_blank" rel="noopener noreferrer"
+        {selected.consented_whatsapp && unifiedCrmWhatsappLink(selected.consented_whatsapp) &&
+          <a href={unifiedCrmWhatsappLink(selected.consented_whatsapp)!} target="_blank" rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-semibold text-[#121212]">
             Conversar pelo WhatsApp <ExternalLink size={15}/>
           </a>}
