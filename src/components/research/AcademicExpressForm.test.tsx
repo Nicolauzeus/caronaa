@@ -180,6 +180,28 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     expect(screen.getByText(/Interesse no trajeto registrado separadamente/)).toBeInTheDocument();
   });
 
+
+  it("never sends a research answer or lead from the admin preview", async () => {
+    calls.submit.mockClear();
+    calls.interest.mockClear();
+    calls.capture.mockClear();
+    render(<AcademicExpressForm form={form} captureEnabled user={null} previewMode/>);
+    fillIdentity("preview@unifor.br");
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar carona/i }));
+    fillRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    fireEvent.click(within(screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ }))
+      .getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Li o aviso de privacidade/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular esta participação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pré-agendar meu interesse/i }));
+    expect(screen.getByText(/Prévia finalizada/)).toBeInTheDocument();
+    expect(calls.submit).not.toHaveBeenCalled();
+    expect(calls.interest).not.toHaveBeenCalled();
+    expect(calls.capture).not.toHaveBeenCalled();
+  });
+
   it("automatically advances a driver after selecting the vehicle and a seat count", () => {
     render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
     fillIdentity("condutor@gmail.com");
