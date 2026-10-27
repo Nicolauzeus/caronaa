@@ -135,7 +135,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
               <label className="block text-sm font-medium">
                 Domínios de e-mail reconhecidos (opcional)
                 <input value={(values.institutionalEmailDomains || []).join(", ")}
-                  onChange={event => set("institutionalEmailDomains", event.target.value.split(/[,;\\s]+/).filter(Boolean))}
+                  onChange={event => set("institutionalEmailDomains", event.target.value.split(/[,;\s]+/).filter(Boolean))}
                   placeholder="Ex.: universidade.edu.br" className={inputClass} autoCapitalize="none"/>
                 <span className="mt-1 block text-xs text-muted-foreground">Apenas indicação visual; não concede acesso nem comprova vínculo.</span>
               </label>
