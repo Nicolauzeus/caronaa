@@ -1,1 +1,149 @@
--- Custom SQL migration file, put your code below! --
+-- 0116 | Academic Express F01 V2: recognized email domains and answer safeguards.
+-- Run ONCE before 0118. Additive: does not migrate historical answers.
+-- Domain recognition does NOT verify email ownership or grant access.
+BEGIN;
+
+ALTER TABLE public.research_lead_contacts
+  ADD COLUMN IF NOT EXISTS institutional_domain_recognized boolean NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION public.mark_research_lead_domain_hint()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $domain$
+DECLARE
+  domains jsonb;
+  supplied_domain text;
+BEGIN
+  SELECT c.settings->'institutionalEmailDomains' INTO domains
+  FROM public.research_configurations AS c
+  WHERE c.form_id = NEW.form_id;
+
+  supplied_domain := lower(split_part(NEW.normalized_email, '@', 2));
+  NEW.institutional_domain_recognized :=
+    supplied_domain <> ''
+    AND jsonb_typeof(domains) = 'array'
+    AND domains ? supplied_domain;
+  RETURN NEW;
+END
+$domain$;
+
+REVOKE ALL ON FUNCTION public.mark_research_lead_domain_hint()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS research_lead_domain_hint_on_insert
+  ON public.research_lead_contacts;
+
+CREATE TRIGGER research_lead_domain_hint_on_insert
+  BEFORE INSERT OR UPDATE OF normalized_email, form_id
+  ON public.research_lead_contacts
+  FOR EACH ROW EXECUTE FUNCTION public.mark_research_lead_domain_hint();
+
+CREATE OR REPLACE FUNCTION public.guard_academic_f01_response()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $f01$
+DECLARE
+  schema_value jsonb;
+  role_id text;
+  name_id text;
+  vehicle_id text;
+  seats_id text;
+  pains_id text;
+  primary_id text;
+  other_id text;
+  role_value text;
+  chosen_pains integer;
+  distinct_pains integer;
+  none_count integer;
+BEGIN
+  SELECT v.schema_json INTO schema_value
+  FROM public.research_form_versions AS v
+  WHERE v.id = NEW.version_id AND v.form_id = NEW.form_id;
+
+  IF schema_value->>'experience' IS DISTINCT FROM 'ACADEMIC_EXPRESS_F01_V2' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'RESEARCH_PARTICIPANT_ROLE'),
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'ACADEMIC_PARTICIPANT_NAME'),
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'URBAN_OFFER_VEHICLE'),
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'SEATS_AVAILABLE'),
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'MOBILITY_PAINS'),
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'MOBILITY_PRIMARY_PAIN'),
+    max(q.value->>'id') FILTER (WHERE q.value->>'semanticCode' = 'MOBILITY_OTHER_PAIN')
+  INTO role_id, name_id, vehicle_id, seats_id, pains_id, primary_id, other_id
+  FROM jsonb_array_elements(schema_value->'sections') AS s(value)
+  CROSS JOIN LATERAL jsonb_array_elements(s.value->'questions') AS q(value);
+
+  IF role_id IS NULL OR name_id IS NULL OR vehicle_id IS NULL
+     OR seats_id IS NULL OR pains_id IS NULL OR primary_id IS NULL
+     OR other_id IS NULL THEN
+    RAISE EXCEPTION 'Estrutura academica F01 V2 incompleta' USING ERRCODE = '22023';
+  END IF;
+
+  IF char_length(btrim(coalesce(NEW.answers->>name_id, ''))) NOT BETWEEN 2 AND 80 THEN
+    RAISE EXCEPTION 'Nome do participante invalido' USING ERRCODE = '22023';
+  END IF;
+
+  role_value := NEW.answers->>role_id;
+  IF role_value IS NULL OR role_value NOT IN ('PASSAGEIRO', 'MOTORISTA', 'AMBOS') THEN
+    RAISE EXCEPTION 'Perfil academico invalido' USING ERRCODE = '22023';
+  END IF;
+
+  IF jsonb_typeof(NEW.answers->pains_id) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Selecione dificuldades de deslocamento' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT
+    count(*),
+    count(DISTINCT p.value),
+    count(*) FILTER (WHERE p.value = 'SEM_DIFICULDADES')
+  INTO chosen_pains, distinct_pains, none_count
+  FROM jsonb_array_elements_text(NEW.answers->pains_id) AS p(value);
+
+  IF chosen_pains NOT BETWEEN 1 AND 3
+     OR chosen_pains <> distinct_pains
+     OR (none_count > 0 AND chosen_pains <> 1)
+     OR NOT (NEW.answers->pains_id ? coalesce(NEW.answers->>primary_id, '')) THEN
+    RAISE EXCEPTION 'Dificuldades ou prioridade invalidas' USING ERRCODE = '22023';
+  END IF;
+
+  IF NEW.answers->pains_id ? 'OUTRA'
+     AND char_length(btrim(coalesce(NEW.answers->>other_id, ''))) NOT BETWEEN 3 AND 140 THEN
+    RAISE EXCEPTION 'Descreva a outra dificuldade em ate 140 caracteres'
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF role_value IN ('MOTORISTA', 'AMBOS') THEN
+    IF coalesce(NEW.answers->>vehicle_id, '') NOT IN ('CARRO', 'MOTO') THEN
+      RAISE EXCEPTION 'Veiculo invalido' USING ERRCODE = '22023';
+    END IF;
+    IF coalesce(NEW.answers->>seats_id, '') NOT IN ('1', '2', '3', '4') THEN
+      RAISE EXCEPTION 'Informe de uma a quatro vagas' USING ERRCODE = '22023';
+    END IF;
+    IF NEW.answers->>vehicle_id = 'MOTO'
+       AND NEW.answers->>seats_id <> '1' THEN
+      RAISE EXCEPTION 'Motocicleta admite somente uma vaga'
+        USING ERRCODE = '22023';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$f01$;
+
+REVOKE ALL ON FUNCTION public.guard_academic_f01_response()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS research_academic_f01_response_guard
+  ON public.research_answers;
+
+CREATE TRIGGER research_academic_f01_response_guard
+  BEFORE INSERT ON public.research_answers
+  FOR EACH ROW EXECUTE FUNCTION public.guard_academic_f01_response();
+
+COMMENT ON COLUMN public.research_lead_contacts.institutional_domain_recognized
+  IS 'Exact configured email domain at capture time; not identity or enrollment verification.';
+
+COMMIT;
+NOTIFY pgrst, 'reload schema';
