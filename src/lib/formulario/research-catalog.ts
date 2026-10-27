@@ -73,26 +73,82 @@ export async function createResearchForm(input: {
   const schema = selected
     ? freshTemplate(selected)
     : { sections: [{ id: crypto.randomUUID(), title: "Primeira seção", questions: [] }] };
-  const { data,error } = await db.rpc("create_scheduled_research_form",{
-    p_metadata: {
-      title: input.title.trim(),
-      code: normalizeResearchFormCode(input.code),
-      nature: input.nature,
-      audience: input.audience,
-      municipality: input.municipality?.trim() ?? "",
-    },
+  const metadata = {
+    title: input.title.trim(),
+    code: normalizeResearchFormCode(input.code),
+    nature: input.nature,
+    audience: input.audience,
+    municipality: input.municipality?.trim() ?? "",
+  };
+  const settings = input.configuration ? parseResearchConfiguration(input.configuration) : null;
+  const { data, error } = await db.rpc("create_scheduled_research_form", {
+    p_metadata: metadata,
     p_schema: schema,
-    p_settings: input.configuration ? parseResearchConfiguration(input.configuration) : null,
+    p_settings: settings,
     p_starts_on: input.startsOn,
     p_ends_on: input.endsOn,
     p_caronaa_on: input.caronaaPresenceOn || null,
   });
-  if (error) {
-    if (error.code === "PGRST202" || /create_scheduled_research_form/.test(error.message))
-      throw new Error("A programação da pesquisa ainda não foi instalada no banco. Aplique a migration 0110.");
-    throw new Error(friendlyResearchCreationError(error));
+  if (!error) return data as string;
+
+  // Only a missing RPC justifies the fallback. Never turn authorization,
+  // uniqueness, data validation or network failures into another write.
+  const routineMissing = ["PGRST202", "42883"].includes(String(error.code)) ||
+    /(?:could not find|does not exist|unknown function).*create_scheduled_research_form/i.test(error.message ?? "");
+  if (!routineMissing) throw new Error(friendlyResearchCreationError(error));
+
+  // Version settings are NOT stored in research_form_versions.settings_json.
+  // The actual schema uses research_configurations behind an admin-scoped RPC.
+  // Verify schedule columns before writing, so an unapplied 0110 cannot leave
+  // a seemingly valid, but unscheduled, research draft behind.
+  const preflight = await db.from("research_forms")
+    .select("survey_starts_on,survey_ends_on,caronaa_presence_on").limit(0);
+  if (preflight.error)
+    throw new Error("As colunas de agendamento ainda não existem. Aplique a migration 0110 antes de criar pesquisas com datas.");
+
+  const formResult = await db.from("research_forms").insert({
+    ...metadata,
+    municipality: metadata.municipality || null,
+    mobility_mode: input.nature === "MOBILIDADE_LOCAL" ? "PROFISSIONAL_SOB_DEMANDA" : "COMPARTILHADA",
+    survey_starts_on: input.startsOn,
+    survey_ends_on: input.endsOn,
+    caronaa_presence_on: input.caronaaPresenceOn || null,
+    status: "RASCUNHO",
+    is_enabled: false,
+  }).select("id").single();
+  if (formResult.error || !formResult.data?.id)
+    throw new Error(friendlyResearchCreationError(formResult.error));
+
+  const formId = String(formResult.data.id);
+  try {
+    const version = await db.from("research_form_versions").insert({
+      form_id: formId,
+      version_number: 1,
+      schema_json: schema,
+    });
+    if (version.error) throw new Error(friendlyResearchCreationError(version.error));
+    if (settings) {
+      const configuration = await db.rpc("save_research_configuration", {
+        p_form_id: formId,
+        p_settings: settings,
+        p_expected_revision: 0,
+      });
+      if (configuration.error || Number(configuration.data) !== 1)
+        throw new Error("Não foi possível salvar a configuração institucional. Verifique a migration 0095 e as permissões administrativas.");
+    }
+    return formId;
+  } catch (failure) {
+    // Never silently leave an orphaned draft or claim success after a partial write.
+    // Older databases may lack delete_empty_research_draft; expose the id if
+    // an administrator must repair the draft manually.
+    try {
+      const cleanup = await db.rpc("delete_empty_research_draft", { p_form_id: formId });
+      if (cleanup.error || cleanup.data !== true) throw new Error("cleanup rejected");
+    } catch {
+      throw new Error(`Não foi possível concluir o rascunho ${formId}. Verifique-o no Admin antes de repetir a criação.`);
+    }
+    throw failure;
   }
-  return data as string;
 }
 
 export async function setResearchFormEnabled(form: ResearchForm, enabled: boolean) {
