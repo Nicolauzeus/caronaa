@@ -63,3 +63,14 @@ describe("F01 academic express v2 — published v1 remains unchanged", () => {
     expect(both.questionVisible(questions.find(q => q.semanticCode === "ACADEMIC_PASSENGER_PRIORITY")!)).toBe(true);
   });
 });
+
+describe("UNIFOR F01 V4 migration rollout", () => {
+  it("creates a new published version and keeps older answers and receipts", () => {
+    const sql = readFileSync("drizzle/migrations/0117_unifor_f01_v4_rollout.sql", "utf8");
+    expect(sql).toContain("latest+1");
+    expect(sql).toContain("ACADEMIC_EXPRESS_F01_V2");
+    expect(sql).toContain("unifor.br");
+    expect(sql).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
+    expect(sql).toContain("CREATE");
+  });
+});
