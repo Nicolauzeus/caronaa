@@ -37,7 +37,7 @@ describe("Academic express UX – five compact steps", () => {
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: "lead@unifor.br" },
     });
-    expect(screen.getByText(/Domínio institucional reconhecido/)).toBeInTheDocument();
+    expect(screen.getByText(/Domínio de UNIFOR reconhecido imediatamente/)).toBeInTheDocument();
     expect(screen.queryByText(/Comunidade acadêmica verificada/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
@@ -99,12 +99,12 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: "pessoa@campus.test.br" },
     });
-    expect(screen.getByText(/Domínio da comunidade Campus Teste reconhecido/)).toBeInTheDocument();
-    expect(screen.getByText(/a titularidade e o acesso dependem de autenticação/)).toBeInTheDocument();
+    expect(screen.getByText(/Domínio de Campus Teste reconhecido imediatamente/)).toBeInTheDocument();
+    expect(screen.getByText(/O vínculo e o acesso dependem da verificação do e-mail/)).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
       target: { value: "pessoa@gmail.com" },
     });
-    expect(screen.getByText(/Link de ativação será necessário/)).toBeInTheDocument();
+    expect(screen.getByText(/será necessário ativar sua conta/)).toBeInTheDocument();
   });
 
   it("keeps the mandatory social pains together in stage 4 of 5", () => {
@@ -114,9 +114,8 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fillRoute();
     expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
     expect(screen.queryByText("Qual veículo usaria?")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ônibus" }));
+    expect(screen.queryByText("Como você vai hoje?")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
     expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
     const painGroup = screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ });
@@ -139,7 +138,18 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(screen.getByRole("button", { name: "Carro" }));
     fireEvent.click(screen.getByRole("button", { name: "2" }));
     fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+  });
+
+  it("automatically advances a driver after selecting the vehicle and a seat count", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity("condutor@gmail.com");
+    fireEvent.click(screen.getByRole("button", { name: /Quero oferecer carona/i }));
+    fillRoute();
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Carro" }));
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
+    expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+    expect(screen.queryByText("Qual veículo usaria?")).not.toBeInTheDocument();
   });
 });
