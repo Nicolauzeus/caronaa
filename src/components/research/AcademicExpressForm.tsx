@@ -8,6 +8,8 @@ import {
   Car as SteeringWheel,
   ArrowLeftRight,
   MapPin,
+  Search,
+  X,
   ShieldCheck,
 } from "lucide-react";
 import type { SurveySchema, SurveyQuestion } from "@/lib/formulario/research-templates";
@@ -22,6 +24,7 @@ import {
 import { academicExpressSteps, daysUntilCommunityLaunch, isAcademicExpressF01, type AcademicRole } from "@/lib/formulario/academic-express-schema";
 import { applySimplePainAnswer, simplePainFields, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { cleanAnswers, validatePage, type Answers } from "@/lib/formulario/research-schema";
 import { validResearchEmail, captureResearchLead } from "@/lib/formulario/research-lead";
 import {
@@ -134,6 +137,9 @@ export function AcademicExpressForm({
   const [index, setIndex] = useState(0);
   const [specificPane, setSpecificPane] = useState<"profile" | "pains">("profile");
   const [locating, setLocating] = useState(false);
+  const [searchOriginOpen, setSearchOriginOpen] = useState(false);
+  const [searchOriginDraft, setSearchOriginDraft] = useState("");
+  const [locationHint, setLocationHint] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
@@ -307,13 +313,15 @@ export function AcademicExpressForm({
     setError("");
   }
 
-  /** GPS is requested only after a tap, and only the approximate locality is saved. */
+  /** GPS is requested only after a tap; precise coordinates are never stored. */
   function useCurrentLocation() {
     if (typeof navigator === "undefined" || !navigator.geolocation ||
-        (typeof window !== "undefined" && !window.isSecureContext)) {
-      setError("Localização indisponível. Informe seu bairro ou município manualmente.");
+        (typeof window !== "undefined" && window.isSecureContext === false)) {
+      setError("A localização atual exige HTTPS e permissão do navegador. Use Buscar localização ou digite o bairro.");
       return;
     }
+    setError("");
+    setLocationHint("");
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -330,14 +338,29 @@ export function AcademicExpressForm({
               originLat: null, originLng: null,
             }));
             setError("");
+            setLocationHint("Região aproximada identificada. Você pode alterar o bairro antes de continuar.");
           } catch {
-            setError("Não foi possível identificar o bairro. Digite sua região manualmente.");
+            setError("Não foi possível reconhecer o bairro. Use Buscar localização ou digite manualmente.");
           } finally { setLocating(false); }
         })();
       },
-      () => { setError("Permissão de localização não concedida. Digite sua região."); setLocating(false); },
+      () => { setError("Sem acesso à localização atual. Você pode buscar ou digitar o bairro normalmente."); setLocating(false); },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
+  }
+
+  function applySearchedOrigin(raw: string) {
+    const locality = raw.trim().slice(0, 120);
+    if (locality.length < 2) {
+      setError("Informe pelo menos duas letras do bairro, região ou município.");
+      return;
+    }
+    // Persist a locality label only. Precise coordinates or residential addresses
+    // received from search providers must not be copied to a research journey.
+    setJourney(previous => ({ ...previous, originArea: locality, originLat: null, originLng: null }));
+    setSearchOriginOpen(false);
+    setError("");
+    setLocationHint("Região aproximada selecionada. Você pode alterar o bairro.");
   }
 
   async function submit(requestInterest = false) {
@@ -755,6 +778,7 @@ export function AcademicExpressForm({
                       }
                       placeholder={isF01Express ? "Bairro ou região de origem" : "Ex.: Maracanaú"}
                       className={field + " mt-2"}
+                      aria-label="Bairro ou região de origem"
                     />
                   </label>
                   <label className={label}>
@@ -776,13 +800,22 @@ export function AcademicExpressForm({
                     />
                   </label>
                 </div>
-                {isF01Express && (
+                <div className="grid grid-cols-2 gap-2" aria-label="Ferramentas de localização">
                   <button type="button" onClick={useCurrentLocation} disabled={locating}
-                    className="inline-flex min-h-10 items-center gap-2 self-start rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white/80 disabled:opacity-50">
-                    <MapPin size={15} aria-hidden="true" />
-                    {locating ? "Localizando…" : "Usar meu bairro atual (opcional)"}
+                    aria-label="Usar localização atual"
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[.05] px-2 py-2 text-xs font-semibold text-white/85 focus-visible:border-[#FFBB00] disabled:opacity-50">
+                    <MapPin size={16} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
+                    <span>{locating ? "Localizando…" : "Minha localização"}</span>
                   </button>
-                )}
+                  <button type="button"
+                    aria-label="Buscar localização"
+                    onClick={() => { setSearchOriginDraft(journey.originArea); setSearchOriginOpen(true); setError(""); }}
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[.05] px-2 py-2 text-xs font-semibold text-white/85 focus-visible:border-[#FFBB00]">
+                    <Search size={16} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
+                    <span>Buscar localização</span>
+                  </button>
+                </div>
+                {locationHint && <p role="status" className="text-xs text-emerald-300">{locationHint}</p>}
                 <div className="space-y-2">
                   <p className={label}>Dias habituais</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -828,36 +861,6 @@ export function AcademicExpressForm({
                     ))}
                   </div>
                 </div>
-                {isF01Express && (
-                  <fieldset className="space-y-2">
-                    <legend className={label}>Horário habitual de saída</legend>
-                    <div className="grid grid-cols-4 gap-2">
-                      {suggestedTimes.map(time => (
-                        <button key={time} type="button" aria-pressed={journey.outboundTime === time && !journey.otherOutboundTime}
-                          onClick={() => setJourney(p => ({ ...p, outboundTime: time, otherOutboundTime: false }))}
-                          className={"min-h-11 rounded-xl border px-1.5 text-xs font-semibold " +
-                            (journey.outboundTime === time && !journey.otherOutboundTime
-                              ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]"
-                              : "border-white/15 bg-white/5 text-white")}>
-                          {Number(time.slice(0, 2)) < 12 ? "Manhã" : Number(time.slice(0, 2)) < 18 ? "Tarde" : "Noite"} · {time}
-                        </button>
-                      ))}
-                      <button type="button" aria-pressed={journey.otherOutboundTime}
-                        onClick={() => setJourney(p => ({ ...p, otherOutboundTime: true, outboundTime: "" }))}
-                        className={"min-h-11 rounded-xl border px-1 text-xs " +
-                          (journey.otherOutboundTime ? "border-[#FFBB00] text-[#FFBB00]" : "border-white/15")}>
-                        Outro
-                      </button>
-                    </div>
-                    {journey.otherOutboundTime && (
-                      <input aria-label="Horário personalizado de saída" type="time"
-                        value={journey.outboundTime}
-                        onChange={event => setJourney(p => ({ ...p, outboundTime: event.target.value }))}
-                        className={field}/>
-                    )}
-                  </fieldset>
-                )}
-                {!isF01Express && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className={label}>
                     Horário de ida
@@ -923,7 +926,6 @@ export function AcademicExpressForm({
                     )}
                   </label>
                 </div>
-                )}
                 <p className="flex items-start gap-2 text-xs leading-5 text-white/50">
                   <MapPin size={15} className="shrink-0" />
                   Não pedimos endereço residencial; esta é uma intenção de trajeto, não uma reserva.
@@ -1234,6 +1236,34 @@ export function AcademicExpressForm({
         )}
       </section>
 
+      {searchOriginOpen && (
+        <div role="dialog" aria-modal="true" aria-label="Buscar bairro ou região"
+          className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[#121212]/95 p-4 backdrop-blur-2xl">
+          <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-3 overflow-y-auto pt-[env(safe-area-inset-top)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-['Sora'] text-xl font-bold">Buscar localização</h2>
+                <p className="mt-1 text-xs text-white/60">Busque um bairro, campus ou município. Salvará somente sua região aproximada.</p>
+              </div>
+              <button type="button" aria-label="Fechar busca" onClick={() => setSearchOriginOpen(false)}
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-white/15">
+                <X size={18}/>
+              </button>
+            </div>
+            <LocationAutocomplete id={id + "-origin-search"} variant="glass"
+              autoFocus value={searchOriginDraft} onChange={value => setSearchOriginDraft(value)}
+              onSelect={(value,details) => applySearchedOrigin(details.neighborhood || details.city || value)}
+              label="Localidade de origem" placeholder="Digite o bairro, município ou local..." />
+            <button type="button" onClick={() => applySearchedOrigin(searchOriginDraft)}
+              disabled={searchOriginDraft.trim().length < 2}
+              className="min-h-11 rounded-xl bg-[#FFBB00] px-4 text-sm font-semibold text-[#121212] disabled:opacity-40">
+              Usar localidade digitada
+            </button>
+            <p className="text-xs text-white/50">Caso as sugestões não estejam disponíveis, você pode usar a região digitada sem conceder GPS.</p>
+            {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
+          </div>
+        </div>
+      )}
       {!complete && (
         <div className="z-10 mx-auto flex w-full max-w-3xl shrink-0 flex-wrap gap-2 border-t border-white/10 bg-[#121212]/90 px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl sm:px-8">
           <button
