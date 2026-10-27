@@ -85,7 +85,10 @@ BEGIN
         ELSE '[]'::jsonb END,
     'created_at',a.submitted_at,
     'contact_consent',coalesce(l.linkage_consent,false),
-    'institutional_email',coalesce(l.institutional_domain_recognized,false),
+    'institutional_email',
+      (coalesce(l.institutional_domain_recognized,false) OR
+       coalesce(c.settings->'institutionalEmailDomains' ?
+         lower(split_part(l.normalized_email,'@',2)),false)),
     'status','NOVO',
     'raw_payload',jsonb_build_object(
       'answers',coalesce(meta.labeled,'{}'::jsonb),
