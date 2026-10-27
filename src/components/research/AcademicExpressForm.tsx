@@ -139,7 +139,7 @@ export function AcademicExpressForm({
   const [linkageConsent, setLinkageConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [prepareInterest, setPrepareInterest] = useState(false);
-  const [interestRole, setInterestRole] = useState<AcademicRole>("AMBOS");
+  const [interestRole, setInterestRole] = useState<AcademicRole>(isF01Express ? "AMBOS" : "PASSAGEIRO");
   const [customSeats, setCustomSeats] = useState(false);
   const [submissionKey] = useState(() => crypto.randomUUID());
 
@@ -623,7 +623,7 @@ export function AcademicExpressForm({
                 {captureEnabled && validResearchEmail(email) && (
                   <p
                     role="status"
-                    className={`text-xs leading-5 ${hasRecognizedDomain && hasVerifiedEmail ? "text-emerald-300" : "text-white/65"}`}
+                    className={`rounded-xl border px-3 py-2 text-xs leading-5 ${hasRecognizedDomain ? "border-[#FFBB00]/25 bg-[#FFBB00]/[.06] text-[#FFBB00]" : "border-white/10 bg-white/[.03] text-white/65"}`}
                   >
                     {hasRecognizedDomain
                       ? isF01Express
