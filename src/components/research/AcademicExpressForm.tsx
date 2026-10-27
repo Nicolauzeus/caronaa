@@ -561,14 +561,14 @@ export function AcademicExpressForm({
             {stage === "identity" && (
               <>
                 <label className={label} htmlFor={id + "-name"}>
-                  Seu nome
+                  {isF01Express ? "Nome completo" : "Seu nome"}
                   <input
                     id={id + "-name"}
                     ref={nameRef}
                     autoComplete="name"
                     value={selected(nameQuestion)}
                     onChange={(event) => updateAnswer(nameQuestion, event.target.value)}
-                    placeholder="Como prefere ser chamado(a)"
+                    placeholder={isF01Express ? "Seu nome completo" : "Como prefere ser chamado(a)"}
                     maxLength={80}
                     className={field + " mt-2"}
                   />
@@ -626,7 +626,9 @@ export function AcademicExpressForm({
                     className={`text-xs leading-5 ${hasRecognizedDomain && hasVerifiedEmail ? "text-emerald-300" : "text-white/65"}`}
                   >
                     {hasRecognizedDomain
-                      ? "✓ Domínio da comunidade " + institution + " reconhecido · a titularidade e o acesso dependem de autenticação."
+                      ? isF01Express
+                        ? "✓ Domínio da comunidade " + institution + " reconhecido · a titularidade e o acesso dependem de autenticação."
+                        : "Domínio institucional reconhecido. Confirme a titularidade para validar seu acesso."
                       : hasVerifiedEmail
                         ? "E-mail confirmado na conta; vínculo institucional não verificado."
                         : "Link de ativação será necessário após o cadastro. E-mail informado não libera acesso."}
@@ -692,7 +694,7 @@ export function AcademicExpressForm({
                           originLng: null,
                         }))
                       }
-                      placeholder="Ex.: Maracanaú"
+                      placeholder={isF01Express ? "Bairro ou região de origem" : "Ex.: Maracanaú"}
                       className={field + " mt-2"}
                     />
                   </label>
@@ -771,14 +773,14 @@ export function AcademicExpressForm({
                   <fieldset className="space-y-2">
                     <legend className={label}>Horário habitual de saída</legend>
                     <div className="grid grid-cols-4 gap-2">
-                      {suggestedTimes.map((time, i) => (
+                      {suggestedTimes.map(time => (
                         <button key={time} type="button" aria-pressed={journey.outboundTime === time && !journey.otherOutboundTime}
                           onClick={() => setJourney(p => ({ ...p, outboundTime: time, otherOutboundTime: false }))}
                           className={"min-h-11 rounded-xl border px-1.5 text-xs font-semibold " +
                             (journey.outboundTime === time && !journey.otherOutboundTime
                               ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]"
                               : "border-white/15 bg-white/5 text-white")}>
-                          {["Manhã", "Tarde", "Noite"][i]} · {time}
+                          {Number(time.slice(0, 2)) < 12 ? "Manhã" : Number(time.slice(0, 2)) < 18 ? "Tarde" : "Noite"} · {time}
                         </button>
                       ))}
                       <button type="button" aria-pressed={journey.otherOutboundTime}
