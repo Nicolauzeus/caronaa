@@ -96,7 +96,8 @@ export function normalizeAcademicAffiliation(value: unknown): string | null {
   if (role.includes("ESTUDANTE") || role.includes("ALUNO")) return "ESTUDANTE";
   if (role.includes("PROFESSOR") || role.includes("DOCENTE")) return "PROFESSOR";
   if (role.includes("TERCEIR") || role.includes("PRESTADOR")) return "TERCEIRIZADO";
-  if (role.includes("COLABORADOR") || role.includes("TECNICO") || role.includes("TÉCNICO"))
+  if (role.includes("COLABORADOR") || role.includes("TECNICO") ||
+      role.includes("TÉCNICO") || role.includes("TRABALHADOR"))
     return "COLABORADOR";
   return "OUTRO";
 }
@@ -351,14 +352,18 @@ export function filterUnifiedCrmContacts(contacts: UnifiedCrmContact[], filters:
 }
 
 export function unifiedCrmMetrics(contacts: UnifiedCrmContact[]) {
-  const withEmail = contacts.filter(contact => Boolean(contact.email));
+  // Anonymous research participation remains in dossiers, but is not invented
+  // as a contactable lead or an actionable "new" contact.
+  const withContact = contacts.filter(c => Boolean(c.email || c.whatsapp));
+  const withEmail = withContact.filter(contact => Boolean(contact.email));
   const institutional = withEmail.filter(contact => contact.institutional_email).length;
   return {
-    total: contacts.length,
+    total: withContact.length,
+    anonymousParticipations: contacts.length - withContact.length,
     drivers: contacts.filter(c => c.mobility_roles.some(r => r==="MOTORISTA"||r==="AMBOS")).length,
     passengers: contacts.filter(c => c.mobility_roles.some(r => r==="PASSAGEIRO"||r==="AMBOS")).length,
     institutionalPercent: withEmail.length ? Math.round(100 * institutional / withEmail.length) : 0,
-    newContacts: contacts.filter(c => c.status==="NOVO").length,
+    newContacts: withContact.filter(c => c.status==="NOVO").length,
   };
 }
 
