@@ -71,6 +71,6 @@ describe("UNIFOR F01 V4 migration rollout", () => {
     expect(sql).toContain("ACADEMIC_EXPRESS_F01_V2");
     expect(sql).toContain("unifor.br");
     expect(sql).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
-    expect(sql).toContain("CREATE");
+    expect(sql).toContain("INSERT INTO public.research_form_versions");
   });
 });
