@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {freshTemplate} from "./research-templates";
-import {academicExpressSteps,academicExpressUrbanTemplate,isAcademicExpress} from "./academic-express-schema";
+import {academicExpressSteps,academicExpressUrbanTemplate,academicExpressF01Template,isAcademicExpress,daysUntilCommunityLaunch} from "./academic-express-schema";
 import {inspectSchema,cleanAnswers,validatePage} from "./research-schema";
 import {createResearchVisibility} from "./research-conditions";
 
@@ -45,5 +45,41 @@ describe("four/five stage university express questionnaire",()=>{
     expect(migration).toContain("ACADEMIC_EXPRESS_V1");
     expect(migration).toContain("UNIFOR version");
     expect(migration).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
+  });
+});
+
+describe("F01 academic express v2 — published v1 remains unchanged", () => {
+  it("captures pains once and preserves role-specific questions", () => {
+    const schema = freshTemplate(academicExpressF01Template);
+    expect(schema.experience).toBe("ACADEMIC_EXPRESS_F01_V2");
+    expect(isAcademicExpress(schema)).toBe(true);
+    expect(inspectSchema(schema)).toEqual([]);
+    const questions = schema.sections.flatMap(section => section.questions);
+    expect(questions.filter(q => q.semanticCode?.startsWith("MOBILITY_"))).toHaveLength(3);
+    const role = questions.find(q => q.semanticCode === "RESEARCH_PARTICIPANT_ROLE")!;
+    const both = createResearchVisibility(schema, { [role.id]: "AMBOS" });
+    expect(both.questionVisible(questions.find(q => q.semanticCode === "SEATS_AVAILABLE")!)).toBe(true);
+    expect(both.questionVisible(questions.find(q => q.semanticCode === "TRANSPORT_MODE")!)).toBe(false);
+    expect(both.questionVisible(questions.find(q => q.semanticCode === "ACADEMIC_PASSENGER_PRIORITY")!)).toBe(true);
+  });
+});
+
+describe("UNIFOR F01 V4 migration rollout", () => {
+  it("creates a new published version and keeps older answers and receipts", () => {
+    const sql = readFileSync("drizzle/migrations/0117_unifor_f01_v4_rollout.sql", "utf8");
+    expect(sql).toContain("latest+1");
+    expect(sql).toContain("ACADEMIC_EXPRESS_F01_V2");
+    expect(sql).toContain("unifor.br");
+    expect(sql).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
+    expect(sql).toContain("INSERT INTO public.research_form_versions");
+  });
+});
+
+describe("dynamic calendar-day countdown", () => {
+  it("uses the institution timezone rather than Fortaleza hardcoding", () => {
+    const now = new Date("2026-11-03T22:30:00Z");
+    expect(daysUntilCommunityLaunch("2026-11-04","America/Fortaleza",now)).toBe(1);
+    expect(daysUntilCommunityLaunch("2026-11-04","Asia/Tokyo",now)).toBe(0);
+    expect(daysUntilCommunityLaunch(null,"America/Fortaleza",now)).toBeNull();
   });
 });

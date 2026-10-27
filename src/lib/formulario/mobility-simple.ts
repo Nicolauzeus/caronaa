@@ -88,6 +88,9 @@ export function isSimpleMobility(schema?: SurveySchema | null): boolean {
   return schema?.experience === MOBILITY_SIMPLE_EXPERIENCE;
 }
 
+function hasF01Pains(schema: SurveySchema): boolean {
+  return isSimpleMobility(schema) || schema.experience === "ACADEMIC_EXPRESS_F01_V2";
+}
 export function simplePainFields(schema: SurveySchema) {
   const questions = schema.sections.flatMap(section => section.questions);
   return {
@@ -107,7 +110,7 @@ export function normalizeSimplePains(input: string[]): string[] {
 export function applySimplePainAnswer(
   schema: SurveySchema, previous: Answers, id: string, value: string | string[],
 ): Answers {
-  if (!isSimpleMobility(schema)) return { ...previous, [id]: value };
+  if (!hasF01Pains(schema)) return { ...previous, [id]: value };
   const { pains, primary, other } = simplePainFields(schema);
   if (!pains || !primary) return { ...previous, [id]: value };
   if (id === pains.id) {
@@ -130,7 +133,7 @@ export function applySimplePainAnswer(
 }
 
 export function validateSimpleMobilityPains(schema: SurveySchema, answers: Answers): string[] {
-  if (!isSimpleMobility(schema)) return [];
+  if (!hasF01Pains(schema)) return [];
   const { pains, primary, other } = simplePainFields(schema);
   if (!pains || !primary) return ["A seção de dores sociais está incompleta."];
   const selected = answers[pains.id];

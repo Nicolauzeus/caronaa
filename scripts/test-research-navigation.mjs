@@ -94,6 +94,47 @@ try {
     assert.deepEqual(errors, []);
     await page.close();
   }
+  // The new academic F01 is tested separately at real compact phone heights.
+  for (const { width, height } of [{ width: 375, height: 667 }, { width: 393, height: 852 }]) {
+    const page = await browser.newPage({ viewport: { width, height }, locale: "pt-BR", reducedMotion: "reduce" });
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("http://127.0.0.1:5201/academic");
+    const checkViewport = async label => {
+      const dimensions = await page.evaluate(() => ({
+        htmlWidth: document.documentElement.scrollWidth,
+        bodyHeight: document.body.scrollHeight,
+        viewportWidth: innerWidth, viewportHeight: innerHeight,
+      }));
+      assert.ok(dimensions.htmlWidth <= dimensions.viewportWidth + 1, `${width}x${height}/${label} horizontal overflow`);
+      assert.ok(dimensions.bodyHeight <= dimensions.viewportHeight + 1, `${width}x${height}/${label} page scroll`);
+      await page.screenshot({ path: path.join(output, `academic-${width}x${height}-${label}.png`) });
+    };
+    await checkViewport("identity");
+    await page.getByPlaceholder("Seu nome completo").fill("Pessoa acadêmica");
+    await page.getByRole("button", { name: "Estudante" }).click();
+    await page.getByPlaceholder("voce@universidade.br").fill("pessoa@campus.test.br");
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await checkViewport("role");
+    await page.getByRole("button", { name: "Quero pegar e oferecer" }).click();
+    await checkViewport("route");
+    await page.getByPlaceholder("Bairro ou região de origem").fill("Bairro de teste");
+    await page.getByRole("button", { name: "Seg–Sex" }).click();
+    await page.getByRole("button", { name: /Manhã.*07:30/ }).click();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await checkViewport("profile");
+    await page.getByRole("button", { name: "Carro" }).click();
+    await page.getByRole("button", { name: "2" }).click();
+    await page.getByRole("button", { name: "Economia no trajeto" }).click();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await checkViewport("pains");
+    await page.getByRole("button", { name: "Ônibus lotados" }).click();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await checkViewport("activation");
+    assert.deepEqual(errors, [], `Academic express browser errors ${width}x${height}`);
+    results.push({ width, height, route: "academic", passed: true });
+    await page.close();
+  }
   await fs.writeFile(path.join(output, "results.json"), JSON.stringify(results, null, 2));
   console.log(
     `${results.length} viewport/page checks passed, including custom schedules and independent activation. Screenshots: ${output}`,

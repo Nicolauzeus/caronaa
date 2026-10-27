@@ -22,6 +22,7 @@ describe("F01 — novos modelos padrão de criação", () => {
     const template = RESEARCH_TEMPLATES.find(t => t.key === model.key)!;
     expect(inspectSchema(freshTemplate(template))).toEqual([]);
     expect(draft.configuration.usagePolicy).toContain("Pesquisa voluntária");
+    expect(draft.academicExpress).toBe(model.key === "F01_UNIVERSIDADE");
     expect(JSON.stringify(draft)).not.toMatch(/CPF|DOCUMENTO_OBRIGATORIO/);
   });
 
@@ -47,5 +48,21 @@ describe("F01 — novos modelos padrão de criação", () => {
     };
     expect(()=>buildF01Draft({...valid,name:""})).toThrow();
     expect(()=>buildF01Draft({...valid,modelKey:"INVALIDO" as never})).toThrow();
+  });
+
+  it("suporta TESTE-CAMPUS em qualquer região e domínios institucionais configuráveis", () => {
+    const draft = buildF01Draft({
+      modelKey: "F01_UNIVERSIDADE", name: "Campus Teste", title: "Mobilidade no campus",
+      code: "TESTE-CAMPUS", region: "OUTRA", customRegion: "Interior de Pernambuco",
+      customMunicipality: "Caruaru", campus: "Campus Central",
+      institutionalEmailDomains: ["EXEMPLO.EDU.BR", "exemplo.edu.br"],
+      startsOn: "2026-10-25", endsOn: "2026-12-01", launchOn: "2026-12-05",
+    });
+    expect(draft.code).toBe("TESTE-CAMPUS");
+    expect(draft.municipality).toBe("Caruaru");
+    expect(draft.configuration.region).toBe("Interior de Pernambuco");
+    expect(draft.configuration.institutionalEmailDomains).toEqual(["exemplo.edu.br"]);
+    expect(draft.configuration.profiles).toContain("AMBOS");
+    expect(parseResearchConfiguration(draft.configuration)).toBeTruthy();
   });
 });

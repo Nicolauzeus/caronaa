@@ -48,7 +48,7 @@ export type SurveySection = {
   description?: string;
   condition?: ResearchCondition;
 };
-export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" | typeof MOBILITY_SIMPLE_EXPERIENCE };
+export type SurveySchema = { sections: SurveySection[]; experience?: "ACADEMIC_EXPRESS_V1" | "ACADEMIC_EXPRESS_F01_V2" | typeof MOBILITY_SIMPLE_EXPERIENCE };
 export type ResearchTemplate = {
   key: string;
   nature: string;

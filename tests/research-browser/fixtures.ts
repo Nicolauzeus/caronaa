@@ -99,3 +99,6 @@ export const getLocationDetailsServerFn = async () => ({
   provider: "catalog",
   details: null,
 });
+
+// Explicit GPS use is optional; browser tests do not request real device coordinates.
+export const reverseGeocodeServerFn = async () => null;
