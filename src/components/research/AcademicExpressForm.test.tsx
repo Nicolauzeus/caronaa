@@ -116,6 +116,36 @@ describe("University route search + consented GPS", () => {
       expect(screen.getByRole("combobox",{name:"Horário habitual de retorno"})).toBeInTheDocument();
     }
   );
+  it("never requests GPS before an explicit tap and keeps manual entry after denial", () => {
+    const previous = Object.getOwnPropertyDescriptor(navigator, "geolocation");
+    const getCurrentPosition = vi.fn((_success: unknown, fail: (reason: unknown) => void) =>
+      fail({ code: 1, message: "Permission denied" }));
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true, value: { getCurrentPosition },
+    });
+    try {
+      render(<AcademicExpressForm form={mockForm} captureEnabled user={null}/>);
+      fireEvent.change(screen.getByPlaceholderText("Como prefere ser chamado(a)"),
+        { target: { value: "Estudante Teste" } });
+      fireEvent.change(screen.getByRole("combobox", {name:"Vínculo com a universidade"}),
+        { target: { value: "ESTUDANTE" } });
+      fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"),
+        { target: { value: "teste@unifor.br" } });
+      fireEvent.click(screen.getByRole("button", {name:/Continuar/i}));
+      fireEvent.click(screen.getByRole("button", {name:/Quero pegar carona/i}));
+      expect(getCurrentPosition).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", {name:"Usar localização atual"}));
+      expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("alert")).toHaveTextContent(/buscar ou digitar o bairro normalmente/i);
+      fireEvent.change(screen.getByRole("textbox",{name:"Bairro ou região de origem"}),
+        { target: { value:"Acarape" } });
+      expect(screen.getByRole("textbox",{name:"Bairro ou região de origem"}))
+        .toHaveValue("Acarape");
+    } finally {
+      if (previous) Object.defineProperty(navigator, "geolocation", previous);
+      else delete (navigator as Navigator & { geolocation?: Geolocation }).geolocation;
+    }
+  });
 });
 
 describe("F01 academic express (dynamic institutions, no extra public pages)", () => {
