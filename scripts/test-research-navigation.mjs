@@ -126,7 +126,6 @@ try {
     await page.getByRole("button", { name: "Carro" }).click();
     await page.getByRole("button", { name: "2" }).click();
     await page.getByRole("button", { name: "Economia no trajeto" }).click();
-    await page.getByRole("button", { name: "Continuar" }).click();
     await checkViewport("pains");
     await page.getByRole("button", { name: "Ônibus lotados" }).click();
     await page.getByRole("button", { name: "Continuar" }).click();
