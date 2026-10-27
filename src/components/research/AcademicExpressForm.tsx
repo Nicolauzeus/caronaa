@@ -19,7 +19,7 @@ import {
   effectiveResearchSchedule,
   validateJourney,
 } from "@/lib/formulario/research-configuration";
-import { academicExpressSteps, isAcademicExpressF01, type AcademicRole } from "@/lib/formulario/academic-express-schema";
+import { academicExpressSteps, daysUntilCommunityLaunch, isAcademicExpressF01, type AcademicRole } from "@/lib/formulario/academic-express-schema";
 import { applySimplePainAnswer, simplePainFields, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { cleanAnswers, validatePage, type Answers } from "@/lib/formulario/research-schema";
@@ -174,9 +174,7 @@ export function AcademicExpressForm({
     roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 18),
   ].filter((t): t is string => Boolean(t));
   const plannedLaunch = form.caronaaPresenceOn || config.settings.launchDate;
-  const daysToLaunch = plannedLaunch
-    ? Math.max(0, Math.ceil((new Date(plannedLaunch + "T00:00:00-03:00").getTime() - Date.now()) / 86_400_000))
-    : null;
+  const daysToLaunch = daysUntilCommunityLaunch(plannedLaunch, config.settings.timezone);
 
   useEffect(() => {
     if (index === 0) nameRef.current?.focus({ preventScroll: true });
