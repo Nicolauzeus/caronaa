@@ -500,7 +500,7 @@ export function AcademicExpressForm({
     specific:
       isF01Express && specificPane === "pains" ? "Seus desafios no trajeto"
       : role === "MOTORISTA"
-        ? "Seu veículo e sua tranquilidade"
+        ? isF01Express ? "Seu veículo e suas vagas" : "Seu veículo e sua tranquilidade"
         : role === "AMBOS"
           ? "Seu veículo e sua prioridade"
           : "Como você prefere viajar",
@@ -1113,6 +1113,9 @@ export function AcademicExpressForm({
                   <p className="mt-1 text-sm text-white/85">{journey.originArea} → {journey.destinationArea}</p>
                   <p className="mt-1 text-xs text-white/60">
                     {role ? roleNames[role] : ""} · {journey.days.map(day => ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][day - 1]).join(", ")} · {journey.outboundTime}
+                    {role !== "PASSAGEIRO" && selected(vehicleQuestion) &&
+                      " · " + (selected(vehicleQuestion) === "MOTO" ? "Moto" : "Carro") +
+                      " · " + selected(seatsQuestion) + " vaga(s)"}
                   </p>
                 </div>
                 {plannedLaunch && (isF01Express ? (
