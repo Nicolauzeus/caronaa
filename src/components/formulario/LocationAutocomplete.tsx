@@ -353,7 +353,7 @@ export function LocationAutocomplete({
     <div className="relative space-y-1.5" ref={wrapperRef}>
       {label && (
         <div className="flex items-center justify-between gap-2">
-          <label htmlFor={id} className="text-sm font-semibold text-foreground">
+          <label htmlFor={id} className={"text-sm font-semibold " + (variant === "glass" ? "text-white/80" : "text-foreground")}>
             {label} {required ? "*" : ""}
           </label>
           {shortcutButton}
