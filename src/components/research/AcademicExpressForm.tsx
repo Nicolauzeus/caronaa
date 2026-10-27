@@ -177,11 +177,6 @@ export function AcademicExpressForm({
     domain && allowedDomains.some((allowed) => allowed.trim().toLowerCase() === domain),
   );
   const institution = config.settings.institutionName || form.title;
-  const suggestedTimes = [
-    roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) < 12),
-    roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 12 && Number(t.slice(0, 2)) < 18),
-    roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 18),
-  ].filter((t): t is string => Boolean(t));
   // The admin configuration is authoritative: changing or clearing launchDate
   // must immediately affect this public experience, regardless of old form metadata.
   const plannedLaunch = config.settings.launchDate;
@@ -658,32 +653,17 @@ export function AcademicExpressForm({
                 </label>
                 <div className="space-y-2">
                   <p className={label}>Seu vínculo</p>
-                  {isF01Express ? (
-                    <div role="group" aria-label="Vínculo com a universidade" className="grid grid-cols-2 gap-1.5">
-                      {affiliationQuestion?.options.map(value => (
-                        <button key={value} type="button" aria-pressed={selected(affiliationQuestion) === value}
-                          onClick={() => updateAnswer(affiliationQuestion, value)}
-                          className={"min-h-11 rounded-2xl border px-3 py-2 text-sm transition-colors " +
-                            (selected(affiliationQuestion) === value
-                              ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]"
-                              : "border-white/10 bg-white/[.04] text-white/80")}>
-                          {textChoices[value] ?? value}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <select
-                      className={field}
-                      aria-label="Vínculo com a universidade"
-                      value={selected(affiliationQuestion)}
-                      onChange={(event) => updateAnswer(affiliationQuestion, event.target.value)}
-                    >
-                      <option value="">Selecione</option>
-                      {affiliationQuestion?.options.map((v) => (
-                        <option key={v} value={v}>{textChoices[v] ?? v}</option>
-                      ))}
-                    </select>
-                  )}
+                  <select
+                    className={field}
+                    aria-label="Vínculo com a universidade"
+                    value={selected(affiliationQuestion)}
+                    onChange={event => updateAnswer(affiliationQuestion, event.target.value)}
+                  >
+                    <option value="">Selecione</option>
+                    {affiliationQuestion?.options.map(value => (
+                      <option key={value} value={value}>{textChoices[value] ?? value}</option>
+                    ))}
+                  </select>
                 </div>
                 {captureEnabled && (
                   <label className={label} htmlFor={id + "-email"}>
