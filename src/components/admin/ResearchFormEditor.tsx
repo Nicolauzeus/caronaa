@@ -19,6 +19,7 @@ import {
 } from "@/lib/formulario/research-schema";
 import { ResearchSectionFields, ResearchBrandHeader } from "@/components/research/ResearchFields";
 import { ResearchBrandManager } from "@/components/admin/ResearchBrandManager";
+import { academicExpressF01Template, isAcademicExpressF01 } from "@/lib/formulario/academic-express-schema";
 import { ResearchConditionEditor } from "@/components/admin/ResearchConditionEditor";
 import {
   RESEARCH_SEMANTICS,
@@ -29,10 +30,12 @@ export function ResearchFormEditor({
   formId,
   onClose,
   onPublished,
+  onEditSettings,
 }: {
   formId: string;
   onClose: () => void;
   onPublished?: () => void;
+  onEditSettings?: () => void;
 }) {
   const [versionId, setVersionId] = useState(""),
     [version, setVersion] = useState(1),
@@ -272,20 +275,28 @@ export function ResearchFormEditor({
       setBusy(false);
     }
   }
-  async function newVersion() {
+  async function newVersion(express = false) {
+    if (express && formNature !== "EDUCACAO") return;
+    if (express && !window.confirm(
+      "Criar uma NOVA versão Express de 5 etapas? O formulário e as respostas publicados serão preservados. Revise as perguntas antes de publicar."
+    )) return;
     setBusy(true);
     setError("");
     try {
+      const prepared = express ? freshTemplate(academicExpressF01Template) : schema;
       const { data, error } = await db
         .from("research_form_versions")
-        .insert({ form_id: formId, version_number: version + 1, schema_json: schema })
+        .insert({ form_id: formId, version_number: version + 1, schema_json: prepared })
         .select("id")
         .single();
       if (error) throw Error(error.message);
       setVersionId(data.id);
       setVersion((v) => v + 1);
+      setSchema(prepared);
       setPublished(false);
-      setSaved(JSON.stringify(schema));
+      setSaved(JSON.stringify(prepared));
+      setPreviewStep(0);
+      setPreviewAnswers({});
       setUndo([]);
       setRedo([]);
     } catch (e) {
@@ -293,6 +304,14 @@ export function ResearchFormEditor({
     } finally {
       setBusy(false);
     }
+  }
+  function applyExpressDraft() {
+    if (formNature !== "EDUCACAO" || published) return;
+    if (schema.sections.some(section => section.questions.length) &&
+        !window.confirm("Substituir as perguntas deste RASCUNHO pela experiência Express F01? Não altera versões já publicadas.")) return;
+    apply(freshTemplate(academicExpressF01Template), true);
+    setPreviewStep(0);
+    setPreviewAnswers({});
   }
   function continuePreview() {
     const e = validatePage(schema.sections[previewStep], previewAnswers, schema.sections.flatMap(s => s.questions), schema);
@@ -312,11 +331,11 @@ export function ResearchFormEditor({
   return (
     <section
       id="research-form-editor"
-      className="scroll-mt-6 space-y-5 rounded-xl border bg-card/50 p-4 md:p-6"
+      className="scroll-mt-6 space-y-4 rounded-3xl border border-white/10 bg-[#121212]/90 p-3 font-['Manrope'] text-white backdrop-blur-2xl md:p-6"
     >
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-extrabold">Construtor de pesquisa</h2>
+          <h2 className="font-['Sora'] text-xl font-bold">Construtor de pesquisa</h2>
           <p className="text-sm text-muted-foreground">
             Versão {version} ·{" "}
             {published
@@ -338,15 +357,25 @@ export function ResearchFormEditor({
             </button>
           )}
           {published && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void newVersion()}
-              className="rounded-lg border border-primary/50 px-3 py-2 text-sm font-semibold"
-            >
-              Criar versão editável
-            </button>
+            <>
+              <button type="button" disabled={busy}
+                onClick={() => void newVersion(false)}
+                className="min-h-11 rounded-xl border border-white/20 px-3 text-sm font-semibold">
+                Criar versão editável
+              </button>
+              {formNature === "EDUCACAO" && !isAcademicExpressF01(schema) && (
+                <button type="button" disabled={busy}
+                  onClick={() => void newVersion(true)}
+                  className="min-h-11 rounded-xl border border-[#FFBB00]/60 bg-[#FFBB00]/10 px-3 text-sm font-semibold text-[#FFBB00]">
+                  Criar nova versão Express · 5 etapas
+                </button>
+              )}
+            </>
           )}
+          {onEditSettings && <button type="button" onClick={onEditSettings}
+            className="min-h-11 rounded-xl border border-white/20 px-3 text-sm">
+            Editar campanha, data e domínios
+          </button>}
           <button
             type="button"
             aria-expanded={brandOpen}
@@ -372,7 +401,19 @@ export function ResearchFormEditor({
           </button>
         </div>
       </header>
-      {!published && !preview && (
+      {!published && !preview && isAcademicExpressF01(schema) && (
+        <p className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-3 text-sm text-white/80">
+          Express F01: 5 etapas visuais — identificação, papel, trajeto, preferência + dores sociais e ativação.
+          A seção de dores não é uma sexta etapa. Códigos analíticos ficam ocultos ao participante.
+        </p>
+      )}
+      {!published && !preview && formNature === "EDUCACAO" && !isAcademicExpressF01(schema) && (
+        <button type="button" disabled={busy} onClick={applyExpressDraft}
+          className="min-h-11 w-full rounded-xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 px-4 py-2 text-left text-sm font-semibold text-[#FFBB00]">
+          Aplicar experiência Express ao rascunho (sem modificar respostas existentes)
+        </button>
+      )}
+      {!published && !preview && !isAcademicExpressF01(schema) && (
         <p className="rounded-xl border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
           Formulário compacto: prefira até 4 seções e 3–5 perguntas por seção. Agora: <strong className="text-foreground">{schema.sections.length} seções</strong> e <strong className="text-foreground">{schema.sections.reduce((total, section) => total + section.questions.length, 0)} perguntas</strong>. Condições aninhadas exibem só o que se aplica a cada pessoa.
         </p>
@@ -466,8 +507,10 @@ export function ResearchFormEditor({
             brandName={brandName}
           />
           <div className="text-xs text-muted-foreground">
-            Prévia fiel · etapa {previewStep + 1} de {schema.sections.length} · sem gravação no
-            banco
+            {isAcademicExpressF01(schema)
+              ? "Prévia das perguntas do Express F01. A interface pública agrupa estas seções em 5 etapas."
+              : `Prévia das perguntas · etapa ${previewStep + 1} de ${schema.sections.length}`}
+            {" "}· sem gravação no banco
           </div>
           {schema.sections[previewStep] && (
             <div className="rounded-xl border p-4">
