@@ -111,14 +111,14 @@ try {
       await page.screenshot({ path: path.join(output, `academic-${width}x${height}-${label}.png`) });
     };
     await checkViewport("identity");
-    await page.getByPlaceholder("Como prefere ser chamado(a)").fill("Pessoa acadêmica");
+    await page.getByPlaceholder("Seu nome completo").fill("Pessoa acadêmica");
     await page.getByRole("button", { name: "Estudante" }).click();
     await page.getByPlaceholder("voce@universidade.br").fill("pessoa@campus.test.br");
     await page.getByRole("button", { name: "Continuar" }).click();
     await checkViewport("role");
     await page.getByRole("button", { name: "Quero pegar e oferecer" }).click();
     await checkViewport("route");
-    await page.getByPlaceholder("Ex.: Maracanaú").fill("Bairro de teste");
+    await page.getByPlaceholder("Bairro ou região de origem").fill("Bairro de teste");
     await page.getByRole("button", { name: "Seg–Sex" }).click();
     await page.getByRole("button", { name: /Manhã.*07:30/ }).click();
     await page.getByRole("button", { name: "Continuar" }).click();
