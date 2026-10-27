@@ -126,13 +126,7 @@ describe("Configured public research", () => {
     );
     expect(api.insert).not.toHaveBeenCalled();
     expect(api.rpc.mock.calls.some(([name]) => name === "register_research_interest")).toBe(false);
-    fireEvent.click(screen.getByText("Registrar interesse no trajeto (opcional)"));
-    expect(
-      screen.getByRole("button", { name: "Quero encontrar uma carona para este trajeto" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Quero disponibilizar lugares neste trajeto" }),
-    ).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Quero encontrar uma carona/ })).toBeNull();
   });
   it("captures verified-intent research contact before success without enrolling in marketing", async () => {
     api.rpc.mockImplementation(async (name: string) => ({
