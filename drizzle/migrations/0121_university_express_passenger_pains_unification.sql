@@ -18,7 +18,9 @@ DECLARE
   pain_id text;
   role_gate jsonb;
   retained_count integer;
-  previous_draft record;
+  draft_id uuid;
+  draft_version integer;
+  draft_schema jsonb;
   settings_value jsonb;
   next_settings jsonb;
   cfg_revision integer;
@@ -68,7 +70,7 @@ BEGIN
     END IF;
 
     SELECT d.id, d.version_number, d.schema_json
-      INTO previous_draft
+      INTO draft_id, draft_version, draft_schema
     FROM public.research_form_versions d
     WHERE d.form_id=item.form_id AND d.published_at IS NULL
     ORDER BY d.version_number DESC LIMIT 1
@@ -76,9 +78,9 @@ BEGIN
 
     -- The UNIFOR V4 draft is a byte-identical copy of published V3. Only such
     -- untouched drafts may safely be converted and published in this migration.
-    IF previous_draft.id IS NOT NULL AND (
-      previous_draft.version_number <> item.version_number + 1
-      OR previous_draft.schema_json IS DISTINCT FROM previous_schema
+    IF draft_id IS NOT NULL AND (
+      draft_version <> item.version_number + 1
+      OR draft_schema IS DISTINCT FROM previous_schema
       OR (SELECT count(*) FROM public.research_form_versions d
           WHERE d.form_id=item.form_id AND d.published_at IS NULL) <> 1
     ) THEN
@@ -202,16 +204,16 @@ BEGIN
       ON CONFLICT (form_id,revision) DO NOTHING;
     END IF;
 
-    IF previous_draft.id IS NULL THEN
+    IF draft_id IS NULL THEN
       INSERT INTO public.research_form_versions(form_id,version_number,schema_json,published_at)
       VALUES(item.form_id,item.version_number+1,next_schema,now());
     ELSE
       UPDATE public.research_form_versions
          SET schema_json=next_schema,published_at=now()
-       WHERE id=previous_draft.id AND published_at IS NULL;
+       WHERE id=draft_id AND published_at IS NULL;
     END IF;
     RAISE NOTICE 'Published new unified academic F01 V2 for %, preserving prior answers',item.code;
-    previous_draft:=NULL;
+    draft_id:=NULL; draft_version:=NULL; draft_schema:=NULL;
   END LOOP;
 
   IF (SELECT count(*) FROM public.research_forms
