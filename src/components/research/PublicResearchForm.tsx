@@ -16,7 +16,7 @@ import {
   type Answers,
 } from "@/lib/formulario/research-schema";
 import { ResearchBrandHeader, ResearchSectionFields } from "@/components/research/ResearchFields";
-import { isAcademicExpress } from "@/lib/formulario/academic-express-schema";
+import { isAcademicExpress, isAcademicExpressF01 } from "@/lib/formulario/academic-express-schema";
 import { AcademicExpressForm } from "./AcademicExpressForm";
 import {
   storePendingParticipation,
@@ -141,7 +141,7 @@ export function PublicResearchForm({ code }: { code: string }) {
       const canCapture = Boolean(configuration?.settings.emailCaptureEnabled) &&
         await researchLeadCaptureEnabled(f.id);
       if (!alive) return;
-      if (isSimpleMobility(v.schema_json) && !canCapture) {
+      if ((isSimpleMobility(v.schema_json) || isAcademicExpressF01(v.schema_json)) && !canCapture) {
         setError("O CRM e a captura de e-mail ainda não estão habilitados para este novo formulário. Contate a equipe responsável.");
         setLoading(false);
         return;
