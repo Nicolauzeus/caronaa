@@ -143,7 +143,7 @@ describe("University route search + consented GPS", () => {
         .toHaveValue("Acarape");
     } finally {
       if (previous) Object.defineProperty(navigator, "geolocation", previous);
-      else delete (navigator as Navigator & { geolocation?: Geolocation }).geolocation;
+      else Reflect.deleteProperty(navigator, "geolocation");
     }
   });
 });
