@@ -1054,7 +1054,16 @@ export function AcademicExpressForm({
                     {role ? roleNames[role] : ""} · {journey.days.map(day => ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][day - 1]).join(", ")} · {journey.outboundTime}
                   </p>
                 </div>
-                {plannedLaunch && (
+                {plannedLaunch && (isF01Express ? (
+                  <p className="rounded-xl border border-[#FFBB00]/25 bg-[#FFBB00]/[.06] px-3 py-2 text-xs text-white/75">
+                    <span className="font-semibold text-[#FFBB00]">
+                      {daysToLaunch !== null && daysToLaunch > 0
+                        ? `${daysToLaunch} ${daysToLaunch === 1 ? "dia" : "dias"} para o início previsto`
+                        : "Data prevista alcançada"}
+                    </span>
+                    {" · "}{displaySurveyDate(plannedLaunch)} · {institution}. Sujeito a confirmação.
+                  </p>
+                ) : (
                   <div className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/[.06] p-4">
                     <p className="text-sm font-semibold">
                       Previsão de presença: {displaySurveyDate(plannedLaunch)}
@@ -1064,11 +1073,10 @@ export function AcademicExpressForm({
                       agendada automaticamente.
                     </p>
                   </div>
-                )}
+                ))}
                 {isF01Express ? (
-                  <p className="rounded-xl border border-white/10 bg-white/[.04] px-3 py-2 text-xs leading-5 text-white/70">
-                    Ao tocar em <strong>Pré-agendar meu interesse</strong>, autorizo registrar minha
-                    intenção de encontrar/oferecer carona. Não há reserva, viagem ou match garantido.
+                  <p className="text-xs leading-5 text-white/60">
+                    Pré-agendar registra só sua intenção de carona, com seu consentimento. Não é reserva ou match confirmado.
                   </p>
                 ) : (
                   <label className="flex min-h-13 items-start gap-3 text-sm leading-6">
@@ -1104,10 +1112,9 @@ export function AcademicExpressForm({
                     onChange={(e) => setConsent(e.target.checked)}
                     className="mt-1 accent-[#FFBB00]"
                   />
-                  <span>
-                    Concordo em participar da pesquisa e com o tratamento das respostas conforme o
-                    aviso de privacidade.
-                  </span>
+                  <span>{isF01Express
+                    ? "Li o aviso de privacidade e aceito participar da pesquisa."
+                    : "Concordo em participar da pesquisa e com o tratamento das respostas conforme o aviso de privacidade."}</span>
                 </label>
                 {captureEnabled && (
                   <label className="flex items-start gap-3 text-xs leading-5">
@@ -1118,10 +1125,9 @@ export function AcademicExpressForm({
                       onChange={(e) => setLinkageConsent(e.target.checked)}
                       className="mt-1 accent-[#FFBB00]"
                     />
-                    <span>
-                      Autorizo vincular minha participação ao e-mail informado. Não é necessário
-                      criar uma conta.
-                    </span>
+                    <span>{isF01Express
+                      ? "Autorizo vincular esta participação ao meu e-mail."
+                      : "Autorizo vincular minha participação ao e-mail informado. Não é necessário criar uma conta."}</span>
                   </label>
                 )}
                 {captureEnabled && (isF01Express ? (
@@ -1145,11 +1151,11 @@ export function AcademicExpressForm({
                     <span>Quero receber novidades do CARONAA por e-mail (opcional).</span>
                   </label>
                 ))}
-                <p className="flex items-start gap-2 text-xs leading-5 text-white/55">
+                {!isF01Express && <p className="flex items-start gap-2 text-xs leading-5 text-white/55">
                   <ShieldCheck size={16} className="shrink-0 text-[#FFBB00]" />
                   Responder à pesquisa não comprova matrícula, não cria conta, nem libera acesso
                   antecipado à plataforma.
-                </p>
+                </p>}
               </>
             )}
             {error && (
