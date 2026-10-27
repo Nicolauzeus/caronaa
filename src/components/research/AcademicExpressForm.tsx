@@ -5,7 +5,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CarFront,
-  SteeringWheel,
+  Car as SteeringWheel,
   ArrowLeftRight,
   MapPin,
   ShieldCheck,
