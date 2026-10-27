@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AcademicExpressForm } from "./AcademicExpressForm";
-import { academicExpressUrbanTemplate } from "@/lib/formulario/academic-express-schema";
+import { academicExpressUrbanTemplate, academicExpressF01Template } from "@/lib/formulario/academic-express-schema";
 import { freshTemplate } from "@/lib/formulario/research-templates";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
+vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: vi.fn() }));
 
 const settings = {
   ...newResearchConfiguration("UNIVERSIDADE_URBANA_CARONAA"),
@@ -65,5 +66,79 @@ describe("Academic express UX – five compact steps", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByRole("alert")).toHaveTextContent(/Informe uma região de origem/i);
     expect(screen.getByText("Passo 3 de 5")).toBeInTheDocument();
+  });
+});
+
+describe("F01 academic express (dynamic institutions, no extra public pages)", () => {
+  const form = { ...mockForm, schema: freshTemplate(academicExpressF01Template) };
+
+  function fillIdentity(institutionEmail = "lead@unifor.br") {
+    fireEvent.change(screen.getByPlaceholderText("Como prefere ser chamado(a)"), {
+      target: { value: "Pessoa acadêmica" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Estudante" }));
+    fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
+      target: { value: institutionEmail },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+  }
+
+  function fillRoute() {
+    fireEvent.change(screen.getByPlaceholderText("Ex.: Maracanaú"), { target: { value: "Messejana" } });
+    fireEvent.click(screen.getByRole("button", { name: "Seg–Sex" }));
+    fireEvent.click(screen.getByRole("button", { name: /Manhã.*07:00/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+  }
+
+  it("uses institution-configured email domains without access bypass", () => {
+    const alt = { ...form, configuration: {
+      revision: 1,
+      settings: { ...settings, institutionName: "Campus Teste", institutionalEmailDomains: ["campus.test.br"] },
+    } };
+    render(<AcademicExpressForm form={alt} captureEnabled user={null}/>);
+    fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
+      target: { value: "pessoa@campus.test.br" },
+    });
+    expect(screen.getByText(/Domínio da comunidade Campus Teste reconhecido/)).toBeInTheDocument();
+    expect(screen.getByText(/a titularidade e o acesso dependem de autenticação/)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"), {
+      target: { value: "pessoa@gmail.com" },
+    });
+    expect(screen.getByText(/Link de ativação será necessário/)).toBeInTheDocument();
+  });
+
+  it("keeps the mandatory social pains together in stage 4 of 5", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity();
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar carona/i }));
+    fillRoute();
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
+    expect(screen.queryByText("Qual veículo usaria?")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ônibus" }));
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
+    expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preço alto do transporte" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preço alto do transporte" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tempo de espera prolongado" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
+    expect(screen.getByText("Resumo do seu interesse")).toBeInTheDocument();
+  });
+
+  it("routes AMBOS through driver fields and passenger preference, not passenger transit", () => {
+    render(<AcademicExpressForm form={form} captureEnabled user={null}/>);
+    fillIdentity();
+    fireEvent.click(screen.getByRole("button", { name: /Quero pegar e oferecer/i }));
+    fillRoute();
+    expect(screen.getByText("Qual veículo usaria?")).toBeInTheDocument();
+    expect(screen.queryByText("Como você costuma se deslocar como passageiro?")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Carro" }));
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Economia no trajeto" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
   });
 });
