@@ -82,7 +82,9 @@ describe("CRM multiformulários admin", () => {
     await waitFor(() => expect(api.save).toHaveBeenCalledWith(
       expect.objectContaining({name:"Ana"}),"EM_ACOMPANHAMENTO",
     ));
-    await waitFor(() => expect(screen.getByText("Em acompanhamento")).toBeInTheDocument());
+    await waitFor(() => expect(
+      within(screen.getByRole("dialog")).getByRole("combobox", {name:"Alterar status do CRM"})
+    ).toHaveValue("EM_ACOMPANHAMENTO"));
   });
 
   it("distingue lista de respostas de cadastro Pitch pré-existente", async () => {
