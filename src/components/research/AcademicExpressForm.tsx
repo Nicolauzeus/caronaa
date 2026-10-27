@@ -19,7 +19,9 @@ import {
   effectiveResearchSchedule,
   validateJourney,
 } from "@/lib/formulario/research-configuration";
-import { academicExpressSteps, type AcademicRole } from "@/lib/formulario/academic-express-schema";
+import { academicExpressSteps, isAcademicExpressF01, type AcademicRole } from "@/lib/formulario/academic-express-schema";
+import { applySimplePainAnswer, simplePainFields, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
+import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { cleanAnswers, validatePage, type Answers } from "@/lib/formulario/research-schema";
 import { validResearchEmail, captureResearchLead } from "@/lib/formulario/research-lead";
 import {
@@ -72,6 +74,16 @@ const textChoices: Record<string, string> = {
   SEM_DESVIOS: "Sem desvio relevante da minha rota",
   PAGAMENTO_VERIFICADO: "Pagamento confirmado antes de considerar recebido",
   MESMA_UNIVERSIDADE: "Pessoas da mesma universidade",
+  LOTACAO: "Ônibus lotados",
+  PRECO_ALTO: "Preço alto do transporte",
+  ESPERA_LONGA: "Tempo de espera prolongado",
+  ATRASOS: "Atrasos frequentes",
+  INSEGURANCA_NO_TRAJETO: "Insegurança no trajeto",
+  SEM_TRANSPORTE: "Falta de transporte disponível",
+  DESCONFORTO: "Desconforto nas viagens",
+  HORARIO_INCOMPATIVEL: "Horários incompatíveis",
+  OUTRA: "Outra dificuldade",
+  SEM_DIFICULDADES: "Nenhuma dessas dificuldades",
 };
 const shell =
   "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]";
@@ -90,8 +102,11 @@ export function AcademicExpressForm({
 }) {
   const config = form.configuration!;
   const schema = form.schema;
+  const isF01Express = isAcademicExpressF01(schema);
+  const painFields = simplePainFields(schema);
   const id = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const allQuestions = useMemo(() => schema.sections.flatMap((s) => s.questions), [schema]);
   const bySemantic = (semantic: string) => allQuestions.find((q) => q.semanticCode === semantic);
   const roleQuestion = bySemantic("RESEARCH_PARTICIPANT_ROLE");
@@ -114,6 +129,8 @@ export function AcademicExpressForm({
     direction: "IDA",
   }));
   const [index, setIndex] = useState(0);
+  const [specificPane, setSpecificPane] = useState<"profile" | "pains">("profile");
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
@@ -122,7 +139,7 @@ export function AcademicExpressForm({
   const [linkageConsent, setLinkageConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [prepareInterest, setPrepareInterest] = useState(false);
-  const [interestRole, setInterestRole] = useState<"PASSAGEIRO" | "MOTORISTA">("PASSAGEIRO");
+  const [interestRole, setInterestRole] = useState<AcademicRole>("AMBOS");
   const [customSeats, setCustomSeats] = useState(false);
   const [submissionKey] = useState(() => crypto.randomUUID());
 
@@ -132,6 +149,8 @@ export function AcademicExpressForm({
       ? candidateRole
       : null;
   const steps = academicExpressSteps(role);
+  const selectedPains = painFields.pains && Array.isArray(answers[painFields.pains.id])
+    ? answers[painFields.pains.id] as string[] : [];
   const roleSettings = effectiveResearchSchedule(
     config.settings,
     role ?? config.settings.profiles[0],
@@ -155,13 +174,18 @@ export function AcademicExpressForm({
     : null;
 
   useEffect(() => {
-    titleRef.current?.focus({ preventScroll: true });
-  }, [index]);
+    if (index === 0) nameRef.current?.focus({ preventScroll: true });
+    else titleRef.current?.focus({ preventScroll: true });
+  }, [index, specificPane]);
 
   function updateAnswer(q: SurveyQuestion | undefined, value: string | string[]) {
     if (!q) return;
     setAnswers((previous) => {
-      const next = { ...previous, [q.id]: value };
+      const next = q.semanticCode?.startsWith("MOBILITY_")
+        ? applySimplePainAnswer(schema, previous, q.id, value)
+        : { ...previous, [q.id]: value };
+      if (q.semanticCode === "URBAN_OFFER_VEHICLE" && value === "MOTO" && seatsQuestion)
+        next[seatsQuestion.id] = "1";
       const roleValue = roleQuestion ? next[roleQuestion.id] : null;
       return cleanAnswers(schema, next, typeof roleValue === "string" ? roleValue : null);
     });
@@ -204,6 +228,10 @@ export function AcademicExpressForm({
       if (!journey.days.length) return "Selecione os dias em que costuma se deslocar.";
       if (!journey.outboundTime) return "Escolha o horário habitual de saída.";
     } else if (stage === "specific") {
+      if (isF01Express && specificPane === "pains") {
+        const socialErrors = validateSimpleMobilityPains(schema, answers);
+        return socialErrors[0] ?? null;
+      }
       const questions =
         role === "MOTORISTA"
           ? [vehicleQuestion, vehicleModelQuestion, seatsQuestion, driverPriority]
@@ -235,11 +263,52 @@ export function AcademicExpressForm({
     if (stage === "role" && role)
       setJourney((previous) => ({ ...previous, profile: role, mode: "CARONA" }));
     setError("");
+    if (stage === "specific" && isF01Express && specificPane === "profile") {
+      setSpecificPane("pains");
+      return;
+    }
     setIndex((i) => Math.min(i + 1, steps.length - 1));
   }
   function back() {
-    setIndex((i) => Math.max(0, i - 1));
+    if (index === 3 && isF01Express && specificPane === "pains") setSpecificPane("profile");
+    else if (index === 4 && isF01Express) {
+      setSpecificPane("pains");
+      setIndex(3);
+    } else setIndex((i) => Math.max(0, i - 1));
     setError("");
+  }
+
+  /** GPS is requested only after a tap, and only the approximate locality is saved. */
+  function useCurrentLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation ||
+        (typeof window !== "undefined" && !window.isSecureContext)) {
+      setError("Localização indisponível. Informe seu bairro ou município manualmente.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void (async () => {
+          try {
+            const location = await reverseGeocodeServerFn({
+              data: { lat: position.coords.latitude, lng: position.coords.longitude },
+            });
+            const area = [location?.neighborhood, location?.city].filter(Boolean).join(" · ")
+              || location?.city || "";
+            if (area.length < 2) throw Error("Região não identificada.");
+            setJourney(previous => ({
+              ...previous, originArea: area,
+              originLat: null, originLng: null,
+            }));
+            setError("");
+          } catch {
+            setError("Não foi possível identificar o bairro. Digite sua região manualmente.");
+          } finally { setLocating(false); }
+        })();
+      },
+      () => { setError("Permissão de localização não concedida. Digite sua região."); setLocating(false); },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
   }
 
   async function submit() {
@@ -256,6 +325,13 @@ export function AcademicExpressForm({
       setError(problems[0]);
       return;
     }
+    const socialErrors = isF01Express ? validateSimpleMobilityPains(schema, cleaned) : [];
+    if (socialErrors.length) {
+      setError(socialErrors[0]);
+      setSpecificPane("pains");
+      setIndex(3);
+      return;
+    }
     if (!consent) {
       setError("Confirme sua participação na pesquisa.");
       return;
@@ -267,12 +343,12 @@ export function AcademicExpressForm({
     let validJourney: ResearchJourney;
     try {
       validJourney = validateJourney(
-        { ...journey, profile: role, mode: "CARONA" },
+        { ...journey, profile: role, mode: "CARONA", marketingConsent },
         config.settings,
       );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Revise seu trajeto.");
-      setIndex(1);
+      setIndex(2);
       return;
     }
     setBusy(true);
@@ -313,13 +389,11 @@ export function AcademicExpressForm({
       }
       if (prepareInterest) {
         try {
-          await registerResearchInterest(
-            form.id,
-            submissionKey,
-            role === "AMBOS" ? interestRole : role,
-            true,
-            validJourney,
-          );
+          const profiles: Array<"PASSAGEIRO" | "MOTORISTA"> = role === "AMBOS"
+            ? interestRole === "AMBOS" ? ["PASSAGEIRO", "MOTORISTA"] : [interestRole]
+            : [role];
+          for (const profile of profiles)
+            await registerResearchInterest(form.id, submissionKey, profile, true, validJourney);
           setInterestRegistered(true);
         } catch {
           setInterestRegistered(false);
