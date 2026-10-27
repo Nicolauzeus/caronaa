@@ -176,7 +176,9 @@ export function AcademicExpressForm({
     roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 12 && Number(t.slice(0, 2)) < 18),
     roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 18),
   ].filter((t): t is string => Boolean(t));
-  const plannedLaunch = form.caronaaPresenceOn || config.settings.launchDate;
+  // The admin configuration is authoritative: changing or clearing launchDate
+  // must immediately affect this public experience, regardless of old form metadata.
+  const plannedLaunch = config.settings.launchDate;
   const daysToLaunch = daysUntilCommunityLaunch(plannedLaunch, config.settings.timezone);
 
   useEffect(() => {
