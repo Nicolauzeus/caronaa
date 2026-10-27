@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { AcademicExpressForm } from "./AcademicExpressForm";
 import { academicExpressUrbanTemplate, academicExpressF01Template } from "@/lib/formulario/academic-express-schema";
 import { freshTemplate } from "@/lib/formulario/research-templates";
@@ -119,10 +119,11 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Seus desafios no trajeto")).toBeInTheDocument();
     expect(screen.getByText("Passo 4 de 5")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ônibus lotados" }));
-    fireEvent.click(screen.getByRole("button", { name: "Preço alto do transporte" }));
-    fireEvent.click(screen.getByRole("button", { name: "Preço alto do transporte" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tempo de espera prolongado" }));
+    const painGroup = screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ });
+    fireEvent.click(within(painGroup).getByRole("button", { name: "Ônibus lotados" }));
+    fireEvent.click(within(painGroup).getByRole("button", { name: "Preço alto do transporte" }));
+    fireEvent.click(within(screen.getByRole("group", { name: /Qual dessas é a principal/ }))
+      .getByRole("button", { name: "Preço alto do transporte" }));
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     expect(screen.getByText("Resumo do seu interesse")).toBeInTheDocument();
