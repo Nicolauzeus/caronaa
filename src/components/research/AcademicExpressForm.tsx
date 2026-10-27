@@ -1153,7 +1153,9 @@ export function AcademicExpressForm({
             {busy
               ? "Registrando…"
               : stage === "activation"
-                ? "Ativar Minha Carona"
+                ? isF01Express
+                  ? prepareInterest ? "Ativar Minha Carona" : "Registrar minha participação"
+                  : "Registrar participação"
                 : "Continuar"}
             {stage !== "activation" && <ArrowRight size={18} />}
           </button>
