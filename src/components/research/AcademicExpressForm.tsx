@@ -168,6 +168,11 @@ export function AcademicExpressForm({
     domain && allowedDomains.some((allowed) => allowed.toLowerCase() === domain),
   );
   const institution = config.settings.institutionName || form.title;
+  const suggestedTimes = [
+    roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) < 12),
+    roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 12 && Number(t.slice(0, 2)) < 18),
+    roleSettings.outboundTimes.find(t => Number(t.slice(0, 2)) >= 18),
+  ].filter((t): t is string => Boolean(t));
   const plannedLaunch = form.caronaaPresenceOn || config.settings.launchDate;
   const daysToLaunch = plannedLaunch
     ? Math.max(0, Math.ceil((new Date(plannedLaunch + "T00:00:00-03:00").getTime() - Date.now()) / 86_400_000))
@@ -444,7 +449,8 @@ export function AcademicExpressForm({
     role: "Como você quer se deslocar?",
     route: "Qual é seu trajeto?",
     specific:
-      role === "MOTORISTA"
+      isF01Express && specificPane === "pains" ? "Seus desafios no trajeto"
+      : role === "MOTORISTA"
         ? "Seu veículo e sua tranquilidade"
         : role === "AMBOS"
           ? "Seu veículo e sua prioridade"
@@ -483,7 +489,7 @@ export function AcademicExpressForm({
           <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-4 text-center">
             <CheckCircle2 size={48} className="text-emerald-400" aria-hidden="true" />
             <h1 className="font-['Sora'] text-2xl font-bold sm:text-3xl">
-              Você está na lista da viagem inaugural!
+              {interestRegistered === true && plannedLaunch ? "Você está na lista da viagem inaugural!" : "Sua participação foi registrada"}
             </h1>
             <p className="max-w-sm text-sm leading-6 text-white/70">
               Seu trajeto de interesse foi salvo para encontrar compatibilidades futuras.
@@ -526,8 +532,8 @@ export function AcademicExpressForm({
           </div>
         ) : (
           <div
-            key={stage}
-            className="mx-auto flex w-full max-w-xl flex-col justify-center gap-3 py-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:my-auto"
+            key={stage + "-" + specificPane}
+            className="mx-auto flex w-full max-w-xl flex-col justify-center gap-2 py-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:my-auto"
           >
             <div className="space-y-2">
               <h1
@@ -545,7 +551,9 @@ export function AcademicExpressForm({
                     : stage === "route"
                       ? "Informe somente a região aproximada e seus horários habituais."
                       : stage === "specific"
-                        ? "Responda às escolhas essenciais para o seu perfil."
+                        ? isF01Express && specificPane === "pains"
+                          ? "Escolha até três dificuldades. A principal aparece na mesma tela."
+                          : "Responda às escolhas essenciais para o seu perfil."
                         : "Confira suas autorizações antes de registrar o interesse."}
               </p>
             </div>
@@ -556,6 +564,7 @@ export function AcademicExpressForm({
                   Seu nome
                   <input
                     id={id + "-name"}
+                    ref={nameRef}
                     autoComplete="name"
                     value={selected(nameQuestion)}
                     onChange={(event) => updateAnswer(nameQuestion, event.target.value)}
@@ -566,19 +575,32 @@ export function AcademicExpressForm({
                 </label>
                 <div className="space-y-2">
                   <p className={label}>Seu vínculo</p>
-                  <select
-                    className={field}
-                    aria-label="Vínculo com a universidade"
-                    value={selected(affiliationQuestion)}
-                    onChange={(event) => updateAnswer(affiliationQuestion, event.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {affiliationQuestion?.options.map((v) => (
-                      <option key={v} value={v}>
-                        {textChoices[v] ?? v}
-                      </option>
-                    ))}
-                  </select>
+                  {isF01Express ? (
+                    <div role="group" aria-label="Vínculo com a universidade" className="grid grid-cols-2 gap-2">
+                      {affiliationQuestion?.options.map(value => (
+                        <button key={value} type="button" aria-pressed={selected(affiliationQuestion) === value}
+                          onClick={() => updateAnswer(affiliationQuestion, value)}
+                          className={"min-h-11 rounded-2xl border px-3 py-2 text-sm transition-colors " +
+                            (selected(affiliationQuestion) === value
+                              ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]"
+                              : "border-white/10 bg-white/[.04] text-white/80")}>
+                          {textChoices[value] ?? value}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <select
+                      className={field}
+                      aria-label="Vínculo com a universidade"
+                      value={selected(affiliationQuestion)}
+                      onChange={(event) => updateAnswer(affiliationQuestion, event.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {affiliationQuestion?.options.map((v) => (
+                        <option key={v} value={v}>{textChoices[v] ?? v}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 {captureEnabled && (
                   <label className={label} htmlFor={id + "-email"}>
@@ -693,6 +715,13 @@ export function AcademicExpressForm({
                     />
                   </label>
                 </div>
+                {isF01Express && (
+                  <button type="button" onClick={useCurrentLocation} disabled={locating}
+                    className="inline-flex min-h-10 items-center gap-2 self-start rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white/80 disabled:opacity-50">
+                    <MapPin size={15} aria-hidden="true" />
+                    {locating ? "Localizando…" : "Usar meu bairro atual (opcional)"}
+                  </button>
+                )}
                 <div className="space-y-2">
                   <p className={label}>Dias habituais</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -738,6 +767,36 @@ export function AcademicExpressForm({
                     ))}
                   </div>
                 </div>
+                {isF01Express && (
+                  <fieldset className="space-y-2">
+                    <legend className={label}>Horário habitual de saída</legend>
+                    <div className="grid grid-cols-4 gap-2">
+                      {suggestedTimes.map((time, i) => (
+                        <button key={time} type="button" aria-pressed={journey.outboundTime === time && !journey.otherOutboundTime}
+                          onClick={() => setJourney(p => ({ ...p, outboundTime: time, otherOutboundTime: false }))}
+                          className={"min-h-11 rounded-xl border px-1.5 text-xs font-semibold " +
+                            (journey.outboundTime === time && !journey.otherOutboundTime
+                              ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]"
+                              : "border-white/15 bg-white/5 text-white")}>
+                          {["Manhã", "Tarde", "Noite"][i]} · {time}
+                        </button>
+                      ))}
+                      <button type="button" aria-pressed={journey.otherOutboundTime}
+                        onClick={() => setJourney(p => ({ ...p, otherOutboundTime: true, outboundTime: "" }))}
+                        className={"min-h-11 rounded-xl border px-1 text-xs " +
+                          (journey.otherOutboundTime ? "border-[#FFBB00] text-[#FFBB00]" : "border-white/15")}>
+                        Outro
+                      </button>
+                    </div>
+                    {journey.otherOutboundTime && (
+                      <input aria-label="Horário personalizado de saída" type="time"
+                        value={journey.outboundTime}
+                        onChange={event => setJourney(p => ({ ...p, outboundTime: event.target.value }))}
+                        className={field}/>
+                    )}
+                  </fieldset>
+                )}
+                {!isF01Express && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className={label}>
                     Horário de ida
@@ -803,6 +862,7 @@ export function AcademicExpressForm({
                     )}
                   </label>
                 </div>
+                )}
                 <p className="flex items-start gap-2 text-xs leading-5 text-white/50">
                   <MapPin size={15} className="shrink-0" />
                   Não pedimos endereço residencial; esta é uma intenção de trajeto, não uma reserva.
