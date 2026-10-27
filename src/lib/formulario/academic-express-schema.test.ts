@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {freshTemplate} from "./research-templates";
-import {academicExpressSteps,academicExpressUrbanTemplate,academicExpressF01Template,isAcademicExpress} from "./academic-express-schema";
+import {academicExpressSteps,academicExpressUrbanTemplate,academicExpressF01Template,isAcademicExpress,daysUntilCommunityLaunch} from "./academic-express-schema";
 import {inspectSchema,cleanAnswers,validatePage} from "./research-schema";
 import {createResearchVisibility} from "./research-conditions";
 
@@ -72,5 +72,14 @@ describe("UNIFOR F01 V4 migration rollout", () => {
     expect(sql).toContain("unifor.br");
     expect(sql).not.toMatch(/UPDATE public\.research_answers|DELETE FROM public\.research_answers/);
     expect(sql).toContain("INSERT INTO public.research_form_versions");
+  });
+});
+
+describe("dynamic calendar-day countdown", () => {
+  it("uses the institution timezone rather than Fortaleza hardcoding", () => {
+    const now = new Date("2026-11-03T22:30:00Z");
+    expect(daysUntilCommunityLaunch("2026-11-04","America/Fortaleza",now)).toBe(1);
+    expect(daysUntilCommunityLaunch("2026-11-04","Asia/Tokyo",now)).toBe(0);
+    expect(daysUntilCommunityLaunch(null,"America/Fortaleza",now)).toBeNull();
   });
 });
