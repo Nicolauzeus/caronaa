@@ -15,7 +15,8 @@ export interface LocationAutocompleteProps {
   helperText?: string;
   shortcutButton?: React.ReactNode;
   required?: boolean;
-  variant?: "card" | "simple";
+  variant?: "card" | "simple" | "glass";
+  autoFocus?: boolean;
 }
 
 function formatSelectedTitle(loc: FormLocationDetails): string {
@@ -73,6 +74,7 @@ export function LocationAutocomplete({
   shortcutButton,
   required = false,
   variant = "card",
+  autoFocus = false,
 }: LocationAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -424,6 +426,7 @@ export function LocationAutocomplete({
               ref={inputRef}
               id={id}
               type="text"
+              autoFocus={autoFocus}
               value={query}
               onChange={handleInputChange}
               onFocus={() => {
@@ -432,9 +435,11 @@ export function LocationAutocomplete({
               placeholder={placeholder}
               autoComplete="off"
               className={
-                variant === "simple"
-                  ? "h-11 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
-                  : "min-h-12 w-full rounded-xl border border-border bg-background pl-10 pr-10 py-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
+                variant === "glass"
+                  ? "min-h-12 w-full rounded-2xl border border-white/15 bg-white/[.06] pl-10 pr-10 py-3 text-base text-white outline-none backdrop-blur-2xl placeholder:text-white/40 focus:border-[#FFBB00] focus:ring-2 focus:ring-[#FFBB00]/25"
+                  : variant === "simple"
+                    ? "h-11 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+                    : "min-h-12 w-full rounded-xl border border-border bg-background pl-10 pr-10 py-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
               }
             />
 
@@ -473,9 +478,11 @@ export function LocationAutocomplete({
             <div
               role="listbox"
               aria-label="Sugestões de localização"
-              className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-border bg-card p-1 shadow-lg animate-in fade-in zoom-in-95 duration-150"
+              className={"absolute z-50 mt-1 max-h-[min(40dvh,240px)] w-full overflow-auto rounded-xl border p-1 shadow-lg animate-in fade-in zoom-in-95 duration-150 " +
+                (variant === "glass" ? "border-white/10 bg-[#242424] text-white backdrop-blur-2xl" : "border-border bg-card")}
             >
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50 flex items-center justify-between">
+              <div className={"px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b flex items-center justify-between " +
+                  (variant === "glass" ? "border-white/10 text-white/55" : "border-border/50 text-muted-foreground")}>
                 <span>Locais sugeridos</span>
                 <span className="text-[9px] font-normal text-muted-foreground/70">
                   Google & Catálogo CE
@@ -487,13 +494,16 @@ export function LocationAutocomplete({
                   type="button"
                   role="option"
                   onClick={() => void handleSelectSuggestion(sug)}
-                  className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-sm transition hover:bg-caronaa-primary/10 hover:text-caronaa-dark dark:hover:text-caronaa-primary focus:bg-caronaa-primary/10 focus:outline-none"
+                  className={"flex min-h-11 w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-sm transition focus:outline-none " +
+                    (variant === "glass"
+                      ? "text-white hover:bg-[#FFBB00]/10 focus:bg-[#FFBB00]/10"
+                      : "hover:bg-caronaa-primary/10 hover:text-caronaa-dark dark:hover:text-caronaa-primary focus:bg-caronaa-primary/10")}
                 >
                   <Search size={15} className="mt-0.5 shrink-0 text-caronaa-primary-strong" />
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-foreground truncate">{sug.mainText}</div>
+                    <div className={"truncate font-semibold " + (variant === "glass" ? "text-white" : "text-foreground")}>{sug.mainText}</div>
                     {sug.secondaryText ? (
-                      <div className="text-xs text-muted-foreground truncate">
+                      <div className={"truncate text-xs " + (variant === "glass" ? "text-white/60" : "text-muted-foreground")}>
                         {sug.secondaryText}
                       </div>
                     ) : null}
