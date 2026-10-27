@@ -134,6 +134,11 @@ export function applySimplePainAnswer(
 
 export function validateSimpleMobilityPains(schema: SurveySchema, answers: Answers): string[] {
   if (!hasF01Pains(schema)) return [];
+  if (schema.experience === "ACADEMIC_EXPRESS_F01_V2") {
+    const roleQuestion = schema.sections.flatMap(section => section.questions)
+      .find(question => question.semanticCode === "RESEARCH_PARTICIPANT_ROLE");
+    if (roleQuestion && answers[roleQuestion.id] === "MOTORISTA") return [];
+  }
   const { pains, primary, other } = simplePainFields(schema);
   if (!pains || !primary) return ["A seção de dores sociais está incompleta."];
   const selected = answers[pains.id];
