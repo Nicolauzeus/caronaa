@@ -1,6 +1,7 @@
 import { researchRoleQuestion, roleCondition } from "./research-conditions";
 import type { ResearchTemplate, SurveySchema, SurveyQuestion } from "./research-templates";
 import { URBAN_UNIVERSITY_KEY } from "./urban-university";
+import { MOBILITY_PAIN_OPTIONS } from "./mobility-simple";
 
 /**
  * Fast university survey v1. Legacy published versions and their answers remain
@@ -8,6 +9,7 @@ import { URBAN_UNIVERSITY_KEY } from "./urban-university";
  * Email is saved only through the consented, server-side lead-capture flow.
  */
 export const ACADEMIC_EXPRESS_EXPERIENCE = "ACADEMIC_EXPRESS_V1" as const;
+export const ACADEMIC_EXPRESS_F01_EXPERIENCE = "ACADEMIC_EXPRESS_F01_V2" as const;
 
 const common = [
   {
@@ -139,8 +141,56 @@ export const academicExpressUrbanTemplate: ResearchTemplate = {
   schema: academicExpressUrbanSchema,
 };
 
+/** F01 v2 adds social pains. Published academic V1 data and schemas remain unchanged. */
+const f01Sections = structuredClone(academicExpressUrbanSchema.sections);
+for (const question of f01Sections.flatMap(section => section.questions)) {
+  if (question.semanticCode === "TRANSPORT_MODE")
+    question.condition = roleCondition("PASSAGEIRO");
+  if (question.semanticCode === "ACADEMIC_DRIVER_PRIORITY")
+    question.required = false;
+}
+export const academicExpressF01Schema: SurveySchema = {
+  experience: ACADEMIC_EXPRESS_F01_EXPERIENCE,
+  sections: [
+    ...f01Sections,
+    {
+      id: "academic_social_pains",
+      title: "Seus desafios no deslocamento",
+      description: "Uma única pergunta para entender as dificuldades reais da sua comunidade.",
+      questions: [
+        {
+          id: "academic_pains", label: "O que mais dificulta seu deslocamento?",
+          type: "multiple_choice", required: true, options: [...MOBILITY_PAIN_OPTIONS],
+          minValue: 1, maxValue: 3, semanticCode: "MOBILITY_PAINS",
+        },
+        {
+          id: "academic_primary_pain", label: "Qual dificuldade é a principal?",
+          type: "single_choice", required: true, options: [...MOBILITY_PAIN_OPTIONS],
+          semanticCode: "MOBILITY_PRIMARY_PAIN",
+        },
+        {
+          id: "academic_other_pain", label: "Descreva brevemente a outra dificuldade",
+          type: "short_text", required: true, options: [], minLength: 3, maxLength: 140,
+          semanticCode: "MOBILITY_OTHER_PAIN",
+          condition: { questionId: "academic_pains", comparison: "INCLUDES", value: "OUTRA" },
+        },
+      ],
+    },
+  ],
+};
+export const academicExpressF01Template: ResearchTemplate = {
+  key: "F01_UNIVERSIDADE_EXPRESSA",
+  nature: "EDUCACAO",
+  label: "Universidade · Expressa F01 (5 etapas)",
+  description: "Perfil, rotina e dificuldades sociais em cinco etapas, sem repetir perguntas.",
+  estimatedMinutes: 2,
+  schema: academicExpressF01Schema,
+};
+export function isAcademicExpressF01(schema?: SurveySchema | null): boolean {
+  return schema?.experience === ACADEMIC_EXPRESS_F01_EXPERIENCE;
+}
 export function isAcademicExpress(schema?: SurveySchema | null): boolean {
-  return schema?.experience === ACADEMIC_EXPRESS_EXPERIENCE;
+  return schema?.experience === ACADEMIC_EXPRESS_EXPERIENCE || isAcademicExpressF01(schema);
 }
 
 export type AcademicRole = "PASSAGEIRO" | "MOTORISTA" | "AMBOS";
