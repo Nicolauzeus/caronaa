@@ -192,8 +192,10 @@ export function AcademicExpressForm({
       if (isF01Express && q.semanticCode === "MOBILITY_PAINS" && painFields.primary) {
         const pains = Array.isArray(next[q.id]) ? next[q.id] as string[] : [];
         const oldPrimary = previous[painFields.primary.id];
+        const previousPains = Array.isArray(previous[q.id]) ? previous[q.id] as string[] : [];
         if (pains.length === 1) next[painFields.primary.id] = pains[0];
-        else if (typeof oldPrimary === "string" && pains.includes(oldPrimary))
+        else if (previousPains.length > 1 &&
+                 typeof oldPrimary === "string" && pains.includes(oldPrimary))
           next[painFields.primary.id] = oldPrimary;
         else delete next[painFields.primary.id];
       }
