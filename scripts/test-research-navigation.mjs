@@ -105,9 +105,13 @@ try {
         htmlWidth: document.documentElement.scrollWidth,
         bodyHeight: document.body.scrollHeight,
         viewportWidth: innerWidth, viewportHeight: innerHeight,
+        panelScrollHeight: document.querySelector('section[aria-label="Etapa do questionário"]')?.scrollHeight ?? 0,
+        panelHeight: document.querySelector('section[aria-label="Etapa do questionário"]')?.clientHeight ?? 0,
       }));
       assert.ok(dimensions.htmlWidth <= dimensions.viewportWidth + 1, `${width}x${height}/${label} horizontal overflow`);
       assert.ok(dimensions.bodyHeight <= dimensions.viewportHeight + 1, `${width}x${height}/${label} page scroll`);
+      assert.ok(dimensions.panelScrollHeight <= dimensions.panelHeight + 2,
+        `${width}x${height}/${label} inner scroll ${dimensions.panelScrollHeight}/${dimensions.panelHeight}`);
       await page.screenshot({ path: path.join(output, `academic-${width}x${height}-${label}.png`) });
     };
     await checkViewport("identity");
