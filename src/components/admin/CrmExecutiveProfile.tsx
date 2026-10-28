@@ -52,6 +52,7 @@ function ExecutiveSection({
 function Participation({ participation: p }: { participation: UnifiedCrmParticipation }) {
   const data = summarizeCrmParticipation(p);
   const remaining = Object.keys(data.otherAnswers).length;
+  const isPitch = p.source_type === "PITCH";
   return (
     <article className="min-w-0 space-y-3 rounded-2xl border border-white/10 bg-white/[.03] p-3 sm:p-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
@@ -66,15 +67,17 @@ function Participation({ participation: p }: { participation: UnifiedCrmParticip
         </span>
       </header>
 
-      <ExecutiveSection title="Rotina de deslocamento">
-        <AnswersList items={data.routine} empty="Nenhum trajeto declarado nesta participação."/>
-      </ExecutiveSection>
+      {!isPitch && (
+        <ExecutiveSection title="Rotina de deslocamento">
+          <AnswersList items={data.routine} empty="Nenhum trajeto declarado nesta participação."/>
+        </ExecutiveSection>
+      )}
 
       <ExecutiveSection title="Adesão e disposição a pagar">
         <AnswersList items={data.fit} empty="Nenhuma informação de adesão ou orçamento registrada nesta participação."/>
       </ExecutiveSection>
 
-      <ExecutiveSection title="Dores e barreiras identificadas">
+      {!isPitch && <ExecutiveSection title="Dores e barreiras identificadas">
         {data.primaryPain && <dl><Pair label="Dor principal" value={data.primaryPain}/></dl>}
         {data.barriers.length > 0 && <AnswersList items={data.barriers} empty=""/>}
         {data.pains.length > 0 && (
@@ -92,7 +95,7 @@ function Participation({ participation: p }: { participation: UnifiedCrmParticip
         {!data.primaryPain && !data.barriers.length && !data.pains.length && (
           <p className="text-xs text-white/55">Nenhuma dificuldade foi registrada nesta participação.</p>
         )}
-      </ExecutiveSection>
+      </ExecutiveSection>}
 
       {remaining > 0 && (
         <details className="border-t border-white/10 pt-3">
