@@ -41,8 +41,8 @@ function sample(overrides: Partial<UnifiedCrmParticipation> = {}): UnifiedCrmPar
 
 describe("CRM executive presentation, with immutable original data", () => {
   it("uses consented contact identity instead of generic name", () => {
-    const base = { name: "Participante sem identificação", email: "gaquirino777@gmail.com", whatsapp: "+5585999990000" };
-    expect(crmContactHeading(base)).toBe("gaquirino777@gmail.com");
+    const base = { name: "Participante sem identificação", email: "pessoa@exemplo.edu.br", whatsapp: "+5585999990000" };
+    expect(crmContactHeading(base)).toBe("pessoa@exemplo.edu.br");
     expect(crmContactHeading({ ...base, email: null })).toBe("(85) 99999-0000");
     expect(crmContactHeading({ ...base, email: null, whatsapp: null })).toBe("Participante sem contato informado");
     expect(crmContactHeading({ ...base, name: "Ana Silva" })).toBe("Ana Silva");
