@@ -1805,6 +1805,7 @@ export type Database = {
           captured_at: string
           consent_version: string
           form_id: string
+          institutional_domain_recognized: boolean
           linkage_consent: boolean
           marketing_consent: boolean
           normalized_email: string
@@ -1814,6 +1815,7 @@ export type Database = {
           captured_at?: string
           consent_version?: string
           form_id: string
+          institutional_domain_recognized?: boolean
           linkage_consent: boolean
           marketing_consent?: boolean
           normalized_email: string
@@ -1823,6 +1825,7 @@ export type Database = {
           captured_at?: string
           consent_version?: string
           form_id?: string
+          institutional_domain_recognized?: boolean
           linkage_consent?: boolean
           marketing_consent?: boolean
           normalized_email?: string
@@ -1876,6 +1879,48 @@ export type Database = {
           },
           {
             foreignKeyName: "research_participation_badges_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "research_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_whatsapp_contacts: {
+        Row: {
+          answer_id: string
+          captured_at: string
+          contact_consent: boolean
+          form_id: string
+          linkage_consent: boolean
+          whatsapp_e164: string
+        }
+        Insert: {
+          answer_id: string
+          captured_at?: string
+          contact_consent?: boolean
+          form_id: string
+          linkage_consent: boolean
+          whatsapp_e164: string
+        }
+        Update: {
+          answer_id?: string
+          captured_at?: string
+          contact_consent?: boolean
+          form_id?: string
+          linkage_consent?: boolean
+          whatsapp_e164?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_whatsapp_contacts_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: true
+            referencedRelation: "research_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_whatsapp_contacts_form_id_fkey"
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "research_forms"
@@ -2920,6 +2965,27 @@ export type Database = {
         }
         Relationships: []
       }
+      unified_crm_contact_statuses: {
+        Row: {
+          contact_key: string
+          status: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          contact_key: string
+          status?: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          contact_key?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
       unifor_prelaunch_intents: {
         Row: {
           answer_id: string
@@ -3099,6 +3165,16 @@ export type Database = {
           p_linkage_consent: boolean
           p_marketing_consent?: boolean
           p_submission_key: string
+        }
+        Returns: string
+      }
+      capture_research_whatsapp: {
+        Args: {
+          p_contact_consent?: boolean
+          p_form_id: string
+          p_linkage_consent: boolean
+          p_submission_key: string
+          p_whatsapp: string
         }
         Returns: string
       }
@@ -3283,6 +3359,10 @@ export type Database = {
         }[]
       }
       get_admin_operation_data: { Args: never; Returns: Json }
+      get_admin_research_crm_rows: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json[]
+      }
       get_admin_research_lead_metrics: {
         Args: { p_form_id?: string }
         Returns: Json
