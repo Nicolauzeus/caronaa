@@ -157,7 +157,7 @@ function classify(key: string): AnswerGroup {
     return "duplicate";
   if (/orcamento|faixa de valor|pagaria|preco considerado justo|valor aceitavel|passenger fair price|\bdriver price\b|contribuicao/.test(text))
     return "fit";
-  if (/interesse|carona compartilhada|alternativa|modalidade|consideraria|usaria|utilizaria|disposicao|adocao|ativacao|antecipad|lancamento|noticia|alerta|notifica|participar|receber informacoes|saber quando|combina(cao|ções)|decisao|influenciaria|motivaria|valoriza|indispensavel|pretende/.test(text))
+  if (/interesse|interest|carona compartilhada|alternativa|modalidade|consideraria|usaria|utilizaria|disposicao|adocao|ativacao|antecipad|lancamento|noticia|alerta|notifica|participar|receber informacoes|saber quando|combina(cao|ções)|decisao|influenciaria|motivaria|valoriza|indispensavel|pretende/.test(text))
     return "fit";
   if (/^(journey|answers raw|version|form|pain points|researchaccepted|research accepted|termsaccepted|terms accepted|privacyaccepted|privacy accepted|consents timestamp|consentstimestamp|lead type)$/.test(text))
     return "identity";
@@ -171,7 +171,7 @@ function fitLabel(key: string): string {
   if (/disposicao|consideraria|usaria|utilizaria|adocao/.test(text)) return "Disposição de uso";
   if (/ativacao|antecipad/.test(text)) return "Ativação antecipada";
   if (/lancamento|noticia|alerta|saber quando|notifica/.test(text)) return "Alerta de lançamento";
-  if (/alternativa|modalidade|carona compartilhada|interesse/.test(text)) return "Interesse";
+  if (/alternativa|modalidade|carona compartilhada|interesse|interest/.test(text)) return "Interesse";
   return formatCrmFieldLabel(key);
 }
 
