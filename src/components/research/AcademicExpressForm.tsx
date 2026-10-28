@@ -140,6 +140,7 @@ export function AcademicExpressForm({
   const [index, setIndex] = useState(0);
   const [specificPane, setSpecificPane] = useState<"profile" | "pains">("profile");
   const [locating, setLocating] = useState(false);
+  const gpsRequestRef = useRef(0);
   const [searchOriginOpen, setSearchOriginOpen] = useState(false);
   const [searchOriginDraft, setSearchOriginDraft] = useState("");
   const [locationHint, setLocationHint] = useState("");
@@ -317,6 +318,7 @@ export function AcademicExpressForm({
 
   /** GPS is requested only after a tap; precise coordinates are never stored. */
   function useCurrentLocation() {
+    const requestId = ++gpsRequestRef.current;
     if (typeof navigator === "undefined" || !navigator.geolocation ||
         (typeof window !== "undefined" && window.isSecureContext === false)) {
       setError("A localização atual exige HTTPS e permissão do navegador. Use Buscar localização ou digite o bairro.");
@@ -327,6 +329,7 @@ export function AcademicExpressForm({
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (requestId !== gpsRequestRef.current) return;
         void (async () => {
           try {
             const location = await reverseGeocodeServerFn({
@@ -335,6 +338,7 @@ export function AcademicExpressForm({
             const area = [location?.neighborhood, location?.city].filter(Boolean).join(" · ")
               || location?.city || "";
             if (area.length < 2) throw Error("Região não identificada.");
+            if (requestId !== gpsRequestRef.current) return;
             setJourney(previous => ({
               ...previous, originArea: area,
               originLat: null, originLng: null,
@@ -342,17 +346,26 @@ export function AcademicExpressForm({
             setError("");
             setLocationHint("Região aproximada identificada. Você pode alterar o bairro antes de continuar.");
           } catch {
-            setError("Não foi possível reconhecer o bairro. Use Buscar localização ou digite manualmente.");
-          } finally { setLocating(false); }
+            if (requestId === gpsRequestRef.current)
+              setError("Não foi possível reconhecer o bairro. Use Buscar localização ou digite manualmente.");
+          } finally {
+            if (requestId === gpsRequestRef.current) setLocating(false);
+          }
         })();
       },
-      () => { setError("Sem acesso à localização atual. Você pode buscar ou digitar o bairro normalmente."); setLocating(false); },
+      () => {
+        if (requestId !== gpsRequestRef.current) return;
+        setError("Sem acesso à localização atual. Você pode buscar ou digitar o bairro normalmente.");
+        setLocating(false);
+      },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }
 
   function applySearchedOrigin(raw: string) {
     const locality = raw.trim().slice(0, 120);
+    gpsRequestRef.current += 1;
+    setLocating(false);
     if (locality.length < 2) {
       setError("Informe pelo menos duas letras do bairro, região ou município.");
       return;
@@ -772,7 +785,13 @@ export function AcademicExpressForm({
                   </button>
                   <button type="button"
                     aria-label="Buscar localização"
-                    onClick={() => { setSearchOriginDraft(journey.originArea); setSearchOriginOpen(true); setError(""); }}
+                    onClick={() => {
+                      gpsRequestRef.current += 1;
+                      setLocating(false);
+                      setSearchOriginDraft(journey.originArea);
+                      setSearchOriginOpen(true);
+                      setError("");
+                    }}
                     className="flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/[.08] px-2 py-2 text-xs font-semibold leading-tight text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00] disabled:opacity-50">
                     <Search size={16} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
                     <span>Buscar localização</span>
@@ -788,14 +807,15 @@ export function AcademicExpressForm({
                       autoComplete="off"
                       value={journey.originArea}
                       maxLength={120}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const area = e.target.value;
+                        gpsRequestRef.current += 1;
+                        setLocating(false);
+                        setLocationHint("");
                         setJourney((p) => ({
-                          ...p,
-                          originArea: e.target.value,
-                          originLat: null,
-                          originLng: null,
-                        }))
-                      }
+                          ...p, originArea: area, originLat: null, originLng: null,
+                        }));
+                      }}
                       placeholder={isF01Express ? "Bairro ou região de origem" : "Ex.: Maracanaú"}
                       className={field + " mt-2"}
                       aria-label="Bairro ou região de origem"
