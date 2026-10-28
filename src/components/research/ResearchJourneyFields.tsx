@@ -6,6 +6,7 @@ import type {
 } from "@/lib/formulario/research-configuration";
 import { effectiveResearchSchedule } from "@/lib/formulario/research-configuration";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
+import { ResearchOriginLocationActions } from "./ResearchOriginLocationActions";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 export function initialResearchJourney(
@@ -63,8 +64,9 @@ export function ResearchJourneyFields({
     onChange({
       ...j,
       [`${prefix}Area`]: details?.neighborhood || details?.city || text,
-      [`${prefix}Lat`]: details?.lat ?? null,
-      [`${prefix}Lng`]: details?.lng ?? null,
+      // Persist only locality names in research; not a precise GPS point.
+      [`${prefix}Lat`]: null,
+      [`${prefix}Lng`]: null,
     });
   const time = (
     key: "outboundTime" | "returnTime",
@@ -218,6 +220,15 @@ export function ResearchJourneyFields({
           onChange={(event) => set("flexibilityMinutes", Number(event.target.value))}
         />
       </label>}
+      {!eventExit && (!phase || phase === "origin" || phase === "locations") && (
+        <ResearchOriginLocationActions
+          currentArea={j.originArea}
+          onChooseArea={(area) => onChange({
+            ...j, originArea: area, originLat: null, originLng: null,
+          })}
+          onSearch={() => document.getElementById(fieldId + "-origin")?.focus()}
+        />
+      )}
       {(!phase || phase === "origin" || phase === "locations") && <LocationAutocomplete
         id={fieldId + "-origin"}
         label={eventExit ? "Ponto de saída do evento" : "Bairro ou município de origem"}
