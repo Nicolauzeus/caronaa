@@ -75,6 +75,15 @@ describe("Executive CRM dossier", () => {
     expect(screen.queryByRole("heading", {name:"Rotina de deslocamento"})).not.toBeInTheDocument();
   });
 
+  it("opens the only participation immediately for contacts with one survey", () => {
+    const onlyOne = {...contact, participations: contact.participations.slice(0, 1)};
+    render(<CrmExecutiveProfile contact={onlyOne} savingStatus={false} onStatusChange={vi.fn()}/>);
+    const participation = screen.getByRole("button", {name:/UNILAB/});
+    expect(participation).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
+    expect(screen.getAllByText(/Auditoria técnica — JSON e identificadores/)).toHaveLength(1);
+  });
+
   it("hides raw UUIDs behind closed technical audit sections and preserves status editing", () => {
     const update = vi.fn();
     render(<CrmExecutiveProfile contact={contact} savingStatus={false} onStatusChange={update}/>);
