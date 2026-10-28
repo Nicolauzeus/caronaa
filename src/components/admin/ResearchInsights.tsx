@@ -1,4 +1,6 @@
 import {ResearchChart} from "@/components/admin/ResearchChart";
+import { Link } from "@tanstack/react-router";
+import { buildBiCrmLink } from "@/lib/crm/bi-crm-filters";
 import { ResearchMobilityDimensions } from "@/components/admin/ResearchMobilityDimensions";
 import { useEffect,useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +43,19 @@ export function ResearchInsights({forms,formId,onBack}:{forms:ResearchForm[];for
  </div>
  <div className="max-w-sm"><label className="text-sm">Cruzamento por dor<select aria-label="Filtrar por dor" value={painCode} onChange={e=>setPainCode(e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-2"><option value="ALL">Todas as dores</option>{PAINS.map(([code,label])=><option key={code} value={code}>{code} · {label}</option>)}</select></label></div>
  {loading?<p role="status">Calculando indicadores...</p>:error?<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-destructive">Não foi possível carregar o BI: {error}. Verifique a função get_research_unified_bi (migração 0075).</p>:<>
+ <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/25 p-3">
+  <div className="flex-1">
+    <p className="text-sm font-semibold">Da análise à ativação</p>
+    <p className="text-xs text-muted-foreground">Abra no CRM as participações com o mesmo perfil e dificuldade. O número de respostas do BI não equivale necessariamente ao número de contatos identificados.</p>
+  </div>
+  <Link to={buildBiCrmLink({
+    source: selectedForm?.code,
+    mobility: profile === "ALL" ? undefined : profile,
+    pain: painCode === "ALL" ? undefined : painCode,
+  })} className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
+    Ver contatos no CRM
+  </Link>
+ </div>
  <div className="grid gap-3 sm:grid-cols-3">
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Respostas</p><p className="mt-2 text-3xl font-extrabold">{count(total)}</p></div>
  <div className="rounded-xl border bg-background p-4"><p className="text-xs uppercase text-muted-foreground">Dores relatadas</p><p className="mt-2 text-3xl font-extrabold">{count(pains.reduce((a,p)=>a+p.selectedCount,0))}</p><p className="text-xs text-muted-foreground">Uma pessoa pode relatar várias dores</p></div>
