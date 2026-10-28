@@ -173,8 +173,10 @@ type Props = {
 
 export function CrmExecutiveProfile({ contact, savingStatus, onStatusChange, onClose }: Props) {
   const id = useId();
+  // Multi-form respondents start with a scan-friendly overview; single-form
+  // contacts open their only participation so the first answer is one tap away.
   const [activeParticipation, setActiveParticipation] = useState<string | null>(
-    contact.participations[0]?.id ?? null,
+    contact.participations.length === 1 ? contact.participations[0]?.id ?? null : null,
   );
   const whatsapp = contact.whatsapp ? formatBrazilWhatsapp(contact.whatsapp) : null;
   // A number alone or an e-mail linkage never grants WhatsApp outreach permission.
