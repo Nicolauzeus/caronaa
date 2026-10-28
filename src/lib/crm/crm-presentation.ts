@@ -248,7 +248,7 @@ export function summarizeCrmParticipation(p: UnifiedCrmParticipation): Executive
         : /gasta.*por trecho/.test(k) ? "Gasto habitual por trecho"
         : "Transporte atual";
       const money = label === "Gasto habitual por trecho" && value !== null &&
-        (typeof value === "number" || /^\\d+(?:[.,]\\d{1,2})?$/.test(String(value)));
+        (typeof value === "number" || /^\d+(?:[.,]\d{1,2})?$/.test(String(value)));
       const currency = money
         ? "R$ " + Number(String(value).replace(",", ".")).toLocaleString("pt-BR", {
             minimumFractionDigits: 2, maximumFractionDigits: 2,
