@@ -50,4 +50,6 @@ Required workflow:
 
 10. For F09 dossiers: mobile uses a full-height accessible dialog with a visible back action, a fixed identity header and an internally scrollable body; multiple participations use a single-open accordion, summarized by participation without code/UUID exposure. Classify persisted research answers by their immutable versioned semanticCode (admin RPC migration 0123), falling back safely to legacy question labels. Keep unmatched custom answers available under a collapsed section, and maintain WhatsApp marketing permission separate from data linkage.
 
+11. Keep BI-to-CRM deep-link filters scoped to one research participation, preserve explicit survey denominators and do not treat answers as consented leads. Route operational CRM exclusively through `/admin/relacionamentos`; retain legacy STS read-only response views for backward compatibility.
+
 End each development report with: **module, current status, changes/files, tests/results, pending risks, README alignment**. These requirements apply equally to code generated directly or through Lovable, Codex, ChatGPT or collaborators. Existing rules above remain in effect.

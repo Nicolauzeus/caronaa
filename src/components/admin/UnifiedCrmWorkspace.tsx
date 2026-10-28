@@ -13,6 +13,7 @@ import {
 import { formatResearchOption } from "@/lib/formulario/research-option-labels";
 import { formatBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { matchBiCrmContact, parseBiCrmFilters } from "@/lib/crm/bi-crm-filters";
 
 const statusLabel: Record<UnifiedCrmStatus,string> = {
   NOVO: "Novo", CONTACTADO: "Contactado", EM_ACOMPANHAMENTO: "Em acompanhamento",
@@ -41,6 +42,8 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<UnifiedCrmFilters>(DEFAULT_CRM_FILTERS);
+  const [segment, setSegment] = useState(() =>
+    parseBiCrmFilters(typeof window === "undefined" ? "" : window.location.search));
   const [page, setPage] = useState(0);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -64,7 +67,9 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
     return () => { alive = false; };
   }, [revision]);
 
-  const filtered = useMemo(() => filterUnifiedCrmContacts(contacts, filters), [contacts,filters]);
+  const filtered = useMemo(() => filterUnifiedCrmContacts(contacts, filters)
+    .filter(c => !Object.keys(segment).length || matchBiCrmContact(c, segment)),
+  [contacts, filters, segment]);
   const metrics = useMemo(() => unifiedCrmMetrics(filtered), [filtered]);
   const sourceOptions = useMemo(() => {
     const sources = new Map<string,string>();
@@ -141,6 +146,28 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
     </section>
     <p className="text-xs text-white/45">Indicadores do filtro atual. Percentual institucional entre os e-mails com domínio reconhecido. {metrics.anonymousParticipations > 0 && metrics.anonymousParticipations + " participação(ões) sem contato permanecem na lista, mas não são contadas como lead."}</p>
 
+    {Object.keys(segment).length > 0 && <aside className="rounded-xl border border-[#FFBB00]/40 p-3 text-xs">
+      <strong>Recorte encaminhado pelo BI</strong>
+      <p>{Object.entries(segment).map(([k,v]) => k + ": " + v).join(" · ")}</p>
+      <p>{filtered.length} contatos no recorte. O contato exige consentimento específico.</p>
+      <button type="button" onClick={() => setSegment({})} className="mt-2 min-h-11 underline">Limpar recorte</button>
+    </aside>}
+    <section aria-label="Segmentação territorial e horários" className="grid gap-2 rounded-xl border border-white/10 p-3 sm:grid-cols-2 lg:grid-cols-4">
+      {([
+        ["origin", "Bairro de origem"],
+        ["destination", "Bairro de destino"],
+        ["time", "Horário de saída (HH:mm)"],
+        ["fare", "Orçamento declarado"],
+      ] as const).map(([key,label]) => (
+        <label key={key} className="min-w-0">
+          <span className="mb-1 block text-xs text-white/60">{label}</span>
+          <input className={selectClass + " w-full"} value={segment[key] ?? ""}
+            placeholder={label}
+            onChange={event => { setSegment(previous => ({...previous, [key]:event.target.value.slice(0,120)}));setPage(0); }}
+          />
+        </label>
+      ))}
+    </section>
     <section aria-label="Filtros combinados CRM" className="grid gap-2 rounded-2xl border border-white/10 bg-white/[.04] p-3 sm:grid-cols-2 lg:grid-cols-6">
       <label className="relative sm:col-span-2 lg:col-span-1">
         <span className="mb-1 block text-xs text-white/60">Pesquisar</span>

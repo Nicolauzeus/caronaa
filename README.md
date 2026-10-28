@@ -258,6 +258,9 @@ Formulários + perfis + ofertas + solicitações + viagens concluídas
 
 **Aceite F09:** participantes de dois formulários aparecem corretamente, BI agrega sem contar a pessoa duas vezes como contato e indicadores distinguem estimativas de resultados reais.
 
+**Ponte BI → CRM:** análises de pesquisa oferecem acesso ao CRM com recorte compartilhável por instituição, perfil e dor. No CRM os filtros de origem, destino, horário e orçamento pertencem à **mesma participação**, evitando juntar a origem de uma resposta com o destino de outra. A quantidade de respostas elegíveis do BI não deve ser apresentada como número de contatos acionáveis; nenhuma autorização de comunicação é inferida. A tela de respostas legadas da STS permanece disponível separadamente, e a operação de contatos fica centralizada em `/admin/relacionamentos`.
+
+
 ## 5. Princípios técnicos e integração com o projeto existente
 
 - **Não reescrever tudo do zero.** Inspecionar e reaproveitar serviços, componentes, migrations, testes e permissões já existentes.
