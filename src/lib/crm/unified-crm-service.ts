@@ -331,11 +331,15 @@ export const DEFAULT_CRM_FILTERS: UnifiedCrmFilters = {
   search: "", source: "TODOS", academic: "TODOS", mobility: "TODOS", pain: "TODOS", status: "TODOS",
 };
 
+/** STS legacy rows store "sts-2026"/"sts2026" while the catalog code is "STS-2026". */
+const sourceKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
 export function filterUnifiedCrmContacts(contacts: UnifiedCrmContact[], filters: UnifiedCrmFilters) {
   const q = filters.search.trim().toLocaleLowerCase("pt-BR");
   return contacts.filter(contact => {
     if (filters.source !== "TODOS" &&
-      !contact.participations.some(p => p.source_form === filters.source || p.source_label === filters.source))
+      !contact.participations.some(p => p.source_form === filters.source || p.source_label === filters.source ||
+        sourceKey(p.source_form) === sourceKey(filters.source)))
       return false;
     if (filters.academic !== "TODOS" && !contact.participations.some(p => p.academic_role === filters.academic))
       return false;

@@ -114,3 +114,14 @@ describe("CRM unificado — preservação de origens e participações", () => {
     expect(migration).not.toMatch(/DELETE FROM public.research_answers|UPDATE public.research_answers/);
   });
 });
+
+import { describe as d2, it as i2, expect as e2 } from "vitest";
+import { filterUnifiedCrmContacts as f2, DEFAULT_CRM_FILTERS as D2, type UnifiedCrmContact as C2 } from "./unified-crm-service";
+d2("source filter for legacy STS codes", () => {
+  i2("STS-2026 catalog code matches sts-2026 and sts2026 rows", () => {
+    const mk = (form: string) => ({ contact_key: form, name: "x", email: null, whatsapp: null, source_forms: [form],
+      mobility_roles: [], pains: [], status: "NOVO", participations: [{ source_form: form, source_label: "Siará" }] }) as unknown as C2;
+    const rows = [mk("sts-2026"), mk("sts2026"), mk("0K9K09K")];
+    e2(f2(rows, { ...D2, source: "STS-2026" }).length).toBe(2);
+  });
+});
