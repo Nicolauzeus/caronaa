@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, RefreshCw, Search, Users, X } from "lucide-react";
+import { Download, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
-import { SavedAnswers } from "@/components/admin/SavedAnswers";
+import { CrmExecutiveProfile } from "@/components/admin/CrmExecutiveProfile";
+import { crmContactHeading, formatCrmRole } from "@/lib/crm/crm-presentation";
 import { ListPagination } from "@/components/admin/ListPagination";
 import {
   DEFAULT_CRM_FILTERS, UNIFIED_CRM_STATUSES,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/crm/unified-crm-service";
 import { formatResearchOption } from "@/lib/formulario/research-option-labels";
 import { formatBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const statusLabel: Record<UnifiedCrmStatus,string> = {
   NOVO: "Novo", CONTACTADO: "Contactado", EM_ACOMPANHAMENTO: "Em acompanhamento",
@@ -27,19 +28,11 @@ const mobilityOptions = [
 ] as const;
 const selectClass = "min-h-11 min-w-0 rounded-xl border border-white/10 bg-[#242424] px-3 text-sm text-white outline-none focus:border-[#FFBB00]";
 const pill = "rounded-lg border border-white/10 bg-white/[.06] px-2.5 py-1 text-xs text-white/75";
-const formatDate = (date: string) =>
-  Number.isNaN(Date.parse(date)) ? "Sem data" : new Date(date).toLocaleDateString("pt-BR");
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return <div className="min-w-0 rounded-2xl border border-white/10 bg-[#121212]/90 p-3 backdrop-blur-2xl">
     <p className="text-xs text-white/55">{label}</p>
     <p className="mt-2 font-['Sora'] text-2xl font-semibold text-white">{value}</p>
-  </div>;
-}
-function DetailField({ label, value }: { label: string; value?: string | number | null }) {
-  return <div className="min-w-0 rounded-xl border border-white/10 bg-white/[.03] px-3 py-2">
-    <dt className="text-xs text-white/55">{label}</dt>
-    <dd className="mt-1 break-words text-sm text-white/90">{value ?? "Não informado"}</dd>
   </div>;
 }
 
@@ -211,18 +204,18 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="max-w-full break-words font-['Sora'] font-semibold">{contact.name}</h2>
+                <h2 className="max-w-full break-words font-['Sora'] font-semibold">{crmContactHeading(contact)}</h2>
                 <span className={pill}>{statusLabel[contact.status]}</span>
                 <span className={pill}>{contact.participations.length} participação(ões)</span>
               </div>
               <p className="text-xs text-white/65">
-                {contact.email ?? "Sem e-mail consentido"} · {contact.whatsapp ? formatBrazilWhatsapp(contact.whatsapp) : "WhatsApp não informado"}
+                {contact.email && contact.email !== crmContactHeading(contact) ? contact.email + " · " : ""}{contact.whatsapp ? formatBrazilWhatsapp(contact.whatsapp) : "WhatsApp não informado"}
               </p>
               <div className="flex flex-wrap gap-1">
                 {[...new Set(contact.participations.map(p=>p.source_label))].map(source => (
                   <span className={pill} key={source}>{source}</span>
                 ))}
-                {contact.mobility_roles.map(role=><span key={role} className="rounded-lg border border-[#FFBB00]/30 bg-[#FFBB00]/10 px-2 py-1 text-xs text-[#FFBB00]">{role.replaceAll("_"," / ")}</span>)}
+                {contact.mobility_roles.map(role=><span key={role} className="rounded-lg border border-[#FFBB00]/30 bg-[#FFBB00]/10 px-2 py-1 text-xs text-[#FFBB00]">{formatCrmRole(role)}</span>)}
               </div>
               {contact.route_origin && <p className="text-xs text-white/60">
                 {contact.route_origin} → {contact.route_destination ?? "Destino não informado"}
@@ -239,68 +232,13 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
     {!loading && !error && <ListPagination page={actualPage} total={filtered.length}
       pageSize={PAGE_SIZE} onChange={setPage}/>}
 
-    <Dialog open={Boolean(selected)} onOpenChange={open=>{if(!open)setSelectedKey(null);}}>
-      {selected && <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto border-white/10 bg-[#121212] font-['Manrope'] text-white">
-        <DialogHeader>
-          <DialogTitle className="font-['Sora'] text-lg">{selected.name}</DialogTitle>
-          <DialogDescription className="text-white/60">
-            {selected.participations.length} participação(ões) em {selected.source_forms.length} fonte(s).
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <DetailField label="E-mail" value={selected.email}/>
-          <DetailField label="WhatsApp" value={selected.whatsapp ? formatBrazilWhatsapp(selected.whatsapp) : null}/>
-          <DetailField label="Vínculo" value={selected.academic_role}/>
-          <DetailField label="Perfil" value={selected.mobility_roles.join(" / ")}/>
-          <DetailField label="Origem" value={selected.route_origin}/>
-          <DetailField label="Destino" value={selected.route_destination}/>
-          <DetailField label="Horário" value={selected.outbound_time}/>
-          <DetailField label="Veículo e vagas" value={[selected.vehicle_type,selected.seats ? selected.seats+" vaga(s)" : ""].filter(Boolean).join(" · ")}/>
-        </div>
-        {selected.consented_whatsapp && unifiedCrmWhatsappLink(selected.consented_whatsapp) &&
-          <a href={unifiedCrmWhatsappLink(selected.consented_whatsapp)!} target="_blank" rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-semibold text-[#121212]">
-            Conversar pelo WhatsApp <ExternalLink size={15}/>
-          </a>}
-        {!selected.can_contact && <p className="text-xs text-white/55">
-          Não há consentimento específico de contato registrado nesta ficha. A pesquisa não autoriza mensagens comerciais automaticamente.
-        </p>}
-        <label className="space-y-1 text-sm"><span className="block text-xs text-white/60">Status do relacionamento</span>
-          <select aria-label="Alterar status do CRM" value={selected.status}
-            disabled={savingStatus}
-            onChange={e=>void changeStatus(selected,e.target.value as UnifiedCrmStatus)}
-            className={selectClass+" w-full"}>
-            {UNIFIED_CRM_STATUSES.map(code=><option key={code} value={code}>{statusLabel[code]}</option>)}
-          </select>
-        </label>
-        {selected.pains.length > 0 && <section className="space-y-2">
-          <h3 className="font-['Sora'] text-sm font-semibold">Dores relatadas</h3>
-          <div className="flex flex-wrap gap-2">
-            {selected.pains.map(code=><span key={code} className={pill}>{formatResearchOption(code)}</span>)}
-          </div>
-        </section>}
-        <section className="space-y-3 border-t border-white/10 pt-3">
-          <h3 className="font-['Sora'] text-sm font-semibold">Participações e respostas completas</h3>
-          {selected.participations.map(p=>(
-            <details key={p.id} className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <summary className="cursor-pointer text-sm font-semibold">
-                {p.source_label} · {formatDate(p.created_at)} · {p.mobility_role ?? "Sem perfil"}
-              </summary>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                <DetailField label="Origem" value={p.route_origin}/>
-                <DetailField label="Destino" value={p.route_destination}/>
-                <DetailField label="Horário" value={p.outbound_time}/>
-                <DetailField label="Veículo" value={p.vehicle_type}/>
-                <DetailField label="Vagas" value={p.seats}/>
-                <DetailField label="Dores" value={p.pains.map(formatResearchOption).join("; ")}/>
-              </dl>
-              <div className="mt-3 border-t border-white/10 pt-3 text-sm text-white/90">
-                <SavedAnswers value={p.raw_payload}/>
-              </div>
-            </details>
-          ))}
-        </section>
-      </DialogContent>}
+    <Dialog open={Boolean(selected)} onOpenChange={open => { if (!open) setSelectedKey(null); }}>
+      {selected && (
+        <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto border-white/10 bg-[#121212] font-['Manrope'] text-white">
+          <CrmExecutiveProfile contact={selected} savingStatus={savingStatus}
+            onStatusChange={status => { void changeStatus(selected, status); }} />
+        </DialogContent>
+      )}
     </Dialog>
   </main>;
 }
