@@ -85,6 +85,20 @@ describe("CRM executive presentation, with immutable original data", () => {
     expect(JSON.stringify(p)).toBe(before);
   });
 
+  it("formats declared expenses in reais and respects the return direction", () => {
+    const p = sample({
+      outbound_time: "18:00",
+      raw_payload: {
+        journey: { direction: "VOLTA", outboundTime: "18:00", days: [2, 4] },
+        answers: { "Quanto gasta, em média, por trecho (em R$)?": 6 },
+      },
+    });
+    const result = summarizeCrmParticipation(p);
+    expect(result.routine).toContainEqual({ label: "Horários", value: "Volta 18:00" });
+    expect(result.routine).toContainEqual({ label: "Gasto habitual por trecho", value: "R$ 6,00" });
+    expect(result.routine).toContainEqual({ label: "Dias da semana", value: "Terça-feira, Quinta-feira" });
+  });
+
   it("keeps historic STS primary pains and Pitch notes separate", () => {
     const sts = summarizeCrmParticipation(sample({
       source_type: "STS", pains: ["DOR_04"],
