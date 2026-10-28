@@ -54,18 +54,44 @@ describe("Executive CRM dossier", () => {
     expect(within(history).getByText("UNIFOR")).toBeInTheDocument();
     expect(screen.getByText("Redenção → Liberdade")).toBeInTheDocument();
     expect(screen.getByText("Messejana → Campus UNIFOR")).toBeInTheDocument();
-    expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
-    expect(screen.getByText("Dor principal")).toBeInTheDocument();
+    const unilab = within(history).getByRole("button", {name:/UNILAB/});
+    const unifor = within(history).getByRole("button", {name:/UNIFOR/});
+    expect(screen.getByText(/Dor principal:/)).toBeInTheDocument();
     expect(screen.getByText("Muito tempo gasto no deslocamento")).toBeInTheDocument();
+    expect(unilab).toHaveAttribute("aria-expanded", "false");
+    expect(unifor).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("heading", {name:"Rotina de deslocamento"})).not.toBeInTheDocument();
+    fireEvent.click(unilab);
+    expect(unilab).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
     expect(screen.getByText("De R$ 5,00 a R$ 10,00")).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", {name:"Rotina de deslocamento"})).toHaveLength(2);
+    fireEvent.click(unifor);
+    expect(unilab).toHaveAttribute("aria-expanded", "false");
+    expect(unifor).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Terça-feira, Quinta-feira")).toBeInTheDocument();
+    // Collapse the current participation, leaving only compact summaries.
+    fireEvent.click(unifor);
+    expect(unifor).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("heading", {name:"Rotina de deslocamento"})).not.toBeInTheDocument();
+  });
+
+  it("opens the only participation immediately for contacts with one survey", () => {
+    const onlyOne = {...contact, participations: contact.participations.slice(0, 1)};
+    render(<CrmExecutiveProfile contact={onlyOne} savingStatus={false} onStatusChange={vi.fn()}/>);
+    const participation = screen.getByRole("button", {name:/UNILAB/});
+    expect(participation).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
+    expect(screen.getAllByText(/Auditoria técnica — JSON e identificadores/)).toHaveLength(1);
   });
 
   it("hides raw UUIDs behind closed technical audit sections and preserves status editing", () => {
     const update = vi.fn();
     render(<CrmExecutiveProfile contact={contact} savingStatus={false} onStatusChange={update}/>);
+    const history = screen.getByRole("region", {name:"Histórico de participações"});
+    expect(screen.queryByText(/Auditoria técnica — JSON e identificadores/)).not.toBeInTheDocument();
+    fireEvent.click(within(history).getByRole("button",{name:/UNILAB/}));
     const audits = screen.getAllByText(/Auditoria técnica — JSON e identificadores/);
-    expect(audits).toHaveLength(2);
+    expect(audits).toHaveLength(1);
     expect(audits[0].closest("details")).not.toHaveAttribute("open");
     const rawId = screen.getByText(/37c53fa3-2587-4466-8664-c074f21342b1/);
     expect(rawId.closest("details")).not.toHaveAttribute("open");
@@ -74,6 +100,14 @@ describe("Executive CRM dossier", () => {
     expect(update).toHaveBeenCalledWith("EM_ACOMPANHAMENTO");
     expect(screen.queryByRole("link", {name:/Conversar pelo WhatsApp/i})).not.toBeInTheDocument();
     expect(screen.getByText(/Responder à pesquisa não autoriza mensagens comerciais/i)).toBeInTheDocument();
+  });
+
+  it("offers a mobile back action without changing any contact or survey data", () => {
+    const close = vi.fn();
+    render(<CrmExecutiveProfile contact={contact} savingStatus={false}
+      onClose={close} onStatusChange={vi.fn()}/>);
+    fireEvent.click(screen.getByRole("button", {name:"Voltar para contatos"}));
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("does not unlock WhatsApp interaction from presence of a phone alone", () => {

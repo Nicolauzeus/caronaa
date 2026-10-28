@@ -1,5 +1,6 @@
 import type { UnifiedCrmContact, UnifiedCrmParticipation } from "./unified-crm-service";
 import { formatResearchOption } from "@/lib/formulario/research-option-labels";
+import { crmSemanticRule, isTechnicalCrmField, type CrmAnswerCategory } from "./crm-semantic-map";
 
 type UnknownRecord = Record<string, unknown>;
 export type ExecutiveField = { label: string; value: string };
@@ -134,16 +135,7 @@ type AnswerGroup = "identity" | "duplicate" | "routine" | "fit" | "pain" | "prim
 
 function classify(key: string): AnswerGroup {
   const text = normalizeKey(key);
-  const technical = new Set([
-    "answers_raw", "raw_payload", "journey", "version", "form", "formId",
-    "submissionId", "submissionKey", "receipt", "receiptId", "uuid", "hash",
-    "termsAccepted", "privacyAccepted", "researchAccepted", "termsVersion",
-    "consentsTimestamp", "createdAt", "updatedAt", "created_at", "updated_at",
-    "metadata", "providerId", "userId", "user_id", "lat", "lng", "latitude", "longitude",
-  ]);
-  if (technical.has(key) ||
-      /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(key) ||
-      /(?:_id|Id|_hash|Hash|_token|Token)$/.test(key)) return "identity";
+  if (isTechnicalCrmField(key)) return "identity";
   if (/^(nome|e mail|email|whatsapp|telefone|perfil|vinculo|ocupacao|academico)/.test(text) ||
       /como podemos chamar|seu vinculo com|nome completo|nome social/.test(text))
     return "identity";
@@ -180,12 +172,75 @@ function pushUnique(fields: ExecutiveField[], item: ExecutiveField) {
     fields.push(item);
 }
 
+/**
+ * The new admin-only RPC returns the semanticCode of each answered question
+ * from its exact published form version. Until migration 0123 is applied,
+ * continue accepting the old dictionary of question labels unchanged.
+ */
+type AnswerItem = { label: string; semanticCode: string | null; value: unknown };
+
+function researchAnswerItems(raw: UnknownRecord): AnswerItem[] {
+  const labeled = asRecord(raw.answers);
+  const structured = Array.isArray(raw.answers_structured)
+    ? raw.answers_structured.map(asRecord).filter(item =>
+        typeof item.label === "string" && typeof item.value !== "undefined")
+    : [];
+  if (!structured.length) {
+    const original = Object.keys(labeled).length ? labeled : raw;
+    return Object.entries(original)
+      .filter(([key]) => !isTechnicalCrmField(key))
+      .map(([label, value]) => ({ label, semanticCode: null, value }));
+  }
+  const rows: AnswerItem[] = structured.map(item => ({
+    label: String(item.label),
+    semanticCode: asText(item.semanticCode),
+    value: item.value,
+  }));
+  const handledLabels = new Set(rows.map(item => item.label));
+  for (const [label, value] of Object.entries(labeled)) {
+    if (!handledLabels.has(label) && !isTechnicalCrmField(label))
+      rows.push({ label, semanticCode: null, value });
+  }
+  return rows;
+}
+
+const ptCurrency = (value: number) =>
+  "R$ " + value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function displayedAnswer(item: AnswerItem, isMoney: boolean): string {
+  if (isMoney && (typeof item.value === "number" ||
+      (typeof item.value === "string" && /^\d+(?:[.,]\d{1,2})?$/.test(item.value.trim())))) {
+    const amount = Number(String(item.value).replace(",", "."));
+    if (Number.isFinite(amount)) return ptCurrency(amount);
+  }
+  return formatCrmAnswerValue(item.value, item.semanticCode ?? item.label);
+}
+
+function categoryFor(item: AnswerItem): { category: CrmAnswerCategory; label: string; money: boolean } {
+  const rule = crmSemanticRule(item.semanticCode);
+  return {
+    category: rule?.category ?? classify(item.label),
+    label: rule?.label ?? formatCrmFieldLabel(item.label),
+    money: rule?.money ?? false,
+  };
+}
+
+/** Technical coordinates/identifiers may appear nested in custom responses. */
+function cleanSupplementalAnswer(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cleanSupplementalAnswer);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as UnknownRecord)
+        .filter(([key]) => !isTechnicalCrmField(key))
+        .map(([key, child]) => [key, cleanSupplementalAnswer(child)]),
+    );
+  }
+  return value;
+}
+
 export function summarizeCrmParticipation(p: UnifiedCrmParticipation): ExecutiveParticipation {
   const raw = asRecord(p.raw_payload);
   const journey = asRecord(raw.journey);
-  const answers = Object.keys(asRecord(raw.answers)).length
-    ? asRecord(raw.answers)
-    : raw;
   const routine: ExecutiveField[] = [];
   const fit: ExecutiveField[] = [];
   const barriers: ExecutiveField[] = [];
@@ -218,62 +273,80 @@ export function summarizeCrmParticipation(p: UnifiedCrmParticipation): Executive
   if (p.seats !== null)
     routine.push({ label: "Vagas declaradas", value: String(p.seats) });
 
-  for (const [key, value] of Object.entries(answers)) {
-    if (value === null || value === "" || value === undefined) continue;
-    const category = classify(key);
-    if (category === "identity") continue;
-    if (category === "duplicate") {
-      const k = normalizeKey(key);
-      if ((/veiculo|modelo/.test(k) && !p.vehicle_type) ||
-          (/vaga|lugares/.test(k) && p.seats === null))
-        pushUnique(routine, { label: formatCrmFieldLabel(key), value: formatCrmAnswerValue(value, key) });
+  for (const item of researchAnswerItems(raw)) {
+    const { label, value } = item;
+    if (value === null || value === "" || value === undefined || isTechnicalCrmField(label))
+      continue;
+    const rule = categoryFor(item);
+    if (rule.category === "identity") continue;
+    if (rule.category === "duplicate") {
+      const k = normalizeKey(label + " " + (item.semanticCode ?? ""));
+      if ((/veiculo|vehicle|modelo/.test(k) && !p.vehicle_type) ||
+          (/vaga|lugares|seats/.test(k) && p.seats === null))
+        pushUnique(routine, {
+          label: /vaga|lugares|seats/.test(k) ? "Vagas declaradas" : "Veículo",
+          value: displayedAnswer(item, false),
+        });
+      else if (/departure|partida/.test(k) && !departure)
+        pushUnique(routine, { label: "Horário declarado", value: displayedAnswer(item, false) });
       continue;
     }
-    if (category === "primary") {
-      if (typeof value === "string") primaryPain = formatCrmAnswerValue(value, key);
+    if (rule.category === "primary") {
+      if (typeof value === "string" && value.trim())
+        primaryPain = displayedAnswer(item, false);
       continue;
     }
-    if (category === "pain") {
+    if (rule.category === "pain") {
       const values = Array.isArray(value) ? value : [value];
-      extraPains.push(...values.filter((x): x is string => typeof x === "string" && Boolean(x.trim())));
+      extraPains.push(...values.filter((v): v is string => typeof v === "string" && Boolean(v.trim())));
       continue;
     }
-    if (category === "barrier") {
-      pushUnique(barriers, { label: "Maior receio/barreira", value: formatCrmAnswerValue(value, key) });
+    if (rule.category === "barrier") {
+      pushUnique(barriers, {
+        label: rule.label === formatCrmFieldLabel(label) ? "Maior receio/barreira" : rule.label,
+        value: displayedAnswer(item, rule.money),
+      });
       continue;
     }
-    if (category === "routine") {
-      const k = normalizeKey(key);
-      const label = /tempo.*espera/.test(k) ? "Tempo de espera declarado"
-        : /gasta.*por trecho/.test(k) ? "Gasto habitual por trecho"
+    if (rule.category === "routine") {
+      const key = normalizeKey(label);
+      const formattedLabel = item.semanticCode ? rule.label
+        : /tempo.*espera/.test(key) ? "Tempo de espera declarado"
+        : /gasta.*por trecho/.test(key) ? "Gasto habitual por trecho"
         : "Transporte atual";
-      const money = label === "Gasto habitual por trecho" && value !== null &&
-        (typeof value === "number" || /^\d+(?:[.,]\d{1,2})?$/.test(String(value)));
-      const currency = money
-        ? "R$ " + Number(String(value).replace(",", ".")).toLocaleString("pt-BR", {
-            minimumFractionDigits: 2, maximumFractionDigits: 2,
-          })
-        : formatCrmAnswerValue(value, key);
-      pushUnique(routine, { label, value: currency });
+      const isMoney = rule.money || formattedLabel === "Gasto habitual por trecho";
+      const formattedValue = displayedAnswer(item, isMoney);
+      pushUnique(routine, { label: formattedLabel, value: formattedValue });
       continue;
     }
-    if (category === "fit") {
-      pushUnique(fit, { label: fitLabel(key), value: formatCrmAnswerValue(value, key) });
+    if (rule.category === "fit") {
+      pushUnique(fit, {
+        label: item.semanticCode && crmSemanticRule(item.semanticCode) ? rule.label : fitLabel(label),
+        value: displayedAnswer(item, rule.money),
+      });
       continue;
     }
-    if (key !== "journey" && key !== "answers_raw" && key !== "answers" &&
-        key !== "pain_points" && key !== "version" && key !== "form") {
-      otherAnswers[key] = value;
+    const name = item.semanticCode && crmSemanticRule(item.semanticCode)?.label
+      ? crmSemanticRule(item.semanticCode)!.label!
+      : label;
+    if (!isTechnicalCrmField(name)) {
+      // Two questions can have the same label; keep both rather than silently
+      // dropping one (the original raw payload is always retained for audit).
+      let unique = name;
+      let i = 2;
+      while (Object.prototype.hasOwnProperty.call(otherAnswers, unique))
+        unique = name + " (" + i++ + ")";
+      otherAnswers[unique] = cleanSupplementalAnswer(value);
     }
   }
 
   if (!primaryPain && Array.isArray(raw.pain_points)) {
     const primary = raw.pain_points.map(asRecord).find(item => item.principal === true);
-    if (primary && asText(primary.codigo_dor)) primaryPain = formatCrmAnswerValue(primary.codigo_dor);
+    if (primary && asText(primary.codigo_dor))
+      primaryPain = formatCrmAnswerValue(primary.codigo_dor);
   }
-  const pains = [...new Set([...p.pains, ...extraPains].map(v => formatCrmAnswerValue(v)))];
+  const pains = [...new Set([...p.pains, ...extraPains].map(value => formatCrmAnswerValue(value)))];
   if (primaryPain) {
-    // Explicit primary pain is a headline, not a duplicate chip.
     const index = pains.indexOf(primaryPain);
     if (index >= 0) pains.splice(index, 1);
   }

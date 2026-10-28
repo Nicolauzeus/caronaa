@@ -234,8 +234,13 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
 
     <Dialog open={Boolean(selected)} onOpenChange={open => { if (!open) setSelectedKey(null); }}>
       {selected && (
-        <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto border-white/10 bg-[#121212] font-['Manrope'] text-white">
-          <CrmExecutiveProfile contact={selected} savingStatus={savingStatus}
+        <DialogContent
+          aria-label="Ficha executiva do contato"
+          className="!left-0 !top-0 !flex !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 !flex-col !gap-0 !overflow-hidden !rounded-none !border-0 !bg-[#121212] !p-0 font-['Manrope'] text-white [&>button]:hidden sm:!left-1/2 sm:!top-1/2 sm:!h-[min(90dvh,900px)] sm:!w-[min(94vw,940px)] sm:!max-w-5xl sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:!rounded-2xl sm:!border sm:!border-white/10 sm:[&>button]:inline-flex"
+        >
+          <CrmExecutiveProfile key={selected.contact_key}
+            contact={selected} savingStatus={savingStatus}
+            onClose={() => setSelectedKey(null)}
             onStatusChange={status => { void changeStatus(selected, status); }} />
         </DialogContent>
       )}
