@@ -90,7 +90,7 @@ export function crmSemanticRule(code: unknown): CrmSemanticRule | null {
 }
 
 const TECHNICAL_KEYS = new Set([
-  "answers_raw", "raw_payload", "answers_structured", "journey", "version", "form",
+  "answers_raw", "raw_payload", "answers_structured", "pain_points", "journey", "version", "form",
   "formId", "submissionId", "submissionKey", "receipt", "receiptId", "uuid",
   "hash", "termsAccepted", "privacyAccepted", "researchAccepted", "termsVersion",
   "consentsTimestamp", "createdAt", "updatedAt", "created_at", "updated_at",
