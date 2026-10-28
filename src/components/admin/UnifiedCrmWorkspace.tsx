@@ -152,6 +152,22 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
       <p>{filtered.length} contatos no recorte. O contato exige consentimento específico.</p>
       <button type="button" onClick={() => setSegment({})} className="mt-2 min-h-11 underline">Limpar recorte</button>
     </aside>}
+    <section aria-label="Segmentação territorial e horários" className="grid gap-2 rounded-xl border border-white/10 p-3 sm:grid-cols-2 lg:grid-cols-4">
+      {([
+        ["origin", "Bairro de origem"],
+        ["destination", "Bairro de destino"],
+        ["time", "Horário de saída (HH:mm)"],
+        ["fare", "Orçamento declarado"],
+      ] as const).map(([key,label]) => (
+        <label key={key} className="min-w-0">
+          <span className="mb-1 block text-xs text-white/60">{label}</span>
+          <input className={selectClass + " w-full"} value={segment[key] ?? ""}
+            placeholder={label}
+            onChange={event => { setSegment(previous => ({...previous, [key]:event.target.value.slice(0,120)}));setPage(0); }}
+          />
+        </label>
+      ))}
+    </section>
     <section aria-label="Filtros combinados CRM" className="grid gap-2 rounded-2xl border border-white/10 bg-white/[.04] p-3 sm:grid-cols-2 lg:grid-cols-6">
       <label className="relative sm:col-span-2 lg:col-span-1">
         <span className="mb-1 block text-xs text-white/60">Pesquisar</span>
