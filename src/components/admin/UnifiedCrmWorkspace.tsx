@@ -78,8 +78,8 @@ export function UnifiedCrmWorkspace({ mode = "crm", initialSource }: { mode?: "c
       const current = sources.get(item.source_form);
       if (current) { current.count++; continue; }
       const base = item.source_type === "PITCH" ? "Pitch / Manual" :
-        item.source_type === "STS" ? "STS / " + item.source_label : item.source_label;
-      sources.set(item.source_form, { label: base === item.source_form ? base : base + " (" + item.source_form + ")", count: 1 });
+        item.source_type === "STS" ? "STS 2026" : item.source_label;
+      sources.set(item.source_form, { label: base, count: 1 });
     }
     return [...sources.entries()]
       .map(([value,{label,count}]) => [value, label + " — " + count] as [string,string])
@@ -240,14 +240,19 @@ export function UnifiedCrmWorkspace({ mode = "crm", initialSource }: { mode?: "c
                 <span className={pill}>{contact.participations.length} participação(ões)</span>
               </div>
               <p className="text-xs text-white/65">
-                {contact.email && contact.email !== crmContactHeading(contact) ? contact.email + " · " : ""}{contact.whatsapp ? formatBrazilWhatsapp(contact.whatsapp) : "WhatsApp não informado"}
+                {contact.email ? (contact.email !== crmContactHeading(contact) ? contact.email + " · " : "")
+                  : "Sem e-mail informado · "}{contact.whatsapp ? formatBrazilWhatsapp(contact.whatsapp) : "WhatsApp não informado"}
               </p>
               <div className="flex flex-wrap gap-1">
                 {[...new Set(contact.participations.map(p=>p.source_label))].map(source => (
                   <span className={pill} key={source}>{source}</span>
                 ))}
+                {contact.academic_role && <span className={pill}>{formatResearchOption(contact.academic_role)}</span>}
                 {contact.mobility_roles.map(role=><span key={role} className="rounded-lg border border-[#FFBB00]/30 bg-[#FFBB00]/10 px-2 py-1 text-xs text-[#FFBB00]">{formatCrmRole(role)}</span>)}
               </div>
+              {contact.pains.length > 0 && <p className="text-xs leading-5 text-white/70">
+                <span className="text-white/45">Dores: </span>{contact.pains.map(p => formatResearchOption(p)).join(" · ")}
+              </p>}
               {contact.route_origin && <p className="text-xs text-white/60">
                 {contact.route_origin} → {contact.route_destination ?? "Destino não informado"}
               </p>}
