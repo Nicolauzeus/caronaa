@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
+import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { SavedAnswers } from "./SavedAnswers";
 import {
   crmContactHeading, formatCrmAnswerValue, formatCrmRole,
@@ -38,7 +40,7 @@ function AnswersList({ items, empty }: { items: ExecutiveField[]; empty: string 
 
 function ExecutiveSection({
   title, children,
-}: { title: string; children: React.ReactNode }) {
+}: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="min-w-0 space-y-2 border-t border-white/10 pt-3">
       <h4 className="font-['Sora'] text-sm font-semibold text-white">{title}</h4>
@@ -140,13 +142,17 @@ export function CrmExecutiveProfile({ contact, savingStatus, onStatusChange }: P
             </span>
           ))}
         </div>
-        <h2 className="break-words font-['Sora'] text-lg font-bold leading-tight sm:text-xl">
-          {crmContactHeading(contact)}
-        </h2>
-        <p className="text-xs text-white/55">
-          {contact.participations.length} {contact.participations.length === 1 ? "participação registrada" : "participações registradas"}
-          {" · "}{contact.source_forms.length} {contact.source_forms.length === 1 ? "origem" : "origens"}
-        </p>
+        <DialogTitle asChild>
+          <h2 className="break-words font-['Sora'] text-lg font-bold leading-tight sm:text-xl">
+            {crmContactHeading(contact)}
+          </h2>
+        </DialogTitle>
+        <DialogDescription asChild>
+          <p className="text-xs text-white/55">
+            {contact.participations.length} {contact.participations.length === 1 ? "participação registrada" : "participações registradas"}
+            {" · "}{contact.source_forms.length} {contact.source_forms.length === 1 ? "origem" : "origens"}
+          </p>
+        </DialogDescription>
       </header>
 
       <section aria-label="Contato e status" className="min-w-0 rounded-2xl border border-white/10 bg-white/[.04] p-3 sm:p-4">
