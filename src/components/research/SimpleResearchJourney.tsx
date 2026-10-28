@@ -1,4 +1,6 @@
 import { useId } from "react";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
+import { ResearchOriginLocationActions } from "./ResearchOriginLocationActions";
 import type { ResearchJourney, PublicResearchConfiguration } from "@/lib/formulario/research-configuration";
 
 type Props = {
@@ -27,19 +29,32 @@ export function SimpleResearchJourney({ config, value: journey, onChange }: Prop
           Informe bairros ou localidades. Não é necessário compartilhar o endereço da sua casa.
         </p>
       </div>
+      <ResearchOriginLocationActions currentArea={journey.originArea}
+        onChooseArea={(area) => onChange({
+          ...journey, originArea: area, originLat: null, originLng: null,
+        })}
+        onSearch={() => document.getElementById(id + "origin")?.focus()}
+      />
       <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-        <label htmlFor={id + "origin"} className="min-w-0 text-sm font-medium">
-          De onde costuma sair? *
-          <input id={id + "origin"} required minLength={2} maxLength={120}
-            value={journey.originArea} onChange={event=>set("originArea",event.target.value)}
-            placeholder="Bairro ou cidade" className={inputClass}/>
-        </label>
-        <label htmlFor={id + "destination"} className="min-w-0 text-sm font-medium">
-          Para onde costuma ir? *
-          <input id={id + "destination"} required minLength={2} maxLength={120}
-            value={journey.destinationArea} onChange={event=>set("destinationArea",event.target.value)}
-            placeholder="Universidade, empresa ou bairro" className={inputClass}/>
-        </label>
+        <div className="min-w-0">
+          <LocationAutocomplete id={id + "origin"} variant="simple" required
+            label="De onde costuma sair?" placeholder="Bairro ou cidade"
+            value={journey.originArea}
+            onChange={(text, details) => onChange({
+              ...journey, originArea: details?.neighborhood || details?.city || text,
+              originLat: null, originLng: null,
+            })}
+            helperText="Escolha uma sugestão ou digite sua região." />
+        </div>
+        <div className="min-w-0">
+          <LocationAutocomplete id={id + "destination"} variant="simple" required
+            label="Para onde costuma ir?" placeholder="Universidade, empresa ou bairro"
+            value={journey.destinationArea}
+            onChange={(text, details) => onChange({
+              ...journey, destinationArea: details?.neighborhood || details?.city || text,
+              destinationLat: null, destinationLng: null,
+            })} />
+        </div>
       </div>
       <fieldset className="space-y-2">
         <legend className="text-sm font-semibold">Dias em que faz esse trajeto *</legend>

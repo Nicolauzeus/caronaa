@@ -45,5 +45,6 @@ Required workflow:
 5. Maintain design tokens **#FFBB00** and **#121212**, Sora/Manrope, mobile-first four-tab navigation (Início, Oferecer, Viagens, Perfil), concise forms and transparent states. No fake production metrics.
 6. Run appropriate automated and guided tests, check regression and authorization, and report what was verified vs. pending. Do not claim untested functionality is completed.
 7. Do not silently override README rules. If a change conflicts, request a product decision, then amend documentation only when approved. Never remove this reading requirement when updating agent instructions.
+8. For mobile F01 research journeys, show both **Usar localização atual** and **Buscar localização** before the origin field. GPS requires an explicit tap; searchable/manual approximate locality always remains available, including after denial/timeouts. Never persist exact GPS coordinates in research answers. Preserve the fixed event origin when applicable.
 
 End each development report with: **module, current status, changes/files, tests/results, pending risks, README alignment**. These requirements apply equally to code generated directly or through Lovable, Codex, ChatGPT or collaborators. Existing rules above remain in effect.

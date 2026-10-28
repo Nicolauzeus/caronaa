@@ -101,6 +101,8 @@ Abrir formulário → Identificação/vínculo e intenção
 
 **WhatsApp acadêmico (27/10/2026):** a confirmação final dos formulários Academic Express exige celular brasileiro com DDD e máscara `(DD) 9XXXX-XXXX`, para PASSAGEIRO, MOTORISTA e AMBOS. A informação é persistida em uma tabela privada com autorização de vínculo, integrando o CRM; mensagens comerciais exigem consentimento opcional distinto. A migration `0122_academic_whatsapp_crm.sql` deve ser aplicada antes da implantação da interface. Formulários e respostas históricas não são reescritos.
 
+**Localização no celular (F01):** todos os formulários que coletam origem (universidades, rua/comunidade, empresas e pesquisas configuradas sem origem fixa de evento) oferecem **Usar localização atual** e **Buscar localização** antes do campo de origem, inclusive em telas de 320px. O GPS só é solicitado após toque e permissão; em caso de recusa, timeout ou ausência de HTTPS, o usuário pode buscar ou digitar o bairro normalmente. Buscas oferecem sugestões de locais e entrada manual. Respostas armazenam apenas região aproximada, sem coordenadas precisas. Nos formulários acadêmicos de cinco etapas, o conteúdo volta ao topo ao mudar de etapa para tornar os botões visíveis.
+
 **Indicadores:** ranking de dores por região/instituição/perfil, demanda por horários e trajetos, interesse na solução e, posteriormente, métricas reais de impacto. **Respostas de pesquisa validam a existência de problemas percebidos; o impacto do CARONAA precisa ser medido posteriormente com dados observados.**
 
 **Aceite F01:** três modelos respondíveis; seleção e dor principal persistidas; CRM organizado; sem duplicidade indevida; branch por perfil correto; selos e contagens independentes; testes de validação/permissões e UX mobile.
