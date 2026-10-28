@@ -28,7 +28,7 @@ describe("Location options on public F01 journeys", () => {
         ...initialResearchJourney(config),
         originLat: -3.9, originLng: -38.6,
       });
-      return <SimpleResearchJourney config={config} value={value} onChange={setValue} />;
+      return <SimpleResearchJourney config={config} value={value} onChange={(next) => setValue(next as typeof value)} />;
     }
     render(<Journey />);
     const gps = screen.getByRole("button", { name: "Usar localização atual" });
