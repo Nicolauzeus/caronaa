@@ -45,6 +45,7 @@ export function ResearchOriginLocationActions({ currentArea, onChooseArea, onSea
     try {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (id !== requestId.current) return;
           void (async () => {
             try {
               const location = await reverseGeocodeServerFn({
