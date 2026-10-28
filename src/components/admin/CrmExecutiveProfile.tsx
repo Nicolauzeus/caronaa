@@ -184,10 +184,12 @@ export function CrmExecutiveProfile({ contact, savingStatus, onStatusChange, onC
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col font-['Manrope'] text-white">
       <header className="z-10 flex shrink-0 items-start gap-2 border-b border-white/10 bg-[#121212] px-3 pb-3 pt-[max(12px,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
-        <button type="button" onClick={onClose} aria-label="Voltar para contatos"
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 text-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#FFBB00] sm:hidden">
-          <ArrowLeft size={19} aria-hidden="true"/>
-        </button>
+        {onClose && (
+          <button type="button" onClick={onClose} aria-label="Voltar para contatos"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 text-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#FFBB00] sm:hidden">
+            <ArrowLeft size={19} aria-hidden="true"/>
+          </button>
+        )}
         <div className="min-w-0 flex-1 space-y-1.5 pr-6 sm:pr-8">
           <DialogTitle asChild>
             <h2 className="break-words font-['Sora'] text-base font-semibold leading-snug sm:text-xl">
