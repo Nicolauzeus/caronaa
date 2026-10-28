@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { UnifiedCrmWorkspace } from "@/components/admin/UnifiedCrmWorkspace";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ResearchInsights } from "@/components/admin/ResearchInsights";
@@ -161,19 +162,7 @@ function ResearchDetail() {
                 </div>
               </TabsContent>
               <TabsContent value="respostas">
-                <section className="rounded-xl border p-4">
-                  <p className="text-sm">
-                    As respostas históricas são consultadas na lista administrativa. Respostas de
-                    novas pesquisas são agregadas no painel de inteligência para proteger dados
-                    individuais.
-                  </p>
-                  <Link
-                    to="/admin/formularios/respostas"
-                    className="mt-2 inline-block text-sm text-primary"
-                  >
-                    Ver registros históricos →
-                  </Link>
-                </section>
+                <UnifiedCrmWorkspace mode="responses" initialSource={form.code} />
               </TabsContent>
               <TabsContent value="perguntas">
                 <div className="space-y-3">

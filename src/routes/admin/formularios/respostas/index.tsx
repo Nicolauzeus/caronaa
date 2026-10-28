@@ -1,3 +1,4 @@
+import { UnifiedCrmWorkspace } from "@/components/admin/UnifiedCrmWorkspace";
 import { ListPagination } from "@/components/admin/ListPagination";
 
 import { Download, Search } from "lucide-react";
@@ -69,13 +70,13 @@ function exportCsv(rows: FormSubmissionRow[]) {
 }
 
 function AdminResponsesPage() {
-  const [view, setView] = useState<"unificado"|"sts">("sts");
+  const [view, setView] = useState<"unificado"|"sts">("unificado");
   return <div className="space-y-3">
     <nav aria-label="Visões das respostas" className="flex flex-wrap gap-2">
       <button type="button" onClick={()=>setView("unificado")} aria-pressed={view==="unificado"}
         className={"min-h-11 rounded-xl border px-4 text-sm font-semibold " +
           (view==="unificado" ? "border-[#FFBB00] bg-[#FFBB00]/10 text-[#FFBB00]" : "border-border")}>
-        CRM unificado (acesso centralizado)
+        Todos os formulários
       </button>
       <button type="button" onClick={()=>setView("sts")} aria-pressed={view==="sts"}
         className={"min-h-11 rounded-xl border px-4 text-sm font-semibold " +
@@ -83,10 +84,7 @@ function AdminResponsesPage() {
         Respostas originais STS
       </button>
     </nav>
-    {view === "unificado" ? <div className="rounded-xl border p-5">
-      <p className="text-sm">O CRM unificado agora tem uma única tela operacional.</p>
-      <Link to="/admin/relacionamentos" className="mt-3 inline-flex min-h-11 items-center font-semibold text-primary underline">Abrir CRM de relacionamentos</Link>
-    </div> : <LegacyStsResponsesPage/>}
+    {view === "unificado" ? <UnifiedCrmWorkspace mode="responses"/> : <LegacyStsResponsesPage/>}
   </div>;
 }
 

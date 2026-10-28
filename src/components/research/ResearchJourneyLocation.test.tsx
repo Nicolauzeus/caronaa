@@ -24,11 +24,11 @@ const config = newResearchConfiguration("UNIVERSIDADE_URBANA_CARONAA");
 describe("Location options on public F01 journeys", () => {
   it("shows GPS and searchable origin before route inputs on simple forms", () => {
     function Journey() {
-      const [value, setValue] = useState({
+      const [value, setValue] = useState<ReturnType<typeof initialResearchJourney>>({
         ...initialResearchJourney(config),
         originLat: -3.9, originLng: -38.6,
       });
-      return <SimpleResearchJourney config={config} value={value} onChange={setValue} />;
+      return <SimpleResearchJourney config={config} value={value} onChange={(next) => setValue(next as typeof value)} />;
     }
     render(<Journey />);
     const gps = screen.getByRole("button", { name: "Usar localização atual" });
