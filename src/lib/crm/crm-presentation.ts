@@ -134,6 +134,16 @@ type AnswerGroup = "identity" | "duplicate" | "routine" | "fit" | "pain" | "prim
 
 function classify(key: string): AnswerGroup {
   const text = normalizeKey(key);
+  const technical = new Set([
+    "answers_raw", "raw_payload", "journey", "version", "form", "formId",
+    "submissionId", "submissionKey", "receipt", "receiptId", "uuid", "hash",
+    "termsAccepted", "privacyAccepted", "researchAccepted", "termsVersion",
+    "consentsTimestamp", "createdAt", "updatedAt", "created_at", "updated_at",
+    "metadata", "providerId", "userId", "user_id", "lat", "lng", "latitude", "longitude",
+  ]);
+  if (technical.has(key) ||
+      /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(key) ||
+      /(?:_id|Id|_hash|Hash|_token|Token)$/.test(key)) return "identity";
   if (/^(nome|e mail|email|whatsapp|telefone|perfil|vinculo|ocupacao|academico)/.test(text) ||
       /como podemos chamar|seu vinculo com|nome completo|nome social/.test(text))
     return "identity";
@@ -181,7 +191,7 @@ export function summarizeCrmParticipation(p: UnifiedCrmParticipation): Executive
   const barriers: ExecutiveField[] = [];
   const otherAnswers: UnknownRecord = {};
   let primaryPain: string | null = null;
-  let extraPains: string[] = [];
+  const extraPains: string[] = [];
 
   const origin = p.route_origin ?? asText(journey.originArea);
   const destination = p.route_destination ?? asText(journey.destinationArea);
