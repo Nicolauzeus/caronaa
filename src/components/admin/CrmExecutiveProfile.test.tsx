@@ -55,7 +55,7 @@ describe("Executive CRM dossier", () => {
     expect(screen.getByText("Redenção → Liberdade")).toBeInTheDocument();
     expect(screen.getByText("Messejana → Campus UNIFOR")).toBeInTheDocument();
     expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
-    expect(screen.getByText("Dor principal")).toBeInTheDocument();
+    expect(screen.getByText(/Dor principal:/)).toBeInTheDocument();
     expect(screen.getByText("Muito tempo gasto no deslocamento")).toBeInTheDocument();
     expect(screen.getByText("De R$ 5,00 a R$ 10,00")).toBeInTheDocument();
     const unilab = within(history).getByRole("button", {name:/UNILAB/});
