@@ -37,11 +37,12 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   </div>;
 }
 
-export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "responses" }) {
+export function UnifiedCrmWorkspace({ mode = "crm", initialSource }: { mode?: "crm" | "responses"; initialSource?: string }) {
   const [contacts, setContacts] = useState<UnifiedCrmContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<UnifiedCrmFilters>(DEFAULT_CRM_FILTERS);
+  const [filters, setFilters] = useState<UnifiedCrmFilters>(() =>
+    initialSource ? { ...DEFAULT_CRM_FILTERS, source: initialSource } : DEFAULT_CRM_FILTERS);
   const [segment, setSegment] = useState(() =>
     parseBiCrmFilters(typeof window === "undefined" ? "" : window.location.search));
   const [page, setPage] = useState(0);
@@ -72,14 +73,17 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
   [contacts, filters, segment]);
   const metrics = useMemo(() => unifiedCrmMetrics(filtered), [filtered]);
   const sourceOptions = useMemo(() => {
-    const sources = new Map<string,string>();
-    for (const contact of contacts) for (const item of contact.participations)
-      if (!sources.has(item.source_form)) {
-        sources.set(item.source_form,
-          item.source_type === "PITCH" ? "Pitch / Manual" :
-          item.source_type === "STS" ? "STS / " + item.source_label : item.source_label);
-      }
-    return [...sources.entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
+    const sources = new Map<string,{label:string;count:number}>();
+    for (const contact of contacts) for (const item of contact.participations) {
+      const current = sources.get(item.source_form);
+      if (current) { current.count++; continue; }
+      const base = item.source_type === "PITCH" ? "Pitch / Manual" :
+        item.source_type === "STS" ? "STS / " + item.source_label : item.source_label;
+      sources.set(item.source_form, { label: base === item.source_form ? base : base + " (" + item.source_form + ")", count: 1 });
+    }
+    return [...sources.entries()]
+      .map(([value,{label,count}]) => [value, label + " — " + count] as [string,string])
+      .sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
   }, [contacts]);
   const painOptions = useMemo(() => [...new Set(contacts.flatMap(c => c.pains))]
     .sort((a,b)=>formatResearchOption(a).localeCompare(formatResearchOption(b),"pt-BR")), [contacts]);
