@@ -225,6 +225,19 @@ function categoryFor(item: AnswerItem): { category: CrmAnswerCategory; label: st
   };
 }
 
+/** Technical coordinates/identifiers may appear nested in custom responses. */
+function cleanSupplementalAnswer(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cleanSupplementalAnswer);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as UnknownRecord)
+        .filter(([key]) => !isTechnicalCrmField(key))
+        .map(([key, child]) => [key, cleanSupplementalAnswer(child)]),
+    );
+  }
+  return value;
+}
+
 export function summarizeCrmParticipation(p: UnifiedCrmParticipation): ExecutiveParticipation {
   const raw = asRecord(p.raw_payload);
   const journey = asRecord(raw.journey);
@@ -323,7 +336,7 @@ export function summarizeCrmParticipation(p: UnifiedCrmParticipation): Executive
       let i = 2;
       while (Object.prototype.hasOwnProperty.call(otherAnswers, unique))
         unique = name + " (" + i++ + ")";
-      otherAnswers[unique] = value;
+      otherAnswers[unique] = cleanSupplementalAnswer(value);
     }
   }
 
