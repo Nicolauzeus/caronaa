@@ -27,6 +27,7 @@ import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { cleanAnswers, validatePage, type Answers } from "@/lib/formulario/research-schema";
 import { validResearchEmail, captureResearchLead } from "@/lib/formulario/research-lead";
+import { captureResearchWhatsapp, formatBrazilWhatsapp, validBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
 import {
   submitConfiguredResearch,
   registerResearchInterest,
@@ -127,6 +128,7 @@ export function AcademicExpressForm({
 
   const [answers, setAnswers] = useState<Answers>({});
   const [email, setEmail] = useState(user?.email ?? "");
+  const [whatsapp, setWhatsapp] = useState("");
   const [journey, setJourney] = useState<ResearchJourney>(() => ({
     ...initialResearchJourney(config.settings),
     days: [],
@@ -147,6 +149,7 @@ export function AcademicExpressForm({
   const [consent, setConsent] = useState(false);
   const [linkageConsent, setLinkageConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
+  const [whatsappContactConsent, setWhatsappContactConsent] = useState(false);
   const [prepareInterest, setPrepareInterest] = useState(false);
   const [interestRole, setInterestRole] = useState<AcademicRole>(isF01Express ? "AMBOS" : "PASSAGEIRO");
   const [customSeats, setCustomSeats] = useState(false);
@@ -390,8 +393,16 @@ export function AcademicExpressForm({
       setError("Confirme sua participação na pesquisa.");
       return;
     }
-    if (captureEnabled && (!validResearchEmail(email.trim()) || !linkageConsent)) {
-      setError("Confirme seu e-mail e a autorização de reconhecimento.");
+    if (captureEnabled && !validResearchEmail(email.trim())) {
+      setError("Confirme um e-mail válido.");
+      return;
+    }
+    if (!validBrazilWhatsapp(whatsapp)) {
+      setError("Informe um WhatsApp válido com DDD: (DDD) 9XXXX-XXXX.");
+      return;
+    }
+    if (!linkageConsent) {
+      setError("Autorize vincular seu WhatsApp à participação.");
       return;
     }
     let validJourney: ResearchJourney;
@@ -431,6 +442,10 @@ export function AcademicExpressForm({
           marketingConsent,
         });
       }
+      await captureResearchWhatsapp({
+        formId: form.id, receipt: submissionKey, whatsapp,
+        linkageConsent, contactConsent: whatsappContactConsent,
+      });
       try {
         storePendingParticipation(submissionKey, Boolean(plannedLaunch));
       } catch {
@@ -1100,6 +1115,14 @@ export function AcademicExpressForm({
                       " · " + selected(seatsQuestion) + " vaga(s)"}
                   </p>
                 </div>
+                <label className={label} htmlFor={id + "-whatsapp"}>
+                  WhatsApp com DDD
+                  <input id={id + "-whatsapp"} type="tel" inputMode="tel" autoComplete="tel-national"
+                    required maxLength={15} value={whatsapp}
+                    onChange={event => { setWhatsapp(formatBrazilWhatsapp(event.target.value)); setError(""); }}
+                    placeholder="(85) 99999-0000" className={field + " mt-2"} />
+                  <span className="mt-1 block text-xs font-normal text-white/55">Contato privado no CRM. Mensagens exigem autorização opcional.</span>
+                </label>
                 {plannedLaunch && (isF01Express ? (
                   <p className="rounded-xl border border-[#FFBB00]/25 bg-[#FFBB00]/[.06] px-3 py-2 text-xs text-white/75">
                     <span className="font-semibold text-[#FFBB00]">
@@ -1162,7 +1185,7 @@ export function AcademicExpressForm({
                     ? "Li o aviso de privacidade e aceito participar da pesquisa."
                     : "Concordo em participar da pesquisa e com o tratamento das respostas conforme o aviso de privacidade."}</span>
                 </label>
-                {captureEnabled && (
+                {(
                   <label className="flex items-start gap-3 text-xs leading-5">
                     <input
                       type="checkbox"
@@ -1171,11 +1194,17 @@ export function AcademicExpressForm({
                       onChange={(e) => setLinkageConsent(e.target.checked)}
                       className="mt-1 accent-[#FFBB00]"
                     />
-                    <span>{isF01Express
-                      ? "Autorizo vincular esta participação ao meu e-mail."
-                      : "Autorizo vincular minha participação ao e-mail informado. Não é necessário criar uma conta."}</span>
+                    <span>{captureEnabled
+                      ? "Autorizo vincular esta participação ao meu e-mail e WhatsApp no CRM."
+                      : "Autorizo vincular esta participação ao meu WhatsApp no CRM."}</span>
                   </label>
                 )}
+                <label className="flex items-start gap-3 text-xs leading-5 text-white/65">
+                  <input type="checkbox" checked={whatsappContactConsent}
+                    onChange={event => setWhatsappContactConsent(event.target.checked)}
+                    className="mt-1 accent-[#FFBB00]" />
+                  <span>Aceito receber novidades do CARONAA pelo WhatsApp (opcional).</span>
+                </label>
                 {captureEnabled && (isF01Express ? (
                   <details className="rounded-xl border border-white/10 bg-white/[.03] px-3 py-2">
                     <summary className="cursor-pointer text-xs text-white/70">Preferências de comunicação (opcional)</summary>
@@ -1258,7 +1287,7 @@ export function AcademicExpressForm({
           <button
             type="button"
             disabled={
-              busy || (stage === "activation" && (!consent || (captureEnabled && !linkageConsent)))
+              busy || (stage === "activation" && (!consent || !linkageConsent))
             }
             onClick={
               stage === "activation"
@@ -1277,7 +1306,7 @@ export function AcademicExpressForm({
             {stage !== "activation" && <ArrowRight size={18} />}
           </button>
           {isF01Express && stage === "activation" && (
-            <button type="button" disabled={busy || !consent || (captureEnabled && !linkageConsent)}
+            <button type="button" disabled={busy || !consent || !linkageConsent}
               onClick={() => void submit(false)}
               className="min-h-9 w-full rounded-xl border border-white/10 text-xs text-white/70 disabled:opacity-40">
               Enviar apenas a pesquisa (sem registrar trajeto)

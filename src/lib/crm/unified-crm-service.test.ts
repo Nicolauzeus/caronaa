@@ -92,6 +92,11 @@ describe("CRM unificado — preservação de origens e participações", () => {
     expect(metrics.anonymousParticipations).toBe(2);
   });
 
+  it("não autoriza mensagens de WhatsApp pelo consentimento do e-mail", () => {
+    const rows = normalizeUnifiedCrmRows({research:[{source_id:"w1",source_form:"UNILAB-1",name:"Pessoa",email:"pessoa@test.com",whatsapp:"+5585999990000",whatsapp_contact_consent:false,created_at:"2026-10-27T10:00:00Z"}],sts:[],pitch:[]});
+    expect(consolidateCrmContacts(rows)[0].consented_whatsapp).toBeNull();
+  });
+
   it("trata exportações potencialmente perigosas e formata WhatsApp brasileiro", () => {
     const contacts = consolidateCrmContacts(records);
     const spreadsheet = unifiedCrmCsv(contacts.map(c => ({...c,name:"=HYPERLINK('evil')"})));
