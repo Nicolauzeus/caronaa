@@ -1185,7 +1185,7 @@ export function AcademicExpressForm({
                     ? "Li o aviso de privacidade e aceito participar da pesquisa."
                     : "Concordo em participar da pesquisa e com o tratamento das respostas conforme o aviso de privacidade."}</span>
                 </label>
-                {
+                {(
                   <label className="flex items-start gap-3 text-xs leading-5">
                     <input
                       type="checkbox"
