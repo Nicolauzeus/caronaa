@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { CrmExecutiveProfile } from "./CrmExecutiveProfile";
@@ -8,8 +9,8 @@ vi.mock("@/lib/formulario/research-whatsapp", () => ({
   formatBrazilWhatsapp: (value: string) => value,
 }));
 vi.mock("@/components/ui/dialog", () => ({
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 const rows = normalizeUnifiedCrmRows({
