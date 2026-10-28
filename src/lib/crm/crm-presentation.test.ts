@@ -176,6 +176,28 @@ describe("CRM executive presentation, with immutable original data", () => {
     expect(result.otherAnswers).toEqual({"Comentário":"Preciso voltar cedo"});
   });
 
+  it("keeps nested GPS coordinates and hashes out of operational supplemental answers", () => {
+    const result = summarizeCrmParticipation(sample({
+      raw_payload: {
+        answers: {
+          "Detalhes complementares": {
+            text: "No bairro universitário",
+            lat: -4.12,
+            lng: -38.98,
+            uuid: "37c53fa3-2587-4466-8664-c074f21342b1",
+            nested: { originLat: -4.1, observation: "Ponto conhecido" },
+          },
+        },
+      },
+    }));
+    expect(result.otherAnswers).toEqual({
+      "Detalhes complementares": {
+        text: "No bairro universitário",
+        nested: { observation: "Ponto conhecido" },
+      },
+    });
+  });
+
   it("keeps historic STS primary pains and Pitch notes separate", () => {
     const sts = summarizeCrmParticipation(sample({
       source_type: "STS", pains: ["DOR_04"],
