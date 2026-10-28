@@ -111,8 +111,13 @@ describe("University route search + consented GPS", () => {
       fireEvent.change(screen.getByPlaceholderText("voce@universidade.br"),
         { target: { value: "pessoa@unifor.br" } });
       fireEvent.click(screen.getByRole("button", {name:/Continuar/i}));
+      const scroller = screen.getByRole("region", {name:"Etapa do questionário"});
+      scroller.scrollTop = 400; // Simulate a small mobile viewport still scrolled from step 2.
       fireEvent.click(screen.getByRole("button", {name:/Quero pegar carona/i}));
-      expect(screen.getByRole("button", {name:"Usar localização atual"})).toBeInTheDocument();
+      expect(scroller.scrollTop).toBe(0);
+      const gps = screen.getByRole("button", {name:"Usar localização atual"});
+      const origin = screen.getByRole("textbox", {name:"Bairro ou região de origem"});
+      expect(gps.compareDocumentPosition(origin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       fireEvent.click(screen.getByRole("button", {name:"Buscar localização"}));
       expect(screen.getByRole("dialog", {name:"Buscar bairro ou região"})).toBeInTheDocument();
       fireEvent.change(screen.getByPlaceholderText("Digite o bairro, município ou local..."),
