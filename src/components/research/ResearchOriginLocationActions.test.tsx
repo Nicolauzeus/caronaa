@@ -10,7 +10,7 @@ vi.mock("@/lib/location.functions", () => ({
 const originalGeo = Object.getOwnPropertyDescriptor(navigator, "geolocation");
 const originalSecure = Object.getOwnPropertyDescriptor(window, "isSecureContext");
 
-function configureGPS(getCurrentPosition: (...args: unknown[]) => void) {
+function configureGPS(getCurrentPosition: unknown) {
   Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
