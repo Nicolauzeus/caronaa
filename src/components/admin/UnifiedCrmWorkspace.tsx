@@ -10,6 +10,7 @@ import {
   type UnifiedCrmContact, type UnifiedCrmFilters, type UnifiedCrmStatus,
 } from "@/lib/crm/unified-crm-service";
 import { formatResearchOption } from "@/lib/formulario/research-option-labels";
+import { formatBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const statusLabel: Record<UnifiedCrmStatus,string> = {
@@ -215,7 +216,7 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
                 <span className={pill}>{contact.participations.length} participação(ões)</span>
               </div>
               <p className="text-xs text-white/65">
-                {contact.email ?? "Sem e-mail consentido"} · {contact.whatsapp ?? "WhatsApp não informado"}
+                {contact.email ?? "Sem e-mail consentido"} · {contact.whatsapp ? formatBrazilWhatsapp(contact.whatsapp) : "WhatsApp não informado"}
               </p>
               <div className="flex flex-wrap gap-1">
                 {[...new Set(contact.participations.map(p=>p.source_label))].map(source => (
@@ -248,7 +249,7 @@ export function UnifiedCrmWorkspace({ mode = "crm" }: { mode?: "crm" | "response
         </DialogHeader>
         <div className="grid gap-2 sm:grid-cols-2">
           <DetailField label="E-mail" value={selected.email}/>
-          <DetailField label="WhatsApp" value={selected.whatsapp}/>
+          <DetailField label="WhatsApp" value={selected.whatsapp ? formatBrazilWhatsapp(selected.whatsapp) : null}/>
           <DetailField label="Vínculo" value={selected.academic_role}/>
           <DetailField label="Perfil" value={selected.mobility_roles.join(" / ")}/>
           <DetailField label="Origem" value={selected.route_origin}/>

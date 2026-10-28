@@ -138,7 +138,7 @@ export function normalizeUnifiedCrmRows(input: {
       created_at: stamp(row.created_at),
       // Linkage consent means associating a research answer to an email,
       // NOT permission to initiate unsolicited outreach.
-      contact_consent: false,
+      contact_consent: row.whatsapp_contact_consent === true,
       institutional_email: row.institutional_email === true,
       status: statusOrNew(row.status),
       raw_payload: raw,

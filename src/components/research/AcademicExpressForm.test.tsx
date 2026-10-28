@@ -21,6 +21,7 @@ const calls = vi.hoisted(() => ({
   submit: vi.fn(async () => undefined),
   interest: vi.fn(async () => "INTERESSE_REGISTRADO"),
   capture: vi.fn(async () => undefined),
+  captureWhatsapp: vi.fn(async () => undefined),
 }));
 vi.mock("@/lib/formulario/research-configuration-service", () => ({
   submitConfiguredResearch: calls.submit,
@@ -29,6 +30,11 @@ vi.mock("@/lib/formulario/research-configuration-service", () => ({
 vi.mock("@/lib/formulario/research-lead", () => ({
   validResearchEmail: (value: string) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(value),
   captureResearchLead: calls.capture,
+}));
+
+vi.mock("@/lib/formulario/research-whatsapp", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/lib/formulario/research-whatsapp")>()),
+  captureResearchWhatsapp: calls.captureWhatsapp,
 }));
 
 const settings = {
@@ -273,6 +279,9 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(within(screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ }))
       .getByRole("button", { name: "Ônibus lotados" }));
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    const phone = screen.getByLabelText(/WhatsApp com DDD/i);
+    fireEvent.change(phone, { target: { value: "85999990000" } });
+    expect(phone).toHaveValue("(85) 99999-0000");
     const primary = screen.getByRole("button", { name: /Pré-agendar meu interesse/i });
     expect(primary).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: /Li o aviso de privacidade/i }));
@@ -283,6 +292,7 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     expect(calls.interest).toHaveBeenCalledWith("f", expect.any(String), "PASSAGEIRO", true, expect.any(Object));
     expect(calls.submit).toHaveBeenCalledTimes(1);
     expect(calls.capture).toHaveBeenCalledTimes(1);
+    expect(calls.captureWhatsapp).toHaveBeenCalledWith(expect.objectContaining({whatsapp:"(85) 99999-0000", contactConsent:false}));
     expect(screen.getByText(/Interesse no trajeto registrado separadamente/)).toBeInTheDocument();
   });
 
@@ -299,6 +309,7 @@ describe("F01 academic express (dynamic institutions, no extra public pages)", (
     fireEvent.click(within(screen.getByRole("group", { name: /O que mais dificulta seu deslocamento/ }))
       .getByRole("button", { name: "Ônibus lotados" }));
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
+    fireEvent.change(screen.getByLabelText(/WhatsApp com DDD/i), {target:{value:"85999990000"}});
     fireEvent.click(screen.getByRole("checkbox", { name: /Li o aviso de privacidade/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /Autorizo vincular esta participação/i }));
     fireEvent.click(screen.getByRole("button", { name: /Pré-agendar meu interesse/i }));
