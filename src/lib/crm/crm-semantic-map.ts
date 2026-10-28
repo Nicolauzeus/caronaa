@@ -96,6 +96,7 @@ const TECHNICAL_KEYS = new Set([
   "consentsTimestamp", "createdAt", "updatedAt", "created_at", "updated_at",
   "metadata", "providerId", "userId", "user_id", "lat", "lng", "latitude",
   "longitude", "originLat", "originLng", "destinationLat", "destinationLng",
+  "coordinates", "position", "gpsLocation", "locationData", "geo",
 ]);
 
 export function isTechnicalCrmField(key: string): boolean {
