@@ -327,7 +327,8 @@ export function AcademicExpressForm({
     setError("");
     setLocationHint("");
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
+    try {
+      navigator.geolocation.getCurrentPosition(
       (position) => {
         if (requestId !== gpsRequestRef.current) return;
         void (async () => {
@@ -359,7 +360,13 @@ export function AcademicExpressForm({
         setLocating(false);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
-    );
+      );
+    } catch {
+      if (requestId === gpsRequestRef.current) {
+        setError("Não foi possível iniciar o GPS. Use Buscar localização ou digite o bairro.");
+        setLocating(false);
+      }
+    }
   }
 
   function applySearchedOrigin(raw: string) {
