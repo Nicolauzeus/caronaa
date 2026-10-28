@@ -153,7 +153,7 @@ function classify(key: string): AnswerGroup {
   if (/dificul|dores|dor principal|desafios no (trajeto|percurso)/.test(text)) return "pain";
   if (/como (voce )?(se )?(costuma )?(desloca|deslocar|ir ao|ir ou voltar)|transporte(s)? atual|passenger transports|tempo costuma esperar|tempo de espera|gasta.*por trecho/.test(text))
     return "routine";
-  if (/^(origem|destino|horario de ida|horario de volta|dia|veiculo|vagas|sentido do trajeto)|quantos lugares|qual veiculo usaria|marca e modelo do veiculo/.test(text))
+  if (/^(origem|destino|horario de ida|horario de volta|dia|veiculo|vagas|sentido do trajeto)|quantos lugares|qual veiculo|veiculo proprio|marca e modelo do veiculo/.test(text))
     return "duplicate";
   if (/orcamento|faixa de valor|pagaria|preco considerado justo|valor aceitavel|passenger fair price|\bdriver price\b|contribuicao/.test(text))
     return "fit";
@@ -201,9 +201,10 @@ export function summarizeCrmParticipation(p: UnifiedCrmParticipation): Executive
     routine.push({ label: "Sentido", value: formatCrmAnswerValue(journey.direction) });
   const departure = p.outbound_time ?? asText(journey.outboundTime);
   const returning = asText(journey.returnTime);
+  const outboundLabel = journey.direction === "VOLTA" ? "Volta" : "Ida";
   if (departure || returning)
     routine.push({ label: "Horários", value: [
-      departure ? "Ida " + departure : null,
+      departure ? outboundLabel + " " + departure : null,
       returning ? "Volta " + returning : null,
     ].filter(Boolean).join(" · ") });
   const days = formatCrmWeekdays(journey.days);
@@ -246,7 +247,14 @@ export function summarizeCrmParticipation(p: UnifiedCrmParticipation): Executive
       const label = /tempo.*espera/.test(k) ? "Tempo de espera declarado"
         : /gasta.*por trecho/.test(k) ? "Gasto habitual por trecho"
         : "Transporte atual";
-      pushUnique(routine, { label, value: formatCrmAnswerValue(value, key) });
+      const money = label === "Gasto habitual por trecho" && value !== null &&
+        (typeof value === "number" || /^\\d+(?:[.,]\\d{1,2})?$/.test(String(value)));
+      const currency = money
+        ? "R$ " + Number(String(value).replace(",", ".")).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2, maximumFractionDigits: 2,
+          })
+        : formatCrmAnswerValue(value, key);
+      pushUnique(routine, { label, value: currency });
       continue;
     }
     if (category === "fit") {
