@@ -13,6 +13,7 @@ import {
 import { formatResearchOption } from "@/lib/formulario/research-option-labels";
 import { formatBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { matchBiCrmContact, parseBiCrmFilters } from "@/lib/crm/bi-crm-filters";
 
 const statusLabel: Record<UnifiedCrmStatus,string> = {
   NOVO: "Novo", CONTACTADO: "Contactado", EM_ACOMPANHAMENTO: "Em acompanhamento",
