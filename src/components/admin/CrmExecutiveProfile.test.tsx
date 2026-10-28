@@ -54,15 +54,17 @@ describe("Executive CRM dossier", () => {
     expect(within(history).getByText("UNIFOR")).toBeInTheDocument();
     expect(screen.getByText("Redenção → Liberdade")).toBeInTheDocument();
     expect(screen.getByText("Messejana → Campus UNIFOR")).toBeInTheDocument();
-    expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
-    expect(screen.getByText(/Dor principal:/)).toBeInTheDocument();
-    expect(screen.getByText("Muito tempo gasto no deslocamento")).toBeInTheDocument();
-    expect(screen.getByText("De R$ 5,00 a R$ 10,00")).toBeInTheDocument();
     const unilab = within(history).getByRole("button", {name:/UNILAB/});
     const unifor = within(history).getByRole("button", {name:/UNIFOR/});
-    expect(unilab).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/Dor principal:/)).toBeInTheDocument();
+    expect(screen.getByText("Muito tempo gasto no deslocamento")).toBeInTheDocument();
+    expect(unilab).toHaveAttribute("aria-expanded", "false");
     expect(unifor).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getAllByRole("heading", {name:"Rotina de deslocamento"})).toHaveLength(1);
+    expect(screen.queryByRole("heading", {name:"Rotina de deslocamento"})).not.toBeInTheDocument();
+    fireEvent.click(unilab);
+    expect(unilab).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Segunda a sexta-feira")).toBeInTheDocument();
+    expect(screen.getByText("De R$ 5,00 a R$ 10,00")).toBeInTheDocument();
     fireEvent.click(unifor);
     expect(unilab).toHaveAttribute("aria-expanded", "false");
     expect(unifor).toHaveAttribute("aria-expanded", "true");
@@ -76,6 +78,9 @@ describe("Executive CRM dossier", () => {
   it("hides raw UUIDs behind closed technical audit sections and preserves status editing", () => {
     const update = vi.fn();
     render(<CrmExecutiveProfile contact={contact} savingStatus={false} onStatusChange={update}/>);
+    const history = screen.getByRole("region", {name:"Histórico de participações"});
+    expect(screen.queryByText(/Auditoria técnica — JSON e identificadores/)).not.toBeInTheDocument();
+    fireEvent.click(within(history).getByRole("button",{name:/UNILAB/}));
     const audits = screen.getAllByText(/Auditoria técnica — JSON e identificadores/);
     expect(audits).toHaveLength(1);
     expect(audits[0].closest("details")).not.toHaveAttribute("open");
