@@ -29,7 +29,7 @@ export function SavedAnswers({
     return (
       <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
         {Object.entries(value).map(([key, nested]) =>
-          <div key={key} className="min-w-0 border-b border-white/10 pb-2">
+          <div key={key} className="min-w-0 border-b border-border/60 pb-2">
             <dt className="text-xs text-muted-foreground">{formatCrmFieldLabel(key)}</dt>
             <dd className="mt-1 break-words whitespace-pre-wrap text-sm leading-5">
               <SavedAnswers value={nested} fieldKey={key}/>
