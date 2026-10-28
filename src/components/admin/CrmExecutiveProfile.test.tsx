@@ -17,7 +17,7 @@ const rows = normalizeUnifiedCrmRows({
   research: [
     {
       source_id: "unilab-1", source_form: "UNILAB-1", source_label: "UNILAB",
-      name: "Participante sem identificação", email: "gaquirino777@gmail.com",
+      name: "Participante sem identificação", email: "pessoa@exemplo.edu.br",
       whatsapp: "+5585999990000", academic_role:"ESTUDANTE", mobility_role:"PASSAGEIRO",
       created_at:"2026-10-23T14:00:00Z", route_origin:"Redenção", route_destination:"Liberdade",
       outbound_time:"07:00", pains:["DOR_04"], whatsapp_contact_consent:false,
@@ -33,7 +33,7 @@ const rows = normalizeUnifiedCrmRows({
     },
     {
       source_id:"unifor-1", source_form:"0K9K09K", source_label:"UNIFOR",
-      name:"Participante sem identificação", email:"gaquirino777@gmail.com",
+      name:"Participante sem identificação", email:"pessoa@exemplo.edu.br",
       academic_role:"ESTUDANTE", mobility_role:"MOTORISTA",
       created_at:"2026-10-22T14:00:00Z", route_origin:"Messejana",
       route_destination:"Campus UNIFOR", outbound_time:"18:00", pains:[],
@@ -47,7 +47,7 @@ const contact = consolidateCrmContacts(rows)[0];
 describe("Executive CRM dossier", () => {
   it("uses e-mail as identity, one contact section and distinct institutional journeys", () => {
     render(<CrmExecutiveProfile contact={contact} savingStatus={false} onStatusChange={vi.fn()}/>);
-    expect(screen.getByRole("heading", {name:"gaquirino777@gmail.com"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name:"pessoa@exemplo.edu.br"})).toBeInTheDocument();
     expect(screen.getByRole("region", {name:"Contato e status"})).toBeInTheDocument();
     const history = screen.getByRole("region", {name:"Histórico de participações"});
     expect(within(history).getByText("UNILAB")).toBeInTheDocument();
