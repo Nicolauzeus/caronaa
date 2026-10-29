@@ -1,459 +1,460 @@
--- One authoritative evaluator for discovery, allocation and administrative suggestions.
--- Opportunity discovery never reserves seats or changes published availability.
-CREATE FUNCTION public.project_ride_route(p_lat float8, p_lng float8, p_path jsonb)
-RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
-DECLARE a jsonb; b jsonb; i integer; segment float8; travelled float8 := 0;
-  best float8 := 'Infinity'; progress float8 := 0; dx float8; dy float8;
-  px float8; py float8; fraction float8; lateral_distance float8;
-BEGIN
-  IF NOT public.has_valid_route_path(p_path) THEN RETURN NULL; END IF;
-  FOR i IN 0..jsonb_array_length(p_path)-2 LOOP
-    a := p_path->i; b := p_path->(i+1);
-    dx := ((b->>'lng')::float8-(a->>'lng')::float8)*111.32*cos(radians((a->>'lat')::float8));
-    dy := ((b->>'lat')::float8-(a->>'lat')::float8)*111.32;
-    px := (p_lng-(a->>'lng')::float8)*111.32*cos(radians((a->>'lat')::float8));
-    py := (p_lat-(a->>'lat')::float8)*111.32;
-    fraction := CASE WHEN dx*dx+dy*dy=0 THEN 0 ELSE greatest(0,least(1,(px*dx+py*dy)/(dx*dx+dy*dy))) END;
-    lateral_distance := sqrt(power(px-fraction*dx,2)+power(py-fraction*dy,2));
-    segment := public.distance_km((a->>'lat')::float8,(a->>'lng')::float8,(b->>'lat')::float8,(b->>'lng')::float8);
-    IF lateral_distance < best THEN best := lateral_distance; progress := travelled+fraction*segment; END IF;
-    travelled := travelled+segment;
-  END LOOP;
-  RETURN jsonb_build_object('distanceKm',best,'progressKm',progress,'totalKm',travelled);
-END $$;
-REVOKE ALL ON FUNCTION public.project_ride_route(float8,float8,jsonb) FROM PUBLIC,anon,authenticated;
-
-CREATE FUNCTION public.evaluate_ride_candidate(q jsonb, o public.ride_offers)
-RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
-DECLARE pickup jsonb; dropoff jsonb; path jsonb; road_geometry boolean := false;
-  qolat float8 := (q->>'origin_lat')::float8; qolng float8 := (q->>'origin_lng')::float8;
-  qdlat float8 := (q->>'destination_lat')::float8; qdlng float8 := (q->>'destination_lng')::float8;
-  requested timestamp; passage timestamp := o.ride_date+o.departure_time;
-  delta float8; tolerance integer; score integer := 94; reasons jsonb := '[]';
-  classification text := 'compatible'; bonus integer; has_query boolean;
-BEGIN
-  IF o.status <> 'available' OR o.seats_remaining < coalesce((q->>'passenger_count')::integer,1)
-    OR o.user_id::text = q->>'user_id'
-    OR coalesce((q->>'passenger_count')::integer,1) NOT BETWEEN 1 AND 6
-    OR (q->>'target_offer_id' IS NOT NULL AND q->>'target_offer_id' <> o.offer_id::text)
-    OR NOT public.ride_preferences_compatible(q->'travel_preferences',o.travel_preferences)
-    OR (o.passenger_gender_preference <> 'ANY' AND o.passenger_gender_preference IS DISTINCT FROM q->>'gender')
-  THEN RETURN NULL; END IF;
-  has_query := nullif(btrim(q->>'origin'),'') IS NOT NULL AND nullif(btrim(q->>'destination'),'') IS NOT NULL;
-  IF has_query THEN
-    IF coalesce(public.has_route_coordinates(qolat,qolng,qdlat,qdlng),false)
-      AND coalesce(public.has_route_coordinates(o.origin_lat,o.origin_lng,o.destination_lat,o.destination_lng),false) THEN
-      road_geometry := public.has_valid_route_path(o.route_path);
-      path := CASE WHEN road_geometry THEN o.route_path ELSE jsonb_build_array(
-        jsonb_build_object('lat',o.origin_lat,'lng',o.origin_lng),
-        jsonb_build_object('lat',o.destination_lat,'lng',o.destination_lng)) END;
-      pickup := public.project_ride_route(qolat,qolng,path);
-      dropoff := public.project_ride_route(qdlat,qdlng,path);
-      IF (pickup->>'distanceKm')::float8 > 2 OR (dropoff->>'distanceKm')::float8 > 2
-        OR (dropoff->>'progressKm')::float8 <= (pickup->>'progressKm')::float8 THEN RETURN NULL; END IF;
-      -- Route duration is trusted but segment speed is not known: explicitly an estimate.
-      IF road_geometry AND o.route_duration_minutes > 0 AND (pickup->>'totalKm')::float8 > 0 THEN
-        passage := passage + make_interval(secs => round((o.route_duration_minutes * 60 *
-          (pickup->>'progressKm')::float8/(pickup->>'totalKm')::float8)::numeric)::float8);
-      END IF;
-      score := score-least(20,round((pickup->>'distanceKm')::numeric*8)::integer)
-        -least(15,round((dropoff->>'distanceKm')::numeric*5)::integer);
-      reasons := reasons || jsonb_build_array(CASE WHEN road_geometry THEN 'Embarque e desembarque no corredor rodoviário' ELSE 'Corredor aproximado; estrada ainda não verificada' END);
-    ELSIF qolat IS NOT NULL OR qolng IS NOT NULL OR qdlat IS NOT NULL OR qdlng IS NOT NULL
-      OR o.origin_lat IS NOT NULL OR o.origin_lng IS NOT NULL OR o.destination_lat IS NOT NULL OR o.destination_lng IS NOT NULL THEN
-      RETURN NULL;
-    ELSIF lower(btrim(q->>'origin'))=lower(btrim(o.origin)) AND lower(btrim(q->>'destination'))=lower(btrim(o.destination))
-      AND lower(btrim(q->>'origin'))<>lower(btrim(q->>'destination')) THEN
-      score := score-15;
-      reasons := reasons || '["Coordenadas ausentes; compatibilidade baseada nos endereços informados"]'::jsonb;
-    ELSE RETURN NULL; END IF;
-  ELSE
-    -- Unfiltered browsing has no personal route fit score.
-    score := 0;
-  END IF;
-  IF nullif(q->>'ride_date','') IS NOT NULL AND nullif(q->>'departure_time','') IS NOT NULL THEN
-    requested := (q->>'ride_date')::date+(q->>'departure_time')::time;
-    delta := extract(epoch FROM passage-requested)/60;
-    IF abs(delta)>60 THEN RETURN NULL; END IF;
-    tolerance := least(coalesce((q->>'time_tolerance_minutes')::integer,15),coalesce(o.time_tolerance_minutes,15),60);
-    classification := CASE WHEN abs(delta)<=tolerance THEN 'compatible' WHEN abs(delta)<=30 THEN 'approximate' ELSE 'opportunity' END;
-  ELSIF nullif(q->>'ride_date','') IS NOT NULL AND o.ride_date<>(q->>'ride_date')::date THEN
-    RETURN NULL;
-  ELSIF nullif(q->>'departure_time','') IS NOT NULL THEN
-    -- A time-only search is evaluated against each offer's departure date.
-    requested := o.ride_date+(q->>'departure_time')::time;
-    delta := extract(epoch FROM passage-requested)/60;
-    IF abs(delta)>60 THEN RETURN NULL; END IF;
-    tolerance := least(coalesce((q->>'time_tolerance_minutes')::integer,15),coalesce(o.time_tolerance_minutes,15),60);
-    classification := CASE WHEN abs(delta)<=tolerance THEN 'compatible' WHEN abs(delta)<=30 THEN 'approximate' ELSE 'opportunity' END;
-  END IF;
-  IF delta IS NOT NULL THEN
-    score := score-least(20,round(abs(delta)/3)::integer);
-    reasons := reasons || jsonb_build_array(CASE WHEN delta=0 THEN 'Embarque no horário solicitado'
-      ELSE 'Embarque estimado '||round(abs(delta))||' min '||CASE WHEN delta<0 THEN 'antes' ELSE 'depois' END END);
-  END IF;
-  bonus := public.travel_preference_bonus(q->'travel_preferences',o.travel_preferences);
-  IF bonus>0 THEN reasons := reasons || '["Preferências de conversa ou música semelhantes"]'::jsonb; END IF;
-  RETURN jsonb_build_object('classification',classification,'pickupAt',passage AT TIME ZONE 'America/Fortaleza',
-    'differenceMinutes',delta,'score',CASE WHEN has_query THEN greatest(0,least(100,score+bonus)) ELSE NULL END,
-    'preferenceBonus',bonus,'reasons',reasons,'roadGeometry',road_geometry,
-    'pickupDistanceKm',(pickup->>'distanceKm')::float8,'dropoffDistanceKm',(dropoff->>'distanceKm')::float8,
-    'requiresAdjustment',classification<>'compatible','timeEstimated',true);
-END $$;
-REVOKE ALL ON FUNCTION public.evaluate_ride_candidate(jsonb,public.ride_offers) FROM PUBLIC,anon,authenticated;
-
-CREATE OR REPLACE FUNCTION public.try_match_ride_request(p_request_id uuid,p_preferred_offer_id uuid DEFAULT NULL)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE r public.ride_requests%ROWTYPE; o public.ride_offers%ROWTYPE; matched uuid; q jsonb;
-BEGIN
-  PERFORM pg_advisory_xact_lock(74120391);
-  SELECT * INTO r FROM public.ride_requests WHERE request_id=p_request_id AND status='open'
-    AND (ride_date+departure_time) AT TIME ZONE 'America/Fortaleza'>=clock_timestamp() FOR UPDATE;
-  IF NOT FOUND THEN RETURN NULL; END IF;
-  q := to_jsonb(r)||jsonb_build_object('gender',(SELECT gender FROM public.profiles WHERE id=r.user_id));
-  SELECT candidate.* INTO o FROM public.ride_offers candidate
-    CROSS JOIN LATERAL (SELECT public.evaluate_ride_candidate(q,candidate) AS fit) evaluation
-    WHERE candidate.status='available'
-      AND (candidate.ride_date+candidate.departure_time) AT TIME ZONE 'America/Fortaleza'>=clock_timestamp()
-      AND candidate.ride_date BETWEEN r.ride_date-1 AND r.ride_date+1
-      AND (p_preferred_offer_id IS NULL OR candidate.offer_id=p_preferred_offer_id)
-      AND NOT EXISTS (SELECT 1 FROM public.ride_matches prior WHERE prior.request_id=r.request_id AND prior.offer_id=candidate.offer_id)
-      AND evaluation.fit->>'classification'='compatible'
-      AND (evaluation.fit->>'pickupAt')::timestamptz>clock_timestamp()
-    ORDER BY (evaluation.fit->>'score')::integer DESC,candidate.created_at,candidate.offer_id
-    LIMIT 1 FOR UPDATE OF candidate;
-  IF NOT FOUND THEN RETURN NULL; END IF;
-  INSERT INTO public.ride_matches(request_id,offer_id,passenger_user_id,driver_user_id,status)
-    VALUES(r.request_id,o.offer_id,r.user_id,o.user_id,'created')
-    ON CONFLICT (request_id) WHERE status='created' DO NOTHING RETURNING match_id INTO matched;
-  IF matched IS NULL THEN RETURN NULL; END IF;
-  UPDATE public.ride_requests SET status='matched' WHERE request_id=r.request_id;
-  UPDATE public.ride_offers SET seats_remaining=seats_remaining-r.passenger_count,
-    status=CASE WHEN seats_remaining-r.passenger_count=0 THEN 'full' ELSE 'available' END WHERE offer_id=o.offer_id;
-  RETURN matched;
-END $$;
-REVOKE ALL ON FUNCTION public.try_match_ride_request(uuid,uuid) FROM PUBLIC,anon,authenticated;
-
-CREATE OR REPLACE FUNCTION public.match_new_ride_offer()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE r record;
-BEGIN
-  PERFORM pg_advisory_xact_lock(74120391);
-  FOR r IN SELECT request_id FROM public.ride_requests WHERE status='open'
-    AND ride_date BETWEEN NEW.ride_date-1 AND NEW.ride_date+1
-    AND user_id<>NEW.user_id AND (target_offer_id IS NULL OR target_offer_id=NEW.offer_id)
-    ORDER BY created_at,request_id LOOP
-    PERFORM public.try_match_ride_request(r.request_id,NEW.offer_id);
-  END LOOP;
-  RETURN NEW;
-END $$;
-REVOKE ALL ON FUNCTION public.match_new_ride_offer() FROM PUBLIC,anon,authenticated;
-
--- The old RPC remains available for existing clients, but returns only directly compatible offers.
-CREATE FUNCTION public.discover_ride_opportunities(p_search jsonb DEFAULT '{}')
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE q jsonb; result jsonb; count_requested integer := coalesce((p_search->>'passenger_count')::integer,1);
-  result_limit integer := coalesce((p_search->>'limit')::integer,30);
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF count_requested NOT BETWEEN 1 AND 6 OR result_limit NOT BETWEEN 1 AND 30
-    OR coalesce((p_search->>'time_tolerance_minutes')::integer,15) NOT IN (5,15,30,60) THEN
-    RAISE EXCEPTION 'Invalid search parameters'; END IF;
-  PERFORM public.expire_ride_match_proposals();
-  q := p_search||jsonb_build_object('user_id',auth.uid(),'travel_preferences',public.get_my_travel_preferences(),
-    'gender',(SELECT gender FROM public.profiles WHERE id=auth.uid()));
-  SELECT coalesce(jsonb_agg(item),'[]') INTO result FROM (
-    SELECT jsonb_build_object('offer_id',o.offer_id,'user_id',o.user_id,'origin',o.origin,'destination',o.destination,
-      'origin_lat',o.origin_lat,'origin_lng',o.origin_lng,'destination_lat',o.destination_lat,'destination_lng',o.destination_lng,
-      'ride_date',o.ride_date,'departure_time',o.departure_time,'available_seats',o.available_seats,'seats_remaining',o.seats_remaining,
-      'status',o.status,'created_at',o.created_at,'full_name',p.full_name,'avatar_url',p.avatar_url,'city',p.city,
-      'verifications',coalesce((SELECT jsonb_agg(jsonb_build_object('type',v.type,'status',v.status)) FROM public.user_verifications v
-        WHERE v.user_id=o.user_id AND v.status='VERIFIED'),'[]'),
-      'fit',e.fit) AS item
-    FROM public.ride_offers o LEFT JOIN public.profiles p ON p.id=o.user_id
-    CROSS JOIN LATERAL (SELECT public.evaluate_ride_candidate(q,o) fit) e
-    WHERE o.status='available' AND o.user_id<>auth.uid()
-      AND (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'>=clock_timestamp()
-      AND (nullif(q->>'ride_date','') IS NULL OR o.ride_date BETWEEN (q->>'ride_date')::date-1 AND (q->>'ride_date')::date+1)
-      AND e.fit IS NOT NULL AND (e.fit->>'pickupAt')::timestamptz>clock_timestamp()
-      AND (coalesce((p_search->>'include_opportunities')::boolean,true) OR e.fit->>'classification'='compatible')
-    ORDER BY CASE e.fit->>'classification' WHEN 'compatible' THEN 0 WHEN 'approximate' THEN 1 ELSE 2 END,
-      (e.fit->>'score')::integer DESC NULLS LAST,o.ride_date,o.departure_time,o.offer_id
-    LIMIT result_limit
-  ) selected;
-  RETURN result;
-END $$;
-REVOKE ALL ON FUNCTION public.discover_ride_opportunities(jsonb) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.discover_ride_opportunities(jsonb) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.search_available_ride_offers(
-  p_origin text DEFAULT NULL,p_destination text DEFAULT NULL,p_ride_date date DEFAULT NULL,p_departure_time time DEFAULT NULL,
-  p_passenger_count integer DEFAULT 1,p_limit integer DEFAULT 30,p_time_tolerance_minutes integer DEFAULT 15,
-  p_origin_lat float8 DEFAULT NULL,p_origin_lng float8 DEFAULT NULL,p_destination_lat float8 DEFAULT NULL,p_destination_lng float8 DEFAULT NULL
-) RETURNS TABLE(offer_id uuid,user_id uuid,origin text,destination text,origin_lat float8,origin_lng float8,
-  destination_lat float8,destination_lng float8,ride_date date,departure_time time,available_seats integer,seats_remaining integer,
-  status text,created_at timestamptz,full_name text,avatar_url text,city text,verifications jsonb)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  RETURN QUERY SELECT x.offer_id,x.user_id,x.origin,x.destination,x.origin_lat,x.origin_lng,x.destination_lat,x.destination_lng,
-    x.ride_date,x.departure_time,x.available_seats,x.seats_remaining,x.status,x.created_at,x.full_name,x.avatar_url,x.city,x.verifications
-  FROM jsonb_to_recordset(public.discover_ride_opportunities(jsonb_build_object(
-    'origin',p_origin,'destination',p_destination,'ride_date',p_ride_date,'departure_time',p_departure_time,
-    'passenger_count',p_passenger_count,'limit',p_limit,'time_tolerance_minutes',p_time_tolerance_minutes,
-    'origin_lat',p_origin_lat,'origin_lng',p_origin_lng,'destination_lat',p_destination_lat,'destination_lng',p_destination_lng,
-    'include_opportunities',false))) AS x(offer_id uuid,user_id uuid,origin text,destination text,origin_lat float8,origin_lng float8,
-      destination_lat float8,destination_lng float8,ride_date date,departure_time time,available_seats integer,seats_remaining integer,
-      status text,created_at timestamptz,full_name text,avatar_url text,city text,verifications jsonb);
-END $$;
-
-ALTER TABLE public.ride_requests ADD COLUMN original_requested_at timestamptz;
-ALTER TABLE public.rides ADD COLUMN pickup_estimated_at timestamptz;
-
--- Explicit passenger consent to the displayed pickup estimate. The driver's schedule
--- remains unchanged; the original passenger schedule is retained for auditability.
-CREATE FUNCTION public.request_intelligent_ride_segment(
-  p_offer_id uuid,p_quote_id uuid,p_ride_date date,p_departure_time time,
-  p_passenger_count integer DEFAULT 1,p_time_tolerance_minutes integer DEFAULT 15,
-  p_accept_adjustment boolean DEFAULT false,p_expected_pickup timestamptz DEFAULT NULL
-) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE o public.ride_offers%ROWTYPE; quote public.offer_route_quotes%ROWTYPE;
-  q jsonb; fit jsonb; pickup timestamp; result uuid; original timestamptz;
-  existing public.ride_requests%ROWTYPE;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_offer_id IS NULL OR p_quote_id IS NULL OR p_ride_date IS NULL OR p_departure_time IS NULL
-    OR p_passenger_count IS NULL OR p_passenger_count NOT BETWEEN 1 AND 6
-    OR p_time_tolerance_minutes IS NULL OR p_time_tolerance_minutes NOT IN (5,15,30,60) THEN
-    RAISE EXCEPTION 'Invalid passenger trip details'; END IF;
-  original := (p_ride_date+p_departure_time) AT TIME ZONE 'America/Fortaleza';
-  IF original<clock_timestamp() THEN RAISE EXCEPTION 'Departure time has already passed'; END IF;
-  PERFORM pg_advisory_xact_lock(74120391);
-  SELECT * INTO existing FROM public.ride_requests WHERE route_quote_id=p_quote_id AND user_id=auth.uid();
-  IF FOUND THEN
-    IF existing.target_offer_id IS DISTINCT FROM p_offer_id OR existing.passenger_count<>p_passenger_count
-      OR coalesce(existing.original_requested_at,(existing.ride_date+existing.departure_time) AT TIME ZONE 'America/Fortaleza')<>original THEN
-      RAISE EXCEPTION 'This quote was already used for another trip'; END IF;
-    RETURN existing.request_id;
-  END IF;
-  SELECT * INTO quote FROM public.offer_route_quotes WHERE quote_id=p_quote_id AND user_id=auth.uid() FOR UPDATE;
-  IF NOT FOUND OR quote.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'Passenger route quote is invalid or expired'; END IF;
-  SELECT * INTO o FROM public.ride_offers WHERE offer_id=p_offer_id FOR UPDATE;
-  IF NOT FOUND OR (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'<clock_timestamp() THEN RAISE EXCEPTION 'Offer expired'; END IF;
-  q := to_jsonb(quote)||jsonb_build_object('user_id',auth.uid(),'ride_date',p_ride_date,'departure_time',p_departure_time,
-    'passenger_count',p_passenger_count,'time_tolerance_minutes',p_time_tolerance_minutes,
-    'travel_preferences',public.get_my_travel_preferences(),'gender',(SELECT gender FROM public.profiles WHERE id=auth.uid()));
-  fit := public.evaluate_ride_candidate(q,o);
-  IF fit IS NULL THEN RAISE EXCEPTION 'Offer no longer matches this segment or has no seats available'; END IF;
-  IF p_expected_pickup IS NOT NULL AND abs(extract(epoch FROM (fit->>'pickupAt')::timestamptz-p_expected_pickup))>1 THEN
-    RAISE EXCEPTION 'O horário de embarque mudou. Atualize a busca antes de continuar.'; END IF;
-  pickup := (fit->>'pickupAt')::timestamptz AT TIME ZONE 'America/Fortaleza';
-  IF (fit->>'requiresAdjustment')::boolean THEN
-    IF p_accept_adjustment IS DISTINCT FROM true OR p_expected_pickup IS NULL THEN
-      RAISE EXCEPTION 'Confirme explicitamente o novo horário de embarque.'; END IF;
-  ELSE pickup := p_ride_date+p_departure_time; END IF;
-  result := public.request_available_ride_segment(p_offer_id,p_quote_id,pickup::date,pickup::time,p_passenger_count,p_time_tolerance_minutes);
-  UPDATE public.ride_requests SET original_requested_at=original WHERE request_id=result;
-  RETURN result;
-END $$;
-REVOKE ALL ON FUNCTION public.request_intelligent_ride_segment(uuid,uuid,date,time,integer,integer,boolean,timestamptz) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.request_intelligent_ride_segment(uuid,uuid,date,time,integer,integer,boolean,timestamptz) TO authenticated;
-
--- Discovery compares against the original desired schedule after a declined
--- adjustment, so successive choices cannot silently widen the one-hour window.
-CREATE FUNCTION public.opportunity_request_input(r public.ride_requests,p_gender text)
-RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path = public AS $$
- SELECT to_jsonb(r)||jsonb_build_object('gender',p_gender)||CASE WHEN r.original_requested_at IS NULL THEN '{}'::jsonb
- ELSE jsonb_build_object('ride_date',(r.original_requested_at AT TIME ZONE 'America/Fortaleza')::date,
-   'departure_time',(r.original_requested_at AT TIME ZONE 'America/Fortaleza')::time) END;
-$$;
-REVOKE ALL ON FUNCTION public.opportunity_request_input(public.ride_requests,text) FROM PUBLIC,anon,authenticated;
-
--- A read-only feed for both roles. Passenger identity/addresses are not exposed
--- to drivers until a proposal exists. Only currently eligible opportunities appear.
-CREATE FUNCTION public.get_my_ride_opportunities(p_offer_id uuid DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE result jsonb;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_offer_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.ride_offers WHERE offer_id=p_offer_id AND user_id=auth.uid()) THEN
-    RAISE EXCEPTION 'Offer not found' USING ERRCODE='42501'; END IF;
-  SELECT coalesce(jsonb_agg(item),'[]') INTO result FROM (
-    SELECT jsonb_build_object('requestId',r.request_id,'offerId',o.offer_id,
-      'role',CASE WHEN o.user_id=auth.uid() THEN 'driver' ELSE 'passenger' END,
-      'origin',CASE WHEN r.user_id=auth.uid() THEN o.origin ELSE NULL END,
-      'destination',CASE WHEN r.user_id=auth.uid() THEN o.destination ELSE NULL END,
-      'passengerCount',r.passenger_count,'requestedAt',coalesce(r.original_requested_at,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'),
-      'fit',e.fit) item
-    FROM public.ride_requests r JOIN public.ride_offers o ON o.ride_date BETWEEN r.ride_date-1 AND r.ride_date+1
-    JOIN public.profiles p ON p.id=r.user_id
-    CROSS JOIN LATERAL (SELECT public.evaluate_ride_candidate(public.opportunity_request_input(r,p.gender),o) fit) e
-    WHERE r.status='open' AND o.status='available'
-      AND (p_offer_id IS NULL OR o.offer_id=p_offer_id)
-      AND (r.user_id=auth.uid() OR o.user_id=auth.uid())
-      AND (r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
-      AND (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
-      AND e.fit IS NOT NULL AND (e.fit->>'pickupAt')::timestamptz>clock_timestamp()
-      AND abs(extract(epoch FROM (e.fit->>'pickupAt')::timestamptz-coalesce(r.original_requested_at,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza')))<=3600
-      AND NOT EXISTS(SELECT 1 FROM public.ride_matches m WHERE m.request_id=r.request_id AND m.offer_id=o.offer_id)
-    ORDER BY (e.fit->>'score')::integer DESC,(e.fit->>'pickupAt')::timestamptz,o.offer_id,r.request_id
-    LIMIT 30
-  ) candidates;
-  RETURN result;
-END $$;
-REVOKE ALL ON FUNCTION public.get_my_ride_opportunities(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_my_ride_opportunities(uuid) TO authenticated;
-
-CREATE FUNCTION public.choose_ride_opportunity(p_request_id uuid,p_offer_id uuid,p_expected_pickup timestamptz)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE r public.ride_requests%ROWTYPE; o public.ride_offers%ROWTYPE; fit jsonb; chosen uuid; pickup timestamp;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  PERFORM pg_advisory_xact_lock(74120391);
-  SELECT * INTO r FROM public.ride_requests WHERE request_id=p_request_id AND user_id=auth.uid() FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Request not found' USING ERRCODE='42501'; END IF;
-  SELECT match_id INTO chosen FROM public.ride_matches WHERE request_id=r.request_id AND offer_id=p_offer_id AND status='created';
-  IF chosen IS NOT NULL THEN RETURN chosen; END IF;
-  IF r.status<>'open' OR (r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'<clock_timestamp() THEN
-    RAISE EXCEPTION 'Pedido indisponível. Atualize suas viagens.'; END IF;
-  SELECT * INTO o FROM public.ride_offers WHERE offer_id=p_offer_id FOR UPDATE;
-  IF NOT FOUND OR (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'<clock_timestamp() THEN RAISE EXCEPTION 'Offer expired'; END IF;
-  fit := public.evaluate_ride_candidate(public.opportunity_request_input(r,(SELECT gender FROM public.profiles WHERE id=r.user_id)),o);
-  IF fit IS NULL OR p_expected_pickup IS NULL OR abs(extract(epoch FROM (fit->>'pickupAt')::timestamptz-p_expected_pickup))>1
-    OR abs(extract(epoch FROM p_expected_pickup-coalesce(r.original_requested_at,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza')))>3600 THEN
-    RAISE EXCEPTION 'A oportunidade mudou. Atualize suas viagens.'; END IF;
-  pickup := p_expected_pickup AT TIME ZONE 'America/Fortaleza';
-  UPDATE public.ride_requests SET original_requested_at=coalesce(original_requested_at,(ride_date+departure_time) AT TIME ZONE 'America/Fortaleza'),
-    ride_date=pickup::date,departure_time=pickup::time,target_offer_id=p_offer_id WHERE request_id=r.request_id;
-  chosen := public.try_match_ride_request(r.request_id,p_offer_id);
-  IF chosen IS NULL THEN RAISE EXCEPTION 'A oportunidade não está mais disponível.'; END IF;
-  RETURN chosen;
-END $$;
-REVOKE ALL ON FUNCTION public.choose_ride_opportunity(uuid,uuid,timestamptz) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.choose_ride_opportunity(uuid,uuid,timestamptz) TO authenticated;
-
--- Reuse the authorized operation payload; the UI no longer invents eligibility.
-DO $admin_fit$
-DECLARE definition text;
-BEGIN
-  SELECT pg_get_functiondef('public.get_admin_operation_data()'::regprocedure) INTO definition;
-  IF position('''offers'',' IN definition)=0 THEN RAISE EXCEPTION 'Missing administrative payload anchor'; END IF;
-  definition := replace(definition,'''offers'',', $replacement$
-    'matchSuggestionIds',(SELECT coalesce(jsonb_agg(jsonb_build_object('requestId',r.request_id,'offerId',o.offer_id)),'[]')
-      FROM public.ride_requests r JOIN public.ride_offers o ON o.ride_date BETWEEN r.ride_date-1 AND r.ride_date+1
-      JOIN public.profiles p ON p.id=r.user_id
-      WHERE r.status='open' AND o.status='available'
-        AND (r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
-        AND (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
-        AND public.evaluate_ride_candidate(to_jsonb(r)||jsonb_build_object('gender',p.gender),o)->>'classification'='compatible'
-        AND NOT EXISTS(SELECT 1 FROM public.ride_matches m WHERE m.request_id=r.request_id AND m.offer_id=o.offer_id)),
-    'offers', $replacement$);
-  EXECUTE definition;
-END $admin_fit$;
-
-CREATE FUNCTION public.bound_intelligent_proposal_deadline()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE r public.ride_requests%ROWTYPE; o public.ride_offers%ROWTYPE; fit jsonb;
-BEGIN
-  SELECT * INTO r FROM public.ride_requests WHERE request_id=NEW.request_id;
-  SELECT * INTO o FROM public.ride_offers WHERE offer_id=NEW.offer_id;
-  -- The match INSERT trigger runs before inventory is decremented.
-  fit := public.evaluate_ride_candidate(to_jsonb(r)||jsonb_build_object('gender',(SELECT gender FROM public.profiles WHERE id=r.user_id)),o);
-  NEW.pickup_estimated_at := coalesce((fit->>'pickupAt')::timestamptz,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza');
-  NEW.response_expires_at := least(NEW.response_expires_at,clock_timestamp()+interval '15 minutes',NEW.pickup_estimated_at);
-  RETURN NEW;
-END $$;
-REVOKE ALL ON FUNCTION public.bound_intelligent_proposal_deadline() FROM PUBLIC,anon,authenticated;
-CREATE TRIGGER b_intelligent_proposal_deadline BEFORE INSERT ON public.rides
-  FOR EACH ROW EXECUTE FUNCTION public.bound_intelligent_proposal_deadline();
-
--- Do not touch accepted historical rides. Prevent stale pending proposals being
--- accepted after their pickup, including proposals from before this migration.
-DO $acceptance_deadline$
-DECLARE definition text;
-BEGIN
-  SELECT pg_get_functiondef('public.respond_to_ride_match(uuid,text)'::regprocedure) INTO definition;
-  IF position('IF r.response_expires_at <= clock_timestamp() THEN' IN definition)=0 THEN
-    RAISE EXCEPTION 'Missing proposal expiry guard'; END IF;
-  definition := replace(definition,'SELECT * INTO r FROM public.rides WHERE ride_id = p_ride_id FOR UPDATE;',
-    'PERFORM pg_advisory_xact_lock(74120391); SELECT * INTO r FROM public.rides WHERE ride_id = p_ride_id FOR UPDATE;');
-  definition := replace(definition,'IF r.response_expires_at <= clock_timestamp() THEN',
-    'IF least(r.response_expires_at,coalesce(r.pickup_estimated_at,(SELECT (rr.ride_date+rr.departure_time) AT TIME ZONE ''America/Fortaleza'' FROM public.ride_requests rr WHERE rr.request_id=r.request_id))) <= clock_timestamp() THEN');
-  EXECUTE definition;
-END $acceptance_deadline$;
-
-DO $serialize_expiration$
-DECLARE definition text;
-BEGIN
-  SELECT pg_get_functiondef('public.expire_ride_match_proposals()'::regprocedure) INTO definition;
-  IF position('FOR expired IN' IN definition)=0 THEN RAISE EXCEPTION 'Missing expiration loop'; END IF;
-  definition := replace(definition,'FOR expired IN','PERFORM pg_advisory_xact_lock(74120391); FOR expired IN');
-  EXECUTE definition;
-END $serialize_expiration$;
-
--- Use an existing pg_cron installation when available. Discovery and existing
--- trip refresh also run expiration; deployments without cron need a scheduler.
-DO $expiry_schedule$
-BEGIN
-  IF to_regprocedure('cron.schedule(text,text,text)') IS NOT NULL THEN
-    EXECUTE $schedule$SELECT cron.schedule('caronaa-expire-match-proposals','* * * * *',
-      'SELECT set_config(''request.jwt.claim.role'',''service_role'',true); SELECT public.expire_ride_match_proposals();')$schedule$;
-  END IF;
-END $expiry_schedule$;
-
-NOTIFY pgrst,'reload schema';
-
-ALTER TABLE public.profiles ADD COLUMN ride_opportunity_alerts_enabled boolean NOT NULL DEFAULT true;
-CREATE TABLE public.ride_opportunity_alerts(
-  alert_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  request_id uuid NOT NULL REFERENCES public.ride_requests(request_id) ON DELETE CASCADE,
-  offer_id uuid NOT NULL REFERENCES public.ride_offers(offer_id) ON DELETE CASCADE,
-  created_at timestamptz NOT NULL DEFAULT now(),read_at timestamptz,
-  UNIQUE(user_id,request_id,offer_id)
-);
-ALTER TABLE public.ride_opportunity_alerts ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.ride_opportunity_alerts FROM PUBLIC,anon,authenticated;
-GRANT SELECT ON public.ride_opportunity_alerts TO authenticated;
-GRANT ALL ON public.ride_opportunity_alerts TO service_role;
-CREATE POLICY opportunity_alert_owner_read ON public.ride_opportunity_alerts FOR SELECT TO authenticated USING(user_id=auth.uid());
-CREATE INDEX opportunity_alert_owner_idx ON public.ride_opportunity_alerts(user_id,created_at DESC);
-
--- Sync only the caller's live opportunities. A persistent unique key prevents
--- duplicate alerts across refreshes/devices. Expired/unavailable pairs disappear
--- from the returned inbox without requiring a new publication or reservation.
-CREATE FUNCTION public.sync_my_ride_opportunity_alerts()
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE candidates jsonb; candidate jsonb; result jsonb;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF NOT coalesce((SELECT ride_opportunity_alerts_enabled FROM public.profiles WHERE id=auth.uid()),false) THEN RETURN '[]'; END IF;
-  candidates := public.get_my_ride_opportunities();
-  FOR candidate IN SELECT value FROM jsonb_array_elements(candidates) LOOP
-    INSERT INTO public.ride_opportunity_alerts(user_id,request_id,offer_id)
-      VALUES(auth.uid(),(candidate->>'requestId')::uuid,(candidate->>'offerId')::uuid)
-      ON CONFLICT(user_id,request_id,offer_id) DO NOTHING;
-  END LOOP;
-  SELECT coalesce(jsonb_agg(to_jsonb(a)||jsonb_build_object('pickup_at',c.value->'fit'->'pickupAt',
-    'difference_minutes',c.value->'fit'->'differenceMinutes')),'[]') INTO result
-    FROM public.ride_opportunity_alerts a JOIN jsonb_array_elements(candidates) c(value)
-      ON a.request_id=(c.value->>'requestId')::uuid AND a.offer_id=(c.value->>'offerId')::uuid
-    WHERE a.user_id=auth.uid();
-  RETURN result;
-END $$;
-CREATE FUNCTION public.mark_ride_opportunity_alerts_read(p_ids uuid[])
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF cardinality(p_ids)>50 THEN RAISE EXCEPTION 'Too many alerts'; END IF;
-  UPDATE public.ride_opportunity_alerts SET read_at=coalesce(read_at,clock_timestamp()) WHERE user_id=auth.uid() AND alert_id=ANY(p_ids);
-END $$;
-CREATE FUNCTION public.set_ride_opportunity_alerts(p_enabled boolean DEFAULT NULL)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_enabled IS NOT NULL THEN UPDATE public.profiles SET ride_opportunity_alerts_enabled=p_enabled WHERE id=auth.uid(); END IF;
-  RETURN (SELECT ride_opportunity_alerts_enabled FROM public.profiles WHERE id=auth.uid());
-END $$;
-REVOKE ALL ON FUNCTION public.sync_my_ride_opportunity_alerts(),public.mark_ride_opportunity_alerts_read(uuid[]),public.set_ride_opportunity_alerts(boolean) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.sync_my_ride_opportunity_alerts(),public.mark_ride_opportunity_alerts_read(uuid[]),public.set_ride_opportunity_alerts(boolean) TO authenticated;
-NOTIFY pgrst,'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- One authoritative evaluator for discovery, allocation and administrative suggestions.
+-- -- Opportunity discovery never reserves seats or changes published availability.
+-- CREATE FUNCTION public.project_ride_route(p_lat float8, p_lng float8, p_path jsonb)
+-- RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
+-- DECLARE a jsonb; b jsonb; i integer; segment float8; travelled float8 := 0;
+--   best float8 := 'Infinity'; progress float8 := 0; dx float8; dy float8;
+--   px float8; py float8; fraction float8; lateral_distance float8;
+-- BEGIN
+--   IF NOT public.has_valid_route_path(p_path) THEN RETURN NULL; END IF;
+--   FOR i IN 0..jsonb_array_length(p_path)-2 LOOP
+--     a := p_path->i; b := p_path->(i+1);
+--     dx := ((b->>'lng')::float8-(a->>'lng')::float8)*111.32*cos(radians((a->>'lat')::float8));
+--     dy := ((b->>'lat')::float8-(a->>'lat')::float8)*111.32;
+--     px := (p_lng-(a->>'lng')::float8)*111.32*cos(radians((a->>'lat')::float8));
+--     py := (p_lat-(a->>'lat')::float8)*111.32;
+--     fraction := CASE WHEN dx*dx+dy*dy=0 THEN 0 ELSE greatest(0,least(1,(px*dx+py*dy)/(dx*dx+dy*dy))) END;
+--     lateral_distance := sqrt(power(px-fraction*dx,2)+power(py-fraction*dy,2));
+--     segment := public.distance_km((a->>'lat')::float8,(a->>'lng')::float8,(b->>'lat')::float8,(b->>'lng')::float8);
+--     IF lateral_distance < best THEN best := lateral_distance; progress := travelled+fraction*segment; END IF;
+--     travelled := travelled+segment;
+--   END LOOP;
+--   RETURN jsonb_build_object('distanceKm',best,'progressKm',progress,'totalKm',travelled);
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.project_ride_route(float8,float8,jsonb) FROM PUBLIC,anon,authenticated;
+-- 
+-- CREATE FUNCTION public.evaluate_ride_candidate(q jsonb, o public.ride_offers)
+-- RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
+-- DECLARE pickup jsonb; dropoff jsonb; path jsonb; road_geometry boolean := false;
+--   qolat float8 := (q->>'origin_lat')::float8; qolng float8 := (q->>'origin_lng')::float8;
+--   qdlat float8 := (q->>'destination_lat')::float8; qdlng float8 := (q->>'destination_lng')::float8;
+--   requested timestamp; passage timestamp := o.ride_date+o.departure_time;
+--   delta float8; tolerance integer; score integer := 94; reasons jsonb := '[]';
+--   classification text := 'compatible'; bonus integer; has_query boolean;
+-- BEGIN
+--   IF o.status <> 'available' OR o.seats_remaining < coalesce((q->>'passenger_count')::integer,1)
+--     OR o.user_id::text = q->>'user_id'
+--     OR coalesce((q->>'passenger_count')::integer,1) NOT BETWEEN 1 AND 6
+--     OR (q->>'target_offer_id' IS NOT NULL AND q->>'target_offer_id' <> o.offer_id::text)
+--     OR NOT public.ride_preferences_compatible(q->'travel_preferences',o.travel_preferences)
+--     OR (o.passenger_gender_preference <> 'ANY' AND o.passenger_gender_preference IS DISTINCT FROM q->>'gender')
+--   THEN RETURN NULL; END IF;
+--   has_query := nullif(btrim(q->>'origin'),'') IS NOT NULL AND nullif(btrim(q->>'destination'),'') IS NOT NULL;
+--   IF has_query THEN
+--     IF coalesce(public.has_route_coordinates(qolat,qolng,qdlat,qdlng),false)
+--       AND coalesce(public.has_route_coordinates(o.origin_lat,o.origin_lng,o.destination_lat,o.destination_lng),false) THEN
+--       road_geometry := public.has_valid_route_path(o.route_path);
+--       path := CASE WHEN road_geometry THEN o.route_path ELSE jsonb_build_array(
+--         jsonb_build_object('lat',o.origin_lat,'lng',o.origin_lng),
+--         jsonb_build_object('lat',o.destination_lat,'lng',o.destination_lng)) END;
+--       pickup := public.project_ride_route(qolat,qolng,path);
+--       dropoff := public.project_ride_route(qdlat,qdlng,path);
+--       IF (pickup->>'distanceKm')::float8 > 2 OR (dropoff->>'distanceKm')::float8 > 2
+--         OR (dropoff->>'progressKm')::float8 <= (pickup->>'progressKm')::float8 THEN RETURN NULL; END IF;
+--       -- Route duration is trusted but segment speed is not known: explicitly an estimate.
+--       IF road_geometry AND o.route_duration_minutes > 0 AND (pickup->>'totalKm')::float8 > 0 THEN
+--         passage := passage + make_interval(secs => round((o.route_duration_minutes * 60 *
+--           (pickup->>'progressKm')::float8/(pickup->>'totalKm')::float8)::numeric)::float8);
+--       END IF;
+--       score := score-least(20,round((pickup->>'distanceKm')::numeric*8)::integer)
+--         -least(15,round((dropoff->>'distanceKm')::numeric*5)::integer);
+--       reasons := reasons || jsonb_build_array(CASE WHEN road_geometry THEN 'Embarque e desembarque no corredor rodoviário' ELSE 'Corredor aproximado; estrada ainda não verificada' END);
+--     ELSIF qolat IS NOT NULL OR qolng IS NOT NULL OR qdlat IS NOT NULL OR qdlng IS NOT NULL
+--       OR o.origin_lat IS NOT NULL OR o.origin_lng IS NOT NULL OR o.destination_lat IS NOT NULL OR o.destination_lng IS NOT NULL THEN
+--       RETURN NULL;
+--     ELSIF lower(btrim(q->>'origin'))=lower(btrim(o.origin)) AND lower(btrim(q->>'destination'))=lower(btrim(o.destination))
+--       AND lower(btrim(q->>'origin'))<>lower(btrim(q->>'destination')) THEN
+--       score := score-15;
+--       reasons := reasons || '["Coordenadas ausentes; compatibilidade baseada nos endereços informados"]'::jsonb;
+--     ELSE RETURN NULL; END IF;
+--   ELSE
+--     -- Unfiltered browsing has no personal route fit score.
+--     score := 0;
+--   END IF;
+--   IF nullif(q->>'ride_date','') IS NOT NULL AND nullif(q->>'departure_time','') IS NOT NULL THEN
+--     requested := (q->>'ride_date')::date+(q->>'departure_time')::time;
+--     delta := extract(epoch FROM passage-requested)/60;
+--     IF abs(delta)>60 THEN RETURN NULL; END IF;
+--     tolerance := least(coalesce((q->>'time_tolerance_minutes')::integer,15),coalesce(o.time_tolerance_minutes,15),60);
+--     classification := CASE WHEN abs(delta)<=tolerance THEN 'compatible' WHEN abs(delta)<=30 THEN 'approximate' ELSE 'opportunity' END;
+--   ELSIF nullif(q->>'ride_date','') IS NOT NULL AND o.ride_date<>(q->>'ride_date')::date THEN
+--     RETURN NULL;
+--   ELSIF nullif(q->>'departure_time','') IS NOT NULL THEN
+--     -- A time-only search is evaluated against each offer's departure date.
+--     requested := o.ride_date+(q->>'departure_time')::time;
+--     delta := extract(epoch FROM passage-requested)/60;
+--     IF abs(delta)>60 THEN RETURN NULL; END IF;
+--     tolerance := least(coalesce((q->>'time_tolerance_minutes')::integer,15),coalesce(o.time_tolerance_minutes,15),60);
+--     classification := CASE WHEN abs(delta)<=tolerance THEN 'compatible' WHEN abs(delta)<=30 THEN 'approximate' ELSE 'opportunity' END;
+--   END IF;
+--   IF delta IS NOT NULL THEN
+--     score := score-least(20,round(abs(delta)/3)::integer);
+--     reasons := reasons || jsonb_build_array(CASE WHEN delta=0 THEN 'Embarque no horário solicitado'
+--       ELSE 'Embarque estimado '||round(abs(delta))||' min '||CASE WHEN delta<0 THEN 'antes' ELSE 'depois' END END);
+--   END IF;
+--   bonus := public.travel_preference_bonus(q->'travel_preferences',o.travel_preferences);
+--   IF bonus>0 THEN reasons := reasons || '["Preferências de conversa ou música semelhantes"]'::jsonb; END IF;
+--   RETURN jsonb_build_object('classification',classification,'pickupAt',passage AT TIME ZONE 'America/Fortaleza',
+--     'differenceMinutes',delta,'score',CASE WHEN has_query THEN greatest(0,least(100,score+bonus)) ELSE NULL END,
+--     'preferenceBonus',bonus,'reasons',reasons,'roadGeometry',road_geometry,
+--     'pickupDistanceKm',(pickup->>'distanceKm')::float8,'dropoffDistanceKm',(dropoff->>'distanceKm')::float8,
+--     'requiresAdjustment',classification<>'compatible','timeEstimated',true);
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.evaluate_ride_candidate(jsonb,public.ride_offers) FROM PUBLIC,anon,authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.try_match_ride_request(p_request_id uuid,p_preferred_offer_id uuid DEFAULT NULL)
+-- RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE r public.ride_requests%ROWTYPE; o public.ride_offers%ROWTYPE; matched uuid; q jsonb;
+-- BEGIN
+--   PERFORM pg_advisory_xact_lock(74120391);
+--   SELECT * INTO r FROM public.ride_requests WHERE request_id=p_request_id AND status='open'
+--     AND (ride_date+departure_time) AT TIME ZONE 'America/Fortaleza'>=clock_timestamp() FOR UPDATE;
+--   IF NOT FOUND THEN RETURN NULL; END IF;
+--   q := to_jsonb(r)||jsonb_build_object('gender',(SELECT gender FROM public.profiles WHERE id=r.user_id));
+--   SELECT candidate.* INTO o FROM public.ride_offers candidate
+--     CROSS JOIN LATERAL (SELECT public.evaluate_ride_candidate(q,candidate) AS fit) evaluation
+--     WHERE candidate.status='available'
+--       AND (candidate.ride_date+candidate.departure_time) AT TIME ZONE 'America/Fortaleza'>=clock_timestamp()
+--       AND candidate.ride_date BETWEEN r.ride_date-1 AND r.ride_date+1
+--       AND (p_preferred_offer_id IS NULL OR candidate.offer_id=p_preferred_offer_id)
+--       AND NOT EXISTS (SELECT 1 FROM public.ride_matches prior WHERE prior.request_id=r.request_id AND prior.offer_id=candidate.offer_id)
+--       AND evaluation.fit->>'classification'='compatible'
+--       AND (evaluation.fit->>'pickupAt')::timestamptz>clock_timestamp()
+--     ORDER BY (evaluation.fit->>'score')::integer DESC,candidate.created_at,candidate.offer_id
+--     LIMIT 1 FOR UPDATE OF candidate;
+--   IF NOT FOUND THEN RETURN NULL; END IF;
+--   INSERT INTO public.ride_matches(request_id,offer_id,passenger_user_id,driver_user_id,status)
+--     VALUES(r.request_id,o.offer_id,r.user_id,o.user_id,'created')
+--     ON CONFLICT (request_id) WHERE status='created' DO NOTHING RETURNING match_id INTO matched;
+--   IF matched IS NULL THEN RETURN NULL; END IF;
+--   UPDATE public.ride_requests SET status='matched' WHERE request_id=r.request_id;
+--   UPDATE public.ride_offers SET seats_remaining=seats_remaining-r.passenger_count,
+--     status=CASE WHEN seats_remaining-r.passenger_count=0 THEN 'full' ELSE 'available' END WHERE offer_id=o.offer_id;
+--   RETURN matched;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.try_match_ride_request(uuid,uuid) FROM PUBLIC,anon,authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.match_new_ride_offer()
+-- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE r record;
+-- BEGIN
+--   PERFORM pg_advisory_xact_lock(74120391);
+--   FOR r IN SELECT request_id FROM public.ride_requests WHERE status='open'
+--     AND ride_date BETWEEN NEW.ride_date-1 AND NEW.ride_date+1
+--     AND user_id<>NEW.user_id AND (target_offer_id IS NULL OR target_offer_id=NEW.offer_id)
+--     ORDER BY created_at,request_id LOOP
+--     PERFORM public.try_match_ride_request(r.request_id,NEW.offer_id);
+--   END LOOP;
+--   RETURN NEW;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.match_new_ride_offer() FROM PUBLIC,anon,authenticated;
+-- 
+-- -- The old RPC remains available for existing clients, but returns only directly compatible offers.
+-- CREATE FUNCTION public.discover_ride_opportunities(p_search jsonb DEFAULT '{}')
+-- RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE q jsonb; result jsonb; count_requested integer := coalesce((p_search->>'passenger_count')::integer,1);
+--   result_limit integer := coalesce((p_search->>'limit')::integer,30);
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   IF count_requested NOT BETWEEN 1 AND 6 OR result_limit NOT BETWEEN 1 AND 30
+--     OR coalesce((p_search->>'time_tolerance_minutes')::integer,15) NOT IN (5,15,30,60) THEN
+--     RAISE EXCEPTION 'Invalid search parameters'; END IF;
+--   PERFORM public.expire_ride_match_proposals();
+--   q := p_search||jsonb_build_object('user_id',auth.uid(),'travel_preferences',public.get_my_travel_preferences(),
+--     'gender',(SELECT gender FROM public.profiles WHERE id=auth.uid()));
+--   SELECT coalesce(jsonb_agg(item),'[]') INTO result FROM (
+--     SELECT jsonb_build_object('offer_id',o.offer_id,'user_id',o.user_id,'origin',o.origin,'destination',o.destination,
+--       'origin_lat',o.origin_lat,'origin_lng',o.origin_lng,'destination_lat',o.destination_lat,'destination_lng',o.destination_lng,
+--       'ride_date',o.ride_date,'departure_time',o.departure_time,'available_seats',o.available_seats,'seats_remaining',o.seats_remaining,
+--       'status',o.status,'created_at',o.created_at,'full_name',p.full_name,'avatar_url',p.avatar_url,'city',p.city,
+--       'verifications',coalesce((SELECT jsonb_agg(jsonb_build_object('type',v.type,'status',v.status)) FROM public.user_verifications v
+--         WHERE v.user_id=o.user_id AND v.status='VERIFIED'),'[]'),
+--       'fit',e.fit) AS item
+--     FROM public.ride_offers o LEFT JOIN public.profiles p ON p.id=o.user_id
+--     CROSS JOIN LATERAL (SELECT public.evaluate_ride_candidate(q,o) fit) e
+--     WHERE o.status='available' AND o.user_id<>auth.uid()
+--       AND (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'>=clock_timestamp()
+--       AND (nullif(q->>'ride_date','') IS NULL OR o.ride_date BETWEEN (q->>'ride_date')::date-1 AND (q->>'ride_date')::date+1)
+--       AND e.fit IS NOT NULL AND (e.fit->>'pickupAt')::timestamptz>clock_timestamp()
+--       AND (coalesce((p_search->>'include_opportunities')::boolean,true) OR e.fit->>'classification'='compatible')
+--     ORDER BY CASE e.fit->>'classification' WHEN 'compatible' THEN 0 WHEN 'approximate' THEN 1 ELSE 2 END,
+--       (e.fit->>'score')::integer DESC NULLS LAST,o.ride_date,o.departure_time,o.offer_id
+--     LIMIT result_limit
+--   ) selected;
+--   RETURN result;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.discover_ride_opportunities(jsonb) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.discover_ride_opportunities(jsonb) TO authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.search_available_ride_offers(
+--   p_origin text DEFAULT NULL,p_destination text DEFAULT NULL,p_ride_date date DEFAULT NULL,p_departure_time time DEFAULT NULL,
+--   p_passenger_count integer DEFAULT 1,p_limit integer DEFAULT 30,p_time_tolerance_minutes integer DEFAULT 15,
+--   p_origin_lat float8 DEFAULT NULL,p_origin_lng float8 DEFAULT NULL,p_destination_lat float8 DEFAULT NULL,p_destination_lng float8 DEFAULT NULL
+-- ) RETURNS TABLE(offer_id uuid,user_id uuid,origin text,destination text,origin_lat float8,origin_lng float8,
+--   destination_lat float8,destination_lng float8,ride_date date,departure_time time,available_seats integer,seats_remaining integer,
+--   status text,created_at timestamptz,full_name text,avatar_url text,city text,verifications jsonb)
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- BEGIN
+--   RETURN QUERY SELECT x.offer_id,x.user_id,x.origin,x.destination,x.origin_lat,x.origin_lng,x.destination_lat,x.destination_lng,
+--     x.ride_date,x.departure_time,x.available_seats,x.seats_remaining,x.status,x.created_at,x.full_name,x.avatar_url,x.city,x.verifications
+--   FROM jsonb_to_recordset(public.discover_ride_opportunities(jsonb_build_object(
+--     'origin',p_origin,'destination',p_destination,'ride_date',p_ride_date,'departure_time',p_departure_time,
+--     'passenger_count',p_passenger_count,'limit',p_limit,'time_tolerance_minutes',p_time_tolerance_minutes,
+--     'origin_lat',p_origin_lat,'origin_lng',p_origin_lng,'destination_lat',p_destination_lat,'destination_lng',p_destination_lng,
+--     'include_opportunities',false))) AS x(offer_id uuid,user_id uuid,origin text,destination text,origin_lat float8,origin_lng float8,
+--       destination_lat float8,destination_lng float8,ride_date date,departure_time time,available_seats integer,seats_remaining integer,
+--       status text,created_at timestamptz,full_name text,avatar_url text,city text,verifications jsonb);
+-- END $$;
+-- 
+-- ALTER TABLE public.ride_requests ADD COLUMN original_requested_at timestamptz;
+-- ALTER TABLE public.rides ADD COLUMN pickup_estimated_at timestamptz;
+-- 
+-- -- Explicit passenger consent to the displayed pickup estimate. The driver's schedule
+-- -- remains unchanged; the original passenger schedule is retained for auditability.
+-- CREATE FUNCTION public.request_intelligent_ride_segment(
+--   p_offer_id uuid,p_quote_id uuid,p_ride_date date,p_departure_time time,
+--   p_passenger_count integer DEFAULT 1,p_time_tolerance_minutes integer DEFAULT 15,
+--   p_accept_adjustment boolean DEFAULT false,p_expected_pickup timestamptz DEFAULT NULL
+-- ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE o public.ride_offers%ROWTYPE; quote public.offer_route_quotes%ROWTYPE;
+--   q jsonb; fit jsonb; pickup timestamp; result uuid; original timestamptz;
+--   existing public.ride_requests%ROWTYPE;
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   IF p_offer_id IS NULL OR p_quote_id IS NULL OR p_ride_date IS NULL OR p_departure_time IS NULL
+--     OR p_passenger_count IS NULL OR p_passenger_count NOT BETWEEN 1 AND 6
+--     OR p_time_tolerance_minutes IS NULL OR p_time_tolerance_minutes NOT IN (5,15,30,60) THEN
+--     RAISE EXCEPTION 'Invalid passenger trip details'; END IF;
+--   original := (p_ride_date+p_departure_time) AT TIME ZONE 'America/Fortaleza';
+--   IF original<clock_timestamp() THEN RAISE EXCEPTION 'Departure time has already passed'; END IF;
+--   PERFORM pg_advisory_xact_lock(74120391);
+--   SELECT * INTO existing FROM public.ride_requests WHERE route_quote_id=p_quote_id AND user_id=auth.uid();
+--   IF FOUND THEN
+--     IF existing.target_offer_id IS DISTINCT FROM p_offer_id OR existing.passenger_count<>p_passenger_count
+--       OR coalesce(existing.original_requested_at,(existing.ride_date+existing.departure_time) AT TIME ZONE 'America/Fortaleza')<>original THEN
+--       RAISE EXCEPTION 'This quote was already used for another trip'; END IF;
+--     RETURN existing.request_id;
+--   END IF;
+--   SELECT * INTO quote FROM public.offer_route_quotes WHERE quote_id=p_quote_id AND user_id=auth.uid() FOR UPDATE;
+--   IF NOT FOUND OR quote.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'Passenger route quote is invalid or expired'; END IF;
+--   SELECT * INTO o FROM public.ride_offers WHERE offer_id=p_offer_id FOR UPDATE;
+--   IF NOT FOUND OR (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'<clock_timestamp() THEN RAISE EXCEPTION 'Offer expired'; END IF;
+--   q := to_jsonb(quote)||jsonb_build_object('user_id',auth.uid(),'ride_date',p_ride_date,'departure_time',p_departure_time,
+--     'passenger_count',p_passenger_count,'time_tolerance_minutes',p_time_tolerance_minutes,
+--     'travel_preferences',public.get_my_travel_preferences(),'gender',(SELECT gender FROM public.profiles WHERE id=auth.uid()));
+--   fit := public.evaluate_ride_candidate(q,o);
+--   IF fit IS NULL THEN RAISE EXCEPTION 'Offer no longer matches this segment or has no seats available'; END IF;
+--   IF p_expected_pickup IS NOT NULL AND abs(extract(epoch FROM (fit->>'pickupAt')::timestamptz-p_expected_pickup))>1 THEN
+--     RAISE EXCEPTION 'O horário de embarque mudou. Atualize a busca antes de continuar.'; END IF;
+--   pickup := (fit->>'pickupAt')::timestamptz AT TIME ZONE 'America/Fortaleza';
+--   IF (fit->>'requiresAdjustment')::boolean THEN
+--     IF p_accept_adjustment IS DISTINCT FROM true OR p_expected_pickup IS NULL THEN
+--       RAISE EXCEPTION 'Confirme explicitamente o novo horário de embarque.'; END IF;
+--   ELSE pickup := p_ride_date+p_departure_time; END IF;
+--   result := public.request_available_ride_segment(p_offer_id,p_quote_id,pickup::date,pickup::time,p_passenger_count,p_time_tolerance_minutes);
+--   UPDATE public.ride_requests SET original_requested_at=original WHERE request_id=result;
+--   RETURN result;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.request_intelligent_ride_segment(uuid,uuid,date,time,integer,integer,boolean,timestamptz) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.request_intelligent_ride_segment(uuid,uuid,date,time,integer,integer,boolean,timestamptz) TO authenticated;
+-- 
+-- -- Discovery compares against the original desired schedule after a declined
+-- -- adjustment, so successive choices cannot silently widen the one-hour window.
+-- CREATE FUNCTION public.opportunity_request_input(r public.ride_requests,p_gender text)
+-- RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+--  SELECT to_jsonb(r)||jsonb_build_object('gender',p_gender)||CASE WHEN r.original_requested_at IS NULL THEN '{}'::jsonb
+--  ELSE jsonb_build_object('ride_date',(r.original_requested_at AT TIME ZONE 'America/Fortaleza')::date,
+--    'departure_time',(r.original_requested_at AT TIME ZONE 'America/Fortaleza')::time) END;
+-- $$;
+-- REVOKE ALL ON FUNCTION public.opportunity_request_input(public.ride_requests,text) FROM PUBLIC,anon,authenticated;
+-- 
+-- -- A read-only feed for both roles. Passenger identity/addresses are not exposed
+-- -- to drivers until a proposal exists. Only currently eligible opportunities appear.
+-- CREATE FUNCTION public.get_my_ride_opportunities(p_offer_id uuid DEFAULT NULL)
+-- RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE result jsonb;
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   IF p_offer_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.ride_offers WHERE offer_id=p_offer_id AND user_id=auth.uid()) THEN
+--     RAISE EXCEPTION 'Offer not found' USING ERRCODE='42501'; END IF;
+--   SELECT coalesce(jsonb_agg(item),'[]') INTO result FROM (
+--     SELECT jsonb_build_object('requestId',r.request_id,'offerId',o.offer_id,
+--       'role',CASE WHEN o.user_id=auth.uid() THEN 'driver' ELSE 'passenger' END,
+--       'origin',CASE WHEN r.user_id=auth.uid() THEN o.origin ELSE NULL END,
+--       'destination',CASE WHEN r.user_id=auth.uid() THEN o.destination ELSE NULL END,
+--       'passengerCount',r.passenger_count,'requestedAt',coalesce(r.original_requested_at,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'),
+--       'fit',e.fit) item
+--     FROM public.ride_requests r JOIN public.ride_offers o ON o.ride_date BETWEEN r.ride_date-1 AND r.ride_date+1
+--     JOIN public.profiles p ON p.id=r.user_id
+--     CROSS JOIN LATERAL (SELECT public.evaluate_ride_candidate(public.opportunity_request_input(r,p.gender),o) fit) e
+--     WHERE r.status='open' AND o.status='available'
+--       AND (p_offer_id IS NULL OR o.offer_id=p_offer_id)
+--       AND (r.user_id=auth.uid() OR o.user_id=auth.uid())
+--       AND (r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
+--       AND (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
+--       AND e.fit IS NOT NULL AND (e.fit->>'pickupAt')::timestamptz>clock_timestamp()
+--       AND abs(extract(epoch FROM (e.fit->>'pickupAt')::timestamptz-coalesce(r.original_requested_at,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza')))<=3600
+--       AND NOT EXISTS(SELECT 1 FROM public.ride_matches m WHERE m.request_id=r.request_id AND m.offer_id=o.offer_id)
+--     ORDER BY (e.fit->>'score')::integer DESC,(e.fit->>'pickupAt')::timestamptz,o.offer_id,r.request_id
+--     LIMIT 30
+--   ) candidates;
+--   RETURN result;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.get_my_ride_opportunities(uuid) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.get_my_ride_opportunities(uuid) TO authenticated;
+-- 
+-- CREATE FUNCTION public.choose_ride_opportunity(p_request_id uuid,p_offer_id uuid,p_expected_pickup timestamptz)
+-- RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE r public.ride_requests%ROWTYPE; o public.ride_offers%ROWTYPE; fit jsonb; chosen uuid; pickup timestamp;
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   PERFORM pg_advisory_xact_lock(74120391);
+--   SELECT * INTO r FROM public.ride_requests WHERE request_id=p_request_id AND user_id=auth.uid() FOR UPDATE;
+--   IF NOT FOUND THEN RAISE EXCEPTION 'Request not found' USING ERRCODE='42501'; END IF;
+--   SELECT match_id INTO chosen FROM public.ride_matches WHERE request_id=r.request_id AND offer_id=p_offer_id AND status='created';
+--   IF chosen IS NOT NULL THEN RETURN chosen; END IF;
+--   IF r.status<>'open' OR (r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'<clock_timestamp() THEN
+--     RAISE EXCEPTION 'Pedido indisponível. Atualize suas viagens.'; END IF;
+--   SELECT * INTO o FROM public.ride_offers WHERE offer_id=p_offer_id FOR UPDATE;
+--   IF NOT FOUND OR (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'<clock_timestamp() THEN RAISE EXCEPTION 'Offer expired'; END IF;
+--   fit := public.evaluate_ride_candidate(public.opportunity_request_input(r,(SELECT gender FROM public.profiles WHERE id=r.user_id)),o);
+--   IF fit IS NULL OR p_expected_pickup IS NULL OR abs(extract(epoch FROM (fit->>'pickupAt')::timestamptz-p_expected_pickup))>1
+--     OR abs(extract(epoch FROM p_expected_pickup-coalesce(r.original_requested_at,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza')))>3600 THEN
+--     RAISE EXCEPTION 'A oportunidade mudou. Atualize suas viagens.'; END IF;
+--   pickup := p_expected_pickup AT TIME ZONE 'America/Fortaleza';
+--   UPDATE public.ride_requests SET original_requested_at=coalesce(original_requested_at,(ride_date+departure_time) AT TIME ZONE 'America/Fortaleza'),
+--     ride_date=pickup::date,departure_time=pickup::time,target_offer_id=p_offer_id WHERE request_id=r.request_id;
+--   chosen := public.try_match_ride_request(r.request_id,p_offer_id);
+--   IF chosen IS NULL THEN RAISE EXCEPTION 'A oportunidade não está mais disponível.'; END IF;
+--   RETURN chosen;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.choose_ride_opportunity(uuid,uuid,timestamptz) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.choose_ride_opportunity(uuid,uuid,timestamptz) TO authenticated;
+-- 
+-- -- Reuse the authorized operation payload; the UI no longer invents eligibility.
+-- DO $admin_fit$
+-- DECLARE definition text;
+-- BEGIN
+--   SELECT pg_get_functiondef('public.get_admin_operation_data()'::regprocedure) INTO definition;
+--   IF position('''offers'',' IN definition)=0 THEN RAISE EXCEPTION 'Missing administrative payload anchor'; END IF;
+--   definition := replace(definition,'''offers'',', $replacement$
+--     'matchSuggestionIds',(SELECT coalesce(jsonb_agg(jsonb_build_object('requestId',r.request_id,'offerId',o.offer_id)),'[]')
+--       FROM public.ride_requests r JOIN public.ride_offers o ON o.ride_date BETWEEN r.ride_date-1 AND r.ride_date+1
+--       JOIN public.profiles p ON p.id=r.user_id
+--       WHERE r.status='open' AND o.status='available'
+--         AND (r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
+--         AND (o.ride_date+o.departure_time) AT TIME ZONE 'America/Fortaleza'>clock_timestamp()
+--         AND public.evaluate_ride_candidate(to_jsonb(r)||jsonb_build_object('gender',p.gender),o)->>'classification'='compatible'
+--         AND NOT EXISTS(SELECT 1 FROM public.ride_matches m WHERE m.request_id=r.request_id AND m.offer_id=o.offer_id)),
+--     'offers', $replacement$);
+--   EXECUTE definition;
+-- END $admin_fit$;
+-- 
+-- CREATE FUNCTION public.bound_intelligent_proposal_deadline()
+-- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE r public.ride_requests%ROWTYPE; o public.ride_offers%ROWTYPE; fit jsonb;
+-- BEGIN
+--   SELECT * INTO r FROM public.ride_requests WHERE request_id=NEW.request_id;
+--   SELECT * INTO o FROM public.ride_offers WHERE offer_id=NEW.offer_id;
+--   -- The match INSERT trigger runs before inventory is decremented.
+--   fit := public.evaluate_ride_candidate(to_jsonb(r)||jsonb_build_object('gender',(SELECT gender FROM public.profiles WHERE id=r.user_id)),o);
+--   NEW.pickup_estimated_at := coalesce((fit->>'pickupAt')::timestamptz,(r.ride_date+r.departure_time) AT TIME ZONE 'America/Fortaleza');
+--   NEW.response_expires_at := least(NEW.response_expires_at,clock_timestamp()+interval '15 minutes',NEW.pickup_estimated_at);
+--   RETURN NEW;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.bound_intelligent_proposal_deadline() FROM PUBLIC,anon,authenticated;
+-- CREATE TRIGGER b_intelligent_proposal_deadline BEFORE INSERT ON public.rides
+--   FOR EACH ROW EXECUTE FUNCTION public.bound_intelligent_proposal_deadline();
+-- 
+-- -- Do not touch accepted historical rides. Prevent stale pending proposals being
+-- -- accepted after their pickup, including proposals from before this migration.
+-- DO $acceptance_deadline$
+-- DECLARE definition text;
+-- BEGIN
+--   SELECT pg_get_functiondef('public.respond_to_ride_match(uuid,text)'::regprocedure) INTO definition;
+--   IF position('IF r.response_expires_at <= clock_timestamp() THEN' IN definition)=0 THEN
+--     RAISE EXCEPTION 'Missing proposal expiry guard'; END IF;
+--   definition := replace(definition,'SELECT * INTO r FROM public.rides WHERE ride_id = p_ride_id FOR UPDATE;',
+--     'PERFORM pg_advisory_xact_lock(74120391); SELECT * INTO r FROM public.rides WHERE ride_id = p_ride_id FOR UPDATE;');
+--   definition := replace(definition,'IF r.response_expires_at <= clock_timestamp() THEN',
+--     'IF least(r.response_expires_at,coalesce(r.pickup_estimated_at,(SELECT (rr.ride_date+rr.departure_time) AT TIME ZONE ''America/Fortaleza'' FROM public.ride_requests rr WHERE rr.request_id=r.request_id))) <= clock_timestamp() THEN');
+--   EXECUTE definition;
+-- END $acceptance_deadline$;
+-- 
+-- DO $serialize_expiration$
+-- DECLARE definition text;
+-- BEGIN
+--   SELECT pg_get_functiondef('public.expire_ride_match_proposals()'::regprocedure) INTO definition;
+--   IF position('FOR expired IN' IN definition)=0 THEN RAISE EXCEPTION 'Missing expiration loop'; END IF;
+--   definition := replace(definition,'FOR expired IN','PERFORM pg_advisory_xact_lock(74120391); FOR expired IN');
+--   EXECUTE definition;
+-- END $serialize_expiration$;
+-- 
+-- -- Use an existing pg_cron installation when available. Discovery and existing
+-- -- trip refresh also run expiration; deployments without cron need a scheduler.
+-- DO $expiry_schedule$
+-- BEGIN
+--   IF to_regprocedure('cron.schedule(text,text,text)') IS NOT NULL THEN
+--     EXECUTE $schedule$SELECT cron.schedule('caronaa-expire-match-proposals','* * * * *',
+--       'SELECT set_config(''request.jwt.claim.role'',''service_role'',true); SELECT public.expire_ride_match_proposals();')$schedule$;
+--   END IF;
+-- END $expiry_schedule$;
+-- 
+-- NOTIFY pgrst,'reload schema';
+-- 
+-- ALTER TABLE public.profiles ADD COLUMN ride_opportunity_alerts_enabled boolean NOT NULL DEFAULT true;
+-- CREATE TABLE public.ride_opportunity_alerts(
+--   alert_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+--   request_id uuid NOT NULL REFERENCES public.ride_requests(request_id) ON DELETE CASCADE,
+--   offer_id uuid NOT NULL REFERENCES public.ride_offers(offer_id) ON DELETE CASCADE,
+--   created_at timestamptz NOT NULL DEFAULT now(),read_at timestamptz,
+--   UNIQUE(user_id,request_id,offer_id)
+-- );
+-- ALTER TABLE public.ride_opportunity_alerts ENABLE ROW LEVEL SECURITY;
+-- REVOKE ALL ON public.ride_opportunity_alerts FROM PUBLIC,anon,authenticated;
+-- GRANT SELECT ON public.ride_opportunity_alerts TO authenticated;
+-- GRANT ALL ON public.ride_opportunity_alerts TO service_role;
+-- CREATE POLICY opportunity_alert_owner_read ON public.ride_opportunity_alerts FOR SELECT TO authenticated USING(user_id=auth.uid());
+-- CREATE INDEX opportunity_alert_owner_idx ON public.ride_opportunity_alerts(user_id,created_at DESC);
+-- 
+-- -- Sync only the caller's live opportunities. A persistent unique key prevents
+-- -- duplicate alerts across refreshes/devices. Expired/unavailable pairs disappear
+-- -- from the returned inbox without requiring a new publication or reservation.
+-- CREATE FUNCTION public.sync_my_ride_opportunity_alerts()
+-- RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE candidates jsonb; candidate jsonb; result jsonb;
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   IF NOT coalesce((SELECT ride_opportunity_alerts_enabled FROM public.profiles WHERE id=auth.uid()),false) THEN RETURN '[]'; END IF;
+--   candidates := public.get_my_ride_opportunities();
+--   FOR candidate IN SELECT value FROM jsonb_array_elements(candidates) LOOP
+--     INSERT INTO public.ride_opportunity_alerts(user_id,request_id,offer_id)
+--       VALUES(auth.uid(),(candidate->>'requestId')::uuid,(candidate->>'offerId')::uuid)
+--       ON CONFLICT(user_id,request_id,offer_id) DO NOTHING;
+--   END LOOP;
+--   SELECT coalesce(jsonb_agg(to_jsonb(a)||jsonb_build_object('pickup_at',c.value->'fit'->'pickupAt',
+--     'difference_minutes',c.value->'fit'->'differenceMinutes')),'[]') INTO result
+--     FROM public.ride_opportunity_alerts a JOIN jsonb_array_elements(candidates) c(value)
+--       ON a.request_id=(c.value->>'requestId')::uuid AND a.offer_id=(c.value->>'offerId')::uuid
+--     WHERE a.user_id=auth.uid();
+--   RETURN result;
+-- END $$;
+-- CREATE FUNCTION public.mark_ride_opportunity_alerts_read(p_ids uuid[])
+-- RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   IF cardinality(p_ids)>50 THEN RAISE EXCEPTION 'Too many alerts'; END IF;
+--   UPDATE public.ride_opportunity_alerts SET read_at=coalesce(read_at,clock_timestamp()) WHERE user_id=auth.uid() AND alert_id=ANY(p_ids);
+-- END $$;
+-- CREATE FUNCTION public.set_ride_opportunity_alerts(p_enabled boolean DEFAULT NULL)
+-- RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- BEGIN
+--   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+--   IF p_enabled IS NOT NULL THEN UPDATE public.profiles SET ride_opportunity_alerts_enabled=p_enabled WHERE id=auth.uid(); END IF;
+--   RETURN (SELECT ride_opportunity_alerts_enabled FROM public.profiles WHERE id=auth.uid());
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.sync_my_ride_opportunity_alerts(),public.mark_ride_opportunity_alerts_read(uuid[]),public.set_ride_opportunity_alerts(boolean) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.sync_my_ride_opportunity_alerts(),public.mark_ride_opportunity_alerts_read(uuid[]),public.set_ride_opportunity_alerts(boolean) TO authenticated;
+-- NOTIFY pgrst,'reload schema';

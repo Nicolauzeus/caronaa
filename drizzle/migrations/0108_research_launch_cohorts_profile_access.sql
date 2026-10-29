@@ -1,145 +1,146 @@
--- 0108: Preserve established accounts while gating NEW participants of a
--- scheduled research launch. Keep the user's profile editable while they wait.
---
--- Cohort start is the actual FIRST PUBLICATION of the research form; it cannot
--- move when the date or the form settings are edited. Existing accounts are
--- never deprived of their prior app access merely for responding again.
--- A verified badge/confirmed receipt is still required: email text alone
--- never creates a launch restriction.
--- IMPORTANT: no user or research records are deleted or updated.
-CREATE OR REPLACE FUNCTION public.research_launch_wait_eligible(
-  p_form uuid,p_user uuid
-)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public,pg_temp AS $cohort$
-  SELECT p_user IS NOT NULL AND EXISTS (
-    SELECT 1
-    FROM auth.users AS u
-    JOIN public.research_forms AS f ON f.id=p_form
-    WHERE u.id=p_user
-      AND u.created_at >= COALESCE(
-        (SELECT MIN(v.published_at)
-           FROM public.research_form_versions v
-          WHERE v.form_id=f.id AND v.published_at IS NOT NULL),
-        f.created_at
-      )
-      AND public.research_launch_participant(f.id,p_user)
-  );
-$cohort$;
-REVOKE ALL ON FUNCTION public.research_launch_wait_eligible(uuid,uuid)
- FROM PUBLIC,anon,authenticated;
-
--- The same server policy governs both the client-side waiting route
--- and mandatory triggers protecting all live ride writes.
-CREATE OR REPLACE FUNCTION public.is_research_launch_locked(p_user uuid)
-RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-BEGIN
- IF p_user IS NULL THEN RETURN false; END IF;
- -- Administrators can homologate while everyone else waits.
- IF EXISTS(SELECT 1 FROM public.user_roles r WHERE r.user_id=p_user AND r.role='admin') THEN
-   RETURN false;
- END IF;
- RETURN EXISTS (
-  SELECT 1 FROM public.research_configurations c
-  JOIN public.research_forms f ON f.id=c.form_id
-  LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
-  WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-    AND now() < (
-      (c.settings->>'launchDate')::date::timestamp
-      AT TIME ZONE COALESCE(
-        (SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),
-        'America/Fortaleza'
-      )
-    )
-    AND release.released_at IS NULL
-    AND public.research_launch_wait_eligible(f.id,p_user)
- );
-END $body$;;
-CREATE OR REPLACE FUNCTION public.get_my_research_launch_state()
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-DECLARE
- u uuid:=auth.uid(); candidate record; launch_time timestamptz;
- j jsonb; role text; prev jsonb; s public.form_submissions%ROWTYPE;
-BEGIN
- IF u IS NULL THEN RETURN jsonb_build_object('locked',false); END IF;
- IF EXISTS(SELECT 1 FROM public.user_roles AS ur WHERE ur.user_id=u AND ur.role='admin') THEN
-   RETURN jsonb_build_object('locked',false);
- END IF;
- SELECT f.id AS form_id,f.code,f.title,f.nature,c.settings,
-       (c.settings->>'launchDate')::date AS launch_day
- INTO candidate
- FROM public.research_configurations c
- JOIN public.research_forms f ON f.id=c.form_id
- LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
- WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-   AND now() < (
-     (c.settings->>'launchDate')::date::timestamp
-     AT TIME ZONE COALESCE((SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza')
-   )
-   AND release.released_at IS NULL
-   AND public.research_launch_wait_eligible(f.id,u)
- ORDER BY launch_day DESC,f.id LIMIT 1;
- IF NOT FOUND THEN RETURN jsonb_build_object('locked',false); END IF;
- launch_time:=(candidate.launch_day::timestamp AT TIME ZONE
-    COALESCE((SELECT name FROM pg_timezone_names WHERE name=candidate.settings->>'timezone' LIMIT 1),'America/Fortaleza'));
- SELECT rj.journey INTO j
- FROM public.research_participation_badges b
- JOIN public.research_journeys rj ON rj.answer_id=b.answer_id
- WHERE b.user_id=u AND b.form_id=candidate.form_id
- ORDER BY b.verified_at DESC LIMIT 1;
- IF j IS NOT NULL THEN
-   role:=j->>'profile';
-   IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
-     prev:=jsonb_build_object(
-       'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
-       'origin',nullif(j->>'originArea',''),
-       'destination',nullif(j->>'destinationArea',''),
-       'departureTime',nullif(j->>'outboundTime',''),
-       'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
-     );
-   END IF;
- ELSE
-   SELECT fs.* INTO s FROM public.form_submissions fs
-   JOIN public.form_submission_account_links link ON link.submission_id=fs.submission_id
-   WHERE fs.user_id=u AND fs.research_form_id=candidate.form_id
-     AND link.user_id=u AND link.confirmed_at IS NOT NULL
-   ORDER BY fs.created_at DESC LIMIT 1;
-   IF FOUND THEN
-     role:=s.tipo_usuario::text;
-     IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
-       prev:=jsonb_build_object(
-         'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
-         'origin',nullif(s.origem_trajeto,''),'destination',nullif(s.destino_trajeto,''),
-         'departureTime',nullif(s.faixa_horario,''),'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
-       );
-     END IF;
-   END IF;
- END IF;
- RETURN jsonb_build_object('locked',true,'formId',candidate.form_id,'formCode',candidate.code,
-   'institution',coalesce(nullif(candidate.settings->>'publicName',''),nullif(candidate.settings->>'institutionName',''),candidate.title),
-   'nature',candidate.nature,'launchAt',to_char(launch_time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-   'preview',coalesce(prev,'null'::jsonb));
-END $body$;;
--- Legacy UNIFOR helper also delegates to the canonical policy, so no
--- older path can re-lock accounts that were registered before the campaign.
-CREATE OR REPLACE FUNCTION public.is_unifor_prelaunch_locked(p_user_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path=public,pg_temp AS $legacy$
- SELECT public.is_research_launch_locked(p_user_id)
-    AND public.research_launch_wait_eligible(
-      '8eaec446-057b-430a-9ccf-3b3652cb9618'::uuid,p_user_id
-    )
-    AND EXISTS(
-      SELECT 1 FROM public.research_configurations c
-      LEFT JOIN public.research_launch_releases r ON r.form_id=c.form_id
-      WHERE c.form_id='8eaec446-057b-430a-9ccf-3b3652cb9618'::uuid
-        AND r.released_at IS NULL
-        AND c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-        AND now() < ((c.settings->>'launchDate')::date::timestamp AT TIME ZONE
-             COALESCE((SELECT name FROM pg_timezone_names
-                        WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza'))
-    );
-$legacy$;
-REVOKE ALL ON FUNCTION public.is_unifor_prelaunch_locked(uuid)
- FROM PUBLIC,anon,authenticated;
-NOTIFY pgrst,'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- 0108: Preserve established accounts while gating NEW participants of a
+-- -- scheduled research launch. Keep the user's profile editable while they wait.
+-- --
+-- -- Cohort start is the actual FIRST PUBLICATION of the research form; it cannot
+-- -- move when the date or the form settings are edited. Existing accounts are
+-- -- never deprived of their prior app access merely for responding again.
+-- -- A verified badge/confirmed receipt is still required: email text alone
+-- -- never creates a launch restriction.
+-- -- IMPORTANT: no user or research records are deleted or updated.
+-- CREATE OR REPLACE FUNCTION public.research_launch_wait_eligible(
+--   p_form uuid,p_user uuid
+-- )
+-- RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+-- SET search_path = public,pg_temp AS $cohort$
+--   SELECT p_user IS NOT NULL AND EXISTS (
+--     SELECT 1
+--     FROM auth.users AS u
+--     JOIN public.research_forms AS f ON f.id=p_form
+--     WHERE u.id=p_user
+--       AND u.created_at >= COALESCE(
+--         (SELECT MIN(v.published_at)
+--            FROM public.research_form_versions v
+--           WHERE v.form_id=f.id AND v.published_at IS NOT NULL),
+--         f.created_at
+--       )
+--       AND public.research_launch_participant(f.id,p_user)
+--   );
+-- $cohort$;
+-- REVOKE ALL ON FUNCTION public.research_launch_wait_eligible(uuid,uuid)
+--  FROM PUBLIC,anon,authenticated;
+-- 
+-- -- The same server policy governs both the client-side waiting route
+-- -- and mandatory triggers protecting all live ride writes.
+-- CREATE OR REPLACE FUNCTION public.is_research_launch_locked(p_user uuid)
+-- RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- BEGIN
+--  IF p_user IS NULL THEN RETURN false; END IF;
+--  -- Administrators can homologate while everyone else waits.
+--  IF EXISTS(SELECT 1 FROM public.user_roles r WHERE r.user_id=p_user AND r.role='admin') THEN
+--    RETURN false;
+--  END IF;
+--  RETURN EXISTS (
+--   SELECT 1 FROM public.research_configurations c
+--   JOIN public.research_forms f ON f.id=c.form_id
+--   LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
+--   WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+--     AND now() < (
+--       (c.settings->>'launchDate')::date::timestamp
+--       AT TIME ZONE COALESCE(
+--         (SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),
+--         'America/Fortaleza'
+--       )
+--     )
+--     AND release.released_at IS NULL
+--     AND public.research_launch_wait_eligible(f.id,p_user)
+--  );
+-- END $body$;;
+-- CREATE OR REPLACE FUNCTION public.get_my_research_launch_state()
+-- RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- DECLARE
+--  u uuid:=auth.uid(); candidate record; launch_time timestamptz;
+--  j jsonb; role text; prev jsonb; s public.form_submissions%ROWTYPE;
+-- BEGIN
+--  IF u IS NULL THEN RETURN jsonb_build_object('locked',false); END IF;
+--  IF EXISTS(SELECT 1 FROM public.user_roles AS ur WHERE ur.user_id=u AND ur.role='admin') THEN
+--    RETURN jsonb_build_object('locked',false);
+--  END IF;
+--  SELECT f.id AS form_id,f.code,f.title,f.nature,c.settings,
+--        (c.settings->>'launchDate')::date AS launch_day
+--  INTO candidate
+--  FROM public.research_configurations c
+--  JOIN public.research_forms f ON f.id=c.form_id
+--  LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
+--  WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+--    AND now() < (
+--      (c.settings->>'launchDate')::date::timestamp
+--      AT TIME ZONE COALESCE((SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza')
+--    )
+--    AND release.released_at IS NULL
+--    AND public.research_launch_wait_eligible(f.id,u)
+--  ORDER BY launch_day DESC,f.id LIMIT 1;
+--  IF NOT FOUND THEN RETURN jsonb_build_object('locked',false); END IF;
+--  launch_time:=(candidate.launch_day::timestamp AT TIME ZONE
+--     COALESCE((SELECT name FROM pg_timezone_names WHERE name=candidate.settings->>'timezone' LIMIT 1),'America/Fortaleza'));
+--  SELECT rj.journey INTO j
+--  FROM public.research_participation_badges b
+--  JOIN public.research_journeys rj ON rj.answer_id=b.answer_id
+--  WHERE b.user_id=u AND b.form_id=candidate.form_id
+--  ORDER BY b.verified_at DESC LIMIT 1;
+--  IF j IS NOT NULL THEN
+--    role:=j->>'profile';
+--    IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
+--      prev:=jsonb_build_object(
+--        'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
+--        'origin',nullif(j->>'originArea',''),
+--        'destination',nullif(j->>'destinationArea',''),
+--        'departureTime',nullif(j->>'outboundTime',''),
+--        'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
+--      );
+--    END IF;
+--  ELSE
+--    SELECT fs.* INTO s FROM public.form_submissions fs
+--    JOIN public.form_submission_account_links link ON link.submission_id=fs.submission_id
+--    WHERE fs.user_id=u AND fs.research_form_id=candidate.form_id
+--      AND link.user_id=u AND link.confirmed_at IS NOT NULL
+--    ORDER BY fs.created_at DESC LIMIT 1;
+--    IF FOUND THEN
+--      role:=s.tipo_usuario::text;
+--      IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
+--        prev:=jsonb_build_object(
+--          'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
+--          'origin',nullif(s.origem_trajeto,''),'destination',nullif(s.destino_trajeto,''),
+--          'departureTime',nullif(s.faixa_horario,''),'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
+--        );
+--      END IF;
+--    END IF;
+--  END IF;
+--  RETURN jsonb_build_object('locked',true,'formId',candidate.form_id,'formCode',candidate.code,
+--    'institution',coalesce(nullif(candidate.settings->>'publicName',''),nullif(candidate.settings->>'institutionName',''),candidate.title),
+--    'nature',candidate.nature,'launchAt',to_char(launch_time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+--    'preview',coalesce(prev,'null'::jsonb));
+-- END $body$;;
+-- -- Legacy UNIFOR helper also delegates to the canonical policy, so no
+-- -- older path can re-lock accounts that were registered before the campaign.
+-- CREATE OR REPLACE FUNCTION public.is_unifor_prelaunch_locked(p_user_id uuid)
+-- RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+-- SET search_path=public,pg_temp AS $legacy$
+--  SELECT public.is_research_launch_locked(p_user_id)
+--     AND public.research_launch_wait_eligible(
+--       '8eaec446-057b-430a-9ccf-3b3652cb9618'::uuid,p_user_id
+--     )
+--     AND EXISTS(
+--       SELECT 1 FROM public.research_configurations c
+--       LEFT JOIN public.research_launch_releases r ON r.form_id=c.form_id
+--       WHERE c.form_id='8eaec446-057b-430a-9ccf-3b3652cb9618'::uuid
+--         AND r.released_at IS NULL
+--         AND c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+--         AND now() < ((c.settings->>'launchDate')::date::timestamp AT TIME ZONE
+--              COALESCE((SELECT name FROM pg_timezone_names
+--                         WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza'))
+--     );
+-- $legacy$;
+-- REVOKE ALL ON FUNCTION public.is_unifor_prelaunch_locked(uuid)
+--  FROM PUBLIC,anon,authenticated;
+-- NOTIFY pgrst,'reload schema';

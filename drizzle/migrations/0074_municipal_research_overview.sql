@@ -1,19 +1,20 @@
--- Municipality-level research oversight; aggregates only, admin access.
-CREATE OR REPLACE FUNCTION public.get_municipal_research_overview()
-RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
-WITH totals AS (
- SELECT f.id,f.code,f.title,coalesce(f.municipality,'NÃO INFORMADO') municipality,
- f.audience,f.status,
- (SELECT count(*) FROM public.research_answers a WHERE a.form_id=f.id)
- + (SELECT count(*) FROM public.form_submissions s WHERE s.research_form_id=f.id) replies
- FROM public.research_forms f WHERE f.nature='MOBILIDADE_LOCAL'
- AND public.has_role(auth.uid(),'admin')
-)
-SELECT coalesce(jsonb_agg(jsonb_build_object(
- 'code',code,'title',title,'municipality',municipality,
- 'audience',audience,'status',status,'responses',replies
- ) ORDER BY municipality,title),'[]'::jsonb)
-FROM totals $$;
-REVOKE ALL ON FUNCTION public.get_municipal_research_overview() FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_municipal_research_overview() TO authenticated;
-NOTIFY pgrst,'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- Municipality-level research oversight; aggregates only, admin access.
+-- CREATE OR REPLACE FUNCTION public.get_municipal_research_overview()
+-- RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
+-- WITH totals AS (
+--  SELECT f.id,f.code,f.title,coalesce(f.municipality,'NÃO INFORMADO') municipality,
+--  f.audience,f.status,
+--  (SELECT count(*) FROM public.research_answers a WHERE a.form_id=f.id)
+--  + (SELECT count(*) FROM public.form_submissions s WHERE s.research_form_id=f.id) replies
+--  FROM public.research_forms f WHERE f.nature='MOBILIDADE_LOCAL'
+--  AND public.has_role(auth.uid(),'admin')
+-- )
+-- SELECT coalesce(jsonb_agg(jsonb_build_object(
+--  'code',code,'title',title,'municipality',municipality,
+--  'audience',audience,'status',status,'responses',replies
+--  ) ORDER BY municipality,title),'[]'::jsonb)
+-- FROM totals $$;
+-- REVOKE ALL ON FUNCTION public.get_municipal_research_overview() FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.get_municipal_research_overview() TO authenticated;
+-- NOTIFY pgrst,'reload schema';

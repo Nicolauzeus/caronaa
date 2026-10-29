@@ -1,44 +1,45 @@
--- Complete survey BI uses server-side aggregation. No PII is returned.
-CREATE OR REPLACE FUNCTION public.get_research_bi(
- p_form_id uuid DEFAULT NULL,
- p_nature text DEFAULT NULL,
- p_profile text DEFAULT NULL,
- p_occupation text DEFAULT NULL
-) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=public AS $$
-DECLARE result jsonb;
-BEGIN
- IF NOT public.has_role(auth.uid(),'admin') THEN
-   RAISE EXCEPTION 'Not authorized';
- END IF;
- WITH eligible AS (
-   SELECT s.submission_id,s.tipo_usuario,s.ocupacao,s.research_form_id
-   FROM public.form_submissions s
-   JOIN public.research_forms f ON f.id=s.research_form_id
-   WHERE (p_form_id IS NULL OR s.research_form_id=p_form_id)
-     AND (p_nature IS NULL OR f.nature=p_nature)
-     AND (p_profile IS NULL OR s.tipo_usuario::text=p_profile)
-     AND (p_occupation IS NULL OR s.ocupacao=p_occupation)
- ), pain AS (
-   SELECT p.codigo_dor::text AS code,
-     count(*) FILTER(WHERE p.selecionada) AS selected_count,
-     count(*) FILTER(WHERE p.principal) AS principal_count,
-     round(avg(p.intensidade) FILTER(WHERE p.selecionada AND p.intensidade IS NOT NULL),2) AS intensity
-   FROM eligible e JOIN public.form_submission_pain_points p ON p.submission_id=e.submission_id
-   GROUP BY p.codigo_dor
- ), profiles AS (
-   SELECT tipo_usuario::text AS category,count(*) AS total FROM eligible GROUP BY tipo_usuario
- ), occupations AS (
-   SELECT coalesce(ocupacao,'NÃO INFORMADO') AS category,count(*) AS total FROM eligible GROUP BY coalesce(ocupacao,'NÃO INFORMADO')
- ), totals AS (SELECT count(*) AS total FROM eligible)
- SELECT jsonb_build_object(
-   'total', (SELECT total FROM totals),
-   'profiles',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',category,'total',total)),'[]'::jsonb) FROM profiles),
-   'occupations',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',category,'total',total)),'[]'::jsonb) FROM occupations),
-   'pains',(SELECT coalesce(jsonb_agg(jsonb_build_object('code',code,'selectedCount',selected_count,'principalCount',principal_count,'averageIntensity',intensity)),'[]'::jsonb) FROM pain)
- ) INTO result;
- RETURN result;
-END $$;
-REVOKE ALL ON FUNCTION public.get_research_bi(uuid,text,text,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_research_bi(uuid,text,text,text) TO authenticated;
-NOTIFY pgrst,'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- Complete survey BI uses server-side aggregation. No PII is returned.
+-- CREATE OR REPLACE FUNCTION public.get_research_bi(
+--  p_form_id uuid DEFAULT NULL,
+--  p_nature text DEFAULT NULL,
+--  p_profile text DEFAULT NULL,
+--  p_occupation text DEFAULT NULL
+-- ) RETURNS jsonb
+-- LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=public AS $$
+-- DECLARE result jsonb;
+-- BEGIN
+--  IF NOT public.has_role(auth.uid(),'admin') THEN
+--    RAISE EXCEPTION 'Not authorized';
+--  END IF;
+--  WITH eligible AS (
+--    SELECT s.submission_id,s.tipo_usuario,s.ocupacao,s.research_form_id
+--    FROM public.form_submissions s
+--    JOIN public.research_forms f ON f.id=s.research_form_id
+--    WHERE (p_form_id IS NULL OR s.research_form_id=p_form_id)
+--      AND (p_nature IS NULL OR f.nature=p_nature)
+--      AND (p_profile IS NULL OR s.tipo_usuario::text=p_profile)
+--      AND (p_occupation IS NULL OR s.ocupacao=p_occupation)
+--  ), pain AS (
+--    SELECT p.codigo_dor::text AS code,
+--      count(*) FILTER(WHERE p.selecionada) AS selected_count,
+--      count(*) FILTER(WHERE p.principal) AS principal_count,
+--      round(avg(p.intensidade) FILTER(WHERE p.selecionada AND p.intensidade IS NOT NULL),2) AS intensity
+--    FROM eligible e JOIN public.form_submission_pain_points p ON p.submission_id=e.submission_id
+--    GROUP BY p.codigo_dor
+--  ), profiles AS (
+--    SELECT tipo_usuario::text AS category,count(*) AS total FROM eligible GROUP BY tipo_usuario
+--  ), occupations AS (
+--    SELECT coalesce(ocupacao,'NÃO INFORMADO') AS category,count(*) AS total FROM eligible GROUP BY coalesce(ocupacao,'NÃO INFORMADO')
+--  ), totals AS (SELECT count(*) AS total FROM eligible)
+--  SELECT jsonb_build_object(
+--    'total', (SELECT total FROM totals),
+--    'profiles',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',category,'total',total)),'[]'::jsonb) FROM profiles),
+--    'occupations',(SELECT coalesce(jsonb_agg(jsonb_build_object('category',category,'total',total)),'[]'::jsonb) FROM occupations),
+--    'pains',(SELECT coalesce(jsonb_agg(jsonb_build_object('code',code,'selectedCount',selected_count,'principalCount',principal_count,'averageIntensity',intensity)),'[]'::jsonb) FROM pain)
+--  ) INTO result;
+--  RETURN result;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.get_research_bi(uuid,text,text,text) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.get_research_bi(uuid,text,text,text) TO authenticated;
+-- NOTIFY pgrst,'reload schema';
