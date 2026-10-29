@@ -86,8 +86,10 @@ export function ResearchAnswerInsights({ formId }: { formId: string }) {
       return [...counts.entries()].map(([name,value])=>({name:formatResearchOption(name),value}))
         .sort((a,b)=>b.value-a.value);
     };
-    const hasSimple = questions.some(q=>q.semanticCode==="MOBILITY_PRIMARY_PAIN");
-    return hasSimple ? { selected:summarize("MOBILITY_PAINS"), primary:summarize("MOBILITY_PRIMARY_PAIN") } : null;
+    const primaryCode = questions.some(q=>q.semanticCode==="MOBILITY_PRIMARY_PAIN") ? "MOBILITY_PRIMARY_PAIN"
+      : questions.some(q=>q.semanticCode==="URBAN_PRIMARY_PAIN") ? "URBAN_PRIMARY_PAIN" : null;
+    const hasPains = questions.some(q=>q.semanticCode==="MOBILITY_PAINS");
+    return primaryCode || hasPains ? { selected:summarize("MOBILITY_PAINS"), primary:primaryCode?summarize(primaryCode):[] } : null;
   },[data,questions]);
   const denominator = current
     ? (data?.versions?.find((x) => x.id === current.versionId)?.total ?? null)
