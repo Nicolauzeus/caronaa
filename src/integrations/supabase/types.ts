@@ -1277,6 +1277,216 @@ export type Database = {
         }
         Relationships: []
       }
+      price_catalog_items: {
+        Row: {
+          billing_type: string
+          category: string
+          code: string
+          created_at: string
+          description_pt: string | null
+          id: string
+          is_active: boolean
+          is_coming_soon: boolean
+          is_pass_through_cost: boolean
+          is_starting_from: boolean
+          name_pt: string
+          quote_required: boolean
+          requires_onsite: boolean
+          sort_order: number
+          unit_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_type: string
+          category: string
+          code: string
+          created_at?: string
+          description_pt?: string | null
+          id?: string
+          is_active?: boolean
+          is_coming_soon?: boolean
+          is_pass_through_cost?: boolean
+          is_starting_from?: boolean
+          name_pt: string
+          quote_required?: boolean
+          requires_onsite?: boolean
+          sort_order?: number
+          unit_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_type?: string
+          category?: string
+          code?: string
+          created_at?: string
+          description_pt?: string | null
+          id?: string
+          is_active?: boolean
+          is_coming_soon?: boolean
+          is_pass_through_cost?: boolean
+          is_starting_from?: boolean
+          name_pt?: string
+          quote_required?: boolean
+          requires_onsite?: boolean
+          sort_order?: number
+          unit_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      price_catalog_prices: {
+        Row: {
+          currency: string
+          id: string
+          is_available: boolean
+          item_id: string
+          price_max: number
+          price_min: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          currency: string
+          id?: string
+          is_available?: boolean
+          item_id: string
+          price_max?: number
+          price_min?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          currency?: string
+          id?: string
+          is_available?: boolean
+          item_id?: string
+          price_max?: number
+          price_min?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_catalog_prices_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "price_catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_catalog_prices_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "public_price_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_change_log: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          currency: string | null
+          entity_id: string
+          entity_type: string
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          currency?: string | null
+          entity_id: string
+          entity_type: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          currency?: string | null
+          entity_id?: string
+          entity_type?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: []
+      }
+      pricing_rules: {
+        Row: {
+          applies_to: string
+          code: string
+          conditions: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name_pt: string
+          type: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          applies_to?: string
+          code: string
+          conditions?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_pt: string
+          type: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          applies_to?: string
+          code?: string
+          conditions?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_pt?: string
+          type?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      pricing_settings: {
+        Row: {
+          default_currency_by_country: Json
+          entrada_percent: number
+          estimate_validity_days: number
+          id: string
+          rounding_rule: Json
+          show_estimate_to_client: string
+          updated_at: string
+        }
+        Insert: {
+          default_currency_by_country?: Json
+          entrada_percent?: number
+          estimate_validity_days?: number
+          id?: string
+          rounding_rule?: Json
+          show_estimate_to_client?: string
+          updated_at?: string
+        }
+        Update: {
+          default_currency_by_country?: Json
+          entrada_percent?: number
+          estimate_validity_days?: number
+          id?: string
+          rounding_rule?: Json
+          show_estimate_to_client?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_events: {
         Row: {
           campaign: string | null
@@ -2846,6 +3056,126 @@ export type Database = {
         }
         Relationships: []
       }
+      service_requests: {
+        Row: {
+          admin_adjusted_total: number | null
+          admin_notes: string | null
+          agreed_deadline: string | null
+          agreed_payment_terms: string | null
+          agreed_price: number | null
+          brand_status: string | null
+          business_area: string | null
+          business_stage: string | null
+          city: string | null
+          client_id: string | null
+          company_name: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          country: string | null
+          created_at: string
+          currency: string | null
+          desired_deadline_days: number | null
+          estimate_snapshot: Json
+          estimate_valid_until: string | null
+          estimate_version: number
+          final_currency: string | null
+          global_answers: Json
+          id: string
+          internal_notes: string | null
+          ip_address: string | null
+          lead_id: string | null
+          primary_goals: string[]
+          privacy_policy_accepted: boolean | null
+          reference_code: string
+          reference_links: string | null
+          revision_history: Json
+          selected_bundle_code: string | null
+          status: string
+          trial_requested: boolean | null
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_adjusted_total?: number | null
+          admin_notes?: string | null
+          agreed_deadline?: string | null
+          agreed_payment_terms?: string | null
+          agreed_price?: number | null
+          brand_status?: string | null
+          business_area?: string | null
+          business_stage?: string | null
+          city?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          desired_deadline_days?: number | null
+          estimate_snapshot?: Json
+          estimate_valid_until?: string | null
+          estimate_version?: number
+          final_currency?: string | null
+          global_answers?: Json
+          id?: string
+          internal_notes?: string | null
+          ip_address?: string | null
+          lead_id?: string | null
+          primary_goals?: string[]
+          privacy_policy_accepted?: boolean | null
+          reference_code: string
+          reference_links?: string | null
+          revision_history?: Json
+          selected_bundle_code?: string | null
+          status?: string
+          trial_requested?: boolean | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_adjusted_total?: number | null
+          admin_notes?: string | null
+          agreed_deadline?: string | null
+          agreed_payment_terms?: string | null
+          agreed_price?: number | null
+          brand_status?: string | null
+          business_area?: string | null
+          business_stage?: string | null
+          city?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          desired_deadline_days?: number | null
+          estimate_snapshot?: Json
+          estimate_valid_until?: string | null
+          estimate_version?: number
+          final_currency?: string | null
+          global_answers?: Json
+          id?: string
+          internal_notes?: string | null
+          ip_address?: string | null
+          lead_id?: string | null
+          primary_goals?: string[]
+          privacy_policy_accepted?: boolean | null
+          reference_code?: string
+          reference_links?: string | null
+          revision_history?: Json
+          selected_bundle_code?: string | null
+          status?: string
+          trial_requested?: boolean | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       tech_work_item_events: {
         Row: {
           action: string
@@ -3113,7 +3443,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_price_catalog: {
+        Row: {
+          billing_type: string | null
+          category: string | null
+          code: string | null
+          currency: string | null
+          description_pt: string | null
+          id: string | null
+          is_available: boolean | null
+          is_coming_soon: boolean | null
+          is_pass_through_cost: boolean | null
+          is_starting_from: boolean | null
+          name_pt: string | null
+          price_max: number | null
+          price_min: number | null
+          quote_required: boolean | null
+          requires_onsite: boolean | null
+          sort_order: number | null
+          unit_label: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_operate_ride: {
@@ -3648,6 +3999,9 @@ export type Database = {
         Returns: boolean
       }
       has_valid_route_path: { Args: { p_path: Json }; Returns: boolean }
+      is_admin_or_team:
+        | { Args: never; Returns: boolean }
+        | { Args: { _user_id: string }; Returns: boolean }
       is_point_compatible_with_route: {
         Args: {
           endpoint_lat: number
@@ -3664,6 +4018,9 @@ export type Database = {
       }
       is_research_launch_locked: { Args: { p_user: string }; Returns: boolean }
       is_restricted_research: { Args: { p_form_id: string }; Returns: boolean }
+      is_super_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { p_user_id: string }; Returns: boolean }
       is_unifor_prelaunch_locked: {
         Args: { p_user_id: string }
         Returns: boolean
