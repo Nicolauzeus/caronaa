@@ -1,231 +1,232 @@
--- 0102: Reusable launch waiting room for institutional, corporate and event surveys.
--- Prerequisite: 0101 is applied. The form UUID is immutable; titles do not grant access.
--- The form's existing configuration.settings.launchDate and timezone control opening.
--- Archive/disable/publish status does NOT implicitly lift a waiting gate:
--- only the date or an audited administrator release can open the cohort.
--- A verified participation receipt or confirmed form-to-account link identifies cohort
--- participants, not proof of student/employee affiliation.
-
-CREATE TABLE IF NOT EXISTS public.research_launch_releases (
-  form_id uuid PRIMARY KEY REFERENCES public.research_forms(id) ON DELETE CASCADE,
-  released_at timestamptz,
-  released_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS public.research_launch_release_audit (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  form_id uuid NOT NULL REFERENCES public.research_forms(id) ON DELETE CASCADE,
-  actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  action text NOT NULL CHECK (action IN ('RELEASE','RELOCK')),
-  changed_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.research_launch_releases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.research_launch_release_audit ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.research_launch_releases FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON public.research_launch_release_audit FROM PUBLIC,anon,authenticated;
--- No public table write paths; security-definer RPCs below enforce admin role.
-
-CREATE OR REPLACE FUNCTION public.research_launch_participant(p_form uuid,p_user uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
- SELECT p_user IS NOT NULL AND (
-   EXISTS (
-     SELECT 1 FROM public.research_participation_badges b
-     WHERE b.form_id=p_form AND b.user_id=p_user
-   )
-   OR EXISTS (
-     SELECT 1 FROM public.form_submissions fs
-     JOIN public.form_submission_account_links link ON link.submission_id=fs.submission_id
-     WHERE fs.research_form_id=p_form AND fs.user_id=p_user
-       AND link.user_id=p_user AND link.confirmed_at IS NOT NULL
-   )
- );
-$body$;
-REVOKE ALL ON FUNCTION public.research_launch_participant(uuid,uuid) FROM PUBLIC,anon,authenticated;
-
-CREATE OR REPLACE FUNCTION public.is_research_launch_locked(p_user uuid)
-RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-BEGIN
- IF p_user IS NULL THEN RETURN false; END IF;
- -- Administrators can homologate while everyone else waits.
- IF EXISTS(SELECT 1 FROM public.user_roles r WHERE r.user_id=p_user AND r.role='admin') THEN
-   RETURN false;
- END IF;
- RETURN EXISTS (
-  SELECT 1 FROM public.research_configurations c
-  JOIN public.research_forms f ON f.id=c.form_id
-  LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
-  WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-    AND now() < (
-      (c.settings->>'launchDate')::date::timestamp
-      AT TIME ZONE COALESCE(
-        (SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),
-        'America/Fortaleza'
-      )
-    )
-    AND release.released_at IS NULL
-    AND public.research_launch_participant(f.id,p_user)
- );
-END $body$;
-REVOKE ALL ON FUNCTION public.is_research_launch_locked(uuid) FROM PUBLIC,anon,authenticated;
-
-CREATE OR REPLACE FUNCTION public.get_my_research_launch_state()
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-DECLARE
- u uuid:=auth.uid(); candidate record; launch_time timestamptz;
- j jsonb; role text; prev jsonb; s public.form_submissions%ROWTYPE;
-BEGIN
- IF u IS NULL THEN RETURN jsonb_build_object('locked',false); END IF;
- IF EXISTS(SELECT 1 FROM public.user_roles AS ur WHERE ur.user_id=u AND ur.role='admin') THEN
-   RETURN jsonb_build_object('locked',false);
- END IF;
- SELECT f.id AS form_id,f.code,f.title,f.nature,c.settings,
-       (c.settings->>'launchDate')::date AS launch_day
- INTO candidate
- FROM public.research_configurations c
- JOIN public.research_forms f ON f.id=c.form_id
- LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
- WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-   AND now() < (
-     (c.settings->>'launchDate')::date::timestamp
-     AT TIME ZONE COALESCE((SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza')
-   )
-   AND release.released_at IS NULL
-   AND public.research_launch_participant(f.id,u)
- ORDER BY launch_day DESC,f.id LIMIT 1;
- IF NOT FOUND THEN RETURN jsonb_build_object('locked',false); END IF;
- launch_time:=(candidate.launch_day::timestamp AT TIME ZONE
-    COALESCE((SELECT name FROM pg_timezone_names WHERE name=candidate.settings->>'timezone' LIMIT 1),'America/Fortaleza'));
- SELECT rj.journey INTO j
- FROM public.research_participation_badges b
- JOIN public.research_journeys rj ON rj.answer_id=b.answer_id
- WHERE b.user_id=u AND b.form_id=candidate.form_id
- ORDER BY b.verified_at DESC LIMIT 1;
- IF j IS NOT NULL THEN
-   role:=j->>'profile';
-   IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
-     prev:=jsonb_build_object(
-       'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
-       'origin',nullif(j->>'originArea',''),
-       'destination',nullif(j->>'destinationArea',''),
-       'departureTime',nullif(j->>'outboundTime',''),
-       'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
-     );
-   END IF;
- ELSE
-   SELECT fs.* INTO s FROM public.form_submissions fs
-   JOIN public.form_submission_account_links link ON link.submission_id=fs.submission_id
-   WHERE fs.user_id=u AND fs.research_form_id=candidate.form_id
-     AND link.user_id=u AND link.confirmed_at IS NOT NULL
-   ORDER BY fs.created_at DESC LIMIT 1;
-   IF FOUND THEN
-     role:=s.tipo_usuario::text;
-     IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
-       prev:=jsonb_build_object(
-         'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
-         'origin',nullif(s.origem_trajeto,''),'destination',nullif(s.destino_trajeto,''),
-         'departureTime',nullif(s.faixa_horario,''),'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
-       );
-     END IF;
-   END IF;
- END IF;
- RETURN jsonb_build_object('locked',true,'formId',candidate.form_id,'formCode',candidate.code,
-   'institution',coalesce(nullif(candidate.settings->>'publicName',''),nullif(candidate.settings->>'institutionName',''),candidate.title),
-   'nature',candidate.nature,'launchAt',to_char(launch_time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-   'preview',coalesce(prev,'null'::jsonb));
-END $body$;
-REVOKE ALL ON FUNCTION public.get_my_research_launch_state() FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_my_research_launch_state() TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.get_research_launch_admin_state(p_form_id uuid)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-DECLARE r record;
-BEGIN
- IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=auth.uid() AND role='admin')
- THEN RAISE EXCEPTION 'Acesso restrito ao administrador' USING ERRCODE='42501'; END IF;
- SELECT c.settings->>'launchDate' AS launch_date, release.released_at,
-  (SELECT count(*) FROM public.research_participation_badges WHERE form_id=p_form_id) AS linked_users
- INTO r FROM public.research_configurations c
- LEFT JOIN public.research_launch_releases release ON release.form_id=c.form_id
- WHERE c.form_id=p_form_id;
- IF NOT FOUND THEN RETURN jsonb_build_object('launchDate',null,'released',false,'linkedUsers',0); END IF;
- RETURN jsonb_build_object('launchDate',r.launch_date,'released',r.released_at IS NOT NULL,'linkedUsers',r.linked_users);
-END $body$;
-REVOKE ALL ON FUNCTION public.get_research_launch_admin_state(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_research_launch_admin_state(uuid) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.set_research_launch_release(p_form_id uuid,p_released boolean)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-BEGIN
- IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=auth.uid() AND role='admin')
- THEN RAISE EXCEPTION 'Somente administradores podem liberar o lançamento' USING ERRCODE='42501'; END IF;
- IF p_released IS NULL THEN RAISE EXCEPTION 'Ação inválida'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.research_configurations WHERE form_id=p_form_id AND settings->>'launchDate' IS NOT NULL)
- THEN RAISE EXCEPTION 'Defina a data de lançamento antes de liberar'; END IF;
- INSERT INTO public.research_launch_releases(form_id,released_at,released_by,updated_at)
- VALUES(p_form_id,CASE WHEN p_released THEN now() ELSE NULL END,
-        CASE WHEN p_released THEN auth.uid() ELSE NULL END,now())
- ON CONFLICT(form_id) DO UPDATE SET released_at=EXCLUDED.released_at,
- released_by=EXCLUDED.released_by,updated_at=now();
- INSERT INTO public.research_launch_release_audit(form_id,actor_id,action)
- VALUES(p_form_id,auth.uid(),CASE WHEN p_released THEN 'RELEASE' ELSE 'RELOCK' END);
- RETURN jsonb_build_object('released',p_released,'formId',p_form_id);
-END $body$;
-REVOKE ALL ON FUNCTION public.set_research_launch_release(uuid,boolean) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.set_research_launch_release(uuid,boolean) TO authenticated;
-
--- Editing the date should reset a previous early release, so the new schedule
--- cannot be bypassed accidentally by old launch settings.
-CREATE OR REPLACE FUNCTION public.reset_research_launch_release_on_date_change()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-BEGIN
- IF NEW.settings->>'launchDate' IS DISTINCT FROM OLD.settings->>'launchDate' THEN
-   UPDATE public.research_launch_releases
-   SET released_at=NULL,released_by=NULL,updated_at=now()
-   WHERE form_id=NEW.form_id;
- END IF;
- RETURN NEW;
-END $body$;
-DROP TRIGGER IF EXISTS trg_research_launch_date_change ON public.research_configurations;
-CREATE TRIGGER trg_research_launch_date_change AFTER UPDATE OF settings ON public.research_configurations
-FOR EACH ROW EXECUTE FUNCTION public.reset_research_launch_release_on_date_change();
-
--- Preserve the existing ride trigger installation (0101), change its decision
--- to consider all forms that have a scheduled launch.
-CREATE OR REPLACE FUNCTION public.guard_unifor_prelaunch_ride_write()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $body$
-BEGIN
- IF public.is_research_launch_locked(auth.uid()) THEN
-   RAISE EXCEPTION 'RESEARCH_LAUNCH_WAIT: pedidos, ofertas e reservas só ficam disponíveis após a liberação'
-     USING ERRCODE='42501';
- END IF;
- IF TG_OP='DELETE' THEN RETURN OLD; END IF;
- RETURN NEW;
-END $body$;
--- Protect the ancillary ride state as well: read receipts, boarding, tracking,
--- payments and legacy form publications must not bypass the waiting period.
-DO $extended$
-DECLARE tab text;
-BEGIN
- FOREACH tab IN ARRAY ARRAY[
-  'ride_locations','ride_boarding_codes','ride_completion_confirmations',
-  'ride_qr_tokens','ride_ratings','ride_notifications','ride_status_history',
-  'form_ride_publications','payments'
- ] LOOP
-  EXECUTE format('DROP TRIGGER IF EXISTS trg_research_launch_guard ON public.%I',tab);
-  EXECUTE format(
-   'CREATE TRIGGER trg_research_launch_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.guard_unifor_prelaunch_ride_write()',tab);
- END LOOP;
-END $extended$;
-
-DO $checks$
-DECLARE tab text;
-BEGIN
- FOREACH tab IN ARRAY ARRAY['ride_requests','ride_offers','ride_routines','ride_matches','rides'] LOOP
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger t
-    WHERE t.tgrelid=to_regclass('public.'||tab) AND t.tgname='trg_unifor_prelaunch_guard' AND NOT t.tgisinternal
-  ) THEN RAISE EXCEPTION 'Required ride-write protection not installed: %',tab; END IF;
- END LOOP;
-END $checks$;
-
-NOTIFY pgrst,'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- 0102: Reusable launch waiting room for institutional, corporate and event surveys.
+-- -- Prerequisite: 0101 is applied. The form UUID is immutable; titles do not grant access.
+-- -- The form's existing configuration.settings.launchDate and timezone control opening.
+-- -- Archive/disable/publish status does NOT implicitly lift a waiting gate:
+-- -- only the date or an audited administrator release can open the cohort.
+-- -- A verified participation receipt or confirmed form-to-account link identifies cohort
+-- -- participants, not proof of student/employee affiliation.
+-- 
+-- CREATE TABLE IF NOT EXISTS public.research_launch_releases (
+--   form_id uuid PRIMARY KEY REFERENCES public.research_forms(id) ON DELETE CASCADE,
+--   released_at timestamptz,
+--   released_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+--   updated_at timestamptz NOT NULL DEFAULT now()
+-- );
+-- CREATE TABLE IF NOT EXISTS public.research_launch_release_audit (
+--   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+--   form_id uuid NOT NULL REFERENCES public.research_forms(id) ON DELETE CASCADE,
+--   actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+--   action text NOT NULL CHECK (action IN ('RELEASE','RELOCK')),
+--   changed_at timestamptz NOT NULL DEFAULT now()
+-- );
+-- ALTER TABLE public.research_launch_releases ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.research_launch_release_audit ENABLE ROW LEVEL SECURITY;
+-- REVOKE ALL ON public.research_launch_releases FROM PUBLIC,anon,authenticated;
+-- REVOKE ALL ON public.research_launch_release_audit FROM PUBLIC,anon,authenticated;
+-- -- No public table write paths; security-definer RPCs below enforce admin role.
+-- 
+-- CREATE OR REPLACE FUNCTION public.research_launch_participant(p_form uuid,p_user uuid)
+-- RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+--  SELECT p_user IS NOT NULL AND (
+--    EXISTS (
+--      SELECT 1 FROM public.research_participation_badges b
+--      WHERE b.form_id=p_form AND b.user_id=p_user
+--    )
+--    OR EXISTS (
+--      SELECT 1 FROM public.form_submissions fs
+--      JOIN public.form_submission_account_links link ON link.submission_id=fs.submission_id
+--      WHERE fs.research_form_id=p_form AND fs.user_id=p_user
+--        AND link.user_id=p_user AND link.confirmed_at IS NOT NULL
+--    )
+--  );
+-- $body$;
+-- REVOKE ALL ON FUNCTION public.research_launch_participant(uuid,uuid) FROM PUBLIC,anon,authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.is_research_launch_locked(p_user uuid)
+-- RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- BEGIN
+--  IF p_user IS NULL THEN RETURN false; END IF;
+--  -- Administrators can homologate while everyone else waits.
+--  IF EXISTS(SELECT 1 FROM public.user_roles r WHERE r.user_id=p_user AND r.role='admin') THEN
+--    RETURN false;
+--  END IF;
+--  RETURN EXISTS (
+--   SELECT 1 FROM public.research_configurations c
+--   JOIN public.research_forms f ON f.id=c.form_id
+--   LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
+--   WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+--     AND now() < (
+--       (c.settings->>'launchDate')::date::timestamp
+--       AT TIME ZONE COALESCE(
+--         (SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),
+--         'America/Fortaleza'
+--       )
+--     )
+--     AND release.released_at IS NULL
+--     AND public.research_launch_participant(f.id,p_user)
+--  );
+-- END $body$;
+-- REVOKE ALL ON FUNCTION public.is_research_launch_locked(uuid) FROM PUBLIC,anon,authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.get_my_research_launch_state()
+-- RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- DECLARE
+--  u uuid:=auth.uid(); candidate record; launch_time timestamptz;
+--  j jsonb; role text; prev jsonb; s public.form_submissions%ROWTYPE;
+-- BEGIN
+--  IF u IS NULL THEN RETURN jsonb_build_object('locked',false); END IF;
+--  IF EXISTS(SELECT 1 FROM public.user_roles AS ur WHERE ur.user_id=u AND ur.role='admin') THEN
+--    RETURN jsonb_build_object('locked',false);
+--  END IF;
+--  SELECT f.id AS form_id,f.code,f.title,f.nature,c.settings,
+--        (c.settings->>'launchDate')::date AS launch_day
+--  INTO candidate
+--  FROM public.research_configurations c
+--  JOIN public.research_forms f ON f.id=c.form_id
+--  LEFT JOIN public.research_launch_releases release ON release.form_id=f.id
+--  WHERE c.settings->>'launchDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+--    AND now() < (
+--      (c.settings->>'launchDate')::date::timestamp
+--      AT TIME ZONE COALESCE((SELECT name FROM pg_timezone_names WHERE name=c.settings->>'timezone' LIMIT 1),'America/Fortaleza')
+--    )
+--    AND release.released_at IS NULL
+--    AND public.research_launch_participant(f.id,u)
+--  ORDER BY launch_day DESC,f.id LIMIT 1;
+--  IF NOT FOUND THEN RETURN jsonb_build_object('locked',false); END IF;
+--  launch_time:=(candidate.launch_day::timestamp AT TIME ZONE
+--     COALESCE((SELECT name FROM pg_timezone_names WHERE name=candidate.settings->>'timezone' LIMIT 1),'America/Fortaleza'));
+--  SELECT rj.journey INTO j
+--  FROM public.research_participation_badges b
+--  JOIN public.research_journeys rj ON rj.answer_id=b.answer_id
+--  WHERE b.user_id=u AND b.form_id=candidate.form_id
+--  ORDER BY b.verified_at DESC LIMIT 1;
+--  IF j IS NOT NULL THEN
+--    role:=j->>'profile';
+--    IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
+--      prev:=jsonb_build_object(
+--        'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
+--        'origin',nullif(j->>'originArea',''),
+--        'destination',nullif(j->>'destinationArea',''),
+--        'departureTime',nullif(j->>'outboundTime',''),
+--        'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
+--      );
+--    END IF;
+--  ELSE
+--    SELECT fs.* INTO s FROM public.form_submissions fs
+--    JOIN public.form_submission_account_links link ON link.submission_id=fs.submission_id
+--    WHERE fs.user_id=u AND fs.research_form_id=candidate.form_id
+--      AND link.user_id=u AND link.confirmed_at IS NOT NULL
+--    ORDER BY fs.created_at DESC LIMIT 1;
+--    IF FOUND THEN
+--      role:=s.tipo_usuario::text;
+--      IF role IN('PASSAGEIRO','MOTORISTA','AMBOS') THEN
+--        prev:=jsonb_build_object(
+--          'kind',CASE role WHEN 'PASSAGEIRO' THEN 'PEDIDO' WHEN 'MOTORISTA' THEN 'OFERTA' ELSE 'AMBOS' END,
+--          'origin',nullif(s.origem_trajeto,''),'destination',nullif(s.destino_trajeto,''),
+--          'departureTime',nullif(s.faixa_horario,''),'scheduledDate',candidate.launch_day,'status','VISUALIZACAO'
+--        );
+--      END IF;
+--    END IF;
+--  END IF;
+--  RETURN jsonb_build_object('locked',true,'formId',candidate.form_id,'formCode',candidate.code,
+--    'institution',coalesce(nullif(candidate.settings->>'publicName',''),nullif(candidate.settings->>'institutionName',''),candidate.title),
+--    'nature',candidate.nature,'launchAt',to_char(launch_time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+--    'preview',coalesce(prev,'null'::jsonb));
+-- END $body$;
+-- REVOKE ALL ON FUNCTION public.get_my_research_launch_state() FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.get_my_research_launch_state() TO authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.get_research_launch_admin_state(p_form_id uuid)
+-- RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- DECLARE r record;
+-- BEGIN
+--  IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=auth.uid() AND role='admin')
+--  THEN RAISE EXCEPTION 'Acesso restrito ao administrador' USING ERRCODE='42501'; END IF;
+--  SELECT c.settings->>'launchDate' AS launch_date, release.released_at,
+--   (SELECT count(*) FROM public.research_participation_badges WHERE form_id=p_form_id) AS linked_users
+--  INTO r FROM public.research_configurations c
+--  LEFT JOIN public.research_launch_releases release ON release.form_id=c.form_id
+--  WHERE c.form_id=p_form_id;
+--  IF NOT FOUND THEN RETURN jsonb_build_object('launchDate',null,'released',false,'linkedUsers',0); END IF;
+--  RETURN jsonb_build_object('launchDate',r.launch_date,'released',r.released_at IS NOT NULL,'linkedUsers',r.linked_users);
+-- END $body$;
+-- REVOKE ALL ON FUNCTION public.get_research_launch_admin_state(uuid) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.get_research_launch_admin_state(uuid) TO authenticated;
+-- 
+-- CREATE OR REPLACE FUNCTION public.set_research_launch_release(p_form_id uuid,p_released boolean)
+-- RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- BEGIN
+--  IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=auth.uid() AND role='admin')
+--  THEN RAISE EXCEPTION 'Somente administradores podem liberar o lançamento' USING ERRCODE='42501'; END IF;
+--  IF p_released IS NULL THEN RAISE EXCEPTION 'Ação inválida'; END IF;
+--  IF NOT EXISTS(SELECT 1 FROM public.research_configurations WHERE form_id=p_form_id AND settings->>'launchDate' IS NOT NULL)
+--  THEN RAISE EXCEPTION 'Defina a data de lançamento antes de liberar'; END IF;
+--  INSERT INTO public.research_launch_releases(form_id,released_at,released_by,updated_at)
+--  VALUES(p_form_id,CASE WHEN p_released THEN now() ELSE NULL END,
+--         CASE WHEN p_released THEN auth.uid() ELSE NULL END,now())
+--  ON CONFLICT(form_id) DO UPDATE SET released_at=EXCLUDED.released_at,
+--  released_by=EXCLUDED.released_by,updated_at=now();
+--  INSERT INTO public.research_launch_release_audit(form_id,actor_id,action)
+--  VALUES(p_form_id,auth.uid(),CASE WHEN p_released THEN 'RELEASE' ELSE 'RELOCK' END);
+--  RETURN jsonb_build_object('released',p_released,'formId',p_form_id);
+-- END $body$;
+-- REVOKE ALL ON FUNCTION public.set_research_launch_release(uuid,boolean) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.set_research_launch_release(uuid,boolean) TO authenticated;
+-- 
+-- -- Editing the date should reset a previous early release, so the new schedule
+-- -- cannot be bypassed accidentally by old launch settings.
+-- CREATE OR REPLACE FUNCTION public.reset_research_launch_release_on_date_change()
+-- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- BEGIN
+--  IF NEW.settings->>'launchDate' IS DISTINCT FROM OLD.settings->>'launchDate' THEN
+--    UPDATE public.research_launch_releases
+--    SET released_at=NULL,released_by=NULL,updated_at=now()
+--    WHERE form_id=NEW.form_id;
+--  END IF;
+--  RETURN NEW;
+-- END $body$;
+-- DROP TRIGGER IF EXISTS trg_research_launch_date_change ON public.research_configurations;
+-- CREATE TRIGGER trg_research_launch_date_change AFTER UPDATE OF settings ON public.research_configurations
+-- FOR EACH ROW EXECUTE FUNCTION public.reset_research_launch_release_on_date_change();
+-- 
+-- -- Preserve the existing ride trigger installation (0101), change its decision
+-- -- to consider all forms that have a scheduled launch.
+-- CREATE OR REPLACE FUNCTION public.guard_unifor_prelaunch_ride_write()
+-- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $body$
+-- BEGIN
+--  IF public.is_research_launch_locked(auth.uid()) THEN
+--    RAISE EXCEPTION 'RESEARCH_LAUNCH_WAIT: pedidos, ofertas e reservas só ficam disponíveis após a liberação'
+--      USING ERRCODE='42501';
+--  END IF;
+--  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+--  RETURN NEW;
+-- END $body$;
+-- -- Protect the ancillary ride state as well: read receipts, boarding, tracking,
+-- -- payments and legacy form publications must not bypass the waiting period.
+-- DO $extended$
+-- DECLARE tab text;
+-- BEGIN
+--  FOREACH tab IN ARRAY ARRAY[
+--   'ride_locations','ride_boarding_codes','ride_completion_confirmations',
+--   'ride_qr_tokens','ride_ratings','ride_notifications','ride_status_history',
+--   'form_ride_publications','payments'
+--  ] LOOP
+--   EXECUTE format('DROP TRIGGER IF EXISTS trg_research_launch_guard ON public.%I',tab);
+--   EXECUTE format(
+--    'CREATE TRIGGER trg_research_launch_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.guard_unifor_prelaunch_ride_write()',tab);
+--  END LOOP;
+-- END $extended$;
+-- 
+-- DO $checks$
+-- DECLARE tab text;
+-- BEGIN
+--  FOREACH tab IN ARRAY ARRAY['ride_requests','ride_offers','ride_routines','ride_matches','rides'] LOOP
+--   IF NOT EXISTS (
+--     SELECT 1 FROM pg_trigger t
+--     WHERE t.tgrelid=to_regclass('public.'||tab) AND t.tgname='trg_unifor_prelaunch_guard' AND NOT t.tgisinternal
+--   ) THEN RAISE EXCEPTION 'Required ride-write protection not installed: %',tab; END IF;
+--  END LOOP;
+-- END $checks$;
+-- 
+-- NOTIFY pgrst,'reload schema';

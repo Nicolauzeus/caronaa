@@ -1,43 +1,44 @@
--- 0111 | Limit legacy driver Pix display to the driver after a completed ride.
--- The Asaas checkout preview remains payer-only and does not generate charges.
--- Zero writes to rides, keys, prices, payments or historic snapshots.
-CREATE OR REPLACE FUNCTION public.get_ride_pix(p_ride_id uuid)
-RETURNS jsonb
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $pix$
-DECLARE
-  r public.rides%ROWTYPE;
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000';
-  END IF;
-
-  SELECT * INTO r
-    FROM public.rides
-   WHERE ride_id=p_ride_id;
-
-  -- Do not disclose a driver's payment key to passengers or outsiders.
-  IF NOT FOUND OR r.driver_user_id IS DISTINCT FROM auth.uid() THEN
-    RAISE EXCEPTION 'Pix privado do motorista indisponível para este usuário'
-      USING ERRCODE = '42501';
-  END IF;
-
-  IF r.status <> 'COMPLETED' THEN
-    RAISE EXCEPTION 'Pix disponível após conclusão por ambos'
-      USING ERRCODE = '22023';
-  END IF;
-
-  RETURN jsonb_build_object(
-    'key',(SELECT d.pix_key FROM public.driver_pix_settings d WHERE d.user_id=r.driver_user_id),
-    'name',(SELECT p.full_name FROM public.profiles p WHERE p.id=r.driver_user_id),
-    'amount',r.passenger_contribution
-  );
-END $pix$;
-
-REVOKE ALL ON FUNCTION public.get_ride_pix(uuid)
-  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_ride_pix(uuid) TO authenticated;
-NOTIFY pgrst, 'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- 0111 | Limit legacy driver Pix display to the driver after a completed ride.
+-- -- The Asaas checkout preview remains payer-only and does not generate charges.
+-- -- Zero writes to rides, keys, prices, payments or historic snapshots.
+-- CREATE OR REPLACE FUNCTION public.get_ride_pix(p_ride_id uuid)
+-- RETURNS jsonb
+-- LANGUAGE plpgsql
+-- STABLE
+-- SECURITY DEFINER
+-- SET search_path = ''
+-- AS $pix$
+-- DECLARE
+--   r public.rides%ROWTYPE;
+-- BEGIN
+--   IF auth.uid() IS NULL THEN
+--     RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000';
+--   END IF;
+-- 
+--   SELECT * INTO r
+--     FROM public.rides
+--    WHERE ride_id=p_ride_id;
+-- 
+--   -- Do not disclose a driver's payment key to passengers or outsiders.
+--   IF NOT FOUND OR r.driver_user_id IS DISTINCT FROM auth.uid() THEN
+--     RAISE EXCEPTION 'Pix privado do motorista indisponível para este usuário'
+--       USING ERRCODE = '42501';
+--   END IF;
+-- 
+--   IF r.status <> 'COMPLETED' THEN
+--     RAISE EXCEPTION 'Pix disponível após conclusão por ambos'
+--       USING ERRCODE = '22023';
+--   END IF;
+-- 
+--   RETURN jsonb_build_object(
+--     'key',(SELECT d.pix_key FROM public.driver_pix_settings d WHERE d.user_id=r.driver_user_id),
+--     'name',(SELECT p.full_name FROM public.profiles p WHERE p.id=r.driver_user_id),
+--     'amount',r.passenger_contribution
+--   );
+-- END $pix$;
+-- 
+-- REVOKE ALL ON FUNCTION public.get_ride_pix(uuid)
+--   FROM PUBLIC, anon, authenticated;
+-- GRANT EXECUTE ON FUNCTION public.get_ride_pix(uuid) TO authenticated;
+-- NOTIFY pgrst, 'reload schema';

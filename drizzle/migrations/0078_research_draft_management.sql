@@ -1,26 +1,27 @@
--- Admin-only atomic deletion of drafts without any response history.
--- Historical and published forms cannot be deleted.
-CREATE OR REPLACE FUNCTION public.delete_empty_research_draft(p_form_id uuid)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE form_status text; form_enabled boolean;
-BEGIN
- IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
-  RAISE EXCEPTION 'Not authorized' USING ERRCODE='42501';
- END IF;
- SELECT status,is_enabled INTO form_status,form_enabled FROM public.research_forms
- WHERE id=p_form_id FOR UPDATE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Form not found'; END IF;
- IF form_status <> 'RASCUNHO' OR form_enabled THEN
-  RAISE EXCEPTION 'Only inactive drafts may be deleted';
- END IF;
- IF EXISTS(SELECT 1 FROM public.form_submissions WHERE research_form_id=p_form_id)
- OR EXISTS(SELECT 1 FROM public.research_answers WHERE form_id=p_form_id)
- OR EXISTS(SELECT 1 FROM public.research_form_versions WHERE form_id=p_form_id AND published_at IS NOT NULL)
- THEN RAISE EXCEPTION 'Forms with responses or published versions cannot be deleted'; END IF;
- DELETE FROM public.research_form_versions WHERE form_id=p_form_id;
- DELETE FROM public.research_forms WHERE id=p_form_id;
- RETURN true;
-END $$;
-REVOKE ALL ON FUNCTION public.delete_empty_research_draft(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.delete_empty_research_draft(uuid) TO authenticated;
-NOTIFY pgrst,'reload schema';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- Admin-only atomic deletion of drafts without any response history.
+-- -- Historical and published forms cannot be deleted.
+-- CREATE OR REPLACE FUNCTION public.delete_empty_research_draft(p_form_id uuid)
+-- RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+-- DECLARE form_status text; form_enabled boolean;
+-- BEGIN
+--  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+--   RAISE EXCEPTION 'Not authorized' USING ERRCODE='42501';
+--  END IF;
+--  SELECT status,is_enabled INTO form_status,form_enabled FROM public.research_forms
+--  WHERE id=p_form_id FOR UPDATE;
+--  IF NOT FOUND THEN RAISE EXCEPTION 'Form not found'; END IF;
+--  IF form_status <> 'RASCUNHO' OR form_enabled THEN
+--   RAISE EXCEPTION 'Only inactive drafts may be deleted';
+--  END IF;
+--  IF EXISTS(SELECT 1 FROM public.form_submissions WHERE research_form_id=p_form_id)
+--  OR EXISTS(SELECT 1 FROM public.research_answers WHERE form_id=p_form_id)
+--  OR EXISTS(SELECT 1 FROM public.research_form_versions WHERE form_id=p_form_id AND published_at IS NOT NULL)
+--  THEN RAISE EXCEPTION 'Forms with responses or published versions cannot be deleted'; END IF;
+--  DELETE FROM public.research_form_versions WHERE form_id=p_form_id;
+--  DELETE FROM public.research_forms WHERE id=p_form_id;
+--  RETURN true;
+-- END $$;
+-- REVOKE ALL ON FUNCTION public.delete_empty_research_draft(uuid) FROM PUBLIC,anon;
+-- GRANT EXECUTE ON FUNCTION public.delete_empty_research_draft(uuid) TO authenticated;
+-- NOTIFY pgrst,'reload schema';

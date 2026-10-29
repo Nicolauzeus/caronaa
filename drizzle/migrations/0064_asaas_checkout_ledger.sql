@@ -1,60 +1,61 @@
--- CARONAA Asaas sandbox ledger. Deploy only after checking existing migrations.
--- No frontend role may read, insert, update or delete these payment records.
-CREATE TABLE IF NOT EXISTS public.asaas_checkout_intents (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ride_id uuid NOT NULL REFERENCES public.rides(ride_id) ON DELETE RESTRICT,
-  payer_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-  driver_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-  driver_wallet_id text NOT NULL CHECK (length(btrim(driver_wallet_id)) BETWEEN 8 AND 128),
-  fare_cents bigint NOT NULL CHECK (fare_cents > 0),
-  processing_fee_cents bigint NOT NULL CHECK (processing_fee_cents >= 0),
-  passenger_total_cents bigint NOT NULL CHECK (passenger_total_cents > 0),
-  driver_fixed_cents bigint NOT NULL CHECK (driver_fixed_cents > 0),
-  platform_target_cents bigint NOT NULL CHECK (platform_target_cents > 0),
-  fee_source text NOT NULL CHECK (fee_source = 'ASAAS_ACCOUNT_VERIFIED'),
-  accepted_at timestamptz NOT NULL,
-  quote_expires_at timestamptz NOT NULL,
-  status text NOT NULL DEFAULT 'CREATED' CHECK (
-    status IN ('CREATED','PROVIDER_PENDING','RECEIVED','RECONCILE','SPLIT_SETTLED','REFUNDED','FAILED','CANCELLED')
-  ),
-  asaas_payment_id text UNIQUE,
-  asaas_customer_id text,
-  asaas_net_cents bigint,
-  actual_fee_cents bigint,
-  split_settled_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT checkout_party_distinct CHECK (payer_user_id <> driver_user_id),
-  CONSTRAINT checkout_totals_match CHECK (
-    passenger_total_cents = fare_cents + processing_fee_cents AND
-    platform_target_cents + driver_fixed_cents = fare_cents
-  ),
-  CONSTRAINT checkout_expiry_valid CHECK (quote_expires_at > accepted_at)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS asaas_one_active_checkout_per_ride
-  ON public.asaas_checkout_intents(ride_id)
-  WHERE status IN ('CREATED','PROVIDER_PENDING','RECEIVED','RECONCILE','SPLIT_SETTLED');
-CREATE INDEX IF NOT EXISTS asaas_checkout_payer_idx
-  ON public.asaas_checkout_intents(payer_user_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS public.asaas_webhook_inbox (
-  event_id text PRIMARY KEY,
-  payment_id text NOT NULL,
-  event_type text NOT NULL,
-  payload jsonb NOT NULL,
-  received_at timestamptz NOT NULL DEFAULT now(),
-  processed_at timestamptz,
-  process_error text
-);
-CREATE INDEX IF NOT EXISTS asaas_webhook_payment_idx
-  ON public.asaas_webhook_inbox(payment_id, received_at DESC);
-
-ALTER TABLE public.asaas_checkout_intents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.asaas_webhook_inbox ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.asaas_checkout_intents FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.asaas_webhook_inbox FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.asaas_checkout_intents TO service_role;
-GRANT SELECT, INSERT, UPDATE ON public.asaas_webhook_inbox TO service_role;
-
-COMMENT ON TABLE public.asaas_checkout_intents IS 'Trusted, private Asaas checkout snapshots. Only service role may mutate. No payment state derived solely from a QR image.';
-COMMENT ON TABLE public.asaas_webhook_inbox IS 'Idempotent webhook inbox. Verify Asaas token and provider payment separately before marking financial state.';
+-- The content of this migration cannot be applied: its objects already exist in the database; marked as processed with owner authorization (2026-10-29).
+-- -- CARONAA Asaas sandbox ledger. Deploy only after checking existing migrations.
+-- -- No frontend role may read, insert, update or delete these payment records.
+-- CREATE TABLE IF NOT EXISTS public.asaas_checkout_intents (
+--   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   ride_id uuid NOT NULL REFERENCES public.rides(ride_id) ON DELETE RESTRICT,
+--   payer_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+--   driver_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+--   driver_wallet_id text NOT NULL CHECK (length(btrim(driver_wallet_id)) BETWEEN 8 AND 128),
+--   fare_cents bigint NOT NULL CHECK (fare_cents > 0),
+--   processing_fee_cents bigint NOT NULL CHECK (processing_fee_cents >= 0),
+--   passenger_total_cents bigint NOT NULL CHECK (passenger_total_cents > 0),
+--   driver_fixed_cents bigint NOT NULL CHECK (driver_fixed_cents > 0),
+--   platform_target_cents bigint NOT NULL CHECK (platform_target_cents > 0),
+--   fee_source text NOT NULL CHECK (fee_source = 'ASAAS_ACCOUNT_VERIFIED'),
+--   accepted_at timestamptz NOT NULL,
+--   quote_expires_at timestamptz NOT NULL,
+--   status text NOT NULL DEFAULT 'CREATED' CHECK (
+--     status IN ('CREATED','PROVIDER_PENDING','RECEIVED','RECONCILE','SPLIT_SETTLED','REFUNDED','FAILED','CANCELLED')
+--   ),
+--   asaas_payment_id text UNIQUE,
+--   asaas_customer_id text,
+--   asaas_net_cents bigint,
+--   actual_fee_cents bigint,
+--   split_settled_at timestamptz,
+--   created_at timestamptz NOT NULL DEFAULT now(),
+--   updated_at timestamptz NOT NULL DEFAULT now(),
+--   CONSTRAINT checkout_party_distinct CHECK (payer_user_id <> driver_user_id),
+--   CONSTRAINT checkout_totals_match CHECK (
+--     passenger_total_cents = fare_cents + processing_fee_cents AND
+--     platform_target_cents + driver_fixed_cents = fare_cents
+--   ),
+--   CONSTRAINT checkout_expiry_valid CHECK (quote_expires_at > accepted_at)
+-- );
+-- CREATE UNIQUE INDEX IF NOT EXISTS asaas_one_active_checkout_per_ride
+--   ON public.asaas_checkout_intents(ride_id)
+--   WHERE status IN ('CREATED','PROVIDER_PENDING','RECEIVED','RECONCILE','SPLIT_SETTLED');
+-- CREATE INDEX IF NOT EXISTS asaas_checkout_payer_idx
+--   ON public.asaas_checkout_intents(payer_user_id, created_at DESC);
+-- 
+-- CREATE TABLE IF NOT EXISTS public.asaas_webhook_inbox (
+--   event_id text PRIMARY KEY,
+--   payment_id text NOT NULL,
+--   event_type text NOT NULL,
+--   payload jsonb NOT NULL,
+--   received_at timestamptz NOT NULL DEFAULT now(),
+--   processed_at timestamptz,
+--   process_error text
+-- );
+-- CREATE INDEX IF NOT EXISTS asaas_webhook_payment_idx
+--   ON public.asaas_webhook_inbox(payment_id, received_at DESC);
+-- 
+-- ALTER TABLE public.asaas_checkout_intents ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.asaas_webhook_inbox ENABLE ROW LEVEL SECURITY;
+-- REVOKE ALL ON public.asaas_checkout_intents FROM PUBLIC, anon, authenticated;
+-- REVOKE ALL ON public.asaas_webhook_inbox FROM PUBLIC, anon, authenticated;
+-- GRANT SELECT, INSERT, UPDATE ON public.asaas_checkout_intents TO service_role;
+-- GRANT SELECT, INSERT, UPDATE ON public.asaas_webhook_inbox TO service_role;
+-- 
+-- COMMENT ON TABLE public.asaas_checkout_intents IS 'Trusted, private Asaas checkout snapshots. Only service role may mutate. No payment state derived solely from a QR image.';
+-- COMMENT ON TABLE public.asaas_webhook_inbox IS 'Idempotent webhook inbox. Verify Asaas token and provider payment separately before marking financial state.';
