@@ -54,6 +54,11 @@ export async function saveOnboarding(
     updated_at: new Date().toISOString() };
   if (fields.region_code) {
     next.institution_code = institutionForRegion(fields.region_code);
+    // Changing region invalidates previously saved affiliation/role until reviewed.
+    if (existing?.region_code && existing.region_code !== fields.region_code) {
+      next.affiliation_type = null;
+      next.usage_role = null;
+    }
   }
   const { data, error } = await table().upsert(next, { onConflict: "user_id" }).select("*").single();
   if (error) throw new Error("Não foi possível salvar. Tente novamente.");
@@ -63,9 +68,11 @@ export async function saveOnboarding(
 export async function completeOnboarding(progress: Progress): Promise<void> {
   const userId = await authenticatedUserId();
   if (userId !== progress.user_id || !canComplete(progress)) throw new Error("Complete as etapas essenciais.");
-  const { error } = await table().update({
+  const { data: latest, error: readError } = await table().select("*").eq("user_id", userId).single();
+  if (readError || !latest || !canComplete(latest as Progress)) throw new Error("Revise seu perfil antes de continuar.");
+  const { data, error } = await table().update({
     status: "BASIC_COMPLETED", current_step: "DONE",
     completed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  }).eq("user_id", userId).eq("status", "IN_PROGRESS");
-  if (error) throw new Error("Não foi possível concluir seu perfil.");
+  }).eq("user_id", userId).eq("status", "IN_PROGRESS").select("user_id").maybeSingle();
+  if (error || !data) throw new Error("Não foi possível concluir seu perfil.");
 }
