@@ -37,7 +37,7 @@ describe("configuração dinâmica de pesquisa acadêmica", () => {
       target: { value: "Instituto Livre" },
     });
     expect(screen.getByTestId("state").textContent).toContain("Instituto Livre");
-    fireEvent.click(screen.getByRole("tab", { name: "Serviço e política" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Serviço e política" }), {button:0,ctrlKey:false});
     fireEvent.change(screen.getByLabelText(/Data prevista de presença ou início de operação/), {
       target: { value: "2027-03-05" },
     });
