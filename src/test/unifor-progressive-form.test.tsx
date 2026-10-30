@@ -48,7 +48,7 @@ describe("UNIFOR fullscreen progressive form",()=>{
   it("first selects an explicit profile, then shows only one question per screen",async()=>{
     const {container}=render(<PublicResearchForm code="UNIFOR" />);
     await screen.findByText("Como pretende participar?");
-    expect(container.querySelector("main")?.className).toContain("overflow-hidden");
+    expect(container.querySelector("main")?.className).toContain("min-h-[100dvh]");
     expect(screen.queryByText("Qual é sua rotina?")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio",{name:/Quero encontrar carona/}));
     fireEvent.click(screen.getByRole("button",{name:/Continuar/}));
