@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
+import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommuteSuggestion";
 import { Button } from "@/components/ui/button";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
@@ -259,6 +260,15 @@ function Home() {
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
+        <FavoriteCommuteSuggestion onChoose={(from,to)=>{
+          setOriginSource("MANUAL_ORIGIN");
+          setOrigin(from.label);
+          setDestination(to.label);
+          setOriginLocation({rawText:from.label,formattedAddress:from.label,lat:from.lat,lng:from.lng});
+          setDestinationLocation({rawText:to.label,formattedAddress:to.label,lat:to.lat,lng:to.lng});
+          setPanelOpen(true);
+        }}/>
+
         <section className="mb-4 space-y-3 sm:hidden" aria-label="Começar uma carona">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#FFBB00]">
