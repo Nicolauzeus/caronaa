@@ -10,7 +10,7 @@ import {
   type Progress, type RegionCode, type Affiliation, type UsageRole,
 } from "@/lib/onboarding/progressive-onboarding";
 
-export const Route = createFileRoute("/onboarding")({ component: OnboardingPage });
+export const Route = createFileRoute("/onboarding")({ ssr: false, component: OnboardingPage });
 
 const regions: { value: RegionCode; label: string; detail: string }[] = [
   {value:"FORTALEZA",label:"Fortaleza e região metropolitana",detail:"Comunidade UNIFOR"},
