@@ -81,8 +81,8 @@ describe("Página /auth Redesenhada", () => {
     const signupTab = screen.getByRole("tab", { name: /Criar minha conta/i });
     fireEvent.click(signupTab);
 
-    // Modo cadastro: somente o necessário (Nome, E-mail, Senha)
-    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
+    // Modo cadastro progressivo: e-mail e senha; nome sera solicitado mais tarde.
+    expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/E-mail/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Esqueci minha senha/i })).not.toBeInTheDocument();
@@ -107,13 +107,13 @@ describe("Página /auth Redesenhada", () => {
   it("permite iniciar cadastro sem submissão de evento", () => {
     mockSearchState = { mode: "cadastro" };
     render(<AuthComponent />);
-    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Criar minha conta/i })).toBeInTheDocument();
   });
 
   it("preserva cadastro após conclusão do formulário", () => {
     mockSearchState = { mode: "cadastro", submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc103" };
     render(<AuthComponent />);
-    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
   });
 });

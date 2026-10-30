@@ -124,6 +124,7 @@ describe("Página de Relacionamento & Pitch no Admin", () => {
 
   it("renderiza o cabeçalho, botões de ação e métricas do CRM", async () => {
     render(<AdminRelacionamentosPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Gestão de Pitch / Cadastro manual" }));
 
     expect(screen.getByText("Relacionamentos & Pitch STS")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Novo Contato/i })).toBeInTheDocument();
@@ -147,6 +148,7 @@ describe("Página de Relacionamento & Pitch no Admin", () => {
 
   it("filtra contatos por busca de texto", async () => {
     render(<AdminRelacionamentosPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Gestão de Pitch / Cadastro manual" }));
 
     await waitFor(() => {
       expect(screen.getByText("Carlos Drummond")).toBeInTheDocument();
@@ -165,6 +167,7 @@ describe("Página de Relacionamento & Pitch no Admin", () => {
 
   it("abre modal com detalhes completos do contato e salva anotações da equipe", async () => {
     render(<AdminRelacionamentosPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Gestão de Pitch / Cadastro manual" }));
 
     await waitFor(() => {
       expect(screen.getByText("Carlos Drummond")).toBeInTheDocument();
@@ -195,6 +198,7 @@ describe("Página de Relacionamento & Pitch no Admin", () => {
 
   it("permite cadastrar um novo contato manualmente através do formulário administrativo", async () => {
     render(<AdminRelacionamentosPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Gestão de Pitch / Cadastro manual" }));
 
     const newContactBtn = screen.getByRole("button", { name: /Novo Contato/i });
     fireEvent.click(newContactBtn);
@@ -227,6 +231,7 @@ describe("Página de Relacionamento & Pitch no Admin", () => {
 
   it("aciona exportação de contatos CSV ao clicar no botão de download", async () => {
     render(<AdminRelacionamentosPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Gestão de Pitch / Cadastro manual" }));
 
     await waitFor(() => {
       expect(screen.getByText("Carlos Drummond")).toBeInTheDocument();

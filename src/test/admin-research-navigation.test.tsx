@@ -100,10 +100,7 @@ describe("Research detail navigation preserves management workflows", () => {
     });
     await waitFor(() => expect(api.hash).toBe("respostas"));
     view.rerender(<Page />);
-    expect(screen.getByRole("link", { name: /Ver registros históricos/ })).toHaveAttribute(
-      "href",
-      "/admin/formularios/respostas",
-    );
+    expect(screen.getByText("Respostas de todos os formulários")).toBeInTheDocument();
     expect(api.read).toHaveBeenCalledTimes(1);
   });
 });

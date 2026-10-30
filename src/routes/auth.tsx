@@ -7,7 +7,6 @@ import {
   Mail,
   MapPinned,
   ShieldCheck,
-  UserRound,
   UsersRound,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -27,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
@@ -69,8 +69,6 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const effectiveMode = mode;
-  const [name, setName] = useState("");
-  const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -88,10 +86,22 @@ function AuthPage() {
       : "/home";
 
   useEffect(() => {
-    if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
-      void navigate({ to: destination });
-    }
-  }, [destination, isGoogleCallback, loading, navigate, regionStatus, user]);
+    if (loading || !user || (isGoogleCallback && regionStatus !== "allowed")) return;
+    let active = true;
+    void (async () => {
+      let next = mode === "cadastro" || destination === "/onboarding" ? "/onboarding" : destination;
+      if (next !== "/onboarding" && user.email_confirmed_at) {
+        try {
+          const saved = await readOnboarding();
+          if (saved?.status === "IN_PROGRESS") next = "/onboarding";
+        } catch {
+          // Keep legacy sign-in behavior until migration is available.
+        }
+      }
+      if (active) await navigate({ to: next === "/onboarding" ? "/onboarding" : destination });
+    })();
+    return () => { active = false; };
+  }, [destination, isGoogleCallback, loading, mode, navigate, regionStatus, user]);
 
   useEffect(() => {
     if (!isGoogleCallback || loading || !user || regionStatus !== "checking") return;
@@ -127,10 +137,9 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/auth?mode=cadastro&redirect=%2Fonboarding`,
             data: {
-              full_name: name.trim(),
-              gender,
+              full_name: "",
             },
           },
         });
@@ -144,7 +153,14 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      await navigate({ to: destination });
+      if (mode === "cadastro") {
+        await navigate({ to: "/onboarding" });
+      } else {
+        let resume = false;
+        try { resume = (await readOnboarding())?.status === "IN_PROGRESS"; }
+        catch { /* Migration may not be active; preserve legacy login. */ }
+        await navigate({ to: resume ? "/onboarding" : destination });
+      }
     } catch (error) {
       toast.error(authErrorMessage(error));
     } finally {
@@ -326,49 +342,6 @@ function AuthPage() {
 
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
-        {effectiveMode === "cadastro" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="name" className="text-xs font-semibold text-foreground">
-              Nome completo
-            </Label>
-            <div className="relative">
-              <UserRound
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                size={18}
-              />
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12 rounded-xl border-border bg-auth-field pl-10 text-sm font-medium shadow-inner"
-                placeholder="Como prefere ser chamado"
-                autoComplete="name"
-                required
-              />
-            </div>
-          </div>
-        )}
-        {effectiveMode === "cadastro" && (
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-semibold text-foreground">Gênero</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ["FEMININO", "Feminino"],
-                ["MASCULINO", "Masculino"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setGender(value as "FEMININO" | "MASCULINO")}
-                  className={`h-11 rounded-xl border text-sm font-bold ${gender === value ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        )}
-
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">
             E-mail
@@ -439,7 +412,7 @@ function AuthPage() {
         <Button
           type="submit"
           className="h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition mt-2"
-          disabled={busy || (effectiveMode === "cadastro" && !gender)}
+          disabled={busy}
         >
           {busy ? (
             "Aguarde..."

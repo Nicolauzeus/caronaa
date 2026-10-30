@@ -74,8 +74,8 @@ describe("CRM multiformulários admin", () => {
     await screen.findByText("Ana");
     fireEvent.click(screen.getAllByRole("button",{name:"Ver ficha"})[0]);
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/Participações e respostas completas/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByText(/UNIFOR ·/));
+    expect(within(dialog).getByRole("region", { name: "Histórico de participações" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: /UNIFOR/ }));
     expect(within(dialog).getByText("Espera")).toBeInTheDocument();
     fireEvent.change(within(dialog).getByRole("combobox",{name:"Alterar status do CRM"}),
       {target:{value:"EM_ACOMPANHAMENTO"}});
