@@ -85,9 +85,9 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
-      void navigate({ to: destination });
+      void navigate({ to: mode === "cadastro" ? "/onboarding" : destination });
     }
-  }, [destination, isGoogleCallback, loading, navigate, regionStatus, user]);
+  }, [destination, isGoogleCallback, loading, mode, navigate, regionStatus, user]);
 
   useEffect(() => {
     if (!isGoogleCallback || loading || !user || regionStatus !== "checking") return;
@@ -123,7 +123,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/auth?mode=cadastro&redirect=%2Fonboarding`,
             data: {
               full_name: "",
             },
