@@ -3370,6 +3370,90 @@ export type Database = {
           },
         ]
       }
+      user_favorite_places: {
+        Row: {
+          kind: string
+          label: string
+          latitude: number
+          longitude: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          kind: string
+          label: string
+          latitude: number
+          longitude: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          kind?: string
+          label?: string
+          latitude?: number
+          longitude?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_onboarding_events: {
+        Row: {
+          event_type: string
+          recorded_at: string
+          step: string
+          user_id: string
+        }
+        Insert: {
+          event_type: string
+          recorded_at?: string
+          step: string
+          user_id: string
+        }
+        Update: {
+          event_type?: string
+          recorded_at?: string
+          step?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_onboarding_progress: {
+        Row: {
+          affiliation_type: string | null
+          completed_at: string | null
+          current_step: string
+          institution_code: string | null
+          region_code: string | null
+          status: string
+          updated_at: string
+          usage_role: string | null
+          user_id: string
+        }
+        Insert: {
+          affiliation_type?: string | null
+          completed_at?: string | null
+          current_step?: string
+          institution_code?: string | null
+          region_code?: string | null
+          status?: string
+          updated_at?: string
+          usage_role?: string | null
+          user_id: string
+        }
+        Update: {
+          affiliation_type?: string | null
+          completed_at?: string | null
+          current_step?: string
+          institution_code?: string | null
+          region_code?: string | null
+          status?: string
+          updated_at?: string
+          usage_role?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3815,6 +3899,7 @@ export type Database = {
       }
       get_municipal_research_overview: { Args: never; Returns: Json }
       get_my_admin_scope: { Args: never; Returns: Json }
+      get_my_onboarding_research_suggestions: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
       get_my_research_launch_state: { Args: never; Returns: Json }
       get_my_research_participation_badges: {
