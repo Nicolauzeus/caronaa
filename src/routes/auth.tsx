@@ -7,8 +7,6 @@ import {
   Mail,
   MapPinned,
   ShieldCheck,
-  UserRound,
-  UsersRound,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -69,9 +67,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const effectiveMode = mode;
-  const [name, setName] = useState("");
-  const [gender, setGender] = useState<"FEMININO" | "MASCULINO" | "">("");
-  const [email, setEmail] = useState("");
+      const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -129,8 +125,7 @@ function AuthPage() {
           options: {
             emailRedirectTo: window.location.origin,
             data: {
-              full_name: name.trim(),
-              gender,
+              full_name: "",
             },
           },
         });
@@ -144,7 +139,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      await navigate({ to: destination });
+      await navigate({ to: mode === "cadastro" ? "/onboarding" : destination });
     } catch (error) {
       toast.error(authErrorMessage(error));
     } finally {
@@ -326,49 +321,6 @@ function AuthPage() {
 
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
-        {effectiveMode === "cadastro" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="name" className="text-xs font-semibold text-foreground">
-              Nome completo
-            </Label>
-            <div className="relative">
-              <UserRound
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                size={18}
-              />
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12 rounded-xl border-border bg-auth-field pl-10 text-sm font-medium shadow-inner"
-                placeholder="Como prefere ser chamado"
-                autoComplete="name"
-                required
-              />
-            </div>
-          </div>
-        )}
-        {effectiveMode === "cadastro" && (
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-semibold text-foreground">Gênero</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ["FEMININO", "Feminino"],
-                ["MASCULINO", "Masculino"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setGender(value as "FEMININO" | "MASCULINO")}
-                  className={`h-11 rounded-xl border text-sm font-bold ${gender === value ? "border-primary bg-primary/15 text-foreground" : "border-border bg-card"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        )}
-
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">
             E-mail
