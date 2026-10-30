@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, MapPin, GraduationCap, CarFront, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { trackOnboardingEvent } from "@/lib/onboarding/onboarding-events";
+import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommuteSuggestion";
 import { useAuth } from "@/lib/auth-context";
 import { claimPendingParticipations, readPendingParticipations, getMyResearchParticipationBadges } from "@/lib/formulario/research-participation";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
@@ -60,13 +62,14 @@ function OnboardingPage() {
     if(busy)return;
     setBusy(true);
     try{
-      if(step===0&&region){const p=await saveOnboarding({region_code:region,current_step:"AFFILIATION"});setProgress(p);setStep(1);}
-      else if(step===1&&affiliation){const p=await saveOnboarding({affiliation_type:affiliation,current_step:"ROLE"});setProgress(p);setStep(2);}
-      else if(step===2&&role){const p=await saveOnboarding({usage_role:role,current_step:"REVIEW"});setProgress(p);setStep(3);}
+      if(step===0&&region){const p=await saveOnboarding({region_code:region,current_step:"AFFILIATION"});setProgress(p);setStep(1);void trackOnboardingEvent("STEP", "REGION");}
+      else if(step===1&&affiliation){const p=await saveOnboarding({affiliation_type:affiliation,current_step:"ROLE"});setProgress(p);setStep(2);void trackOnboardingEvent("STEP", "AFFILIATION");}
+      else if(step===2&&role){const p=await saveOnboarding({usage_role:role,current_step:"REVIEW"});setProgress(p);setStep(3);void trackOnboardingEvent("STEP", "ROLE");}
       else if(step===3&&progress){
         // Resolve access before completion to avoid masking launch gate failures.
         const launch=await getMyResearchLaunchState();
         await completeOnboarding(progress);
+        void trackOnboardingEvent("COMPLETED", "DONE");
         await navigate({to:launch.locked?"/aguardando":"/home"});
       }
     }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível continuar.");}
@@ -97,6 +100,7 @@ function OnboardingPage() {
           {step===3&&<div className="space-y-3 rounded-3xl border border-white/15 bg-white/[0.06] p-5 backdrop-blur-2xl"><p className="text-sm">Região: <b>{regions.find(x=>x.value===region)?.label}</b></p><p className="text-sm">Instituição: <b>{region?institutionForRegion(region)??"Não vinculada":"Não vinculada"}</b></p><p className="text-sm">Vínculo: <b>{affiliations.find(x=>x.value===affiliation)?.label}</b></p><p className="text-sm">Perfil: <b>{roles.find(x=>x.value===role)?.label}</b></p><p className="pt-2 text-xs text-white/55">A conclusão do cadastro não libera campanhas em pré-lançamento.</p></div>}
         </div>
       </section>
+      {step===3&&<div className="pb-4"><FavoriteCommuteSuggestion onChoose={()=>{}} /></div>}
       <footer className="sticky bottom-0 z-10 flex gap-3 bg-[#111111]/90 py-3 backdrop-blur-2xl">
         {step>0&&<button type="button" disabled={busy} onClick={()=>setStep(x=>x-1)} className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/[0.06]" aria-label="Voltar"><ArrowLeft/></button>}
         <button type="button" disabled={busy||(step===0&&!region)||(step===1&&!affiliation)||(step===2&&!role)} onClick={()=>void advance()} className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-40">{busy?"Salvando…":step===3?"Entrar no CARONAA":"Continuar"}<ArrowRight size={19}/></button>
