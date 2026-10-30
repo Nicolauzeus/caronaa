@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, MapPin, GraduationCap, CarFront, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { loadVerifiedResearchSuggestions, type ResearchSuggestion } from "@/lib/onboarding/research-suggestions";
 import { trackOnboardingEvent } from "@/lib/onboarding/onboarding-events";
 import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommuteSuggestion";
 import { useAuth } from "@/lib/auth-context";
@@ -43,6 +44,7 @@ function OnboardingPage() {
   const [affiliation,setAffiliation] = useState<Affiliation|null>(null);
   const [role,setRole] = useState<UsageRole|null>(null);
   const [researchCount,setResearchCount] = useState(0);
+  const [hint,setHint] = useState<ResearchSuggestion|null>(null);
   useEffect(()=>{
     if(authLoading)return;
     if(!user){void navigate({to:"/auth",search:{mode:"entrar",redirect:"/onboarding"}});return;}
@@ -50,6 +52,7 @@ function OnboardingPage() {
     let active=true;
     if(readPendingParticipations().length) void claimPendingParticipations().then(()=>getMyResearchParticipationBadges()).then(badges=>{if(active)setResearchCount(badges.length);}).catch(()=>undefined);
     else void getMyResearchParticipationBadges().then(badges=>{if(active)setResearchCount(badges.length);}).catch(()=>undefined);
+    void loadVerifiedResearchSuggestions().then(v=>{if(active)setHint(v);}).catch(()=>undefined);
     readOnboarding().then(p=>{
       if(!active)return;
       if(p?.status==="BASIC_COMPLETED"){void getMyResearchLaunchState().then(launch=>navigate({to:launch.locked?"/aguardando":"/home"})).catch(()=>setLoadError(true));return;}
@@ -93,6 +96,13 @@ function OnboardingPage() {
         <h1 className="font-display text-[clamp(1.7rem,6vw,2.1rem)] font-bold leading-tight">{["Onde você está?","Qual é seu vínculo?","Como vai usar o CARONAA?","Tudo pronto para começar."][step]}</h1>
         <p className="mt-2 text-sm leading-6 text-white/60">{["Escolha sua região. Mostraremos sua comunidade e instituições próximas.","Escolha a opção que melhor representa você. Isso pode mudar depois.","Você poderá alternar entre os papéis a qualquer momento.","Você pode adicionar seu trajeto mais tarde, ao buscar ou oferecer uma carona."][step]}</p>
         {researchCount>0&&step===0&&<p className="mt-4 rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 px-4 py-3 text-xs text-[#FFE09A]">Encontramos {researchCount} participação(ões) vinculada(s) à sua conta. Seus lançamentos permanecem preservados.</p>}
+        {hint&&hint.sourceCount>0&&step<3&&<div className="mt-3 rounded-2xl border border-white/15 bg-white/[0.05] p-3 text-xs">
+          <p className="font-semibold text-[#FFBB00]">Sugestão das pesquisas verificadas</p>
+          <p className="mt-1 text-white/60">Encontramos dados de {hint.sourceCount} participação(ões). Confirme antes de utilizar.</p>
+          {hint.conflict&&<p className="mt-1 text-white/70">Há respostas divergentes. Você pode escolher os dados atuais.</p>}
+          {step===0&&hint.region&&<button type="button" onClick={()=>setRegion(hint.region)} className="mt-2 rounded-xl border border-[#FFBB00]/40 px-3 py-2">Usar região sugerida</button>}
+          {step===2&&hint.role&&<button type="button" onClick={()=>setRole(hint.role)} className="mt-2 rounded-xl border border-[#FFBB00]/40 px-3 py-2">Usar perfil sugerido: {hint.role}</button>}
+        </div>}
         <div className="mt-7 space-y-3">
           {step===0&&regions.map(item=><button key={item.value} type="button" className={optionClass(region===item.value)} onClick={()=>setRegion(item.value)}><MapPin size={19} className="shrink-0 text-[#FFBB00]"/><span className="flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="block text-xs text-white/50">{item.detail}</span></span>{region===item.value&&<Check size={19} className="text-[#FFBB00]"/>}</button>)}
           {step===1&&<><p className="mb-2 text-xs text-white/50">Instituição sugerida: {region?institutionForRegion(region)??"Sem instituição obrigatória":"Escolha sua região"}</p>{affiliations.map(item=><button key={item.value} type="button" className={optionClass(affiliation===item.value)} onClick={()=>setAffiliation(item.value)}><Users size={18} className="text-[#FFBB00]"/><span className="flex-1 text-sm font-semibold">{item.label}</span>{affiliation===item.value&&<Check size={19} className="text-[#FFBB00]"/>}</button>)}</>}
@@ -100,6 +110,7 @@ function OnboardingPage() {
           {step===3&&<div className="space-y-3 rounded-3xl border border-white/15 bg-white/[0.06] p-5 backdrop-blur-2xl"><p className="text-sm">Região: <b>{regions.find(x=>x.value===region)?.label}</b></p><p className="text-sm">Instituição: <b>{region?institutionForRegion(region)??"Não vinculada":"Não vinculada"}</b></p><p className="text-sm">Vínculo: <b>{affiliations.find(x=>x.value===affiliation)?.label}</b></p><p className="text-sm">Perfil: <b>{roles.find(x=>x.value===role)?.label}</b></p><p className="pt-2 text-xs text-white/55">A conclusão do cadastro não libera campanhas em pré-lançamento.</p></div>}
         </div>
       </section>
+      {step===3&&hint?.journey&&<div className="mb-3 rounded-xl border border-white/15 bg-white/[0.05] p-3 text-xs text-white/70">Trajeto lembrado da pesquisa: {hint.journey.origin} → {hint.journey.destination}. Você poderá confirmá-lo ao pedir ou oferecer carona; nenhuma viagem foi criada.</div>}
       {step===3&&<div className="pb-4"><FavoriteCommuteSuggestion onChoose={()=>{}} /></div>}
       <footer className="sticky bottom-0 z-10 flex gap-3 bg-[#111111]/90 py-3 backdrop-blur-2xl">
         {step>0&&<button type="button" disabled={busy} onClick={()=>setStep(x=>x-1)} className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/[0.06]" aria-label="Voltar"><ArrowLeft/></button>}
