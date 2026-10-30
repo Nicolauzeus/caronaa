@@ -25,3 +25,14 @@ Implementação na branch `feat/progressive-onboarding`. **Não aplicar em produ
 
 ## Regra de merge
 Manter a branch isolada até concluir integração, testes e validação em homologação. Nada de deploy automático ou reescrever histórico da branch Lovable.
+
+## Revisão técnica adicional — 29/10
+- Retomada do progresso em login por senha e callback de confirmação.
+- O onboarding recupera badges somente pela RPC existente e recibos privados verificados; a associação automática de respostas completas não foi implementada.
+- A alteração de região invalida papel e vínculo anteriores, exigindo nova revisão.
+- A conclusão relê o banco e valida os campos; a navegação consulta o gate de lançamento.
+- A tela permite rolagem vertical em viewports compactos, preservando a área de ação.
+- Casos unitários adicionais cobrem instituição incompatível, vínculo comunitário, ausência de papel e expansão.
+- **Execução de testes não realizada:** acesso de terminal ao GitHub falhou por DNS neste ambiente. Os arquivos foram gravados via conector; não considerar testes aprovados.
+- **Atenção:** o uso de uma tabela de onboarding com permissões de escrita pelo titular serve apenas para preferências declaradas. Nunca tratar esses campos como verificação de matrícula ou permissão para publicar carona.
+- Falta auditar conflito com outras migrations em branches paralelas e efetuar teste de integração com banco real.
