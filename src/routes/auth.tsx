@@ -7,6 +7,7 @@ import {
   Mail,
   MapPinned,
   ShieldCheck,
+  UsersRound,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -411,7 +412,7 @@ function AuthPage() {
         <Button
           type="submit"
           className="h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition mt-2"
-          disabled={busy || (effectiveMode === "cadastro" && !gender)}
+          disabled={busy}
         >
           {busy ? (
             "Aguarde..."
