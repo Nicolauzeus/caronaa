@@ -5,7 +5,7 @@ import type {FormLocationDetails} from "@/lib/location/types";
 import {listFavoritePlaces,saveFavoritePlace} from "@/lib/onboarding/favorite-places-service";
 import {suggestOppositeDestination,type FavoriteKind,type FavoritePlace} from "@/lib/onboarding/favorite-places";
 
-type Props={onChoose:(from:FavoritePlace,to:FavoritePlace)=>void};
+type Props={onChoose?:(from:FavoritePlace,to:FavoritePlace)=>void};
 export function FavoriteCommuteSuggestion({onChoose}:Props){
  const [places,setPlaces]=useState<FavoritePlace[]>([]);
  const [editing,setEditing]=useState<FavoriteKind|null>(null);
@@ -49,7 +49,7 @@ export function FavoriteCommuteSuggestion({onChoose}:Props){
       <button type="button" disabled={busy||details?.lat==null||details?.lng==null} className="min-h-11 flex-1 rounded-xl bg-[#FFBB00] px-3 text-sm font-semibold text-[#121212] disabled:opacity-40" onClick={()=>void store()}>Salvar local</button>
     </div>
    </div>}
-  {home&&work&&<div className="mt-3 space-y-2">
+  {home&&work&&onChoose&&<div className="mt-3 space-y-2">
     <button type="button" disabled={busy} onClick={locate} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 px-3 text-sm font-semibold"><MapPin size={16}/>Sugerir destino pela minha localização</button>
     {suggestion?<button type="button" className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 text-sm font-bold text-[#121212]" onClick={()=>onChoose(suggestion.from,suggestion.to)}>Ir de {suggestion.from.kind==="HOME"?"Casa":"Escola/Trabalho"} para {suggestion.to.kind==="HOME"?"Casa":"Escola/Trabalho"}</button>:
      <div className="flex gap-2"><button type="button" onClick={()=>onChoose(home,work)} className="min-h-10 flex-1 rounded-xl border border-white/20 px-2 text-xs">Casa → Escola/Trabalho</button><button type="button" onClick={()=>onChoose(work,home)} className="min-h-10 flex-1 rounded-xl border border-white/20 px-2 text-xs">Escola/Trabalho → Casa</button></div>}
