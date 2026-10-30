@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
@@ -84,9 +85,21 @@ function AuthPage() {
       : "/home";
 
   useEffect(() => {
-    if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
-      void navigate({ to: mode === "cadastro" || destination === "/onboarding" ? "/onboarding" : destination });
-    }
+    if (loading || !user || (isGoogleCallback && regionStatus !== "allowed")) return;
+    let active = true;
+    void (async () => {
+      let next = mode === "cadastro" || destination === "/onboarding" ? "/onboarding" : destination;
+      if (next !== "/onboarding" && user.email_confirmed_at) {
+        try {
+          const saved = await readOnboarding();
+          if (saved?.status === "IN_PROGRESS") next = "/onboarding";
+        } catch {
+          // Keep legacy sign-in behavior until migration is available.
+        }
+      }
+      if (active) await navigate({ to: next === "/onboarding" ? "/onboarding" : destination });
+    })();
+    return () => { active = false; };
   }, [destination, isGoogleCallback, loading, mode, navigate, regionStatus, user]);
 
   useEffect(() => {
