@@ -152,7 +152,14 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      await navigate({ to: mode === "cadastro" ? "/onboarding" : destination });
+      if (mode === "cadastro") {
+        await navigate({ to: "/onboarding" });
+      } else {
+        let resume = false;
+        try { resume = (await readOnboarding())?.status === "IN_PROGRESS"; }
+        catch { /* Migration may not be active; preserve legacy login. */ }
+        await navigate({ to: resume ? "/onboarding" : destination });
+      }
     } catch (error) {
       toast.error(authErrorMessage(error));
     } finally {
