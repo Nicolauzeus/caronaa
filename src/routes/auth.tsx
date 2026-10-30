@@ -67,7 +67,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const effectiveMode = mode;
-      const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -85,7 +85,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user && (!isGoogleCallback || regionStatus === "allowed")) {
-      void navigate({ to: mode === "cadastro" ? "/onboarding" : destination });
+      void navigate({ to: mode === "cadastro" || destination === "/onboarding" ? "/onboarding" : destination });
     }
   }, [destination, isGoogleCallback, loading, mode, navigate, regionStatus, user]);
 
