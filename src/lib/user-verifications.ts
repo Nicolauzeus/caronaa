@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserVerificationType = "UNIFOR" | "STS_2026";
+export type UserVerificationType = "UNIFOR" | "STS_2026" | "CARONAA_TEST";
 
 export type UserVerificationStatus = "VERIFIED" | "REVOKED";
 
@@ -139,6 +139,9 @@ export function getVerificationLabel(type: UserVerificationType): string {
     case "STS_2026":
       return "STS 2026";
 
+    case "CARONAA_TEST":
+      return "CARONAA · Piloto";
+
     default:
       return type;
   }
@@ -151,6 +154,9 @@ export function getVerificationDescription(type: UserVerificationType): string {
 
     case "STS_2026":
       return "Participação registrada pelo formulário oficial do CARONAA no Siará Tech Summit 2026.";
+
+    case "CARONAA_TEST":
+      return "Perfil habilitado administrativamente para homologação. Não representa verificação documental ou institucional.";
 
     default:
       return "Verificação do usuário.";
