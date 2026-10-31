@@ -34,6 +34,8 @@ import { useUserLocation, locationFailureMessages } from "@/lib/location/use-use
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
+import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 
 export const Route = createFileRoute("/_authenticated/home")({
   // Parent route already verifies login and applies institution waiting gates.
@@ -44,6 +46,12 @@ export const Route = createFileRoute("/_authenticated/home")({
     if (getAdminAppPreview(data.user.id)) return;
     const destination = await getMyAdminEntry();
     if (destination) throw redirect({ to: destination as "/admin", replace: true });
+    const progress = await readOnboarding();
+    if (progress?.status !== "BASIC_COMPLETED") {
+      throw redirect({ to: "/onboarding", replace: true });
+    }
+    const next = await resolvePostOnboardingDestination();
+    if (next !== "/home") throw redirect({ to: next, replace: true });
   },
   head: () => ({
     meta: [

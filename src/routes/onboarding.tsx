@@ -8,6 +8,7 @@ import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommu
 import { useAuth } from "@/lib/auth-context";
 import { claimPendingParticipations, readPendingParticipations, getMyResearchParticipationBadges } from "@/lib/formulario/research-participation";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
+import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import {
   readOnboarding, saveOnboarding, completeOnboarding, institutionForRegion,
   type Progress, type RegionCode, type Affiliation, type UsageRole,
@@ -55,7 +56,7 @@ function OnboardingPage() {
     void loadVerifiedResearchSuggestions().then(v=>{if(active)setHint(v);}).catch(()=>undefined);
     readOnboarding().then(p=>{
       if(!active)return;
-      if(p?.status==="BASIC_COMPLETED"){void getMyResearchLaunchState().then(launch=>navigate({to:launch.locked?"/aguardando":"/home"})).catch(()=>setLoadError(true));return;}
+      if(p?.status==="BASIC_COMPLETED"){void resolvePostOnboardingDestination().then(to=>navigate({to})).catch(()=>setLoadError(true));return;}
       setProgress(p);setRegion(p?.region_code??null);setAffiliation(p?.affiliation_type??null);setRole(p?.usage_role??null);
       setStep(p?.current_step==="AFFILIATION"?1:p?.current_step==="ROLE"?2:p?.current_step==="REVIEW"?3:0);
     }).catch(()=>{if(active){setLoadError(true);toast.error("Não foi possível carregar seu perfil.");}}).finally(()=>{if(active)setLoading(false);});
@@ -70,10 +71,10 @@ function OnboardingPage() {
       else if(step===2&&role){const p=await saveOnboarding({usage_role:role,current_step:"REVIEW"});setProgress(p);setStep(3);void trackOnboardingEvent("STEP", "ROLE");}
       else if(step===3&&progress){
         // Resolve access before completion to avoid masking launch gate failures.
-        const launch=await getMyResearchLaunchState();
+        await getMyResearchLaunchState(); // Preserve launch-state error detection before committing.
         await completeOnboarding(progress);
         void trackOnboardingEvent("COMPLETED", "DONE");
-        await navigate({to:launch.locked?"/aguardando":"/home"});
+        await navigate({to:await resolvePostOnboardingDestination()});
       }
     }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível continuar.");}
     finally{setBusy(false);}
