@@ -219,8 +219,8 @@ function ResearchWaitingRoom() {
           )}
           {!busy && !error && launches.length > 0 && (
             <p className="text-center text-xs leading-5 text-white/60">
-              Não aparece alguma pesquisa? No seu perfil, vincule o recibo privado
-              da participação à sua conta.
+              Não aparece alguma pesquisa? Atualize a página para sincronizar as participações.
+              Se continuar ausente, entre em contato com o suporte.
             </p>
           )}
           {!state?.locked && launches.length > 0 && (
