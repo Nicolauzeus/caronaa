@@ -27,6 +27,7 @@ import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
@@ -89,16 +90,19 @@ function AuthPage() {
     if (loading || !user || (isGoogleCallback && regionStatus !== "allowed")) return;
     let active = true;
     void (async () => {
-      let next = mode === "cadastro" || destination === "/onboarding" ? "/onboarding" : destination;
-      if (next !== "/onboarding" && user.email_confirmed_at) {
-        try {
+      try {
+        let next: string = "/onboarding";
+        if (mode !== "cadastro" && destination !== "/onboarding") {
           const saved = await readOnboarding();
-          if (saved?.status === "IN_PROGRESS") next = "/onboarding";
-        } catch {
-          // Keep legacy sign-in behavior until migration is available.
+          if (saved?.status === "BASIC_COMPLETED") {
+            next = await resolvePostOnboardingDestination();
+          }
         }
+        if (active) await navigate({ to: next === "/home" ? destination : next, replace: true });
+      } catch (error) {
+        // Fail closed: do not send a user to Home if the research check fails.
+        if (active) toast.error(error instanceof Error ? error.message : "Não foi possível verificar seu acesso.");
       }
-      if (active) await navigate({ to: next === "/onboarding" ? "/onboarding" : destination });
     })();
     return () => { active = false; };
   }, [destination, isGoogleCallback, loading, mode, navigate, regionStatus, user]);
@@ -156,10 +160,11 @@ function AuthPage() {
       if (mode === "cadastro") {
         await navigate({ to: "/onboarding" });
       } else {
-        let resume = false;
-        try { resume = (await readOnboarding())?.status === "IN_PROGRESS"; }
-        catch { /* Migration may not be active; preserve legacy login. */ }
-        await navigate({ to: resume ? "/onboarding" : destination });
+        const saved = await readOnboarding();
+        const next = saved?.status === "BASIC_COMPLETED"
+          ? await resolvePostOnboardingDestination()
+          : "/onboarding";
+        await navigate({ to: next === "/home" ? destination : next, replace: true });
       }
     } catch (error) {
       toast.error(authErrorMessage(error));
