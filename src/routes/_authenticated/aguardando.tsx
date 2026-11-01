@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-r
 import { useEffect, useState } from "react";
 import {
   CalendarClock,
-  Clock3,
   LockKeyhole,
   MapPin,
   RefreshCw,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyResearchLaunchState, type ResearchLaunchState } from "@/lib/research-launch";
+import { CircularLaunchCountdown } from "@/components/caronaa/CircularLaunchCountdown";
 
 export const Route = createFileRoute("/_authenticated/aguardando")({
   head: () => ({
@@ -37,18 +37,6 @@ function launchDate(iso?: string) {
   }).format(new Date(iso));
 }
 
-function countdown(iso: string | undefined, now: number) {
-  if (!iso || !Number.isFinite(Date.parse(iso))) return "Consultando data…";
-  const total = Math.max(0, Math.ceil((Date.parse(iso) - now) / 60000));
-  if (total === 0) return "Abertura em andamento";
-  const days = Math.floor(total / 1440),
-    hours = Math.floor((total % 1440) / 60),
-    minutes = total % 60;
-  return [days ? days + "d" : null, hours ? hours + "h" : null, minutes + "min"]
-    .filter(Boolean)
-    .join(" ");
-}
-
 function ResearchWaitingRoom() {
   const navigate = useNavigate();
   const router = useRouter();
@@ -56,6 +44,13 @@ function ResearchWaitingRoom() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+
+  // The dial must tick every second. The server campaign/lock state is still
+  // refreshed every minute below, so this never bypasses the launch gate.
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -202,17 +197,7 @@ function ResearchWaitingRoom() {
                 <p className="text-xs text-white/55">
                   Esta prévia não representa uma corrida publicada nem uma reserva.
                 </p>
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.04] px-3 py-2">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-white/50">
-                      Contagem regressiva
-                    </p>
-                    <p className="text-lg font-extrabold tabular-nums text-[#ffc451]">
-                      {countdown(launch.launchAt, now)}
-                    </p>
-                  </div>
-                  <Clock3 aria-hidden="true" size={22} className="text-[#ffc451]" />
-                </div>
+                <CircularLaunchCountdown launchAt={launch.launchAt} now={now} />
               </section>
               ))}
             </div>
