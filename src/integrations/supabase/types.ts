@@ -4477,7 +4477,7 @@ export type Database = {
         | "RIDE_REPEATED"
       user_verification_source: "EMAIL_DOMAIN" | "EVENT_FORM" | "ADMIN"
       user_verification_status: "VERIFIED" | "REVOKED"
-      user_verification_type: "UNIFOR" | "STS_2026"
+      user_verification_type: "UNIFOR" | "STS_2026" | "CARONAA_TEST"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4650,7 +4650,7 @@ export const Constants = {
       ],
       user_verification_source: ["EMAIL_DOMAIN", "EVENT_FORM", "ADMIN"],
       user_verification_status: ["VERIFIED", "REVOKED"],
-      user_verification_type: ["UNIFOR", "STS_2026"],
+      user_verification_type: ["UNIFOR", "STS_2026", "CARONAA_TEST"],
     },
   },
 } as const
