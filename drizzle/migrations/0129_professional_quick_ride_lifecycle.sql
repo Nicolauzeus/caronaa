@@ -163,7 +163,7 @@ REVOKE ALL ON FUNCTION public.quick_ride_request(text,text,text,text,double prec
  public.quick_ride_my_requests(),public.quick_ride_driver_queue(text),public.quick_ride_accept(uuid),public.quick_ride_confirm_pickup(uuid),
  public.quick_ride_transition(uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.quick_ride_request(text,text,text,text,double precision,double precision,double precision,double precision),
- public.quick_ride_my_requests(),public.quick_ride_driver_queue(text),public.quick_ride_accept(uuid),
+ public.quick_ride_my_requests(),public.quick_ride_driver_queue(text),public.quick_ride_accept(uuid),public.quick_ride_confirm_pickup(uuid),
  public.quick_ride_transition(uuid,text) TO authenticated;
 COMMENT ON TABLE public.professional_quick_rides IS 'Professional quick ride lifecycle gate. No fare/payment and OFF until region dispatch_enabled approved.';
 NOTIFY pgrst,'reload schema';
