@@ -1566,6 +1566,83 @@ export type Database = {
           },
         ]
       }
+      professional_driver_authorizations: {
+        Row: {
+          approved: boolean
+          approved_at: string | null
+          updated_at: string
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          approved?: boolean
+          approved_at?: string | null
+          updated_at?: string
+          user_id: string
+          vehicle_type?: string
+        }
+        Update: {
+          approved?: boolean
+          approved_at?: string | null
+          updated_at?: string
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_driver_authorizations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_driver_locations: {
+        Row: {
+          accuracy_m: number
+          lat: number
+          lng: number
+          municipality: string
+          sampled_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy_m: number
+          lat: number
+          lng: number
+          municipality: string
+          sampled_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy_m?: number
+          lat?: number
+          lng?: number
+          municipality?: string
+          sampled_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_driver_locations_municipality_fkey"
+            columns: ["municipality"]
+            isOneToOne: false
+            referencedRelation: "professional_service_regions"
+            referencedColumns: ["municipality"]
+          },
+          {
+            foreignKeyName: "professional_driver_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_presence: {
         Row: {
           is_available: boolean
@@ -1590,6 +1667,112 @@ export type Database = {
           municipality?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      professional_quick_rides: {
+        Row: {
+          accepted_at: string | null
+          completed_at: string | null
+          destination_label: string
+          destination_lat: number
+          destination_lng: number
+          driver_id: string | null
+          expires_at: string
+          id: string
+          municipality: string
+          origin_label: string
+          origin_lat: number
+          origin_lng: number
+          passenger_id: string
+          pickup_confirmed_at: string | null
+          requested_at: string
+          status: string
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          completed_at?: string | null
+          destination_label: string
+          destination_lat: number
+          destination_lng: number
+          driver_id?: string | null
+          expires_at?: string
+          id?: string
+          municipality: string
+          origin_label: string
+          origin_lat: number
+          origin_lng: number
+          passenger_id: string
+          pickup_confirmed_at?: string | null
+          requested_at?: string
+          status?: string
+          updated_at?: string
+          vehicle_type: string
+        }
+        Update: {
+          accepted_at?: string | null
+          completed_at?: string | null
+          destination_label?: string
+          destination_lat?: number
+          destination_lng?: number
+          driver_id?: string | null
+          expires_at?: string
+          id?: string
+          municipality?: string
+          origin_label?: string
+          origin_lat?: number
+          origin_lng?: number
+          passenger_id?: string
+          pickup_confirmed_at?: string | null
+          requested_at?: string
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_quick_rides_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_quick_rides_municipality_fkey"
+            columns: ["municipality"]
+            isOneToOne: false
+            referencedRelation: "professional_service_regions"
+            referencedColumns: ["municipality"]
+          },
+          {
+            foreignKeyName: "professional_quick_rides_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_service_regions: {
+        Row: {
+          dispatch_enabled: boolean
+          municipality: string
+          public_discovery_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          dispatch_enabled?: boolean
+          municipality: string
+          public_discovery_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          dispatch_enabled?: boolean
+          municipality?: string
+          public_discovery_enabled?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3738,6 +3921,15 @@ export type Database = {
         Args: { p_confirm_code: string; p_form_id: string }
         Returns: boolean
       }
+      discover_approximate_professional_drivers: {
+        Args: { p_municipality: string }
+        Returns: {
+          driver_key: string
+          lat: number
+          lng: number
+          seen_at: string
+        }[]
+      }
       discover_ride_opportunities: { Args: { p_search?: Json }; Returns: Json }
       distance_km: {
         Args: { lat_a: number; lat_b: number; lng_a: number; lng_b: number }
@@ -4160,6 +4352,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      professional_location_opt_in: {
+        Args: {
+          p_accuracy_m: number
+          p_lat: number
+          p_lng: number
+          p_municipality: string
+        }
+        Returns: boolean
+      }
+      professional_location_stop: { Args: never; Returns: undefined }
       project_ride_route: {
         Args: { p_lat: number; p_lng: number; p_path: Json }
         Returns: Json
@@ -4175,6 +4377,50 @@ export type Database = {
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
         Returns: string
+      }
+      quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_confirm_pickup: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_driver_queue: {
+        Args: { p_municipality: string }
+        Returns: {
+          destination_label: string
+          expires_at: string
+          id: string
+          origin_label: string
+          requested_at: string
+          vehicle_type: string
+        }[]
+      }
+      quick_ride_my_requests: {
+        Args: never
+        Returns: {
+          destination_label: string
+          expires_at: string
+          id: string
+          municipality: string
+          origin_label: string
+          requested_at: string
+          role: string
+          status: string
+          vehicle_type: string
+        }[]
+      }
+      quick_ride_request: {
+        Args: {
+          p_destination_label: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_municipality: string
+          p_origin_label: string
+          p_origin_lat: number
+          p_origin_lng: number
+          p_vehicle_type: string
+        }
+        Returns: string
+      }
+      quick_ride_transition: {
+        Args: { p_id: string; p_status: string }
+        Returns: boolean
       }
       rate_ride: {
         Args: { p_comment?: string; p_ride_id: string; p_score: number }
