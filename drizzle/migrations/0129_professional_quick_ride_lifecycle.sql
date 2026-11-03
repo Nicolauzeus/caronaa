@@ -1,5 +1,6 @@
 -- F07 phase 2: guarded quick-ride requests and atomic dispatch primitives.
 -- No region is activated by this migration. No payments are performed.
+ALTER TABLE public.professional_driver_authorizations ADD COLUMN IF NOT EXISTS vehicle_type text NOT NULL DEFAULT 'CAR' CHECK(vehicle_type IN ('CAR','MOTO'));
 CREATE TABLE IF NOT EXISTS public.professional_quick_rides (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  passenger_id uuid NOT NULL REFERENCES auth.users(id),
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.professional_quick_rides (
  requested_at timestamptz NOT NULL DEFAULT now(),
  expires_at timestamptz NOT NULL DEFAULT (now()+interval '2 minutes'),
  accepted_at timestamptz,
+ pickup_confirmed_at timestamptz,
  completed_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT now(),
  CONSTRAINT different_ride_participants CHECK(driver_id IS NULL OR driver_id <> passenger_id)
@@ -93,6 +95,7 @@ BEGIN
  RETURN QUERY
  SELECT q.id,q.vehicle_type,q.origin_label,q.destination_label,q.requested_at,q.expires_at
  FROM public.professional_quick_rides q
+ JOIN public.professional_driver_authorizations a ON a.user_id=auth.uid() AND a.vehicle_type=q.vehicle_type
  WHERE q.municipality=btrim(p_municipality) AND q.status='SEARCHING'
  AND q.expires_at>now() AND q.passenger_id<>auth.uid()
  ORDER BY q.requested_at LIMIT 30;
@@ -117,12 +120,23 @@ BEGIN
  WHERE p.user_id=v_driver AND p.is_available
  AND p.last_seen_at>now()-interval '90 seconds' AND l.updated_at>now()-interval '90 seconds'
  AND l.municipality=q.municipality AND r.dispatch_enabled
+ AND EXISTS(SELECT 1 FROM public.professional_driver_authorizations aa WHERE aa.user_id=v_driver AND aa.approved AND aa.vehicle_type=q.vehicle_type)
  )
  RETURNING q.municipality,q.passenger_id INTO v_region,v_passenger;
  IF NOT FOUND THEN RETURN false; END IF;
  RETURN true;
 EXCEPTION WHEN unique_violation THEN RETURN false;
 END;$$;
+
+CREATE OR REPLACE FUNCTION public.quick_ride_confirm_pickup(p_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+ UPDATE public.professional_quick_rides SET pickup_confirmed_at=now(),updated_at=now()
+ WHERE id=p_id AND passenger_id=auth.uid() AND status='ARRIVED' AND pickup_confirmed_at IS NULL;
+ RETURN FOUND;
+END;$;
 
 CREATE OR REPLACE FUNCTION public.quick_ride_transition(p_id uuid,p_status text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
@@ -136,7 +150,7 @@ BEGIN
  IF p_status='CANCELLED' AND q.status IN ('SEARCHING','ACCEPTED','ARRIVED') THEN
   UPDATE public.professional_quick_rides SET status='CANCELLED',updated_at=now() WHERE id=p_id;
  ELSIF u=q.driver_id AND ((q.status='ACCEPTED' AND p_status='ARRIVED') OR
-                          (q.status='ARRIVED' AND p_status='IN_PROGRESS') OR
+                          (q.status='ARRIVED' AND q.pickup_confirmed_at IS NOT NULL AND p_status='IN_PROGRESS') OR
                           (q.status='IN_PROGRESS' AND p_status='COMPLETED')) THEN
   UPDATE public.professional_quick_rides SET status=p_status,updated_at=now(),
    completed_at=CASE WHEN p_status='COMPLETED' THEN now() ELSE completed_at END WHERE id=p_id;
@@ -146,7 +160,7 @@ BEGIN
 END;$$;
 
 REVOKE ALL ON FUNCTION public.quick_ride_request(text,text,text,text,double precision,double precision,double precision,double precision),
- public.quick_ride_my_requests(),public.quick_ride_driver_queue(text),public.quick_ride_accept(uuid),
+ public.quick_ride_my_requests(),public.quick_ride_driver_queue(text),public.quick_ride_accept(uuid),public.quick_ride_confirm_pickup(uuid),
  public.quick_ride_transition(uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.quick_ride_request(text,text,text,text,double precision,double precision,double precision,double precision),
  public.quick_ride_my_requests(),public.quick_ride_driver_queue(text),public.quick_ride_accept(uuid),
