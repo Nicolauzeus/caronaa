@@ -471,6 +471,7 @@ function Home() {
             {professionalLoading?"Atualizando profissionais...":professionalError||(professionalMunicipality.trim().length<2?"Informe um município para consultar motoristas.":professionalDrivers.length+" profissional(is) disponível(is) no mapa.")}
           </p>
           <p className="text-xs text-muted-foreground">Corridas rápidas ainda bloqueadas até homologação e liberação regional.</p>
+          <Link to="/viagem-rapida" className="inline-flex min-h-11 items-center rounded-xl border border-primary px-4 py-2 text-sm font-bold text-primary">Abrir viagens rápidas (piloto)</Link>
         </section>
         <section
           aria-labelledby="journey-title"
