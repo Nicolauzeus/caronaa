@@ -16,6 +16,7 @@ function ProfessionalAvailability(){
  const watchId=useRef<number|null>(null);
  const sharingRef=useRef(false);
  const locationRequestBusy=useRef(false);
+ const publishPositionRef=useRef<(position:DriverLocation)=>void>(()=>{});
  const stopSharing=useCallback(async()=>{
    sharingRef.current=false;
    if(watchId.current!==null && typeof navigator!=="undefined" && navigator.geolocation){
@@ -37,6 +38,7 @@ function ProfessionalAvailability(){
      void stopSharing();
    }else setLastPosition(new Date());
  },[municipality,stopSharing]);
+ publishPositionRef.current=(position)=>{void publishPosition(position)};
  const startSharing=useCallback(()=>{
    setError("");
    if(!enabled){setError("Fique disponível antes de compartilhar a localização.");return}
@@ -47,7 +49,7 @@ function ProfessionalAvailability(){
    if(watchId.current!==null)return;
    sharingRef.current=true;setSharing(true);
    watchId.current=navigator.geolocation.watchPosition(
-     position=>void publishPosition(position),
+     position=>publishPositionRef.current(position),
      position=>{setError("GPS indisponível: "+position.message);void stopSharing()},
      {enableHighAccuracy:true,timeout:15000,maximumAge:10000}
    );
@@ -77,6 +79,18 @@ function ProfessionalAvailability(){
    },30000);
    return()=>window.clearInterval(timer);
  },[enabled,municipality,stopSharing]);
+ useEffect(()=>{
+   if(!sharing)return;
+   const timer=window.setInterval(()=>{
+     if(document.visibilityState!=="visible"||!sharingRef.current||!navigator.geolocation)return;
+     navigator.geolocation.getCurrentPosition(
+       position=>publishPositionRef.current(position),
+       ()=>{setError("Sinal GPS expirado. Compartilhamento interrompido.");void stopSharing()},
+       {enableHighAccuracy:true,timeout:15000,maximumAge:10000}
+     );
+   },30000);
+   return()=>window.clearInterval(timer);
+ },[sharing,stopSharing]);
  useEffect(()=>{
    const visibility=()=>{if(document.hidden&&sharingRef.current)void stopSharing()};
    document.addEventListener("visibilitychange",visibility);
