@@ -28,7 +28,7 @@ import type { TravelPreferences } from "@/lib/travel-preferences";
 import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.functions";
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
-import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
+import { HomeRideMap, type ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
@@ -80,6 +80,27 @@ function Home() {
   const [journeys, setJourneys] = useState<Awaited<ReturnType<typeof loadJourneys>>>([]);
   const [recent, setRecent] = useState<Awaited<ReturnType<typeof loadRecent>>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [professionalMunicipality,setProfessionalMunicipality] = useState("");
+  const [professionalDrivers,setProfessionalDrivers] = useState<ApproximateProfessionalDriver[]>([]);
+  const [professionalError,setProfessionalError] = useState("");
+  const [professionalLoading,setProfessionalLoading] = useState(false);
+  useEffect(() => {
+    const municipality=professionalMunicipality.trim();
+    if(municipality.length<2){setProfessionalDrivers([]);setProfessionalError("");return;}
+    let alive=true;
+    const refresh=async()=>{
+      if(alive)setProfessionalLoading(true);
+      const {data,error}=await (supabase as any).rpc("discover_approximate_professional_drivers",{p_municipality:municipality});
+      if(!alive)return;
+      if(error){setProfessionalDrivers([]);setProfessionalError("Mapa profissional indisponível nesta região.");}
+      else {setProfessionalDrivers((data??[]).filter((d:ApproximateProfessionalDriver)=>Number.isFinite(d.lat)&&Number.isFinite(d.lng)));setProfessionalError("");}
+      setProfessionalLoading(false);
+    };
+    void refresh();
+    const timer=window.setInterval(()=>void refresh(),15000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[professionalMunicipality]);
+
   const [role, setRole] = useState<"request" | "offer">("request");
   const [panelOpen, setPanelOpen] = useState(false);
   const [origin, setOrigin] = useState("");
@@ -428,6 +449,7 @@ function Home() {
         </div>
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#121212] shadow-2xl [&_*]:focus-visible:outline-offset-2">
           <HomeRideMap
+            professionalDrivers={professionalDrivers}
             userPosition={location.position}
             origin={point}
             destination={destinationLocation}
@@ -439,6 +461,17 @@ function Home() {
             onRecenter={location.locate}
           />
         </div>
+
+        <section aria-label="Motoristas para viagens rápidas" className="my-4 rounded-2xl border border-primary/20 p-4 space-y-2">
+          <h2 className="font-bold">Viajar agora · motoristas no mapa</h2>
+          <p className="text-xs text-muted-foreground">Somente profissionais autorizados e com GPS recente em regiões habilitadas. Pontos aproximados; não garantem corrida.</p>
+          <label htmlFor="professional-municipality" className="block text-sm font-semibold">Município</label>
+          <input id="professional-municipality" value={professionalMunicipality} maxLength={120} onChange={e=>setProfessionalMunicipality(e.target.value)} placeholder="Ex.: Fortaleza" className="w-full rounded-xl border bg-background p-3 text-sm" />
+          <p role="status" className="text-xs text-muted-foreground">
+            {professionalLoading?"Atualizando profissionais...":professionalError||(professionalMunicipality.trim().length<2?"Informe um município para consultar motoristas.":professionalDrivers.length+" profissional(is) disponível(is) no mapa.")}
+          </p>
+          <p className="text-xs text-muted-foreground">Corridas rápidas ainda bloqueadas até homologação e liberação regional.</p>
+        </section>
         <section
           aria-labelledby="journey-title"
           className="relative -mx-4 -mt-5 rounded-t-3xl border border-white/10 bg-[#121212]/95 px-4 pb-28 pt-5 text-white shadow-2xl backdrop-blur-2xl sm:mx-0 sm:mt-5 sm:rounded-3xl sm:px-6 sm:pt-6"
