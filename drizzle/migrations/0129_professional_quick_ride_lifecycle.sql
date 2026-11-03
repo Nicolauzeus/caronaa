@@ -93,11 +93,20 @@ BEGIN
  AND l.municipality=btrim(p_municipality) AND r.dispatch_enabled
  ) THEN RETURN; END IF;
  RETURN QUERY
- SELECT q.id,q.vehicle_type,q.origin_label,q.destination_label,q.requested_at,q.expires_at
+ SELECT q.id,q.vehicle_type,
+   q.municipality || ' · embarque próximo' AS origin_label,
+   q.municipality || ' · destino reservado' AS destination_label,
+   q.requested_at,q.expires_at
  FROM public.professional_quick_rides q
  JOIN public.professional_driver_authorizations a ON a.user_id=auth.uid() AND a.vehicle_type=q.vehicle_type
+ JOIN public.professional_driver_locations l ON l.user_id=auth.uid()
  WHERE q.municipality=btrim(p_municipality) AND q.status='SEARCHING'
  AND q.expires_at>now() AND q.passenger_id<>auth.uid()
+ AND 6371 * 2 * asin(least(1.0,sqrt(
+   power(sin(radians((q.origin_lat-l.lat)/2)),2)
+   +cos(radians(l.lat))*cos(radians(q.origin_lat))
+   *power(sin(radians((q.origin_lng-l.lng)/2)),2)
+ ))) <= 20
  ORDER BY q.requested_at LIMIT 30;
 END;$$;
 
