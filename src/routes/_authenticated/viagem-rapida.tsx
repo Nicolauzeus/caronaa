@@ -104,6 +104,7 @@ function QuickRidePage(){
        <p className="text-sm">{r.role==="DRIVER"?"Motorista":"Passageiro"} · {labels[r.status]??r.status}</p>
        {["SEARCHING","ACCEPTED","ARRIVED"].includes(r.status)&&
          <button disabled={busy} className="rounded-lg border px-3 py-2 text-sm" onClick={()=>void action(r.id,"CANCELLED")}>Cancelar</button>}
+       {r.role==="PASSENGER"&&r.status==="ARRIVED"&&<button disabled={busy} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground" onClick={()=>void (async()=>{setBusy(true);const {error}=await (supabase as any).rpc("quick_ride_confirm_pickup",{p_id:r.id});if(error)setError(error.message);await refresh();setBusy(false)})()}>Confirmar embarque</button>}
        {r.role==="DRIVER"&&r.status==="ACCEPTED"&&<button disabled={busy} className="rounded-lg border px-3 py-2 text-sm" onClick={()=>void action(r.id,"ARRIVED")}>Cheguei</button>}
        {r.role==="DRIVER"&&r.status==="ARRIVED"&&<button disabled={busy} className="rounded-lg border px-3 py-2 text-sm" onClick={()=>void action(r.id,"IN_PROGRESS")}>Iniciar</button>}
        {r.role==="DRIVER"&&r.status==="IN_PROGRESS"&&<button disabled={busy} className="rounded-lg border px-3 py-2 text-sm" onClick={()=>void action(r.id,"COMPLETED")}>Finalizar</button>}
