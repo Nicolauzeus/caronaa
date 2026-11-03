@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { validPoint, type UserPosition } from "@/lib/location/use-user-location";
 
 type Point = { lat?: number; lng?: number };
+export type ApproximateProfessionalDriver = { driver_key: string; lat: number; lng: number; seen_at: string };
 type Props = {
   userPosition: UserPosition | null;
+  professionalDrivers?: ApproximateProfessionalDriver[];
   origin?: Point;
   destination?: Point;
   originIsCurrent: boolean;
@@ -129,6 +131,12 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     if (!ready || !instance) return;
     const { L, map, markers } = instance;
     markers.clearLayers();
+    for (const driver of props.professionalDrivers ?? []) {
+      if (!validPoint(driver)) continue;
+      L.circleMarker([driver.lat, driver.lng], {
+        radius: 9, color: "#121212", weight: 2, fillColor: "#FFBB00", fillOpacity: 0.9,
+      }).bindTooltip("Motorista disponível · posição aproximada").addTo(markers);
+    }
     if (validPoint(props.userPosition)) {
       const { lat, lng, accuracy } = props.userPosition;
       L.circle([lat, lng], {
@@ -171,6 +179,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
   }, [
     ready,
     props.userPosition,
+    props.professionalDrivers,
     props.origin?.lat,
     props.origin?.lng,
     props.destination?.lat,
