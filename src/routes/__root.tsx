@@ -105,6 +105,7 @@ export const Route = createRootRouteWithContext<{
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      { name: "google-site-verification", content: "Ot_tK4NfYqFNdaC0Q--vRHYZ47-Ln9EYPrufd_W4bhI" },
       { name: "theme-color", content: "#eab900" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       {
