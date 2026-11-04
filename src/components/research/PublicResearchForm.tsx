@@ -8,7 +8,7 @@ import { createResearchVisibility } from "@/lib/formulario/research-conditions";
 import { createUniforGroups,setUniforPainAnswers } from "@/lib/formulario/unifor-compact-groups";
 import { isSimpleMobility, applySimplePainAnswer, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
 import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
-import { academicResearchTemplate,displaySurveyMoment,getResearchWindowState } from "@/lib/formulario/research-window";
+import { academicResearchTemplate,displaySurveyDate,displaySurveyMoment,getResearchWindowState } from "@/lib/formulario/research-window";
 import {
   cleanAnswers,
   scheduleWarning,
