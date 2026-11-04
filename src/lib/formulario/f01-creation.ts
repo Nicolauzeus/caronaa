@@ -1,4 +1,5 @@
 import { newResearchConfiguration, type ResearchConfiguration } from "./research-configuration";
+import { surveyDateTimeToIso } from "./research-window";
 import { F01_UNIVERSITY, F01_STREET, F01_COMPANY } from "./mobility-simple";
 
 export const F01_CREATION_MODELS = [
@@ -32,12 +33,18 @@ export type F01DraftInput = {
   startsOn: string;
   endsOn: string;
   launchOn?: string | null;
+  /** Optional HH:MM local times (America/Fortaleza); defaults 00:00 / 23:59. */
+  startsTime?: string;
+  endsTime?: string;
+  launchTime?: string | null;
 };
 
 export function buildF01Draft(input: F01DraftInput): {
   title: string; code: string; nature: string; audience: string; municipality: string;
   templateKey: F01ModelKey; startsOn: string; endsOn: string;
-  caronaaPresenceOn: string | null; configuration: ResearchConfiguration;
+  startsAt: string; endsAt: string;
+  caronaaPresenceOn: string | null; caronaaPresenceAt: string | null;
+  configuration: ResearchConfiguration;
   academicExpress: boolean;
 } {
   const model = F01_CREATION_MODELS.find(value => value.key === input.modelKey);
@@ -70,6 +77,7 @@ export function buildF01Draft(input: F01DraftInput): {
     emailCaptureEnabled: true,
     institutionalEmailDomains,
     launchDate: input.launchOn || null,
+    launchTime: input.launchOn ? input.launchTime || null : null,
     // Informational only. Registration and travel are independent of answering.
     usagePolicy: "Pesquisa voluntária sobre mobilidade. As respostas são usadas para analisar dificuldades e interesse em caronas; não representam reserva ou oferta de viagem.",
     priceReference: "Carona compartilhada: referência de R$ 6,00 para 11 km rodoviários. O valor individual depende do trecho contratado; esta pesquisa não realiza cobrança.",
@@ -79,11 +87,18 @@ export function buildF01Draft(input: F01DraftInput): {
     partnershipConfirmed: false,
     partnershipDescription: "",
   };
+  const startsAt = surveyDateTimeToIso(input.startsOn, input.startsTime || "00:00");
+  const endsAt = surveyDateTimeToIso(input.endsOn, input.endsTime || "23:59");
+  const caronaaPresenceAt = input.launchOn
+    ? surveyDateTimeToIso(input.launchOn, input.launchTime || "00:00")
+    : null;
   return {
     title, code: input.code.trim().toUpperCase(), nature: model.nature,
     audience: "GERAL", municipality,
     templateKey: model.key, startsOn: input.startsOn, endsOn: input.endsOn,
-    caronaaPresenceOn: input.launchOn || null, configuration: config,
+    startsAt, endsAt,
+    caronaaPresenceOn: input.launchOn || null, caronaaPresenceAt,
+    configuration: config,
     academicExpress,
   };
 }

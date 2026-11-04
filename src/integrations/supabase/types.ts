@@ -2001,6 +2001,7 @@ export type Database = {
           brand_display_name: string | null
           brand_image_alt: string | null
           brand_image_path: string | null
+          caronaa_presence_at: string | null
           caronaa_presence_on: string | null
           code: string
           created_at: string
@@ -2011,7 +2012,9 @@ export type Database = {
           municipality: string | null
           nature: string
           status: string
+          survey_ends_at: string | null
           survey_ends_on: string | null
+          survey_starts_at: string | null
           survey_starts_on: string | null
           title: string
           trash_previous_status: string | null
@@ -2023,6 +2026,7 @@ export type Database = {
           brand_display_name?: string | null
           brand_image_alt?: string | null
           brand_image_path?: string | null
+          caronaa_presence_at?: string | null
           caronaa_presence_on?: string | null
           code: string
           created_at?: string
@@ -2033,7 +2037,9 @@ export type Database = {
           municipality?: string | null
           nature: string
           status?: string
+          survey_ends_at?: string | null
           survey_ends_on?: string | null
+          survey_starts_at?: string | null
           survey_starts_on?: string | null
           title: string
           trash_previous_status?: string | null
@@ -2045,6 +2051,7 @@ export type Database = {
           brand_display_name?: string | null
           brand_image_alt?: string | null
           brand_image_path?: string | null
+          caronaa_presence_at?: string | null
           caronaa_presence_on?: string | null
           code?: string
           created_at?: string
@@ -2055,7 +2062,9 @@ export type Database = {
           municipality?: string | null
           nature?: string
           status?: string
+          survey_ends_at?: string | null
           survey_ends_on?: string | null
+          survey_starts_at?: string | null
           survey_starts_on?: string | null
           title?: string
           trash_previous_status?: string | null
@@ -3902,17 +3911,32 @@ export type Database = {
         }
         Returns: string
       }
-      create_scheduled_research_form: {
-        Args: {
-          p_caronaa_on: string
-          p_ends_on: string
-          p_metadata: Json
-          p_schema: Json
-          p_settings: Json
-          p_starts_on: string
-        }
-        Returns: string
-      }
+      create_scheduled_research_form:
+        | {
+            Args: {
+              p_caronaa_on: string
+              p_ends_on: string
+              p_metadata: Json
+              p_schema: Json
+              p_settings: Json
+              p_starts_on: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_caronaa_at: string
+              p_caronaa_on: string
+              p_ends_at: string
+              p_ends_on: string
+              p_metadata: Json
+              p_schema: Json
+              p_settings: Json
+              p_starts_at: string
+              p_starts_on: string
+            }
+            Returns: string
+          }
       delete_empty_research_draft: {
         Args: { p_form_id: string }
         Returns: boolean
@@ -4486,6 +4510,7 @@ export type Database = {
         Args: { p_form_id: string }
         Returns: boolean
       }
+      research_launch_instant: { Args: { p_settings: Json }; Returns: string }
       research_launch_participant: {
         Args: { p_form: string; p_user: string }
         Returns: boolean

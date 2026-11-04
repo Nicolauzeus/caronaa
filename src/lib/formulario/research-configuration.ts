@@ -45,6 +45,11 @@ export const researchConfigurationSchema = z
             new Date(value).toISOString().slice(0, 10) === value),
         "Data inválida",
       ),
+    launchTime: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+      .nullable()
+      .default(null),
     timezone: text(80).refine((value) => {
       try {
         new Intl.DateTimeFormat("pt-BR", { timeZone: value });
@@ -148,6 +153,7 @@ export function parseResearchConfiguration(input: ResearchConfiguration): Resear
       profiles: "Público-alvo",
       modes: "Modalidades",
       launchDate: "Previsão de presença do CARONAA",
+      launchTime: "Horário previsto de presença do CARONAA",
       latitude: "Latitude",
       longitude: "Longitude",
       safeMeetingPoints: "Pontos de embarque",
@@ -184,6 +190,7 @@ export function newResearchConfiguration(templateKey = "CUSTOM"): ResearchConfig
     campaignType: "INSTITUCIONAL",
     acquisitionSource: "",
     launchDate: null,
+    launchTime: null,
     timezone: "America/Fortaleza",
     serviceState: "PLANEJADO",
     days: [1, 2, 3, 4, 5],
@@ -206,13 +213,14 @@ export function newResearchConfiguration(templateKey = "CUSTOM"): ResearchConfig
 export function launchMessage(config: PublicResearchConfiguration["settings"]) {
   if (!config.launchDate) return "";
   const date = new Date(config.launchDate + "T12:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" });
+  const time = config.launchTime ? ` às ${config.launchTime}` : "";
   const status = {
     PLANEJADO: "Início planejado",
     CONFIRMADO: "Início confirmado",
     EM_OPERACAO: "Em operação",
     ADIADO: "Início adiado",
   }[config.serviceState];
-  return `${status} · ${date} · ${config.timezone}`;
+  return `${status} · ${date}${time} · ${config.timezone}`;
 }
 
 export const journeySchema = z

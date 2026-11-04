@@ -368,15 +368,27 @@ export function ResearchConfigurationFields({
         </TabsContent>
         <TabsContent value="service" className="grid gap-3 pt-3 sm:grid-cols-2">
           {!creationMode && (
-            <label className="text-sm">
-              Data prevista de presença ou início de operação do CARONAA (opcional)
-              <input
-                type="date"
-                value={value.launchDate ?? ""}
-                onChange={(event) => set("launchDate", event.target.value || null)}
-                className={inputClass}
-              />
-            </label>
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+              <label className="text-sm">
+                Data prevista de presença ou início de operação do CARONAA (opcional)
+                <input
+                  type="date"
+                  value={value.launchDate ?? ""}
+                  onChange={(event) => set("launchDate", event.target.value || null)}
+                  className={inputClass}
+                />
+              </label>
+              <label className="text-sm">
+                Hora
+                <input
+                  type="time"
+                  value={value.launchTime ?? ""}
+                  disabled={!value.launchDate}
+                  onChange={(event) => set("launchTime", event.target.value || null)}
+                  className={inputClass}
+                />
+              </label>
+            </div>
           )}
           {text("timezone", "Fuso horário")}
           <label className="text-sm">

@@ -3,7 +3,7 @@ import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { F01_TEMPLATE_KEYS } from "@/lib/formulario/mobility-simple";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
-import { validateSurveyWindow } from "@/lib/formulario/research-window";
+import { surveyDateTimeToIso, validateSurveyWindow } from "@/lib/formulario/research-window";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
 import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
 import { REGIONAL_UNIVERSITY_KEY,regionalUniversityPreset } from "@/lib/formulario/regional-university";
@@ -95,6 +95,8 @@ export function ResearchCatalog() {
   const [code, setCode] = useState("");
   const [surveyStartsOn, setSurveyStartsOn] = useState("");
   const [surveyEndsOn, setSurveyEndsOn] = useState("");
+  const [surveyStartsTime, setSurveyStartsTime] = useState("00:00");
+  const [surveyEndsTime, setSurveyEndsTime] = useState("23:59");
   const [codeLookup, setCodeLookup] = useState<{
     code: string; checking: boolean; availability?: ResearchCodeAvailability; failed?: boolean;
   } | null>(null);
@@ -187,7 +189,7 @@ export function ResearchCatalog() {
         setCodeLookup({ code: normalizedCode, checking: false, availability: currentAvailability });
         throw Error(describeResearchCodeConflict(currentAvailability.status, currentAvailability.inTrash));
       }
-      const scheduleIssue = validateSurveyWindow(surveyStartsOn,surveyEndsOn);
+      const scheduleIssue = validateSurveyWindow(surveyStartsOn,surveyEndsOn,surveyStartsTime,surveyEndsTime);
       if (scheduleIssue) throw Error(scheduleIssue);
       if (configuredModelKeys.includes(templateKey) && !configure)
         throw Error("Este modelo requer configuração institucional de endereços e horários.");
@@ -224,6 +226,11 @@ export function ResearchCatalog() {
         startsOn: surveyStartsOn,
         endsOn: surveyEndsOn,
         caronaaPresenceOn: configuration.launchDate,
+        startsAt: surveyDateTimeToIso(surveyStartsOn, surveyStartsTime || "00:00"),
+        endsAt: surveyDateTimeToIso(surveyEndsOn, surveyEndsTime || "23:59"),
+        caronaaPresenceAt: configuration.launchDate
+          ? surveyDateTimeToIso(configuration.launchDate, configuration.launchTime || "00:00")
+          : null,
         configuration: configure ? finalConfiguration : undefined,
       });
       let logoWarning = "";
@@ -412,32 +419,56 @@ export function ResearchCatalog() {
               O encerramento é inclusivo, pelo horário de Fortaleza, e não representa o início das caronas.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-medium">
-                Início das respostas *
-                <input type="date" required value={surveyStartsOn}
-                  onChange={(e)=>{setSurveyStartsOn(e.target.value);setError("");}}
-                  aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
-                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
-              </label>
-              <label className="block text-sm font-medium">
-                Encerramento das respostas *
-                <input type="date" required min={surveyStartsOn||undefined}
-                  value={surveyEndsOn}
-                  onChange={(e)=>{setSurveyEndsOn(e.target.value);setError("");}}
-                  aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
-                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
-              </label>
+              <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+                <label className="block text-sm font-medium">
+                  Início das respostas *
+                  <input type="date" required value={surveyStartsOn}
+                    onChange={(e)=>{setSurveyStartsOn(e.target.value);setError("");}}
+                    aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+                <label className="block text-sm font-medium">
+                  Hora
+                  <input type="time" required value={surveyStartsTime}
+                    onChange={(e)=>{setSurveyStartsTime(e.target.value);setError("");}}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+                <label className="block text-sm font-medium">
+                  Encerramento das respostas *
+                  <input type="date" required min={surveyStartsOn||undefined}
+                    value={surveyEndsOn}
+                    onChange={(e)=>{setSurveyEndsOn(e.target.value);setError("");}}
+                    aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+                <label className="block text-sm font-medium">
+                  Hora
+                  <input type="time" required value={surveyEndsTime}
+                    onChange={(e)=>{setSurveyEndsTime(e.target.value);setError("");}}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+              </div>
             </div>
             {surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn&&
               <p role="alert" className="text-xs font-semibold text-destructive">
                 O encerramento não pode ser anterior ao início.
               </p>}
-            <label className="block text-sm font-medium">
-              Data prevista de presença ou operação do CARONAA (opcional)
-              <input type="date" value={configuration.launchDate??""}
-                onChange={e=>setConfiguration(previous=>({...previous,launchDate:e.target.value||null}))}
-                className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
-            </label>
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+              <label className="block text-sm font-medium">
+                Data prevista de presença ou operação do CARONAA (opcional)
+                <input type="date" value={configuration.launchDate??""}
+                  onChange={e=>setConfiguration(previous=>({...previous,launchDate:e.target.value||null}))}
+                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+              </label>
+              <label className="block text-sm font-medium">
+                Hora
+                <input type="time" value={configuration.launchTime??""} disabled={!configuration.launchDate}
+                  onChange={e=>setConfiguration(previous=>({...previous,launchTime:e.target.value||null}))}
+                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+              </label>
+            </div>
             <p className="text-xs leading-5 text-muted-foreground">
               Deixe em branco se ainda não existe previsão de presença do CARONAA.
               Isso não impedirá a publicação da pesquisa.

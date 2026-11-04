@@ -20,6 +20,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
     region: "FORTALEZA_EDSON_QUEIROZ", customRegion: "", customMunicipality: "",
     campus: "", institutionalEmailDomains: [], academicExpress: true,
     startsOn: "", endsOn: "", launchOn: null,
+    startsTime: "00:00", endsTime: "23:59", launchTime: null,
   });
   const [codeEdited, setCodeEdited] = useState(false);
   const [domainsDraft, setDomainsDraft] = useState("");
@@ -44,7 +45,7 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
     setSaving(true);
     try {
       if (!validResearchFormCode(values.code)) throw Error("Confira o código da pesquisa.");
-      const scheduleError = validateSurveyWindow(values.startsOn, values.endsOn);
+      const scheduleError = validateSurveyWindow(values.startsOn, values.endsOn, values.startsTime, values.endsTime);
       if (scheduleError) throw Error(scheduleError);
       const codeAvailability = await checkResearchFormCode(values.code);
       if (!codeAvailability.available)
@@ -152,16 +153,30 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
               placeholder="Ex.: Como você se desloca para a universidade?"
               className={inputClass}/>
           </label>
-          <label className="block min-w-0 text-sm font-medium">
-            Início das respostas *
-            <input type="date" required value={values.startsOn}
-              onChange={event => set("startsOn", event.target.value)} className={inputClass}/>
-          </label>
-          <label className="block min-w-0 text-sm font-medium">
-            Encerramento das respostas *
-            <input type="date" required min={values.startsOn || undefined}
-              value={values.endsOn} onChange={event => set("endsOn", event.target.value)} className={inputClass}/>
-          </label>
+          <div className="grid min-w-0 grid-cols-[1fr_auto] items-end gap-2">
+            <label className="block min-w-0 text-sm font-medium">
+              Início das respostas *
+              <input type="date" required value={values.startsOn}
+                onChange={event => set("startsOn", event.target.value)} className={inputClass}/>
+            </label>
+            <label className="block min-w-0 text-sm font-medium">
+              Hora
+              <input type="time" required value={values.startsTime || "00:00"}
+                onChange={event => set("startsTime", event.target.value)} className={inputClass}/>
+            </label>
+          </div>
+          <div className="grid min-w-0 grid-cols-[1fr_auto] items-end gap-2">
+            <label className="block min-w-0 text-sm font-medium">
+              Encerramento das respostas *
+              <input type="date" required min={values.startsOn || undefined}
+                value={values.endsOn} onChange={event => set("endsOn", event.target.value)} className={inputClass}/>
+            </label>
+            <label className="block min-w-0 text-sm font-medium">
+              Hora
+              <input type="time" required value={values.endsTime || "23:59"}
+                onChange={event => set("endsTime", event.target.value)} className={inputClass}/>
+            </label>
+          </div>
         </div>
         <details className="rounded-xl border border-border bg-background px-3 py-2">
           <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold">
@@ -176,12 +191,19 @@ export function SimpleResearchCreator({ occupiedCodes, onCreated, onAdvanced, on
                 className={inputClass}/>
               <span className="mt-1 block text-xs text-muted-foreground">Gerado automaticamente a partir do título. Pode ser alterado antes da criação.</span>
             </label>
-            <label className="block min-w-0 text-sm">
-              Lançamento do CARONAA (opcional)
-              <input type="date" value={values.launchOn || ""}
-                onChange={event => set("launchOn", event.target.value || null)} className={inputClass}/>
-              <span className="mt-1 block text-xs text-muted-foreground">É diferente do período da pesquisa.</span>
-            </label>
+            <div className="grid min-w-0 grid-cols-[1fr_auto] items-end gap-2">
+              <label className="block min-w-0 text-sm">
+                Lançamento do CARONAA (opcional)
+                <input type="date" value={values.launchOn || ""}
+                  onChange={event => set("launchOn", event.target.value || null)} className={inputClass}/>
+                <span className="mt-1 block text-xs text-muted-foreground">É diferente do período da pesquisa.</span>
+              </label>
+              <label className="block min-w-0 text-sm">
+                Hora
+                <input type="time" value={values.launchTime || ""} disabled={!values.launchOn}
+                  onChange={event => set("launchTime", event.target.value || null)} className={inputClass}/>
+              </label>
+            </div>
           </div>
         </details>
         <p className="rounded-xl bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
