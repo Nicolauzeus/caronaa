@@ -827,6 +827,13 @@
       "when": 1793794053828,
       "tag": "0117_research_schedule_time",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1793796566529,
+      "tag": "0118_allow_launch_time_config",
+      "breakpoints": true
     }
   ]
 }
