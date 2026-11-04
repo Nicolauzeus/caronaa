@@ -1,4 +1,5 @@
 import { newResearchConfiguration, type ResearchConfiguration } from "./research-configuration";
+import { surveyDateTimeToIso } from "./research-window";
 import { F01_UNIVERSITY, F01_STREET, F01_COMPANY } from "./mobility-simple";
 
 export const F01_CREATION_MODELS = [
@@ -32,12 +33,18 @@ export type F01DraftInput = {
   startsOn: string;
   endsOn: string;
   launchOn?: string | null;
+  /** Optional HH:MM local times (America/Fortaleza); defaults 00:00 / 23:59. */
+  startsTime?: string;
+  endsTime?: string;
+  launchTime?: string | null;
 };
 
 export function buildF01Draft(input: F01DraftInput): {
   title: string; code: string; nature: string; audience: string; municipality: string;
   templateKey: F01ModelKey; startsOn: string; endsOn: string;
-  caronaaPresenceOn: string | null; configuration: ResearchConfiguration;
+  startsAt: string; endsAt: string;
+  caronaaPresenceOn: string | null; caronaaPresenceAt: string | null;
+  configuration: ResearchConfiguration;
   academicExpress: boolean;
 } {
   const model = F01_CREATION_MODELS.find(value => value.key === input.modelKey);
