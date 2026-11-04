@@ -3,7 +3,7 @@ import { RESEARCH_TEMPLATES } from "@/lib/formulario/research-templates";
 import { F01_TEMPLATE_KEYS } from "@/lib/formulario/mobility-simple";
 import { ResearchConfigurationFields } from "@/components/admin/ResearchConfigurationFields";
 import { newResearchConfiguration } from "@/lib/formulario/research-configuration";
-import { validateSurveyWindow } from "@/lib/formulario/research-window";
+import { surveyDateTimeToIso, validateSurveyWindow } from "@/lib/formulario/research-window";
 import { URBAN_UNIVERSITY_KEY, urbanUniversityPreset } from "@/lib/formulario/urban-university";
 import { CORPORATE_INTERNAL_KEY,corporateInternalPreset,validateCorporateInternalConfiguration } from "@/lib/formulario/corporate-internal";
 import { REGIONAL_UNIVERSITY_KEY,regionalUniversityPreset } from "@/lib/formulario/regional-university";
