@@ -61,9 +61,17 @@ export async function createResearchForm(input: {
   startsOn: string;
   endsOn: string;
   caronaaPresenceOn?: string | null;
+  /** Optional exact UTC instants (hour/minute) complementing the calendar dates. */
+  startsAt?: string | null;
+  endsAt?: string | null;
+  caronaaPresenceAt?: string | null;
 }) {
   const scheduleError = validateSurveyWindow(input.startsOn,input.endsOn);
   if (scheduleError) throw new Error(scheduleError);
+  if ((input.startsAt == null) !== (input.endsAt == null))
+    throw new Error("Informe os horários de início e de encerramento da pesquisa.");
+  if (input.startsAt && input.endsAt && Date.parse(input.endsAt) <= Date.parse(input.startsAt))
+    throw new Error("O horário de encerramento deve ser depois do horário de início.");
   if (input.caronaaPresenceOn && !/^\d{4}-\d{2}-\d{2}$/.test(input.caronaaPresenceOn))
     throw new Error("Informe uma data válida para a presença do CARONAA.");
   if (F01_TEMPLATE_KEYS.some(key=>key===input.templateKey) &&
@@ -92,6 +100,9 @@ export async function createResearchForm(input: {
     p_starts_on: input.startsOn,
     p_ends_on: input.endsOn,
     p_caronaa_on: input.caronaaPresenceOn || null,
+    p_starts_at: input.startsAt || null,
+    p_ends_at: input.endsAt || null,
+    p_caronaa_at: input.caronaaPresenceAt || null,
   });
   if (!error) return data as string;
 
