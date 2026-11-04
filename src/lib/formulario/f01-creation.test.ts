@@ -40,6 +40,34 @@ describe("F01 — novos modelos padrão de criação", () => {
     expect(draft.caronaaPresenceOn).toBe(null);
   });
 
+  it("carrega hora e minuto opcionais para a janela da pesquisa e o lançamento", () => {
+    const draft = buildF01Draft({
+      modelKey: "F01_UNIVERSIDADE", name: "UNILAB", title: "Mobilidade regional",
+      code: "UNILAB-2026", region: "MACICO_BATURITE",
+      startsOn: "2026-11-10", endsOn: "2026-11-20",
+      startsTime: "08:30", endsTime: "18:45",
+      launchOn: "2026-12-01", launchTime: "09:15",
+    });
+    expect(draft.startsAt).toBe("2026-11-10T11:30:00.000Z");
+    expect(draft.endsAt).toBe("2026-11-20T21:45:00.000Z");
+    expect(draft.caronaaPresenceAt).toBe("2026-12-01T12:15:00.000Z");
+    expect(draft.configuration.launchDate).toBe("2026-12-01");
+    expect(draft.configuration.launchTime).toBe("09:15");
+    expect(parseResearchConfiguration(draft.configuration)).toBeTruthy();
+  });
+
+  it("assume 00:00 e 23:59 quando o horário não é informado", () => {
+    const draft = buildF01Draft({
+      modelKey: "F01_RUA", name: "Centro", title: "Pesquisa local",
+      code: "BAIRRO-HORARIO-2026", region: "MACICO_BATURITE",
+      startsOn: "2026-11-10", endsOn: "2026-11-20", launchOn: null,
+    });
+    expect(draft.startsAt).toBe("2026-11-10T03:00:00.000Z");
+    expect(draft.endsAt).toBe("2026-11-21T02:59:00.000Z");
+    expect(draft.caronaaPresenceAt).toBeNull();
+    expect(draft.configuration.launchTime).toBeNull();
+  });
+
   it("rejeita campos vazios e modelos desconhecidos", () => {
     const valid = {
       modelKey: "F01_RUA" as const, name: "Centro", title: "Pesquisa local",

@@ -1,8 +1,8 @@
 import { beforeEach,describe,expect,it,vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  academicResearchTemplate,displaySurveyDate,
-  getResearchWindowState,validateSurveyWindow,validSurveyDate,
+  academicResearchTemplate,displaySurveyDate,displaySurveyMoment,
+  getResearchWindowState,surveyDateTimeToIso,validateSurveyWindow,validSurveyDate,validSurveyTime,
 } from "./research-window";
 import { URBAN_UNIVERSITY_KEY } from "./urban-university";
 import { REGIONAL_UNIVERSITY_KEY } from "./regional-university";
@@ -22,6 +22,22 @@ describe("Timed university research: independent schedule and consistent present
   expect(validateSurveyWindow("","2026-11-02")).toMatch(/início/);
   expect(validateSurveyWindow("2026-11-03","2026-11-02")).toMatch(/encerramento/);
   expect(displaySurveyDate("2026-11-01")).toBe("01/11/2026");
+ });
+ it("validates optional hour/minute and combines date and time into a UTC instant",()=>{
+  expect(validSurveyTime("08:30")).toBe(true);
+  expect(validSurveyTime("23:59")).toBe(true);
+  expect(validSurveyTime("24:00")).toBe(false);
+  expect(validSurveyTime("8:30")).toBe(false);
+  expect(validSurveyTime("12:60")).toBe(false);
+  // America/Fortaleza is fixed UTC-3 (no daylight saving time).
+  expect(surveyDateTimeToIso("2026-11-10","08:30")).toBe("2026-11-10T11:30:00.000Z");
+  expect(()=>surveyDateTimeToIso("2026-11-10","25:00")).toThrow();
+  expect(validateSurveyWindow("2026-11-01","2026-11-01","08:00","18:00")).toBeNull();
+  expect(validateSurveyWindow("2026-11-01","2026-11-01","18:00","08:00")).toMatch(/horário de encerramento/);
+  expect(validateSurveyWindow("2026-11-01","2026-11-02","18:00","08:00")).toBeNull();
+  expect(validateSurveyWindow("2026-11-01","2026-11-02","8:00",undefined)).toMatch(/horário de início/);
+  expect(displaySurveyMoment("2026-11-10","2026-11-10T11:30:00.000Z")).toBe("10/11/2026, 08:30");
+  expect(displaySurveyMoment("2026-11-10",null)).toBe("10/11/2026");
  });
  it("uses the same compact presentation for both university models without changing their schemas",()=>{
   expect(academicResearchTemplate(URBAN_UNIVERSITY_KEY)).toBe(true);
