@@ -85,7 +85,7 @@ describe("F01 research draft resiliency (server admin RLS still applies)", () =>
     state.from.mockImplementationOnce(() => ({
       select: () => ({ limit: async () => ({ error: { code: "42703" } }) }),
     }));
-    await expect(createResearchForm(input())).rejects.toThrow("migration 0110");
+    await expect(createResearchForm(input())).rejects.toThrow("migrations 0110 e 0117");
     expect(state.inserts).toHaveLength(0);
   });
 
