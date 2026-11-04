@@ -159,6 +159,11 @@ function ResearchWaitingRoom() {
               Consultando suas participações…
             </p>
           )}
+          {notice && (
+            <p role="status" className="rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm font-semibold">
+              {notice}
+            </p>
+          )}
           {error && (
             <p role="alert" className="text-sm text-amber-300">
               {error}
