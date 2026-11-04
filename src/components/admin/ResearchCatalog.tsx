@@ -419,32 +419,56 @@ export function ResearchCatalog() {
               O encerramento é inclusivo, pelo horário de Fortaleza, e não representa o início das caronas.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-medium">
-                Início das respostas *
-                <input type="date" required value={surveyStartsOn}
-                  onChange={(e)=>{setSurveyStartsOn(e.target.value);setError("");}}
-                  aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
-                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
-              </label>
-              <label className="block text-sm font-medium">
-                Encerramento das respostas *
-                <input type="date" required min={surveyStartsOn||undefined}
-                  value={surveyEndsOn}
-                  onChange={(e)=>{setSurveyEndsOn(e.target.value);setError("");}}
-                  aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
-                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
-              </label>
+              <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+                <label className="block text-sm font-medium">
+                  Início das respostas *
+                  <input type="date" required value={surveyStartsOn}
+                    onChange={(e)=>{setSurveyStartsOn(e.target.value);setError("");}}
+                    aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+                <label className="block text-sm font-medium">
+                  Hora
+                  <input type="time" required value={surveyStartsTime}
+                    onChange={(e)=>{setSurveyStartsTime(e.target.value);setError("");}}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+                <label className="block text-sm font-medium">
+                  Encerramento das respostas *
+                  <input type="date" required min={surveyStartsOn||undefined}
+                    value={surveyEndsOn}
+                    onChange={(e)=>{setSurveyEndsOn(e.target.value);setError("");}}
+                    aria-invalid={Boolean(surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn)}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+                <label className="block text-sm font-medium">
+                  Hora
+                  <input type="time" required value={surveyEndsTime}
+                    onChange={(e)=>{setSurveyEndsTime(e.target.value);setError("");}}
+                    className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+                </label>
+              </div>
             </div>
             {surveyStartsOn&&surveyEndsOn&&surveyEndsOn<surveyStartsOn&&
               <p role="alert" className="text-xs font-semibold text-destructive">
                 O encerramento não pode ser anterior ao início.
               </p>}
-            <label className="block text-sm font-medium">
-              Data prevista de presença ou operação do CARONAA (opcional)
-              <input type="date" value={configuration.launchDate??""}
-                onChange={e=>setConfiguration(previous=>({...previous,launchDate:e.target.value||null}))}
-                className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
-            </label>
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+              <label className="block text-sm font-medium">
+                Data prevista de presença ou operação do CARONAA (opcional)
+                <input type="date" value={configuration.launchDate??""}
+                  onChange={e=>setConfiguration(previous=>({...previous,launchDate:e.target.value||null}))}
+                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+              </label>
+              <label className="block text-sm font-medium">
+                Hora
+                <input type="time" value={configuration.launchTime??""} disabled={!configuration.launchDate}
+                  onChange={e=>setConfiguration(previous=>({...previous,launchTime:e.target.value||null}))}
+                  className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base"/>
+              </label>
+            </div>
             <p className="text-xs leading-5 text-muted-foreground">
               Deixe em branco se ainda não existe previsão de presença do CARONAA.
               Isso não impedirá a publicação da pesquisa.
