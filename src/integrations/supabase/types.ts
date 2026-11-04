@@ -3754,6 +3754,19 @@ export type Database = {
         }
         Returns: string
       }
+      admin_quick_ride_overview: { Args: never; Returns: Json }
+      admin_set_quick_ride_driver: {
+        Args: { p_approved: boolean; p_email: string; p_vehicle_type: string }
+        Returns: string
+      }
+      admin_set_quick_ride_region: {
+        Args: {
+          p_discovery: boolean
+          p_dispatch: boolean
+          p_municipality: string
+        }
+        Returns: undefined
+      }
       are_ride_routes_compatible: {
         Args: {
           offer_destination: string

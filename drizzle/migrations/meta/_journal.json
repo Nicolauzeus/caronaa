@@ -834,6 +834,13 @@
       "when": 1793796566529,
       "tag": "0118_allow_launch_time_config",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1793799196970,
+      "tag": "0119_quick_ride_admin_controls",
+      "breakpoints": true
     }
   ]
 }
