@@ -77,6 +77,7 @@ export function buildF01Draft(input: F01DraftInput): {
     emailCaptureEnabled: true,
     institutionalEmailDomains,
     launchDate: input.launchOn || null,
+    launchTime: input.launchOn ? input.launchTime || null : null,
     // Informational only. Registration and travel are independent of answering.
     usagePolicy: "Pesquisa voluntária sobre mobilidade. As respostas são usadas para analisar dificuldades e interesse em caronas; não representam reserva ou oferta de viagem.",
     priceReference: "Carona compartilhada: referência de R$ 6,00 para 11 km rodoviários. O valor individual depende do trecho contratado; esta pesquisa não realiza cobrança.",
@@ -86,11 +87,18 @@ export function buildF01Draft(input: F01DraftInput): {
     partnershipConfirmed: false,
     partnershipDescription: "",
   };
+  const startsAt = surveyDateTimeToIso(input.startsOn, input.startsTime || "00:00");
+  const endsAt = surveyDateTimeToIso(input.endsOn, input.endsTime || "23:59");
+  const caronaaPresenceAt = input.launchOn
+    ? surveyDateTimeToIso(input.launchOn, input.launchTime || "00:00")
+    : null;
   return {
     title, code: input.code.trim().toUpperCase(), nature: model.nature,
     audience: "GERAL", municipality,
     templateKey: model.key, startsOn: input.startsOn, endsOn: input.endsOn,
-    caronaaPresenceOn: input.launchOn || null, configuration: config,
+    startsAt, endsAt,
+    caronaaPresenceOn: input.launchOn || null, caronaaPresenceAt,
+    configuration: config,
     academicExpress,
   };
 }
