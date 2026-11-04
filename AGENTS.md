@@ -17,6 +17,7 @@
 - Keep authentication session state in the root AuthProvider and consume it through useAuth; this prevents duplicate auth listeners and keeps navigation synchronized.
 - Recover missing deployment chunks from both the root error boundary and a global rejection handler with a bounded multi-attempt reload that clears cached build files first; keep the service worker from ever caching hashed modules or stylesheets, since a stale cached chunk turns one replaced build file into a permanent crash.
 - Resolve browser connection constants through `config/public-connection.ts`, preferring a complete VITE public pair and otherwise the verified managed public connection; this keeps deployment independent of local env files without bundling server bindings or privileged keys.
+- Keep research schedule times as `timestamptz` instants (`survey_starts_at`, `survey_ends_at`, `caronaa_presence_at`) alongside the legacy calendar dates, with launch hour/minute stored as `launchTime` in the configuration JSON; the database derives instants from dates when time is absent, so both representations stay in sync and America/Fortaleza (fixed UTC-3) remains the reference timezone.
 
 - Use database roles for administrator access; the first registration receives admin atomically, while later registrations receive user.
 - Serve user-supplied brand images through Lovable Assets and import their pointer files.
