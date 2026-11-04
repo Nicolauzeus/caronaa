@@ -5,6 +5,7 @@ import { getOperationalMetrics, type OperationalMetrics } from "@/lib/operationa
 import { InsightChart } from "@/components/admin/InsightChart";
 import { statusTextClass } from "@/lib/admin/chart-utils";
 import { ProfessionalLiveMonitor } from "@/components/admin/ProfessionalLiveMonitor";
+import { QuickRideAdminPanel } from "@/components/admin/QuickRideAdminPanel";
 
 export const Route = createFileRoute("/admin/operacoes")({ component: MobilityOperationsCenter });
 const display = (value: number | null | undefined, suffix = "") =>
@@ -184,6 +185,7 @@ function MobilityOperationsCenter() {
       </section>
 
       <ProfessionalLiveMonitor />
+      <QuickRideAdminPanel />
       <section className="rounded-xl border bg-secondary/20 p-4">
         <h2 className="font-bold">Mobilidade profissional local</h2>
         <p className="mt-2 text-sm text-muted-foreground">
