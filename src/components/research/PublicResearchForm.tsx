@@ -8,7 +8,7 @@ import { createResearchVisibility } from "@/lib/formulario/research-conditions";
 import { createUniforGroups,setUniforPainAnswers } from "@/lib/formulario/unifor-compact-groups";
 import { isSimpleMobility, applySimplePainAnswer, validateSimpleMobilityPains } from "@/lib/formulario/mobility-simple";
 import { isUniforPilotForm, UNIFOR_LAUNCH_DAY } from "@/lib/unifor-launch";
-import { academicResearchTemplate,displaySurveyDate,getResearchWindowState } from "@/lib/formulario/research-window";
+import { academicResearchTemplate,displaySurveyMoment,getResearchWindowState } from "@/lib/formulario/research-window";
 import {
   cleanAnswers,
   scheduleWarning,
@@ -100,12 +100,12 @@ export function PublicResearchForm({ code }: { code: string }) {
       const windowState=await getResearchWindowState(code);
       if (!alive) return;
       if (windowState?.state === "AGENDADO") {
-        setError("Esta pesquisa abrirá para respostas em "+displaySurveyDate(windowState.startsOn!)+".");
+        setError("Esta pesquisa abrirá para respostas em "+displaySurveyMoment(windowState.startsOn, windowState.startsAt)+".");
         setLoading(false);
         return;
       }
       if (windowState?.state === "ENCERRADO") {
-        setError("Esta pesquisa encerrou o recebimento de respostas em "+displaySurveyDate(windowState.endsOn!)+".");
+        setError("Esta pesquisa encerrou o recebimento de respostas em "+displaySurveyMoment(windowState.endsOn, windowState.endsAt)+".");
         setLoading(false);
         return;
       }
