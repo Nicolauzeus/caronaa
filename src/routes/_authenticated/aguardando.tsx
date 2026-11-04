@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
   LockKeyhole,
@@ -37,6 +37,16 @@ function launchDate(iso?: string) {
   }).format(new Date(iso));
 }
 
+function launchDateTime(iso?: string) {
+  if (!iso || !Number.isFinite(Date.parse(iso))) return "em breve";
+  const time = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Fortaleza",
+  }).format(new Date(iso));
+  return `${launchDate(iso)}, às ${time} (horário de Fortaleza)`;
+}
+
 function ResearchWaitingRoom() {
   const navigate = useNavigate();
   const router = useRouter();
@@ -44,6 +54,8 @@ function ResearchWaitingRoom() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [notice, setNotice] = useState("");
+  const previousLaunches = useRef<Map<string, string> | null>(null);
 
   // The dial must tick every second. The server campaign/lock state is still
   // refreshed every minute below, so this never bypasses the launch gate.
@@ -59,6 +71,15 @@ function ResearchWaitingRoom() {
       try {
         const result = await getMyResearchLaunchState();
         if (!mounted) return;
+        const nextMap = new Map(result.launches.map((l) => [l.formId, l.launchAt ?? ""]));
+        const prev = previousLaunches.current;
+        if (prev) {
+          const changed = result.launches.find(
+            (l) => prev.has(l.formId) && prev.get(l.formId) !== (l.launchAt ?? ""),
+          );
+          if (changed) setNotice(`Abertura reprogramada para ${launchDateTime(changed.launchAt)}.`);
+        }
+        previousLaunches.current = nextMap;
         setState(result);
         setError("");
         // Established accounts can follow campaigns without losing their
@@ -74,13 +95,18 @@ function ResearchWaitingRoom() {
       }
     }
     void refresh();
-    const id = window.setInterval(() => void refresh(), 60000);
+    const id = window.setInterval(() => void refresh(), 15000);
     const onFocus = () => void refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       mounted = false;
       window.clearInterval(id);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [navigate, router]);
 
@@ -115,7 +141,7 @@ function ResearchWaitingRoom() {
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-3 sm:gap-5">
           <div className="space-y-2">
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#ffc451]">
-              <CalendarClock size={16} aria-hidden="true" /> {launches.length > 1 ? "Próxima abertura" : "Abertura"}: {launchDate(state?.launchAt)}
+              <CalendarClock size={16} aria-hidden="true" /> {launches.length > 1 ? "Próxima abertura" : "Abertura"}: {launchDateTime(state?.launchAt)}
             </p>
             <h1 className="font-display text-[clamp(1.65rem,5vw,2.4rem)] font-black leading-tight">
               {launches.length > 1 ? "Seus lançamentos, em um só lugar." : "Seu caminho começa em breve."}
@@ -131,6 +157,11 @@ function ResearchWaitingRoom() {
           {busy && (
             <p role="status" className="text-sm text-white/70">
               Consultando suas participações…
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm font-semibold">
+              {notice}
             </p>
           )}
           {error && (
@@ -160,7 +191,7 @@ function ResearchWaitingRoom() {
                       {launch.title}
                     </p>
                     <p className="mt-1 text-xs text-white/55">
-                      Pesquisa {launch.formCode} · Abertura: {launchDate(launch.launchAt)}
+                      Pesquisa {launch.formCode} · Abertura: {launchDateTime(launch.launchAt)}
                     </p>
                   </div>
                   <LockKeyhole
@@ -204,7 +235,7 @@ function ResearchWaitingRoom() {
           )}
           {!busy && !error && launches.length > 0 && (
             <p className="text-center text-xs leading-5 text-white/60">
-              Não aparece alguma pesquisa? Atualize a página para sincronizar as participações.
+              Esta página se atualiza sozinha quando a organização muda a data ou a hora.
               Se continuar ausente, entre em contato com o suporte.
             </p>
           )}
