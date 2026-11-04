@@ -95,6 +95,8 @@ export function ResearchCatalog() {
   const [code, setCode] = useState("");
   const [surveyStartsOn, setSurveyStartsOn] = useState("");
   const [surveyEndsOn, setSurveyEndsOn] = useState("");
+  const [surveyStartsTime, setSurveyStartsTime] = useState("00:00");
+  const [surveyEndsTime, setSurveyEndsTime] = useState("23:59");
   const [codeLookup, setCodeLookup] = useState<{
     code: string; checking: boolean; availability?: ResearchCodeAvailability; failed?: boolean;
   } | null>(null);
@@ -187,7 +189,7 @@ export function ResearchCatalog() {
         setCodeLookup({ code: normalizedCode, checking: false, availability: currentAvailability });
         throw Error(describeResearchCodeConflict(currentAvailability.status, currentAvailability.inTrash));
       }
-      const scheduleIssue = validateSurveyWindow(surveyStartsOn,surveyEndsOn);
+      const scheduleIssue = validateSurveyWindow(surveyStartsOn,surveyEndsOn,surveyStartsTime,surveyEndsTime);
       if (scheduleIssue) throw Error(scheduleIssue);
       if (configuredModelKeys.includes(templateKey) && !configure)
         throw Error("Este modelo requer configuração institucional de endereços e horários.");
@@ -224,6 +226,11 @@ export function ResearchCatalog() {
         startsOn: surveyStartsOn,
         endsOn: surveyEndsOn,
         caronaaPresenceOn: configuration.launchDate,
+        startsAt: surveyDateTimeToIso(surveyStartsOn, surveyStartsTime || "00:00"),
+        endsAt: surveyDateTimeToIso(surveyEndsOn, surveyEndsTime || "23:59"),
+        caronaaPresenceAt: configuration.launchDate
+          ? surveyDateTimeToIso(configuration.launchDate, configuration.launchTime || "00:00")
+          : null,
         configuration: configure ? finalConfiguration : undefined,
       });
       let logoWarning = "";
