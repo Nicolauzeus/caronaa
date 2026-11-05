@@ -32,3 +32,11 @@ As duas implementações compartilham a altura, o botão de centralização e os
 7. Executar lint, TypeScript, build e smoke tests de `/home` antes da publicação. Não foi possível executar esses testes somente pela integração GitHub.
 
 Links oficiais: https://developers.google.com/maps/documentation/javascript/error-messages e https://developers.google.com/maps/documentation/javascript/legacy/directions
+
+## Extensão da migração: demais mapas do fluxo de carona
+- `GoogleMapSurface` compartilha o carregador e a chave de navegador do radar da home: Google Maps em primeiro lugar; OpenStreetMap/Leaflet somente se o Google não puder inicializar.
+- Telas cobertas: prévia de localização (formulários), ponto único de `RouteMap`, trajetos de `LiveRideMap` (pedido, ofertas, minhas caronas e acompanhamento) e comparação de rotas com paradas do motorista (`RouteComparisonMap`).
+- O OpenStreetMap continua implementado para contingência, não deve ser apagado nem usado como fornecedor padrão. Os dados de preço, matching, pagamentos e autorização de motoristas não foram alterados.
+- Para distinguir o fornecedor, inspecionar o atributo `data-map-provider`: `google` significa inicialização bem-sucedida; `openstreetmap` significa fallback. Falhas geram aviso genérico no console sem chave nem dados pessoais.
+- O mapa Google requer a chave de navegador **nova** no secret **`GOOGLE_MAPS_BROWSER_API_KEY`** do projeto, Maps JavaScript API ativa, faturamento e restrições HTTP referrer compatíveis com os domínios publicados. Ter apenas `GOOGLE_MAPS_API_KEY` não ativa o mapa Google no navegador. Revalidar após publicar; o código sozinho não comprova funcionamento em produção.
+- Homologar pelo menos: `/home` (botão Pedir carona, motorista no radar e GPS), `/oferecer`, `/minhas-caronas`, viagem em andamento, rota com paradas, pontos selecionados no formulário. Testar Google válido, chave ausente, chave recusada e falta de internet; verificar desktop e mobile.

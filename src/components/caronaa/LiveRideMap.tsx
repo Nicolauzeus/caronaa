@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
+import { GoogleMapSurface } from "./GoogleMapSurface";
 
 export type LiveMapPoint = {
   lat: number;
@@ -45,7 +46,7 @@ export async function fetchRoadRoute(
   return { geometry, distanceKm: first.distance / 1000, durationMinutes: first.duration / 60 };
 }
 
-export function LiveRideMap({ points, skipMeeting = false }: { points: LiveMapPoint[]; skipMeeting?: boolean }) {
+function LegacyLiveRideMap({ points, skipMeeting = false }: { points: LiveMapPoint[]; skipMeeting?: boolean }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const layer = useRef<LayerGroup | null>(null);
@@ -131,4 +132,49 @@ export function LiveRideMap({ points, skipMeeting = false }: { points: LiveMapPo
         : "Carregando trajeto rodoviário…"}
     </div>
   </div>;
+}
+
+/** Google Maps is the primary live ride view; the original Leaflet tracker stays available on failures. */
+export function LiveRideMap({ points, skipMeeting = false }: { points: LiveMapPoint[]; skipMeeting?: boolean }) {
+  const [road, setRoad] = useState<RoadRoute | null>(null);
+  const [routeError, setRouteError] = useState(false);
+  const positions = points.filter(validPoint);
+  const routeKey = routeWaypoints(positions, skipMeeting)
+    .map((p) => p.type + ":" + p.lat.toFixed(4) + "," + p.lng.toFixed(4)).join("|");
+
+  useEffect(() => {
+    if (routeKey.split("|").filter(Boolean).length < 2) {
+      setRoad(null);
+      setRouteError(false);
+      return;
+    }
+    const abort = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void fetchRoadRoute(points, abort.signal, skipMeeting).then((result) => {
+        if (!abort.signal.aborted) { setRoad(result); setRouteError(false); }
+      }).catch(() => {
+        if (!abort.signal.aborted) { setRoad(null); setRouteError(true); }
+      });
+    }, 400);
+    return () => { window.clearTimeout(timeout); abort.abort(); };
+    // Stable waypoint key deliberately avoids refetching at every GPS jitter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey, skipMeeting]);
+
+  return <GoogleMapSurface
+    points={positions.map((p) => ({
+      lat: p.lat, lng: p.lng, title: p.title,
+      color: p.type === "driver" ? "#121212" : p.type === "destination" ? "#FFBB00" : "#2563eb",
+    }))}
+    lines={road ? [{ points: road.geometry.map(([lat, lng]) => ({ lat, lng })), color: "#FFBB00" }] : []}
+    className="h-72 w-full"
+    ariaLabel={"Mapa da viagem: " + positions.map((p) => p.title).join(", ")}
+    fallback={<LegacyLiveRideMap points={points} skipMeeting={skipMeeting} />}
+  >
+    <div className="pointer-events-none absolute bottom-2 left-2 z-10 max-w-[85%] rounded-md bg-background/95 px-2 py-1 text-[11px] text-foreground shadow">
+      {road ? "Rota pelas vias · " + road.distanceKm.toFixed(1) + " km · cerca de " + Math.round(road.durationMinutes) + " min (estimativa)"
+        : routeError ? "Rota indisponível. Marcadores não representam o percurso."
+        : "Carregando trajeto rodoviário…"}
+    </div>
+  </GoogleMapSurface>;
 }

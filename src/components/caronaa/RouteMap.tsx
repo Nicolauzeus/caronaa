@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { MapPin, Navigation, ExternalLink, Route as RouteIcon, Info } from "lucide-react";
 import { geocodeAddress } from "@/lib/location/geo-utils";
 import { LiveRideMap } from "./LiveRideMap";
+import { GoogleMapSurface } from "./GoogleMapSurface";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 export interface RouteMapLocation {
@@ -213,11 +214,16 @@ export function RouteMap({
         className={`relative overflow-hidden rounded-xl border border-border bg-card shadow-soft ${className}`}
       >
         <div className={`relative w-full ${heightClassName} overflow-hidden bg-muted/30`}>
-          <iframe
+          <GoogleMapSurface
+            points={[{ lat: singlePoint.lat, lng: singlePoint.lng, title: singlePoint.name }]}
+            className="h-56 w-full"
+            ariaLabel={"Localização: " + singlePoint.name}
+            fallback={<iframe
             title={`Localização: ${singlePoint.name}`}
             src={singleEmbedUrl}
             className="h-full w-full border-0 contrast-[1.05] opacity-95"
             loading="lazy"
+          />}
           />
           <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-lg bg-background/95 px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/70">
             <MapPin size={14} className="text-primary" />
@@ -253,7 +259,7 @@ export function RouteMap({
       {hasText && (
         <div className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground bg-background/80 px-2 py-1 rounded-md border border-border/60">
           <Info size={12} className="text-primary shrink-0" />
-          <span>Suporte georreferenciado ativo com Ceará Online e OpenStreetMap.</span>
+          <span>Suporte georreferenciado com Google Maps e mapa alternativo quando necessário.</span>
         </div>
       )}
     </div>

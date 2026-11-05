@@ -1,3 +1,4 @@
+import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MapPin, Search, CheckCircle2, X, Loader2, Edit2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -394,11 +395,17 @@ export function LocationAutocomplete({
           {/* Mini preview de mapa quando houver coordenadas */}
           {selectedLocation?.lat && selectedLocation?.lng ? (
             <div className="relative mt-2 h-28 sm:h-32 w-full overflow-hidden rounded-lg border border-border bg-muted/40 shadow-inner">
-              <iframe
+              <GoogleMapSurface
+                points={[{ lat: selectedLocation.lat, lng: selectedLocation.lng, title: "Localização selecionada" }]}
+                className="h-full w-full"
+                ariaLabel="Visualização da localização no mapa"
+                previewOnly
+                fallback={<iframe
                 title="Visualização da localização no mapa"
                 src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedLocation.lng - 0.006}%2C${selectedLocation.lat - 0.005}%2C${selectedLocation.lng + 0.006}%2C${selectedLocation.lat + 0.005}&layer=mapnik&marker=${selectedLocation.lat}%2C${selectedLocation.lng}`}
                 className="h-full w-full border-0 pointer-events-none opacity-90 contrast-[1.05]"
                 loading="lazy"
+              />}
               />
               <div className="pointer-events-none absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground shadow-xs backdrop-blur-xs">
                 <span>
