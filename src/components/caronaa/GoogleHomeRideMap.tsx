@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useServerFn } from "@tanstack/react-start";
+import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
 import { LocateFixed, MapPin } from "lucide-react";
 import { validPoint, type UserPosition } from "@/lib/location/use-user-location";
 import type { ApproximateProfessionalDriver } from "./HomeRideMap";
@@ -23,8 +25,8 @@ type Props = {
 export const googleMapsBrowserKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY?.trim() ?? "";
 let googleScriptPromise: Promise<void> | undefined;
 
-function loadGoogleMaps(): Promise<void> {
-  if (!googleMapsBrowserKey) return Promise.reject(new Error("Google Maps browser key missing"));
+function loadGoogleMaps(browserKey: string): Promise<void> {
+  if (!browserKey) return Promise.reject(new Error("Google Maps browser key missing"));
   if (typeof window === "undefined") return Promise.reject(new Error("Browser unavailable"));
   if ((window as any).google?.maps?.Map) return Promise.resolve();
   if (googleScriptPromise) return googleScriptPromise;
@@ -49,7 +51,7 @@ function loadGoogleMaps(): Promise<void> {
     );
     (window as any)[callback] = () => finish();
     script.src = "https://maps.googleapis.com/maps/api/js?key=" +
-      encodeURIComponent(googleMapsBrowserKey) + "&v=weekly&callback=" + callback;
+      encodeURIComponent(browserKey) + "&v=weekly&callback=" + callback;
     script.async = true;
     script.onerror = () => finish(new Error("Google Maps load failed"));
     document.head.appendChild(script);
@@ -69,6 +71,7 @@ export function GoogleHomeRideMap({
   userPosition, professionalDrivers = [], origin, destination, originIsCurrent,
   following, recenterVersion, locating, onDrag, onRecenter, onFailure,
 }: Props & { onFailure: () => void }) {
+  const getServerBrowserKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const markers = useRef<any[]>([]);
@@ -95,7 +98,12 @@ export function GoogleHomeRideMap({
       if (typeof priorAuthFailure === "function") priorAuthFailure();
     };
     (window as any).gm_authFailure = handleAuthFailure;
-    loadGoogleMaps().then(() => {
+    const initializeMap = async () => {
+      // Lovable project Secrets can provide the browser key without putting a
+      // real value in a tracked .env file. The key is still public in the client.
+      const browserKey = googleMapsBrowserKey || (await getServerBrowserKey()) || "";
+      if (!active) return;
+      await loadGoogleMaps(browserKey);
       if (!active || !container.current) return;
       const G = (window as any).google.maps;
       const center = [userPosition, origin, destination].find(validPoint) ?? {lat: -3.73, lng: -38.53};
@@ -107,7 +115,8 @@ export function GoogleHomeRideMap({
       instance.addListener("dragstart", () => dragRef.current());
       map.current = instance;
       setReady(true);
-    }).catch(() => { if (active) failureRef.current(); });
+    };
+    void initializeMap().catch(() => { if (active) failureRef.current(); });
     return () => {
       active = false;
       if ((window as any).gm_authFailure === handleAuthFailure) {
