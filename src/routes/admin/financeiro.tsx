@@ -1,5 +1,6 @@
 import { AdminDataError } from "@/components/admin/AdminDataError";
 import { PlatformFeeFinance } from "@/components/admin/PlatformFeeFinance";
+import { AsaasConnectionPanel } from "@/components/admin/AsaasConnectionPanel";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -215,6 +216,7 @@ function FinanceCenter() {
           </section>
         </>
       )}
+      <AsaasConnectionPanel />
       <PlatformFeeFinance />
       <aside className="rounded-xl border bg-secondary/20 p-4">
         <h2 className="font-bold">Conciliação e repasses</h2>
