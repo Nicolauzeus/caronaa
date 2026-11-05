@@ -1,6 +1,6 @@
 # CARONAA / Asaas — arquitetura inicial (sandbox)
 
-Apenas integração **server-side**. Nunca colocar ASAAS_API_KEY no navegador, repositório ou logs.
+> **Atualização de 05/11/2026:** o percentual para novas viagens é **16,86% CARONAA / 83,14% motorista**. A taxa de Pix estimada informada é **1,86% + R$0,35**, ainda não verificada por checkout transacional. As duas formas de pagamento são exclusivas por viagem e o Asaas continua desligado. Ver [política vigente](payment-dual-rail-1686.md). Documentação abaixo descreve a arquitetura original e contém referências históricas à política 85/15.\n\nApenas integração **server-side**. Nunca colocar ASAAS_API_KEY no navegador, repositório ou logs.
 
 ## Política comercial confirmada: Modelo B (passageiro paga processamento)
 - Preço da carona (sem tarifa) = `F` centavos. CARONAA recebe **15% líquidos de F**, motorista **85% de F**, arredondados de modo a fechar exatamente F.
