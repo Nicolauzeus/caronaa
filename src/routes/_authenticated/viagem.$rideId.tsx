@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
-import { AsaasCheckoutPreview } from "@/components/caronaa/AsaasCheckoutPreview";
+
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -318,7 +318,7 @@ function ViagemOperacional() {
         {ride.role === "passenger" && ride.rideId &&
           ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(ride.status) && (
           <div className="order-5 lg:col-start-2">
-            <AsaasCheckoutPreview rideId={ride.rideId} />
+            <p role="status" className="rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground">Pix direto para o motorista após a conclusão da viagem. A transferência é manual e não confirma pagamento no aplicativo.</p>
           </div>
         )}
 
