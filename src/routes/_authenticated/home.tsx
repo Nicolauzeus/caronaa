@@ -799,7 +799,7 @@ function Home() {
               </div>
               {role === "request" && (
                 <label className="flex min-h-12 items-center justify-between text-sm font-semibold text-gray-200">
-                  Passageiros
+                  Passageiros neste pedido
                   <span className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1">
                     <button
                       type="button"
