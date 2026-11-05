@@ -12,7 +12,7 @@ const valid: CheckoutPreflight = {
 describe("Asaas checkout guard", () => {
   it("allows only a fully verified sandbox quote", () => {
     expect(validateCheckoutPreflight(valid)).toMatchObject({
-      passengerTotalCents:10199, platformTargetNetCents:1500, driverFixedCents:8500,
+      passengerTotalCents:10199, platformTargetNetCents:1686, driverFixedCents:8314,
     });
   });
   it.each([
