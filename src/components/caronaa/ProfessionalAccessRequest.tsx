@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfessionalAuthorizationBadge } from "@/components/caronaa/ProfessionalAuthorizationBadge";
 import {
   CAR_CATEGORIES, MISSING_LABELS, PROFILE_CODES, STATUS_LABELS, maxSeatsFor, parseMissingError, professionalAccessMissing,
   type AccessStatus, type CarCategory, type MissingCode, type VehicleType,
@@ -57,7 +58,7 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
     <section className="space-y-3 rounded-xl border p-4" aria-label="Acesso ao radar profissional">
       <h2 className="font-semibold">Acesso ao radar profissional</h2>
       {state.authorized
-        ? <p className="text-sm"><strong>{STATUS_LABELS.APPROVED}</strong>. Não representa verificação documental nem habilitação comercial.</p>
+        ? <div className="space-y-2"><ProfessionalAuthorizationBadge /><p className="text-xs text-muted-foreground">Autorização administrativa para o radar piloto. Não representa verificação documental nem habilitação comercial.</p></div>
         : r && <p className="text-sm">Situação: <strong>{STATUS_LABELS[r.status]}</strong>{r.status === "PENDING" && " — aguarde a análise do administrador."}</p>}
       {r?.review_reason && !state.authorized && <p className="rounded-lg border p-2 text-sm">Motivo: {r.review_reason}</p>}
       {profileMissing.length > 0 && !state.authorized && (
