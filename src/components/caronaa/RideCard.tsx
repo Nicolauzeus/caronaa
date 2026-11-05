@@ -75,6 +75,7 @@ export function RideCard({
   const [adjustmentAccepted, setAdjustmentAccepted] = useState(false);
   const [requested, setRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [reviewedSeats, setReviewedSeats] = useState<number | null>(null);
   const requestOffer = useServerFn(requestRideOffer);
   const personName = getDisplayName(ride);
   const personAvatar = ride.driver?.avatarUrl ?? ride.passenger?.avatarUrl ?? null;
@@ -84,10 +85,20 @@ export function RideCard({
   async function requestRide() {
     if (
       !ride.offerId ||
+      requesting ||
+      requested ||
       !segmentRequest ||
       (ride.matchEvaluation?.requiresAdjustment && !adjustmentAccepted)
     )
       return;
+    if (!Number.isInteger(passengerCount) || passengerCount < 1 || passengerCount > 6) {
+      toast.error("Quantidade de passageiros inválida.");
+      return;
+    }
+    if (reviewedSeats !== passengerCount) {
+      setReviewedSeats(passengerCount);
+      return;
+    }
     setRequesting(true);
     try {
       await requestOffer({
@@ -103,6 +114,7 @@ export function RideCard({
         },
       });
       setRequested(true);
+      setReviewedSeats(null);
       toast.success("Carona solicitada", {
         description:
           "Seu trecho e preço foram enviados. A viagem só será confirmada após os dois aceites.",
@@ -213,6 +225,18 @@ export function RideCard({
           ) : null}
         </div>
       )}
+      {canRequest && segmentRequest && reviewedSeats === passengerCount && !requested && (
+        <div role="status" className="mt-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm text-foreground">
+          <p className="font-semibold">Confirme a quantidade antes de solicitar</p>
+          <p className="mt-1">
+            {passengerCount} {passengerCount === 1 ? "vaga solicitada" : "vagas solicitadas"} ·
+            {" "}{formatBrl(calculateRequestedGroupFare(segmentRequest.pricePerPassenger, passengerCount))} no total.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A capacidade total do carro não será cobrada. Pressione novamente para enviar.
+          </p>
+        </div>
+      )}
       {canRequest && segmentRequest && ride.matchEvaluation?.requiresAdjustment && (
         <label className="mt-3 flex items-start gap-2 text-xs">
           <input
@@ -251,7 +275,7 @@ export function RideCard({
               <>
                 <Check size={16} /> Solicitada
               </>
-            ) : requesting ? (
+) : requesting ? (
               "Solicitando..."
             ) : !segmentRequest ? (
               "Informe trecho e horário"
