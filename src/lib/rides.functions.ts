@@ -298,7 +298,8 @@ function mapRide(
     destination: String(req?.["destination"] ?? off?.["destination"] ?? ""),
     rideDate: String(req?.["ride_date"] ?? off?.["ride_date"] ?? ""),
     departureTime: String(req?.["departure_time"] ?? off?.["departure_time"] ?? "").slice(0, 5),
-    seats: Number(req?.["passenger_count"] ?? off?.["available_seats"] ?? 0),
+    // Reservation seats belong to the passenger request, never to the driver offer capacity.
+    seats: Number(req?.["passenger_count"] ?? 1),
     seatsRemaining:
       typeof off?.["seats_remaining"] === "number"
         ? (off["seats_remaining"] as number)
