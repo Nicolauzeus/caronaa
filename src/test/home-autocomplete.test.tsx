@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 const api = vi.hoisted(() => ({ search: vi.fn(), details: vi.fn() }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
+// Map rendering is outside the scope of this autocomplete interaction test.
+vi.mock("@/components/caronaa/GoogleMapSurface", () => ({
+  GoogleMapSurface: () => <div data-testid="map-preview" />,
+}));
 vi.mock("@/lib/location.functions", () => ({
   searchLocationsServerFn: api.search,
   getLocationDetailsServerFn: api.details,
