@@ -164,3 +164,12 @@ export function formatBrl(value: number): string {
     currency: "BRL",
   }).format(value);
 }
+
+/** Only seats explicitly requested by the passenger are chargeable; never vehicle capacity. */
+export function calculateRequestedGroupFare(pricePerPassenger: number, requestedPassengers: number): number {
+  if (!Number.isFinite(pricePerPassenger) || pricePerPassenger <= 0 ||
+      !Number.isInteger(requestedPassengers) || requestedPassengers < 1 || requestedPassengers > 6) {
+    throw new Error("Preço ou quantidade de passageiros inválida.");
+  }
+  return fromCents(toCents(pricePerPassenger) * requestedPassengers);
+}
