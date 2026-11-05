@@ -181,16 +181,10 @@ export function RideSafetyPanel({
           )}
         </div>
       )}
-      {/* The driver's legacy Pix code is for the driver only. The passenger
-          follows the payer-only Asaas preview, never a duplicate bank-key QR. */}
-      {currentStatus === "COMPLETED" && role === "driver" && (
-        <CompletedRidePix rideId={rideId} />
-      )}
-      {currentStatus === "COMPLETED" && role === "passenger" && (
-        <p role="status" className="rounded-xl border border-border bg-card/50 px-4 py-3 text-sm leading-6 text-muted-foreground">
-          Viagem concluída. Consulte a situação do pagamento no painel de cobrança.
-          O checkout Asaas ainda está em testes: nenhuma cobrança automática foi confirmada.
-        </p>
+      {/* Manual Pix belongs to the two ride participants after completion;
+          displaying it does not confirm a bank transfer. */}
+      {currentStatus === "COMPLETED" && (role === "driver" || role === "passenger") && (
+        <CompletedRidePix rideId={rideId} role={role} />
       )}
 
       {/* Validação de Embarque com QR Code ou PIN para Passageiro */}
