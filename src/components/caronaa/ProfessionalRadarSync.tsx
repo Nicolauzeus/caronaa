@@ -93,6 +93,10 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         );
         timer = window.setInterval(() => {
           if (document.hidden || disposed) return;
+          if (window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") {
+            stop();
+            return;
+          }
           void (async () => {
             // Do not reactivate an offline driver from another device.
             const { data: state, error: stateError } = await (supabase as any)
@@ -128,10 +132,17 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       if (document.hidden) stop();
       else void start();
     };
+    const consentChanged = (event: StorageEvent) => {
+      if (event.key !== professionalRadarConsentKey(userId)) return;
+      if (event.newValue !== "yes") stop();
+      else void start();
+    };
     document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("storage", consentChanged);
     void start();
     return () => {
       disposed = true;
+      window.removeEventListener("storage", consentChanged);
       document.removeEventListener("visibilitychange", visibility);
       stop();
     };
