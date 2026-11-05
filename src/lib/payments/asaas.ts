@@ -67,6 +67,14 @@ export class AsaasClient {
     }));
   }
 
+  /** A harmless GET that validates the server API key and registration approval. */
+  async getAccountStatus(): Promise<{ general: string }> {
+    const response = z.object({ general: z.string().min(1) }).parse(
+      await this.call("/myAccount/status", "GET"),
+    );
+    return { general: response.general };
+  }
+
   async getPixQrCode(paymentId: string) {
     if (!/^pay_[A-Za-z0-9]+$/.test(paymentId)) throw new Error("Invalid Asaas payment identifier");
     return asaasPixResponse.parse(await this.call("/payments/" + paymentId + "/pixQrCode", "GET"));
