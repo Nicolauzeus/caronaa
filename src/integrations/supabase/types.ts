@@ -1713,6 +1713,89 @@ export type Database = {
           },
         ]
       }
+      professional_access_request_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: number
+          reason: string | null
+          request_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: number
+          reason?: string | null
+          request_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: number
+          reason?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_access_request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "professional_access_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_access_requests: {
+        Row: {
+          car_category: string | null
+          id: string
+          municipality: string
+          passenger_seats: number
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          snapshot: Json
+          status: string
+          submitted_at: string
+          updated_at: string
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          car_category?: string | null
+          id?: string
+          municipality: string
+          passenger_seats: number
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          snapshot: Json
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+          vehicle_type: string
+        }
+        Update: {
+          car_category?: string | null
+          id?: string
+          municipality?: string
+          passenger_seats?: number
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          snapshot?: Json
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
       professional_driver_authorizations: {
         Row: {
           approved: boolean
@@ -3953,7 +4036,12 @@ export type Database = {
         Returns: string
       }
       admin_platform_fee_claims: { Args: never; Returns: Json }
+      admin_professional_access_queue: { Args: never; Returns: Json }
       admin_quick_ride_overview: { Args: never; Returns: Json }
+      admin_review_professional_access: {
+        Args: { p_decision: string; p_reason: string; p_request_id: string }
+        Returns: undefined
+      }
       admin_set_platform_pix: { Args: { p_key: string }; Returns: boolean }
       admin_set_quick_ride_driver: {
         Args: { p_approved: boolean; p_email: string; p_vehicle_type: string }
@@ -4347,6 +4435,7 @@ export type Database = {
       get_my_driver_platform_fees: { Args: never; Returns: Json }
       get_my_onboarding_research_suggestions: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
+      get_my_professional_access: { Args: never; Returns: Json }
       get_my_research_launch_state: { Args: never; Returns: Json }
       get_my_research_participation_badges: {
         Args: never
@@ -4606,6 +4695,16 @@ export type Database = {
           p_tariff_reference: string
         }
         Returns: boolean
+      }
+      professional_access_missing: {
+        Args: {
+          p_car_category: string
+          p_municipality: string
+          p_seats: number
+          p_user: string
+          p_vehicle_type: string
+        }
+        Returns: string[]
       }
       professional_location_opt_in: {
         Args: {
@@ -4879,6 +4978,15 @@ export type Database = {
           p_anonymous_session_id?: string
           p_pain_points: Json
           p_submission: Json
+        }
+        Returns: string
+      }
+      submit_professional_access_request: {
+        Args: {
+          p_car_category: string
+          p_municipality: string
+          p_seats: number
+          p_vehicle_type: string
         }
         Returns: string
       }
