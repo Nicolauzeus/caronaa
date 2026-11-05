@@ -1,4 +1,5 @@
 import { AdminDataError } from "@/components/admin/AdminDataError";
+import { PlatformFeeFinance } from "@/components/admin/PlatformFeeFinance";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -214,11 +215,12 @@ function FinanceCenter() {
           </section>
         </>
       )}
+      <PlatformFeeFinance />
       <aside className="rounded-xl border bg-secondary/20 p-4">
         <h2 className="font-bold">Conciliação e repasses</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ainda não há fonte de liquidação ou repasse verificada neste módulo. Receita líquida,
-          divisão motorista/plataforma e saldo conciliado permanecem N/D até integração comprovada.
+          Repasses bancários são conferidos manualmente no quadro acima. Receita líquida automática,
+          split bancário automático e saldo conciliado permanecem N/D até integração comprovada.
           Nenhum pagamento pode ser alterado por esta interface.
         </p>
       </aside>
