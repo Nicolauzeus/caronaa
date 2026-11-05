@@ -112,6 +112,26 @@ function Home() {
   const [timeTolerance, setTimeTolerance] = useState<TimeToleranceMinutes>(15);
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
+  const [offerSeats, setOfferSeats] = useState("2");
+  const [driverVehicle, setDriverVehicle] = useState("");
+  const [driverPlate, setDriverPlate] = useState("");
+  const [driverBlocked, setDriverBlocked] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getUser().then(async ({ data: auth }) => {
+      if (!auth.user) return;
+      const [profile, fees] = await Promise.all([
+        supabase.from("profiles").select("vehicle_brand,vehicle_description,vehicle_plate")
+          .eq("id",auth.user.id).maybeSingle(),
+        (supabase as any).rpc("get_my_driver_platform_fees"),
+      ]);
+      if (!active) return;
+      setDriverVehicle([profile.data?.vehicle_brand,profile.data?.vehicle_description].filter(Boolean).join(" · "));
+      setDriverPlate(profile.data?.vehicle_plate || "");
+      if (!fees.error) setDriverBlocked(fees.data?.driverAllowed === false);
+    });
+    return () => { active = false; };
+  }, []);
   const [confirmedReviewKey, setConfirmedReviewKey] = useState<string | null>(null);
   const [requestFare, setRequestFare] = useState<
     (FarePreview & { origin: string; destination: string }) | null
@@ -495,11 +515,13 @@ function Home() {
             id="journey-title"
             className="font-[family-name:var(--font-display)] text-xl font-extrabold sm:text-3xl"
           >
-            <span className="sm:hidden">Planeje sua carona</span>
-            <span className="hidden sm:inline">Para onde vamos?</span>
+            <span className="sm:hidden">{role === "request" ? "Quero carona" : "Vou dirigindo"}</span>
+            <span className="hidden sm:inline">{role === "request" ? "Quero carona" : "Vou dirigindo"}</span>
           </h2>
           <p className="mt-1 text-sm text-gray-300 sm:hidden">
-            Informe o trajeto, escolha quando sair e confira os detalhes antes de continuar.
+            {role === "request"
+              ? "Encontre quem já vai fazer esse trajeto."
+              : "Divida os custos levando passageiros no seu carro."}
           </p>
           {!panelOpen && (
             <button
@@ -535,25 +557,38 @@ function Home() {
             <div
               role="group"
               aria-label="Papel nesta viagem"
-              className="my-4 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/5 p-1 sm:my-5"
+              className="my-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 sm:my-5"
             >
               {(
                 [
-                  ["request", "Pedir carona", UserRound],
-                  ["offer", "Oferecer carona", CarFront],
+                  ["request", "Quero carona", UserRound],
+                  ["offer", "Vou dirigindo", CarFront],
                 ] as const
               ).map(([value, label, Icon]) => (
                 <button
                   key={value}
                   type="button"
                   aria-pressed={role === value}
-                  onClick={() => setRole(value)}
-                  className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${role === value ? "bg-white/10 text-white shadow-sm" : "text-gray-400"}`}
+                  onClick={() => { setRole(value); setConfirmedReviewKey(null); }}
+                  className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${role === value ? value === "offer" ? "border-[#FFBB00] bg-[#FFBB00] text-black shadow-sm" : "border-white/50 bg-white/15 text-white shadow-sm" : "border-white/10 text-gray-400 hover:bg-white/10"}`}
                 >
                   <Icon size={18} />
                   {label}
                 </button>
               ))}
+            </div>
+            <div role="status" className={role === "offer"
+              ? "rounded-2xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 px-4 py-3"
+              : "rounded-2xl border border-white/20 bg-white/5 px-4 py-3"}>
+              <p className="flex items-center gap-2 text-sm font-bold">
+                {role === "request" ? <UserRound size={18} /> : <CarFront size={18} className="text-[#FFBB00]" />}
+                Você {role === "request" ? "viajará como PASSAGEIRO" : "vai DIRIGIR o seu carro"}
+              </p>
+              <p className="mt-1 text-xs text-gray-300">
+                {role === "request"
+                  ? "Você solicita apenas os lugares necessários e aguarda a confirmação do motorista."
+                  : "Você publica uma oferta, define vagas e recebe pedidos de passageiros."}
+              </p>
             </div>
             <form
               className="space-y-4"
@@ -565,7 +600,17 @@ function Home() {
                   return;
                 }
                 if (role === "offer") {
+                  if (driverBlocked) {
+                    setError("Você possui três repasses pendentes. Quite a comissão antes de oferecer carona.");
+                    return;
+                  }
+                  const seats = Number(offerSeats);
+                  if (!Number.isInteger(seats) || seats < 1 || seats > 7) {
+                    setError("Escolha entre 1 e 7 vagas disponíveis no carro.");
+                    return;
+                  }
                   const params = new URLSearchParams({
+                    vagas: String(seats),
                     origem: origin,
                     destino: destination,
                     data: date,
@@ -814,6 +859,38 @@ function Home() {
                   label="Flexibilidade de horário"
                 />
               </div>
+              {role === "offer" && (
+                <div className="space-y-3 rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/5 p-4">
+                  <p className="text-sm font-bold text-[#FFBB00]">Seu carro e as vagas que você oferece</p>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-gray-200">Quantas vagas livres no seu carro?</span>
+                    <div className="flex items-center gap-2 rounded-full border border-white/20 px-2 py-1">
+                      <button type="button" aria-label="Diminuir vagas ofertadas"
+                        disabled={Number(offerSeats) <= 1}
+                        onClick={() => setOfferSeats(n => String(Math.max(1, Number(n)-1)))}
+                        className="flex h-9 w-9 items-center justify-center disabled:opacity-40"><Minus size={15}/></button>
+                      <strong className="min-w-5 text-center">{offerSeats}</strong>
+                      <button type="button" aria-label="Aumentar vagas ofertadas"
+                        disabled={Number(offerSeats) >= 7}
+                        onClick={() => setOfferSeats(n => String(Math.min(7, Number(n)+1)))}
+                        className="flex h-9 w-9 items-center justify-center disabled:opacity-40"><Plus size={15}/></button>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-gray-200">
+                    <CarFront size={18} className="shrink-0 text-[#FFBB00]" />
+                    <span>{driverVehicle
+                      ? `Veículo cadastrado: ${driverVehicle}${driverPlate ? " · placa final " + driverPlate.slice(-4) : ""}`
+                      : "Veículo não cadastrado. Informe os dados na próxima etapa."}
+                    </span>
+                  </div>
+                  {driverBlocked && (
+                    <p role="alert" className="rounded-lg border border-destructive/50 p-2 text-xs">
+                      Motorista bloqueado por três repasses pendentes.{" "}
+                      <Link to="/perfil" className="font-bold underline">Ver repasses no perfil</Link>
+                    </p>
+                  )}
+                </div>
+              )}
               {role === "request" && (
                 <label className="flex min-h-12 items-center justify-between text-sm font-semibold text-gray-200">
                   Passageiros neste pedido
@@ -861,6 +938,12 @@ function Home() {
                   <JourneyPreferences kind="request" onChange={setPreferences} />
                 </div>
               )}
+              {role === "offer" && (
+                <p role="status" className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-3 text-sm text-white">
+                  Você está OFERECENDO <strong>{offerSeats} {Number(offerSeats) === 1 ? "VAGA" : "VAGAS"}</strong>
+                  {" "}no seu carro. Na próxima tela você revisará o veículo e publicará a oferta.
+                </p>
+              )}
               {role === "request" && requestFare &&
                 confirmedReviewKey === JSON.stringify([
                   requestFare.quoteId, origin, destination, date, time,
@@ -899,7 +982,7 @@ function Home() {
                 </div>
                 <Button
                   type="submit"
-                  disabled={busy || (role === "request" && !requestFare)}
+                  disabled={busy || (role === "request" && !requestFare) || (role === "offer" && driverBlocked)}
                   className="min-h-14 flex-1 rounded-2xl bg-[#FFBB00] text-base font-bold text-[#121212] shadow-lg hover:bg-[#ffd04d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 sm:flex-none sm:px-8"
                 >
                   {busy
@@ -911,7 +994,7 @@ function Home() {
                          ])
                          ? `Confirmar ${count} ${Number(count) === 1 ? "vaga" : "vagas"}`
                          : "Revisar vagas e total"
-                      : "Continuar"}
+                      : "Definir detalhes da carona (Motorista)"}
                   <ArrowRight size={18} />
                 </Button>
               </div>
