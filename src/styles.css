@@ -779,3 +779,18 @@ a:active {
   stroke: var(--border);
   opacity: .6;
 }
+
+/* Theme contract: native controls and location suggestions follow semantic contrast. */
+:root { color-scheme: light; }
+:root.dark { color-scheme: dark; }
+:root:not(.dark) [role="listbox"][aria-label="Sugestões de localização"] {
+  color: var(--card-foreground);
+}
+:root:not(.dark) [role="listbox"][aria-label="Sugestões de localização"] [role="option"] {
+  color: var(--card-foreground);
+}
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select {
+    caret-color: currentColor;
+  }
+}
