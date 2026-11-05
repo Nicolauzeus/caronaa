@@ -1,5 +1,5 @@
-export const CARONAA_COMMISSION_BASIS_POINTS = 1500;
-export const DRIVER_SHARE_BASIS_POINTS = 8500;
+export const CARONAA_COMMISSION_BASIS_POINTS = 1686;
+export const DRIVER_SHARE_BASIS_POINTS = 8314;
 export type GrossSplit = {
   grossCents: number;
   platformGrossCommissionCents: number;
