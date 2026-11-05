@@ -1,17 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { readVerifiedPixFee } from "./fee-configuration";
+import { estimateAsaasPixProcessing } from "./asaas-fee-estimate";
 import { quotePassengerPaysProcessingFee } from "./passenger-fee";
 
-/** Read-only checkout preview. Authenticated payer sees the exact fare/fee before consent.
- * A QR must NEVER be created from this preview alone.
- */
+/** Informational quote only: no verified merchant fee, charge or Pix QR is created. */
 export const previewAsaasCheckout = createServerFn({method:"GET"})
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({rideId:z.string().uuid()}).parse(input))
   .handler(async ({context,data}) => {
-    const {feeCents,verifiedAt} = readVerifiedPixFee(process.env);
     const {data:ride,error} = await context.supabase.from("rides")
       .select("ride_id,passenger_user_id,status,passenger_group_total")
       .eq("ride_id",data.rideId).maybeSingle();
@@ -23,9 +20,20 @@ export const previewAsaasCheckout = createServerFn({method:"GET"})
     if(!Number.isFinite(fareReais) || fareReais <= 0)
       throw new Error("Preço da reserva indisponível. Refaça a cotação.");
     const fareCents = Math.round(fareReais*100);
+    // Contract rate is a project owner's working assumption until verified on
+    // the merchant's actual Asaas tariff schedule; never use for a real charge.
+    const estimate = estimateAsaasPixProcessing(fareCents);
     return {
-      rideId:data.rideId, ...quotePassengerPaysProcessingFee(fareCents,feeCents),
-      feeVerifiedAt:verifiedAt, currency:"BRL" as const, sandbox:true as const,
-      checkoutReady:false as const, // No confirmed customer/wallet provisioning or charge endpoint yet
+      rideId:data.rideId,
+      ...quotePassengerPaysProcessingFee(fareCents,estimate.processingFeeCents),
+      estimatedFeeRateBps: estimate.rateBps,
+      estimatedFeeFixedCents: estimate.fixedCents,
+      estimatedProviderCostCents: estimate.estimatedProviderCostCents,
+      feeVerifiedAt: null,
+      feeSource: "ESTIMATED_UNVERIFIED" as const,
+      currency:"BRL" as const,
+      environment: process.env["ASAAS_ENV"] === "production" ? "production" as const : "sandbox" as const,
+      checkoutReady:false as const,
+      // ASAAS_ENABLE_CHARGES remains false until end-to-end readiness is verified.
     };
   });
