@@ -146,7 +146,7 @@ BEGIN
     SET mutually_confirmed_at=coalesce(mutually_confirmed_at,now())
     WHERE ride_id=p_ride_id RETURNING * INTO v_status;
     INSERT INTO public.driver_platform_fees(ride_id,driver_id,gross_amount,fee_amount)
-    VALUES(p_ride_id,v_ride.driver_user_id,v_gross,round(v_gross*0.15,2))
+    VALUES(p_ride_id,v_ride.driver_user_id,v_gross,greatest(0.01,round(v_gross*0.15,2)))
     ON CONFLICT(ride_id) DO NOTHING;
     -- The driver is immediately removed from the quick-ride radar at the threshold,
     -- regardless of a previously active location or presence heartbeat.
