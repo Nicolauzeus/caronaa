@@ -778,11 +778,11 @@ function Oferecer() {
                 ) : (
                   <div className="min-w-0 pl-2">
                     <p className="text-[10px] font-semibold text-gray-400">
-                      Economia potencial com {form.seats}{" "}
+                      Potencial com até {form.seats}{" "}
                       {Number(form.seats) === 1 ? "vaga" : "vagas"}
                     </p>
                     <p className="truncate font-[family-name:var(--font-display)] text-lg font-bold text-[#FFBB00]">
-                      {potentialSavings != null ? `Abata até ${formatBrl(potentialSavings)}` : "—"}
+                      {potentialSavings != null ? `Até ${formatBrl(potentialSavings)} (lotação total)` : "—"}
                     </p>
                   </div>
                 )}
