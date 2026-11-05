@@ -25,7 +25,7 @@ type Props = {
 export const googleMapsBrowserKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY?.trim() ?? "";
 let googleScriptPromise: Promise<void> | undefined;
 
-function loadGoogleMaps(browserKey: string): Promise<void> {
+export function loadGoogleMaps(browserKey: string): Promise<void> {
   if (!browserKey) return Promise.reject(new Error("Google Maps browser key missing"));
   if (typeof window === "undefined") return Promise.reject(new Error("Browser unavailable"));
   if ((window as any).google?.maps?.Map) return Promise.resolve();
@@ -116,7 +116,12 @@ export function GoogleHomeRideMap({
       map.current = instance;
       setReady(true);
     };
-    void initializeMap().catch(() => { if (active) failureRef.current(); });
+    void initializeMap().catch(() => {
+      if (active) {
+        console.warn("[CARONAA/maps] Google Maps indisponível no radar da home. Verifique GOOGLE_MAPS_BROWSER_API_KEY, domínios permitidos, faturamento e Maps JavaScript API.");
+        failureRef.current();
+      }
+    });
     return () => {
       active = false;
       if ((window as any).gm_authFailure === handleAuthFailure) {

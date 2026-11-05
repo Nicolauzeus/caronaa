@@ -320,6 +320,11 @@ const LegacyHomeRideMap = memo(function LegacyHomeRideMap(props: Props) {
 // Keep Leaflet/OpenStreetMap as the operational fallback on any load/key error.
 export const HomeRideMap = memo(function HomeRideMap(props: Props) {
   const [googleFailed, setGoogleFailed] = useState(false);
-  if (googleFailed) return <LegacyHomeRideMap {...props} />;
+  if (googleFailed) return (
+    <div className="relative" data-map-provider="openstreetmap">
+      <LegacyHomeRideMap {...props} />
+      <span className="pointer-events-none absolute bottom-1 left-2 z-20 rounded bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm">Mapa alternativo · Google indisponível</span>
+    </div>
+  );
   return <GoogleHomeRideMap {...props} onFailure={() => setGoogleFailed(true)} />;
 });
