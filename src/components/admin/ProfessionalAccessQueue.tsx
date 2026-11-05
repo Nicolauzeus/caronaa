@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CAR_CATEGORIES, MISSING_LABELS, STATUS_LABELS, type AccessStatus, type MissingCode } from "@/lib/professional-access";
 
 type Item = { id: string; status: AccessStatus; submitted_at: string; review_reason: string | null; current_missing: MissingCode[];
-  snapshot: { full_name: string; avatar_url: string; vehicle_model: string; vehicle_plate: string; vehicle_type: string; car_category: string | null; passenger_seats: number; municipality: string } };
+  snapshot: { full_name: string; avatar_url: string; vehicle_model: string; vehicle_color?: string; vehicle_plate: string; vehicle_type: string; car_category: string | null; passenger_seats: number; municipality: string } };
 
 export function ProfessionalAccessQueue({ onChange }: { onChange?: () => void }) {
   const [items, setItems] = useState<Item[]>([]);
@@ -34,7 +34,7 @@ export function ProfessionalAccessQueue({ onChange }: { onChange?: () => void })
               <img src={s.avatar_url} alt={`Foto de ${s.full_name}`} className="h-12 w-12 rounded-full object-cover" />
               <div><p className="font-semibold">{s.full_name}</p><p className="text-muted-foreground">{STATUS_LABELS[i.status]} · {new Date(i.submitted_at).toLocaleString("pt-BR")}</p></div>
             </div>
-            <p>{s.vehicle_type === "MOTO" ? "Moto" : `Carro ${CAR_CATEGORIES.find((c) => c.value === s.car_category)?.label ?? ""}`} · {s.vehicle_model} · {s.vehicle_plate} · {s.passenger_seats} vaga(s) · {s.municipality}</p>
+            <p>{s.vehicle_type === "MOTO" ? "Moto" : `Carro ${CAR_CATEGORIES.find((c) => c.value === s.car_category)?.label ?? ""}`} · {s.vehicle_model} · Cor: {s.vehicle_color || "Não informada"} · {s.vehicle_plate} · {s.passenger_seats} vaga(s) · {s.municipality}</p>
             <p className="text-xs text-muted-foreground">Dados declaratórios — documentos não verificados.</p>
             {i.current_missing.length > 0 && <p role="alert" className="text-destructive">Perfil atual incompleto: {i.current_missing.map((c) => MISSING_LABELS[c]).join("; ")}</p>}
             {i.review_reason && <p>Motivo: {i.review_reason}</p>}
