@@ -517,6 +517,100 @@ export type Database = {
           },
         ]
       }
+      driver_platform_fee_events: {
+        Row: {
+          actor_id: string | null
+          event_type: string
+          id: number
+          new_reference: string | null
+          new_status: string
+          occurred_at: string
+          old_reference: string | null
+          old_status: string | null
+          ride_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          event_type: string
+          id?: never
+          new_reference?: string | null
+          new_status: string
+          occurred_at?: string
+          old_reference?: string | null
+          old_status?: string | null
+          ride_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          event_type?: string
+          id?: never
+          new_reference?: string | null
+          new_status?: string
+          occurred_at?: string
+          old_reference?: string | null
+          old_status?: string | null
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_platform_fee_events_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "driver_platform_fees"
+            referencedColumns: ["ride_id"]
+          },
+        ]
+      }
+      driver_platform_fees: {
+        Row: {
+          claim_reference: string | null
+          claimed_at: string | null
+          created_at: string
+          driver_id: string
+          fee_amount: number
+          fee_rate: number
+          gross_amount: number
+          ride_id: string
+          status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          claim_reference?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          driver_id: string
+          fee_amount: number
+          fee_rate?: number
+          gross_amount: number
+          ride_id: string
+          status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          claim_reference?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          driver_id?: string
+          fee_amount?: number
+          fee_rate?: number
+          gross_amount?: number
+          ride_id?: string
+          status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_platform_fees_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["ride_id"]
+          },
+        ]
+      }
       executive_record_history: {
         Row: {
           action: string
@@ -987,6 +1081,38 @@ export type Database = {
           },
         ]
       }
+      manual_ride_payment_confirmations: {
+        Row: {
+          created_at: string
+          driver_confirmed_at: string | null
+          mutually_confirmed_at: string | null
+          passenger_confirmed_at: string | null
+          ride_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_confirmed_at?: string | null
+          mutually_confirmed_at?: string | null
+          passenger_confirmed_at?: string | null
+          ride_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_confirmed_at?: string | null
+          mutually_confirmed_at?: string | null
+          passenger_confirmed_at?: string | null
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_ride_payment_confirmations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["ride_id"]
+          },
+        ]
+      }
       offer_route_quotes: {
         Row: {
           created_at: string
@@ -1274,6 +1400,27 @@ export type Database = {
           suggestion_status?: string
           updated_at?: string
           whatsapp?: string
+        }
+        Relationships: []
+      }
+      platform_fee_config: {
+        Row: {
+          pix_key: string | null
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          pix_key?: string | null
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          pix_key?: string | null
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -2693,6 +2840,56 @@ export type Database = {
           },
         ]
       }
+      ride_payment_choices: {
+        Row: {
+          method: string
+          ride_id: string
+          selected_at: string
+          selected_by: string
+        }
+        Insert: {
+          method: string
+          ride_id: string
+          selected_at?: string
+          selected_by: string
+        }
+        Update: {
+          method?: string
+          ride_id?: string
+          selected_at?: string
+          selected_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_payment_choices_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "rides"
+            referencedColumns: ["ride_id"]
+          },
+        ]
+      }
+      ride_payment_policy: {
+        Row: {
+          asaas_enabled: boolean
+          manual_enabled: boolean
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          asaas_enabled?: boolean
+          manual_enabled?: boolean
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          asaas_enabled?: boolean
+          manual_enabled?: boolean
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ride_qr_tokens: {
         Row: {
           consumed_at: string | null
@@ -3743,6 +3940,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_driver_fee_audit: { Args: { p_ride_id: string }; Returns: Json }
       admin_operate_ride: {
         Args: {
           p_action: string
@@ -3754,7 +3952,9 @@ export type Database = {
         }
         Returns: string
       }
+      admin_platform_fee_claims: { Args: never; Returns: Json }
       admin_quick_ride_overview: { Args: never; Returns: Json }
+      admin_set_platform_pix: { Args: { p_key: string }; Returns: boolean }
       admin_set_quick_ride_driver: {
         Args: { p_approved: boolean; p_email: string; p_vehicle_type: string }
         Returns: string
@@ -3835,12 +4035,20 @@ export type Database = {
         }
         Returns: string
       }
+      claim_driver_platform_fee: {
+        Args: { p_reference: string; p_ride_id: string }
+        Returns: boolean
+      }
       claim_research_participation: {
         Args: { p_submission_key: string }
         Returns: Json
       }
       confirm_form_account_activation: {
         Args: { p_changes?: Json; p_submission_id: string }
+        Returns: Json
+      }
+      confirm_manual_ride_payment: {
+        Args: { p_ride_id: string }
         Returns: Json
       }
       confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
@@ -3982,6 +4190,10 @@ export type Database = {
           start_lng: number
         }
         Returns: number
+      }
+      driver_platform_access_allowed: {
+        Args: { p_driver: string }
+        Returns: boolean
       }
       duplicate_research_form: { Args: { p_form_id: string }; Returns: string }
       evaluate_ride_candidate: {
@@ -4126,8 +4338,13 @@ export type Database = {
         }
         Returns: Json
       }
+      get_manual_ride_payment_status: {
+        Args: { p_ride_id: string }
+        Returns: Json
+      }
       get_municipal_research_overview: { Args: never; Returns: Json }
       get_my_admin_scope: { Args: never; Returns: Json }
+      get_my_driver_platform_fees: { Args: never; Returns: Json }
       get_my_onboarding_research_suggestions: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
       get_my_research_launch_state: { Args: never; Returns: Json }
@@ -4264,6 +4481,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_ride_payment_choice: { Args: { p_ride_id: string }; Returns: Json }
       get_ride_pix: { Args: { p_ride_id: string }; Returns: Json }
       get_ride_safety: { Args: { p_ride_id: string }; Returns: Json }
       get_strategic_crossings: {
@@ -4615,6 +4833,10 @@ export type Database = {
           verifications: Json
         }[]
       }
+      select_ride_payment_method: {
+        Args: { p_method: string; p_ride_id: string }
+        Returns: Json
+      }
       set_admin_department_assignment: {
         Args: {
           p_can_write?: boolean
@@ -4719,6 +4941,10 @@ export type Database = {
         Returns: string
       }
       validate_travel_preferences: { Args: { p: Json }; Returns: Json }
+      verify_driver_platform_fee: {
+        Args: { p_received: boolean; p_ride_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
