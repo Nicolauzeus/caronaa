@@ -41,7 +41,7 @@ export function PlatformFeeFinance() {
   }
   return <section className="space-y-4 rounded-xl border bg-card p-4">
     <div>
-      <h2 className="text-lg font-bold">Repasse manual dos motoristas — 15%</h2>
+      <h2 className="text-lg font-bold">Repasse manual dos motoristas — 16,86%</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Esta tela não tem conexão com o banco. Confirme apenas após verificar o recebimento no extrato
         bancário da plataforma. Aprovação libera o motorista quando restarem menos de três débitos.
