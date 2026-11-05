@@ -57,11 +57,14 @@ describe("opportunity consent", () => {
     expect(screen.getByText("Oportunidade")).toBeInTheDocument();
     expect(screen.getByText(/40 min antes/)).toBeInTheDocument();
     expect(request).not.toHaveBeenCalled();
-    const button = screen.getByRole("button", { name: "Solicitar carona" });
+    const button = screen.getByRole("button", { name: "Revisar vagas e valor" });
     expect(button).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox"));
     expect(button).toBeEnabled();
     fireEvent.click(button);
+    expect(request).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Confirmar 1 vaga" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 vaga" }));
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -88,6 +91,6 @@ describe("opportunity consent", () => {
       />,
     );
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Solicitar carona" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Revisar vagas e valor" })).toBeEnabled();
   });
 });
