@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
+import { GoogleHomeRideMap } from "./GoogleHomeRideMap";
 import { LocateFixed, MapPin } from "lucide-react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -20,7 +21,7 @@ type Props = {
   onRecenter: () => void;
 };
 
-export const HomeRideMap = memo(function HomeRideMap(props: Props) {
+const LegacyHomeRideMap = memo(function LegacyHomeRideMap(props: Props) {
   const container = useRef<HTMLDivElement>(null);
   const runtime = useRef<{
     L: typeof Leaflet;
@@ -258,6 +259,7 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
     <section
       aria-label="Mapa do seu trajeto"
       className="relative isolate -mx-4 h-[320px] overflow-hidden bg-muted sm:mx-0 sm:h-72 sm:rounded-lg sm:border sm:border-border"
+      data-map-provider="openstreetmap"
     >
       <div ref={container} className="absolute inset-0 z-0" aria-label="Mapa interativo" />
       {!ready && (
@@ -311,4 +313,13 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
       </Button>
     </section>
   );
+});
+
+// Google Maps is always attempted first, using either a Vite public variable
+// or a dedicated browser key served by the authenticated CARONAA backend.
+// Keep Leaflet/OpenStreetMap as the operational fallback on any load/key error.
+export const HomeRideMap = memo(function HomeRideMap(props: Props) {
+  const [googleFailed, setGoogleFailed] = useState(false);
+  if (googleFailed) return <LegacyHomeRideMap {...props} />;
+  return <GoogleHomeRideMap {...props} onFailure={() => setGoogleFailed(true)} />;
 });
