@@ -10,6 +10,27 @@ const api = vi.hoisted(() => ({
   seed: vi.fn(),
   account: vi.fn(),
 }));
+// Isolated component tests must not initialize authenticated Supabase server middleware.
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user" } }, error: null }) },
+    rpc: vi.fn().mockResolvedValue({ data: { driverAllowed: true }, error: null }),
+    from: vi.fn().mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null, error: null }),
+        }),
+      }),
+    }),
+  },
+}));
+vi.mock("@/components/onboarding/FavoriteCommuteSuggestion", () => ({
+  FavoriteCommuteSuggestion: () => null,
+}));
+vi.mock("@/lib/travel-preferences-service", () => ({
+  loadTravelPreferences: async () => null,
+  saveTravelPreferences: async () => undefined,
+}));
 vi.mock("@/lib/home.functions", () => ({
   getActiveHomeJourneys: api.load,
   getRecentHomeDestinations: () => Promise.resolve([]),
@@ -108,7 +129,7 @@ describe("Home mobile", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
     expect(screen.getByRole("heading", { name: /Quero carona/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Oferecer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vou dirigindo" })).toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
   it("permite alternar os dois papéis da viagem", () => {
