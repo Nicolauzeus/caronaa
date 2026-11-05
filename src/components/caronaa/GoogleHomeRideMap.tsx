@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LocateFixed, MapPin } from "lucide-react";
 import { validPoint, type UserPosition } from "@/lib/location/use-user-location";
 import type { ApproximateProfessionalDriver } from "./HomeRideMap";
 
@@ -68,9 +69,14 @@ export function GoogleHomeRideMap({
   const map = useRef<any>(null);
   const markers = useRef<any[]>([]);
   const routeRenderer = useRef<any>(null);
+  const fallbackPolyline = useRef<any>(null);
   const circle = useRef<any>(null);
   const currentCenter = useRef<{lat: number; lng: number} | null>(null);
   const lastRecenter = useRef(recenterVersion);
+  const dragRef = useRef(onDrag);
+  const failureRef = useRef(onFailure);
+  dragRef.current = onDrag;
+  failureRef.current = onFailure;
   const [ready, setReady] = useState(false);
   const [routeError, setRouteError] = useState(false);
   const [routeMetrics, setRouteMetrics] = useState<{km: number; minutes: number} | null>(null);
@@ -78,6 +84,13 @@ export function GoogleHomeRideMap({
 
   useEffect(() => {
     let active = true;
+    // A script can load even if Google later rejects the key or billing.
+    const priorAuthFailure = (window as any).gm_authFailure;
+    const handleAuthFailure = () => {
+      if (active) failureRef.current();
+      if (typeof priorAuthFailure === "function") priorAuthFailure();
+    };
+    (window as any).gm_authFailure = handleAuthFailure;
     loadGoogleMaps().then(() => {
       if (!active || !container.current) return;
       const G = (window as any).google.maps;
@@ -85,19 +98,24 @@ export function GoogleHomeRideMap({
       currentCenter.current = {lat: center.lat, lng: center.lng};
       const instance = new G.Map(container.current, {
         center: currentCenter.current, zoom: 15, disableDefaultUI: true,
-        zoomControl: true, gestureHandling: "greedy", clickableIcons: false,
+        zoomControl: false, gestureHandling: "cooperative", clickableIcons: false,
       });
-      instance.addListener("dragstart", onDrag);
+      instance.addListener("dragstart", () => dragRef.current());
       map.current = instance;
       setReady(true);
-    }).catch(() => { if (active) onFailure(); });
+    }).catch(() => { if (active) failureRef.current(); });
     return () => {
       active = false;
+      if ((window as any).gm_authFailure === handleAuthFailure) {
+        (window as any).gm_authFailure = priorAuthFailure;
+      }
       setReady(false);
       markers.current.forEach(marker => marker.setMap(null));
       markers.current = [];
       routeRenderer.current?.setMap(null);
       routeRenderer.current = null;
+      fallbackPolyline.current?.setMap(null);
+      fallbackPolyline.current = null;
       circle.current?.setMap(null);
       circle.current = null;
       map.current = null;
@@ -134,45 +152,107 @@ export function GoogleHomeRideMap({
     }
   }, [ready, userPosition, professionalDrivers, origin?.lat, origin?.lng, destination?.lat, destination?.lng, originIsCurrent]);
 
-  // DirectionsService is an interim client implementation. The migration to
-  // the server-side Routes API is tracked separately and must be homologated.
+  // Google Maps is the primary map. If Google's legacy Directions service is
+  // unavailable, keep the Google basemap and draw the secondary OSRM route.
+  // Pricing and ride matching remain server-controlled, not based on this preview.
   const fromLat = validPoint(effectiveOrigin) ? Math.round(effectiveOrigin.lat * 1000) / 1000 : undefined;
   const fromLng = validPoint(effectiveOrigin) ? Math.round(effectiveOrigin.lng * 1000) / 1000 : undefined;
   const toLat = validPoint(destination) ? Math.round(destination.lat * 10000) / 10000 : undefined;
   const toLng = validPoint(destination) ? Math.round(destination.lng * 10000) / 10000 : undefined;
   useEffect(() => {
     if (!ready || !map.current) return;
+    const G = (window as any).google.maps;
+    const googleMap = map.current;
     routeRenderer.current?.setMap(null);
     routeRenderer.current = null;
+    fallbackPolyline.current?.setMap(null);
+    fallbackPolyline.current = null;
     setRouteMetrics(null);
     setRouteError(false);
     if (fromLat == null || fromLng == null || toLat == null || toLng == null) return;
+
     let active = true;
-    const G = (window as any).google.maps;
-    const directions = new G.DirectionsService();
-    const renderer = new G.DirectionsRenderer({
-      map: map.current, suppressMarkers: true, preserveViewport: false,
-      polylineOptions: {strokeColor: "#FFB000", strokeWeight: 6, strokeOpacity: 0.95},
-    });
-    routeRenderer.current = renderer;
-    directions.route({
-      origin: {lat: fromLat, lng: fromLng},
-      destination: {lat: toLat, lng: toLng},
-      travelMode: G.TravelMode.DRIVING,
-    }, (result: any, status: string) => {
+    const controller = new AbortController();
+    let osrmTimeout: number | undefined;
+
+    const useSecondaryRoute = async () => {
       if (!active) return;
-      if (status !== "OK" || !result?.routes?.[0]) {
-        renderer.setMap(null);
-        setRouteError(true);
-        return;
+      try {
+        osrmTimeout = window.setTimeout(() => controller.abort(), 8000);
+        const coordinates = [fromLng, fromLat].join(",") + ";" + [toLng, toLat].join(",");
+        const url = "https://router.project-osrm.org/route/v1/driving/" +
+          coordinates + "?overview=full&geometries=geojson&steps=false";
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error("Secondary route unavailable");
+        const result = await response.json();
+        const route = result.routes?.[0];
+        if (result.code !== "Ok" || !route || !Number.isFinite(route.distance) ||
+          !Number.isFinite(route.duration) || !Array.isArray(route.geometry?.coordinates) ||
+          route.geometry.coordinates.length < 2) throw new Error("Invalid secondary route");
+        const path = route.geometry.coordinates.map((point: number[]) => {
+          if (!Number.isFinite(point[0]) || !Number.isFinite(point[1]) ||
+            Math.abs(point[0]) > 180 || Math.abs(point[1]) > 90) {
+            throw new Error("Invalid route coordinate");
+          }
+          return { lat: point[1], lng: point[0] };
+        });
+        if (!active) return;
+        const line = new G.Polyline({
+          map: googleMap, path, strokeColor: "#FFB000", strokeWeight: 6, strokeOpacity: 0.95,
+        });
+        fallbackPolyline.current = line;
+        const bounds = new G.LatLngBounds();
+        path.forEach((point: {lat: number; lng: number}) => bounds.extend(point));
+        googleMap.fitBounds(bounds, 40);
+        setRouteMetrics({ km: route.distance / 1000, minutes: route.duration / 60 });
+      } catch {
+        if (active) setRouteError(true);
+      } finally {
+        if (osrmTimeout != null) window.clearTimeout(osrmTimeout);
       }
-      renderer.setDirections(result);
-      const leg = result.routes[0].legs?.[0];
-      if (leg?.distance?.value != null && leg?.duration?.value != null) {
-        setRouteMetrics({km: leg.distance.value / 1000, minutes: leg.duration.value / 60});
+    };
+
+    try {
+      if (!G.DirectionsService || !G.DirectionsRenderer) {
+        void useSecondaryRoute();
+      } else {
+        const directions = new G.DirectionsService();
+        const renderer = new G.DirectionsRenderer({
+          map: googleMap, suppressMarkers: true, preserveViewport: false,
+          polylineOptions: { strokeColor: "#FFB000", strokeWeight: 6, strokeOpacity: 0.95 },
+        });
+        routeRenderer.current = renderer;
+        directions.route({
+          origin: { lat: fromLat, lng: fromLng },
+          destination: { lat: toLat, lng: toLng },
+          travelMode: G.TravelMode.DRIVING,
+        }, (result: any, status: string) => {
+          if (!active) return;
+          if (status !== "OK" || !result?.routes?.[0]) {
+            renderer.setMap(null);
+            void useSecondaryRoute();
+            return;
+          }
+          renderer.setDirections(result);
+          const leg = result.routes[0].legs?.[0];
+          if (leg?.distance?.value != null && leg?.duration?.value != null) {
+            setRouteMetrics({ km: leg.distance.value / 1000, minutes: leg.duration.value / 60 });
+          }
+        });
       }
-    });
-    return () => { active = false; renderer.setMap(null); };
+    } catch {
+      void useSecondaryRoute();
+    }
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (osrmTimeout != null) window.clearTimeout(osrmTimeout);
+      routeRenderer.current?.setMap(null);
+      routeRenderer.current = null;
+      fallbackPolyline.current?.setMap(null);
+      fallbackPolyline.current = null;
+    };
   }, [ready, fromLat, fromLng, toLat, toLng]);
 
   useEffect(() => {
@@ -191,20 +271,42 @@ export function GoogleHomeRideMap({
   }, [ready, recenterVersion, following, userPosition, effectiveOrigin?.lat, effectiveOrigin?.lng]);
 
   return (
-    <div className="relative h-full w-full" data-map-provider="google">
-      <div ref={container} className="h-full min-h-[240px] w-full" role="img" aria-label="Mapa Google do radar CARONAA" />
-      <Button type="button" size="sm" variant="secondary" className="absolute right-3 top-3 z-10"
-        disabled={locating} onClick={onRecenter}>Minha localização</Button>
+    <section
+      aria-label="Mapa do seu trajeto"
+      className="relative isolate -mx-4 h-[320px] overflow-hidden bg-muted sm:mx-0 sm:h-72 sm:rounded-lg sm:border sm:border-border"
+      data-map-provider="google"
+    >
+      <div ref={container} className="absolute inset-0 z-0" role="img" aria-label="Mapa Google do radar CARONAA" />
+      {!ready && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 text-center">
+          <MapPin className="text-primary" size={28} />
+          <p className="text-sm text-muted-foreground">
+            {locating ? "Localizando você..." : "Carregando Google Maps..."}
+          </p>
+        </div>
+      )}
+      <Button
+        type="button"
+        size="icon"
+        variant="outline"
+        className="absolute bottom-8 right-3 z-10 size-12 bg-background shadow-sm"
+        disabled={locating}
+        aria-label="Centralizar na minha localização"
+        title="Centralizar na minha localização"
+        onClick={onRecenter}
+      >
+        <LocateFixed size={21} className={locating ? "animate-pulse" : following ? "text-primary" : ""} />
+      </Button>
       {routeMetrics && (
-        <div className="absolute bottom-3 left-3 z-10 rounded-md bg-background/95 px-2 py-1 text-xs">
-          Rota pelas vias · {routeMetrics.km.toFixed(1)} km · cerca de {Math.round(routeMetrics.minutes)} min
+        <div role="status" className="absolute left-3 top-3 z-10 rounded-xl bg-background/95 px-3 py-2 text-xs font-bold shadow-md">
+          Trajeto pelas ruas: {routeMetrics.km.toFixed(1).replace(".", ",")} km · cerca de {Math.max(1, Math.round(routeMetrics.minutes))} min
         </div>
       )}
       {routeError && (
-        <div className="absolute bottom-3 left-3 z-10 rounded-md bg-background/95 px-2 py-1 text-xs">
-          Rota indisponível. Marcadores não representam o percurso.
+        <div role="status" className="absolute left-3 right-16 top-3 z-10 rounded-lg bg-background/95 px-3 py-2 text-xs shadow-sm">
+          Não foi possível traçar a rota. Ajuste os pontos ou tente novamente.
         </div>
       )}
-    </div>
+    </section>
   );
 }
