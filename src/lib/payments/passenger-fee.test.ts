@@ -2,21 +2,21 @@ import { describe, expect, it } from "vitest";
 import { quotePassengerPaysProcessingFee, reconcilePassengerFeeQuote } from "./passenger-fee";
 
 describe("passenger pays Asaas processing fee", () => {
-  it("preserves 85/15 of fare when provider charges quoted fee", () => {
+  it("preserves 83.14/16.86 of fare when provider charges quoted fee", () => {
     const q = quotePassengerPaysProcessingFee(10000, 199);
     expect(q).toEqual({
       rideFareCents: 10000, processingFeeCents: 199, passengerTotalCents: 10199,
-      driverFixedCents: 8500, platformTargetNetCents: 1500, minimumNetCents: 10000,
+      driverFixedCents: 8314, platformTargetNetCents: 1686, minimumNetCents: 10000,
     });
     expect(reconcilePassengerFeeQuote(q, 10199, 10000)).toEqual({
-      actualFeeCents: 199, platformNetCents: 1500, driverFixedCents: 8500,
+      actualFeeCents: 199, platformNetCents: 1686, driverFixedCents: 8314,
       reconciled: true, differenceCents: 0,
     });
   });
   it("detects when the actual provider fee differs from the disclosed fee", () => {
     const q = quotePassengerPaysProcessingFee(10000, 199);
     expect(reconcilePassengerFeeQuote(q, 10199, 9990)).toMatchObject({
-      actualFeeCents: 209, platformNetCents: 1490, reconciled: false, differenceCents: -10,
+      actualFeeCents: 209, platformNetCents: 1676, reconciled: false, differenceCents: -10,
     });
   });
   it("rejects invalid fee, overflowing amount, or inconsistent Asaas values", () => {
