@@ -14,7 +14,7 @@ describe("Generic launch waiting room",()=>{
   expect(waiting).toContain("launches.map((launch)");
   expect(waiting).toContain("launch.formCode");
   expect(waiting).toContain("launch.title");
-  expect(waiting).toContain("countdown(launch.launchAt, now)");
+  expect(waiting).toContain("<CircularLaunchCountdown launchAt={launch.launchAt} now={now} />");
   expect(waiting).toContain("!result.locked && result.launches.length === 0");
  });
  it("is read-only, full viewport and permits signing out",()=>{
