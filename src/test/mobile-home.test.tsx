@@ -107,15 +107,15 @@ describe("Home mobile", () => {
   it("prioriza a ação sem dashboard e não espera o carregamento secundário", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
-    expect(screen.getByRole("heading", { name: "Para onde vamos?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Quero carona" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Oferecer" })).toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
   it("permite alternar os dois papéis da viagem", () => {
     render(<Home />);
     fireEvent.click(screen.getByRole("button", { name: "Oferecer" }));
-    expect(screen.getByRole("button", { name: "Continuar" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Pedir carona", pressed: false }));
+    expect(screen.getByRole("button", { name: "Definir detalhes da carona (Motorista)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Quero carona", pressed: false }));
     expect(screen.getByRole("button", { name: "Aumentar passageiros" })).toBeInTheDocument();
   });
   it("publica a solicitação com os campos informados", async () => {
@@ -127,6 +127,9 @@ describe("Home mobile", () => {
     fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
     await waitFor(() => expect(api.quote).toHaveBeenCalled());
     await screen.findByText(/R\$ 6,00 por pessoa/);
+    fireEvent.submit(container.querySelector("form")!);
+    expect(api.request).not.toHaveBeenCalled();
+    expect(screen.getByText("Revise antes de enviar")).toBeInTheDocument();
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() => expect(api.request).toHaveBeenCalledOnce());
     expect(api.request).toHaveBeenCalledWith({
@@ -188,6 +191,8 @@ describe("Home mobile", () => {
     fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
     fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
     await screen.findByText(/R\$ 6,00 por pessoa/);
+    fireEvent.submit(container.querySelector("form")!);
+    expect(api.request).not.toHaveBeenCalled();
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() =>
       expect(api.request).toHaveBeenCalledWith({
