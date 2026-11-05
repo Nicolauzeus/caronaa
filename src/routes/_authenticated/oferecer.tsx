@@ -104,6 +104,14 @@ function Oferecer() {
   const [mode, setMode] = useState<"point" | "routine">("point");
   const [routineSaved, setRoutineSaved] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [driverAllowed, setDriverAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void (supabase as any).rpc("get_my_driver_platform_fees").then(({data,error}: {data:any,error:any}) => {
+      if (live) setDriverAllowed(!error && data?.driverAllowed === true);
+    });
+    return () => { live = false; };
+  }, []);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
@@ -277,6 +285,10 @@ function Oferecer() {
     : null;
   const next = async (e: FormEvent) => {
     e.preventDefault();
+    if (driverAllowed !== true) {
+      toast.error("Verifique os repasses da plataforma no perfil antes de oferecer caronas.");
+      return;
+    }
     if (step === 1) {
       if (!quoteCurrent) {
         toast.error("Aguarde a cotação rodoviária do percurso ou tente novamente.");
@@ -421,13 +433,26 @@ function Oferecer() {
               id="oferecer-title"
               className="font-[family-name:var(--font-display)] text-xl font-extrabold sm:text-2xl"
             >
-              {step === 1 ? "Para onde você vai?" : "Revise sua carona"}
+              {step === 1 ? "Vou dirigindo" : "Revise sua oferta como MOTORISTA"}
             </h2>
             <p className="mt-1 text-sm text-gray-300">
               {step === 1
-                ? "Sua saída já está preenchida pela localização. Escolha o destino e quando sai."
+                ? "Divida os custos levando passageiros. Defina trajeto, carro e vagas livres."
                 : "Confira o trajeto, as vagas e a estimativa antes de publicar."}
             </p>
+            <div role="status" className="mt-3 rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-3 text-sm">
+              <p className="font-bold text-[#FFBB00]">Você vai DIRIGIR · MOTORISTA</p>
+              <p className="mt-1 text-xs text-gray-300">
+                Sua oferta informa as vagas disponíveis, não cobra passageiros automaticamente.
+                Antes de publicar você revisará os detalhes.
+              </p>
+            </div>
+            {driverAllowed === false && (
+              <div role="alert" className="mt-3 rounded-xl border border-destructive/50 p-3 text-sm">
+                Não foi possível liberar novas ofertas. Se houver três repasses pendentes, regularize-os no{" "}
+                <Link to="/perfil" className="font-bold underline">Perfil</Link>.
+              </div>
+            )}
             <form className="mt-5 space-y-4" onSubmit={next}>
               {step === 1 ? (
                 <>
@@ -788,14 +813,14 @@ function Oferecer() {
                 )}
                 <Button
                   type="submit"
-                  disabled={step === 2 && (publishing || !quoteCurrent)}
+                  disabled={driverAllowed !== true || (step === 2 && (publishing || !quoteCurrent))}
                   className="min-h-14 flex-1 rounded-2xl bg-[#FFBB00] text-base font-bold text-[#121212] shadow-lg hover:bg-[#ffd04d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 sm:flex-none sm:px-8"
                 >
                   {step === 1
                     ? "Revisar carona"
                     : publishing
                       ? "Publicando..."
-                      : "Publicar carona"}{" "}
+                      : "Publicar carona no meu carro"}{" "}
                   <ArrowRight size={18} />
                 </Button>
               </div>
