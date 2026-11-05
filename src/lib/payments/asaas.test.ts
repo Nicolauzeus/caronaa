@@ -32,6 +32,21 @@ describe("Asaas sandbox adapter", () => {
     expect(qr.payload).toBe("pix-code");
     expect(qr).not.toHaveProperty("paid");
   });
+  it("checks the production account without charging any customer", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ general: "APPROVED", documentation: "APPROVED" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const status = await new AsaasClient("production-secret", "production").getAccountStatus();
+    expect(status).toEqual({ general: "APPROVED" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.asaas.com/v3/myAccount/status");
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+    expect(init.headers.access_token).toBe("production-secret");
+  });
+
   it("fails closed on malformed charge and provider errors",async()=>{
     const client=new AsaasClient("sandbox-secret","sandbox");
     await expect(client.createPixPayment({
