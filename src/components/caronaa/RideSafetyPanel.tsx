@@ -8,7 +8,7 @@ import { type RideSafety } from "@/lib/ride-safety";
 import { getRideSafety, rateRide, validateRideBoarding } from "@/lib/ride-safety-service";
 import { RideQrModal } from "./RideQrModal";
 import { RideQrScannerModal } from "./RideQrScannerModal";
-import { CompletedRidePix } from "./DriverPix";
+import { RidePaymentChoices } from "./RidePaymentChoices";
 import { transitionRideStatus } from "@/lib/ride-lifecycle-service";
 import { RideLiveTracker } from "./RideLiveTracker";
 
@@ -181,10 +181,10 @@ export function RideSafetyPanel({
           )}
         </div>
       )}
-      {/* Manual Pix belongs to the two ride participants after completion;
+      {/* Exactly one payment method belongs to the two participants after completion;
           displaying it does not confirm a bank transfer. */}
       {currentStatus === "COMPLETED" && (role === "driver" || role === "passenger") && (
-        <CompletedRidePix rideId={rideId} role={role} />
+        <RidePaymentChoices rideId={rideId} role={role} />
       )}
 
       {/* Validação de Embarque com QR Code ou PIN para Passageiro */}
