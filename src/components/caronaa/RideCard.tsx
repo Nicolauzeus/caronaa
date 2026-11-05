@@ -275,12 +275,14 @@ export function RideCard({
               <>
                 <Check size={16} /> Solicitada
               </>
-) : requesting ? (
+              ) : requesting ? (
               "Solicitando..."
             ) : !segmentRequest ? (
               "Informe trecho e horário"
+            ) : reviewedSeats === passengerCount ? (
+              `Confirmar ${passengerCount} ${passengerCount === 1 ? "vaga" : "vagas"}`
             ) : (
-              "Solicitar carona"
+              "Revisar vagas e valor"
             )}
           </Button>
         ) : null}
