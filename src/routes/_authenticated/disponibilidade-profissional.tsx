@@ -2,6 +2,7 @@ import {createFileRoute, Link} from "@tanstack/react-router";
 import {useCallback, useEffect, useRef, useState} from "react";
 import {supabase} from "@/integrations/supabase/client";
 import {ProfessionalAccessRequest} from "@/components/caronaa/ProfessionalAccessRequest";
+import {professionalRadarConsentKey} from "@/lib/professional-radar-consent";
 
 export const Route=createFileRoute("/_authenticated/disponibilidade-profissional")({component:ProfessionalAvailability});
 
@@ -10,6 +11,8 @@ function ProfessionalAvailability(){
  const [enabled,setEnabled]=useState(false);
  const [driverBlocked,setDriverBlocked]=useState(false);
  const [authorized,setAuthorized]=useState(false);
+ const [userId,setUserId]=useState("");
+ const [visible,setVisible]=useState(true);
  const [municipality,setMunicipality]=useState("");
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
@@ -37,10 +40,11 @@ function ProfessionalAvailability(){
    });
    locationRequestBusy.current=false;
    if(rpcError){
+     if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
      setError("Compartilhamento interrompido: "+rpcError.message);
      void stopSharing();
    }else setLastPosition(new Date());
- },[municipality,stopSharing]);
+ },[municipality,userId,stopSharing]);
  publishPositionRef.current=(position)=>{void publishPosition(position)};
  const startSharing=useCallback(()=>{
    setError("");
@@ -54,10 +58,10 @@ function ProfessionalAvailability(){
    sharingRef.current=true;setSharing(true);
    watchId.current=navigator.geolocation.watchPosition(
      position=>publishPositionRef.current(position),
-     position=>{setError("GPS indisponível: "+position.message);void stopSharing()},
+     position=>{if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));setError("GPS indisponível: "+position.message);void stopSharing()},
      {enableHighAccuracy:true,timeout:15000,maximumAge:10000}
    );
- },[enabled,authorized,driverBlocked,municipality,publishPosition,stopSharing]);
+ },[enabled,authorized,driverBlocked,municipality,publishPosition,stopSharing,userId]);
  useEffect(()=>{
    let active=true;
    void (async()=>{
@@ -70,6 +74,7 @@ function ProfessionalAvailability(){
        supabase.from("profiles").select("city").eq("id",user.id).maybeSingle(),
      ]);
      if(!active)return;
+     setUserId(user.id);
      const allowed=!fees.error && fees.data?.driverAllowed===true;
      const approved=!access.error && access.data?.authorized===true;
      const city=String(presence.data?.municipality || access.data?.request?.municipality || profile.data?.city || "").trim();
@@ -119,17 +124,28 @@ function ProfessionalAvailability(){
      if(document.visibilityState!=="visible"||!sharingRef.current||!navigator.geolocation)return;
      navigator.geolocation.getCurrentPosition(
        position=>publishPositionRef.current(position),
-       ()=>{setError("Sinal GPS expirado. Compartilhamento interrompido.");void stopSharing()},
+       ()=>{if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));setError("Sinal GPS expirado. Compartilhamento interrompido.");void stopSharing()},
        {enableHighAccuracy:true,timeout:15000,maximumAge:10000}
      );
    },30000);
    return()=>window.clearInterval(timer);
- },[sharing,stopSharing]);
+ },[sharing,stopSharing,userId]);
  useEffect(()=>{
-   const visibility=()=>{if(document.hidden&&sharingRef.current)void stopSharing()};
+   const visibility=()=>{setVisible(!document.hidden);if(document.hidden&&sharingRef.current)void stopSharing()};
    document.addEventListener("visibilitychange",visibility);
    return()=>{document.removeEventListener("visibilitychange",visibility);void stopSharing()};
  },[stopSharing]);
+ // A prior explicit GPS choice resumes automatically when returning to this
+ // foreground page; never request location for a first-time visitor silently.
+ useEffect(()=>{
+   if(!ready||!enabled||!authorized||driverBlocked||!visible||sharing||!userId||!municipality.trim())return;
+   if(window.localStorage.getItem(professionalRadarConsentKey(userId))==="yes")startSharing();
+ },[ready,enabled,authorized,driverBlocked,visible,sharing,userId,municipality,startSharing]);
+ const toggleSharing=()=>{
+   if(sharing){if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));void stopSharing();return}
+   if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
+   startSharing();
+ };
  return <main className="mx-auto max-w-2xl space-y-5 p-5">
    <Link to="/home" className="text-sm text-primary">← Voltar ao aplicativo</Link>
    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
@@ -145,8 +161,8 @@ function ProfessionalAvailability(){
    <button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized))} onClick={()=>void save(!enabled)} className="w-full rounded-xl bg-primary p-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</button>
    <section className="rounded-xl border p-4 space-y-3">
      <h2 className="font-semibold">Localização no mapa (somente profissionais habilitados)</h2>
-     <p className="text-sm text-muted-foreground">Compartilhamento opcional. Outros usuários veem apenas uma posição aproximada enquanto você estiver online em uma região liberada. O GPS é interrompido ao sair da tela, desligar a disponibilidade ou colocar o app em segundo plano.</p>
-     <button type="button" disabled={!enabled||busy||driverBlocked||!authorized} onClick={()=>sharing?void stopSharing():startSharing()} className="min-h-12 w-full rounded-xl border p-3 font-semibold disabled:opacity-50">{sharing?"Parar compartilhamento":"Compartilhar minha localização"}</button>
+     <p className="text-sm text-muted-foreground">Compartilhamento opcional. Depois que você autorizar o GPS, ele será retomado automaticamente enquanto usar o CARONAA em uma aba visível. Outros usuários veem apenas uma posição aproximada, em região liberada. Ficar offline ou parar o compartilhamento interrompe a publicação.</p>
+     <button type="button" disabled={!enabled||busy||driverBlocked||!authorized} onClick={toggleSharing} className="min-h-12 w-full rounded-xl border p-3 font-semibold disabled:opacity-50">{sharing?"Parar compartilhamento":"Compartilhar minha localização"}</button>
      {sharing&&<p role="status" className="text-sm">GPS ativo{lastPosition?" · último sinal: "+lastPosition.toLocaleTimeString("pt-BR"):" · aguardando sinal"}</p>}
    </section>
  </main>;
