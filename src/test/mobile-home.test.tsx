@@ -134,7 +134,7 @@ describe("Home mobile", () => {
   });
   it("permite alternar os dois papéis da viagem", () => {
     render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Oferecer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Vou dirigindo" }));
     expect(screen.getByRole("button", { name: "Definir detalhes da carona (Motorista)" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Quero carona", pressed: false }));
     expect(screen.getByRole("button", { name: "Aumentar passageiros" })).toBeInTheDocument();
