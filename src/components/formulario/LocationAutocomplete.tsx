@@ -444,8 +444,8 @@ export function LocationAutocomplete({
                 variant === "glass"
                   ? "min-h-12 w-full rounded-2xl border border-white/15 bg-white/[.06] pl-10 pr-10 py-3 text-base text-white outline-none backdrop-blur-2xl placeholder:text-white/40 focus:border-[#FFBB00] focus:ring-2 focus:ring-[#FFBB00]/25"
                   : variant === "simple"
-                    ? "h-11 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
-                    : "min-h-12 w-full rounded-xl border border-border bg-background pl-10 pr-10 py-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
+                    ? "h-11 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm text-foreground caret-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+                    : "min-h-12 w-full rounded-xl border border-border bg-background pl-10 pr-10 py-3 text-sm text-foreground caret-foreground outline-none transition placeholder:text-muted-foreground focus:border-caronaa-primary focus:ring-2 focus:ring-caronaa-primary/20"
               }
             />
 
@@ -485,7 +485,7 @@ export function LocationAutocomplete({
               role="listbox"
               aria-label="Sugestões de localização"
               className={"absolute z-50 mt-1 max-h-[min(40dvh,240px)] w-full overflow-auto rounded-xl border p-1 shadow-lg animate-in fade-in zoom-in-95 duration-150 " +
-                (variant === "glass" ? "border-white/10 bg-[#242424] text-white backdrop-blur-2xl" : "border-border bg-card")}
+                (variant === "glass" ? "border-white/10 bg-[#242424] text-white backdrop-blur-2xl" : "border-border bg-card text-card-foreground")}
             >
               <div className={"px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b flex items-center justify-between " +
                   (variant === "glass" ? "border-white/10 text-white/55" : "border-border/50 text-muted-foreground")}>
@@ -503,7 +503,7 @@ export function LocationAutocomplete({
                   className={"flex min-h-11 w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-sm transition focus:outline-none " +
                     (variant === "glass"
                       ? "text-white hover:bg-[#FFBB00]/10 focus:bg-[#FFBB00]/10"
-                      : "hover:bg-caronaa-primary/10 hover:text-caronaa-dark dark:hover:text-caronaa-primary focus:bg-caronaa-primary/10")}
+                      : "text-card-foreground hover:bg-caronaa-primary/10 focus:bg-caronaa-primary/10 focus-visible:ring-2 focus-visible:ring-ring")}
                 >
                   <Search size={15} className="mt-0.5 shrink-0 text-caronaa-primary-strong" />
                   <div className="min-w-0 flex-1">
