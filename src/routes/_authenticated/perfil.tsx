@@ -70,6 +70,33 @@ type ProfileData = {
   vehicle_plate: string | null;
 };
 
+const MAX_AVATAR_SOURCE_BYTES = 25 * 1024 * 1024;
+const MAX_AVATAR_DIMENSION = 1280;
+
+/** Accept a photo up to 25 MiB; shrink it before sending to storage. */
+async function prepareAvatarPhoto(file: File): Promise<File> {
+  if (file.size > MAX_AVATAR_SOURCE_BYTES) throw new Error("A foto deve ter no máximo 25 MB.");
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Use JPG, PNG ou WEBP.");
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    const scale = Math.min(1, MAX_AVATAR_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Não foi possível preparar a imagem neste navegador.");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Não foi possível converter a foto.")), "image/jpeg", 0.82)
+    );
+    return new File([blob], "avatar.jpg", { type: "image/jpeg" });
+  } finally {
+    bitmap.close();
+  }
+}
+
 function Perfil() {
   const { launchLocked } = useRouteContext({ from: "/_authenticated" });
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -217,9 +244,9 @@ function Perfil() {
       return;
     }
 
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+    const MAX_FILE_SIZE = MAX_AVATAR_SOURCE_BYTES; // arquivos de entrada até 25 MB
     if (file.size > MAX_FILE_SIZE) {
-      toast.error("Arquivo muito grande. O limite máximo permitido é de 5MB.");
+      toast.error("Arquivo muito grande. O limite máximo permitido é de 25 MB.");
       event.target.value = "";
       return;
     }
@@ -239,9 +266,9 @@ function Perfil() {
       return;
     }
 
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+    const MAX_FILE_SIZE = MAX_AVATAR_SOURCE_BYTES; // arquivos de entrada até 25 MB
     if (selectedFile.size > MAX_FILE_SIZE) {
-      toast.error("A foto excede o limite máximo permitido de 5MB.");
+      toast.error("A foto excede o limite máximo permitido de 25 MB.");
       return;
     }
 
@@ -261,21 +288,17 @@ function Perfil() {
         throw new Error("Usuário autenticado não encontrado.");
       }
 
-      const extensionMap: Record<string, string> = {
-        "image/png": "png",
-        "image/webp": "webp",
-        "image/jpeg": "jpg",
-      };
-
-      const extension = extensionMap[selectedFile.type] || "jpg";
+      // Reduz fotos grandes para um avatar JPEG leve antes de gravar no Storage.
+      // Isso evita erros de limite do bucket e melhora o upload em redes móveis.
+      const optimizedFile = await prepareAvatarPhoto(selectedFile);
       const fileUuid = crypto.randomUUID();
-      const path = `${user.id}/${fileUuid}.${extension}`;
+      const path = `${user.id}/${fileUuid}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, selectedFile, {
-          upsert: true,
-          contentType: selectedFile.type,
+        .upload(path, optimizedFile, {
+          upsert: false,
+          contentType: "image/jpeg",
         });
 
       if (uploadError) {
