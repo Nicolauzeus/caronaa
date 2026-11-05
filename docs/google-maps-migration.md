@@ -1,23 +1,33 @@
-# CARONAA — migração controlada para Google Maps (primeira etapa)
+# CARONAA — Google Maps como padrão do radar da home
 
-## Estado
-A branch `feat/google-maps-migration` integra a tela inicial/radar ao Google Maps JavaScript API, usando Google DirectionsService para a rota visual da home. Mantém OpenStreetMap/OSRM como fallback quando não há chave pública configurada ou quando o script Google Maps falha ao carregar.
+## Prioridade e fallback
+1. A home tenta primeiro **Google Maps JavaScript API** usando a chave pública de navegador `VITE_GOOGLE_MAPS_BROWSER_API_KEY`.
+2. Se não houver chave no build, se o script falhar ou a autenticação for recusada, a home exibe automaticamente o mapa antigo **Leaflet/OpenStreetMap**. O fallback continua funcional, não apenas comentado; remover o código deixaria usuários sem mapa.
+3. Com o mapa Google carregado, o traçado visual tenta o Google Directions Service (legado). Se não estiver habilitado ou falhar, tenta a rota OSRM/OpenStreetMap **sobre o mapa Google**. Falha de rota não impede selecionar origem e destino.
+4. A visualização da rota é independente da cotação e do matching no backend. Não alterar o preço baseado apenas na distância exibida no mapa.
 
-**Não está homologado para produção.** Não remover o provedor legado antes de validar os fluxos no dispositivo e o consumo de API. O Google Routes API (servidor), as demais telas e a retirada definitiva do OSRM permanecem pendentes.
+As duas implementações compartilham a altura, o botão de centralização e os marcadores de localização, saída, destino e motoristas aproximados. Em DevTools, verificar o atributo `data-map-provider` (`google` ou `openstreetmap`).
 
-## Credenciais
-- Configurar `VITE_GOOGLE_MAPS_BROWSER_API_KEY` no ambiente de build para **uma chave de navegador dedicada**, com restrições de aplicativo do tipo HTTP referrers aos domínios CARONAA e restrições de API para Maps JavaScript API e Directions/rotas usadas pelo Maps JavaScript.
-- A chave de navegador torna-se visível no bundle cliente por definição. **Não usar nela a chave secreta do servidor** `GOOGLE_MAPS_API_KEY` / `GOOGLE_PLACES_API_KEY`, mesmo se já estiver guardada no Lovable.
-- A chave de servidor deve ficar restrita ao backend e aos serviços necessários. Não incluir a chave em commits, URLs públicas, logs ou mensagens.
-- Confirmar faturamento, APIs habilitadas, restrições, quotas e alertas de orçamento no Google Cloud.
-- `VITE_...` é resolvida no build; reiniciar/republicar após configurar. Um segredo privado criado no Lovable **não passa automaticamente** para `import.meta.env` no navegador.
+## Chaves e segurança
+- **Nunca versionar** `.env` contendo valores reais. `.gitignore` já ignora `.env` para arquivos ainda não rastreados; o arquivo anteriormente rastreado foi retirado da main.
+- A chave Google Maps Browser publicada anteriormente em commits precisa ser **revogada e substituída** no Google Cloud. Excluir `.env` da main não elimina a chave do histórico.
+- Configurar uma **nova** chave dedicada ao navegador em `VITE_GOOGLE_MAPS_BROWSER_API_KEY` **no ambiente de build/deploy** do CARONAA. Apenas colocar a variável em Lovable Secrets do backend não a disponibiliza automaticamente para `import.meta.env`.
+- Restringir a chave pública por **HTTP referrers** dos domínios efetivos do CARONAA e por **APIs autorizadas**. Habilitar Maps JavaScript API e faturamento; validar as permissões do serviço de rotas.
+- A chave `GOOGLE_MAPS_API_KEY` ou `GOOGLE_PLACES_API_KEY` continua exclusiva do servidor para o serviço de Places. Não reutilizar a chave privada na API JavaScript.
+- Uma chave `VITE_*` é necessariamente visível no navegador; as restrições Google Cloud são obrigatórias para mitigar uso indevido.
 
-## Homologação
-1. Testar mapa da home e radar em celular Android/iOS (GPS permitido e negado).
-2. Testar pontos de origem/destino, distância, tempo, atualização e recenter.
-3. Conferir navegador e Google Cloud Metrics para validar chamadas Google, não apenas uma imagem de mapa.
-4. Testar fallback sem chave ou com bloqueio de script e confirmar nenhum mapa em branco.
-5. Validar acessibilidade, privacidade, cobrança e limite de solicitações.
-6. Substituir OSRM nos demais módulos **em uma segunda etapa**, passando dados pelo backend quando necessário.
+## Rotas Google e compatibilidade em 2026
+- O Google Directions Service usado nesta etapa é **legado**. O Google informa que, desde outubro de 2026, novos projetos não podem habilitar a API Directions (Legacy). Projetos existentes podem continuar a utilizá-la.
+- A biblioteca JavaScript Routes com `Route.computeRoutes` é a substituição recomendada. A migração e homologação dessa funcionalidade devem ser feitas separadamente, considerando disponibilidade, faturamento e comportamento do serviço.
+- Até lá, o traçado tem fallback OSRM. Outras telas com mapas e rotas permanecem no fornecedor atual; este PR abrange o radar da **home**, sem alterar fluxo de pedidos, cotações ou banco de dados.
 
-Nenhuma migration SQL é necessária para esta primeira alteração de interface.
+## Verificação antes da publicação
+1. Confirmar chave nova e restrita no build, sem expô-la no GitHub. Republicar para garantir nova compilação.
+2. Home em desktop e celular Android/iOS: conferir mapa Google visível com altura correta, GPS autorizado/negado e centralização.
+3. Com endereço de origem e destino, verificar marcadores, percurso e os indicadores de distância/tempo; comparar sem vincular visualização ao preço.
+4. No DevTools e em métricas do Google Cloud, verificar a chamada a `maps/api/js`, faturamento/quota e ausência de `RefererNotAllowedMapError`.
+5. Simular chave ausente, script bloqueado e falha de autenticação: confirmar que OpenStreetMap é exibido automaticamente, sem mapa branco.
+6. Simular Google Directions negado: confirmar rota OSRM sobre o mapa Google ou mensagem amigável se ambos indisponíveis.
+7. Executar lint, TypeScript, build e smoke tests de `/home` antes da publicação. Não foi possível executar esses testes somente pela integração GitHub.
+
+Links oficiais: https://developers.google.com/maps/documentation/javascript/error-messages e https://developers.google.com/maps/documentation/javascript/legacy/directions
