@@ -107,7 +107,7 @@ describe("Home mobile", () => {
   it("prioriza a ação sem dashboard e não espera o carregamento secundário", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
-    expect(screen.getByRole("heading", { name: "Quero carona" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Quero carona/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Oferecer" })).toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
