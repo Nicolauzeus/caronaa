@@ -88,7 +88,7 @@ DECLARE v_ride public.rides%ROWTYPE; v_confirmation public.manual_ride_payment_c
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
   SELECT * INTO v_ride FROM public.rides WHERE ride_id=p_ride_id;
-  IF NOT FOUND OR auth.uid() IS DISTINCT FROM ALL(ARRAY[v_ride.driver_user_id,v_ride.passenger_user_id]) THEN
+  IF NOT FOUND OR (auth.uid() IS DISTINCT FROM v_ride.driver_user_id AND auth.uid() IS DISTINCT FROM v_ride.passenger_user_id) THEN
     RAISE EXCEPTION 'Ride not found' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_confirmation FROM public.manual_ride_payment_confirmations WHERE ride_id=p_ride_id;
@@ -153,7 +153,9 @@ BEGIN
     IF NOT public.driver_platform_access_allowed(v_ride.driver_user_id) THEN
       UPDATE public.professional_presence SET is_available=false,updated_at=now()
       WHERE user_id=v_ride.driver_user_id AND is_available=true;
-      DELETE FROM public.professional_driver_locations WHERE user_id=v_ride.driver_user_id;
+      IF to_regclass('public.professional_driver_locations') IS NOT NULL THEN
+        EXECUTE 'DELETE FROM public.professional_driver_locations WHERE user_id=$1' USING v_ride.driver_user_id;
+      END IF;
     END IF;
   END IF;
   RETURN jsonb_build_object('passengerConfirmed',v_status.passenger_confirmed_at IS NOT NULL,
@@ -292,12 +294,21 @@ FOR EACH ROW EXECUTE FUNCTION public.guard_driver_platform_debt();
 DROP TRIGGER IF EXISTS presence_driver_debt ON public.professional_presence;
 CREATE TRIGGER presence_driver_debt BEFORE INSERT OR UPDATE ON public.professional_presence
 FOR EACH ROW EXECUTE FUNCTION public.guard_driver_platform_debt();
-DROP TRIGGER IF EXISTS professional_location_driver_debt ON public.professional_driver_locations;
-CREATE TRIGGER professional_location_driver_debt BEFORE INSERT OR UPDATE ON public.professional_driver_locations
-FOR EACH ROW EXECUTE FUNCTION public.guard_driver_platform_debt();
-DROP TRIGGER IF EXISTS quick_ride_accept_driver_debt ON public.professional_quick_rides;
-CREATE TRIGGER quick_ride_accept_driver_debt BEFORE UPDATE ON public.professional_quick_rides
-FOR EACH ROW EXECUTE FUNCTION public.guard_driver_platform_debt();
+-- Guard the optional professional discovery pilot only when its migration is installed.
+DO $optional_discovery$
+BEGIN
+ IF to_regclass('public.professional_driver_locations') IS NOT NULL THEN
+   EXECUTE 'DROP TRIGGER IF EXISTS professional_location_driver_debt ON public.professional_driver_locations';
+   EXECUTE 'CREATE TRIGGER professional_location_driver_debt BEFORE INSERT OR UPDATE ON public.professional_driver_locations FOR EACH ROW EXECUTE FUNCTION public.guard_driver_platform_debt()';
+ END IF;
+END $optional_discovery$;
+DO $optional_quick$
+BEGIN
+ IF to_regclass('public.professional_quick_rides') IS NOT NULL THEN
+   EXECUTE 'DROP TRIGGER IF EXISTS quick_ride_accept_driver_debt ON public.professional_quick_rides';
+   EXECUTE 'CREATE TRIGGER quick_ride_accept_driver_debt BEFORE UPDATE ON public.professional_quick_rides FOR EACH ROW EXECUTE FUNCTION public.guard_driver_platform_debt()';
+ END IF;
+END $optional_quick$;
 
 COMMENT ON TABLE public.driver_platform_fees IS '15% due on each mutually acknowledged completed shared ride. Three unresolved dues block new driver activity. No bank verification is inferred.';
 NOTIFY pgrst,'reload schema';
