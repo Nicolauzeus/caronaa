@@ -57,7 +57,6 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (va
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const load = useCallback(async () => {
@@ -148,7 +147,7 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (va
         throw new Error("Solicitação enviada, mas não foi possível confirmar o status. Atualize a página antes de tentar novamente.");
       }
       setState(verified as State);
-      setMissing([]); setEditing(false);
+      setMissing([]);
       setSuccess("Solicitação enviada com sucesso. Aguardando análise administrativa.");
       onAuthorized?.(Boolean(verified.authorized));
     } catch (caught) {
@@ -163,7 +162,7 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (va
   const request = state.request;
   const canSubmit = !state.authorized && (!request || request.status === "CHANGES_REQUESTED" || request.status === "REJECTED");
   const maxSeats = maxSeatsFor(type, category || null);
-  const completed = 10 - professionalAccessMissing({
+  const completed = 9 - professionalAccessMissing({
     avatarUrl: photoFile ? "https://pending-upload" : profile.avatar_url,
     fullName: profile.full_name, vehicleBrand: profile.vehicle_brand, vehicleDescription: profile.vehicle_description,
     vehiclePlate: profile.vehicle_plate, vehicleColor: color, vehicleType: type,
@@ -194,7 +193,7 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (va
         <p className="text-xs text-muted-foreground">Dados preenchidos são reaproveitados do seu perfil. Revise e complete apenas o que faltar.</p>
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold">Dados do motorista</p>
-          <span className="text-xs text-muted-foreground">{Math.max(0, completed)} de 10 informações prontas</span>
+          <span className="text-xs text-muted-foreground">{Math.max(0, completed)} de 9 informações prontas</span>
         </div>
         <div className="space-y-3">
           <label className="block text-sm">Nome completo *
