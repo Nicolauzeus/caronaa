@@ -3,13 +3,17 @@ import { readFileSync } from "node:fs";
 
 const safety = readFileSync("src/components/caronaa/RideSafetyPanel.tsx", "utf8");
 const pix = readFileSync("src/components/caronaa/DriverPix.tsx", "utf8");
+const chooser = readFileSync("src/components/caronaa/RidePaymentChoices.tsx", "utf8");
 const route = readFileSync("src/routes/_authenticated/viagem.$rideId.tsx", "utf8");
 const sql = readFileSync("drizzle/migrations/0130_manual_driver_pix.sql", "utf8");
 
 describe("Manual driver Pix is limited to completed-ride participants", () => {
   it("shows Pix to both participants after completing the ride", () => {
     expect(safety).toContain('currentStatus === "COMPLETED" && (role === "driver" || role === "passenger")');
-    expect(safety).toContain("<CompletedRidePix rideId={rideId} role={role} />");
+    expect(safety).toContain("<RidePaymentChoices rideId={rideId} role={role} />");
+    expect(chooser).toContain("<CompletedRidePix rideId={rideId} role={role} />");
+    expect(chooser).toContain('choice.method === "MANUAL_PIX"');
+    expect(chooser).toContain('choice.method === "ASAAS_PIX"');
     expect(pix).toContain("Pix direto para o motorista");
     expect(pix).toContain("Vagas livres do motorista não entram neste valor.");
     expect(route).not.toContain("<AsaasCheckoutPreview");
