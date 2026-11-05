@@ -31,7 +31,8 @@ const waitingNav = [
 
 const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
-  { to: "/minhas-caronas" as const, label: "Viagens", icon: CarFront },
+  { to: "/oferecer" as const, label: "Oferecer", icon: CarFront },
+  { to: "/minhas-caronas" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
 
@@ -372,7 +373,7 @@ export function AppShell({
           aria-label="Navegação principal mobile"
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-xl md:hidden"
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : "grid-cols-3"}`}>
+          <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
               const selected = pathname === to || pathname.startsWith(`${to}/`);
               return (
