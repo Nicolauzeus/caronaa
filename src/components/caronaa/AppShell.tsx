@@ -24,6 +24,7 @@ import { NotificationControls } from "@/components/caronaa/NotificationControls"
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
+import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
@@ -67,6 +68,11 @@ export function AppShell({
   const queryClient = useQueryClient();
 
   async function signOut() {
+    if (user && typeof window !== "undefined") {
+      // Revoke this device's GPS opt-in before terminating the session.
+      window.localStorage.removeItem(professionalRadarConsentKey(user.id));
+      await (supabase as any).rpc("professional_location_stop").catch(() => undefined);
+    }
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
