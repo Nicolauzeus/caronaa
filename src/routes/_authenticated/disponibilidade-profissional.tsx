@@ -9,6 +9,7 @@ type DriverLocation = {coords: {latitude:number; longitude:number; accuracy:numb
 function ProfessionalAvailability(){
  const [enabled,setEnabled]=useState(false);
  const [driverBlocked,setDriverBlocked]=useState(false);
+ const [authorized,setAuthorized]=useState(false);
  const [municipality,setMunicipality]=useState("");
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
@@ -44,6 +45,7 @@ function ProfessionalAvailability(){
  const startSharing=useCallback(()=>{
    setError("");
    if(!enabled){setError("Fique disponível antes de compartilhar a localização.");return}
+   if(!authorized||driverBlocked){setError("Apenas motoristas autorizados e sem bloqueio podem aparecer no radar.");return}
    if(!municipality.trim()){setError("Informe primeiro o município.");return}
    if(typeof window==="undefined"||!window.isSecureContext||!navigator.geolocation){
      setError("Localização exige HTTPS e GPS disponível no navegador.");return;
@@ -55,26 +57,47 @@ function ProfessionalAvailability(){
      position=>{setError("GPS indisponível: "+position.message);void stopSharing()},
      {enableHighAccuracy:true,timeout:15000,maximumAge:10000}
    );
- },[enabled,municipality,publishPosition,stopSharing]);
+ },[enabled,authorized,driverBlocked,municipality,publishPosition,stopSharing]);
  useEffect(()=>{
    let active=true;
-   void supabase.auth.getUser().then(async({data})=>{
-     if(!data.user)return;
-     const {data:row}=await (supabase as any).from("professional_presence").select("is_available,municipality,last_seen_at").eq("user_id",data.user.id).maybeSingle();
-     if(active){
-      const {data:fees,error:feeError}=await (supabase as any).rpc("get_my_driver_platform_fees");
-      setDriverBlocked(Boolean(feeError)||fees?.driverAllowed===false);
-      setEnabled(Boolean(row?.is_available)&&Date.now()-Date.parse(row.last_seen_at)<90000);
-      setMunicipality(row?.municipality??"");setReady(true)
-    }
-   });
+   void (async()=>{
+     const {data:{user}}=await supabase.auth.getUser();
+     if(!user){if(active){setError("Entre na sua conta para ativar o radar.");setReady(true)}return}
+     const [presence, fees, access, profile]=await Promise.all([
+       (supabase as any).from("professional_presence").select("is_available,municipality,last_seen_at").eq("user_id",user.id).maybeSingle(),
+       (supabase as any).rpc("get_my_driver_platform_fees"),
+       (supabase as any).rpc("get_my_professional_access"),
+       supabase.from("profiles").select("city").eq("id",user.id).maybeSingle(),
+     ]);
+     if(!active)return;
+     const allowed=!fees.error && fees.data?.driverAllowed===true;
+     const approved=!access.error && access.data?.authorized===true;
+     const city=String(presence.data?.municipality || access.data?.request?.municipality || profile.data?.city || "").trim();
+     setAuthorized(approved);
+     setDriverBlocked(!allowed);
+     setMunicipality(city);
+     // New approved drivers start online; a driver's explicit offline choice wins.
+     // A previously online driver resumes after returning to the app.
+     const shouldActivate=approved && allowed && city.length>=2 && !presence.error && presence.data?.is_available!==false;
+     if(shouldActivate){
+       const {error:onlineError}=await (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:city});
+       if(!active)return;
+       setEnabled(!onlineError);
+       if(onlineError)setError("Não foi possível iniciar a disponibilidade: "+onlineError.message);
+     }else{
+       setEnabled(false);
+       if(presence.error)setError("Não foi possível verificar a disponibilidade atual.");
+     }
+     setReady(true);
+   })().catch(()=>{if(active){setError("Não foi possível carregar o radar.");setReady(true)}});
    return()=>{active=false};
  },[]);
  async function save(availability:boolean){
-    if(availability && driverBlocked){
-      setError("Você possui três repasses pendentes ou o status não pôde ser verificado. Consulte o Perfil.");
+    if(availability && (driverBlocked||!authorized)){
+      setError("A disponibilidade exige autorização profissional e ausência de repasses bloqueantes. Consulte seu Perfil.");
       return;
     }
+    if(availability && municipality.trim().length<2){setError("Informe o município do radar.");return}
    setBusy(true);setError("");
    if(!availability)await stopSharing();
    const {error:presenceError}=await (supabase as any).rpc("set_professional_presence",{p_available:availability,p_municipality:municipality});
@@ -110,20 +133,20 @@ function ProfessionalAvailability(){
  return <main className="mx-auto max-w-2xl space-y-5 p-5">
    <Link to="/home" className="text-sm text-primary">← Voltar ao aplicativo</Link>
    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
-   <p className="text-sm text-muted-foreground">Presença voluntária para o piloto. Recebimento de corridas profissionais ainda não liberado.</p>
+   <p className="text-sm text-muted-foreground">O radar inicia disponível para motoristas aprovados ao entrar aqui pela primeira vez. Se você escolher ficar offline, essa preferência será respeitada. O compartilhamento GPS exige sua autorização e só funciona com o app em primeiro plano. Recebimento comercial de corridas depende de homologação regional.</p>
    <ProfessionalAccessRequest/>
    <label className="block text-sm">Município<input value={municipality} maxLength={120} disabled={sharing} onChange={e=>setMunicipality(e.target.value)} placeholder="Informe seu município" className="mt-2 w-full rounded-lg border bg-background p-3"/></label>
    {driverBlocked && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar suspenso até a quitação dos repasses.{" "}
       <Link to="/perfil" className="font-semibold underline">Ver comissões</Link>
     </p>}
-    <p className="rounded-xl border p-4 text-sm">Situação: <strong>{!ready?"Carregando":enabled?"Disponível":"Indisponível"}</strong></p>
+    <p className="rounded-xl border p-4 text-sm">Situação: <strong>{!ready?"Carregando":!authorized?"Aguardando autorização":enabled?(sharing&&lastPosition?"Online · GPS ativo":"Disponível · GPS não publicado"):"Offline"}</strong></p>
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
-   <button disabled={!ready||busy||(!enabled&&driverBlocked)} onClick={()=>void save(!enabled)} className="w-full rounded-xl bg-primary p-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</button>
+   <button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized))} onClick={()=>void save(!enabled)} className="w-full rounded-xl bg-primary p-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</button>
    <section className="rounded-xl border p-4 space-y-3">
      <h2 className="font-semibold">Localização no mapa (somente profissionais habilitados)</h2>
      <p className="text-sm text-muted-foreground">Compartilhamento opcional. Outros usuários veem apenas uma posição aproximada enquanto você estiver online em uma região liberada. O GPS é interrompido ao sair da tela, desligar a disponibilidade ou colocar o app em segundo plano.</p>
-     <button type="button" disabled={!enabled||busy||driverBlocked} onClick={()=>sharing?void stopSharing():startSharing()} className="min-h-12 w-full rounded-xl border p-3 font-semibold disabled:opacity-50">{sharing?"Parar compartilhamento":"Compartilhar minha localização"}</button>
+     <button type="button" disabled={!enabled||busy||driverBlocked||!authorized} onClick={()=>sharing?void stopSharing():startSharing()} className="min-h-12 w-full rounded-xl border p-3 font-semibold disabled:opacity-50">{sharing?"Parar compartilhamento":"Compartilhar minha localização"}</button>
      {sharing&&<p role="status" className="text-sm">GPS ativo{lastPosition?" · último sinal: "+lastPosition.toLocaleTimeString("pt-BR"):" · aguardando sinal"}</p>}
    </section>
  </main>;
