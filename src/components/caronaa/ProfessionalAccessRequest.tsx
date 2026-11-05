@@ -1,0 +1,100 @@
+import { Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  CAR_CATEGORIES, MISSING_LABELS, PROFILE_CODES, STATUS_LABELS, maxSeatsFor, parseMissingError, professionalAccessMissing,
+  type AccessStatus, type CarCategory, type MissingCode, type VehicleType,
+} from "@/lib/professional-access";
+
+type State = {
+  authorized: boolean;
+  profileMissing: MissingCode[];
+  request: null | { status: AccessStatus; vehicle_type: VehicleType; car_category: CarCategory | null; passenger_seats: number; municipality: string; review_reason: string | null; submitted_at: string };
+};
+
+export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v: boolean) => void }) {
+  const [state, setState] = useState<State | null>(null);
+  const [type, setType] = useState<VehicleType>("CAR");
+  const [category, setCategory] = useState<CarCategory | "">("");
+  const [seats, setSeats] = useState(1);
+  const [city, setCity] = useState("");
+  const [missing, setMissing] = useState<MissingCode[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data, error } = await (supabase as any).rpc("get_my_professional_access");
+    if (error) { setError("Não foi possível carregar sua autorização."); return; }
+    setState(data); onAuthorized?.(Boolean(data?.authorized));
+    const r = data?.request;
+    if (r) { setType(r.vehicle_type); setCategory(r.car_category ?? ""); setSeats(r.passenger_seats); setCity(r.municipality); }
+  }, [onAuthorized]);
+  useEffect(() => { void load(); }, [load]);
+
+  async function submit() {
+    setError("");
+    const local = professionalAccessMissing({ vehicleType: type, carCategory: category || null, seats, municipality: city,
+      avatarUrl: "https://ok", fullName: "ok ok", vehicleBrand: "ok", vehicleDescription: "ok", vehiclePlate: "ABC1234" });
+    const all = [...(state?.profileMissing ?? []), ...local];
+    if (all.length) { setMissing(all); return; }
+    setBusy(true);
+    const { error } = await (supabase as any).rpc("submit_professional_access_request", {
+      p_vehicle_type: type, p_car_category: type === "CAR" ? category : null, p_seats: seats, p_municipality: city.trim(),
+    });
+    setBusy(false);
+    if (error) { const codes = parseMissingError(error.message); if (codes.length) setMissing(codes); else setError(error.message); return; }
+    setMissing([]); setEditing(false); await load();
+  }
+
+  if (!state) return <p className="rounded-xl border p-4 text-sm">{error || "Carregando autorização…"}</p>;
+  const r = state.request;
+  const canSubmit = !state.authorized && (!r || editing || r.status === "CHANGES_REQUESTED" || r.status === "REJECTED");
+  const profileMissing = missing.length ? missing : state.profileMissing;
+  const maxSeats = maxSeatsFor(type, category || null);
+
+  return (
+    <section className="space-y-3 rounded-xl border p-4" aria-label="Acesso ao radar profissional">
+      <h2 className="font-semibold">Acesso ao radar profissional</h2>
+      {state.authorized
+        ? <p className="text-sm"><strong>{STATUS_LABELS.APPROVED}</strong>. Não representa verificação documental nem habilitação comercial.</p>
+        : r && <p className="text-sm">Situação: <strong>{STATUS_LABELS[r.status]}</strong>{r.status === "PENDING" && " — aguarde a análise do administrador."}</p>}
+      {r?.review_reason && !state.authorized && <p className="rounded-lg border p-2 text-sm">Motivo: {r.review_reason}</p>}
+      {profileMissing.length > 0 && !state.authorized && (
+        <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">
+          <p className="font-semibold">Faltam dados para solicitar:</p>
+          <ul className="ml-4 list-disc">{profileMissing.map((c) => <li key={c}>{MISSING_LABELS[c]}</li>)}</ul>
+          {profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
+        </div>
+      )}
+      {canSubmit && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            {(["CAR", "MOTO"] as const).map((t) => (
+              <button key={t} type="button" aria-pressed={type === t} onClick={() => { setType(t); if (t === "MOTO") { setSeats(1); setCategory(""); } }}
+                className={`min-h-12 rounded-xl border p-2 font-semibold ${type === t ? "border-primary bg-primary text-primary-foreground" : ""}`}>{t === "CAR" ? "Carro" : "Moto"}</button>
+            ))}
+          </div>
+          {type === "CAR" && (
+            <label className="block text-sm">Categoria do carro
+              <select value={category} onChange={(e) => { const c = e.target.value as CarCategory; setCategory(c); setSeats((s) => Math.min(s, maxSeatsFor("CAR", c))); }} className="mt-1 w-full rounded-lg border bg-background p-3">
+                <option value="">Selecione</option>{CAR_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="block text-sm">Vagas para passageiros (1 a {maxSeats})
+            <input type="number" min={1} max={maxSeats} value={seats} disabled={type === "MOTO"} onChange={(e) => setSeats(Number(e.target.value))} className="mt-1 w-full rounded-lg border bg-background p-3" />
+          </label>
+          <label className="block text-sm">Município
+            <input value={city} maxLength={120} onChange={(e) => setCity(e.target.value)} placeholder="Ex.: Fortaleza" className="mt-1 w-full rounded-lg border bg-background p-3" />
+          </label>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <button type="button" disabled={busy} onClick={() => void submit()} className="min-h-12 w-full rounded-xl bg-primary p-3 font-bold text-primary-foreground disabled:opacity-50">
+            {busy ? "Enviando…" : r ? "Reenviar solicitação" : "Solicitar autorização"}
+          </button>
+          <p className="text-xs text-muted-foreground">Foto, nome, veículo e placa vêm do seu perfil. Dados declaratórios, sem envio de documentos.</p>
+        </div>
+      )}
+    </section>
+  );
+}
