@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
+import { GoogleHomeRideMap, googleMapsBrowserKey } from "./GoogleHomeRideMap";
 import { LocateFixed, MapPin } from "lucide-react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -20,7 +21,7 @@ type Props = {
   onRecenter: () => void;
 };
 
-export const HomeRideMap = memo(function HomeRideMap(props: Props) {
+const LegacyHomeRideMap = memo(function LegacyHomeRideMap(props: Props) {
   const container = useRef<HTMLDivElement>(null);
   const runtime = useRef<{
     L: typeof Leaflet;
@@ -311,4 +312,12 @@ export const HomeRideMap = memo(function HomeRideMap(props: Props) {
       </Button>
     </section>
   );
+});
+
+// Keep the existing map available until the Google integration is fully homologated.
+// The browser key must be separately restricted to authorized web origins.
+export const HomeRideMap = memo(function HomeRideMap(props: Props) {
+  const [googleFailed, setGoogleFailed] = useState(false);
+  if (!googleMapsBrowserKey || googleFailed) return <LegacyHomeRideMap {...props} />;
+  return <GoogleHomeRideMap {...props} onFailure={() => setGoogleFailed(true)} />;
 });
