@@ -626,16 +626,16 @@ function Perfil() {
       <section aria-label="Radar do motorista" className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 shadow-soft">
         <h2 className="text-base font-extrabold">Radar do motorista</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ative sua disponibilidade e compartilhe a localização para aparecer no mapa de viagens rápidas.
-          A administração precisa autorizar seu perfil e liberar o município.
+          Motoristas aprovados iniciam disponíveis por padrão; para aparecer no mapa é necessário autorizar o GPS uma vez.
+          Você pode ficar offline a qualquer momento. A administração precisa liberar o município.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          No aplicativo web, o GPS só permanece ativo com esta página aberta e visível.
+          Depois da autorização, o GPS continua enquanto você navega pelo CARONAA com a aba visível.
           Com o celular bloqueado ou o app em segundo plano, sua posição deixa de ser atualizada
           e o radar interrompe a exibição quando o sinal expira.
         </p>
         <Button asChild className="mt-3 min-h-12 w-full sm:w-auto">
-          <Link to="/disponibilidade-profissional">Ativar radar e localização <ArrowRight className="ml-2 size-4" /></Link>
+          <Link to="/disponibilidade-profissional">Gerenciar radar e localização <ArrowRight className="ml-2 size-4" /></Link>
         </Button>
       </section>
 
