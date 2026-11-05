@@ -91,8 +91,8 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
                     Repasse {brl(due.feeAmount)} · corrida {due.rideId.slice(0,8)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Viagem {brl(due.grossAmount)} · {due.status === "CLAIMED"
-                      ? "Comprovante informado. Aguardando verificação da plataforma."
+                    Viagem {brl(due.grossAmount)} · {due.status === "SETTLED" ? "Repasse confirmado pela plataforma."
+                      : due.status === "CLAIMED" ? "Comprovante informado. Aguardando verificação da plataforma."
                       : "Aguardando repasse."}
                   </p>
                   {due.status === "OPEN" && (
