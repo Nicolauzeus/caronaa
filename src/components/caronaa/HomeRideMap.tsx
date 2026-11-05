@@ -259,6 +259,7 @@ const LegacyHomeRideMap = memo(function LegacyHomeRideMap(props: Props) {
     <section
       aria-label="Mapa do seu trajeto"
       className="relative isolate -mx-4 h-[320px] overflow-hidden bg-muted sm:mx-0 sm:h-72 sm:rounded-lg sm:border sm:border-border"
+      data-map-provider="openstreetmap"
     >
       <div ref={container} className="absolute inset-0 z-0" aria-label="Mapa interativo" />
       {!ready && (
