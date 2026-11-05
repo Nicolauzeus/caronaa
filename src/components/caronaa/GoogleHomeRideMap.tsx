@@ -30,24 +30,28 @@ function loadGoogleMaps(): Promise<void> {
   if (googleScriptPromise) return googleScriptPromise;
   googleScriptPromise = new Promise<void>((resolve, reject) => {
     const callback = "__caronaaGoogleMapsLoaded";
-    const timeout = window.setTimeout(() => {
-      delete (window as any)[callback];
-      reject(new Error("Google Maps load timed out"));
-    }, 12000);
-    (window as any)[callback] = () => {
+    const script = document.createElement("script");
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timeout);
       delete (window as any)[callback];
-      resolve();
+      if (error) {
+        script.remove();
+        reject(error);
+      } else {
+        resolve();
+      }
     };
-    const script = document.createElement("script");
+    const timeout = window.setTimeout(
+      () => finish(new Error("Google Maps load timed out")), 12000,
+    );
+    (window as any)[callback] = () => finish();
     script.src = "https://maps.googleapis.com/maps/api/js?key=" +
       encodeURIComponent(googleMapsBrowserKey) + "&v=weekly&callback=" + callback;
     script.async = true;
-    script.onerror = () => {
-      window.clearTimeout(timeout);
-      delete (window as any)[callback];
-      reject(new Error("Google Maps load failed"));
-    };
+    script.onerror = () => finish(new Error("Google Maps load failed"));
     document.head.appendChild(script);
   }).catch(error => {
     googleScriptPromise = undefined;
