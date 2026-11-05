@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { buildPixPayload } from "@/lib/pix";
 import { Link } from "@tanstack/react-router";
+import { DriverPlatformFees } from "@/components/caronaa/DriverPlatformFees";
 
 export function DriverPixSettings() {
   const [key, setKey] = useState("");
@@ -76,9 +77,33 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
   const [image, setImage] = useState("");
   const [payload, setPayload] = useState("");
   const [error, setError] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<{
+    passengerConfirmed: boolean; driverConfirmed: boolean; bothConfirmed: boolean;
+  } | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
+  async function loadPaymentStatus() {
+    const { data: status, error: problem } = await (supabase as any).rpc("get_manual_ride_payment_status", { p_ride_id: rideId });
+    if (problem) throw new Error(problem.message);
+    setPaymentStatus(status);
+  }
+  async function confirmPayment() {
+    setConfirming(true);
+    setError("");
+    try {
+      const { error: problem } = await (supabase as any).rpc("confirm_manual_ride_payment", { p_ride_id: rideId });
+      if (problem) throw new Error(problem.message);
+      await loadPaymentStatus();
+      toast.success(role === "passenger" ? "Transferência declarada. Aguardando motorista." : "Recebimento declarado.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível confirmar.");
+    } finally { setConfirming(false); }
+  }
   useEffect(() => {
     let active = true;
+    void loadPaymentStatus().catch(cause => {
+      if (active) setError(cause instanceof Error ? cause.message : "Confirmação indisponível.");
+    });
     setData(null);
     setImage("");
     setPayload("");
@@ -147,7 +172,35 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
         <Button type="button" size="sm" variant="outline" onClick={() => void copy(data.key!)}>Copiar chave Pix</Button>
         {payload && <Button type="button" size="sm" onClick={() => void copy(payload)}>Copiar Pix copia e cola</Button>}
       </div>
-      {role === "driver" && <p className="text-xs text-muted-foreground">Confira o recebimento no aplicativo do banco; este QR não comprova pagamento.</p>}
+      <div className="w-full space-y-3 rounded-xl border border-border bg-muted/30 p-3">
+        <p className="text-sm font-semibold">Confirmação rápida do Pix</p>
+        <p className="text-xs text-muted-foreground">
+          {paymentStatus?.bothConfirmed
+            ? "Ambos declararam o pagamento. Isto não é confirmação bancária automática."
+            : "Passageiro: declaro que transferi. Motorista: confirme somente após conferir o recebimento no banco."}
+        </p>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className={paymentStatus?.passengerConfirmed ? "font-bold text-foreground" : "text-muted-foreground"}>
+            Passageiro: {paymentStatus?.passengerConfirmed ? "confirmou" : "pendente"}
+          </span>
+          <span className={paymentStatus?.driverConfirmed ? "font-bold text-foreground" : "text-muted-foreground"}>
+            Motorista: {paymentStatus?.driverConfirmed ? "confirmou" : "pendente"}
+          </span>
+        </div>
+        {!paymentStatus?.[role === "passenger" ? "passengerConfirmed" : "driverConfirmed"] && (
+          <Button type="button" className="w-full" disabled={confirming || !paymentStatus}
+            onClick={() => void confirmPayment()}>
+            {confirming ? "Confirmando…" : role === "passenger" ? "Já fiz o Pix" : "Recebi o Pix no banco"}
+          </Button>
+        )}
+        {paymentStatus?.bothConfirmed && role === "driver" && (
+          <p role="status" className="text-sm font-medium">
+            O CARONAA registrou o pagamento declarado pelas duas partes. Repassar 15% à plataforma
+            é sua responsabilidade; consulte o painel abaixo.
+          </p>
+        )}
+      </div>
+      {role === "driver" && paymentStatus?.bothConfirmed && <DriverPlatformFees compact />}
     </section>
   );
 }
