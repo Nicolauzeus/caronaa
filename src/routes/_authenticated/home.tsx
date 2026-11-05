@@ -30,6 +30,7 @@ import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap, type ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
+import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,6 +112,7 @@ function Home() {
   const [timeTolerance, setTimeTolerance] = useState<TimeToleranceMinutes>(15);
   const [time, setTime] = useState("");
   const [count, setCount] = useState("1");
+  const [confirmedReviewKey, setConfirmedReviewKey] = useState<string | null>(null);
   const [requestFare, setRequestFare] = useState<
     (FarePreview & { origin: string; destination: string }) | null
   >(null);
@@ -589,6 +591,20 @@ function Home() {
                   setError("Aguarde a cotação atual do seu trecho antes de pedir a carona.");
                   return;
                 }
+                const requestedSeats = Number(count);
+                if (!Number.isInteger(requestedSeats) || requestedSeats < 1 || requestedSeats > 6) {
+                  setError("Escolha a quantidade de passageiros antes de confirmar.");
+                  return;
+                }
+                const reviewKey = JSON.stringify([
+                  requestFare.quoteId, origin, destination, date, time,
+                  requestedSeats, requestFare.pricePerPassenger,
+                ]);
+                if (confirmedReviewKey !== reviewKey) {
+                  setConfirmedReviewKey(reviewKey);
+                  setError(null);
+                  return;
+                }
                 if (requestSubmitting.current) return;
                 requestSubmitting.current = true;
                 setBusy(true);
@@ -599,12 +615,13 @@ function Home() {
                       quoteId: requestFare.quoteId,
                       rideDate: date,
                       departureTime: time,
-                      passengerCount: Number(count),
+                      passengerCount: requestedSeats,
                       timeToleranceMinutes: timeTolerance,
                       preferences,
                     },
                   });
                   toast.success("Sua solicitação foi publicada.");
+                  setConfirmedReviewKey(null);
                   setRequestFare(null);
                   refresh();
                 } catch (reason) {
@@ -844,6 +861,31 @@ function Home() {
                   <JourneyPreferences kind="request" onChange={setPreferences} />
                 </div>
               )}
+              {role === "request" && requestFare &&
+                confirmedReviewKey === JSON.stringify([
+                  requestFare.quoteId, origin, destination, date, time,
+                  Number(count), requestFare.pricePerPassenger,
+                ]) && (
+                <div role="status" aria-label="Revisão obrigatória da quantidade"
+                  className="rounded-2xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 p-4 text-white">
+                  <p className="text-sm font-bold">Revise antes de enviar</p>
+                  <p className="mt-1 text-sm">
+                    Você está solicitando <strong>{count} {Number(count) === 1 ? "vaga" : "vagas"}</strong>,
+                    não todas as vagas oferecidas pelo motorista.
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {formatBrl(requestFare.pricePerPassenger)} por passageiro ·
+                    <strong> {formatBrl(calculateRequestedGroupFare(requestFare.pricePerPassenger, Number(count)))} no total</strong>
+                  </p>
+                  <p className="mt-1 text-xs text-gray-200">
+                    Confira a quantidade e pressione novamente o botão para confirmar.
+                  </p>
+                  <button type="button" className="mt-2 text-xs font-semibold text-[#FFBB00] underline"
+                    onClick={() => setConfirmedReviewKey(null)}>
+                    Corrigir quantidade
+                  </button>
+                </div>
+              )}
               <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-3xl border border-white/15 bg-[#121212]/95 p-3 shadow-2xl backdrop-blur-2xl sm:static sm:mt-2 sm:max-w-none sm:rounded-2xl sm:border-white/10 sm:bg-white/5 sm:backdrop-blur-0">
                 <div className="min-w-0 pl-2">
                   <p className="text-[10px] font-semibold text-gray-400">Rateio de combustível</p>
@@ -863,7 +905,12 @@ function Home() {
                   {busy
                     ? "Buscando motoristas…"
                     : role === "request"
-                      ? "Confirmar Pedido"
+                      ? confirmedReviewKey === JSON.stringify([
+                           requestFare?.quoteId, origin, destination, date, time,
+                           Number(count), requestFare?.pricePerPassenger,
+                         ])
+                         ? `Confirmar ${count} ${Number(count) === 1 ? "vaga" : "vagas"}`
+                         : "Revisar vagas e total"
                       : "Continuar"}
                   <ArrowRight size={18} />
                 </Button>
