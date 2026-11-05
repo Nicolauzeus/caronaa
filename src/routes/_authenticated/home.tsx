@@ -85,6 +85,20 @@ function Home() {
   const [professionalDrivers,setProfessionalDrivers] = useState<ApproximateProfessionalDriver[]>([]);
   const [professionalError,setProfessionalError] = useState("");
   const [professionalLoading,setProfessionalLoading] = useState(false);
+  const professionalMunicipalityEdited = useRef(false);
+  // Consult the radar automatically, using the member's registered municipality.
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("city").eq("id", user.id).maybeSingle();
+      const city = typeof data?.city === "string" ? data.city.trim() : "";
+      if (active && !professionalMunicipalityEdited.current && city.length >= 2) {
+        setProfessionalMunicipality(current => current || city);
+      }
+    });
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     const municipality=professionalMunicipality.trim();
     if(municipality.length<2){setProfessionalDrivers([]);setProfessionalError("");return;}
@@ -242,6 +256,14 @@ function Home() {
       isApproximate: location.position.accuracy > 100,
     });
   }, [originSource, location.position, resolvedAddress]);
+  // GPS city takes precedence unless the user manually selected a municipality.
+  useEffect(() => {
+    const city = resolvedAddress?.city?.trim();
+    if (city && city.length >= 2 && !professionalMunicipalityEdited.current) {
+      setProfessionalMunicipality(city);
+    }
+  }, [resolvedAddress?.city]);
+
   function focusOrigin() {
     setPanelOpen(true);
     setOriginSource("MANUAL_ORIGIN");
@@ -485,12 +507,12 @@ function Home() {
         </div>
 
         <section aria-label="Motoristas para viagens rápidas" className="my-4 rounded-2xl border border-primary/20 p-4 space-y-2">
-          <h2 className="font-bold">Viajar agora · motoristas no mapa</h2>
+          <h2 className="font-bold">Viajar agora · radar ativo</h2>
           <p className="text-xs text-muted-foreground">Somente profissionais autorizados e com GPS recente em regiões habilitadas. Pontos aproximados; não garantem corrida.</p>
           <label htmlFor="professional-municipality" className="block text-sm font-semibold">Município</label>
-          <input id="professional-municipality" value={professionalMunicipality} maxLength={120} onChange={e=>setProfessionalMunicipality(e.target.value)} placeholder="Ex.: Fortaleza" className="w-full rounded-xl border bg-background p-3 text-sm" />
+          <input id="professional-municipality" value={professionalMunicipality} maxLength={120} onChange={e=>{professionalMunicipalityEdited.current=true;setProfessionalMunicipality(e.target.value)}} placeholder="Detectando município ou informe aqui" className="w-full rounded-xl border bg-background p-3 text-sm" />
           <p role="status" className="text-xs text-muted-foreground">
-            {professionalLoading?"Atualizando profissionais...":professionalError||(professionalMunicipality.trim().length<2?"Informe um município para consultar motoristas.":professionalDrivers.length+" profissional(is) disponível(is) no mapa.")}
+            {professionalLoading?"Atualizando profissionais...":professionalError||(professionalMunicipality.trim().length<2?"Radar ligado · aguardando identificação do município. Você também pode informá-lo acima.":professionalDrivers.length+" profissional(is) disponível(is) no mapa.")}
           </p>
           <p className="text-xs text-muted-foreground">Corridas rápidas ainda bloqueadas até homologação e liberação regional.</p>
           <Link to="/viagem-rapida" className="inline-flex min-h-11 items-center rounded-xl border border-primary px-4 py-2 text-sm font-bold text-primary">Abrir viagens rápidas (piloto)</Link>
