@@ -71,7 +71,7 @@ export function AppShell({
     if (user && typeof window !== "undefined") {
       // Revoke this device's GPS opt-in before terminating the session.
       window.localStorage.removeItem(professionalRadarConsentKey(user.id));
-      await (supabase as any).rpc("professional_location_stop").catch(() => undefined);
+      try { await (supabase as any).rpc("professional_location_stop"); } catch { /* Session may already be gone. */ }
     }
     await queryClient.cancelQueries();
     queryClient.clear();
