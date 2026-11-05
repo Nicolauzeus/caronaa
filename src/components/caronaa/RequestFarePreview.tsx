@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { formatBrl } from "@/lib/ride-cost";
+import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 import { previewRequestFare } from "@/lib/ride-pricing.functions";
 
 export type FarePreview = {
@@ -65,14 +65,16 @@ export function RequestFarePreview({
     };
   }, [origin, destination, preview, retry, routeIsReady, onQuote, refreshKey]);
 
-  const groupTotal = fare ? Math.round(fare.pricePerPassenger * passengerCount * 100) / 100 : null;
+  const groupTotal = fare && Number.isInteger(passengerCount) && passengerCount >= 1 && passengerCount <= 6
+    ? calculateRequestedGroupFare(fare.pricePerPassenger, passengerCount)
+    : null;
 
   return (
     <section
       aria-label="Estimativa de preço da carona"
       className="rounded-lg border border-border bg-muted/30 p-3"
     >
-      <p className="text-sm font-semibold">Estimativa para o seu trecho</p>
+      <p className="text-sm font-semibold">Estimativa para as vagas deste pedido</p>
       {!routeIsReady ? (
         <p role="status" className="mt-1 text-sm text-muted-foreground">
           Informe a saída e o destino para estimar o preço.
@@ -84,7 +86,7 @@ export function RequestFarePreview({
           </p>
           <p className="text-sm text-muted-foreground">
             {fare.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km pela estrada
-            · {passengerCount} {passengerCount === 1 ? "passageiro" : "passageiros"}:{" "}
+            · {passengerCount} {passengerCount === 1 ? "passageiro solicitado" : "passageiros solicitados"}:{" "}
             {formatBrl(groupTotal ?? 0)} estimados
           </p>
         </div>
@@ -106,7 +108,7 @@ export function RequestFarePreview({
       )}
       <p className="mt-2 text-xs text-muted-foreground">
         Estimativa: R$ 6 a cada 11 km por pessoa. O valor final é calculado e confirmado antes dos
-        aceites da combinação.
+        aceites da combinação. Vagas livres do motorista não entram na cobrança.
       </p>
     </section>
   );
