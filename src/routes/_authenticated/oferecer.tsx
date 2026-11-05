@@ -487,7 +487,7 @@ function Oferecer() {
                                 }
                                 placeholder="De onde você vai sair?"
                                 required
-                                variant="simple"
+                                variant="glass"
                               />
                             </div>
                           )}
@@ -509,7 +509,7 @@ function Oferecer() {
                             }
                             placeholder="Ex.: Eusébio, UNIFOR, Centro"
                             required
-                            variant="simple"
+                            variant="glass"
                           />
                         </div>
                       </div>
