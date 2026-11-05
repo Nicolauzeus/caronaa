@@ -657,7 +657,7 @@ function Home() {
                               setOrigin(details?.formattedAddress || text);
                               setOriginLocation(details);
                             }}
-                            variant="simple"
+                            variant="glass"
                             required
                             placeholder="De onde você vai sair?"
                           />
@@ -676,7 +676,7 @@ function Home() {
                           setDestination(details?.formattedAddress || text);
                           setDestinationLocation(details);
                         }}
-                        variant="simple"
+                        variant="glass"
                         required
                         placeholder="Para onde você vai?"
                       />
