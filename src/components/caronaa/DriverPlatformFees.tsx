@@ -54,7 +54,7 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
       className="space-y-3 rounded-xl border border-border bg-card p-4 text-card-foreground">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-bold">Comissões da plataforma</h3>
-        <span className="text-xs text-muted-foreground">15% por viagem paga</span>
+        <span className="text-xs text-muted-foreground">16,86% por viagem paga</span>
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {!fees ? <p className="text-sm text-muted-foreground">Carregando situação financeira…</p> : (
