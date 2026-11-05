@@ -164,7 +164,7 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
       <p className="text-center text-xs text-muted-foreground">
         Transferência manual para a conta do motorista. O aplicativo não verifica recebimento,
         não cobra nem divide valores automaticamente. Após a confirmação bilateral, o motorista deve
-        repassar 15% à plataforma. Confirme os dados no aplicativo bancário.
+        repassar 16,86% à plataforma. Confirme os dados no aplicativo bancário.
       </p>
       {image && <img src={image} alt="QR Code Pix manual da viagem" width={240} height={240}
         className="max-w-full rounded-lg bg-white p-2" />}
@@ -196,7 +196,7 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
         )}
         {paymentStatus?.bothConfirmed && role === "driver" && (
           <p role="status" className="text-sm font-medium">
-            O CARONAA registrou o pagamento declarado pelas duas partes. Repassar 15% à plataforma
+            O CARONAA registrou o pagamento declarado pelas duas partes. Repassar 16,86% à plataforma
             é sua responsabilidade; consulte o painel abaixo.
           </p>
         )}
