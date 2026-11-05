@@ -1,6 +1,7 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useCallback, useEffect, useRef, useState} from "react";
 import {supabase} from "@/integrations/supabase/client";
+import {ProfessionalAccessRequest} from "@/components/caronaa/ProfessionalAccessRequest";
 
 export const Route=createFileRoute("/_authenticated/disponibilidade-profissional")({component:ProfessionalAvailability});
 
@@ -110,6 +111,7 @@ function ProfessionalAvailability(){
    <Link to="/home" className="text-sm text-primary">← Voltar ao aplicativo</Link>
    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
    <p className="text-sm text-muted-foreground">Presença voluntária para o piloto. Recebimento de corridas profissionais ainda não liberado.</p>
+   <ProfessionalAccessRequest/>
    <label className="block text-sm">Município<input value={municipality} maxLength={120} disabled={sharing} onChange={e=>setMunicipality(e.target.value)} placeholder="Informe seu município" className="mt-2 w-full rounded-lg border bg-background p-3"/></label>
    {driverBlocked && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar suspenso até a quitação dos repasses.{" "}
