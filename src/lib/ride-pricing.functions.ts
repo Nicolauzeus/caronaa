@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { calculatePassengerFare, PASSENGER_TARIFF } from "./ride-cost";
+import { calculatePassengerFare, calculateRequestedGroupFare, PASSENGER_TARIFF } from "./ride-cost";
 import { calculateFreeSeatPotential } from "./ride-potential";
 import { getDrivingDistanceKm } from "./road-routing";
 
@@ -272,7 +272,7 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
       );
     }
     const pricePerPassenger = calculatePassengerFare(distanceKm);
-    const groupTotal = Math.round(pricePerPassenger * Number(request.passenger_count) * 100) / 100;
+    const groupTotal = calculateRequestedGroupFare(pricePerPassenger, Number(request.passenger_count));
     const { error: persistError } = await admin.rpc("persist_ride_route_quote", {
       p_ride_id: data.rideId,
       p_route_distance_km: distanceKm,
