@@ -16,7 +16,7 @@ import {
 } from "@/components/caronaa/TimeToleranceSelector";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { previewRequestFare } from "@/lib/ride-pricing.functions";
-import { formatBrl } from "@/lib/ride-cost";
+import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 
 export const Route = createFileRoute("/buscar")({
   ssr:false,
@@ -270,7 +270,7 @@ function Buscar() {
           Matching real por origem, destino, data, horário e vagas.
         </span>
         <label className="ml-auto flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <UsersRound size={16} /> Passageiros{" "}
+          <UsersRound size={16} /> Passageiros neste pedido{" "}
           <select
             value={passengers}
             onChange={(e) => {
@@ -295,7 +295,7 @@ function Buscar() {
               <p className="font-semibold text-primary">
                 Seu trecho: {formatBrl(requestQuote.pricePerPassenger)} por pessoa
                 {Number(submitted.passengers) > 1
-                  ? ` · grupo ${formatBrl(Math.round(requestQuote.pricePerPassenger * Number(submitted.passengers) * 100) / 100)}`
+                  ? ` · grupo ${formatBrl(calculateRequestedGroupFare(requestQuote.pricePerPassenger, Number(submitted.passengers)))}`
                   : ""}
               </p>
               <p className="text-xs text-muted-foreground">
