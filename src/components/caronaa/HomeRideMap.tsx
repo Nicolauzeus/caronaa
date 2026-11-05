@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { GoogleHomeRideMap, googleMapsBrowserKey } from "./GoogleHomeRideMap";
+import { GoogleHomeRideMap } from "./GoogleHomeRideMap";
 import { LocateFixed, MapPin } from "lucide-react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -315,10 +315,11 @@ const LegacyHomeRideMap = memo(function LegacyHomeRideMap(props: Props) {
   );
 });
 
-// Keep the existing map available until the Google integration is fully homologated.
-// The browser key must be separately restricted to authorized web origins.
+// Google Maps is always attempted first, using either a Vite public variable
+// or a dedicated browser key served by the authenticated CARONAA backend.
+// Keep Leaflet/OpenStreetMap as the operational fallback on any load/key error.
 export const HomeRideMap = memo(function HomeRideMap(props: Props) {
   const [googleFailed, setGoogleFailed] = useState(false);
-  if (!googleMapsBrowserKey || googleFailed) return <LegacyHomeRideMap {...props} />;
+  if (googleFailed) return <LegacyHomeRideMap {...props} />;
   return <GoogleHomeRideMap {...props} onFailure={() => setGoogleFailed(true)} />;
 });
