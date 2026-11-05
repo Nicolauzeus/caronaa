@@ -60,78 +60,94 @@ export function DriverPixSettings() {
     </section>
   );
 }
-export function CompletedRidePix({ rideId }: { rideId: string }) {
-  const [data, setData] = useState<{ key: string | null; name: string; amount: number } | null>(
-    null,
-  );
+
+type RidePix = {
+  key: string | null;
+  name: string | null;
+  amount: number;
+  passengerCount: number;
+  pricePerPassenger: number;
+  paymentMethod: "MANUAL_DRIVER_PIX";
+  automaticConfirmation: false;
+};
+
+export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driver" | "passenger" }) {
+  const [data, setData] = useState<RidePix | null>(null);
   const [image, setImage] = useState("");
+  const [payload, setPayload] = useState("");
   const [error, setError] = useState("");
+
   useEffect(() => {
     let active = true;
+    setData(null);
+    setImage("");
+    setPayload("");
+    setError("");
     void (async () => {
-      const { data: result, error } = await supabase.rpc("get_ride_pix", { p_ride_id: rideId });
-      if (error) {
-        if (active) setError("Não foi possível carregar o Pix.");
-        return;
+      const { data: result, error: queryError } = await supabase.rpc("get_ride_pix", { p_ride_id: rideId });
+      if (queryError) throw new Error(queryError.message);
+      const pix = result as unknown as RidePix;
+      if (!pix || !Number.isFinite(Number(pix.amount)) || Number(pix.amount) <= 0 ||
+          !Number.isInteger(Number(pix.passengerCount)) || Number(pix.passengerCount) < 1 ||
+          !Number.isFinite(Number(pix.pricePerPassenger)) ||
+          Math.round(Number(pix.pricePerPassenger) * Number(pix.passengerCount) * 100) !==
+          Math.round(Number(pix.amount) * 100)) {
+        throw new Error("O preço desta reserva está inconsistente. Não realize Pix antes da revisão.");
       }
-      const pix = result as unknown as { key: string | null; name: string; amount: number };
-      if (active) setData(pix);
+      if (!active) return;
+      setData(pix);
       if (pix.key) {
-        const url = await QRCode.toDataURL(buildPixPayload(pix.key, pix.name, Number(pix.amount)), {
-          width: 240,
-          margin: 2,
-        });
-        if (active) setImage(url);
+        const code = buildPixPayload(pix.key, pix.name || "Motorista", Number(pix.amount));
+        const qr = await QRCode.toDataURL(code, { width: 240, margin: 2 });
+        if (active) { setPayload(code); setImage(qr); }
       }
-    })().catch(() => {
-      if (active) setError("Não foi possível gerar o Pix.");
+    })().catch((cause: unknown) => {
+      if (active) setError(cause instanceof Error ? cause.message : "Não foi possível carregar o Pix da viagem.");
     });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [rideId]);
-  if (error)
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {error}
-      </p>
-    );
-  if (!data)
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Carregando Pix…
-      </p>
-    );
-  if (!data.key)
-    return (
-      <p className="text-sm text-muted-foreground">
-        Motorista ainda não cadastrou a chave Pix.{" "}
-        <Link className="font-semibold text-primary underline" to="/perfil" hash="pix-do-motorista">
-          Cadastrar minha chave
-        </Link>
-      </p>
-    );
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Código Pix copiado.");
+    } catch { toast.error("Não foi possível copiar. Copie a chave manualmente."); }
+  }
+
+  if (error) return <p role="alert" className="text-sm text-destructive">{error}</p>;
+  if (!data) return <p role="status" className="text-sm text-muted-foreground">Carregando Pix…</p>;
+  if (!data.key) return (
+    <p role="status" className="rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground">
+      O motorista ainda não cadastrou uma chave Pix.{" "}
+      {role === "driver" ? (
+        <Link className="font-semibold text-primary underline" to="/perfil" hash="pix-do-motorista">Cadastrar minha chave</Link>
+      ) : "Peça ao motorista que cadastre uma chave antes de transferir."}
+    </p>
+  );
   return (
-    <div className="flex flex-col items-center gap-3 py-4" aria-label="Pix da viagem concluída">
+    <section className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-4 text-foreground"
+      aria-label="Pix direto para o motorista">
+      <h4 className="text-center text-base font-bold">Pix direto para o motorista</h4>
       <p className="text-center text-sm font-semibold">
-        Chave Pix do motorista (modo legado) ·{" "}
-        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-          Number(data.amount),
-        )}
+        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(data.amount))}
+        {" "}· {data.passengerCount} {data.passengerCount === 1 ? "passageiro deste pedido" : "passageiros deste pedido"}
       </p>
       <p className="text-center text-xs text-muted-foreground">
-        QR manual legado: não é uma cobrança Asaas, não confirma recebimento nem aplica o repasse automático da plataforma. Não utilize este QR para testar pagamentos.
+        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(data.pricePerPassenger))}
+        {" "}por passageiro solicitado. Vagas livres do motorista não entram neste valor.
       </p>
-      {image && (
-        <img
-          src={image}
-          alt="QR Code Pix do motorista"
-          width={240}
-          height={240}
-          className="max-w-full rounded-md"
-        />
-      )}
+      <p className="text-center text-xs text-muted-foreground">
+        Transferência manual para a conta do motorista. O aplicativo não verifica recebimento,
+        não cobra comissão e não altera o status do pagamento. Confirme os dados no aplicativo bancário.
+      </p>
+      {image && <img src={image} alt="QR Code Pix manual da viagem" width={240} height={240}
+        className="max-w-full rounded-lg bg-white p-2" />}
       <p className="max-w-full break-all text-center font-mono text-sm">{data.key}</p>
-    </div>
+      <div className="flex w-full flex-wrap justify-center gap-2">
+        <Button type="button" size="sm" variant="outline" onClick={() => void copy(data.key!)}>Copiar chave Pix</Button>
+        {payload && <Button type="button" size="sm" onClick={() => void copy(payload)}>Copiar Pix copia e cola</Button>}
+      </div>
+      {role === "driver" && <p className="text-xs text-muted-foreground">Confira o recebimento no aplicativo do banco; este QR não comprova pagamento.</p>}
+    </section>
   );
 }
