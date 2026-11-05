@@ -163,7 +163,8 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
       </p>
       <p className="text-center text-xs text-muted-foreground">
         Transferência manual para a conta do motorista. O aplicativo não verifica recebimento,
-        não cobra comissão e não altera o status do pagamento. Confirme os dados no aplicativo bancário.
+        não cobra nem divide valores automaticamente. Após a confirmação bilateral, o motorista deve
+        repassar 15% à plataforma. Confirme os dados no aplicativo bancário.
       </p>
       {image && <img src={image} alt="QR Code Pix manual da viagem" width={240} height={240}
         className="max-w-full rounded-lg bg-white p-2" />}
