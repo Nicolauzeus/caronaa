@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * This is a BROWSER key: the client must receive it to load Google Maps JS.
@@ -10,7 +9,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * source .env, but it does NOT make the key confidential to browser users.
  */
 export const getGoogleMapsBrowserKey = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
   .handler(async () => {
     const key = process.env.GOOGLE_MAPS_BROWSER_API_KEY?.trim();
     return key || null;
