@@ -20,6 +20,7 @@ import {
 } from "@/components/caronaa/NotificationControls";
 import { DriverPixSettings } from "@/components/caronaa/DriverPix";
 import { DriverPlatformFees } from "@/components/caronaa/DriverPlatformFees";
+import { ProfessionalAuthorizationBadge } from "@/components/caronaa/ProfessionalAuthorizationBadge";
 import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
@@ -621,6 +622,7 @@ function Perfil() {
       <ProfileTravelPreferences />
       <DriverPixSettings />
       <DriverPlatformFees />
+      <div className="mb-3"><ProfessionalAuthorizationBadge /></div>
       <section aria-label="Radar do motorista" className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 shadow-soft">
         <h2 className="text-base font-extrabold">Radar do motorista</h2>
         <p className="mt-1 text-sm text-muted-foreground">
