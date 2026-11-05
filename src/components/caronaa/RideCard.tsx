@@ -7,7 +7,7 @@ import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { requestRideOffer, type RideSummary } from "@/lib/rides.functions";
 import { toast } from "sonner";
 import { MatchOpportunityDetails } from "./MatchOpportunityDetails";
-import { formatBrl } from "@/lib/ride-cost";
+import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 
 function formatDate(value: string) {
   const date = new Date(`${value}T00:00:00`);
@@ -183,7 +183,7 @@ export function RideCard({
           <p className="mt-0.5 font-bold text-primary">
             {formatBrl(segmentRequest.pricePerPassenger)} por pessoa
             {passengerCount > 1
-              ? ` · grupo ${formatBrl(Math.round(segmentRequest.pricePerPassenger * passengerCount * 100) / 100)}`
+              ? ` · grupo ${formatBrl(calculateRequestedGroupFare(segmentRequest.pricePerPassenger, passengerCount))}`
               : ""}
           </p>
           <p className="text-xs text-muted-foreground">
