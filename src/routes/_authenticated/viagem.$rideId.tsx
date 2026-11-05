@@ -189,7 +189,7 @@ function ViagemOperacional() {
             <p className="flex items-start gap-2">
               <UsersRound className="mt-0.5 shrink-0" size={16} />
               <span>
-                {ride.seats} {ride.seats === 1 ? "pessoa" : "pessoas"}
+                {ride.seats} {ride.seats === 1 ? "passageiro solicitado" : "passageiros solicitados"}
                 {ride.role === "driver" && ride.seatsRemaining != null
                   ? ` · ${ride.seatsRemaining} vagas restantes`
                   : ""}
