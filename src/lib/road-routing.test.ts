@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getMultiStopRoute, getDrivingDistanceKm } from "./road-routing";
+import {
+  getMultiStopRoute,
+  getDrivingDistanceKm,
+  getWalkingRoute,
+} from "./road-routing";
 
 const points = [
   { lat: -3.7, lng: -38.5 },
@@ -119,4 +123,20 @@ describe("Google Routes ordered multi-stop route", () => {
     );
     expect(request).not.toHaveBeenCalled();
   });
+});
+
+it("requests walking geometry without a driving-only routing preference", async () => {
+  vi.stubEnv("GOOGLE_MAPS_API_KEY", "server-test-key");
+  const request = vi
+    .fn()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ routes: [{ ...route, legs: [route.legs[0]] }] }),
+      ),
+    );
+  const result = await getWalkingRoute(points.slice(0, 2), request);
+  const body = JSON.parse(request.mock.calls[0][1].body);
+  expect(body.travelMode).toBe("WALK");
+  expect(body.routingPreference).toBeUndefined();
+  expect(result.routePath).toHaveLength(2);
 });

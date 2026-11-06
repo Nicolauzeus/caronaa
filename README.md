@@ -148,6 +148,15 @@ Referência: 11 km = R$ 6,00
 - Mostrar valor antes da confirmação. Não impor tarifa mínima, valor dinâmico ou extras não especificados.
 - Exibir veículo previamente salvo, capacidade/vagas e pontos de embarque; não repetir dados do perfil.
 
+**Política de trajeto (F03/F05):** ofertas pontuais novas registram a escolha explícita entre
+**Aceitar pequenos desvios** e **Rota Estrita (Ponto de encontro)**. Em rota estrita,
+o encontro sugerido permanece sobre o corredor viário do condutor. Estabelecimentos
+próximos são referências, não certificados de segurança; quando não houver referência,
+mostrar o ponto projetado na rota com confirmação das condições de acesso e parada.
+A sugestão não altera automaticamente o embarque combinado, reservas ou tarifas.
+A publicação dessa política exige a migration 0136. Ofertas históricas e rotinas
+mantêm seu comportamento anterior, sem conversão silenciosa.
+
 **Aceite F03:** tarifa de 11 km exata, subtrechos corretos, arredondamento, mapa, limites de vagas e publicação persistida.
 
 ### F04 — Caronas recorrentes, publicação autorizada e alertas
@@ -338,3 +347,4 @@ npm run build
 ```
 
 > **Regra final:** **CARONAA simples na interface, inteligente na operação, mensurável no impacto.** Nenhum desenvolvimento novo deve contrariar estes fluxos sem autorização de uma revisão do produto.
+

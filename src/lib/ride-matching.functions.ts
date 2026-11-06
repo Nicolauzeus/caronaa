@@ -18,7 +18,9 @@ const rideInput = z
     timeToleranceMinutes: z
       .union([z.literal(5), z.literal(15), z.literal(30), z.literal(60)])
       .optional(),
-    passengerGenderPreference: z.enum(["ANY", "FEMININO", "MASCULINO"]).optional(),
+    passengerGenderPreference: z
+      .enum(["ANY", "FEMININO", "MASCULINO"])
+      .optional(),
     preferences: travelPreferencesSchema.optional(),
     idempotencyKey: z.string().uuid(),
     vehicleDescription: z.string().trim().max(160).optional(),
@@ -27,6 +29,7 @@ const rideInput = z
     meetingLng: z.number().finite().min(-180).max(180).optional(),
     notes: z.string().trim().max(500).optional(),
     quoteId: z.string().uuid().optional(),
+    allowDetours: z.boolean().default(true),
   })
   .superRefine((data, context) => {
     if ((data.meetingLat == null) !== (data.meetingLng == null)) {
@@ -58,14 +61,17 @@ export const createRideRequest = createServerFn({ method: "POST" })
         args: Record<string, unknown>,
       ) => Promise<{ data: unknown; error: { message: string } | null }>;
     };
-    const { data: requestId, error } = await client.rpc("create_priced_ride_request", {
-      p_quote_id: data.quoteId,
-      p_ride_date: data.rideDate,
-      p_departure_time: data.departureTime,
-      p_passenger_count: data.passengerCount,
-      p_time_tolerance_minutes: data.timeToleranceMinutes,
-      p_preferences: data.preferences,
-    });
+    const { data: requestId, error } = await client.rpc(
+      "create_priced_ride_request",
+      {
+        p_quote_id: data.quoteId,
+        p_ride_date: data.rideDate,
+        p_departure_time: data.departureTime,
+        p_passenger_count: data.passengerCount,
+        p_time_tolerance_minutes: data.timeToleranceMinutes,
+        p_preferences: data.preferences,
+      },
+    );
     if (error) {
       throw new Error(`Não foi possível criar a solicitação: ${error.message}`);
     }
@@ -77,20 +83,39 @@ export const createRideOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rideInput.parse(input))
   .handler(async ({ context, data }) => {
+    const { error: policyError } = await (context.supabase as any)
+      .from("ride_offers")
+      .select("allow_detours")
+      .limit(0);
+    if (policyError)
+      throw new Error(
+        "Aplique a migração 0136 antes de publicar a preferência de trajeto.",
+      );
     const { data: profile, error: profileError } = await context.supabase
-      .from("profiles").select("vehicle_brand, vehicle_description").eq("id", context.userId).single();
-    if (profileError) throw new Error("Não foi possível carregar o veículo do seu perfil.");
-    const vehicleDescription = data.vehicleDescription?.trim() ||
-      [profile.vehicle_brand, profile.vehicle_description].filter(Boolean).join(" · ");
+      .from("profiles")
+      .select("vehicle_brand, vehicle_description")
+      .eq("id", context.userId)
+      .single();
+    if (profileError)
+      throw new Error("Não foi possível carregar o veículo do seu perfil.");
+    const vehicleDescription =
+      data.vehicleDescription?.trim() ||
+      [profile.vehicle_brand, profile.vehicle_description]
+        .filter(Boolean)
+        .join(" · ");
     if (!vehicleDescription) {
       throw new Error("Informe o veículo antes de publicar a oferta.");
     }
-    if (!data.quoteId) throw new Error("Aguarde o preço do percurso antes de publicar.");
-    const { data: offerId, error } = await context.supabase.rpc("publish_priced_offer", {
-      p_quote_id: data.quoteId,
-      p_details: { ...data, vehicleDescription, totalPrice: 0 },
-      p_preferences: data.preferences,
-    });
+    if (!data.quoteId)
+      throw new Error("Aguarde o preço do percurso antes de publicar.");
+    const { data: offerId, error } = await context.supabase.rpc(
+      "publish_priced_offer",
+      {
+        p_quote_id: data.quoteId,
+        p_details: { ...data, vehicleDescription, totalPrice: 0 },
+        p_preferences: data.preferences,
+      },
+    );
     if (error) {
       throw new Error(`Não foi possível criar a oferta: ${error.message}`);
     }

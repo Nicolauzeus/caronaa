@@ -13,11 +13,14 @@ export type GoogleMapPoint = {
   lng: number;
   title?: string;
   color?: string;
+  label?: string;
+  kind?: "person" | "meeting";
 };
 export type GoogleMapLine = {
   points: Array<{ lat: number; lng: number }>;
   color?: string;
   label?: string;
+  dotted?: boolean;
 };
 
 type Props = {
@@ -118,9 +121,23 @@ export function GoogleMapSurface({
         map: map.current,
         position: { lat: point.lat, lng: point.lng },
         title: point.title || "Localização",
+        ...(point.label
+          ? {
+              label: {
+                text: point.label,
+                color: "#FFFFFF",
+                fontWeight: "bold",
+              },
+            }
+          : {}),
         icon: {
-          path: G.SymbolPath.CIRCLE,
-          scale: 8,
+          path:
+            point.kind === "person"
+              ? "M 0,-9 A 3,3 0 1,1 0,-3 A 3,3 0 1,1 0,-9 M -5,7 L -5,1 Q -5,-2 0,-2 Q 5,-2 5,1 L 5,7 Z"
+              : point.kind === "meeting"
+                ? "M -7,-8 L 7,-8 L 7,3 L 0,10 L -7,3 Z"
+                : G.SymbolPath.CIRCLE,
+          scale: point.kind ? 1.4 : 8,
           fillColor: point.color || "#FFBB00",
           fillOpacity: 1,
           strokeColor: "#FFFFFF",
@@ -138,7 +155,18 @@ export function GoogleMapSurface({
         path,
         geodesic: false,
         strokeColor: line.color || "#FFBB00",
-        strokeOpacity: 0.95,
+        strokeOpacity: line.dotted ? 0 : 0.95,
+        ...(line.dotted
+          ? {
+              icons: [
+                {
+                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 2 },
+                  offset: "0",
+                  repeat: "12px",
+                },
+              ],
+            }
+          : {}),
         strokeWeight: 5,
       });
       artifacts.current.push(polyline);

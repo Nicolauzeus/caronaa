@@ -36,6 +36,7 @@ function durationSeconds(value: unknown): number {
 export async function getDrivingRoute(
   points: RoadPoint[],
   request: typeof fetch = fetch,
+  travelMode: "DRIVE" | "WALK" = "DRIVE",
 ): Promise<DrivingRoute> {
   validateRoutePoints(points);
   const key = getGoogleServerKey();
@@ -57,8 +58,10 @@ export async function getDrivingRoute(
         origin: waypoint(points[0]),
         destination: waypoint(points[points.length - 1]),
         intermediates: points.slice(1, -1).map(waypoint),
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_UNAWARE",
+        travelMode,
+        ...(travelMode === "DRIVE"
+          ? { routingPreference: "TRAFFIC_UNAWARE" }
+          : {}),
         computeAlternativeRoutes: false,
         polylineEncoding: "GEO_JSON_LINESTRING",
         polylineQuality: "HIGH_QUALITY",
@@ -135,4 +138,11 @@ export async function getDrivingDistanceKm(
   request: typeof fetch = fetch,
 ) {
   return (await getDrivingRoute([origin, destination], request)).distanceKm;
+}
+
+export function getWalkingRoute(
+  points: RoadPoint[],
+  request: typeof fetch = fetch,
+) {
+  return getDrivingRoute(points, request, "WALK");
 }

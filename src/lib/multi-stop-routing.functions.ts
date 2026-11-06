@@ -2,7 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getDrivingRoute } from "./road-routing";
-import { buildSuggestedRoutePlan, type MultiStopCandidate } from "./multi-stop-routing";
+import {
+  buildSuggestedRoutePlan,
+  type MultiStopCandidate,
+} from "./multi-stop-routing";
 
 const inputSchema = z.object({ offerId: z.string().uuid() });
 type Row = Record<string, unknown>;
@@ -24,7 +27,7 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
     const { data: offerValue, error: offerError } = await participantClient
       .from("ride_offers")
       .select(
-        "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, status, available_seats, route_distance_km, route_path, route_duration_minutes",
+        "offer_id, user_id, origin, destination, origin_lat, origin_lng, destination_lat, destination_lng, status, available_seats, route_distance_km, route_path, route_duration_minutes, allow_detours",
       )
       .eq("offer_id", data.offerId)
       .maybeSingle();
@@ -32,6 +35,13 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
     if (offerError || !offer || offer.user_id !== context.userId) {
       throw new Error("Esta oferta não está disponível para sua conta.");
     }
+    if (offer.allow_detours === false)
+      return {
+        ok: false as const,
+        reason:
+          "Esta oferta usa Rota Estrita. Combine o encontro na rota, sem recalcular desvios.",
+        rejectedRequestIds: [],
+      };
     if (!["available", "full"].includes(String(offer.status))) {
       return {
         ok: false as const,
@@ -56,7 +66,8 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
       .eq("offer_id", data.offerId)
       .eq("driver_user_id", context.userId)
       .eq("status", "MATCHED");
-    if (ridesError) throw new Error("Não foi possível carregar as propostas desta oferta.");
+    if (ridesError)
+      throw new Error("Não foi possível carregar as propostas desta oferta.");
     const rides = (Array.isArray(rideValues) ? rideValues : []) as Row[];
     const acceptedRides = rides.filter(
       (ride) => Boolean(ride.passenger_accepted_at) && !ride.driver_accepted_at,
@@ -64,25 +75,36 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
     if (acceptedRides.length === 0) {
       return {
         ok: false as const,
-        reason: "Não há propostas aguardando sua confirmação após o aceite do passageiro.",
+        reason:
+          "Não há propostas aguardando sua confirmação após o aceite do passageiro.",
         rejectedRequestIds: [],
       };
     }
     if (acceptedRides.length > 6) {
       return {
         ok: false as const,
-        reason: "Há propostas demais para calcular uma sugestão segura de uma só vez.",
-        rejectedRequestIds: acceptedRides.map((ride) => String(ride.request_id)),
+        reason:
+          "Há propostas demais para calcular uma sugestão segura de uma só vez.",
+        rejectedRequestIds: acceptedRides.map((ride) =>
+          String(ride.request_id),
+        ),
       };
     }
 
     // Service-role access is limited to IDs from participant-visible rides,
     // after RLS confirmed both offer ownership and driver participation.
-    const requestIds = acceptedRides.map((ride) => String(ride.request_id)).filter(Boolean);
+    const requestIds = acceptedRides
+      .map((ride) => String(ride.request_id))
+      .filter(Boolean);
     const passengerIds = [
-      ...new Set(acceptedRides.map((ride) => String(ride.passenger_user_id)).filter(Boolean)),
+      ...new Set(
+        acceptedRides
+          .map((ride) => String(ride.passenger_user_id))
+          .filter(Boolean),
+      ),
     ];
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
     const admin = supabaseAdmin as unknown as {
       from(table: string): { select(columns: string): Query };
     };
@@ -101,9 +123,15 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
     if (requestError || profileError)
       throw new Error("Não foi possível carregar os pontos das propostas.");
 
-    const requests = (Array.isArray(requestValues) ? requestValues : []) as Row[];
-    const profiles = (Array.isArray(profileValues) ? profileValues : []) as Row[];
-    const requestById = new Map(requests.map((row) => [String(row.request_id), row]));
+    const requests = (
+      Array.isArray(requestValues) ? requestValues : []
+    ) as Row[];
+    const profiles = (
+      Array.isArray(profileValues) ? profileValues : []
+    ) as Row[];
+    const requestById = new Map(
+      requests.map((row) => [String(row.request_id), row]),
+    );
     const profileById = new Map(profiles.map((row) => [String(row.id), row]));
     const candidates: MultiStopCandidate[] = [];
     for (const ride of acceptedRides) {
@@ -124,11 +152,15 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
         !Number.isFinite(groupTotal)
       )
         continue;
-      const fullName = profileById.get(String(ride.passenger_user_id))?.full_name;
+      const fullName = profileById.get(
+        String(ride.passenger_user_id),
+      )?.full_name;
       candidates.push({
         requestId: String(request.request_id),
         passengerName:
-          typeof fullName === "string" && fullName.trim() ? fullName.trim() : "Passageiro",
+          typeof fullName === "string" && fullName.trim()
+            ? fullName.trim()
+            : "Passageiro",
         passengerCount,
         pickup,
         dropoff,
@@ -145,7 +177,10 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
         rejectedRequestIds: [],
       };
     }
-    const requestedSeats = candidates.reduce((sum, candidate) => sum + candidate.passengerCount, 0);
+    const requestedSeats = candidates.reduce(
+      (sum, candidate) => sum + candidate.passengerCount,
+      0,
+    );
     if (requestedSeats > Number(offer.available_seats)) {
       return {
         ok: false as const,
@@ -160,7 +195,8 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
     if (!origin || !destination) {
       return {
         ok: false as const,
-        reason: "A oferta não possui coordenadas confiáveis para calcular seu corredor rodoviário.",
+        reason:
+          "A oferta não possui coordenadas confiáveis para calcular seu corredor rodoviário.",
         rejectedRequestIds: [],
       };
     }
@@ -181,15 +217,20 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
     ) {
       return {
         ok: false as const,
-        reason: "A cotação da oferta não contém distância e tempo rodoviários válidos.",
+        reason:
+          "A cotação da oferta não contém distância e tempo rodoviários válidos.",
         rejectedRequestIds: [],
       };
     }
 
     // Also verify endpoint consistency before sending passenger coordinates to Google Maps.
     const routeStart = originalRoute.routePath[0];
-    const routeEnd = originalRoute.routePath[originalRoute.routePath.length - 1];
-    if (distanceKm(routeStart, origin) > 2 || distanceKm(routeEnd, destination) > 2) {
+    const routeEnd =
+      originalRoute.routePath[originalRoute.routePath.length - 1];
+    if (
+      distanceKm(routeStart, origin) > 2 ||
+      distanceKm(routeEnd, destination) > 2
+    ) {
       return {
         ok: false as const,
         reason:
@@ -221,7 +262,10 @@ function coordinate(row: Row, prefix: "origin" | "destination") {
   return { lat, lng };
 }
 
-function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+function distanceKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+) {
   const toRad = (degrees: number) => (degrees * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
@@ -230,4 +274,3 @@ function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
-
