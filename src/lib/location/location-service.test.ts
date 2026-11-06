@@ -30,12 +30,11 @@ describe("Location Service & Google Places Provider", () => {
       expect(getLocationProviderName()).toBe("Google Places");
     });
 
-    it("returns empty suggestions and fallback warning when unconfigured", async () => {
+    it("keeps local university suggestions available without a Google key", async () => {
       const result = await searchLocationsService("UNIFOR");
-      expect(result.isConfigured).toBe(false);
-      expect(result.provider).toBe("google_places");
-      expect(result.suggestions).toEqual([]);
-      expect(result.warning).toContain("GOOGLE_PLACES_API_KEY não configurada");
+      expect(result.provider).toBe("catalog");
+      expect(result.suggestions.length).toBeGreaterThan(0);
+      expect(result.suggestions[0].mainText).toContain("Universidade de Fortaleza");
     });
   });
 
@@ -173,3 +172,4 @@ describe("Location Service & Google Places Provider", () => {
     });
   });
 });
+

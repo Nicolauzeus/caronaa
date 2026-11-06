@@ -136,7 +136,7 @@ describe("multi-stop route planning", () => {
       originalRoute: original,
       candidates: [request()],
       route: async () => {
-        throw new Error("OSRM offline");
+        throw new Error("Google Routes offline");
       },
     });
     expect(result).toMatchObject({
@@ -145,3 +145,4 @@ describe("multi-stop route planning", () => {
     });
   });
 });
+

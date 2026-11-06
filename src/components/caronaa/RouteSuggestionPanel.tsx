@@ -64,7 +64,7 @@ export function RouteSuggestionPanel({ offerId }: { offerId: string }) {
         Analisa propostas já encontradas. Não confirma passageiros nem reserva vagas.
       </p>
       <p className="mt-1 text-[11px] text-muted-foreground">
-        Ao gerar a sugestão, os pontos da rota e das propostas são enviados ao serviço público OSRM
+        Ao gerar a sugestão, os pontos da rota e das propostas são enviados ao Google Maps
         para cálculo rodoviário.
       </p>
 
@@ -161,7 +161,7 @@ export function RouteSuggestionPanel({ offerId }: { offerId: string }) {
                 destination={finish}
               />
               <p className="text-[11px] text-muted-foreground">
-                Mapa e tempos dependem do serviço público OSRM e dos dados rodoviários disponíveis.
+                Mapa e tempos dependem do Google Maps e dos dados rodoviários disponíveis.
               </p>
             </div>
           ) : null}
@@ -170,3 +170,4 @@ export function RouteSuggestionPanel({ offerId }: { offerId: string }) {
     </section>
   );
 }
+

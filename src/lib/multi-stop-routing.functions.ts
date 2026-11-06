@@ -186,7 +186,7 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
       };
     }
 
-    // Also verify endpoint consistency before sending passenger coordinates to OSRM.
+    // Also verify endpoint consistency before sending passenger coordinates to Google Maps.
     const routeStart = originalRoute.routePath[0];
     const routeEnd = originalRoute.routePath[originalRoute.routePath.length - 1];
     if (distanceKm(routeStart, origin) > 2 || distanceKm(routeEnd, destination) > 2) {
@@ -230,3 +230,4 @@ function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
+

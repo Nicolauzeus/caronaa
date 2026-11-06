@@ -6,99 +6,125 @@ export type DrivingRoute = {
   legs: Array<{ distanceKm: number; durationMinutes: number }>;
 };
 
-function validateRoutePoints(points: RoadPoint[]) {
-  if (points.length < 2 || points.length > 16) {
+export function validateRoutePoints(points: RoadPoint[]) {
+  if (!Array.isArray(points) || points.length < 2 || points.length > 16) {
     throw new Error("Informe de 2 a 16 pontos para calcular o percurso.");
   }
-  for (const point of points) {
-    if (
-      !Number.isFinite(point.lat) ||
-      point.lat < -90 ||
-      point.lat > 90 ||
-      !Number.isFinite(point.lng) ||
-      point.lng < -180 ||
-      point.lng > 180
+  if (
+    points.some(
+      (point) =>
+        !point ||
+        !Number.isFinite(point.lat) ||
+        Math.abs(point.lat) > 90 ||
+        !Number.isFinite(point.lng) ||
+        Math.abs(point.lng) > 180,
     )
-      throw new Error("Coordenadas inválidas para calcular o percurso.");
+  ) {
+    throw new Error("Coordenadas inválidas para calcular o percurso.");
   }
 }
 
-/** OSRM public demo router. Route errors never fall back to straight-line distance. */
+const validMeters = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0;
+function durationSeconds(value: unknown): number {
+  if (typeof value !== "string" || !/^\d+(?:\.\d+)?s$/.test(value)) return NaN;
+  return Number(value.slice(0, -1));
+}
+
+/** Server-only Google Routes request. Errors never fabricate a road distance. */
 export async function getDrivingRoute(
   points: RoadPoint[],
   request: typeof fetch = fetch,
 ): Promise<DrivingRoute> {
   validateRoutePoints(points);
-  const coordinates = points.map(({ lat, lng }) => `${lng},${lat}`).join(";");
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`;
-  const response = await request(url, {
-    headers: { Accept: "application/json", "User-Agent": "CARONAA/1.0 (road route planning)" },
-    signal: AbortSignal.timeout(7000),
+  const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
+  if (!key) throw new Error("Google Maps Routes não configurado no servidor.");
+  const waypoint = ({ lat, lng }: RoadPoint) => ({
+    location: { latLng: { latitude: lat, longitude: lng } },
   });
-  if (!response.ok) throw new Error(`Serviço de rotas indisponível (HTTP ${response.status}).`);
-
+  const response = await request(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask":
+          "routes.distanceMeters,routes.duration,routes.polyline.geoJsonLinestring,routes.legs.distanceMeters,routes.legs.duration",
+      },
+      body: JSON.stringify({
+        origin: waypoint(points[0]),
+        destination: waypoint(points[points.length - 1]),
+        intermediates: points.slice(1, -1).map(waypoint),
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_UNAWARE",
+        computeAlternativeRoutes: false,
+        polylineEncoding: "GEO_JSON_LINESTRING",
+        polylineQuality: "HIGH_QUALITY",
+        languageCode: "pt-BR",
+      }),
+      signal: AbortSignal.timeout(7000),
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Serviço de rotas indisponível (HTTP ${response.status}).`);
   const result = (await response.json()) as {
-    code?: string;
     routes?: Array<{
-      distance?: number;
-      duration?: number;
-      geometry?: { type?: string; coordinates?: Array<[number, number]> };
-      legs?: Array<{ distance?: number; duration?: number }>;
+      distanceMeters?: number;
+      duration?: string;
+      polyline?: { geoJsonLinestring?: { coordinates?: number[][] } };
+      legs?: Array<{ distanceMeters?: number; duration?: string }>;
     }>;
   };
   const route = result.routes?.[0];
-  const meters = route?.distance;
-  const seconds = route?.duration;
-  const coordinatesOut = route?.geometry?.coordinates;
+  const meters = route?.distanceMeters;
+  const seconds = durationSeconds(route?.duration);
+  const coordinates = route?.polyline?.geoJsonLinestring?.coordinates;
   if (
-    result.code !== "Ok" ||
-    typeof meters !== "number" ||
-    !Number.isFinite(meters) ||
+    !validMeters(meters) ||
     meters <= 0 ||
-    typeof seconds !== "number" ||
     !Number.isFinite(seconds) ||
-    seconds < 0 ||
-    route?.geometry?.type !== "LineString" ||
-    !coordinatesOut ||
-    coordinatesOut.length < 2 ||
-    coordinatesOut.some(
-      (coordinate) =>
-        !Array.isArray(coordinate) ||
-        coordinate.length !== 2 ||
-        !Number.isFinite(coordinate[0]) ||
-        !Number.isFinite(coordinate[1]),
+    !Array.isArray(coordinates) ||
+    coordinates.length < 2 ||
+    coordinates.some(
+      (c) =>
+        !Array.isArray(c) ||
+        c.length < 2 ||
+        !Number.isFinite(c[0]) ||
+        Math.abs(c[0]) > 180 ||
+        !Number.isFinite(c[1]) ||
+        Math.abs(c[1]) > 90,
     )
-  )
+  ) {
     throw new Error("Não foi possível calcular a geometria rodoviária.");
-
-  const legs = route.legs ?? [];
+  }
+  const legs = route?.legs;
   if (
+    !Array.isArray(legs) ||
     legs.length !== points.length - 1 ||
     legs.some(
       (leg) =>
-        typeof leg.distance !== "number" ||
-        !Number.isFinite(leg.distance) ||
-        leg.distance < 0 ||
-        typeof leg.duration !== "number" ||
-        !Number.isFinite(leg.duration) ||
-        leg.duration < 0,
+        !validMeters(leg.distanceMeters) ||
+        !Number.isFinite(durationSeconds(leg.duration)),
     )
-  )
+  ) {
     throw new Error("O serviço de rotas retornou etapas incompletas.");
-
+  }
   return {
     distanceKm: meters / 1000,
     durationMinutes: seconds / 60,
-    routePath: coordinatesOut.map(([lng, lat]) => ({ lat, lng })),
+    routePath: coordinates.map(([lng, lat]) => ({ lat, lng })),
     legs: legs.map((leg) => ({
-      distanceKm: (leg.distance as number) / 1000,
-      durationMinutes: (leg.duration as number) / 60,
+      distanceKm: leg.distanceMeters! / 1000,
+      durationMinutes: durationSeconds(leg.duration) / 60,
     })),
   };
 }
 
-/** OSRM route query for a fixed, already ordered stop sequence. */
-export function getMultiStopRoute(points: RoadPoint[], request: typeof fetch = fetch) {
+export function getMultiStopRoute(
+  points: RoadPoint[],
+  request: typeof fetch = fetch,
+) {
   return getDrivingRoute(points, request);
 }
 
@@ -106,27 +132,6 @@ export async function getDrivingDistanceKm(
   origin: RoadPoint,
   destination: RoadPoint,
   request: typeof fetch = fetch,
-): Promise<number> {
-  validateRoutePoints([origin, destination]);
-  const coordinates = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`;
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=false&steps=false`;
-  const response = await request(url, {
-    headers: { Accept: "application/json", "User-Agent": "CARONAA/1.0 (ride fare quote)" },
-    signal: AbortSignal.timeout(7000),
-  });
-  if (!response.ok) throw new Error(`Serviço de rotas indisponível (HTTP ${response.status}).`);
-  const result = (await response.json()) as {
-    code?: string;
-    routes?: Array<{ distance?: number }>;
-  };
-  const meters = result.routes?.[0]?.distance;
-  if (
-    result.code !== "Ok" ||
-    typeof meters !== "number" ||
-    !Number.isFinite(meters) ||
-    meters <= 0
-  ) {
-    throw new Error("Não foi possível calcular o percurso rodoviário.");
-  }
-  return meters / 1000;
+) {
+  return (await getDrivingRoute([origin, destination], request)).distanceKm;
 }

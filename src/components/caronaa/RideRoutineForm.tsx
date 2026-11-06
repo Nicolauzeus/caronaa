@@ -181,7 +181,7 @@ export function RideRoutineForm({ kind, initial, routineId, occurrence, onSaved 
         </label>
       </div>
       <p className="text-sm text-muted-foreground">
-        O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o serviço público OSRM com as coordenadas do trecho.
+        O preço será calculado automaticamente para cada passageiro, conforme a distância rodoviária do trecho. A cotação consulta o Google Maps com as coordenadas do trecho.
       </p>
       <TimeToleranceSelector
         value={form.timeToleranceMinutes}
@@ -221,3 +221,4 @@ export function RideScheduleMode({
     </ToggleGroup>
   );
 }
+

@@ -602,7 +602,7 @@ function RemainingPotential({ offerId, freeSeats }: { offerId: string; freeSeats
             : "Autorizar localização"}
       </Button>
       <p className="mt-1 text-[11px] text-muted-foreground">
-        Enquanto ativada, as coordenadas são enviadas ao serviço público OSRM para calcular a rota.
+        Enquanto ativada, as coordenadas são enviadas ao Google Maps para calcular a rota.
         A CARONAA não as armazena; atualizações param quando esta tela fica em segundo plano.
       </p>
       {freeSeats > 0 && (
@@ -960,3 +960,4 @@ function Trip({ ride, onChanged }: { ride: RideSummary; onChanged: () => Promise
     </article>
   );
 }
+

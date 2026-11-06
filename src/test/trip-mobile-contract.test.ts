@@ -13,11 +13,11 @@ describe("mobile trip and boarding UX contracts", () => {
     expect(trip).toContain("Origem</span>");
     expect(trip).toContain("Destino</span>");
   });
-  it("keeps Leaflet under modal layers and doesn't recenter on every GPS update", () => {
-    expect(liveMap).toContain('className="relative isolate z-0"');
-    expect(liveMap).toContain("initialBoundsDone.current");
+  it("uses Google under modal layers with bounded GPS requests", () => {
+    expect(liveMap).toContain("<GoogleMapSurface");
     expect(liveMap).toContain("fetchRoadRoute(");
-    expect(liveMap).toContain("controller.abort()");
+    expect(liveMap).toContain("abort.abort()");
+    expect(liveMap).toContain("toFixed(4)");
   });
   it("keeps boarding QR distinct from payment QR and relies on server confirmation", () => {
     expect(qr).toContain("caronaa:ride-confirm:");
@@ -26,3 +26,4 @@ describe("mobile trip and boarding UX contracts", () => {
     expect(scan).not.toContain('status: "PAID"');
   });
 });
+

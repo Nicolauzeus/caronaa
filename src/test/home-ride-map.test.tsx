@@ -1,50 +1,47 @@
-import { act, render, waitFor, fireEvent, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  render,
+  waitFor,
+  fireEvent,
+  screen,
+  cleanup,
+} from "@testing-library/react";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
-
+import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
+import {
+  loadGoogleMaps,
+  onGoogleMapsAuthFailure,
+} from "@/lib/google-maps-loader";
 const api = vi.hoisted(() => ({
-  setView: vi.fn(),
+  create: vi.fn(),
   panTo: vi.fn(),
   fitBounds: vi.fn(),
-  remove: vi.fn(),
   on: vi.fn(),
-  clear: vi.fn(),
+  marker: vi.fn(),
   circle: vi.fn(),
-  dot: vi.fn(),
-  create: vi.fn(),
+  clear: vi.fn(),
 }));
-vi.mock("leaflet", () => {
-  const layer = () => ({
-    addTo: vi.fn().mockReturnThis(),
-    bindTooltip: vi.fn().mockReturnThis(),
-    on: vi.fn().mockReturnThis(),
-  });
-  return {
-    map: (...args: unknown[]) => {
-      api.create(...args);
-      return {
-        setView: api.setView.mockReturnThis(),
-        panTo: api.panTo,
-        fitBounds: api.fitBounds,
-        on: api.on,
-        remove: api.remove,
-      };
-    },
-    tileLayer: layer,
-    layerGroup: () => ({ addTo: vi.fn().mockReturnThis(), clearLayers: api.clear }),
-    circle: (...args: unknown[]) => {
-      api.circle(...args);
-      return layer();
-    },
-    circleMarker: (...args: unknown[]) => {
-      api.dot(...args);
-      return layer();
-    },
-  };
-});
+vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
+vi.mock("@/lib/google-maps-browser.functions", () => ({
+  getGoogleMapsBrowserKey: vi.fn(),
+}));
+vi.mock("@/lib/google-maps-loader", () => ({
+  loadGoogleMaps: vi.fn(),
+  onGoogleMapsAuthFailure: vi.fn(() => vi.fn()),
+}));
+vi.mock("@/lib/map-routing.functions", () => ({
+  getMapDrivingRoute: vi.fn().mockResolvedValue({
+    routePath: [
+      { lat: -3.73, lng: -38.52 },
+      { lat: -3.79, lng: -38.48 },
+    ],
+    distanceKm: 11,
+    durationMinutes: 20,
+  }),
+}));
 const base = {
   userPosition: { lat: -3.73, lng: -38.52, accuracy: 20 },
-  origin: { lat: -3.73, lng: -38.52 },
   originIsCurrent: true,
   following: true,
   recenterVersion: 0,
@@ -52,29 +49,67 @@ const base = {
   onDrag: vi.fn(),
   onRecenter: vi.fn(),
 };
-describe("Mapa mobile controlado", () => {
-  beforeEach(() => vi.clearAllMocks());
-  it("enquadra origem/destino com padding e sem rota fictícia", async () => {
-    render(<HomeRideMap {...base} destination={{ lat: -3.79, lng: -38.48 }} />);
-    await waitFor(() =>
-      expect(api.fitBounds).toHaveBeenCalledWith(
-        [
-          [-3.73, -38.52],
-          [-3.79, -38.48],
-        ],
-        expect.objectContaining({ paddingBottomRight: [48, 72] }),
-      ),
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(getGoogleMapsBrowserKey).mockResolvedValue("test-browser");
+  vi.mocked(loadGoogleMaps).mockResolvedValue();
+  vi.stubGlobal("google", {
+    maps: {
+      Map: class {
+        constructor(options: unknown) {
+          api.create(options);
+        }
+        addListener = api.on;
+        panTo = api.panTo;
+        fitBounds = api.fitBounds;
+      },
+      Marker: class {
+        constructor(options: unknown) {
+          api.marker(options);
+        }
+        setMap = api.clear;
+      },
+      Circle: class {
+        constructor(options: unknown) {
+          api.circle(options);
+        }
+        setMap = api.clear;
+      },
+      Polyline: class {
+        setMap = api.clear;
+      },
+      LatLngBounds: class {
+        extend = vi.fn();
+      },
+      SymbolPath: { CIRCLE: "circle" },
+    },
+  });
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+describe("Google home map", () => {
+  it("renders Google markers, GPS accuracy and official road geometry", async () => {
+    const { container } = render(
+      <HomeRideMap {...base} destination={{ lat: -3.79, lng: -38.48 }} />,
     );
+    await waitFor(() => expect(api.fitBounds).toHaveBeenCalled());
+    expect(
+      container.querySelector('[data-map-provider="google"]'),
+    ).toBeTruthy();
+    expect(loadGoogleMaps).toHaveBeenCalledWith("test-browser");
     expect(api.circle).toHaveBeenCalledWith(
-      [-3.73, -38.52],
       expect.objectContaining({ radius: 20 }),
     );
+    expect(screen.getByText(/11,0 km/)).toBeInTheDocument();
   });
-  it("arrasto desativa follow e movimento atualiza marcador sem recriar mapa", async () => {
-    const { rerender } = render(<HomeRideMap {...base} />);
-    await waitFor(() => expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)));
-    await waitFor(() => expect(api.dot).toHaveBeenCalledWith([-3.73, -38.52], expect.any(Object)));
-    act(() => api.on.mock.calls.find(([name]) => name === "dragstart")![1]());
+  it("updates GPS markers without recreating the map or following after a drag", async () => {
+    const { rerender, unmount } = render(<HomeRideMap {...base} />);
+    await waitFor(() =>
+      expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)),
+    );
+    act(() => api.on.mock.calls[0][1]());
     expect(base.onDrag).toHaveBeenCalledOnce();
     api.panTo.mockClear();
     rerender(
@@ -84,23 +119,38 @@ describe("Mapa mobile controlado", () => {
         userPosition={{ lat: -3.74, lng: -38.53, accuracy: 80 }}
       />,
     );
-    await waitFor(() => expect(api.dot).toHaveBeenCalledWith([-3.74, -38.53], expect.any(Object)));
+    await waitFor(() =>
+      expect(api.marker).toHaveBeenCalledWith(
+        expect.objectContaining({ position: { lat: -3.74, lng: -38.53 } }),
+      ),
+    );
     expect(api.panTo).not.toHaveBeenCalled();
     expect(api.create).toHaveBeenCalledOnce();
-  });
-  it("recenter volta ao usuário mesmo com destino e mantém ambos os pins", async () => {
-    const { rerender, unmount } = render(
-      <HomeRideMap {...base} destination={{ lat: -3.79, lng: -38.48 }} />,
+    fireEvent.click(
+      screen.getByRole("button", { name: "Centralizar na minha localização" }),
     );
-    await waitFor(() => expect(api.fitBounds).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: "Centralizar na minha localização" }));
     expect(base.onRecenter).toHaveBeenCalledOnce();
-    api.setView.mockClear();
-    rerender(
-      <HomeRideMap {...base} destination={{ lat: -3.79, lng: -38.48 }} recenterVersion={1} />,
-    );
-    expect(api.setView).toHaveBeenCalledWith([-3.73, -38.52], 16, { animate: false });
+    rerender(<HomeRideMap {...base} recenterVersion={1} />);
+    expect(api.panTo).toHaveBeenCalledWith({ lat: -3.73, lng: -38.52 });
     unmount();
-    expect(api.remove).toHaveBeenCalledOnce();
+    expect(api.clear).toHaveBeenCalled();
+  });
+  it("shows a reload action on script failure without creating another map", async () => {
+    vi.mocked(loadGoogleMaps).mockRejectedValue(new Error("network"));
+    const { container } = render(<HomeRideMap {...base} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar o Google Maps",
+    );
+    expect(
+      screen.getByRole("button", { name: "Recarregar mapa" }),
+    ).toBeInTheDocument();
+    expect(api.create).not.toHaveBeenCalled();
+    expect(container.querySelectorAll("iframe")).toHaveLength(0);
+  });
+  it("shows the error state when Google rejects domain authentication after loading", async () => {
+    render(<HomeRideMap {...base} />);
+    await waitFor(() => expect(api.create).toHaveBeenCalledOnce());
+    act(() => vi.mocked(onGoogleMapsAuthFailure).mock.calls[0][0]());
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,4 @@
 import { GooglePlacesProvider } from "./google-places";
-import { CearaOnlineProvider } from "./ceara-online-provider";
 import { getGeocodingProvider } from "./geocoding-adapter";
 import type {
   GeocodingResult,
@@ -43,9 +42,6 @@ export function getMissingLocationConfig(): string[] {
 }
 
 export async function searchLocationsService(query: string): Promise<LocationSearchResponse> {
-  if (process.env.NODE_ENV === "test" && !activeProvider.isConfigured()) {
-    return activeProvider.search(query);
-  }
   return getGeocodingProvider().search(query);
 }
 
@@ -57,7 +53,8 @@ export async function geocodeAddressService(address: string): Promise<GeocodingR
   return getGeocodingProvider().geocode(address);
 }
 
-const reverseProvider = new CearaOnlineProvider();
+const reverseProvider = new GooglePlacesProvider();
 export async function reverseGeocodeService(lat: number, lng: number) {
   return reverseProvider.reverse(lat, lng);
 }
+

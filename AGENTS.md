@@ -25,7 +25,7 @@
 - Snapshot consented travel preferences in database triggers and enforce compatibility in the allocator; UI overrides use authenticated transactional creation to avoid matching before preferences are saved.
 - Keep admin attention counts sourced from the existing authorized operation service and navigation matching exclusive; this avoids invented indicators and ambiguous active sections.
 - Store Pix keys separately behind authenticated owner/participant RPCs and generate BR Code only for completed rides; this prevents public profile queries exposing payment identifiers and does not imply payment settlement.
-- Use dynamically imported Leaflet for participant markers and preserve per-ride consent across non-loading refreshes; this avoids SSR browser imports and tracking resets.
+- Use Google Maps JavaScript API exclusively for maps and Google Routes API on the server for road geometry and distances. Show an error/reload state on provider failure; never mount an alternate map or route provider. Preserve per-ride location consent across non-loading refreshes and keep the local Ceará catalog available offline.
 
 - Keep the shared Relationships page outside route modules and import it from both admin URLs; this preserves automatic route splitting without cross-route component imports.
 
@@ -54,3 +54,4 @@ Required workflow:
 11. Keep BI-to-CRM deep-link filters scoped to one research participation, preserve explicit survey denominators and do not treat answers as consented leads. Route operational CRM exclusively through `/admin/relacionamentos`; retain legacy STS read-only response views for backward compatibility.
 
 End each development report with: **module, current status, changes/files, tests/results, pending risks, README alignment**. These requirements apply equally to code generated directly or through Lovable, Codex, ChatGPT or collaborators. Existing rules above remain in effect.
+

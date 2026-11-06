@@ -5,15 +5,18 @@ import type {
   LocationSuggestion,
 } from "./types";
 
-const GOOGLE_AUTOCOMPLETE_URL = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
-const GOOGLE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json";
+const GOOGLE_AUTOCOMPLETE_URL =
+  "https://maps.googleapis.com/maps/api/place/autocomplete/json";
+const GOOGLE_DETAILS_URL =
+  "https://maps.googleapis.com/maps/api/place/details/json";
 
 // Coordenadas centrais de Fortaleza/Ceará para viés geográfico (lat: -3.7319, lng: -38.5267, raio de ~150km)
 const CEARA_BIAS_LOCATION = "-3.7319,-38.5267";
 const CEARA_BIAS_RADIUS_METERS = "150000";
 
 function getApiKey(): string | null {
-  const nodeEnv = typeof process !== "undefined" && process.env ? process.env : undefined;
+  const nodeEnv =
+    typeof process !== "undefined" && process.env ? process.env : undefined;
   const globalEnv = globalThis as Record<string, unknown>;
   const viteEnv =
     typeof import.meta !== "undefined" && import.meta.env
@@ -69,7 +72,9 @@ interface GooglePlaceDetailsResult {
   types?: string[];
 }
 
-export function parseAddressComponents(components: GoogleAddressComponent[] = []) {
+export function parseAddressComponents(
+  components: GoogleAddressComponent[] = [],
+) {
   let neighborhood: string | undefined;
   let city: string | undefined;
   let state: string | undefined;
@@ -129,7 +134,8 @@ export class GooglePlacesProvider implements LocationProvider {
         isConfigured: false,
         provider: "google_places",
         suggestions: [],
-        warning: "GOOGLE_PLACES_API_KEY não configurada no servidor. Modo manual ativo.",
+        warning:
+          "GOOGLE_PLACES_API_KEY não configurada no servidor. Modo manual ativo.",
       };
     }
 
@@ -175,7 +181,7 @@ export class GooglePlacesProvider implements LocationProvider {
         error_message?: string;
       };
 
-      if (data.status === "ZERO_RESULTS" || !data.predictions) {
+      if (data.status === "ZERO_RESULTS") {
         return {
           isConfigured: true,
           provider: "google_places",
@@ -192,22 +198,26 @@ export class GooglePlacesProvider implements LocationProvider {
         };
       }
 
-      const suggestions: LocationSuggestion[] = data.predictions.map((pred) => {
-        const mainText = pred.structured_formatting?.main_text || pred.description;
-        const secondaryText = pred.structured_formatting?.secondary_text || "";
-        const inferred = parseSecondaryText(secondaryText);
+      const suggestions: LocationSuggestion[] = (data.predictions ?? []).map(
+        (pred) => {
+          const mainText =
+            pred.structured_formatting?.main_text || pred.description;
+          const secondaryText =
+            pred.structured_formatting?.secondary_text || "";
+          const inferred = parseSecondaryText(secondaryText);
 
-        return {
-          providerId: pred.place_id,
-          mainText,
-          secondaryText,
-          formattedAddress: pred.description,
-          neighborhood: inferred.neighborhood,
-          city: inferred.city,
-          state: inferred.state,
-          types: pred.types,
-        };
-      });
+          return {
+            providerId: pred.place_id,
+            mainText,
+            secondaryText,
+            formattedAddress: pred.description,
+            neighborhood: inferred.neighborhood,
+            city: inferred.city,
+            state: inferred.state,
+            types: pred.types,
+          };
+        },
+      );
 
       return {
         isConfigured: true,
@@ -215,7 +225,10 @@ export class GooglePlacesProvider implements LocationProvider {
         suggestions,
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro de conexão com Google Places";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erro de conexão com Google Places";
       return {
         isConfigured: true,
         provider: "google_places",
@@ -274,7 +287,9 @@ export class GooglePlacesProvider implements LocationProvider {
           isConfigured: true,
           provider: "google_places",
           details: null,
-          error: data.error_message || `Status Google Places Details: ${data.status}`,
+          error:
+            data.error_message ||
+            `Status Google Places Details: ${data.status}`,
         };
       }
 
@@ -284,7 +299,11 @@ export class GooglePlacesProvider implements LocationProvider {
       const suggestion: LocationSuggestion = {
         providerId: res.place_id,
         mainText: res.name || res.formatted_address || "",
-        secondaryText: [components.neighborhood, components.city, components.state]
+        secondaryText: [
+          components.neighborhood,
+          components.city,
+          components.state,
+        ]
           .filter(Boolean)
           .join(", "),
         formattedAddress: res.formatted_address || res.name || "",
@@ -307,12 +326,58 @@ export class GooglePlacesProvider implements LocationProvider {
         isConfigured: true,
         provider: "google_places",
         details: null,
-        error: err instanceof Error ? err.message : "Erro ao buscar detalhes no Google Places",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro ao buscar detalhes no Google Places",
       };
     }
   }
 
-  async geocode(addressOrPlaceId: string): Promise<import("./types").GeocodingResult | null> {
+  async reverse(
+    lat: number,
+    lng: number,
+  ): Promise<import("./types").FormLocationDetails | null> {
+    if (
+      !Number.isFinite(lat) ||
+      Math.abs(lat) > 90 ||
+      !Number.isFinite(lng) ||
+      Math.abs(lng) > 180
+    ) {
+      throw new Error("Coordenadas inválidas.");
+    }
+    const apiKey = getApiKey();
+    if (!apiKey) return null;
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("latlng", `${lat},${lng}`);
+    url.searchParams.set("language", "pt-BR");
+    url.searchParams.set("key", apiKey);
+    const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    if (!response.ok)
+      throw new Error(
+        `Google Geocoding indisponível (HTTP ${response.status}).`,
+      );
+    const result = (await response.json()) as {
+      status?: string;
+      results?: GooglePlaceDetailsResult[];
+    };
+    if (result.status === "ZERO_RESULTS") return null;
+    if (result.status !== "OK")
+      throw new Error("Google Geocoding indisponível.");
+    const first = result.results?.[0];
+    if (!first?.formatted_address) return null;
+    return {
+      rawText: first.formatted_address,
+      formattedAddress: first.formatted_address,
+      ...parseAddressComponents(first.address_components),
+      lat,
+      lng,
+    };
+  }
+
+  async geocode(
+    addressOrPlaceId: string,
+  ): Promise<import("./types").GeocodingResult | null> {
     if (!this.isConfigured() || !addressOrPlaceId.trim()) return null;
 
     // Se parecer um place_id (começa com ChIJ ou similar), busca detalhes diretamente
@@ -335,7 +400,8 @@ export class GooglePlacesProvider implements LocationProvider {
     }
 
     const searchRes = await this.search(addressOrPlaceId);
-    if (!searchRes.suggestions || searchRes.suggestions.length === 0) return null;
+    if (!searchRes.suggestions || searchRes.suggestions.length === 0)
+      return null;
 
     const first = searchRes.suggestions[0];
     const details = await this.getDetails(first.providerId);

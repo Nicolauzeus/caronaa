@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { MapPin, Navigation, ExternalLink, Route as RouteIcon, Info } from "lucide-react";
+import {
+  MapPin,
+  Navigation,
+  ExternalLink,
+  Route as RouteIcon,
+  Info,
+} from "lucide-react";
 import { geocodeAddress } from "@/lib/location/geo-utils";
 import { LiveRideMap } from "./LiveRideMap";
 import { GoogleMapSurface } from "./GoogleMapSurface";
@@ -39,7 +45,9 @@ export function RouteMap({
   showRouteDetails = true,
   showApproximateMetrics = true,
 }: RouteMapProps) {
-  const [resolvedOrigin, setResolvedOrigin] = useState<ResolvedCoords | null>(null);
+  const [resolvedOrigin, setResolvedOrigin] = useState<ResolvedCoords | null>(
+    null,
+  );
   const [resolvedDest, setResolvedDest] = useState<ResolvedCoords | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
@@ -140,11 +148,23 @@ export function RouteMap({
       <div
         className={`relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all ${className}`}
       >
-        <div className={`relative w-full ${heightClassName} overflow-hidden bg-muted/30`}>
+        <div
+          className={`relative w-full ${heightClassName} overflow-hidden bg-muted/30`}
+        >
           <LiveRideMap
             points={[
-              { lat: resolvedOrigin.lat, lng: resolvedOrigin.lng, title: resolvedOrigin.name, type: "meeting" },
-              { lat: resolvedDest.lat, lng: resolvedDest.lng, title: resolvedDest.name, type: "destination" },
+              {
+                lat: resolvedOrigin.lat,
+                lng: resolvedOrigin.lng,
+                title: resolvedOrigin.name,
+                type: "meeting",
+              },
+              {
+                lat: resolvedDest.lat,
+                lng: resolvedDest.lng,
+                title: resolvedDest.name,
+                type: "destination",
+              },
             ]}
           />
 
@@ -172,7 +192,8 @@ export function RouteMap({
           {/* Marcadores de Coordenadas A e B */}
           <div className="pointer-events-none absolute z-20 bottom-12 left-2 right-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted-foreground">
             <span className="rounded bg-background/90 px-1.5 py-0.5 shadow-xs backdrop-blur-xs">
-              A: {resolvedOrigin.lat.toFixed(4)}, {resolvedOrigin.lng.toFixed(4)}
+              A: {resolvedOrigin.lat.toFixed(4)},{" "}
+              {resolvedOrigin.lng.toFixed(4)}
             </span>
             <span className="rounded bg-background/90 px-1.5 py-0.5 shadow-xs backdrop-blur-xs">
               B: {resolvedDest.lat.toFixed(4)}, {resolvedDest.lng.toFixed(4)}
@@ -203,27 +224,23 @@ export function RouteMap({
   // Visualização de ponto único se apenas um tiver coordenadas
   const singlePoint = resolvedOrigin || resolvedDest;
   if (singlePoint) {
-    const singleBboxMinLat = singlePoint.lat - 0.006;
-    const singleBboxMaxLat = singlePoint.lat + 0.006;
-    const singleBboxMinLng = singlePoint.lng - 0.008;
-    const singleBboxMaxLng = singlePoint.lng + 0.008;
-    const singleEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${singleBboxMinLng}%2C${singleBboxMinLat}%2C${singleBboxMaxLng}%2C${singleBboxMaxLat}&layer=mapnik&marker=${singlePoint.lat}%2C${singlePoint.lng}`;
-
     return (
       <div
         className={`relative overflow-hidden rounded-xl border border-border bg-card shadow-soft ${className}`}
       >
-        <div className={`relative w-full ${heightClassName} overflow-hidden bg-muted/30`}>
+        <div
+          className={`relative w-full ${heightClassName} overflow-hidden bg-muted/30`}
+        >
           <GoogleMapSurface
-            points={[{ lat: singlePoint.lat, lng: singlePoint.lng, title: singlePoint.name }]}
+            points={[
+              {
+                lat: singlePoint.lat,
+                lng: singlePoint.lng,
+                title: singlePoint.name,
+              },
+            ]}
             className="h-56 w-full"
             ariaLabel={"Localização: " + singlePoint.name}
-            fallback={<iframe
-            title={`Localização: ${singlePoint.name}`}
-            src={singleEmbedUrl}
-            className="h-full w-full border-0 contrast-[1.05] opacity-95"
-            loading="lazy"
-          />}
           />
           <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-lg bg-background/95 px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xs border border-border/70">
             <MapPin size={14} className="text-primary" />
@@ -259,7 +276,7 @@ export function RouteMap({
       {hasText && (
         <div className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground bg-background/80 px-2 py-1 rounded-md border border-border/60">
           <Info size={12} className="text-primary shrink-0" />
-          <span>Suporte georreferenciado com Google Maps e mapa alternativo quando necessário.</span>
+          <span>Suporte georreferenciado com Google Maps.</span>
         </div>
       )}
     </div>

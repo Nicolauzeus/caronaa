@@ -2,9 +2,15 @@ import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MapPin, Search, CheckCircle2, X, Loader2, Edit2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { searchLocationsServerFn, getLocationDetailsServerFn } from "@/lib/location.functions";
+import {
+  searchLocationsServerFn,
+  getLocationDetailsServerFn,
+} from "@/lib/location.functions";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
-import type { FormLocationDetails, LocationSuggestion } from "@/lib/location/types";
+import type {
+  FormLocationDetails,
+  LocationSuggestion,
+} from "@/lib/location/types";
 
 export interface LocationAutocompleteProps {
   id: string;
@@ -37,7 +43,10 @@ function formatSelectedTitle(loc: FormLocationDetails): string {
     return `Universidade de Fortaleza — ${city}, ${state}`;
   }
 
-  if (rawLower.includes("centro de eventos") || addrLower.includes("centro de eventos")) {
+  if (
+    rawLower.includes("centro de eventos") ||
+    addrLower.includes("centro de eventos")
+  ) {
     return `Centro de Eventos do Ceará — ${city}, ${state}`;
   }
 
@@ -94,10 +103,13 @@ export function LocationAutocomplete({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestRequestIdRef = useRef<number>(0);
 
-  useEffect(() => () => {
-    latestRequestIdRef.current += 1;
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      latestRequestIdRef.current += 1;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    },
+    [],
+  );
 
   // Sincroniza query local com valor externo se alterado
   useEffect(() => {
@@ -106,15 +118,25 @@ export function LocationAutocomplete({
 
   // Se houver coordenadas ou providerId selecionados externamente (ex. atalho STS), fecha edição
   useEffect(() => {
-    if (selectedLocation?.providerId || (selectedLocation?.lat && selectedLocation?.lng)) {
+    if (
+      selectedLocation?.providerId ||
+      (selectedLocation?.lat && selectedLocation?.lng)
+    ) {
       setIsEditing(false);
     }
-  }, [selectedLocation?.providerId, selectedLocation?.lat, selectedLocation?.lng]);
+  }, [
+    selectedLocation?.providerId,
+    selectedLocation?.lat,
+    selectedLocation?.lng,
+  ]);
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -173,10 +195,11 @@ export function LocationAutocomplete({
             .filter(Boolean);
 
           const scoreItem = (item: LocationSuggestion): number => {
-            const text = `${item.mainText} ${item.secondaryText || ""} ${item.formattedAddress}`
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "");
+            const text =
+              `${item.mainText} ${item.secondaryText || ""} ${item.formattedAddress}`
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
 
             const mainNorm = item.mainText
               .toLowerCase()
@@ -203,7 +226,9 @@ export function LocationAutocomplete({
           allCandidates.sort((a, b) => scoreItem(b) - scoreItem(a));
 
           for (const item of allCandidates) {
-            const key = (item.formattedAddress || item.mainText).toLowerCase().trim();
+            const key = (item.formattedAddress || item.mainText)
+              .toLowerCase()
+              .trim();
             if (!seen.has(key)) {
               seen.add(key);
               combined.push(item);
@@ -277,13 +302,16 @@ export function LocationAutocomplete({
       // Tenta obter detalhes com coordenadas e componentes exatos
       let details: LocationSuggestion = sug;
       if (sug.providerId && !sug.providerId.startsWith("loc_")) {
-        const detailsResp = await detailsServerFn({ data: { placeId: sug.providerId } });
+        const detailsResp = await detailsServerFn({
+          data: { placeId: sug.providerId },
+        });
         if (detailsResp?.details) {
           details = detailsResp.details;
         }
       }
 
-      const displayAddress = details.neighborhood || details.mainText || details.formattedAddress;
+      const displayAddress =
+        details.neighborhood || details.mainText || details.formattedAddress;
       setQuery(displayAddress);
 
       const locationDetails: FormLocationDetails = {
@@ -302,7 +330,8 @@ export function LocationAutocomplete({
       setIsEditing(false);
     } catch {
       // Fallback usando a sugestão básica já recebida
-      const displayAddress = sug.neighborhood || sug.mainText || sug.formattedAddress;
+      const displayAddress =
+        sug.neighborhood || sug.mainText || sug.formattedAddress;
       setQuery(displayAddress);
       const fallbackDetails: FormLocationDetails = {
         rawText: query || displayAddress,
@@ -354,7 +383,13 @@ export function LocationAutocomplete({
     <div className="relative space-y-1.5" ref={wrapperRef}>
       {label && (
         <div className="flex items-center justify-between gap-2">
-          <label htmlFor={id} className={"text-sm font-semibold " + (variant === "glass" ? "text-white/80" : "text-foreground")}>
+          <label
+            htmlFor={id}
+            className={
+              "text-sm font-semibold " +
+              (variant === "glass" ? "text-white/80" : "text-foreground")
+            }
+          >
             {label} {required ? "*" : ""}
           </label>
           {shortcutButton}
@@ -396,28 +431,33 @@ export function LocationAutocomplete({
           {selectedLocation?.lat && selectedLocation?.lng ? (
             <div className="relative mt-2 h-28 sm:h-32 w-full overflow-hidden rounded-lg border border-border bg-muted/40 shadow-inner">
               <GoogleMapSurface
-                points={[{ lat: selectedLocation.lat, lng: selectedLocation.lng, title: "Localização selecionada" }]}
+                points={[
+                  {
+                    lat: selectedLocation.lat,
+                    lng: selectedLocation.lng,
+                    title: "Localização selecionada",
+                  },
+                ]}
                 className="h-full w-full"
                 ariaLabel="Visualização da localização no mapa"
                 previewOnly
-                fallback={<iframe
-                title="Visualização da localização no mapa"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedLocation.lng - 0.006}%2C${selectedLocation.lat - 0.005}%2C${selectedLocation.lng + 0.006}%2C${selectedLocation.lat + 0.005}&layer=mapnik&marker=${selectedLocation.lat}%2C${selectedLocation.lng}`}
-                className="h-full w-full border-0 pointer-events-none opacity-90 contrast-[1.05]"
-                loading="lazy"
-              />}
               />
               <div className="pointer-events-none absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground shadow-xs backdrop-blur-xs">
                 <span>
-                  {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
+                  {selectedLocation.lat.toFixed(4)},{" "}
+                  {selectedLocation.lng.toFixed(4)}
                 </span>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs text-muted-foreground">
-              <MapPin size={15} className="text-caronaa-primary-strong shrink-0" />
+              <MapPin
+                size={15}
+                className="text-caronaa-primary-strong shrink-0"
+              />
               <span>
-                Localização aproximada definida: {selectedLocation?.city || "Fortaleza"},{" "}
+                Localização aproximada definida:{" "}
+                {selectedLocation?.city || "Fortaleza"},{" "}
                 {selectedLocation?.state || "CE"}
               </span>
             </div>
@@ -429,7 +469,10 @@ export function LocationAutocomplete({
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground">
               {isLoading ? (
-                <Loader2 size={16} className="animate-spin text-caronaa-primary-strong" />
+                <Loader2
+                  size={16}
+                  className="animate-spin text-caronaa-primary-strong"
+                />
               ) : (
                 <MapPin size={17} />
               )}
@@ -491,11 +534,21 @@ export function LocationAutocomplete({
             <div
               role="listbox"
               aria-label="Sugestões de localização"
-              className={"absolute z-50 mt-1 max-h-[min(40dvh,240px)] w-full overflow-auto rounded-xl border p-1 shadow-lg animate-in fade-in zoom-in-95 duration-150 " +
-                (variant === "glass" ? "border-white/10 bg-[#242424] text-white backdrop-blur-2xl" : "border-border bg-card text-card-foreground")}
+              className={
+                "absolute z-50 mt-1 max-h-[min(40dvh,240px)] w-full overflow-auto rounded-xl border p-1 shadow-lg animate-in fade-in zoom-in-95 duration-150 " +
+                (variant === "glass"
+                  ? "border-white/10 bg-[#242424] text-white backdrop-blur-2xl"
+                  : "border-border bg-card text-card-foreground")
+              }
             >
-              <div className={"px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b flex items-center justify-between " +
-                  (variant === "glass" ? "border-white/10 text-white/55" : "border-border/50 text-muted-foreground")}>
+              <div
+                className={
+                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b flex items-center justify-between " +
+                  (variant === "glass"
+                    ? "border-white/10 text-white/55"
+                    : "border-border/50 text-muted-foreground")
+                }
+              >
                 <span>Locais sugeridos</span>
                 <span className="text-[9px] font-normal text-muted-foreground/70">
                   Google & Catálogo CE
@@ -507,16 +560,35 @@ export function LocationAutocomplete({
                   type="button"
                   role="option"
                   onClick={() => void handleSelectSuggestion(sug)}
-                  className={"flex min-h-11 w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-sm transition focus:outline-none " +
+                  className={
+                    "flex min-h-11 w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-sm transition focus:outline-none " +
                     (variant === "glass"
                       ? "text-white hover:bg-[#FFBB00]/10 focus:bg-[#FFBB00]/10"
-                      : "text-card-foreground hover:bg-caronaa-primary/10 focus:bg-caronaa-primary/10 focus-visible:ring-2 focus-visible:ring-ring")}
+                      : "text-card-foreground hover:bg-caronaa-primary/10 focus:bg-caronaa-primary/10 focus-visible:ring-2 focus-visible:ring-ring")
+                  }
                 >
-                  <Search size={15} className="mt-0.5 shrink-0 text-caronaa-primary-strong" />
+                  <Search
+                    size={15}
+                    className="mt-0.5 shrink-0 text-caronaa-primary-strong"
+                  />
                   <div className="min-w-0 flex-1">
-                    <div className={"truncate font-semibold " + (variant === "glass" ? "text-white" : "text-foreground")}>{sug.mainText}</div>
+                    <div
+                      className={
+                        "truncate font-semibold " +
+                        (variant === "glass" ? "text-white" : "text-foreground")
+                      }
+                    >
+                      {sug.mainText}
+                    </div>
                     {sug.secondaryText ? (
-                      <div className={"truncate text-xs " + (variant === "glass" ? "text-white/60" : "text-muted-foreground")}>
+                      <div
+                        className={
+                          "truncate text-xs " +
+                          (variant === "glass"
+                            ? "text-white/60"
+                            : "text-muted-foreground")
+                        }
+                      >
                         {sug.secondaryText}
                       </div>
                     ) : null}
