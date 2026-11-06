@@ -1,3 +1,4 @@
+import { getGoogleServerKey } from "./google-server-key";
 import { GooglePlacesProvider } from "./google-places";
 import { getGeocodingProvider } from "./geocoding-adapter";
 import type {
@@ -18,38 +19,24 @@ export function getLocationProviderName(): string {
 }
 
 export function getMissingLocationConfig(): string[] {
-  const missing: string[] = [];
-  const nodeEnv = typeof process !== "undefined" && process.env ? process.env : undefined;
-  const globalEnv = globalThis as Record<string, unknown>;
-  const viteEnv =
-    typeof import.meta !== "undefined" && import.meta.env
-      ? (import.meta.env as Record<string, unknown>)
-      : undefined;
-  const hasKey = Boolean(
-    nodeEnv?.GOOGLE_PLACES_API_KEY ||
-    nodeEnv?.GOOGLE_MAPS_API_KEY ||
-    nodeEnv?.VITE_GOOGLE_PLACES_API_KEY ||
-    nodeEnv?.VITE_GOOGLE_MAPS_API_KEY ||
-    globalEnv?.["GOOGLE_PLACES_API_KEY"] ||
-    globalEnv?.["GOOGLE_MAPS_API_KEY"] ||
-    viteEnv?.["VITE_GOOGLE_PLACES_API_KEY"] ||
-    viteEnv?.["VITE_GOOGLE_MAPS_API_KEY"],
-  );
-  if (!hasKey) {
-    missing.push("GOOGLE_PLACES_API_KEY");
-  }
-  return missing;
+  return getGoogleServerKey() ? [] : ["GOOGLE_MAPS_API_KEY"];
 }
 
-export async function searchLocationsService(query: string): Promise<LocationSearchResponse> {
+export async function searchLocationsService(
+  query: string,
+): Promise<LocationSearchResponse> {
   return getGeocodingProvider().search(query);
 }
 
-export async function getLocationDetailsService(placeId: string): Promise<LocationDetailsResponse> {
+export async function getLocationDetailsService(
+  placeId: string,
+): Promise<LocationDetailsResponse> {
   return getGeocodingProvider().getDetails(placeId);
 }
 
-export async function geocodeAddressService(address: string): Promise<GeocodingResult | null> {
+export async function geocodeAddressService(
+  address: string,
+): Promise<GeocodingResult | null> {
   return getGeocodingProvider().geocode(address);
 }
 
@@ -57,4 +44,3 @@ const reverseProvider = new GooglePlacesProvider();
 export async function reverseGeocodeService(lat: number, lng: number) {
   return reverseProvider.reverse(lat, lng);
 }
-

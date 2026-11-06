@@ -2,6 +2,7 @@ import type { LocationSuggestion } from "./types";
 
 export interface CatalogLocationEntry {
   id: string;
+  isApproximate?: boolean;
   aliases: string[];
   mainText: string;
   formattedAddress: string;
@@ -16,6 +17,27 @@ export interface CatalogLocationEntry {
 
 export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   {
+    id: "loc_unilab_auroras",
+    aliases: [
+      "unilab",
+      "campus das auroras",
+      "unilab auroras",
+      "universidade da integração internacional da lusofonia afro-brasileira",
+    ],
+    mainText: "UNILAB - Campus das Auroras",
+    formattedAddress: "UNILAB - Campus das Auroras, Redenção - CE",
+    city: "Redenção",
+    state: "CE",
+    country: "Brasil",
+    // Approximate campus reference, not a verified boarding entrance. Source:
+    // repositorio.unilab.edu.br/jspui/bitstream/123456789/5041/1/PAULO%20CHRISTIAN%20QUEIROZ%20BRAGA.pdf
+    // Campus solar site: 4°13'5.71 S, 38°42'50.23 W.
+    lat: -4.218253,
+    lng: -38.713953,
+    isApproximate: true,
+    types: ["university", "point_of_interest", "establishment"],
+  },
+  {
     id: "loc_unifor",
     aliases: [
       "unifor",
@@ -25,7 +47,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
       "edson queiroz unifor",
     ],
     mainText: "Universidade de Fortaleza (UNIFOR)",
-    formattedAddress: "Av. Washington Soares, 1321 - Edson Queiroz, Fortaleza - CE, 60811-905",
+    formattedAddress:
+      "Av. Washington Soares, 1321 - Edson Queiroz, Fortaleza - CE, 60811-905",
     neighborhood: "Edson Queiroz",
     city: "Fortaleza",
     state: "CE",
@@ -38,7 +61,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_cec",
     aliases: ["centro de eventos", "centro de eventos do ceará"],
     mainText: "Centro de Eventos do Ceará",
-    formattedAddress: "Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE, 60811-341",
+    formattedAddress:
+      "Av. Washington Soares, 999 - Edson Queiroz, Fortaleza - CE, 60811-341",
     neighborhood: "Edson Queiroz",
     city: "Fortaleza",
     state: "CE",
@@ -158,7 +182,12 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_maracanau_centro",
-    aliases: ["maracanau", "maracanaú", "centro maracanau", "municipio maracanau"],
+    aliases: [
+      "maracanau",
+      "maracanaú",
+      "centro maracanau",
+      "municipio maracanau",
+    ],
     mainText: "Maracanaú",
     formattedAddress: "Centro, Maracanaú - CE",
     neighborhood: "Centro",
@@ -292,7 +321,12 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_passare",
-    aliases: ["passare", "passaré", "castelao passare", "banco do nordeste passare"],
+    aliases: [
+      "passare",
+      "passaré",
+      "castelao passare",
+      "banco do nordeste passare",
+    ],
     mainText: "Passaré",
     formattedAddress: "Passaré, Fortaleza - CE",
     neighborhood: "Passaré",
@@ -318,7 +352,11 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_luciano_cavalcante",
-    aliases: ["luciano cavalcante", "eng luciano cavalcante", "bairro luciano cavalcante"],
+    aliases: [
+      "luciano cavalcante",
+      "eng luciano cavalcante",
+      "bairro luciano cavalcante",
+    ],
     mainText: "Engenheiro Luciano Cavalcante",
     formattedAddress: "Engenheiro Luciano Cavalcante, Fortaleza - CE",
     neighborhood: "Engenheiro Luciano Cavalcante",
@@ -357,7 +395,11 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_praia_de_iracema",
-    aliases: ["praia de iracema", "dragao do mar", "aterro da praia de iracema"],
+    aliases: [
+      "praia de iracema",
+      "dragao do mar",
+      "aterro da praia de iracema",
+    ],
     mainText: "Praia de Iracema",
     formattedAddress: "Praia de Iracema, Fortaleza - CE",
     neighborhood: "Praia de Iracema",
@@ -370,9 +412,15 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_osvaldo_risato",
-    aliases: ["osvaldo risato", "rua osvaldo risato", "osvaldo rizato", "bairro osvaldo risato"],
+    aliases: [
+      "osvaldo risato",
+      "rua osvaldo risato",
+      "osvaldo rizato",
+      "bairro osvaldo risato",
+    ],
     mainText: "Rua Osvaldo Risato",
-    formattedAddress: "Rua Osvaldo Risato, Jardim Bandeirante, Maracanaú - CE, 61934-090",
+    formattedAddress:
+      "Rua Osvaldo Risato, Jardim Bandeirante, Maracanaú - CE, 61934-090",
     neighborhood: "Jardim Bandeirante",
     city: "Maracanaú",
     state: "CE",
@@ -383,7 +431,11 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_jardim_bandeirante",
-    aliases: ["jardim bandeirante", "bairro jardim bandeirante", "bandeirante maracanau"],
+    aliases: [
+      "jardim bandeirante",
+      "bairro jardim bandeirante",
+      "bandeirante maracanau",
+    ],
     mainText: "Jardim Bandeirante",
     formattedAddress: "Jardim Bandeirante, Maracanaú - CE",
     neighborhood: "Jardim Bandeirante",
@@ -398,7 +450,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_coco_bambu",
     aliases: ["coco bambu", "restaurante coco bambu", "coco bambu meireles"],
     mainText: "Coco Bambu",
-    formattedAddress: "Rua Canuto de Aguiar, 1317 - Meireles, Fortaleza - CE, 60160-120",
+    formattedAddress:
+      "Rua Canuto de Aguiar, 1317 - Meireles, Fortaleza - CE, 60160-120",
     neighborhood: "Meireles",
     city: "Fortaleza",
     state: "CE",
@@ -411,7 +464,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_coco_bambu_beira_mar",
     aliases: ["coco bambu beira mar", "coco bambu beiramar"],
     mainText: "Coco Bambu Beira Mar",
-    formattedAddress: "Av. Beira Mar, 3698 - Meireles, Fortaleza - CE, 60165-121",
+    formattedAddress:
+      "Av. Beira Mar, 3698 - Meireles, Fortaleza - CE, 60165-121",
     neighborhood: "Meireles",
     city: "Fortaleza",
     state: "CE",
@@ -424,7 +478,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_picanha_do_jonas",
     aliases: ["picanha do jonas", "restaurante picanha do jonas"],
     mainText: "Picanha do Jonas",
-    formattedAddress: "Rua Graciliano Ramos, 420 - Fátima, Fortaleza - CE, 60411-230",
+    formattedAddress:
+      "Rua Graciliano Ramos, 420 - Fátima, Fortaleza - CE, 60411-230",
     neighborhood: "Fátima",
     city: "Fortaleza",
     state: "CE",
@@ -456,9 +511,16 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_assai_maracanau",
-    aliases: ["assai maracanau", "assaí maracanau", "assai atacadista maracanau", "assai", "assaí"],
+    aliases: [
+      "assai maracanau",
+      "assaí maracanau",
+      "assai atacadista maracanau",
+      "assai",
+      "assaí",
+    ],
     mainText: "Assaí Atacadista Maracanaú",
-    formattedAddress: "Av. Radialista João Ramos, 400 - Distrito Industrial I, Maracanaú - CE",
+    formattedAddress:
+      "Av. Radialista João Ramos, 400 - Distrito Industrial I, Maracanaú - CE",
     neighborhood: "Distrito Industrial I",
     city: "Maracanaú",
     state: "CE",
@@ -471,7 +533,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_north_shopping_maracanau",
     aliases: ["north shopping maracanau", "shopping maracanau"],
     mainText: "North Shopping Maracanaú",
-    formattedAddress: "Av. Carlos Jereissati, 100 - Centro, Maracanaú - CE, 61900-010",
+    formattedAddress:
+      "Av. Carlos Jereissati, 100 - Centro, Maracanaú - CE, 61900-010",
     neighborhood: "Centro",
     city: "Maracanaú",
     state: "CE",
@@ -482,9 +545,14 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_atacadao_washington_soares",
-    aliases: ["atacadao washington soares", "atacadao fortaleza", "atacadao cambeba"],
+    aliases: [
+      "atacadao washington soares",
+      "atacadao fortaleza",
+      "atacadao cambeba",
+    ],
     mainText: "Atacadão Washington Soares",
-    formattedAddress: "Av. Washington Soares, 4200 - Cambeba, Fortaleza - CE, 60822-142",
+    formattedAddress:
+      "Av. Washington Soares, 4200 - Cambeba, Fortaleza - CE, 60822-142",
     neighborhood: "Cambeba",
     city: "Fortaleza",
     state: "CE",
@@ -497,7 +565,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_assai_washington_soares",
     aliases: ["assai washington soares", "assai edson queiroz"],
     mainText: "Assaí Atacadista Washington Soares",
-    formattedAddress: "Av. Washington Soares, 3500 - Edson Queiroz, Fortaleza - CE",
+    formattedAddress:
+      "Av. Washington Soares, 3500 - Edson Queiroz, Fortaleza - CE",
     neighborhood: "Edson Queiroz",
     city: "Fortaleza",
     state: "CE",
@@ -510,7 +579,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_shopping_iguatemi",
     aliases: ["iguatemi", "shopping iguatemi", "iguatemi bosque"],
     mainText: "Shopping Iguatemi Bosque",
-    formattedAddress: "Av. Washington Soares, 85 - Edson Queiroz, Fortaleza - CE",
+    formattedAddress:
+      "Av. Washington Soares, 85 - Edson Queiroz, Fortaleza - CE",
     neighborhood: "Edson Queiroz",
     city: "Fortaleza",
     state: "CE",
@@ -536,7 +606,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_riomar_kennedy",
     aliases: ["riomar kennedy", "shopping riomar kennedy"],
     mainText: "RioMar Kennedy",
-    formattedAddress: "Av. Sgto. Hermínio Sampaio, 3100 - Pres. Kennedy, Fortaleza - CE",
+    formattedAddress:
+      "Av. Sgto. Hermínio Sampaio, 3100 - Pres. Kennedy, Fortaleza - CE",
     neighborhood: "Presidente Kennedy",
     city: "Fortaleza",
     state: "CE",
@@ -547,9 +618,14 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_north_shopping_fortaleza",
-    aliases: ["north shopping", "north shopping bezerra", "north shopping fortaleza"],
+    aliases: [
+      "north shopping",
+      "north shopping bezerra",
+      "north shopping fortaleza",
+    ],
     mainText: "North Shopping Fortaleza",
-    formattedAddress: "Av. Bezerra de Menezes, 2450 - Pres. Kennedy, Fortaleza - CE",
+    formattedAddress:
+      "Av. Bezerra de Menezes, 2450 - Pres. Kennedy, Fortaleza - CE",
     neighborhood: "Presidente Kennedy",
     city: "Fortaleza",
     state: "CE",
@@ -601,7 +677,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_terminal_antonio_bezerra",
     aliases: ["terminal antonio bezerra", "antonio bezerra terminal"],
     mainText: "Terminal Antônio Bezerra",
-    formattedAddress: "Av. Cel. Carvalho, 3780 - Antônio Bezerra, Fortaleza - CE",
+    formattedAddress:
+      "Av. Cel. Carvalho, 3780 - Antônio Bezerra, Fortaleza - CE",
     neighborhood: "Antônio Bezerra",
     city: "Fortaleza",
     state: "CE",
@@ -612,7 +689,11 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
   },
   {
     id: "loc_barraca_do_brasil",
-    aliases: ["barraca do brasil", "barraca brasil", "barraca do brasil beira mar"],
+    aliases: [
+      "barraca do brasil",
+      "barraca brasil",
+      "barraca do brasil beira mar",
+    ],
     mainText: "Barraca do Brasil",
     formattedAddress: "Av. Beira Mar, 2535 - Meireles, Fortaleza - CE",
     neighborhood: "Meireles",
@@ -627,7 +708,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_crocobeach",
     aliases: ["crocobeach", "barraca crocobeach", "praia do futuro crocobeach"],
     mainText: "Crocobeach",
-    formattedAddress: "Av. Clóvis Arrais Maia, 3125 - Praia do Futuro, Fortaleza - CE",
+    formattedAddress:
+      "Av. Clóvis Arrais Maia, 3125 - Praia do Futuro, Fortaleza - CE",
     neighborhood: "Praia do Futuro",
     city: "Fortaleza",
     state: "CE",
@@ -640,7 +722,8 @@ export const CEARA_LOCATION_CATALOG: CatalogLocationEntry[] = [
     id: "loc_chico_do_caranguejo",
     aliases: ["chico do caranguejo", "barraca chico do caranguejo"],
     mainText: "Chico do Caranguejo",
-    formattedAddress: "Av. Clóvis Arrais Maia, 4930 - Praia do Futuro, Fortaleza - CE",
+    formattedAddress:
+      "Av. Clóvis Arrais Maia, 4930 - Praia do Futuro, Fortaleza - CE",
     neighborhood: "Praia do Futuro",
     city: "Fortaleza",
     state: "CE",
@@ -720,7 +803,12 @@ export function searchCatalogLocations(query: string): LocationSuggestion[] {
       matchScore = 60;
     } else if (!isSpecificAddress && tokens.length >= 2) {
       // Para múltiplos tokens (ex: "atacadao maracanau"), verifica se o catálogo contém os termos
-      const haystack = [...normAliases, mainNorm, entry.neighborhood || "", entry.city]
+      const haystack = [
+        ...normAliases,
+        mainNorm,
+        entry.neighborhood || "",
+        entry.city,
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -749,6 +837,8 @@ export function searchCatalogLocations(query: string): LocationSuggestion[] {
   scored.sort((a, b) => b.score - a.score);
 
   return scored.slice(0, 8).map(({ entry }) => ({
+    source: "catalog",
+    isApproximate: entry.isApproximate,
     providerId: entry.id,
     mainText: entry.mainText,
     secondaryText: [entry.neighborhood, `${entry.city} - ${entry.state}`]
@@ -770,6 +860,8 @@ export function findCatalogLocationById(id: string): LocationSuggestion | null {
   if (!found) return null;
 
   return {
+    source: "catalog",
+    isApproximate: found.isApproximate,
     providerId: found.id,
     mainText: found.mainText,
     secondaryText: [found.neighborhood, `${found.city} - ${found.state}`]

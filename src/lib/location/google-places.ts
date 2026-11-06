@@ -1,423 +1,313 @@
+import { getGoogleServerKey } from "./google-server-key";
 import type {
+  FormLocationDetails,
+  GeocodingResult,
   LocationDetailsResponse,
   LocationProvider,
   LocationSearchResponse,
   LocationSuggestion,
 } from "./types";
 
-const GOOGLE_AUTOCOMPLETE_URL =
-  "https://maps.googleapis.com/maps/api/place/autocomplete/json";
-const GOOGLE_DETAILS_URL =
-  "https://maps.googleapis.com/maps/api/place/details/json";
-
-// Coordenadas centrais de Fortaleza/Ceará para viés geográfico (lat: -3.7319, lng: -38.5267, raio de ~150km)
-const CEARA_BIAS_LOCATION = "-3.7319,-38.5267";
-const CEARA_BIAS_RADIUS_METERS = "150000";
-
-function getApiKey(): string | null {
-  const nodeEnv =
-    typeof process !== "undefined" && process.env ? process.env : undefined;
-  const globalEnv = globalThis as Record<string, unknown>;
-  const viteEnv =
-    typeof import.meta !== "undefined" && import.meta.env
-      ? (import.meta.env as Record<string, unknown>)
-      : undefined;
-  const key =
-    nodeEnv?.GOOGLE_PLACES_API_KEY ||
-    nodeEnv?.GOOGLE_MAPS_API_KEY ||
-    nodeEnv?.VITE_GOOGLE_PLACES_API_KEY ||
-    nodeEnv?.VITE_GOOGLE_MAPS_API_KEY ||
-    (typeof globalEnv?.["GOOGLE_PLACES_API_KEY"] === "string"
-      ? (globalEnv["GOOGLE_PLACES_API_KEY"] as string)
-      : null) ||
-    (typeof globalEnv?.["GOOGLE_MAPS_API_KEY"] === "string"
-      ? (globalEnv["GOOGLE_MAPS_API_KEY"] as string)
-      : null) ||
-    (typeof viteEnv?.["VITE_GOOGLE_PLACES_API_KEY"] === "string"
-      ? (viteEnv["VITE_GOOGLE_PLACES_API_KEY"] as string)
-      : null) ||
-    (typeof viteEnv?.["VITE_GOOGLE_MAPS_API_KEY"] === "string"
-      ? (viteEnv["VITE_GOOGLE_MAPS_API_KEY"] as string)
-      : null);
-  return key || null;
-}
-
-interface GooglePrediction {
-  place_id: string;
-  description: string;
-  structured_formatting?: {
-    main_text?: string;
-    secondary_text?: string;
-  };
+const API = "https://places.googleapis.com/v1/places";
+const PLACE_FIELDS =
+  "id,displayName,formattedAddress,location,addressComponents";
+const CEARA_BIAS = {
+  circle: {
+    center: { latitude: -3.7319, longitude: -38.5267 },
+    radius: 50000.0,
+  },
+};
+export interface GoogleAddressComponent {
+  longText?: string;
+  shortText?: string;
   types?: string[];
 }
-
-interface GoogleAddressComponent {
-  long_name: string;
-  short_name: string;
-  types: string[];
-}
-
-interface GooglePlaceDetailsResult {
-  place_id: string;
-  name?: string;
-  formatted_address?: string;
-  geometry?: {
-    location?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  address_components?: GoogleAddressComponent[];
-  types?: string[];
+interface GooglePlace {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  location?: { latitude?: number; longitude?: number };
+  addressComponents?: GoogleAddressComponent[];
 }
 
 export function parseAddressComponents(
   components: GoogleAddressComponent[] = [],
 ) {
-  let neighborhood: string | undefined;
-  let city: string | undefined;
-  let state: string | undefined;
-  let country: string | undefined;
-
-  for (const comp of components) {
-    if (
-      comp.types.includes("sublocality") ||
-      comp.types.includes("sublocality_level_1") ||
-      comp.types.includes("neighborhood")
-    ) {
-      neighborhood = comp.long_name;
-    } else if (
-      comp.types.includes("administrative_area_level_2") ||
-      comp.types.includes("locality")
-    ) {
-      if (!city) city = comp.long_name;
-    } else if (comp.types.includes("administrative_area_level_1")) {
-      state = comp.short_name || comp.long_name;
-    } else if (comp.types.includes("country")) {
-      country = comp.short_name || comp.long_name;
+  const byType = (...types: string[]) => {
+    for (const type of types) {
+      const item = components.find((c) => c.types?.includes(type));
+      if (item) return item;
     }
-  }
-
-  return { neighborhood, city, state, country };
-}
-
-/**
- * Tenta inferir bairro e cidade a partir do texto secundário caso details não esteja disponível
- * Exemplo: "Aldeota, Fortaleza - CE, Brasil" -> neighborhood: "Aldeota", city: "Fortaleza", state: "CE"
- */
-export function parseSecondaryText(secondaryText?: string) {
-  if (!secondaryText) return {};
-  const parts = secondaryText.split(",").map((s) => s.trim());
-  const neighborhood = parts.length > 1 ? parts[0] : undefined;
-  const cityState = parts.length > 1 ? parts[1] : parts[0];
-  const [city, state] = (cityState || "").split("-").map((s) => s.trim());
-
+    return undefined;
+  };
+  const state = byType("administrative_area_level_1"),
+    country = byType("country");
   return {
-    neighborhood,
-    city: city || undefined,
-    state: state || undefined,
+    neighborhood: byType("sublocality_level_1", "neighborhood", "sublocality")
+      ?.longText,
+    city: byType("administrative_area_level_2", "locality")?.longText,
+    state: state?.shortText || state?.longText,
+    country: country?.shortText || country?.longText,
+    postalCode: byType("postal_code")?.longText,
+    street: byType("route")?.longText,
+    streetNumber: byType("street_number")?.longText,
   };
 }
 
-export class GooglePlacesProvider implements LocationProvider {
-  readonly name = "Google Places";
+// Prediction text is presentation only. Geographic components come from Details.
+export function parseSecondaryText(text?: string) {
+  const match = text?.match(/(?:^|,\s*)([^,]+?)\s*[-–]\s*([A-Z]{2})(?:,|$)/);
+  if (!match) return {};
+  const beforeCity = text!.slice(0, match.index).replace(/,\s*$/, "").trim();
+  return {
+    city: match[1].trim(),
+    state: match[2],
+    neighborhood: beforeCity || undefined,
+  };
+}
 
-  isConfigured(): boolean {
-    return Boolean(getApiKey());
+function mapPlace(place: GooglePlace): LocationSuggestion | null {
+  const lat = place.location?.latitude,
+    lng = place.location?.longitude;
+  if (
+    !place.id ||
+    !Number.isFinite(lat) ||
+    Math.abs(lat!) > 90 ||
+    !Number.isFinite(lng) ||
+    Math.abs(lng!) > 180
+  )
+    return null;
+  const address = parseAddressComponents(place.addressComponents);
+  const mainText =
+    place.displayName?.text || place.formattedAddress || "Localização";
+  const street = [address.street, address.streetNumber]
+    .filter(Boolean)
+    .join(", ");
+  const cityState = [address.city, address.state].filter(Boolean).join(" - ");
+  return {
+    providerId: place.id,
+    mainText,
+    formattedAddress: place.formattedAddress || mainText,
+    secondaryText: [street, address.neighborhood, cityState]
+      .filter(Boolean)
+      .join(", "),
+    ...address,
+    lat,
+    lng,
+    source: "google",
+  };
+}
+
+function geocodingResult(
+  rawText: string,
+  item: LocationSuggestion,
+): GeocodingResult {
+  return {
+    rawText,
+    formattedAddress: item.formattedAddress,
+    neighborhood: item.neighborhood,
+    city: item.city,
+    state: item.state,
+    country: item.country,
+    postalCode: item.postalCode,
+    street: item.street,
+    streetNumber: item.streetNumber,
+    lat: item.lat,
+    lng: item.lng,
+    placeId: item.providerId,
+    source: "google",
+    isApproximate: false,
+  };
+}
+
+async function requestGoogle(
+  url: string,
+  key: string,
+  fieldMask?: string,
+  body?: unknown,
+): Promise<any> {
+  const response = await fetch(url, {
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      "X-Goog-Api-Key": key,
+      "Content-Type": "application/json",
+      ...(fieldMask ? { "X-Goog-FieldMask": fieldMask } : {}),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal: AbortSignal.timeout(5000),
+  });
+  // Never forward Google's raw errors, URLs or credential data to the UI/logs.
+  if (!response.ok)
+    throw new Error(
+      response.status === 403
+        ? "Google Maps recusou a credencial do servidor. Verifique as APIs e as restrições da chave."
+        : `Google Maps indisponível (HTTP ${response.status}).`,
+    );
+  const result = await response.json();
+  if (!result || typeof result !== "object" || result.error)
+    throw new Error("Resposta do Google Maps indisponível.");
+  return result;
+}
+
+export class GooglePlacesProvider implements LocationProvider {
+  readonly name = "Google Places (New)";
+  isConfigured() {
+    return Boolean(getGoogleServerKey());
   }
 
   async search(query: string): Promise<LocationSearchResponse> {
-    const apiKey = getApiKey();
-    if (!apiKey) {
+    const key = getGoogleServerKey();
+    if (!key)
       return {
         isConfigured: false,
         provider: "google_places",
         suggestions: [],
         warning:
-          "GOOGLE_PLACES_API_KEY não configurada no servidor. Modo manual ativo.",
+          "Google Maps não configurado no servidor. Digitação manual disponível.",
       };
-    }
-
-    const trimmed = query.trim();
-    if (trimmed.length < 2) {
-      return {
-        isConfigured: true,
-        provider: "google_places",
-        suggestions: [],
-      };
-    }
-
+    if (query.trim().length < 2)
+      return { isConfigured: true, provider: "google_places", suggestions: [] };
     try {
-      const url = new URL(GOOGLE_AUTOCOMPLETE_URL);
-      url.searchParams.set("input", trimmed);
-      url.searchParams.set("components", "country:br");
-      url.searchParams.set("location", CEARA_BIAS_LOCATION);
-      url.searchParams.set("radius", CEARA_BIAS_RADIUS_METERS);
-      url.searchParams.set("language", "pt-BR");
-      url.searchParams.set("key", apiKey);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-      const response = await fetch(url.toString(), {
-        signal: controller.signal,
-        headers: { Accept: "application/json" },
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        return {
-          isConfigured: true,
-          provider: "google_places",
-          suggestions: [],
-          error: `Falha na requisição ao Google Places: HTTP ${response.status}`,
-        };
-      }
-
-      const data = (await response.json()) as {
-        status: string;
-        predictions?: GooglePrediction[];
-        error_message?: string;
-      };
-
-      if (data.status === "ZERO_RESULTS") {
-        return {
-          isConfigured: true,
-          provider: "google_places",
-          suggestions: [],
-        };
-      }
-
-      if (data.status !== "OK") {
-        return {
-          isConfigured: true,
-          provider: "google_places",
-          suggestions: [],
-          error: data.error_message || `Status Google Places: ${data.status}`,
-        };
-      }
-
-      const suggestions: LocationSuggestion[] = (data.predictions ?? []).map(
-        (pred) => {
-          const mainText =
-            pred.structured_formatting?.main_text || pred.description;
-          const secondaryText =
-            pred.structured_formatting?.secondary_text || "";
-          const inferred = parseSecondaryText(secondaryText);
-
-          return {
-            providerId: pred.place_id,
-            mainText,
-            secondaryText,
-            formattedAddress: pred.description,
-            neighborhood: inferred.neighborhood,
-            city: inferred.city,
-            state: inferred.state,
-            types: pred.types,
-          };
+      const result = await requestGoogle(
+        API + ":autocomplete",
+        key,
+        "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.text",
+        {
+          input: query.trim(),
+          includedRegionCodes: ["br"],
+          languageCode: "pt-BR",
+          locationBias: CEARA_BIAS,
         },
       );
-
-      return {
-        isConfigured: true,
-        provider: "google_places",
-        suggestions,
-      };
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Erro de conexão com Google Places";
+      if (
+        result.suggestions !== undefined &&
+        !Array.isArray(result.suggestions)
+      )
+        throw new Error("Resposta inválida");
+      const suggestions: LocationSuggestion[] = (
+        result.suggestions ?? []
+      ).flatMap((item: any) => {
+        const pred = item?.placePrediction;
+        if (typeof pred?.placeId !== "string" || !pred.placeId) return [];
+        const mainText =
+          pred.structuredFormat?.mainText?.text || pred.text?.text;
+        if (typeof mainText !== "string" || !mainText) return [];
+        return [
+          {
+            providerId: pred.placeId,
+            mainText,
+            secondaryText: pred.structuredFormat?.secondaryText?.text || "",
+            formattedAddress: pred.text?.text || mainText,
+            source: "google" as const,
+          },
+        ];
+      });
+      return { isConfigured: true, provider: "google_places", suggestions };
+    } catch {
       return {
         isConfigured: true,
         provider: "google_places",
         suggestions: [],
-        error: message,
+        error: "Busca Google indisponível. Você pode digitar o endereço.",
       };
     }
   }
 
   async getDetails(placeId: string): Promise<LocationDetailsResponse> {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      return {
-        isConfigured: false,
-        provider: "google_places",
-        details: null,
-      };
-    }
-
+    const key = getGoogleServerKey();
+    if (!key)
+      return { isConfigured: false, provider: "google_places", details: null };
+    // Caller supplies an ID, never an arbitrary URL/path.
+    if (!/^[A-Za-z0-9_-]{1,250}$/.test(placeId))
+      return { isConfigured: true, provider: "google_places", details: null };
     try {
-      const url = new URL(GOOGLE_DETAILS_URL);
-      url.searchParams.set("place_id", placeId);
-      url.searchParams.set(
-        "fields",
-        "place_id,name,formatted_address,geometry,address_components,types",
+      const result = await requestGoogle(
+        API +
+          "/" +
+          encodeURIComponent(placeId) +
+          "?fields=" +
+          PLACE_FIELDS +
+          "&languageCode=pt-BR",
+        key,
       );
-      url.searchParams.set("language", "pt-BR");
-      url.searchParams.set("key", apiKey);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-      const response = await fetch(url.toString(), {
-        signal: controller.signal,
-        headers: { Accept: "application/json" },
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        return {
-          isConfigured: true,
-          provider: "google_places",
-          details: null,
-          error: `Falha ao buscar detalhes do local: HTTP ${response.status}`,
-        };
-      }
-
-      const data = (await response.json()) as {
-        status: string;
-        result?: GooglePlaceDetailsResult;
-        error_message?: string;
-      };
-
-      if (data.status !== "OK" || !data.result) {
-        return {
-          isConfigured: true,
-          provider: "google_places",
-          details: null,
-          error:
-            data.error_message ||
-            `Status Google Places Details: ${data.status}`,
-        };
-      }
-
-      const res = data.result;
-      const components = parseAddressComponents(res.address_components);
-
-      const suggestion: LocationSuggestion = {
-        providerId: res.place_id,
-        mainText: res.name || res.formatted_address || "",
-        secondaryText: [
-          components.neighborhood,
-          components.city,
-          components.state,
-        ]
-          .filter(Boolean)
-          .join(", "),
-        formattedAddress: res.formatted_address || res.name || "",
-        neighborhood: components.neighborhood,
-        city: components.city,
-        state: components.state,
-        country: components.country,
-        lat: res.geometry?.location?.lat,
-        lng: res.geometry?.location?.lng,
-        types: res.types,
-      };
-
       return {
         isConfigured: true,
         provider: "google_places",
-        details: suggestion,
+        details: mapPlace(result),
       };
-    } catch (err) {
+    } catch {
       return {
         isConfigured: true,
         provider: "google_places",
         details: null,
         error:
-          err instanceof Error
-            ? err.message
-            : "Erro ao buscar detalhes no Google Places",
+          "Detalhes Google indisponíveis. Você pode continuar pelo endereço.",
       };
     }
   }
 
-  async reverse(
-    lat: number,
-    lng: number,
-  ): Promise<import("./types").FormLocationDetails | null> {
+  async geocode(addressOrPlaceId: string): Promise<GeocodingResult | null> {
+    const key = getGoogleServerKey(),
+      text = addressOrPlaceId.trim();
+    if (!key || !text) return null;
+    if (
+      /^(?:ChIJ|GhIJ)[A-Za-z0-9_-]+$/.test(text) ||
+      text.startsWith("places/")
+    ) {
+      const details = await this.getDetails(text.replace(/^places\//, ""));
+      return details.details ? geocodingResult(text, details.details) : null;
+    }
+    try {
+      const result = await requestGoogle(
+        API + ":searchText",
+        key,
+        PLACE_FIELDS.split(",")
+          .map((field) => "places." + field)
+          .join(","),
+        {
+          textQuery: text,
+          languageCode: "pt-BR",
+          regionCode: "BR",
+          locationBias: CEARA_BIAS,
+          pageSize: 1,
+        },
+      );
+      const item =
+        Array.isArray(result.places) && result.places.length
+          ? mapPlace(result.places[0])
+          : null;
+      return item ? geocodingResult(text, item) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async reverse(lat: number, lng: number): Promise<FormLocationDetails | null> {
     if (
       !Number.isFinite(lat) ||
       Math.abs(lat) > 90 ||
       !Number.isFinite(lng) ||
       Math.abs(lng) > 180
-    ) {
+    )
       throw new Error("Coordenadas inválidas.");
-    }
-    const apiKey = getApiKey();
-    if (!apiKey) return null;
-    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("latlng", `${lat},${lng}`);
-    url.searchParams.set("language", "pt-BR");
-    url.searchParams.set("key", apiKey);
-    const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!response.ok)
-      throw new Error(
-        `Google Geocoding indisponível (HTTP ${response.status}).`,
-      );
-    const result = (await response.json()) as {
-      status?: string;
-      results?: GooglePlaceDetailsResult[];
-    };
-    if (result.status === "ZERO_RESULTS") return null;
-    if (result.status !== "OK")
-      throw new Error("Google Geocoding indisponível.");
-    const first = result.results?.[0];
-    if (!first?.formatted_address) return null;
+    const key = getGoogleServerKey();
+    if (!key) return null;
+    // Text Search does not reverse-geocode GPS. Use the official v4 service.
+    const result = await requestGoogle(
+      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?languageCode=pt-BR`,
+      key,
+      "results.placeId,results.formattedAddress,results.addressComponents",
+    );
+    const first = Array.isArray(result.results) ? result.results[0] : null;
+    if (!first?.formattedAddress) return null;
     return {
-      rawText: first.formatted_address,
-      formattedAddress: first.formatted_address,
-      ...parseAddressComponents(first.address_components),
+      rawText: first.formattedAddress,
+      formattedAddress: first.formattedAddress,
+      ...parseAddressComponents(first.addressComponents),
       lat,
       lng,
-    };
-  }
-
-  async geocode(
-    addressOrPlaceId: string,
-  ): Promise<import("./types").GeocodingResult | null> {
-    if (!this.isConfigured() || !addressOrPlaceId.trim()) return null;
-
-    // Se parecer um place_id (começa com ChIJ ou similar), busca detalhes diretamente
-    if (/^[a-zA-Z0-9_-]{20,}$/.test(addressOrPlaceId.trim())) {
-      const details = await this.getDetails(addressOrPlaceId.trim());
-      if (details.details) {
-        return {
-          rawText: addressOrPlaceId,
-          formattedAddress: details.details.formattedAddress,
-          neighborhood: details.details.neighborhood,
-          city: details.details.city,
-          state: details.details.state,
-          country: details.details.country,
-          lat: details.details.lat,
-          lng: details.details.lng,
-          placeId: details.details.providerId,
-          types: details.details.types,
-        };
-      }
-    }
-
-    const searchRes = await this.search(addressOrPlaceId);
-    if (!searchRes.suggestions || searchRes.suggestions.length === 0)
-      return null;
-
-    const first = searchRes.suggestions[0];
-    const details = await this.getDetails(first.providerId);
-    const item = details.details || first;
-
-    return {
-      rawText: addressOrPlaceId,
-      formattedAddress: item.formattedAddress,
-      neighborhood: item.neighborhood,
-      city: item.city,
-      state: item.state,
-      country: item.country,
-      lat: item.lat,
-      lng: item.lng,
-      placeId: item.providerId,
-      types: item.types,
+      placeId: first.placeId,
+      source: "google",
     };
   }
 }

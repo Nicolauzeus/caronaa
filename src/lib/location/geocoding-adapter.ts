@@ -54,6 +54,8 @@ export class CatalogGeocodingProvider implements GeocodingProvider {
         lng: item.lng,
         placeId: item.providerId,
         types: item.types,
+        source: "catalog",
+        isApproximate: item.isApproximate,
       };
     }
 
@@ -71,6 +73,8 @@ export class CatalogGeocodingProvider implements GeocodingProvider {
         lng: first.lng,
         placeId: first.providerId,
         types: first.types,
+        source: "catalog",
+        isApproximate: first.isApproximate,
       };
     }
 
@@ -110,23 +114,32 @@ export class CompositeGeocodingProvider implements GeocodingProvider {
     if (trimmed.length < 2)
       return { isConfigured: true, provider: "catalog", suggestions: [] };
     const catalog = searchCatalogLocations(trimmed);
-    // A known local landmark is available immediately, even offline.
-    if (catalog.length > 0)
-      return { isConfigured: true, provider: "catalog", suggestions: catalog };
+    // Return official predictions when available; the client already displays
+    // local landmarks instantly while this bounded request is in flight.
     if (this.primaryProvider.isConfigured()) {
       try {
         const result = await this.primaryProvider.search(trimmed);
         if (result.suggestions.length > 0) return result;
       } catch {
-        /* Manual entry stays available on network errors. */
+        /* Local/manual fallback remains available. */
       }
     }
+    if (catalog.length > 0)
+      return {
+        isConfigured: true,
+        provider: "catalog",
+        suggestions: catalog.map((item) => ({
+          ...item,
+          source: "catalog" as const,
+        })),
+      };
     const norm = normalizeAddress(trimmed);
     return {
       isConfigured: true,
       provider: "none",
       suggestions: [
         {
+          source: "manual",
           providerId: "manual_" + Date.now(),
           mainText: trimmed,
           secondaryText: [
@@ -165,12 +178,8 @@ export class CompositeGeocodingProvider implements GeocodingProvider {
   }
 
   async geocode(addressOrPlaceId: string): Promise<GeocodingResult | null> {
-    if (
-      findCatalogLocationById(addressOrPlaceId) ||
-      searchCatalogLocations(addressOrPlaceId).length > 0
-    ) {
+    if (findCatalogLocationById(addressOrPlaceId))
       return this.catalogProvider.geocode(addressOrPlaceId);
-    }
     if (this.primaryProvider.isConfigured()) {
       try {
         const result = await this.primaryProvider.geocode(addressOrPlaceId);

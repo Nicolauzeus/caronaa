@@ -1,3 +1,4 @@
+import { getGoogleServerKey } from "./location/google-server-key";
 export type RoadPoint = { lat: number; lng: number };
 export type DrivingRoute = {
   distanceKm: number;
@@ -37,7 +38,7 @@ export async function getDrivingRoute(
   request: typeof fetch = fetch,
 ): Promise<DrivingRoute> {
   validateRoutePoints(points);
-  const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
+  const key = getGoogleServerKey();
   if (!key) throw new Error("Google Maps Routes não configurado no servidor.");
   const waypoint = ({ lat, lng }: RoadPoint) => ({
     location: { latLng: { latitude: lat, longitude: lng } },

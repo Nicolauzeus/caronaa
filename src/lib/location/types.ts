@@ -5,6 +5,10 @@ export interface GeocodingResult {
   city?: string;
   state?: string;
   country?: string;
+  postalCode?: string;
+  street?: string;
+  streetNumber?: string;
+  source?: "google" | "catalog" | "manual";
   lat?: number;
   lng?: number;
   placeId?: string;
@@ -25,6 +29,7 @@ export interface NormalizedAddress {
 }
 
 export interface LocationSuggestion {
+  isApproximate?: boolean;
   providerId: string;
   mainText: string;
   secondaryText: string;
@@ -33,6 +38,10 @@ export interface LocationSuggestion {
   city?: string;
   state?: string;
   country?: string;
+  postalCode?: string;
+  street?: string;
+  streetNumber?: string;
+  source?: "google" | "catalog" | "manual";
   lat?: number;
   lng?: number;
   types?: string[];
@@ -45,6 +54,10 @@ export interface FormLocationDetails {
   state?: string;
   neighborhood?: string;
   country?: string;
+  postalCode?: string;
+  street?: string;
+  streetNumber?: string;
+  source?: "google" | "catalog" | "manual";
   lat?: number;
   lng?: number;
   providerId?: string;

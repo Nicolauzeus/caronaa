@@ -6,6 +6,8 @@ import {
   Route as RouteIcon,
   Info,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { geocodeAddressServerFn } from "@/lib/location.functions";
 import { geocodeAddress } from "@/lib/location/geo-utils";
 import { LiveRideMap } from "./LiveRideMap";
 import { GoogleMapSurface } from "./GoogleMapSurface";
@@ -45,6 +47,13 @@ export function RouteMap({
   showRouteDetails = true,
   showApproximateMetrics = true,
 }: RouteMapProps) {
+  const resolveAddress = useServerFn(geocodeAddressServerFn);
+  const geocode = async (address: string) => {
+    const remote = await resolveAddress({ data: { address } }).catch(
+      () => null,
+    );
+    return remote || geocodeAddress(address);
+  };
   const [resolvedOrigin, setResolvedOrigin] = useState<ResolvedCoords | null>(
     null,
   );
@@ -55,18 +64,21 @@ export function RouteMap({
   useEffect(() => {
     let active = true;
 
-    if (originLocation?.lat && originLocation?.lng) {
+    if (
+      Number.isFinite(originLocation?.lat) &&
+      Number.isFinite(originLocation?.lng)
+    ) {
       setResolvedOrigin({
-        lat: originLocation.lat,
-        lng: originLocation.lng,
-        name: originLocation.formattedAddress || origin || "Origem",
+        lat: originLocation!.lat!,
+        lng: originLocation!.lng!,
+        name: originLocation!.formattedAddress || origin || "Origem",
       });
       return;
     }
 
     if (origin && origin.trim().length >= 2) {
       setIsGeocoding(true);
-      void geocodeAddress(origin)
+      void geocode(origin)
         .then((res) => {
           if (!active) return;
           if (res?.lat && res?.lng) {
@@ -95,18 +107,21 @@ export function RouteMap({
   useEffect(() => {
     let active = true;
 
-    if (destinationLocation?.lat && destinationLocation?.lng) {
+    if (
+      Number.isFinite(destinationLocation?.lat) &&
+      Number.isFinite(destinationLocation?.lng)
+    ) {
       setResolvedDest({
-        lat: destinationLocation.lat,
-        lng: destinationLocation.lng,
-        name: destinationLocation.formattedAddress || destination || "Destino",
+        lat: destinationLocation!.lat!,
+        lng: destinationLocation!.lng!,
+        name: destinationLocation!.formattedAddress || destination || "Destino",
       });
       return;
     }
 
     if (destination && destination.trim().length >= 2) {
       setIsGeocoding(true);
-      void geocodeAddress(destination)
+      void geocode(destination)
         .then((res) => {
           if (!active) return;
           if (res?.lat && res?.lng) {

@@ -94,6 +94,7 @@ export function LocationAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectionWarning, setSelectionWarning] = useState("");
 
   const searchServerFn = useServerFn(searchLocationsServerFn);
   const detailsServerFn = useServerFn(getLocationDetailsServerFn);
@@ -217,12 +218,12 @@ export function LocationAutocomplete({
               score += (matchedTokens.length / tokens.length) * 20;
             }
 
-            if (item.providerId?.startsWith("loc_")) score += 15; // Curadoria local oficial
+            if (item.source === "google") score += 100;
             return score;
           };
 
           // Catálogo com match forte vem primeiro, mesclado com servidor
-          const allCandidates = [...catalogResults, ...serverSuggestions];
+          const allCandidates = [...serverSuggestions, ...catalogResults];
           allCandidates.sort((a, b) => scoreItem(b) - scoreItem(a));
 
           for (const item of allCandidates) {
@@ -259,6 +260,8 @@ export function LocationAutocomplete({
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    latestRequestIdRef.current += 1;
+    setSelectionWarning("");
     const nextVal = e.target.value;
     setQuery(nextVal);
 
@@ -293,68 +296,65 @@ export function LocationAutocomplete({
   };
 
   const handleSelectSuggestion = async (sug: LocationSuggestion) => {
-    latestRequestIdRef.current += 1;
+    const requestId = ++latestRequestIdRef.current;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setIsOpen(false);
     setIsLoading(true);
-
+    setSelectionWarning("");
+    let details = sug;
     try {
-      // Tenta obter detalhes com coordenadas e componentes exatos
-      let details: LocationSuggestion = sug;
-      if (sug.providerId && !sug.providerId.startsWith("loc_")) {
-        const detailsResp = await detailsServerFn({
+      if (
+        sug.providerId &&
+        !sug.providerId.startsWith("loc_") &&
+        !sug.providerId.startsWith("manual_")
+      ) {
+        const response = await detailsServerFn({
           data: { placeId: sug.providerId },
         });
-        if (detailsResp?.details) {
-          details = detailsResp.details;
-        }
+        if (response?.details) details = response.details;
       }
-
-      const displayAddress =
-        details.neighborhood || details.mainText || details.formattedAddress;
-      setQuery(displayAddress);
-
-      const locationDetails: FormLocationDetails = {
-        rawText: query || displayAddress,
-        formattedAddress: details.formattedAddress,
-        city: details.city,
-        state: details.state,
-        neighborhood: details.neighborhood,
-        lat: details.lat,
-        lng: details.lng,
-        providerId: details.providerId,
-      };
-
-      onChange(displayAddress, locationDetails);
-      onSelect?.(displayAddress, locationDetails);
-      setIsEditing(false);
     } catch {
-      // Fallback usando a sugestão básica já recebida
-      const displayAddress =
-        sug.neighborhood || sug.mainText || sug.formattedAddress;
-      setQuery(displayAddress);
-      const fallbackDetails: FormLocationDetails = {
-        rawText: query || displayAddress,
-        formattedAddress: sug.formattedAddress,
-        city: sug.city,
-        state: sug.state,
-        neighborhood: sug.neighborhood,
-        lat: sug.lat,
-        lng: sug.lng,
-        providerId: sug.providerId,
-      };
-      onChange(displayAddress, fallbackDetails);
-      onSelect?.(displayAddress, fallbackDetails);
-      setIsEditing(false);
-    } finally {
-      setIsLoading(false);
+      /* Preserve the selected text; never invent GPS. */
     }
+    if (requestId !== latestRequestIdRef.current) return;
+    const precise =
+      Number.isFinite(details.lat) && Number.isFinite(details.lng);
+    const displayAddress = details.mainText || details.formattedAddress;
+    setQuery(displayAddress);
+    const locationDetails: FormLocationDetails = {
+      rawText: displayAddress,
+      formattedAddress: details.formattedAddress,
+      city: details.city,
+      state: details.state,
+      neighborhood: details.neighborhood,
+      country: details.country,
+      postalCode: details.postalCode,
+      street: details.street,
+      streetNumber: details.streetNumber,
+      lat: precise ? details.lat : undefined,
+      lng: precise ? details.lng : undefined,
+      providerId: details.providerId,
+      placeId: details.providerId,
+      source:
+        details.source ||
+        (sug.providerId.startsWith("loc_") ? "catalog" : "manual"),
+      isApproximate: details.isApproximate || !precise,
+    };
+    if (!precise)
+      setSelectionWarning(
+        "Endereço selecionado sem coordenadas. Tente buscar novamente para calcular a rota.",
+      );
+    onChange(displayAddress, locationDetails);
+    onSelect?.(displayAddress, locationDetails);
+    setIsEditing(false);
+    setIsLoading(false);
   };
 
   const handleClear = () => {
     latestRequestIdRef.current += 1;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setIsLoading(false);
+    setSelectionWarning("");
     setQuery("");
     onChange("", undefined);
     setSuggestions([]);
@@ -381,6 +381,11 @@ export function LocationAutocomplete({
 
   return (
     <div className="relative space-y-1.5" ref={wrapperRef}>
+      {selectionWarning && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {selectionWarning}
+        </p>
+      )}
       {label && (
         <div className="flex items-center justify-between gap-2">
           <label
@@ -580,6 +585,13 @@ export function LocationAutocomplete({
                     >
                       {sug.mainText}
                     </div>
+                    <span className="text-[10px] font-medium text-caronaa-primary-strong">
+                      {sug.source === "google"
+                        ? "Google Maps"
+                        : sug.providerId.startsWith("loc_")
+                          ? "Catálogo Ceará"
+                          : "Endereço manual"}
+                    </span>
                     {sug.secondaryText ? (
                       <div
                         className={

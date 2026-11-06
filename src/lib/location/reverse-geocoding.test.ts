@@ -10,12 +10,11 @@ describe("Google reverse geocoding", () => {
     const request = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        status: "OK",
         results: [
           {
-            formatted_address: "Rua A, Fortaleza, Ceará",
-            address_components: [],
-            geometry: { location: { lat: -3.7, lng: -38.5 } },
+            formattedAddress: "Rua A, Fortaleza, Ceará",
+            addressComponents: [],
+            location: { latitude: -3.7, longitude: -38.5 },
           },
         ],
       }),
@@ -28,20 +27,20 @@ describe("Google reverse geocoding", () => {
         lng: -38.52,
       }),
     );
-    expect(request.mock.calls[0][0].hostname).toBe("maps.googleapis.com");
-    expect(request.mock.calls[0][0].searchParams.get("latlng")).toBe(
-      "-3.73,-38.52",
+    expect(new URL(request.mock.calls[0][0]).hostname).toBe(
+      "geocode.googleapis.com",
+    );
+    expect(new URL(request.mock.calls[0][0]).pathname).toBe(
+      "/v4/geocode/location/-3.73,-38.52",
     );
   });
   it("does not invent addresses when results are empty", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ status: "ZERO_RESULTS" }),
-        }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ results: [] }),
+      }),
     );
     expect(await new GooglePlacesProvider().reverse(-3.73, -38.52)).toBeNull();
   });
@@ -55,12 +54,10 @@ describe("Google reverse geocoding", () => {
     ).rejects.toThrow("503");
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ status: "REQUEST_DENIED" }),
-        }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ error: { message: "forbidden" } }),
+      }),
     );
     await expect(
       new GooglePlacesProvider().reverse(-3.73, -38.52),

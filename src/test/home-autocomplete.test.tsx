@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 const api = vi.hoisted(() => ({ search: vi.fn(), details: vi.fn() }));
@@ -41,13 +47,18 @@ describe("Seleção de destino na home", () => {
         variant="simple"
       />,
     );
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "UNIFOR" } });
+    fireEvent.change(screen.getByLabelText("Destino"), {
+      target: { value: "UNIFOR" },
+    });
     await waitFor(() => expect(api.search).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole("option", { name: /Unifor/i }));
     await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith(
         expect.any(String),
-        expect.objectContaining({ lat: expect.any(Number), lng: expect.any(Number) }),
+        expect.objectContaining({
+          lat: expect.any(Number),
+          lng: expect.any(Number),
+        }),
       ),
     );
     await act(async () => resolve({ suggestions: [suggestion] }));
@@ -69,10 +80,155 @@ describe("Seleção de destino na home", () => {
         variant="simple"
       />,
     );
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "UNIFOR" } });
+    fireEvent.change(screen.getByLabelText("Destino"), {
+      target: { value: "UNIFOR" },
+    });
     await waitFor(() => expect(api.search).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole("button", { name: "Limpar localização" }));
     await act(async () => resolve({ suggestions: [suggestion] }));
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+});
+
+describe("Google Places New selection", () => {
+  it("shows official provenance and delivers precise details immediately after the details response", async () => {
+    const official = {
+      providerId: "ChIJ_precise",
+      mainText: "Shopping Precisão",
+      secondaryText: "Av. Teste, Centro, Redenção - CE",
+      formattedAddress: "Shopping Precisão, Redenção - CE",
+      source: "google",
+    };
+    api.search.mockResolvedValue({ suggestions: [official] });
+    let resolve!: (value: unknown) => void;
+    api.details.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const onSelect = vi.fn(),
+      onChange = vi.fn();
+    render(
+      <LocationAutocomplete
+        id="precise"
+        label="Destino preciso"
+        onChange={onChange}
+        onSelect={onSelect}
+        variant="simple"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Destino preciso"), {
+      target: { value: "Shopping Precisão" },
+    });
+    const option = await screen.findByRole("option", {
+      name: /Shopping Precisão/,
+    });
+    expect(option).toHaveTextContent("Google Maps");
+    expect(option).toHaveTextContent("Redenção - CE");
+    fireEvent.click(option);
+    expect(onSelect).not.toHaveBeenCalled();
+    await act(async () =>
+      resolve({
+        details: {
+          ...official,
+          lat: -4.2182,
+          lng: -38.714,
+          city: "Redenção",
+          state: "CE",
+          neighborhood: "Auroras",
+          postalCode: "62790-000",
+          street: "Av. Teste",
+        },
+      }),
+    );
+    expect(onSelect).toHaveBeenCalledWith(
+      "Shopping Precisão",
+      expect.objectContaining({
+        lat: -4.2182,
+        lng: -38.714,
+        city: "Redenção",
+        state: "CE",
+        neighborhood: "Auroras",
+        postalCode: "62790-000",
+        source: "google",
+        isApproximate: false,
+      }),
+    );
+  });
+  it("keeps manual text available when details fail, without invented coordinates", async () => {
+    const official = {
+      providerId: "ChIJ_offline",
+      mainText: "Destino sem conexão",
+      secondaryText: "Fortaleza - CE",
+      formattedAddress: "Destino sem conexão, Fortaleza - CE",
+      source: "google",
+    };
+    api.search.mockResolvedValue({ suggestions: [official] });
+    api.details.mockRejectedValue(new Error("offline"));
+    const onSelect = vi.fn();
+    render(
+      <LocationAutocomplete
+        id="offline"
+        label="Destino offline"
+        onChange={vi.fn()}
+        onSelect={onSelect}
+        variant="simple"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Destino offline"), {
+      target: { value: "Destino sem conexão" },
+    });
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Destino sem conexão/ }),
+    );
+    await waitFor(() =>
+      expect(onSelect).toHaveBeenCalledWith(
+        "Destino sem conexão",
+        expect.objectContaining({
+          lat: undefined,
+          lng: undefined,
+          isApproximate: true,
+        }),
+      ),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("sem coordenadas");
+  });
+  it("ignores details from a selection cleared while its request was pending", async () => {
+    const official = {
+      providerId: "ChIJ_stale",
+      mainText: "Lugar atrasado",
+      secondaryText: "Fortaleza - CE",
+      formattedAddress: "Lugar atrasado",
+      source: "google",
+    };
+    api.search.mockResolvedValue({ suggestions: [official] });
+    let resolve!: (value: unknown) => void;
+    api.details.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const onSelect = vi.fn();
+    render(
+      <LocationAutocomplete
+        id="stale"
+        label="Destino atrasado"
+        onChange={vi.fn()}
+        onSelect={onSelect}
+        variant="simple"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Destino atrasado"), {
+      target: { value: "Lugar atrasado" },
+    });
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Lugar atrasado/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Limpar localização" }));
+    await act(async () =>
+      resolve({ details: { ...official, lat: -3.7, lng: -38.5 } }),
+    );
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Destino atrasado")).toHaveValue("");
   });
 });

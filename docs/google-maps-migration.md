@@ -23,8 +23,9 @@ utilizados. Não coloque valores reais no Git. Restrições de chave, faturament
 APIs habilitadas devem ser conferidos no Google Cloud.
 
 `GOOGLE_MAPS_API_KEY` autentica as chamadas POST de Google Routes no servidor.
-Habilite Routes API. A busca de endereços usa Google Places no servidor e o GPS usa
-Google Geocoding API; ambas aceitam `GOOGLE_PLACES_API_KEY` ou `GOOGLE_MAPS_API_KEY`.
+Habilite Routes API. A busca de endereços usa Google Places API (New) no servidor e o GPS usa
+Google Geocoding API v4. A prioridade de credencial REST é `GOOGLE_MAPS_API_KEY`,
+`GOOGLE_PLACES_API_KEY`, `VITE_GOOGLE_MAPS_API_KEY` (binding de servidor ou build).
 Habilite as APIs correspondentes e Maps JavaScript API para o navegador.
 Uma chave com restrições exclusivas de navegador não serve automaticamente para
 chamadas REST do servidor; as duas credenciais dedicadas evitam esse conflito.
@@ -75,3 +76,46 @@ Referência: https://developers.google.com/maps/documentation/routes/reference/r
 
 Módulos: F01, F03, F05, F06, F07 e F08. O README permanece alinhado: tarifa rodoviária,
 consentimentos e permissões preservados; sem mudança de banco nem regras comerciais.
+
+
+## Places API (New) e precisão de endereço
+
+- Autocomplete: POST `https://places.googleapis.com/v1/places:autocomplete`,
+  `includedRegionCodes: ["br"]`, `languageCode: "pt-BR"` e viés circular de
+  50.000 m em (-3.7319, -38.5267). Esse viés não bloqueia buscas na UNILAB/Redenção.
+- Details: GET `/v1/places/{placeId}`, com campos `id,displayName,formattedAddress,location,addressComponents`.
+- Texto livre: POST `/v1/places:searchText`, com máscara explícita, idioma pt-BR e região BR.
+- GPS: GET `https://geocode.googleapis.com/v4/geocode/location/{lat},{lng}`;
+  Text Search não é um serviço de geocodificação reversa. O GPS autorizado permanece
+  na posição original, mesmo quando o Google retorna o endereço do prédio próximo.
+- Todos os pedidos REST usam `X-Goog-Api-Key` e timeout; erros externos não retornam
+  chave, URL de requisição ou mensagem bruta do provedor para a interface.
+- Credenciais iguais às variáveis dedicadas Maps Browser são recusadas no backend.
+  Restrições configuradas no Google Cloud não podem ser descobertas pelo valor da
+  chave: configure credenciais REST apropriadas, APIs autorizadas e restrições por IP
+  quando aplicáveis. Erros de permissão não provocam troca para uma chave de navegador.
+- Configure Places API (New), Geocoding API v4 e Routes API no projeto. Maps JavaScript
+  continua com credencial própria para o navegador. A função de status compartilha
+  a mesma resolução de credenciais do provedor, sem retornar valores de chaves.
+
+Predições oficiais aparecem com o nome principal, endereço secundário e procedência
+Google Maps. A seleção pede Details sem debounce adicional e entrega coordenadas,
+bairro, município, UF e CEP por `onChange`/`onSelect`. Uma resposta atrasada não
+sobrescreve seleção cancelada ou texto novo. Falhas preservam a digitação, sinalizam
+coordenadas ausentes e não inventam latitude/longitude nem calculam cotação fictícia.
+O mapa resolve texto livre pelo servidor antes de recorrer ao catálogo aproximado.
+
+O catálogo continua imediato/offline, com procedência separada do Google. Foi
+acrescentada uma referência aproximada da UNILAB — Campus das Auroras, identificada
+como aproximada; não é uma entrada de embarque verificada. Fonte: repositório oficial
+UNILAB, trabalho de Paulo Christian Queiroz Braga (2023), coordenadas da instalação
+solar no campus, https://repositorio.unilab.edu.br/jspui/bitstream/123456789/5041/1/PAULO%20CHRISTIAN%20QUEIROZ%20BRAGA.pdf.
+
+Os testes de UNILAB, UNIFOR, Aldeota e Maracanaú cobrem contratos New e o fallback
+local com coordenadas. As respostas Google dos testes são mocks. Não havia credencial
+REST disponível neste ambiente para homologação de buscas ao vivo; domínio publicado,
+quotas, faturamento e restrições devem ser validados após o deploy.
+
+Validação Places New: 168 arquivos / 937 testes aprovados; TypeScript sem erros;
+build cliente/servidor/Nitro aprovado. Mantida a mesma limitação do asset binário
+local descrita acima; nenhum asset é publicado nesta alteração.

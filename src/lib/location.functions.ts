@@ -11,7 +11,7 @@ import {
 } from "./location/service";
 
 export const reverseGeocodeServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         lat: z.number().finite().min(-90).max(90),
@@ -22,8 +22,8 @@ export const reverseGeocodeServerFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       return await reverseGeocodeService(data.lat, data.lng);
-    } catch (error) {
-      console.warn("[Location] Reverse geocoding unavailable", error);
+    } catch {
+      console.warn("[Location] Reverse geocoding unavailable");
       return null;
     }
   });
@@ -41,29 +41,29 @@ const geocodeQuerySchema = z.object({
 });
 
 export const searchLocationsServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => searchQuerySchema.parse(input))
+  .validator((input: unknown) => searchQuerySchema.parse(input))
   .handler(async ({ data }) => {
     return await searchLocationsService(data.query);
   });
 
 export const getLocationDetailsServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => placeDetailsSchema.parse(input))
+  .validator((input: unknown) => placeDetailsSchema.parse(input))
   .handler(async ({ data }) => {
     return await getLocationDetailsService(data.placeId);
   });
 
 export const geocodeAddressServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => geocodeQuerySchema.parse(input))
+  .validator((input: unknown) => geocodeQuerySchema.parse(input))
   .handler(async ({ data }) => {
     return await geocodeAddressService(data.address);
   });
 
-export const getLocationConfigStatusServerFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    return {
-      isConfigured: isLocationServiceConfigured(),
-      provider: getLocationProviderName(),
-      missingEnvVars: getMissingLocationConfig(),
-    };
-  },
-);
+export const getLocationConfigStatusServerFn = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  return {
+    isConfigured: isLocationServiceConfigured(),
+    provider: getLocationProviderName(),
+    missingEnvVars: getMissingLocationConfig(),
+  };
+});

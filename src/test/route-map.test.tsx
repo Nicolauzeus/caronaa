@@ -3,9 +3,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { RouteMap } from "@/components/caronaa/RouteMap";
 
+vi.mock("@tanstack/react-start", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-start")>()),
+  useServerFn: (fn: unknown) => fn,
+}));
+vi.mock("@/lib/location.functions", () => ({
+  geocodeAddressServerFn: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/components/caronaa/LiveRideMap", () => ({
-  LiveRideMap: ({points}: {points: Array<{title:string}>}) => (
-    <div role="img" aria-label={`Mapa da viagem: ${points.map(p=>p.title).join(", ")}`} />
+  LiveRideMap: ({ points }: { points: Array<{ title: string }> }) => (
+    <div
+      role="img"
+      aria-label={`Mapa da viagem: ${points.map((p) => p.title).join(", ")}`}
+    />
   ),
 }));
 
@@ -39,7 +50,9 @@ describe("RouteMap Component", () => {
     );
 
     // Coordinates are passed to the real road-route component instead of a point-only iframe.
-    expect(screen.getByRole("img", { name: /Mapa da viagem/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /Mapa da viagem/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Trajeto pelas vias/i)).toBeInTheDocument();
 
     // External map link
@@ -56,17 +69,14 @@ describe("RouteMap Component", () => {
   });
 
   it("geocodes text-only addresses using local catalog and renders route", async () => {
-    render(
-      <RouteMap
-        origin="Aldeota"
-        destination="Unifor"
-      />,
-    );
+    render(<RouteMap origin="Aldeota" destination="Unifor" />);
 
     // Geocodes via catalog provider and loads map
     await waitFor(
       () => {
-        expect(screen.getByRole("img", { name: /Mapa da viagem/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("img", { name: /Mapa da viagem/i }),
+        ).toBeInTheDocument();
       },
       { timeout: 4000 },
     );
