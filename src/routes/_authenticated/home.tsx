@@ -1,3 +1,6 @@
+import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
+import type { StrictPickupPreview } from "@/lib/safe-pickup";
+import { buildQuickRideSearch } from "@/lib/quick-ride-search";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import {
   PassengerRideOptions,
@@ -8,10 +11,10 @@ import {
   TimeToleranceSelector,
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Search, ArrowRight, LocateFixed, MapPin, CalendarDays, Minus, Plus } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommuteSuggestion";
@@ -25,18 +28,12 @@ import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap, type ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
-import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
+import { useUserLocation } from "@/lib/location/use-user-location";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
-
-const QuickRideExperience = lazy(() =>
-  import("@/components/caronaa/QuickRideExperience").then((module) => ({
-    default: module.QuickRideExperience,
-  })),
-);
 
 export const Route = createFileRoute("/_authenticated/home")({
   // Parent route already verifies login and applies institution waiting gates.
@@ -78,7 +75,9 @@ function Home() {
   const loadRecent = useServerFn(getRecentHomeDestinations);
   const requestRide = useServerFn(createRideRequest);
   const reverseGeocode = useServerFn(reverseGeocodeServerFn);
-  const location = useUserLocation();
+  const navigate = useNavigate();
+  const location = useUserLocation({ autoLocate: true });
+  const manualOriginChosen = useRef(false);
   const [originSource, setOriginSource] = useState<"CURRENT_LOCATION" | "MANUAL_ORIGIN">(
     "CURRENT_LOCATION",
   );
@@ -160,14 +159,22 @@ function Home() {
   const [count, setCount] = useState("1");
   const [confirmedReviewKey, setConfirmedReviewKey] = useState<string | null>(null);
   const [requestFare, setRequestFare] = useState<
-    (FarePreview & { origin: string; destination: string }) | null
+    (FarePreview & { origin: string; destination: string; routeKey: string }) | null
   >(null);
   const [requestFareRefresh, setRequestFareRefresh] = useState(0);
+  const fareRouteKey = JSON.stringify([
+    origin,
+    destination,
+    originLocation?.lat,
+    originLocation?.lng,
+    destinationLocation?.lat,
+    destinationLocation?.lng,
+  ]);
   const receiveRequestFare = useCallback(
     (quote: FarePreview | null) => {
-      setRequestFare(quote ? { ...quote, origin, destination } : null);
+      setRequestFare(quote ? { ...quote, origin, destination, routeKey: fareRouteKey } : null);
     },
-    [origin, destination],
+    [origin, destination, fareRouteKey],
   );
   const [busy, setBusy] = useState(false);
   const requestSubmitting = useRef(false);
@@ -192,6 +199,44 @@ function Home() {
     };
   }, [loadRecent]);
   const active = journeys[0];
+  const pickupRide = journeys.find(
+    (journey) =>
+      journey.kind === "ride" &&
+      "role" in journey &&
+      journey.role === "passenger" &&
+      ["MATCHED", "CONFIRMED"].includes(journey.status),
+  );
+  const pickupRideId = pickupRide?.id;
+  const hasPendingRequest = journeys.some(
+    (journey) =>
+      (journey.kind === "request" && journey.status === "open") ||
+      (journey.kind === "ride" && ["MATCHED", "CONFIRMED"].includes(journey.status)),
+  );
+  useEffect(() => {
+    if (!hasPendingRequest) return;
+    const check = () => {
+      if (!document.hidden) refresh();
+    };
+    const timer = window.setInterval(check, 15000);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [hasPendingRequest, refresh]);
+  useEffect(() => {
+    if (pickupRideId) setPanelOpen(true);
+  }, [pickupRideId]);
+  const [pickupPreview, setPickupPreview] = useState<{
+    rideId: string;
+    value: StrictPickupPreview;
+  } | null>(null);
+  const receivePickupPreview = useCallback(
+    (value: StrictPickupPreview | null) => {
+      setPickupPreview(value && pickupRideId ? { rideId: pickupRideId, value } : null);
+    },
+    [pickupRideId],
+  );
   const activeIsCurrent = Boolean(
     active &&
     active.status !== "CANCELLED" &&
@@ -205,6 +250,19 @@ function Home() {
     (active?.origin_lat != null && active.origin_lng != null
       ? { lat: active.origin_lat, lng: active.origin_lng }
       : undefined);
+  useEffect(() => {
+    if (location.failure && originSource === "CURRENT_LOCATION") {
+      setOriginSource("MANUAL_ORIGIN");
+      if (!location.addressPosition) {
+        setOrigin("");
+        setOriginLocation(undefined);
+      }
+    }
+  }, [location.failure, location.addressPosition, originSource]);
+  useEffect(() => {
+    if (location.addressPosition && !manualOriginChosen.current && !location.failure)
+      setOriginSource("CURRENT_LOCATION");
+  }, [location.addressPosition, location.failure]);
   useEffect(() => {
     if (!location.addressPosition || originSource !== "CURRENT_LOCATION") return;
     let alive = true;
@@ -230,25 +288,25 @@ function Home() {
     };
   }, [location.addressPosition, reverseGeocode, originSource]);
   useEffect(() => {
-    if (originSource !== "CURRENT_LOCATION" || !location.position) return;
-    const { lat, lng } = location.position;
+    if (originSource !== "CURRENT_LOCATION" || !location.addressPosition) return;
+    const { lat, lng } = location.addressPosition;
     const addressStillNear =
       resolvedAddress?.lat != null &&
       resolvedAddress.lng != null &&
       Math.abs(resolvedAddress.lat - lat) < 0.0003 &&
       Math.abs(resolvedAddress.lng - lng) < 0.0003;
     const label = addressStillNear
-      ? resolvedAddress.formattedAddress || "Localização atual"
-      : "Localização atual";
+      ? resolvedAddress.formattedAddress || "Minha localização atual"
+      : "Minha localização atual";
     setOrigin(label);
     setOriginLocation({
       rawText: label,
       formattedAddress: label,
       lat,
       lng,
-      isApproximate: location.position.accuracy > 100,
+      isApproximate: location.addressPosition.accuracy > 100,
     });
-  }, [originSource, location.position, resolvedAddress]);
+  }, [originSource, location.addressPosition, resolvedAddress]);
   // GPS city takes precedence unless the user manually selected a municipality.
   useEffect(() => {
     const city = resolvedAddress?.city?.trim();
@@ -278,8 +336,7 @@ function Home() {
   useEffect(() => {
     if (gender !== "FEMININO") setWomenOnly(false);
   }, [gender]);
-  const currentFare =
-    requestFare?.origin === origin && requestFare.destination === destination ? requestFare : null;
+  const currentFare = requestFare?.routeKey === fareRouteKey ? requestFare : null;
   const reviewKey = JSON.stringify([
     currentFare?.quoteId,
     origin,
@@ -295,8 +352,11 @@ function Home() {
   const reviewed = confirmedReviewKey === reviewKey;
   function expandDestination() {
     setPanelOpen(true);
-    window.requestAnimationFrame(() => document.getElementById("home-destination")?.focus());
+    document.getElementById("home-destination")?.focus();
   }
+  useEffect(() => {
+    if (panelOpen) document.getElementById("home-destination")?.focus();
+  }, [panelOpen]);
   async function submitRequest(event: React.FormEvent) {
     event.preventDefault();
     if (!origin.trim() || !destination.trim()) {
@@ -355,10 +415,15 @@ function Home() {
         <div className="absolute inset-0">
           <HomeRideMap
             immersive
+            pickupPreview={
+              rideOption === "CAR" && pickupPreview && pickupPreview.rideId === pickupRideId
+                ? pickupPreview.value
+                : null
+            }
             professionalDrivers={professionalDrivers}
             userPosition={location.position}
-            origin={point}
-            destination={destinationLocation}
+            origin={currentFare?.originPoint ?? point}
+            destination={destinationLocation ?? currentFare?.destinationPoint}
             originIsCurrent={originSource === "CURRENT_LOCATION" && Boolean(location.position)}
             following={location.isFollowingUser}
             recenterVersion={location.recenterVersion}
@@ -479,6 +544,7 @@ function Home() {
             >
               <FavoriteCommuteSuggestion
                 onChoose={(from, to) => {
+                  manualOriginChosen.current = true;
                   setOriginSource("MANUAL_ORIGIN");
                   setOrigin(from.label);
                   setDestination(to.label);
@@ -492,6 +558,7 @@ function Home() {
                     type="button"
                     disabled={location.locating}
                     onClick={() => {
+                      manualOriginChosen.current = false;
                       setOriginSource("CURRENT_LOCATION");
                       location.locate();
                     }}
@@ -500,10 +567,10 @@ function Home() {
                     <LocateFixed size={18} />
                     {location.locating ? "Localizando…" : "Usar minha localização atual"}
                   </button>
-                  {location.failure && (
+                  {location.failure && !origin && (
                     <p role="status" className="text-xs text-gray-300">
-                      {locationFailureMessages[location.failure]} Você pode digitar sua saída
-                      abaixo.
+                      Digite sua saída abaixo para continuar. Você também pode tentar usar sua
+                      localização novamente.
                     </p>
                   )}
                   {reverseFailed && (
@@ -519,6 +586,7 @@ function Home() {
                     required
                     placeholder="De onde você sai?"
                     onChange={(value, details) => {
+                      manualOriginChosen.current = true;
                       setOriginSource("MANUAL_ORIGIN");
                       setOrigin(details?.formattedAddress || value);
                       setOriginLocation(details);
@@ -526,6 +594,7 @@ function Home() {
                   />
                   <LocationAutocomplete
                     id="home-destination"
+                    autoFocus
                     label="Destino"
                     value={destination}
                     variant="glass"
@@ -541,6 +610,19 @@ function Home() {
                   value={rideOption}
                   estimate={currentFare?.pricePerPassenger ?? null}
                   onChange={(value) => {
+                    if (value === "EXCLUSIVE") {
+                      void navigate({
+                        to: "/viagem-rapida",
+                        search: buildQuickRideSearch({
+                          origin,
+                          destination,
+                          municipality: professionalMunicipality,
+                          originPoint: originLocation ?? currentFare?.originPoint,
+                          destinationPoint: destinationLocation ?? currentFare?.destinationPoint,
+                        }),
+                      });
+                      return;
+                    }
                     setRideOption(value);
                     setConfirmedReviewKey(null);
                     if (value === "MOTO") setCount("1");
@@ -619,10 +701,20 @@ function Home() {
                         origin={origin}
                         destination={destination}
                         passengerCount={rideOption === "MOTO" ? 1 : Number(count)}
+                        originLocation={originLocation}
+                        destinationLocation={destinationLocation}
                         onQuote={receiveRequestFare}
                         refreshKey={requestFareRefresh}
                       />
                     </div>
+                    {rideOption === "CAR" && pickupRideId && (
+                      <StrictPickupPanel
+                        rideId={pickupRideId}
+                        autoSuggest
+                        showMap={false}
+                        onPreviewChange={receivePickupPreview}
+                      />
+                    )}
                     <WomenOnlyToggle
                       gender={gender}
                       kind="request"
@@ -681,43 +773,6 @@ function Home() {
                   </>
                 )}
               </form>
-              {rideOption === "EXCLUSIVE" && (
-                <div className="mt-4 space-y-3">
-                  <details className="rounded-2xl border border-white/10 p-3">
-                    <summary className="cursor-pointer text-sm">
-                      Região e profissionais disponíveis
-                    </summary>
-                    <label htmlFor="professional-municipality" className="mt-3 block text-sm">
-                      Região
-                    </label>
-                    <input
-                      id="professional-municipality"
-                      value={professionalMunicipality}
-                      onChange={(e) => {
-                        professionalMunicipalityEdited.current = true;
-                        setProfessionalMunicipality(e.target.value);
-                      }}
-                      className="mt-1 h-12 w-full rounded-xl border border-white/15 bg-white/5 px-3"
-                    />
-                    <p role="status" className="mt-2 text-xs text-gray-300">
-                      {professionalLoading
-                        ? "Atualizando profissionais…"
-                        : professionalError ||
-                          `${professionalDrivers.length} profissional(is) disponível(is) no mapa.`}
-                    </p>
-                  </details>
-                  <Suspense fallback={<p role="status">Abrindo Corrida Direta…</p>}>
-                    <QuickRideExperience
-                      embedded
-                      initialMunicipality={professionalMunicipality}
-                      initialOrigin={origin}
-                      initialDestination={destination}
-                      initialOriginPoint={originLocation}
-                      initialDestinationPoint={destinationLocation}
-                    />
-                  </Suspense>
-                </div>
-              )}
               {active && (
                 <Link
                   to="/minhas-caronas"

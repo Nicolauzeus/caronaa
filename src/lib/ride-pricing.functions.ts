@@ -6,10 +6,22 @@ import { calculateFreeSeatPotential } from "./ride-potential";
 import { getDrivingDistanceKm } from "./road-routing";
 
 const rideIdInput = z.object({ rideId: z.string().uuid() });
-const routeInput = z.object({
-  origin: z.string().trim().min(1).max(160),
-  destination: z.string().trim().min(1).max(160),
-});
+const routeInput = z
+  .object({
+    origin: z.string().trim().min(1).max(160),
+    destination: z.string().trim().min(1).max(160),
+    originLat: z.number().finite().min(-90).max(90).optional(),
+    originLng: z.number().finite().min(-180).max(180).optional(),
+    destinationLat: z.number().finite().min(-90).max(90).optional(),
+    destinationLng: z.number().finite().min(-180).max(180).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      (data.originLat == null) !== (data.originLng == null) ||
+      (data.destinationLat == null) !== (data.destinationLng == null)
+    )
+      ctx.addIssue({ code: "custom", message: "Informe as duas coordenadas do local." });
+  });
 const remainingPotentialInput = z.object({
   offerId: z.string().uuid(),
   latitude: z.number().finite().min(-90).max(90),
@@ -33,8 +45,16 @@ export const previewRequestFare = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { geocodeAddressService } = await import("./location/service");
     const [origin, destination] = await Promise.all([
-      geocodeAddressService(data.origin),
-      geocodeAddressService(data.destination),
+      data.originLat != null && data.originLng != null
+        ? Promise.resolve({ lat: data.originLat, lng: data.originLng, isApproximate: false })
+        : geocodeAddressService(data.origin),
+      data.destinationLat != null && data.destinationLng != null
+        ? Promise.resolve({
+            lat: data.destinationLat,
+            lng: data.destinationLng,
+            isApproximate: false,
+          })
+        : geocodeAddressService(data.destination),
     ]);
     if (
       !origin ||
@@ -96,6 +116,8 @@ export const previewRequestFare = createServerFn({ method: "POST" })
       throw new Error("Não foi possível salvar a cotação do trecho. Tente novamente.");
 
     return {
+      originPoint: { lat: origin.lat, lng: origin.lng },
+      destinationPoint: { lat: destination.lat, lng: destination.lng },
       quoteId: quote.quote_id,
       expiresAt: quote.expires_at,
       distanceKm,
@@ -272,7 +294,10 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
       );
     }
     const pricePerPassenger = calculatePassengerFare(distanceKm);
-    const groupTotal = calculateRequestedGroupFare(pricePerPassenger, Number(request.passenger_count));
+    const groupTotal = calculateRequestedGroupFare(
+      pricePerPassenger,
+      Number(request.passenger_count),
+    );
     const { error: persistError } = await admin.rpc("persist_ride_route_quote", {
       p_ride_id: data.rideId,
       p_route_distance_km: distanceKm,

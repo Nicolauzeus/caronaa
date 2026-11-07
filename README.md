@@ -49,11 +49,28 @@ Mostrar o preço estimado final, sem expor a fórmula matemática nos componente
 O cálculo compartilhado descrito em F03 continua inalterado no servidor e na biblioteca.
 
 **Carona entre mulheres:** somente perfis com `profiles.gender = 'FEMININO'` visualizam
-os controles opcionais de passageira/condutora; homens e gênero não informado não recebem
-controles nem mensagens sobre o recurso. Pedidos que optam pelo recurso combinam apenas
+os controles opcionais de passageira/condutora. Homens não recebem controles nem mensagens
+sobre o recurso. Passageiros com gênero não informado recebem somente uma dica discreta
+com link para completar o Perfil; o toggle permanece ausente. Pedidos que optam pelo recurso combinam apenas
 com condutoras de ofertas exclusivas para passageiras. Persistir e validar esses filtros
 antes do matching; não converter ofertas ou pedidos históricos silenciosamente.
 A migration 0137 deve preceder a publicação desta interface.
+
+**Localização e encontro (07/11/2026):** a Home operacional solicita GPS automaticamente
+em celular e desktop, respeitando a permissão do navegador. Recusa/indisponibilidade
+libera origem manual; uma escolha manual nunca é sobrescrita por uma resposta tardia.
+A origem contratada usa o fix de GPS inicial (ou um novo fix solicitado), enquanto o
+marcador pode acompanhar o movimento sem refazer cotações a cada atualização.
+Coordenadas resolvidas seguem para a cotação rodoviária no servidor e para o piloto F07.
+A seleção de Corrida Direta abre `/viagem-rapida`, sem montar o piloto dentro do sheet.
+
+Após uma combinação autorizada, a Home mostra a sugestão de encontro para oferta estrita
+ou rodovia identificada nos endereços/ponto de referência salvos da oferta (BR/CE).
+Não inferir rodovia apenas por proximidade geográfica. Usar a rota viária salva do
+condutor, referência próxima e caminhada Google quando disponível. O mapa exibe os
+pontos e a caminhada pontilhada real. Não inventar distância/tempo quando a rota a pé
+falhar, nem alterar unilateralmente embarque, política de desvios ou tarifa.
+Esta autorização de GPS automático é da Home operacional; F01 mantém GPS após toque.
 
 1. Informar origem (GPS autorizado ou digitação).
 2. Informar destino.

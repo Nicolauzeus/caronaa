@@ -1,16 +1,30 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { PassengerRideOptions } from "@/components/caronaa/PassengerRideOptions";
 
 describe("Women-only control eligibility", () => {
-  it.each(["MASCULINO", null] as const)("renders no DOM for %s in either role", (gender) => {
+  it.each(["MASCULINO"] as const)("renders no DOM for %s in either role", (gender) => {
     const { container } = render(
       <>
         <WomenOnlyToggle gender={gender} checked={true} onChange={vi.fn()} kind="request" />
         <WomenOnlyToggle gender={gender} checked={true} onChange={vi.fn()} kind="offer" />
       </>,
     );
+    expect(container).toBeEmptyDOMElement();
+  });
+  it("offers a Profile link only to passengers with missing gender", () => {
+    const { rerender, container } = render(
+      <WomenOnlyToggle gender={null} checked={false} onChange={vi.fn()} kind="request" />,
+    );
+    expect(screen.getByRole("link", { name: "Perfil" })).toHaveAttribute("href", "/perfil");
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    rerender(<WomenOnlyToggle gender={null} checked={false} onChange={vi.fn()} kind="offer" />);
     expect(container).toBeEmptyDOMElement();
   });
   it.each(["request", "offer"] as const)(
@@ -26,7 +40,9 @@ describe("Women-only control eligibility", () => {
       expect(control).not.toBeChecked();
       fireEvent.click(control);
       expect(onChange).toHaveBeenCalledWith(true);
-      rerender(<WomenOnlyToggle gender={null} checked={true} onChange={onChange} kind={kind} />);
+      rerender(
+        <WomenOnlyToggle gender="MASCULINO" checked={true} onChange={onChange} kind={kind} />,
+      );
       expect(container).toBeEmptyDOMElement();
     },
   );

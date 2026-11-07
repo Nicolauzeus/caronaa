@@ -1,3 +1,4 @@
+import type { StrictPickupPreview } from "@/lib/safe-pickup";
 import { memo } from "react";
 import { GoogleHomeRideMap } from "./GoogleHomeRideMap";
 import type { UserPosition } from "@/lib/location/use-user-location";
@@ -10,6 +11,7 @@ export type ApproximateProfessionalDriver = {
   seen_at: string;
 };
 type Props = {
+  pickupPreview?: StrictPickupPreview | null;
   immersive?: boolean;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];

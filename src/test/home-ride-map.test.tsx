@@ -1,18 +1,8 @@
-import {
-  act,
-  render,
-  waitFor,
-  fireEvent,
-  screen,
-  cleanup,
-} from "@testing-library/react";
+import { act, render, waitFor, fireEvent, screen, cleanup } from "@testing-library/react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
-import {
-  loadGoogleMaps,
-  onGoogleMapsAuthFailure,
-} from "@/lib/google-maps-loader";
+import { loadGoogleMaps, onGoogleMapsAuthFailure } from "@/lib/google-maps-loader";
 const api = vi.hoisted(() => ({
   create: vi.fn(),
   panTo: vi.fn(),
@@ -21,6 +11,7 @@ const api = vi.hoisted(() => ({
   marker: vi.fn(),
   circle: vi.fn(),
   clear: vi.fn(),
+  polyline: vi.fn(),
 }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@/lib/google-maps-browser.functions", () => ({
@@ -76,6 +67,9 @@ beforeEach(() => {
         setMap = api.clear;
       },
       Polyline: class {
+        constructor(options: unknown) {
+          api.polyline(options);
+        }
         setMap = api.clear;
       },
       LatLngBounds: class {
@@ -95,20 +89,14 @@ describe("Google home map", () => {
       <HomeRideMap {...base} destination={{ lat: -3.79, lng: -38.48 }} />,
     );
     await waitFor(() => expect(api.fitBounds).toHaveBeenCalled());
-    expect(
-      container.querySelector('[data-map-provider="google"]'),
-    ).toBeTruthy();
+    expect(container.querySelector('[data-map-provider="google"]')).toBeTruthy();
     expect(loadGoogleMaps).toHaveBeenCalledWith("test-browser");
-    expect(api.circle).toHaveBeenCalledWith(
-      expect.objectContaining({ radius: 20 }),
-    );
+    expect(api.circle).toHaveBeenCalledWith(expect.objectContaining({ radius: 20 }));
     expect(screen.getByText(/11,0 km/)).toBeInTheDocument();
   });
   it("updates GPS markers without recreating the map or following after a drag", async () => {
     const { rerender, unmount } = render(<HomeRideMap {...base} />);
-    await waitFor(() =>
-      expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)),
-    );
+    await waitFor(() => expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)));
     act(() => api.on.mock.calls[0][1]());
     expect(base.onDrag).toHaveBeenCalledOnce();
     api.panTo.mockClear();
@@ -126,13 +114,57 @@ describe("Google home map", () => {
     );
     expect(api.panTo).not.toHaveBeenCalled();
     expect(api.create).toHaveBeenCalledOnce();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Centralizar na minha localização" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Centralizar na minha localização" }));
     expect(base.onRecenter).toHaveBeenCalledOnce();
     rerender(<HomeRideMap {...base} recenterVersion={1} />);
     expect(api.panTo).toHaveBeenCalledWith({ lat: -3.73, lng: -38.52 });
     unmount();
+    expect(api.clear).toHaveBeenCalled();
+  });
+  it("draws the authorized meeting point and real walking geometry, then removes the overlay", async () => {
+    const pickupPreview = {
+      passenger: { lat: -3.73, lng: -38.52 },
+      route: [
+        { lat: -3.73, lng: -38.53 },
+        { lat: -3.79, lng: -38.48 },
+      ],
+      pickup: {
+        point: { lat: -3.731, lng: -38.521 },
+        label: "Na rota, próximo a Posto",
+        source: "PLACE_REFERENCE" as const,
+        placeId: "place",
+        needsConfirmation: true as const,
+      },
+      walk: {
+        distanceKm: 0.15,
+        durationMinutes: 2,
+        routePath: [
+          { lat: -3.73, lng: -38.52 },
+          { lat: -3.7305, lng: -38.5202 },
+          { lat: -3.731, lng: -38.521 },
+        ],
+      },
+      strict: true,
+      highway: false,
+    };
+    const { rerender } = render(<HomeRideMap {...base} pickupPreview={pickupPreview} />);
+    await waitFor(() =>
+      expect(api.polyline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: pickupPreview.walk.routePath,
+          strokeOpacity: 0,
+          icons: expect.any(Array),
+        }),
+      ),
+    );
+    expect(api.marker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        position: pickupPreview.pickup.point,
+        title: pickupPreview.pickup.label,
+      }),
+    );
+    api.clear.mockClear();
+    rerender(<HomeRideMap {...base} pickupPreview={null} />);
     expect(api.clear).toHaveBeenCalled();
   });
   it("shows a reload action on script failure without creating another map", async () => {
@@ -141,9 +173,7 @@ describe("Google home map", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível carregar o Google Maps",
     );
-    expect(
-      screen.getByRole("button", { name: "Recarregar mapa" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recarregar mapa" })).toBeInTheDocument();
     expect(api.create).not.toHaveBeenCalled();
     expect(container.querySelectorAll("iframe")).toHaveLength(0);
   });

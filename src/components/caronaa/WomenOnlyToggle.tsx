@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { ProfileGender } from "@/lib/use-profile-gender";
 import { Switch } from "@/components/ui/switch";
 export function WomenOnlyToggle({
@@ -11,6 +12,16 @@ export function WomenOnlyToggle({
   onChange: (checked: boolean) => void;
   kind: "request" | "offer";
 }) {
+  if (gender == null && kind === "request")
+    return (
+      <p className="text-xs leading-relaxed text-gray-400">
+        Mulheres podem ativar caronas exclusivas completando o gênero no{" "}
+        <Link to="/perfil" className="font-semibold text-[#FFBB00] underline underline-offset-4">
+          Perfil
+        </Link>
+        .
+      </p>
+    );
   if (gender !== "FEMININO") return null;
   const id = `women-only-${kind}`;
   return (

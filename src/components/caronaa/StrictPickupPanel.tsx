@@ -1,55 +1,76 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  getStrictPickupContext,
-  suggestStrictPickup,
-} from "@/lib/safe-pickup.functions";
-import { projectOntoRoute } from "@/lib/safe-pickup";
+import { MapPin, Footprints } from "lucide-react";
+import { getStrictPickupContext, suggestStrictPickup } from "@/lib/safe-pickup.functions";
+import { projectOntoRoute, type StrictPickupPreview } from "@/lib/safe-pickup";
 import { sessionRequest } from "@/lib/session-request-cache";
 import { GoogleMapSurface } from "./GoogleMapSurface";
 
-export function StrictPickupPanel({ rideId }: { rideId: string }) {
+export function StrictPickupPanel({
+  rideId,
+  autoSuggest = false,
+  showMap = true,
+  onPreviewChange,
+}: {
+  rideId: string;
+  autoSuggest?: boolean;
+  showMap?: boolean;
+  onPreviewChange?: (preview: StrictPickupPreview | null) => void;
+}) {
   const load = useServerFn(getStrictPickupContext),
     suggest = useServerFn(suggestStrictPickup);
-  const [fixed, setFixed] = useState<Awaited<ReturnType<typeof load>>>(null);
-  const [result, setResult] =
-    useState<Awaited<ReturnType<typeof suggest>>>(null);
-  const [requested, setRequested] = useState(false),
-    [busy, setBusy] = useState(false),
+  const [snapshot, setSnapshot] = useState<{
+    rideId: string;
+    value: Awaited<ReturnType<typeof load>>;
+  } | null>(null);
+  const [preview, setPreview] = useState<{ key: string; value: StrictPickupPreview | null } | null>(
+    null,
+  );
+  const [requestedRide, setRequestedRide] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const fixed = snapshot?.rideId === rideId ? snapshot.value : null;
+  const key = fixed
+    ? JSON.stringify([rideId, fixed.passenger, fixed.route, fixed.strict, fixed.highway])
+    : "";
+  const result = key && preview?.key === key ? preview.value : null;
+  const requested = autoSuggest || requestedRide === rideId;
   useEffect(() => {
     let active = true;
+    setSnapshot(null);
+    setPreview(null);
+    setError("");
+    setBusy(false);
     void load({ data: { rideId } })
       .then((value) => {
-        if (active) setFixed(value);
+        if (active) setSnapshot({ rideId, value });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setSnapshot(null);
+      });
     return () => {
       active = false;
     };
   }, [rideId, load]);
-  const key = fixed
-    ? JSON.stringify([
-        rideId,
-        fixed.passenger,
-        fixed.route.length,
-        fixed.route[0],
-        fixed.route.at(-1),
-      ])
-    : "";
+  useEffect(() => {
+    onPreviewChange?.(result);
+  }, [result, onPreviewChange]);
+  useEffect(
+    () => () => {
+      onPreviewChange?.(null);
+    },
+    [onPreviewChange],
+  );
   useEffect(() => {
     if (!fixed || !requested) return;
-    const frozen = fixed,
-      projection = projectOntoRoute(frozen.passenger, frozen.route).point;
+    const projection = projectOntoRoute(fixed.passenger, fixed.route).point;
     let active = true;
     setBusy(true);
     setError("");
     const timer = window.setTimeout(() => {
-      void sessionRequest("strict-client:" + key, () =>
-        suggest({ data: { rideId, projection } }),
-      )
+      void sessionRequest("strict-client:" + key, () => suggest({ data: { rideId, projection } }))
         .then((value) => {
-          if (active) setResult(value);
+          if (active) setPreview({ key, value });
         })
         .catch(() => {
           if (active)
@@ -65,24 +86,28 @@ export function StrictPickupPanel({ rideId }: { rideId: string }) {
       active = false;
       window.clearTimeout(timer);
     };
-    // The fixed, authorized request/offer key changes only with a fixed trip, never camera/GPS movement.
+    // The key contains the complete authorized route, never live GPS/camera movement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, requested, suggest, rideId]);
   if (!fixed) return null;
   return (
     <section
-      aria-label="Embarque em rota estrita"
-      className="my-3 space-y-3 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/5 p-3"
+      aria-label="Ponto de encontro sugerido"
+      className="my-3 space-y-3 rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/5 p-3"
     >
-      <h3 className="font-bold">Rota Estrita · ponto de encontro</h3>
+      <h3 className="flex items-center gap-2 text-sm font-bold">
+        <MapPin size={17} className="shrink-0 text-[#FFBB00]" aria-hidden="true" />
+        Ponto de encontro sugerido
+      </h3>
       <p className="text-xs text-muted-foreground">
-        O condutor não fará desvios. Confira uma sugestão na rota antes de
-        combinar o embarque.
+        {fixed.strict
+          ? "Rota Estrita: encontro no trajeto do condutor."
+          : "Encontro sugerido na rodovia indicada no trajeto."}
       </p>
       {!requested && (
         <button
           type="button"
-          onClick={() => setRequested(true)}
+          onClick={() => setRequestedRide(rideId)}
           className="min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]"
         >
           Ver ponto de encontro sugerido
@@ -100,64 +125,57 @@ export function StrictPickupPanel({ rideId }: { rideId: string }) {
       )}
       {result && (
         <>
-          <GoogleMapSurface
-            points={[
-              {
-                ...result.passenger,
-                title: "Origem do passageiro",
-                color: "#121212",
-                kind: "person",
-              },
-              {
-                ...result.pickup.point,
-                title: result.pickup.label,
-                color: "#2563eb",
-                label: "E",
-                kind: "meeting",
-              },
-            ]}
-            lines={[
-              { points: result.route, color: "#FFBB00" },
-              ...(result.walk
-                ? [
-                    {
-                      points: result.walk.routePath,
-                      color: "#2563eb",
-                      dotted: true,
-                    },
-                  ]
-                : []),
-            ]}
-            ariaLabel="Rota do condutor e caminhada ao encontro"
-            className="h-64 w-full rounded-xl"
-          />
+          {showMap && (
+            <GoogleMapSurface
+              points={[
+                {
+                  ...result.passenger,
+                  title: "Origem do passageiro",
+                  color: "#121212",
+                  kind: "person",
+                },
+                {
+                  ...result.pickup.point,
+                  title: result.pickup.label,
+                  color: "#FFBB00",
+                  label: "E",
+                  kind: "meeting",
+                },
+              ]}
+              lines={[
+                { points: result.route, color: "#FFBB00" },
+                ...(result.walk
+                  ? [{ points: result.walk.routePath, color: "#2563eb", dotted: true }]
+                  : []),
+              ]}
+              ariaLabel="Rota do condutor e caminhada ao encontro"
+              className="h-64 w-full rounded-xl"
+            />
+          )}
           <p className="text-sm font-semibold">{result.pickup.label}</p>
-          <p className="text-sm">
-            {result.walk && result.walk.distanceKm > 1.5
-              ? "A caminhada pode ser longa. Combine outra opção com o condutor ou escolha Viajar Agora."
-              : "Caminhe até o ponto de encontro indicado para encontrar seu condutor."}{" "}
-            O motorista não fará desvios.
-          </p>
-          {result.walk && (
+          {result.walk ? (
+            <p className="flex items-center gap-2 text-xs">
+              <Footprints size={16} aria-hidden="true" />A{" "}
+              {Math.round(result.walk.distanceKm * 1000)} m da origem da viagem · ~
+              {Math.max(1, Math.round(result.walk.durationMinutes))} min a pé
+            </p>
+          ) : (
             <p className="text-xs">
-              Caminhada estimada: {Math.round(result.walk.distanceKm * 1000)} m
-              · {Math.max(1, Math.round(result.walk.durationMinutes))} min.
+              Estimativa de caminhada indisponível. Confira o acesso ao ponto com o condutor.
             </p>
           )}
-          {!result.walk && (
+          {result.walk && result.walk.distanceKm > 1.5 && (
             <p className="text-xs">
-              Caminho a pé não disponível ou origem junto ao ponto. Nenhum
-              trajeto de caminhada foi inventado.
+              A caminhada pode ser longa. Combine outra opção com o condutor ou escolha Viajar
+              Agora.
             </p>
           )}
           <p className="text-xs text-muted-foreground">
             {result.pickup.source === "ROUTE_REFERENCE"
-              ? "Sem estabelecimento próximo: referência aproximada na via. "
-              : "Estabelecimento usado apenas como referência. "}
-            A categoria do local não comprova segurança ou permissão de parada.
-            Confirme acesso, lado da via e condições com o condutor; rotas a pé
-            podem omitir calçadas e travessias. Esta sugestão não altera o
-            embarque já combinado nem a tarifa contratada.
+              ? "Referência aproximada na via. "
+              : "Local usado como referência. "}
+            Confirme acesso, lado da via e parada permitida com o condutor. A sugestão não altera o
+            embarque combinado nem a tarifa.
           </p>
         </>
       )}

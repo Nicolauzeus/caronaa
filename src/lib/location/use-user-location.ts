@@ -26,7 +26,9 @@ export const locationFailureMessages: Record<LocationFailure, string> = {
     "Para usar sua localização, abra o app por HTTPS. Enquanto isso, informe seu ponto de saída.",
 };
 
-export function useUserLocation() {
+export function useUserLocation({
+  autoLocate = "mobile",
+}: { autoLocate?: boolean | "mobile" } = {}) {
   const [position, setPosition] = useState<UserPosition | null>(null);
   const [addressPosition, setAddressPosition] = useState<UserPosition | null>(null);
   const [failure, setFailure] = useState<LocationFailure | null>(null);
@@ -97,13 +99,20 @@ export function useUserLocation() {
   }, [stop]);
   useEffect(() => {
     mounted.current = true;
-    if (window.matchMedia?.("(max-width: 1023px)").matches && !document.hidden) locate();
+    let autoPending =
+      autoLocate === true ||
+      (autoLocate === "mobile" && Boolean(window.matchMedia?.("(max-width: 1023px)").matches));
+    if (autoPending && !document.hidden) {
+      autoPending = false;
+      locate();
+    }
     const visibility = () => {
       if (document.hidden) {
         resumeWatch.current = watch.current !== null;
         stop();
         setLocating(false);
-      } else if (resumeWatch.current) {
+      } else if (autoPending || resumeWatch.current) {
+        autoPending = false;
         resumeWatch.current = false;
         locate();
       }
@@ -114,7 +123,7 @@ export function useUserLocation() {
       stop();
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [locate, stop]);
+  }, [locate, stop, autoLocate]);
   return {
     position,
     addressPosition,

@@ -136,6 +136,31 @@ describe("passenger fare estimate before requesting a ride", () => {
     );
   });
 
+  it("quotes captured GPS coordinates without trying to geocode a placeholder", async () => {
+    await expect(
+      invokePreview({
+        ...previewInput,
+        data: {
+          origin: "Minha localização atual",
+          destination: "Campus",
+          originLat: -4.22,
+          originLng: -38.71,
+          destinationLat: -4.23,
+          destinationLng: -38.72,
+          price: 0,
+        },
+      }),
+    ).resolves.toMatchObject({ pricePerPassenger: 6, originPoint: { lat: -4.22, lng: -38.71 } });
+    expect(mocks.geocode).not.toHaveBeenCalled();
+    expect(mocks.route).toHaveBeenCalledWith(
+      { lat: -4.22, lng: -38.71 },
+      { lat: -4.23, lng: -38.72 },
+    );
+    expect(mocks.adminInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ passenger_price: 6, origin_lat: -4.22, origin_lng: -38.71 }),
+    );
+  });
+
   it("does not estimate when an address is approximate or road routing fails", async () => {
     mocks.geocode.mockResolvedValue({ lat: -3.7, lng: -38.5, isApproximate: true });
     await expect(invokePreview(previewInput)).rejects.toThrow("Revise os endereços");

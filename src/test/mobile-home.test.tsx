@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "@/routes/_authenticated/home";
@@ -9,6 +10,9 @@ const api = vi.hoisted(() => ({
   reverse: vi.fn(),
   seed: vi.fn(),
   account: vi.fn(),
+  navigate: vi.fn(),
+  map: vi.fn(),
+  preview: null as any,
 }));
 // Isolated component tests must not initialize authenticated Supabase server middleware.
 vi.mock("@/integrations/supabase/client", () => ({
@@ -26,6 +30,14 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/components/onboarding/FavoriteCommuteSuggestion", () => ({
   FavoriteCommuteSuggestion: () => null,
+}));
+vi.mock("@/components/caronaa/StrictPickupPanel", () => ({
+  StrictPickupPanel: ({ rideId, onPreviewChange }: any) => {
+    useEffect(() => {
+      onPreviewChange?.(api.preview);
+    }, [onPreviewChange]);
+    return <div data-testid="authorized-pickup">{rideId}</div>;
+  },
 }));
 vi.mock("@/lib/travel-preferences-service", () => ({
   loadTravelPreferences: async () => null,
@@ -54,28 +66,32 @@ vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: { id: "user", user_metadata: {} } }),
 }));
 vi.mock("@/components/caronaa/HomeRideMap", () => ({
-  HomeRideMap: ({ userPosition }: { userPosition: { lat: number } | null }) => (
-    <div aria-label="Mapa do seu trajeto">{userPosition?.lat}</div>
-  ),
+  HomeRideMap: (props: any) => {
+    api.map(props);
+    return <div aria-label="Mapa do seu trajeto">{props.userPosition?.lat}</div>;
+  },
 }));
 vi.mock("@/components/formulario/LocationAutocomplete", () => ({
   LocationAutocomplete: ({
+    id,
     label,
     value,
     onChange,
   }: {
+    id: string;
     label: string;
     value: string;
     onChange: (value: string) => void;
   }) => (
     <label>
       {label}
-      <input value={value} onChange={(e) => onChange(e.target.value)} />
+      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   ),
 }));
 vi.mock("@tanstack/react-router", async (original) => ({
   ...(await original()),
+  useNavigate: () => api.navigate,
   Link: ({ children }: { children: React.ReactNode }) => <a href="/minhas-caronas">{children}</a>,
 }));
 
@@ -89,6 +105,7 @@ describe("Home mobile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.load.mockResolvedValue([]);
+    api.preview = null;
     api.request.mockResolvedValue({ requestId: "request" });
     api.quote.mockResolvedValue({
       quoteId: "route-quote",
@@ -173,7 +190,9 @@ describe("Home mobile", () => {
     act(() => fix(position()));
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
-    expect(screen.getByRole("button", { name: "Usar minha localização atual" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Usar minha localização atual" }),
+    ).toBeInTheDocument();
     expect(api.reverse).toHaveBeenCalledWith({ data: { lat: -3.73, lng: -38.52 } });
   });
   it("GPS negado permite informar saída sem reload", async () => {
@@ -186,7 +205,9 @@ describe("Home mobile", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
     expect(screen.getByLabelText("Saída")).toHaveValue("CEC");
-    expect(screen.getByRole("button", { name: "Usar minha localização atual" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Usar minha localização atual" }),
+    ).toBeInTheDocument();
   });
   it("movimento atualiza marcador sem sobrescrever saída manual", async () => {
     Object.defineProperty(window, "matchMedia", {
@@ -226,6 +247,68 @@ describe("Home mobile", () => {
       }),
     );
   });
+  it("hands off GPS and resolved destination to the standalone pilot route", async () => {
+    api.quote.mockResolvedValue({
+      quoteId: "gps-quote",
+      pricePerPassenger: 6,
+      distanceKm: 11,
+      originPoint: { lat: -3.73, lng: -38.52 },
+      destinationPoint: { lat: -3.75, lng: -38.5 },
+    });
+    render(<Home />);
+    act(() => fix(position()));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
+    await waitFor(() => expect(screen.getByLabelText("Destino")).toHaveFocus());
+    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus" } });
+    await screen.findByText(/R\$ 6,00 por pessoa/);
+    fireEvent.click(screen.getByRole("radio", { name: /Corrida Direta/ }));
+    expect(api.navigate).toHaveBeenCalledWith({
+      to: "/viagem-rapida",
+      search: expect.objectContaining({
+        origin: "Rua A, Fortaleza",
+        destination: "Campus",
+        originLat: -3.73,
+        originLng: -38.52,
+        destinationLat: -3.75,
+        destinationLng: -38.5,
+      }),
+    });
+  });
+  it("does not overwrite a manually chosen origin when an initial GPS fix arrives late", async () => {
+    render(<Home />);
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Saída escolhida" } });
+    act(() => fix(position()));
+    expect(screen.getByLabelText("Saída")).toHaveValue("Saída escolhida");
+    expect(api.reverse).not.toHaveBeenCalled();
+  });
+  it("connects only a matched passenger ride to the suggested pickup and map", async () => {
+    api.preview = {
+      passenger: { lat: -3.73, lng: -38.52 },
+      route: [],
+      pickup: { point: { lat: -3.73, lng: -38.53 } },
+    };
+    api.load.mockResolvedValue([
+      {
+        id: "matched-ride",
+        kind: "ride",
+        role: "passenger",
+        status: "MATCHED",
+        origin: "Origem",
+        destination: "Destino",
+        ride_date: "2099-01-01",
+        departure_time: "09:00",
+      },
+    ]);
+    render(<Home />);
+    expect(await screen.findByTestId("authorized-pickup")).toHaveTextContent("matched-ride");
+    await waitFor(() =>
+      expect(api.map).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pickupPreview: api.preview }),
+      ),
+    );
+  });
   it("não inicia mais carregamento de publicação atribuída ao evento", () => {
     render(<Home />);
     expect(api.seed).not.toHaveBeenCalled();
@@ -237,4 +320,3 @@ describe("Home mobile", () => {
     expect(screen.queryByRole("button", { name: /inscrição STS/i })).not.toBeInTheDocument();
   });
 });
-

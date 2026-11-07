@@ -1,3 +1,4 @@
+import type { StrictPickupPreview } from "@/lib/safe-pickup";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,6 +13,7 @@ import type { ApproximateProfessionalDriver } from "./HomeRideMap";
 
 type Point = { lat?: number; lng?: number };
 type Props = {
+  pickupPreview?: StrictPickupPreview | null;
   immersive?: boolean;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
@@ -34,6 +36,7 @@ export const googleMapsBrowserKey = resolveGoogleMapsBrowserKey(
 
 export function GoogleHomeRideMap({
   immersive = false,
+  pickupPreview = null,
   userPosition,
   professionalDrivers = [],
   origin,
@@ -51,6 +54,7 @@ export function GoogleHomeRideMap({
   const markers = useRef<any[]>([]);
   const routePolyline = useRef<any>(null);
   const circle = useRef<any>(null);
+  const pickupLines = useRef<any[]>([]);
   const currentCenter = useRef<{ lat: number; lng: number } | null>(null);
   const lastRecenter = useRef(recenterVersion);
   const dragRef = useRef(onDrag);
@@ -112,6 +116,8 @@ export function GoogleHomeRideMap({
       routePolyline.current = null;
       circle.current?.setMap(null);
       circle.current = null;
+      pickupLines.current.forEach((line) => line.setMap(null));
+      pickupLines.current = [];
       map.current = null;
     };
     // Create once; markers and camera are updated in separate effects.
@@ -143,6 +149,10 @@ export function GoogleHomeRideMap({
     add(userPosition, "Sua localização", "#2563eb");
     if (!originIsCurrent) add(origin, "Saída", "#b38600");
     add(destination, "Destino", "#f5b800");
+    if (pickupPreview) {
+      add(pickupPreview.passenger, "Origem do passageiro", "#2563eb");
+      add(pickupPreview.pickup.point, pickupPreview.pickup.label, "#FFBB00");
+    }
     professionalDrivers.forEach((driver) =>
       add(driver, "Motorista disponível · posição aproximada", "#FFBB00"),
     );
@@ -168,6 +178,7 @@ export function GoogleHomeRideMap({
     destination?.lat,
     destination?.lng,
     originIsCurrent,
+    pickupPreview,
   ]);
 
   // Keep road geometry and preview metrics on the same Google Routes contract
@@ -186,7 +197,8 @@ export function GoogleHomeRideMap({
     routePolyline.current = null;
     setRouteMetrics(null);
     setRouteError(false);
-    if (fromLat == null || fromLng == null || toLat == null || toLng == null) return;
+    if (pickupPreview || fromLat == null || fromLng == null || toLat == null || toLng == null)
+      return;
     const abort = new AbortController();
     const googleMap = map.current;
     const timer = window.setTimeout(() => {
@@ -232,7 +244,62 @@ export function GoogleHomeRideMap({
       routePolyline.current?.setMap(null);
       routePolyline.current = null;
     };
-  }, [ready, failed, fromLat, fromLng, toLat, toLng]);
+  }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview]);
+
+  useEffect(() => {
+    if (!ready || !map.current || failed) return;
+    pickupLines.current.forEach((line) => line.setMap(null));
+    pickupLines.current = [];
+    if (!pickupPreview) return;
+    const G = (window as any).google.maps;
+    const lines = [
+      new G.Polyline({
+        map: map.current,
+        path: pickupPreview.route,
+        strokeColor: "#FFBB00",
+        strokeOpacity: 0.9,
+        strokeWeight: 6,
+      }),
+    ];
+    if (pickupPreview.walk?.routePath.length)
+      lines.push(
+        new G.Polyline({
+          map: map.current,
+          path: pickupPreview.walk.routePath,
+          strokeOpacity: 0,
+          icons: [
+            {
+              icon: {
+                path: G.SymbolPath.CIRCLE,
+                scale: 3,
+                fillOpacity: 1,
+                fillColor: "#2563eb",
+                strokeOpacity: 1,
+                strokeColor: "#ffffff",
+                strokeWeight: 1,
+              },
+              offset: "0",
+              repeat: "12px",
+            },
+          ],
+        }),
+      );
+    pickupLines.current = lines;
+    const bounds = new G.LatLngBounds();
+    pickupPreview.walk?.routePath.forEach((point) => bounds.extend(point));
+    bounds.extend(pickupPreview.passenger);
+    bounds.extend(pickupPreview.pickup.point);
+    map.current.fitBounds(bounds, {
+      top: immersive ? 180 : 48,
+      right: 48,
+      bottom: immersive ? 340 : 72,
+      left: 48,
+    });
+    return () => {
+      lines.forEach((line) => line.setMap(null));
+      pickupLines.current = [];
+    };
+  }, [ready, failed, pickupPreview, immersive]);
 
   useEffect(() => {
     if (!ready || !map.current) return;

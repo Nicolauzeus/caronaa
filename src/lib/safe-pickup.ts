@@ -22,10 +22,7 @@ export function metersBetween(a: RoadPoint, b: RoadPoint) {
   return R * Math.hypot(x, y);
 }
 /** Local tangent-plane projection, without SDK calls, Turf dependency or GPS writes. */
-export function projectOntoRoute(
-  passenger: RoadPoint,
-  route: RoadPoint[],
-): ProjectedPoint {
+export function projectOntoRoute(passenger: RoadPoint, route: RoadPoint[]): ProjectedPoint {
   if (
     !validCoordinate(passenger) ||
     route.length < 2 ||
@@ -43,10 +40,7 @@ export function projectOntoRoute(
     const dx = (b.lng - a.lng) * rad * R * cos,
       dy = (b.lat - a.lat) * rad * R;
     const squared = dx * dx + dy * dy;
-    const t =
-      squared === 0
-        ? 0
-        : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / squared));
+    const t = squared === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / squared));
     const distance = Math.hypot(ax + t * dx, ay + t * dy);
     if (!best || distance < best.distanceMeters)
       best = {
@@ -69,17 +63,9 @@ export function chooseStrictPickup(
 ) {
   // A POI is a reference only. Always keep the actual pickup on the driver's line.
   for (const place of places) {
-    if (
-      !validCoordinate(place.point) ||
-      metersBetween(projection, place.point) > 400
-    )
-      continue;
+    if (!validCoordinate(place.point) || metersBetween(projection, place.point) > 400) continue;
     const onRoad = projectOntoRoute(place.point, route);
-    if (
-      onRoad.distanceMeters > 50 ||
-      metersBetween(projection, onRoad.point) > 400
-    )
-      continue;
+    if (onRoad.distanceMeters > 50 || metersBetween(projection, onRoad.point) > 400) continue;
     return {
       point: onRoad.point,
       label: "Na rota, próximo a " + place.title,
@@ -96,3 +82,17 @@ export function chooseStrictPickup(
     needsConfirmation: true as const,
   };
 }
+
+/** A road code in the offer's saved address is a reference, not a safety certificate. */
+export function hasHighwayReference(...labels: Array<string | null | undefined>): boolean {
+  return labels.some((label) => /\b(?:BR|CE)[\s-]?\d{3}\b/i.test(label ?? ""));
+}
+
+export type StrictPickupPreview = {
+  passenger: RoadPoint;
+  route: RoadPoint[];
+  pickup: ReturnType<typeof chooseStrictPickup>;
+  walk: { distanceKm: number; durationMinutes: number; routePath: RoadPoint[] } | null;
+  strict: boolean;
+  highway: boolean;
+};

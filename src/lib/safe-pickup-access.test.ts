@@ -18,11 +18,8 @@ vi.mock("./road-routing", () => ({
   getWalkingRoute: mocks.walk,
   getDrivingRoute: mocks.drive,
 }));
-import { suggestStrictPickup } from "./safe-pickup.functions";
-import {
-  getQuickRideMapContext,
-  getQuickRideApproach,
-} from "./quick-ride-map.functions";
+import { suggestStrictPickup, getStrictPickupContext } from "./safe-pickup.functions";
+import { getQuickRideMapContext, getQuickRideApproach } from "./quick-ride-map.functions";
 import { createRideOffer } from "./ride-matching.functions";
 import { projectOntoRoute } from "./safe-pickup";
 const route = [
@@ -55,9 +52,7 @@ const rows = {
   ride_offers: { allow_detours: false, route_path: route },
   ride_requests: { origin_lat: passenger.lat, origin_lng: passenger.lng },
 };
-const invoke = suggestStrictPickup as unknown as (
-  input: unknown,
-) => Promise<any>;
+const invoke = suggestStrictPickup as unknown as (input: unknown) => Promise<any>;
 beforeEach(() => {
   vi.stubEnv("GOOGLE_MAPS_API_KEY", "server-unit");
   mocks.walk.mockReset();
@@ -100,10 +95,27 @@ describe("Authorized strict pickup computation", () => {
     ).rejects.toThrow("trajeto mudou");
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("allows an authorized highway reference without changing a flexible offer into a strict route", async () => {
+    const load = getStrictPickupContext as unknown as (input: unknown) => Promise<any>;
+    const result = await load({
+      context: {
+        userId: "p",
+        supabase: client({
+          ...rows,
+          ride_offers: {
+            allow_detours: true,
+            route_path: route,
+            origin: "CE-060, Redenção",
+            destination: "Campus",
+          },
+        }),
+      },
+      data: { rideId: "highway" },
+    });
+    expect(result).toMatchObject({ strict: false, highway: true, route, passenger });
+  });
   it("returns a road reference when Nearby is empty and never invents failed walking routes", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(new Response(JSON.stringify({ places: [] })));
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ places: [] })));
     vi.stubGlobal("fetch", fetch);
     mocks.walk.mockRejectedValue(new Error("walking unavailable"));
     const input = {
@@ -130,9 +142,7 @@ describe("Quick ride ETA privacy", () => {
     destination: { lat: 0, lng: 1 },
     driver: { lat: 0, lng: 0.1, seenAt: new Date().toISOString() },
   };
-  const read = getQuickRideMapContext as unknown as (
-    i: unknown,
-  ) => Promise<any>;
+  const read = getQuickRideMapContext as unknown as (i: unknown) => Promise<any>;
   const eta = getQuickRideApproach as unknown as (i: unknown) => Promise<any>;
   it("does not reveal a driver or estimate arrival before acceptance", async () => {
     const input = {
@@ -149,9 +159,7 @@ describe("Quick ride ETA privacy", () => {
     expect(mocks.drive).not.toHaveBeenCalled();
   });
   it("uses the participant RPC then caches accepted-driver driving ETA", async () => {
-    const rpc = vi
-      .fn()
-      .mockResolvedValue({ data: { ...map, status: "ACCEPTED" }, error: null });
+    const rpc = vi.fn().mockResolvedValue({ data: { ...map, status: "ACCEPTED" }, error: null });
     const input = {
       context: { userId: "p", supabase: { rpc } },
       data: { rideId: id },
@@ -173,9 +181,7 @@ describe("Quick ride ETA privacy", () => {
         context: {
           userId: "p",
           supabase: {
-            rpc: vi
-              .fn()
-              .mockResolvedValue({ data: null, error: { message: "denied" } }),
+            rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "denied" } }),
           },
         },
         data: { rideId: id },
@@ -216,9 +222,7 @@ describe("Offer route-policy publication", () => {
   }
   it("passes the explicit strict choice through the existing priced publication RPC", async () => {
     const client = offerClient();
-    const invoke = createRideOffer as unknown as (
-      i: unknown,
-    ) => Promise<unknown>;
+    const invoke = createRideOffer as unknown as (i: unknown) => Promise<unknown>;
     await invoke({
       context: { userId: "p", supabase: client },
       data: { quoteId: "quote", allowDetours: false },
@@ -233,9 +237,7 @@ describe("Offer route-policy publication", () => {
   });
   it("does not publish and lose a preference when the migration is absent", async () => {
     const client = offerClient(true);
-    const invoke = createRideOffer as unknown as (
-      i: unknown,
-    ) => Promise<unknown>;
+    const invoke = createRideOffer as unknown as (i: unknown) => Promise<unknown>;
     await expect(
       invoke({
         context: { userId: "p", supabase: client },
@@ -245,4 +247,3 @@ describe("Offer route-policy publication", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 });
-

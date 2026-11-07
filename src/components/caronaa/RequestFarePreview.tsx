@@ -1,3 +1,4 @@
+import type { FormLocationDetails } from "@/lib/location/types";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
@@ -9,18 +10,24 @@ export type FarePreview = {
   distanceKm: number;
   pricePerPassenger: number;
   tariffReference: string;
+  originPoint?: { lat: number; lng: number };
+  destinationPoint?: { lat: number; lng: number };
 };
 
 export function RequestFarePreview({
   origin,
   destination,
   passengerCount,
+  originLocation,
+  destinationLocation,
   onQuote,
   refreshKey = 0,
 }: {
   origin: string;
   destination: string;
   passengerCount: number;
+  originLocation?: FormLocationDetails;
+  destinationLocation?: FormLocationDetails;
   onQuote?: (quote: FarePreview | null) => void;
   refreshKey?: number;
 }) {
@@ -30,6 +37,10 @@ export function RequestFarePreview({
   const [retry, setRetry] = useState(0);
   const routeIsReady = Boolean(origin.trim() && destination.trim());
 
+  const originLat = originLocation?.lat,
+    originLng = originLocation?.lng;
+  const destinationLat = destinationLocation?.lat,
+    destinationLng = destinationLocation?.lng;
   useEffect(() => {
     let active = true;
     setFare(null);
@@ -41,7 +52,16 @@ export function RequestFarePreview({
       };
 
     const timer = setTimeout(() => {
-      void preview({ data: { origin, destination } })
+      void preview({
+        data: {
+          origin,
+          destination,
+          ...(originLat != null && originLng != null ? { originLat, originLng } : {}),
+          ...(destinationLat != null && destinationLng != null
+            ? { destinationLat, destinationLng }
+            : {}),
+        },
+      })
         .then((result) => {
           if (active) {
             setFare(result);
@@ -63,7 +83,19 @@ export function RequestFarePreview({
       active = false;
       clearTimeout(timer);
     };
-  }, [origin, destination, preview, retry, routeIsReady, onQuote, refreshKey]);
+  }, [
+    origin,
+    destination,
+    preview,
+    retry,
+    routeIsReady,
+    onQuote,
+    refreshKey,
+    originLat,
+    originLng,
+    destinationLat,
+    destinationLng,
+  ]);
 
   const groupTotal =
     fare && Number.isInteger(passengerCount) && passengerCount >= 1 && passengerCount <= 6
