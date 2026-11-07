@@ -35,7 +35,9 @@ BEGIN
  RETURN NEW;
 END;$$;
 REVOKE ALL ON FUNCTION public.snapshot_ride_product_filters() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS a_ride_product_filters ON public.ride_requests;
 CREATE TRIGGER a_ride_product_filters BEFORE INSERT OR UPDATE ON public.ride_requests FOR EACH ROW EXECUTE FUNCTION public.snapshot_ride_product_filters();
+DROP TRIGGER IF EXISTS a_ride_product_filters ON public.ride_offers;
 CREATE TRIGGER a_ride_product_filters BEFORE INSERT OR UPDATE ON public.ride_offers FOR EACH ROW EXECUTE FUNCTION public.snapshot_ride_product_filters();
 
 CREATE OR REPLACE FUNCTION public.ride_product_filters_compatible(q public.ride_requests,o public.ride_offers)
@@ -84,17 +86,38 @@ END;$$;
 REVOKE ALL ON FUNCTION public.publish_filtered_priced_offer(jsonb,uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.publish_filtered_priced_offer(jsonb,uuid,jsonb) TO authenticated;
 
--- Restrict candidates before selecting/locking one, so incompatible offers are skipped.
--- Abort on an unknown deployed allocator instead of silently publishing ineffective filters.
-DO $$
-DECLARE definition text; marker text:='AND (p_preferred_offer_id IS NULL OR offer_id = p_preferred_offer_id)';
+-- Preserve the deployed allocator. Add one candidate predicate before selection.
+-- Support both the intelligent r/candidate allocator and the historical allocator.
+DO $migration$
+DECLARE
+ definition text;
+ updated_definition text;
+ intelligent_pattern text := 'AND\s*\(\s*p_preferred_offer_id\s+IS\s+NULL\s+OR\s+candidate\.offer_id\s*=\s*p_preferred_offer_id\s*\)';
+ legacy_pattern text := 'AND\s*\(\s*p_preferred_offer_id\s+IS\s+NULL\s+OR\s+offer_id\s*=\s*p_preferred_offer_id\s*\)';
+ normalized text;
 BEGIN
  SELECT pg_get_functiondef('public.try_match_ride_request(uuid,uuid)'::regprocedure) INTO definition;
- IF position(marker IN definition)=0 THEN RAISE EXCEPTION 'Allocator changed: review product filter integration before applying 0137.'; END IF;
- definition:=replace(definition,marker,
-  'AND (request_row.requested_vehicle_type IS NULL OR request_row.requested_vehicle_type = vehicle_type) AND (NOT request_row.women_only OR (passenger_gender_preference = ''FEMININO'' AND EXISTS (SELECT 1 FROM public.profiles driver_profile WHERE driver_profile.id = ride_offers.user_id AND driver_profile.gender = ''FEMININO''))) '||marker);
- EXECUTE definition;
-END;$$;
+ normalized := regexp_replace(definition, '[[:space:]]', '', 'g');
+ IF position('public.ride_product_filters_compatible(r,candidate)' IN normalized)>0
+    OR position('public.ride_product_filters_compatible(request_row,ride_offers)' IN normalized)>0 THEN
+  RETURN;
+ END IF;
+ IF definition ~* intelligent_pattern
+    AND definition ~* 'evaluate_ride_candidate\s*\(\s*q\s*,\s*candidate\s*\)' THEN
+  updated_definition := regexp_replace(definition, intelligent_pattern,
+   'AND public.ride_product_filters_compatible(r,candidate) \&', 'i');
+ ELSIF definition ~* legacy_pattern AND definition ~* 'request_row\s+public\.ride_requests' THEN
+  updated_definition := regexp_replace(definition, legacy_pattern,
+   'AND public.ride_product_filters_compatible(request_row,ride_offers) \&', 'i');
+ ELSE
+  RAISE EXCEPTION 'Allocator changed: review product filter integration before applying 0137.';
+ END IF;
+ IF updated_definition IS NULL OR updated_definition=definition THEN
+  RAISE EXCEPTION 'Product filter integration was not applied.';
+ END IF;
+ EXECUTE updated_definition;
+END;
+$migration$;
 
 -- Also guard direct reservations and any alternate allocator at its persistence boundary.
 CREATE OR REPLACE FUNCTION public.guard_match_product_filters()
@@ -107,6 +130,7 @@ BEGIN
  RETURN NEW;
 END;$$;
 REVOKE ALL ON FUNCTION public.guard_match_product_filters() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS a_match_product_filters ON public.ride_matches;
 CREATE TRIGGER a_match_product_filters BEFORE INSERT OR UPDATE OF offer_id,request_id ON public.ride_matches FOR EACH ROW EXECUTE FUNCTION public.guard_match_product_filters();
 NOTIFY pgrst,'reload schema';
 COMMIT;
