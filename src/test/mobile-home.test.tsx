@@ -128,20 +128,23 @@ describe("Home mobile", () => {
   it("prioriza a ação sem dashboard e não espera o carregamento secundário", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
-    expect(screen.getByRole("heading", { name: /Quero carona/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Vou dirigindo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Para onde vamos/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Vou dirigindo" })).not.toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
-  it("permite alternar os dois papéis da viagem", () => {
+  it("expande e recolhe o painel sem controles de motorista", () => {
     render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Vou dirigindo" }));
-    expect(screen.getByRole("button", { name: "Definir detalhes da carona (Motorista)" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Quero carona", pressed: false }));
-    expect(screen.getByRole("button", { name: "Aumentar passageiros" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Carona Moto/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Corrida Direta/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Recolher detalhes" }));
+    expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
   });
   it("publica a solicitação com os campos informados", async () => {
     const { container } = render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Editar origem" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Aldeota" } });
     fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
@@ -168,8 +171,9 @@ describe("Home mobile", () => {
     });
     render(<Home />);
     act(() => fix(position()));
-    await waitFor(() => expect(screen.getByText("Rua A, Fortaleza")).toBeInTheDocument());
-    expect(screen.getByText("Localização atual")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
+    expect(screen.getByRole("button", { name: "Usar minha localização atual" })).toBeInTheDocument();
     expect(api.reverse).toHaveBeenCalledWith({ data: { lat: -3.73, lng: -38.52 } });
   });
   it("GPS negado permite informar saída sem reload", async () => {
@@ -179,10 +183,10 @@ describe("Home mobile", () => {
     });
     render(<Home />);
     act(() => gpsFailure({ code: 1 } as GeolocationPositionError));
-    fireEvent.click(screen.getByRole("button", { name: "Informar saída" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
     expect(screen.getByLabelText("Saída")).toHaveValue("CEC");
-    expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Usar minha localização atual" })).toBeInTheDocument();
   });
   it("movimento atualiza marcador sem sobrescrever saída manual", async () => {
     Object.defineProperty(window, "matchMedia", {
@@ -191,8 +195,8 @@ describe("Home mobile", () => {
     });
     render(<Home />);
     act(() => fix(position()));
-    await waitFor(() => expect(screen.getByText("Rua A, Fortaleza")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Editar origem" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
     fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Centro de Eventos" } });
     act(() => move(position(-3.74)));
     expect(screen.getByLabelText("Saída")).toHaveValue("Centro de Eventos");
@@ -207,7 +211,8 @@ describe("Home mobile", () => {
     api.reverse.mockResolvedValue(null);
     const { container } = render(<Home />);
     act(() => fix(position()));
-    await screen.findByText(/Suas coordenadas estão disponíveis/);
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    await screen.findByText(/Não conseguimos identificar o endereço/);
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "CEC" } });
     fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
     fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
@@ -232,3 +237,4 @@ describe("Home mobile", () => {
     expect(screen.queryByRole("button", { name: /inscrição STS/i })).not.toBeInTheDocument();
   });
 });
+

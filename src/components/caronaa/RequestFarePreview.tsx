@@ -65,9 +65,10 @@ export function RequestFarePreview({
     };
   }, [origin, destination, preview, retry, routeIsReady, onQuote, refreshKey]);
 
-  const groupTotal = fare && Number.isInteger(passengerCount) && passengerCount >= 1 && passengerCount <= 6
-    ? calculateRequestedGroupFare(fare.pricePerPassenger, passengerCount)
-    : null;
+  const groupTotal =
+    fare && Number.isInteger(passengerCount) && passengerCount >= 1 && passengerCount <= 6
+      ? calculateRequestedGroupFare(fare.pricePerPassenger, passengerCount)
+      : null;
 
   return (
     <section
@@ -86,7 +87,8 @@ export function RequestFarePreview({
           </p>
           <p className="text-sm text-muted-foreground">
             {fare.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km pela estrada
-            · {passengerCount} {passengerCount === 1 ? "passageiro solicitado" : "passageiros solicitados"}:{" "}
+            · {passengerCount}{" "}
+            {passengerCount === 1 ? "passageiro solicitado" : "passageiros solicitados"}:{" "}
             {formatBrl(groupTotal ?? 0)} estimados
           </p>
         </div>
@@ -107,8 +109,7 @@ export function RequestFarePreview({
         </Button>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
-        Estimativa: R$ 6 a cada 11 km por pessoa. O valor final é calculado e confirmado antes dos
-        aceites da combinação. Vagas livres do motorista não entram na cobrança.
+        Estimativa baseada no seu trecho. O valor final é confirmado antes da combinação da viagem.
       </p>
     </section>
   );

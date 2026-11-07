@@ -33,6 +33,8 @@ describe("priced passenger route request", () => {
           rideDate: "2026-10-15",
           departureTime: "09:15",
           passengerCount: 2,
+          vehicleType: "CAR",
+          womenOnly: false,
           timeToleranceMinutes: 15,
           preferences: {
             conversation: "quiet",
@@ -49,7 +51,9 @@ describe("priced passenger route request", () => {
       }),
     ).resolves.toEqual({ requestId: "request-1" });
 
-    expect(rpc).toHaveBeenCalledWith("create_priced_ride_request", {
+    expect(rpc).toHaveBeenCalledWith("create_filtered_priced_ride_request", {
+      p_vehicle_type: "CAR",
+      p_women_only: false,
       p_quote_id: "8b9f53e9-2728-4985-b866-d912fba5bd5e",
       p_ride_date: "2026-10-15",
       p_departure_time: "09:15",
@@ -73,3 +77,4 @@ describe("priced passenger route request", () => {
     ).rejects.toThrow("identificador inválido");
   });
 });
+

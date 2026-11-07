@@ -300,7 +300,7 @@ function Buscar() {
               </p>
               <p className="text-xs text-muted-foreground">
                 {requestQuote.distanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km
-                por estrada · tarifa R$ 6 a cada 11 km.
+                por estrada.
                 {submitted.date && submitted.time
                   ? " Este mesmo valor será enviado na solicitação."
                   : " Informe data e horário para solicitar uma vaga."}
@@ -414,3 +414,4 @@ function Buscar() {
     </AppShell>
   );
 }
+

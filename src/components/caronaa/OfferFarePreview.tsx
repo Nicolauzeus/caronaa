@@ -55,7 +55,7 @@ export function OfferFarePreview({
   }, [origin, destination, retry, calculate, onQuote]);
   return (
     <section className="border-y border-border py-4" aria-label="Preço da oferta">
-      <p className="text-sm font-semibold">Preço por passageiro · percurso completo</p>
+      <p className="text-sm font-semibold">Contribuição estimada por vaga · percurso completo</p>
       {quote ? (
         <p className="mt-1 text-xl font-bold text-primary">
           {formatBrl(quote.pricePerPassenger)}{" "}
@@ -87,8 +87,8 @@ export function OfferFarePreview({
         </p>
       )}
       <p className="mt-2 text-xs text-muted-foreground">
-        R$ 6 a cada 11 km. Trechos menores têm preço proporcional; cada passageiro paga pelo próprio
-        trecho.
+        Valor sugerido proporcional por vaga ocupada. Cada passageiro contribui de acordo com o
+        trecho percorrido.
       </p>
     </section>
   );

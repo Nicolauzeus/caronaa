@@ -47,9 +47,10 @@ describe("Manual payments and platform fee policy", () => {
     expect(shell).toContain('label: "Oferecer"');
     expect(shell).toContain('label: "Viagens"');
     expect(shell).toContain('"grid-cols-4"');
-    expect(home).toContain("Quero carona");
-    expect(home).toContain("Vou dirigindo");
-    expect(home).toContain("Quantas vagas livres no seu carro?");
-    expect(offer).toContain("Publicar carona no meu carro");
+    expect(home).toContain("Confirmar Carona");
+    expect(home).not.toContain("Vou dirigindo");
+    expect(offer).toContain("Vagas disponíveis");
+    expect(offer).toContain("Publicar Viagem");
   });
 });
+

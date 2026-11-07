@@ -16,7 +16,7 @@ export function TripModeSelector({
             {
               mode: "CARPOOL",
               title: "Carona Compartilhada",
-              subtitle: "Econômica · R$ 6 por 11 km",
+              subtitle: "Econômica · Trajeto compartilhado",
               description:
                 "Compartilhe o trajeto de quem já vai dirigir. Pode exigir caminhada curta até um ponto de encontro.",
               Icon: Users,
@@ -56,16 +56,12 @@ export function TripModeSelector({
               <span
                 className={
                   "mt-1 block text-xs font-semibold " +
-                  (value === item.mode
-                    ? "text-[#FFBB00]"
-                    : "text-muted-foreground")
+                  (value === item.mode ? "text-[#FFBB00]" : "text-muted-foreground")
                 }
               >
                 {item.subtitle}
               </span>
-              <span className="mt-2 block text-xs opacity-80">
-                {item.description}
-              </span>
+              <span className="mt-2 block text-xs opacity-80">{item.description}</span>
             </span>
           </label>
         ))}

@@ -42,6 +42,19 @@ A região é uma configuração de disponibilidade do serviço, **não** uma res
 
 ### Tela inicial do passageiro
 
+**Revisão de UX (07/11/2026):** mapa Google em destaque e painel inferior expansível.
+As opções são Carona Compartilhada (carro, até três passageiros por pedido), Carona Moto
+(uma vaga) e Corrida Direta (piloto regional existente, com preço independente).
+Mostrar o preço estimado final, sem expor a fórmula matemática nos componentes da interface.
+O cálculo compartilhado descrito em F03 continua inalterado no servidor e na biblioteca.
+
+**Carona entre mulheres:** somente perfis com `profiles.gender = 'FEMININO'` visualizam
+os controles opcionais de passageira/condutora; homens e gênero não informado não recebem
+controles nem mensagens sobre o recurso. Pedidos que optam pelo recurso combinam apenas
+com condutoras de ofertas exclusivas para passageiras. Persistir e validar esses filtros
+antes do matching; não converter ofertas ou pedidos históricos silenciosamente.
+A migration 0137 deve preceder a publicação desta interface.
+
 1. Informar origem (GPS autorizado ou digitação).
 2. Informar destino.
 3. Escolher **Compartilhar carona** ou **Viajar agora**.
@@ -156,6 +169,11 @@ mostrar o ponto projetado na rota com confirmação das condições de acesso e 
 A sugestão não altera automaticamente o embarque combinado, reservas ou tarifas.
 A publicação dessa política exige a migration 0136. Ofertas históricas e rotinas
 mantêm seu comportamento anterior, sem conversão silenciosa.
+
+**Oferta pontual (07/11/2026):** carro com 1–4 vagas; moto com uma vaga e aviso de capacete extra.
+A escolha de veículo e a restrição opcional para passageiras são salvas antes da alocação.
+Manter revisão explícita antes de Publicar Viagem, inversão de trajeto, saída imediata e agendamento.
+Ofertas anteriores mantêm os dados existentes; novas ofertas usam os limites aprovados.
 
 **Aceite F03:** tarifa de 11 km exata, subtrechos corretos, arredondamento, mapa, limites de vagas e publicação persistida.
 
@@ -347,4 +365,5 @@ npm run build
 ```
 
 > **Regra final:** **CARONAA simples na interface, inteligente na operação, mensurável no impacto.** Nenhum desenvolvimento novo deve contrariar estes fluxos sem autorização de uma revisão do produto.
+
 

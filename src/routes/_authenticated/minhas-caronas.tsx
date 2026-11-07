@@ -987,7 +987,7 @@ function Trip({
             </div>
           )}
           <p className="border-t border-border/60 pt-1.5 text-muted-foreground">
-            Preço automático: R$ 6 a cada 11 km, proporcional ao seu trecho.
+            Tarifa calculada proporcionalmente ao percurso.
           </p>
         </div>
       ) : ride.status === "MATCHED" ? (
@@ -1139,3 +1139,4 @@ function Trip({
     </article>
   );
 }
+

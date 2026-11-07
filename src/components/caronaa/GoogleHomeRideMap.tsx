@@ -2,22 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { resolveGoogleMapsBrowserKey } from "@/lib/google-maps-key";
-import {
-  loadGoogleMaps,
-  onGoogleMapsAuthFailure,
-} from "@/lib/google-maps-loader";
+import { loadGoogleMaps, onGoogleMapsAuthFailure } from "@/lib/google-maps-loader";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { MapUnavailable } from "./MapUnavailable";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
 import { LocateFixed, MapPin } from "lucide-react";
-import {
-  validPoint,
-  type UserPosition,
-} from "@/lib/location/use-user-location";
+import { validPoint, type UserPosition } from "@/lib/location/use-user-location";
 import type { ApproximateProfessionalDriver } from "./HomeRideMap";
 
 type Point = { lat?: number; lng?: number };
 type Props = {
+  immersive?: boolean;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
   origin?: Point;
@@ -38,6 +33,7 @@ export const googleMapsBrowserKey = resolveGoogleMapsBrowserKey(
 );
 
 export function GoogleHomeRideMap({
+  immersive = false,
   userPosition,
   professionalDrivers = [],
   origin,
@@ -66,8 +62,7 @@ export function GoogleHomeRideMap({
     km: number;
     minutes: number;
   } | null>(null);
-  const effectiveOrigin =
-    originIsCurrent && validPoint(userPosition) ? userPosition : origin;
+  const effectiveOrigin = originIsCurrent && validPoint(userPosition) ? userPosition : origin;
 
   useEffect(() => {
     let active = true;
@@ -77,8 +72,7 @@ export function GoogleHomeRideMap({
     const initializeMap = async () => {
       // Lovable project Secrets can provide the browser key without putting a
       // real value in a tracked .env file. The key is still public in the client.
-      const browserKey =
-        (await getServerBrowserKey().catch(() => null)) || googleMapsBrowserKey;
+      const browserKey = (await getServerBrowserKey().catch(() => null)) || googleMapsBrowserKey;
       if (!active) return;
       await loadGoogleMaps(browserKey);
       if (!active || !container.current) return;
@@ -129,11 +123,7 @@ export function GoogleHomeRideMap({
     const G = (window as any).google.maps;
     markers.current.forEach((marker) => marker.setMap(null));
     markers.current = [];
-    const add = (
-      point: Point | null | undefined,
-      title: string,
-      color: string,
-    ) => {
+    const add = (point: Point | null | undefined, title: string, color: string) => {
       if (!validPoint(point)) return;
       const marker = new G.Marker({
         map: map.current,
@@ -188,20 +178,15 @@ export function GoogleHomeRideMap({
   const fromLng = validPoint(effectiveOrigin)
     ? Math.round(effectiveOrigin.lng * 1000) / 1000
     : undefined;
-  const toLat = validPoint(destination)
-    ? Math.round(destination.lat * 10000) / 10000
-    : undefined;
-  const toLng = validPoint(destination)
-    ? Math.round(destination.lng * 10000) / 10000
-    : undefined;
+  const toLat = validPoint(destination) ? Math.round(destination.lat * 10000) / 10000 : undefined;
+  const toLng = validPoint(destination) ? Math.round(destination.lng * 10000) / 10000 : undefined;
   useEffect(() => {
     if (!ready || !map.current || failed) return;
     routePolyline.current?.setMap(null);
     routePolyline.current = null;
     setRouteMetrics(null);
     setRouteError(false);
-    if (fromLat == null || fromLng == null || toLat == null || toLng == null)
-      return;
+    if (fromLat == null || fromLng == null || toLat == null || toLng == null) return;
     const abort = new AbortController();
     const googleMap = map.current;
     const timer = window.setTimeout(() => {
@@ -267,19 +252,16 @@ export function GoogleHomeRideMap({
       map.current.panTo(next);
       currentCenter.current = next;
     }
-  }, [
-    ready,
-    recenterVersion,
-    following,
-    userPosition,
-    effectiveOrigin?.lat,
-    effectiveOrigin?.lng,
-  ]);
+  }, [ready, recenterVersion, following, userPosition, effectiveOrigin?.lat, effectiveOrigin?.lng]);
 
   return (
     <section
       aria-label="Mapa do seu trajeto"
-      className="relative isolate -mx-4 h-[320px] overflow-hidden bg-muted sm:mx-0 sm:h-72 sm:rounded-lg sm:border sm:border-border"
+      className={
+        immersive
+          ? "relative isolate h-full w-full overflow-hidden bg-[#121212]"
+          : "relative isolate -mx-4 h-[320px] overflow-hidden bg-muted sm:mx-0 sm:h-72 sm:rounded-lg sm:border sm:border-border"
+      }
       data-map-provider="google"
     >
       <div
@@ -301,7 +283,11 @@ export function GoogleHomeRideMap({
         type="button"
         size="icon"
         variant="outline"
-        className="absolute bottom-8 right-3 z-10 size-12 bg-background shadow-sm"
+        className={
+          immersive
+            ? "absolute right-3 top-32 z-10 size-12 bg-background shadow-sm"
+            : "absolute bottom-8 right-3 z-10 size-12 bg-background shadow-sm"
+        }
         disabled={locating}
         aria-label="Centralizar na minha localização"
         title="Centralizar na minha localização"
@@ -309,24 +295,22 @@ export function GoogleHomeRideMap({
       >
         <LocateFixed
           size={21}
-          className={
-            locating ? "animate-pulse" : following ? "text-primary" : ""
-          }
+          className={locating ? "animate-pulse" : following ? "text-primary" : ""}
         />
       </Button>
       {routeMetrics && (
         <div
           role="status"
-          className="absolute left-3 top-3 z-10 rounded-xl bg-background/95 px-3 py-2 text-xs font-bold shadow-md"
+          className={`absolute left-3 ${immersive ? "top-32" : "top-3"} z-10 rounded-xl bg-background/95 px-3 py-2 text-xs font-bold shadow-md`}
         >
-          Trajeto pelas ruas: {routeMetrics.km.toFixed(1).replace(".", ",")} km
-          · cerca de {Math.max(1, Math.round(routeMetrics.minutes))} min
+          Trajeto pelas ruas: {routeMetrics.km.toFixed(1).replace(".", ",")} km · cerca de{" "}
+          {Math.max(1, Math.round(routeMetrics.minutes))} min
         </div>
       )}
       {routeError && (
         <div
           role="status"
-          className="absolute left-3 right-16 top-3 z-10 rounded-lg bg-background/95 px-3 py-2 text-xs shadow-sm"
+          className={`absolute left-3 right-16 ${immersive ? "top-32" : "top-3"} z-10 rounded-lg bg-background/95 px-3 py-2 text-xs shadow-sm`}
         >
           Não foi possível traçar a rota. Ajuste os pontos ou tente novamente.
         </div>

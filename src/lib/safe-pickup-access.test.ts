@@ -224,7 +224,7 @@ describe("Offer route-policy publication", () => {
       data: { quoteId: "quote", allowDetours: false },
     });
     expect(client.rpc).toHaveBeenCalledWith(
-      "publish_priced_offer",
+      "publish_filtered_priced_offer",
       expect.objectContaining({
         p_quote_id: "quote",
         p_details: expect.objectContaining({ allowDetours: false }),
@@ -245,3 +245,4 @@ describe("Offer route-policy publication", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 });
+

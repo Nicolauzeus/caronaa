@@ -10,6 +10,7 @@ export type ApproximateProfessionalDriver = {
   seen_at: string;
 };
 type Props = {
+  immersive?: boolean;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
   origin?: Point;

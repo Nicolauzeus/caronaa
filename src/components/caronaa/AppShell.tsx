@@ -54,10 +54,12 @@ export function AppShell({
   children,
   publicPage = false,
   prelaunchMode = false,
+  mapLayout = false,
 }: {
   children: ReactNode;
   publicPage?: boolean;
   prelaunchMode?: boolean;
+  mapLayout?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -367,7 +369,9 @@ export function AppShell({
       {/* Conteúdo Principal */}
       <main
         className={
-          publicPage
+          mapLayout
+            ? "relative h-[calc(100dvh-9rem-env(safe-area-inset-bottom))] min-h-0 w-full md:h-[calc(100dvh-4rem)]"
+            : publicPage
             ? "flex-1"
             : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
         }
@@ -409,3 +413,4 @@ export function AppShell({
     </div>
   );
 }
+

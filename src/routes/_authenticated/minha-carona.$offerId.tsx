@@ -227,7 +227,7 @@ function GerenciarOferta() {
             <p>Veículo: {active.vehicleDescription || "Não informado"}</p>
             {active.notes && <p>Observações: {active.notes}</p>}
             <p>
-              Tarifa de referência: R$ 6 a cada 11 km do percurso completo; cada passageiro paga
+              Tarifa calculada proporcionalmente ao percurso; cada passageiro paga
               conforme seu trecho.
             </p>
           </div>
@@ -481,3 +481,4 @@ function ConfirmedPassenger({ ride }: { ride: RideSummary }) {
     </div>
   );
 }
+
