@@ -287,7 +287,13 @@ BEGIN
     v_total:=v_total+v_row.fee_cents;
     v_count:=v_count+1;
   END LOOP;
-  IF v_count=0 THEN RAISE EXCEPTION 'No unbilled driver commissions for this selection'; END IF;
+  IF v_count=0 THEN
+    SELECT id INTO v_statement FROM public.caronaa_driver_fee_statements
+      WHERE driver_id=v_driver AND status IN ('OPEN','CLAIMED')
+      ORDER BY created_at DESC LIMIT 1;
+    IF FOUND AND p_source IS NULL THEN RETURN v_statement; END IF;
+    RAISE EXCEPTION 'No unbilled driver commissions for this selection';
+  END IF;
   IF v_total>2147483647 THEN RAISE EXCEPTION 'Statement amount exceeds supported bounds'; END IF;
   INSERT INTO public.caronaa_driver_fee_statements(
     driver_id,total_cents,item_count,pix_key_snapshot
