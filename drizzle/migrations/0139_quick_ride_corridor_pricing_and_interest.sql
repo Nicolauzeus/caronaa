@@ -181,6 +181,45 @@ END; $$;
 REVOKE ALL ON FUNCTION public.caronaa_register_coverage_interest(text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.caronaa_register_coverage_interest(text,text) TO authenticated;
 
+
+-- Protect Google Cloud spend: at most five quote attempts per minute per user.
+-- This is an atomic DB upsert, not a client-side countdown that can be bypassed.
+CREATE TABLE IF NOT EXISTS public.caronaa_quick_quote_rate_limits (
+ user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+ window_started_at timestamptz NOT NULL DEFAULT now(),
+ attempts integer NOT NULL DEFAULT 1 CHECK (attempts BETWEEN 1 AND 100)
+);
+ALTER TABLE public.caronaa_quick_quote_rate_limits ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.caronaa_quick_quote_rate_limits FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION public.caronaa_quick_quote_rate_gate()
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $
+DECLARE allowed boolean;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+ INSERT INTO public.caronaa_quick_quote_rate_limits(user_id,window_started_at,attempts)
+ VALUES(auth.uid(),now(),1)
+ ON CONFLICT(user_id) DO UPDATE SET
+  window_started_at = CASE
+    WHEN caronaa_quick_quote_rate_limits.window_started_at<=now()-interval '1 minute'
+      THEN now()
+    ELSE caronaa_quick_quote_rate_limits.window_started_at
+  END,
+  attempts = CASE
+    WHEN caronaa_quick_quote_rate_limits.window_started_at<=now()-interval '1 minute'
+      THEN 1
+    ELSE caronaa_quick_quote_rate_limits.attempts+1
+  END
+ WHERE caronaa_quick_quote_rate_limits.window_started_at<=now()-interval '1 minute'
+    OR caronaa_quick_quote_rate_limits.attempts<5
+ RETURNING true INTO allowed;
+ IF NOT coalesce(allowed,false)
+  THEN RAISE EXCEPTION 'Limite temporário de cotações atingido. Tente novamente em um minuto.'; END IF;
+ RETURN true;
+END; $;
+REVOKE ALL ON FUNCTION public.caronaa_quick_quote_rate_gate() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.caronaa_quick_quote_rate_gate() TO authenticated;
+
 -- No exact location in public radar; only opted-in, authorized, fresh drivers.
 CREATE OR REPLACE FUNCTION public.discover_caronaa_quick_drivers(p_municipality text,p_vehicle text)
 RETURNS TABLE(driver_key text,lat double precision,lng double precision,seen_at timestamptz)
