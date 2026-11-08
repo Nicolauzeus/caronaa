@@ -87,7 +87,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
       status:"WAITLIST",radar:false,dispatch:false,
     });
     render(<QuickRideHomePanel {...basic}/>);
-    const button=await screen.findByRole("button",{name:"Avise-me quando chegar aqui"},{},{timeout:2500});
+    const button=await screen.findByRole("button",{name:"Avise-me quando chegar aqui"},{timeout:2500});
     fireEvent.click(button);
     await waitFor(()=>expect(api.interest).toHaveBeenCalledWith({
       data:{municipality:"Pacatuba",vehicleType:"MOTO"},
@@ -99,7 +99,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
 
   it("exibe valor verificado no servidor antes de confirmar a solicitação",async()=>{
     render(<QuickRideHomePanel {...basic}/>);
-    const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{},{timeout:2500});
+    const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500});
     fireEvent.click(calc);
     expect(await screen.findByText("R$ 7,50")).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({
@@ -119,7 +119,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
 
   it("invalida cotação anterior quando o destino muda",async()=>{
     const {rerender}=render(<QuickRideHomePanel {...basic}/>);
-    const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{},{timeout:2500});
+    const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500});
     fireEvent.click(calc);
     await screen.findByRole("button",{name:"Solicitar corrida ao valor indicado"});
     rerender(<QuickRideHomePanel {...basic} destination="Novo destino"
