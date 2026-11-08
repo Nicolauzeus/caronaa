@@ -27,6 +27,8 @@ type Props = {
   locating: boolean;
   onDrag: () => void;
   onRecenter: () => void;
+  selectingOrigin?: boolean;
+  onPickOrigin?: (point: { lat: number; lng: number }) => void;
 };
 
 // process.env is available on the server; the RPC applies that priority before
@@ -49,6 +51,8 @@ export function GoogleHomeRideMap({
   locating,
   onDrag,
   onRecenter,
+  selectingOrigin = false,
+  onPickOrigin,
 }: Props) {
   const getServerBrowserKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
@@ -200,6 +204,18 @@ export function GoogleHomeRideMap({
     trustedGps,
     pickupPreview,
   ]);
+
+  // Only an explicit selection mode may change the departure from a map tap.
+  // Coordinates come from the Google Map itself, not from reverse-geocoded centroids.
+  useEffect(() => {
+    if (!ready || !map.current || failed || !selectingOrigin || !onPickOrigin) return;
+    const listener = map.current.addListener("click", (event: any) => {
+      const lat = event?.latLng?.lat?.();
+      const lng = event?.latLng?.lng?.();
+      if (validPoint({ lat, lng })) onPickOrigin({ lat, lng });
+    });
+    return () => listener?.remove?.();
+  }, [ready, failed, selectingOrigin, onPickOrigin]);
 
   // Selecting a manual departure must recenter on that selected place,
   // not on a coarse browser/Wi-Fi geolocation.
@@ -372,7 +388,7 @@ export function GoogleHomeRideMap({
         ref={container}
         className="absolute inset-0 z-0"
         role="img"
-        aria-label="Mapa Google do radar CARONAA"
+        aria-label={selectingOrigin ? "Toque para definir sua saída no Google Maps" : "Mapa Google do radar CARONAA"}
       />
       {failed && <MapUnavailable />}
       {!ready && !failed && (
