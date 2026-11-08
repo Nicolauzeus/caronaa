@@ -89,6 +89,36 @@ describe("RideLiveTracker Component", () => {
     expect(screen.getByText("Destino Final")).toBeInTheDocument();
   });
 
+  it("identifies the authorized driver by name for the passenger", () => {
+    render(
+      <RideLiveTracker
+        rideId="ride-test-1"
+        role="passenger"
+        viewerUserId="passenger-id-456"
+        status="CONFIRMED"
+        safety={mockSafety}
+        driverName="Ana Motorista"
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Motorista confirmado: Ana Motorista")).toBeInTheDocument();
+    expect(screen.getByText("Motorista")).toBeInTheDocument();
+  });
+
+  it("labels the driver themselves as Você in their own trip view", () => {
+    render(
+      <RideLiveTracker
+        rideId="ride-test-1"
+        role="driver"
+        viewerUserId="driver-id-123"
+        status="CONFIRMED"
+        safety={mockSafety}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Você (motorista)")).toBeInTheDocument();
+  });
+
   it("does not misrepresent straight-line distance as verified road ETA", () => {
     render(
       <RideLiveTracker
