@@ -157,7 +157,7 @@ BEGIN
    'status', CASE WHEN enabled AND r.dispatch AND r.radar AND coalesce(tariff_published,false)
        THEN 'ENABLED' ELSE 'WAITLIST' END,
    'region',r.pricing_region,
-   'radar',r.radar AND enabled,
+   'radar',r.radar AND r.dispatch AND enabled AND coalesce(tariff_published,false),
    'dispatch',r.dispatch AND enabled AND r.radar AND coalesce(tariff_published,false)
  );
 END; $$;
@@ -197,6 +197,8 @@ BEGIN
  JOIN public.professional_driver_authorizations a ON a.user_id=l.user_id
  JOIN public.professional_service_regions r ON r.municipality=l.municipality
  JOIN public.caronaa_service_municipalities c ON c.municipality=l.municipality
+ JOIN public.caronaa_quick_tariff_policies t
+   ON t.pricing_region=c.pricing_region AND t.vehicle_type=p_vehicle AND t.published
  WHERE l.municipality=btrim(p_municipality)
    AND a.approved AND a.vehicle_type=p_vehicle AND p.is_available
    AND p.last_seen_at>now()-interval '90 seconds'
