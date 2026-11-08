@@ -162,12 +162,10 @@ export function GoogleHomeRideMap({
     // is unreliable, the "Você" badge marks the explicitly selected departure,
     // and its tooltip makes clear that this is not live GPS.
     if (!originIsCurrent && validPoint(origin)) {
-      if (!trustedGps || areNearbyPoints(origin, userPosition)) {
-        add(origin, "Sua saída escolhida · ponto informado (não GPS ao vivo)", "you");
-      } else {
-        add(userPosition, "Você · localização GPS", "you");
-        add(origin, "Origem escolhida · diferente da posição GPS", "origin");
-      }
+      // In planning mode the user's selected departure is the single primary
+      // anchor. Never contradict an explicitly chosen pickup with a second
+      // "Você" badge from the browser's GPS, even if that fix reports 20m.
+      add(origin, "Sua saída escolhida · ponto informado (não GPS ao vivo)", "you");
     } else if (originIsCurrent && trustedAppliedOrigin) {
       if (trustedGps) {
         add(userPosition, "Você · localização GPS", "you");
@@ -189,7 +187,7 @@ export function GoogleHomeRideMap({
     circle.current?.setMap(null);
     circle.current = null;
     circle.current = null;
-    if (trustedGps && userPosition.accuracy > 0) {
+    if (originIsCurrent && trustedGps && userPosition.accuracy > 0) {
       circle.current = new G.Circle({
         map: map.current,
         center: { lat: userPosition.lat, lng: userPosition.lng },
