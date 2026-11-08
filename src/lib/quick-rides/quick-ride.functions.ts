@@ -65,7 +65,12 @@ function rateCard(row:any):ExclusiveRateCard{
  */
 async function resolveCoverage(client:any,coordinates:z.infer<typeof coverageInput>):Promise<QuickRideCoverage>{
   let reverse: Awaited<ReturnType<typeof reverseGeocodeService>> = null;
-  try { reverse=await reverseGeocodeService(coordinates.lat,coordinates.lng); }
+  try {
+    reverse=await sessionRequest(
+      "quick-region-reverse:"+coordinates.lat.toFixed(5)+":"+coordinates.lng.toFixed(5),
+      ()=>reverseGeocodeService(coordinates.lat,coordinates.lng),90_000,
+    );
+  }
   catch { /* Geocoding failure is UNKNOWN, never an invented municipality. */ }
   if(!reverse?.city) return {
     municipality:null,region:null,status:"UNKNOWN",radar:false,dispatch:false,
@@ -131,7 +136,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       if(policy.intermunicipal_enabled!==true)
         throw new Error("Esta modalidade ainda não foi homologada para corridas entre municípios.");
       const {data:destinationStatus,error:destinationError}=
-        await context.supabase.rpc("caronaa_quick_region_status",{
+        await (context.supabase as any).rpc("caronaa_quick_region_status",{
           p_municipality:destinationCity.municipality,p_vehicle:data.vehicleType,
         });
       if(destinationError||destinationStatus?.status!=="ENABLED")
