@@ -182,6 +182,10 @@ export function quoteProposedCaronaaFare(
   input: FareQuoteInput,
   config: FarePolicyConfig,
 ): ProposedFareQuote {
+  if (!["SHARED_CAR", "SHARED_MOTO", "EXCLUSIVE_CAR", "EXCLUSIVE_MOTO"].includes(input.mode))
+    throw new Error("Modalidade de viagem inválida.");
+  if (!["FRIENDS", "INDIVIDUAL"].includes(input.party))
+    throw new Error("Tipo de reserva inválido.");
   if (!Number.isFinite(input.distanceKm) || input.distanceKm <= 0 ||
       input.distanceKm > 1500) throw new Error("Distância rodoviária inválida.");
   if (input.region !== "MACICO_BATURITE" && input.region !== "OUTSIDE_MACICO")
