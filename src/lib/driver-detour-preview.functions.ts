@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getDrivingRoute, type RoadPoint } from "./road-routing";
 import { projectOntoRoutePath } from "./ride-matching";
+import { calculateDriverDetour } from "./driver-detour";
 
 const inputSchema = z.object({ rideId: z.string().uuid() });
 const point = (lat: unknown, lng: unknown): RoadPoint | null => {
@@ -11,22 +12,6 @@ const point = (lat: unknown, lng: unknown): RoadPoint | null => {
       Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   return { lat, lng };
 };
-
-export function calculateDriverDetour(
-  originalMinutes: number, originalKm: number,
-  individualMinutes: number, individualKm: number,
-  combinedMinutes: number,
-) {
-  const addedMinutes = Math.max(0, individualMinutes - originalMinutes);
-  const addedKm = Math.max(0, individualKm - originalKm);
-  const combinedAddedMinutes = Math.max(0, combinedMinutes - originalMinutes);
-  return {
-    detourMinutes: Math.round(addedMinutes * 10) / 10,
-    detourKm: Math.round(addedKm * 10) / 10,
-    combinedAddedMinutes: Math.round(combinedAddedMinutes * 10) / 10,
-    withinLimits: addedMinutes <= 6 && combinedAddedMinutes <= 15,
-  };
-}
 
 const previewSchema = z.object({
   detourMinutes: z.number().nonnegative(),
