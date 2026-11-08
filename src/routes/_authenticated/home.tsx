@@ -457,7 +457,7 @@ function Home() {
         )}
         <section
           aria-labelledby="journey-title"
-          className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[min(84dvh,calc(100%-5rem))] min-h-0" : "h-auto max-h-[min(44dvh,20rem)]"}`}
+          className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[min(84dvh,calc(100%_-_5rem))] min-h-0" : "h-auto max-h-[min(44dvh,20rem)]"}`}
         >
           <button
             type="button"
