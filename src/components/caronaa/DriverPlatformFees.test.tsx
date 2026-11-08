@@ -57,7 +57,7 @@ describe("driver commission QR billing",()=>{
     render(<DriverPlatformFees/>);
     expect((await screen.findAllByText(/R\$\s*1,50/)).length).toBeGreaterThan(0);
     expect(screen.getByText(/1 viagem pendente/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button",{name:/Gerar QR Pix para/}));
+    fireEvent.click(screen.getByRole("button",{name:/Gerar QR Pix das comissões/}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith(
       "create_my_caronaa_fee_statement",{p_source:null,p_ride_id:null},
     ));
