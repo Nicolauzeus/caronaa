@@ -4661,6 +4661,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_admin_driver_debts_overview: { Args: never; Returns: Json }
       get_admin_finance_overview: { Args: { p_since?: string }; Returns: Json }
       get_admin_finance_recent: {
         Args: { p_limit?: number; p_since?: string }

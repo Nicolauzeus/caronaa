@@ -855,6 +855,13 @@
       "when": 1794110264874,
       "tag": "0121_admin_finance_overview",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1794110871632,
+      "tag": "0122_admin_driver_debts_overview",
+      "breakpoints": true
     }
   ]
 }
