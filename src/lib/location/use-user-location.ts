@@ -110,6 +110,16 @@ export function useUserLocation({
       options,
     );
   }, [stop]);
+  /**
+   * Centralizar-me is a camera action first. It must react instantly to an
+   * existing position, independently of ride creation, before a new browser
+   * GPS request succeeds. Coarse/missing fixes also trigger a fresh request.
+   */
+  const recenter = useCallback(() => {
+    setFollowing(true);
+    setRecenterVersion((version) => version + 1);
+    if (!position || position.accuracy > 80) locate();
+  }, [locate, position]);
   useEffect(() => {
     mounted.current = true;
     let autoPending =
@@ -150,5 +160,6 @@ export function useUserLocation({
     setFollowing,
     recenterVersion,
     locate,
+    recenter,
   };
 }
