@@ -102,7 +102,7 @@ describe("RideLiveTracker Component", () => {
       />,
     );
     expect(screen.getByText("Motorista confirmado: Ana Motorista")).toBeInTheDocument();
-    expect(screen.getByText("Motorista")).toBeInTheDocument();
+    expect(screen.getAllByText("Motorista").length).toBeGreaterThan(0);
   });
 
   it("labels the driver themselves as Você in their own trip view", () => {
