@@ -109,7 +109,7 @@ export class CompositeGeocodingProvider implements GeocodingProvider {
     return true;
   }
 
-  async search(query: string): Promise<LocationSearchResponse> {
+  async search(query: string, sessionToken?: string): Promise<LocationSearchResponse> {
     const trimmed = query.trim();
     if (trimmed.length < 2)
       return { isConfigured: true, provider: "catalog", suggestions: [] };
@@ -118,7 +118,7 @@ export class CompositeGeocodingProvider implements GeocodingProvider {
     // local landmarks instantly while this bounded request is in flight.
     if (this.primaryProvider.isConfigured()) {
       try {
-        const result = await this.primaryProvider.search(trimmed);
+        const result = await this.primaryProvider.search(trimmed, sessionToken);
         if (result.suggestions.length > 0) return result;
       } catch {
         /* Local/manual fallback remains available. */
@@ -160,12 +160,12 @@ export class CompositeGeocodingProvider implements GeocodingProvider {
     };
   }
 
-  async getDetails(placeId: string): Promise<LocationDetailsResponse> {
+  async getDetails(placeId: string, sessionToken?: string): Promise<LocationDetailsResponse> {
     const local = await this.catalogProvider.getDetails(placeId);
     if (local.details) return local;
     if (!placeId.startsWith("manual_") && this.primaryProvider.isConfigured()) {
       try {
-        return await this.primaryProvider.getDetails(placeId);
+        return await this.primaryProvider.getDetails(placeId, sessionToken);
       } catch {
         /* No invented details. */
       }
