@@ -19,6 +19,26 @@ não é aplicável ao valor bruto sem regras de arredondamento. Se o processamen
 de pagamento cobrar uma taxa adicional, ela é suportada pela plataforma neste
 protótipo e deve ser medida no produto real.
 
+### Risco de comissão consumida pelas taxas de pagamento
+
+No preço R$7,50 e comissão de 20%, o CARONAA aufere R$1,50 **brutos**
+antes de custos. A tabela pública do Asaas para cobranças Pix anuncia
+R$0,99 promocional por recebimento (3 meses) e R$1,99 padrão posteriormente.
+A tarifa aplicável deve ser consultada na própria conta Asaas, pois pode
+depender do contrato e do método (Pix manual direto não é a mesma operação
+que uma fatura Pix dinâmica). Fontes:
+https://www.asaas.com/pix-asaas
+https://central.ajuda.asaas.com/hc/pt-br/articles/32095332785947-Regulamento-Promo%C3%A7%C3%A3o-3-meses-de-taxas-reduzidas
+
+Assim, com fatura Pix dinâmica de R$1,99 o CARONAA perderia **R$0,49
+por corrida de R$7,50** antes de impostos, suporte e Google Cloud. O motor
+de tarifa tem entrada para o custo real de processamento e recusa preço
+sem margem suficiente. Não desconta a tarifa de processamento do condutor
+sem comunicação e previsão contratual. Possíveis alternativas comerciais:
+Pix manual direto ao condutor com cobrança posterior, cobranças agrupadas
+das comissões (respeitando riscos de inadimplência e regras do provedor),
+ou tarifa adicional explicitamente aprovada para pagamento processado.
+
 **Alerta de aceitação dos mototaxistas:** R$ 6 líquidos para 11 km completos
 pode ser economicamente insuficiente apesar de equivaler ao mínimo observado
 para uma corrida CURTA. Validar com mototaxistas de Redenção, Acarape, Baturité
