@@ -144,9 +144,9 @@ export function QuickRideHomePanel({
         ?"Não foi possível identificar o município do embarque."
         :"Informe um ponto de saída verificado para consultar a cobertura.";
   return (
-    <section aria-label="Corrida Rápida no mapa" className="space-y-3 rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+    <section aria-label="Corrida Rápida no mapa" className="min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white">
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p>
           <p className="text-xs text-gray-300">Mesmo mapa, embarque no local escolhido, sem troca de página.</p>
         </div>
@@ -162,8 +162,8 @@ export function QuickRideHomePanel({
           </button>
         ))}
       </div>
-      <div className="rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
-        <div className="flex items-center gap-2 font-semibold">
+      <div className="min-w-0 rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
           <Users size={16} className="text-[#FFBB00]"/>
           <span>Profissionais disponíveis na região</span>
         </div>
@@ -183,7 +183,7 @@ export function QuickRideHomePanel({
       </p>}
       {hasOrigin&&coverageLoading&&<p role="status" className="text-xs text-gray-300">Verificando cobertura a partir do embarque…</p>}
       {hasOrigin&&!coverageLoading&&!covered&&(
-        <div className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
+        <div className="min-w-0 break-words rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
           <p className="font-semibold">{coverage?.municipality??"Região não identificada"}</p>
           <p className="mt-1 text-gray-300">{inactiveText}</p>
           {coverage?.municipality&&(
@@ -204,6 +204,7 @@ export function QuickRideHomePanel({
               liveRide.status==="ARRIVED"?"Motorista informou chegada ao ponto.":
               "Viagem em andamento."}
           </p>
+          <div className="flex min-w-0 flex-wrap gap-2">
           {liveRide.status==="ARRIVED"&&(
             <button type="button" disabled={busy} onClick={()=>void rideAction("CONFIRM_PICKUP")}
               className="mt-2 min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
@@ -212,10 +213,11 @@ export function QuickRideHomePanel({
           )}
           {["SEARCHING","ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
             <button type="button" disabled={busy} onClick={()=>void rideAction("CANCELLED")}
-              className="mt-2 ml-2 min-h-11 rounded-xl border border-white/30 px-3 text-xs font-semibold">
+              className="min-h-11 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">
               Cancelar pedido
             </button>
           )}
+          </div>
         </div>
       ):(
         <>
@@ -229,9 +231,9 @@ export function QuickRideHomePanel({
             <p className="text-xs text-gray-300"><MapPin className="mr-1 inline" size={13}/>Selecione o destino para calcular o valor.</p>
           )}
           {currentQuote&&(
-            <div role="status" className="space-y-2 rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3">
+            <div role="status" className="min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3">
               <p className="text-xs text-gray-200">Preço da corrida · {vehicle==="MOTO"?"Moto":"Carro"}</p>
-              <p className="text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
+              <p className="break-words text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
               <p className="flex items-center gap-1 text-xs text-gray-200">
                 <Clock3 size={13}/>{currentQuote.distanceKm.toFixed(1)} km • aprox. {Math.round(currentQuote.durationMinutes)} min
               </p>
