@@ -108,7 +108,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const admin=supabaseAdmin as any;
     const {data:policy,error:policyError}=await admin.from("caronaa_quick_tariff_policies")
-      .select("pricing_region,vehicle_type,base_cents,per_km_cents,per_minute_cents,minimum_cents,commission_bps,processing_fee_cents,policy_version,published")
+      .select("pricing_region,vehicle_type,base_cents,per_km_cents,per_minute_cents,minimum_cents,commission_bps,processing_fee_cents,minimum_platform_margin_cents,policy_version,published")
       .eq("pricing_region",coverage.region)
       .eq("vehicle_type",data.vehicleType)
       .eq("published",true).maybeSingle();
@@ -163,6 +163,8 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
         pickupInsideApprovedArea:true,
       }:null,
     },config);
+    if(q.platformNetBeforeTaxes < safeCents(policy.minimum_platform_margin_cents))
+      throw new Error("Esta tarifa não cobre a margem operacional mínima. A operação precisa revisar o preço antes de abrir solicitações.");
     // Prices are only inserted from this authenticated SERVER function.
     const {data:record,error:saveError}=await admin.from("caronaa_quick_fare_quotes")
       .insert({
