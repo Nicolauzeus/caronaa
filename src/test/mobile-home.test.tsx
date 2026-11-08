@@ -199,6 +199,7 @@ describe("Home mobile", () => {
     render(<Home />);
     expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    expect(screen.getByText("Seus caminhos salvos").closest("details")).not.toHaveAttribute("open");
     expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeChecked();
     expect(screen.getByRole("radio", { name: /Carona Moto/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Corrida Rápida/ })).toBeInTheDocument();
