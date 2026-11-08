@@ -232,7 +232,7 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
           {ledger.platformPixConfigured && ledger.readyToInvoiceCents > 0 && (
             <Button type="button" className="w-full" disabled={Boolean(busy)}
               onClick={() => void issue()}>
-              Gerar QR Pix para {brlCents(ledger.readyToInvoiceCents)}
+              Gerar QR Pix das comissões disponíveis
             </Button>
           )}
           <div className="space-y-2">
