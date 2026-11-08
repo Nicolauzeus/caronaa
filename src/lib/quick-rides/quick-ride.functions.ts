@@ -101,6 +101,10 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
   .middleware([requireSupabaseAuth])
   .inputValidator((v:unknown)=>quoteInput.parse(v))
   .handler(async ({context,data})=>{
+    const {data:rateAllowed,error:rateError}=await (context.supabase as any)
+      .rpc("caronaa_quick_quote_rate_gate");
+    if(rateError||rateAllowed!==true)
+      throw new Error("Limite de cotações atingido ou serviço indisponível. Tente novamente em um minuto.");
     const coverage=await resolveCoverage(context.supabase,{
       ...data.origin,vehicleType:data.vehicleType,
     });
