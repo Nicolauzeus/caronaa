@@ -262,6 +262,120 @@ END; $$;
 REVOKE ALL ON FUNCTION public.admin_set_caronaa_quick_city(text,boolean,boolean) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_set_caronaa_quick_city(text,boolean,boolean) TO authenticated;
 
+
+CREATE OR REPLACE FUNCTION public.admin_caronaa_quick_commercial_overview()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $
+BEGIN
+ IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Admin only' USING ERRCODE='42501'; END IF;
+ RETURN jsonb_build_object(
+  'cities', coalesce((SELECT jsonb_agg(
+    jsonb_build_object('municipality',c.municipality,'region',c.pricing_region,
+      'car',c.car_enabled,'moto',c.moto_enabled,
+      'interest',coalesce((SELECT count(*) FROM public.caronaa_coverage_interest i
+        WHERE i.municipality=c.municipality),0)
+    ) ORDER BY c.pricing_region,c.municipality)
+    FROM public.caronaa_service_municipalities c),'[]'::jsonb),
+  'policies', coalesce((SELECT jsonb_agg(to_jsonb(p)
+    ORDER BY p.pricing_region,p.vehicle_type)
+    FROM public.caronaa_quick_tariff_policies p),'[]'::jsonb),
+  'activities', coalesce((SELECT jsonb_agg(to_jsonb(a) ORDER BY a.starts_at DESC)
+    FROM (SELECT * FROM public.caronaa_quick_official_activities ORDER BY starts_at DESC LIMIT 30) a),'[]'::jsonb)
+ );
+END; $;
+REVOKE ALL ON FUNCTION public.admin_caronaa_quick_commercial_overview() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_caronaa_quick_commercial_overview() TO authenticated;
+
+-- Secure finance configuration. No consumer/driver can set a margin or campaign.
+CREATE OR REPLACE FUNCTION public.admin_set_caronaa_quick_tariff(
+ p_region text,p_vehicle text,
+ p_base integer,p_per_km integer,p_per_minute integer,p_minimum integer,
+ p_commission_bps integer,p_processing_fee integer,p_margin integer,
+ p_intermunicipal boolean,p_publish boolean,p_version text
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $
+BEGIN
+ IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Admin only' USING ERRCODE='42501'; END IF;
+ IF p_region NOT IN ('FORTALEZA_CORRIDOR','MACICO_BATURITE')
+    OR p_vehicle NOT IN ('CAR','MOTO')
+    OR p_base IS NULL OR p_base<0
+    OR p_per_km IS NULL OR p_per_km<0
+    OR p_per_minute IS NULL OR p_per_minute<0
+    OR p_minimum IS NULL OR p_minimum<450
+    OR p_commission_bps IS NULL OR p_commission_bps NOT BETWEEN 0 AND 4000
+    OR p_processing_fee IS NULL OR p_processing_fee<0
+    OR p_margin IS NULL OR p_margin<0
+    OR p_intermunicipal IS NULL OR p_publish IS NULL
+    OR length(btrim(coalesce(p_version,''))) NOT BETWEEN 3 AND 100 THEN
+   RAISE EXCEPTION 'Invalid quick tariff policy';
+ END IF;
+ IF p_region='MACICO_BATURITE' AND p_commission_bps<>2000
+   THEN RAISE EXCEPTION 'Maciço commission must be 20 percent outside approved events'; END IF;
+ IF p_region='MACICO_BATURITE' AND p_vehicle='MOTO' AND p_minimum<>750
+   THEN RAISE EXCEPTION 'Maciço moto minimum is R$7.50 in the approved pilot policy'; END IF;
+ INSERT INTO public.caronaa_quick_tariff_policies(
+   pricing_region,vehicle_type,base_cents,per_km_cents,per_minute_cents,
+   minimum_cents,commission_bps,processing_fee_cents,minimum_platform_margin_cents,
+   intermunicipal_enabled,published,policy_version,updated_at
+ ) VALUES (
+   p_region,p_vehicle,p_base,p_per_km,p_per_minute,p_minimum,
+   p_commission_bps,p_processing_fee,p_margin,p_intermunicipal,p_publish,
+   btrim(p_version),now()
+ )
+ ON CONFLICT(pricing_region,vehicle_type) DO UPDATE SET
+   base_cents=excluded.base_cents,per_km_cents=excluded.per_km_cents,
+   per_minute_cents=excluded.per_minute_cents,
+   minimum_cents=excluded.minimum_cents,commission_bps=excluded.commission_bps,
+   processing_fee_cents=excluded.processing_fee_cents,
+   minimum_platform_margin_cents=excluded.minimum_platform_margin_cents,
+   intermunicipal_enabled=excluded.intermunicipal_enabled,
+   published=excluded.published,policy_version=excluded.policy_version,updated_at=now();
+END; $;
+REVOKE ALL ON FUNCTION public.admin_set_caronaa_quick_tariff(
+ text,text,integer,integer,integer,integer,integer,integer,integer,boolean,boolean,text
+) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_caronaa_quick_tariff(
+ text,text,integer,integer,integer,integer,integer,integer,integer,boolean,boolean,text
+) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_upsert_caronaa_quick_activity(
+ p_id uuid,p_title text,p_city text,
+ p_starts_at timestamptz,p_ends_at timestamptz,
+ p_lat double precision,p_lng double precision,p_radius_m integer,
+ p_published boolean
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $
+DECLARE v_id uuid;
+BEGIN
+ IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Admin only' USING ERRCODE='42501'; END IF;
+ IF p_starts_at IS NULL OR p_ends_at IS NULL OR p_ends_at<=p_starts_at
+    OR length(btrim(coalesce(p_title,''))) NOT BETWEEN 3 AND 160
+    OR p_lat IS NULL OR p_lng IS NULL
+    OR NOT (p_lat BETWEEN -90 AND 90 AND p_lng BETWEEN -180 AND 180)
+    OR p_radius_m IS NULL OR p_radius_m NOT BETWEEN 100 AND 30000
+    OR p_published IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public.caronaa_service_municipalities c WHERE c.municipality=btrim(p_city)
+    ) THEN
+  RAISE EXCEPTION 'Invalid official activity';
+ END IF;
+ v_id:=coalesce(p_id,gen_random_uuid());
+ INSERT INTO public.caronaa_quick_official_activities(
+   id,title,municipality,starts_at,ends_at,center_lat,center_lng,radius_m,published
+ ) VALUES(v_id,btrim(p_title),btrim(p_city),p_starts_at,p_ends_at,p_lat,p_lng,p_radius_m,p_published)
+ ON CONFLICT(id) DO UPDATE SET
+   title=excluded.title,municipality=excluded.municipality,
+   starts_at=excluded.starts_at,ends_at=excluded.ends_at,
+   center_lat=excluded.center_lat,center_lng=excluded.center_lng,
+   radius_m=excluded.radius_m,published=excluded.published,updated_at=now();
+ RETURN v_id;
+END; $;
+REVOKE ALL ON FUNCTION public.admin_upsert_caronaa_quick_activity(
+ uuid,text,text,timestamptz,timestamptz,double precision,double precision,integer,boolean
+) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_upsert_caronaa_quick_activity(
+ uuid,text,text,timestamptz,timestamptz,double precision,double precision,integer,boolean
+) TO authenticated;
+
 COMMENT ON TABLE public.caronaa_quick_fare_quotes IS
  'Server-generated immutable quick ride fare snapshots. No automatic Pix/Asaas settlement.';
 COMMENT ON TABLE public.caronaa_service_municipalities IS
