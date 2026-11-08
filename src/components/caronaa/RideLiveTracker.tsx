@@ -1,4 +1,6 @@
 import { LiveRideMap } from "./LiveRideMap";
+import { calculateRemainingWaitTime } from "@/lib/meeting-point-tolerance";
+import { getStrictPickupWait, markStrictPickupNoShow, type StrictPickupWait } from "@/lib/strict-pickup-wait-service";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -70,6 +72,8 @@ export function RideLiveTracker({
   const [lastLocalUpdate, setLastLocalUpdate] = useState<Date | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [clock, setClock] = useState(Date.now());
+  const [strictWait, setStrictWait] = useState<StrictPickupWait | null>(null);
+  const [noShowBusy, setNoShowBusy] = useState(false);
   const lastVoiceStage = useRef<TransitStage | null>(null);
   const refreshRef = useRef(onRefresh);
   refreshRef.current = onRefresh;
@@ -78,6 +82,17 @@ export function RideLiveTracker({
     setSharing(sessionStorage.getItem(consentKey) === "yes");
   }, [consentKey]);
   const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (status !== "CONFIRMED") { setStrictWait(null); return; }
+    let active = true;
+    const refreshWait = () => void getStrictPickupWait(rideId)
+      .then((result) => { if (active) setStrictWait(result); })
+      .catch(() => { if (active) setStrictWait(null); });
+    refreshWait();
+    const interval = window.setInterval(refreshWait, 10000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, [rideId, status, safety.transitStage]);
 
   const currentStage: TransitStage =
     status === "IN_PROGRESS"
@@ -205,6 +220,9 @@ export function RideLiveTracker({
     setIsUpdatingStage(true);
     try {
       await updateRideTransitStage(rideId, nextStage);
+      if (nextStage === "AWAITING_BOARDING") {
+        setStrictWait(await getStrictPickupWait(rideId).catch(() => null));
+      }
       toast.success(`Etapa atualizada: ${TRANSIT_STAGE_LABELS[nextStage]}`);
       await refreshRef.current();
     } catch (err) {
@@ -472,6 +490,34 @@ export function RideLiveTracker({
           </div>
         </div>
       )}
+
+      {status === "CONFIRMED" && currentStage === "AWAITING_BOARDING" && strictWait?.strict && strictWait.arrivedAt && (() => {
+        let remaining: ReturnType<typeof calculateRemainingWaitTime> | null = null;
+        try { remaining = calculateRemainingWaitTime(strictWait.arrivedAt!, new Date(clock)); } catch { /* Wait for verified server state. */ }
+        if (!remaining) return null;
+        const display = `${String(remaining.minutes).padStart(2, "0")}:${String(remaining.seconds).padStart(2, "0")}`;
+        return (
+          <div role="status" className="space-y-2 rounded-xl border border-[#FFBB00]/30 bg-[#121212] p-3 text-xs text-white">
+            <p className="font-semibold">Aguardando passageiro: {display}</p>
+            {remaining.isExpired && role === "driver" && (
+              <Button type="button" disabled={noShowBusy || !strictWait.canMarkNoShow} onClick={async () => {
+                setNoShowBusy(true);
+                try {
+                  const latest = await getStrictPickupWait(rideId);
+                  if (!latest.canMarkNoShow) throw new Error("Confirmação de ausência ainda indisponível.");
+                  await markStrictPickupNoShow(rideId);
+                  toast.success("Ausência registrada. Vaga liberada.");
+                  await refreshRef.current();
+                } catch (cause) {
+                  toast.error(cause instanceof Error ? cause.message : "Não foi possível registrar a ausência.");
+                } finally { setNoShowBusy(false); }
+              }} className="bg-[#FFBB00] text-[#121212] hover:bg-[#FFBB00]/90">
+                {noShowBusy ? "Registrando..." : "Seguir viagem (passageiro não compareceu)"}
+              </Button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 3. Estimativa de Distância e Chegada (quando disponível) */}
       {metrics && (
