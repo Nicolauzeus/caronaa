@@ -22,13 +22,14 @@ import { Button } from "@/components/ui/button";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
 import type { TravelPreferences } from "@/lib/travel-preferences";
-import { getActiveHomeJourneys, getRecentHomeDestinations } from "@/lib/home.functions";
+import { getActiveHomeJourneys } from "@/lib/home.functions";
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap, type ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 import { useUserLocation } from "@/lib/location/use-user-location";
+import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
@@ -72,7 +73,6 @@ export const Route = createFileRoute("/_authenticated/home")({
 
 function Home() {
   const loadJourneys = useServerFn(getActiveHomeJourneys);
-  const loadRecent = useServerFn(getRecentHomeDestinations);
   const requestRide = useServerFn(createRideRequest);
   const reverseGeocode = useServerFn(reverseGeocodeServerFn);
   const navigate = useNavigate();
@@ -84,7 +84,6 @@ function Home() {
   const [resolvedAddress, setResolvedAddress] = useState<FormLocationDetails | null>(null);
   const [reverseFailed, setReverseFailed] = useState(false);
   const [journeys, setJourneys] = useState<Awaited<ReturnType<typeof loadJourneys>>>([]);
-  const [recent, setRecent] = useState<Awaited<ReturnType<typeof loadRecent>>>([]);
   const [error, setError] = useState<string | null>(null);
   const [professionalMunicipality, setProfessionalMunicipality] = useState("");
   const [professionalDrivers, setProfessionalDrivers] = useState<ApproximateProfessionalDriver[]>(
@@ -187,17 +186,6 @@ function Home() {
       );
   }, [loadJourneys]);
   useEffect(refresh, [refresh]);
-  useEffect(() => {
-    let alive = true;
-    void loadRecent()
-      .then((value) => {
-        if (alive) setRecent(value);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [loadRecent]);
   const active = journeys[0];
   const pickupRide = journeys.find(
     (journey) =>
@@ -245,11 +233,10 @@ function Home() {
       new Date(`${active.ride_date}T${active.departure_time.slice(0, 8)}-03:00`).getTime() >
         Date.now()),
   );
-  const point =
-    originLocation ??
-    (active?.origin_lat != null && active.origin_lng != null
-      ? { lat: active.origin_lat, lng: active.origin_lng }
-      : undefined);
+  // Never render a past ride's origin as the member's current position.
+  const point = originLocation;
+  const gpsOriginIsImprecise = originSource === "CURRENT_LOCATION" &&
+    Boolean(location.addressPosition && !isTrustedGpsFix(location.addressPosition));
   useEffect(() => {
     if (location.failure && originSource === "CURRENT_LOCATION") {
       setOriginSource("MANUAL_ORIGIN");
@@ -265,6 +252,11 @@ function Home() {
   }, [location.addressPosition, location.failure]);
   useEffect(() => {
     if (!location.addressPosition || originSource !== "CURRENT_LOCATION") return;
+    if (!isTrustedGpsFix(location.addressPosition)) {
+      setResolvedAddress(null);
+      setReverseFailed(false);
+      return;
+    }
     let alive = true;
     setResolvedAddress(null);
     setReverseFailed(false);
@@ -289,6 +281,12 @@ function Home() {
   }, [location.addressPosition, reverseGeocode, originSource]);
   useEffect(() => {
     if (originSource !== "CURRENT_LOCATION" || !location.addressPosition) return;
+    if (!isTrustedGpsFix(location.addressPosition)) {
+      // An estimate off by ~1 km must never generate a ride pickup or quote.
+      setOrigin("");
+      setOriginLocation(undefined);
+      return;
+    }
     const { lat, lng } = location.addressPosition;
     const addressStillNear =
       resolvedAddress?.lat != null &&
@@ -350,12 +348,21 @@ function Home() {
     preferences,
   ]);
   const reviewed = confirmedReviewKey === reviewKey;
+  const focusOriginOnExpand = useRef(false);
   function expandDestination() {
+    focusOriginOnExpand.current = false;
     setPanelOpen(true);
     document.getElementById("home-destination")?.focus();
   }
+  function expandOrigin() {
+    focusOriginOnExpand.current = true;
+    setPanelOpen(true);
+    document.getElementById("home-origin")?.focus();
+  }
   useEffect(() => {
-    if (panelOpen) document.getElementById("home-destination")?.focus();
+    if (!panelOpen) return;
+    document.getElementById(focusOriginOnExpand.current ? "home-origin" : "home-destination")?.focus();
+    focusOriginOnExpand.current = false;
   }, [panelOpen]);
   async function submitRequest(event: React.FormEvent) {
     event.preventDefault();
@@ -424,77 +431,14 @@ function Home() {
             userPosition={location.position}
             origin={currentFare?.originPoint ?? point}
             destination={destinationLocation ?? currentFare?.destinationPoint}
-            originIsCurrent={originSource === "CURRENT_LOCATION" && Boolean(location.position)}
-            following={location.isFollowingUser}
+            originIsCurrent={originSource === "CURRENT_LOCATION"}
+            following={originSource === "CURRENT_LOCATION" && isTrustedGpsFix(location.position) && location.isFollowingUser}
             recenterVersion={location.recenterVersion}
             locating={location.locating}
             onDrag={() => location.setFollowing(false)}
             onRecenter={location.locate}
           />
         </div>
-        {originSource === "CURRENT_LOCATION" && location.addressPosition && location.addressPosition.accuracy > 80 && (
-          <div role="status" className="pointer-events-none absolute inset-x-3 top-[86px] z-20 mx-auto max-w-2xl rounded-xl border border-[#FFBB00]/30 bg-[#121212]/95 px-3 py-2 text-xs text-white/85 shadow-lg backdrop-blur-lg sm:inset-x-5">
-            📍 Sinal GPS impreciso (~{Math.round(location.addressPosition.accuracy)}m) • Confira se o marcador está no lado correto da pista.
-          </div>
-        )}
-        <header className="pointer-events-none absolute inset-x-3 top-3 z-10 mx-auto max-w-2xl space-y-2 sm:inset-x-5">
-          <button
-            type="button"
-            onClick={expandDestination}
-            className="pointer-events-auto flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/20 bg-[#121212]/85 px-4 text-left shadow-xl backdrop-blur-xl"
-          >
-            <MapPin className="shrink-0 text-[#FFBB00]" size={22} aria-hidden="true" />
-            <h1 className="truncate font-[family-name:var(--font-display)] text-lg font-bold">
-              Para onde vamos?
-            </h1>
-            <Search className="ml-auto shrink-0 text-[#FFBB00]" size={20} aria-hidden="true" />
-          </button>
-          <div
-            aria-label="Destinos rápidos"
-            className="pointer-events-auto flex gap-2 overflow-x-auto pb-2"
-          >
-            {(recent.length
-              ? recent.slice(0, 4).map((item) => ({
-                  label: item.destination,
-                  destination: item.destination,
-                  lat: item.destination_lat,
-                  lng: item.destination_lng,
-                }))
-              : [
-                  {
-                    label: "UNILAB",
-                    destination: "UNILAB - Campus da Liberdade, Redenção - CE",
-                    lat: null,
-                    lng: null,
-                  },
-                  { label: "Centro", destination: "Centro", lat: null, lng: null },
-                  {
-                    label: "Campus Auroras",
-                    destination: "UNILAB - Campus das Auroras, Redenção - CE",
-                    lat: null,
-                    lng: null,
-                  },
-                ]
-            ).map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                className="min-h-11 max-w-56 shrink-0 truncate rounded-full border border-white/20 bg-[#121212]/85 px-4 text-sm font-semibold shadow-lg backdrop-blur-xl"
-                onClick={() => {
-                  setDestination(item.destination);
-                  setDestinationLocation(
-                    item.lat != null && item.lng != null
-                      ? { rawText: item.destination, lat: item.lat, lng: item.lng }
-                      : undefined,
-                  );
-                  expandDestination();
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </header>
         <section
           aria-labelledby="journey-title"
           className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex max-h-[calc(100%-9rem)] max-w-2xl flex-col rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[76%]" : "h-auto"}`}
@@ -521,12 +465,24 @@ function Home() {
             <div className="space-y-3 p-4">
               <button
                 type="button"
+                aria-label="Pesquisar destino no painel de carona"
                 onClick={expandDestination}
                 className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 text-left font-semibold"
               >
                 <span className="truncate">{destination || "Para onde você vai?"}</span>
                 <Search size={22} className="shrink-0 text-[#FFBB00]" aria-hidden="true" />
               </button>
+              {gpsOriginIsImprecise && (
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs text-white">
+                  <p>
+                    GPS impreciso (±{Math.round(location.addressPosition!.accuracy)} m).
+                    Não usamos essa posição como sua saída até você ajustar o ponto.
+                  </p>
+                  <button type="button" onClick={expandOrigin} className="min-h-10 font-bold text-[#FFBB00] underline underline-offset-4">
+                    Corrigir saída
+                  </button>
+                </div>
+              )}
               {active && (
                 <Link
                   to="/minhas-caronas"
@@ -565,6 +521,8 @@ function Home() {
                     onClick={() => {
                       manualOriginChosen.current = false;
                       setOriginSource("CURRENT_LOCATION");
+                      setOrigin("");
+                      setOriginLocation(undefined);
                       location.locate();
                     }}
                     className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#FFBB00]"
@@ -583,6 +541,11 @@ function Home() {
                       Não conseguimos identificar o endereço. Você pode ajustar a saída.
                     </p>
                   )}
+                  {gpsOriginIsImprecise && (
+                    <p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-2 text-xs text-white">
+                      O GPS está com precisão de aproximadamente {Math.round(location.addressPosition!.accuracy)} metros. Informe sua saída abaixo ou selecione o ponto no mapa antes de solicitar carona.
+                    </p>
+                  )}
                   <LocationAutocomplete
                     id="home-origin"
                     label="Saída"
@@ -599,7 +562,6 @@ function Home() {
                   />
                   <LocationAutocomplete
                     id="home-destination"
-                    autoFocus
                     label="Destino"
                     value={destination}
                     variant="glass"
@@ -794,7 +756,7 @@ function Home() {
               <Button
                 type="submit"
                 form="passenger-request-form"
-                disabled={busy || !currentFare}
+                disabled={busy || !currentFare || gpsOriginIsImprecise}
                 className="h-14 w-full rounded-2xl bg-[#FFBB00] text-base font-bold text-[#121212] hover:bg-[#ffd04d]"
               >
                 {busy ? "Buscando motoristas…" : "Confirmar Carona"}
