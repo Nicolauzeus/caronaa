@@ -1,7 +1,10 @@
 import { useProfileGender } from "@/lib/use-profile-gender";
+import { RideIntentSwitch } from "@/components/caronaa/RideIntentSwitch";
+import { consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-draft";
+import type { PassengerRideOption } from "@/components/caronaa/PassengerRideOptions";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { RoutePolicySelector } from "@/components/caronaa/RoutePolicySelector";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -40,9 +43,19 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { ResearchSeatPicker } from "@/components/research/ResearchSeatPicker";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
+import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
+  // Keep the legacy form for prefilled deep links. Ordinary navigation goes
+  // straight into the same HOME map and bottom sheet as Pedir carona.
+  beforeLoad: ({search}) => {
+    const prefilled = Boolean(search.origem || search.destino || search.data ||
+      search.horario || search.olat != null || search.dlat != null);
+    if (!prefilled) throw redirect({
+      to: "/home", search: {intent: "offer"}, replace: true,
+    });
+  },
   validateSearch: z.object({
     origem: z.string().max(160).optional(),
     destino: z.string().max(160).optional(),
@@ -146,6 +159,7 @@ function Oferecer() {
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
+  const previousPassengerMode = useRef<PassengerRideOption | undefined>(undefined);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const [quote, setQuote] = useState<OfferQuote | null>(null);
   const [profilePlate, setProfilePlate] = useState("");
@@ -183,6 +197,32 @@ function Oferecer() {
         : undefined,
   }));
   useEffect(() => {
+    const draft = consumeRideIntentDraft();
+    if (!draft) return;
+    previousPassengerMode.current = draft.passengerMode;
+    if (draft.offer) {
+      setAllowDetours(draft.offer.allowDetours);
+      setMode(draft.offer.scheduleMode);
+      setDepartureMode(draft.offer.departureMode);
+    }
+    setOriginSource(draft.origin ? "MANUAL_ORIGIN" : "CURRENT_LOCATION");
+    setForm((current) => ({
+      ...current,
+      origin: draft.origin || current.origin,
+      destination: draft.destination || current.destination,
+      originLocation: draft.originLocation ?? current.originLocation,
+      destinationLocation: draft.destinationLocation ?? current.destinationLocation,
+      date: draft.date || current.date,
+      time: draft.time || current.time,
+      timeTolerance: draft.tolerance ?? current.timeTolerance,
+      vehicleType: draft.offerVehicle || current.vehicleType,
+      seats: draft.offerVehicle === "MOTO" ? "1" :
+        draft.offer ? String(draft.offer.seats) : current.seats,
+      vehicle: draft.offer?.vehicle || current.vehicle,
+      notes: draft.offer?.notes ?? current.notes,
+    }));
+  }, []);
+  useEffect(() => {
     let active = true;
     void (async () => {
       const { data: auth } = await supabase.auth.getUser();
@@ -209,7 +249,8 @@ function Oferecer() {
   }, []);
   // Resolve o endereço da posição atual uma única vez por fix de GPS.
   useEffect(() => {
-    if (!location.addressPosition || originSource !== "CURRENT_LOCATION") return;
+    if (!location.addressPosition || originSource !== "CURRENT_LOCATION" ||
+        !isTrustedGpsFix(location.addressPosition)) return;
     let alive = true;
     setResolvedAddress(null);
     setReverseFailed(false);
@@ -235,7 +276,7 @@ function Oferecer() {
   // Origem padrão: localização atual do motorista.
   useEffect(() => {
     const position = location.position;
-    if (originSource !== "CURRENT_LOCATION" || !position) return;
+    if (originSource !== "CURRENT_LOCATION" || !position || !isTrustedGpsFix(position)) return;
     const { lat, lng } = position;
     const addressStillNear =
       resolvedAddress?.lat != null &&
@@ -403,6 +444,30 @@ function Oferecer() {
       setIdempotencyKey(crypto.randomUUID());
     }
   };
+  function switchToRequest() {
+    const coarseGps = originSource === "CURRENT_LOCATION" &&
+      ((location.position?.accuracy ?? Number.POSITIVE_INFINITY) > 80 ||
+        form.originLocation?.isApproximate === true);
+    saveRideIntentDraft({
+      origin: coarseGps ? "" : form.origin,
+      destination: form.destination,
+      originLocation: coarseGps ? undefined : form.originLocation,
+      destinationLocation: form.destinationLocation,
+      date: form.date, time: form.time, tolerance: form.timeTolerance,
+      passengerMode: previousPassengerMode.current ??
+        (form.vehicleType === "MOTO" ? "MOTO" : "CAR"),
+      offerVehicle: form.vehicleType,
+      offer: {
+        vehicle: form.vehicle,
+        seats: Number(form.seats),
+        notes: form.notes,
+        allowDetours,
+        scheduleMode: mode,
+        departureMode,
+      },
+    });
+    void navigate({ to: "/home" });
+  }
   return (
     <AppShell>
       <div className="mx-auto max-w-3xl">
@@ -417,6 +482,13 @@ function Oferecer() {
             Defina seu trajeto e compartilhe os custos da viagem.
           </p>
         </header>
+        <div className="mb-4 max-w-lg">
+          <RideIntentSwitch value="OFFER" disabled={publishing}
+            onChange={(intent) => { if (intent === "REQUEST") switchToRequest(); }} />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Pode voltar a pedir carona sem perder o trajeto que preencheu.
+          </p>
+        </div>
         <RideScheduleMode value={mode} onChange={setMode} />
         {mode === "routine" ? (
           routineSaved ? (
@@ -580,6 +652,17 @@ function Oferecer() {
                           </Button>
                         )}
                       </div>
+                    </div>
+                  )}
+                  {originSource === "CURRENT_LOCATION" && location.position &&
+                    (!Number.isFinite(location.position.accuracy) || location.position.accuracy > 80) && (
+                    <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs text-gray-200">
+                      Seu GPS indica precisão de aproximadamente {Math.round(location.position.accuracy)} metros.
+                      Para oferecer carona, informe a saída ou aguarde uma posição mais precisa.
+                      <button type="button" className="mt-2 block min-h-10 font-bold text-[#FFBB00] underline"
+                        onClick={() => { setOriginSource("MANUAL_ORIGIN"); setOriginEditing(true); }}>
+                        Informar saída manual
+                      </button>
                     </div>
                   )}
                   {/* Cápsula de trajeto conectada */}

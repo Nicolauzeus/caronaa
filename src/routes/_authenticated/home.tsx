@@ -1,4 +1,7 @@
 import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
+import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
+import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
+import { consumeRideIntentDraft, type RideIntentDraft } from "@/lib/ride-intent-draft";
 import type { StrictPickupPreview } from "@/lib/safe-pickup";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
 import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
@@ -12,7 +15,8 @@ import {
   TimeToleranceSelector,
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { Search, ArrowRight, LocateFixed, CalendarDays, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -38,6 +42,7 @@ import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 
 export const Route = createFileRoute("/_authenticated/home")({
+  validateSearch: z.object({ intent: z.enum(["offer"]).optional() }),
   // Parent route already verifies login and applies institution waiting gates.
   // Resolve role before any passenger/driver dashboard renders.
   beforeLoad: async () => {
@@ -73,12 +78,27 @@ export const Route = createFileRoute("/_authenticated/home")({
 });
 
 function Home() {
+  const navigate = useNavigate();
+  const search = Route.useSearch();
+  const [intent, setIntent] = useState<RideIntent>(search.intent === "offer" ? "OFFER" : "REQUEST");
+  useEffect(() => { setIntent(search.intent === "offer" ? "OFFER" : "REQUEST"); }, [search.intent]);
   const loadJourneys = useServerFn(getActiveHomeJourneys);
   const requestRide = useServerFn(createRideRequest);
   const reverseGeocode = useServerFn(reverseGeocodeServerFn);
   const location = useUserLocation({ autoLocate: true });
   const manualOriginChosen = useRef(false);
   const mapOriginRequest = useRef(0);
+  const offerDraftRef = useRef<RideIntentDraft["offer"]>(undefined);
+  const offerPanelRef = useRef<HomeOfferPanelHandle>(null);
+  const [offerStatus, setOfferStatus] = useState<HomeOfferPanelStatus>({
+    step: "DETAILS", busy: false, canContinue: false, driverAllowed: null, routine: false,
+  });
+  const updateOfferDraft = useCallback((draft: NonNullable<RideIntentDraft["offer"]>) => {
+    offerDraftRef.current = draft;
+  }, []);
+  const updateOfferStatus = useCallback((status: HomeOfferPanelStatus) => {
+    setOfferStatus(status);
+  }, []);
   const [originSource, setOriginSource] = useState<"CURRENT_LOCATION" | "MANUAL_ORIGIN">(
     "CURRENT_LOCATION",
   );
@@ -104,7 +124,7 @@ function Home() {
   }, []);
   useEffect(() => {
     const municipality = professionalMunicipality.trim();
-    if (municipality.length < 2 || rideOption !== "EXCLUSIVE") {
+    if (municipality.length < 2 || intent !== "REQUEST" || rideOption !== "EXCLUSIVE") {
       setProfessionalDrivers([]);
       setProfessionalError("");
       setProfessionalLoading(false);
@@ -137,7 +157,7 @@ function Home() {
       alive = false;
       window.clearInterval(timer);
     };
-  }, [professionalMunicipality, rideOption, quickVehicle]);
+  }, [professionalMunicipality, intent, rideOption, quickVehicle]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectingOrigin, setSelectingOrigin] = useState(false);
@@ -154,6 +174,28 @@ function Home() {
     (FarePreview & { origin: string; destination: string; routeKey: string }) | null
   >(null);
   const [requestFareRefresh, setRequestFareRefresh] = useState(0);
+  // Restore only a one-time, tab-local role switch. No GPS is passed through
+  // public URLs or reused from an unrelated past journey.
+  useEffect(() => {
+    const draft = consumeRideIntentDraft();
+    if (!draft) return;
+    offerDraftRef.current = draft.offer;
+    mapOriginRequest.current += 1;
+    manualOriginChosen.current = Boolean(draft.origin);
+    setSelectingOrigin(false);
+    setOriginSource(draft.origin ? "MANUAL_ORIGIN" : "CURRENT_LOCATION");
+    setOrigin(draft.origin);
+    setDestination(draft.destination);
+    setOriginLocation(draft.originLocation);
+    setDestinationLocation(draft.destinationLocation);
+    if (draft.date) setDate(draft.date);
+    if (draft.time) setTime(draft.time);
+    if (draft.tolerance) setTimeTolerance(draft.tolerance);
+    if (draft.passengerMode) setRideOption(draft.passengerMode);
+    if (draft.offerVehicle) setQuickVehicle(draft.offerVehicle);
+    setPanelOpen(true);
+  }, []);
+
   const fareRouteKey = JSON.stringify([
     origin,
     destination,
@@ -333,6 +375,7 @@ function Home() {
   ]);
   const reviewed = confirmedReviewKey === reviewKey;
   const focusOriginOnExpand = useRef(false);
+  const avoidKeyboardOnRoleSwitch = useRef(false);
   function expandDestination() {
     focusOriginOnExpand.current = false;
     setPanelOpen(true);
@@ -345,6 +388,10 @@ function Home() {
   }
   useEffect(() => {
     if (!panelOpen) return;
+    if (avoidKeyboardOnRoleSwitch.current) {
+      avoidKeyboardOnRoleSwitch.current = false;
+      return;
+    }
     document.getElementById(focusOriginOnExpand.current ? "home-origin" : "home-destination")?.focus();
     focusOriginOnExpand.current = false;
   }, [panelOpen]);
@@ -370,7 +417,7 @@ function Home() {
   async function submitRequest(event: React.FormEvent) {
     event.preventDefault();
     // Enter in a quick-ride field must never submit a scheduled/shared ride.
-    if (rideOption === "EXCLUSIVE") return;
+    if (intent === "OFFER" || rideOption === "EXCLUSIVE") return;
     if (!origin.trim() || !destination.trim()) {
       setError("Informe origem e destino antes de continuar.");
       return;
@@ -421,6 +468,26 @@ function Home() {
       setBusy(false);
     }
   }
+  function switchIntent(next: RideIntent) {
+    if (next === intent) return;
+    setIntent(next);
+    if (next === "OFFER") setOfferStatus({
+      step: "DETAILS", busy: false, canContinue: false, driverAllowed: null, routine: false,
+    });
+    if (!panelOpen) avoidKeyboardOnRoleSwitch.current = true;
+    setPanelOpen(true);
+    setSelectingOrigin(false);
+    setConfirmedReviewKey(null);
+    setRequestFare(null);
+    setRequestFareRefresh((v) => v + 1);
+    // Same route and same mounted Google Map. Only the sheet flow changes;
+    // the query contains a role flag, never the passenger's coordinates.
+    void navigate({
+      to: "/home",
+      search: { intent: next === "OFFER" ? "offer" : undefined },
+      replace: true,
+    });
+  }
   return (
     <AppShell mapLayout>
       <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
@@ -428,11 +495,11 @@ function Home() {
           <HomeRideMap
             immersive
             pickupPreview={
-              rideOption === "CAR" && pickupPreview && pickupPreview.rideId === pickupRideId
+              intent === "REQUEST" && rideOption === "CAR" && pickupPreview && pickupPreview.rideId === pickupRideId
                 ? pickupPreview.value
                 : null
             }
-            professionalDrivers={rideOption === "EXCLUSIVE" ? professionalDrivers : []}
+            professionalDrivers={intent === "REQUEST" && rideOption === "EXCLUSIVE" ? professionalDrivers : []}
             userPosition={location.position}
             origin={point ?? currentFare?.originPoint}
             selectingOrigin={selectingOrigin}
@@ -471,11 +538,15 @@ function Home() {
               {panelOpen ? "Recolher detalhes" : "Expandir e planejar viagem"}
             </span>
           </button>
+          <div className="shrink-0 px-3 pb-2 sm:px-4">
+            <RideIntentSwitch value={intent} onChange={switchIntent}
+              disabled={intent === "OFFER" && offerStatus.busy} />
+          </div>
           <h2
             id="journey-title"
             className="shrink-0 px-4 font-[family-name:var(--font-display)] text-xl font-bold"
           >
-            Encontre sua carona
+            {intent === "OFFER" ? "Ofereça sua carona" : "Encontre sua carona"}
           </h2>
           {!panelOpen ? (
             <div className="min-w-0 space-y-3 overflow-y-auto overscroll-contain p-4">
@@ -485,7 +556,7 @@ function Home() {
                 onClick={expandDestination}
                 className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 text-left font-semibold"
               >
-                <span className="truncate">{destination || "Para onde você vai?"}</span>
+                <span className="truncate">{destination || (intent === "OFFER" ? "Para onde vai oferecer carona?" : "Para onde você vai?")}</span>
                 <Search size={22} className="shrink-0 text-[#FFBB00]" aria-hidden="true" />
               </button>
               {gpsOriginIsImprecise && (
@@ -519,8 +590,14 @@ function Home() {
               id="caronaa-journey-details"
               className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 [scrollbar-gutter:stable]"
             >
-              <FavoriteCommuteSuggestion
-                onChoose={(from, to) => {
+              <details className="mt-2 min-w-0" data-testid="favorite-commutes-details">
+                <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
+                  <span>Seus caminhos salvos</span>
+                  <span className="text-xs font-normal text-gray-300">Ver atalhos</span>
+                </summary>
+                <div className="pt-2">
+                  <FavoriteCommuteSuggestion
+                    onChoose={(from, to) => {
                   mapOriginRequest.current += 1;
                   setSelectingOrigin(false);
                   manualOriginChosen.current = true;
@@ -529,8 +606,10 @@ function Home() {
                   setDestination(to.label);
                   setOriginLocation({ rawText: from.label, lat: from.lat, lng: from.lng });
                   setDestinationLocation({ rawText: to.label, lat: to.lat, lng: to.lng });
-                }}
-              />
+                    }}
+                  />
+                </div>
+              </details>
               <form id="passenger-request-form" onSubmit={submitRequest} className="min-w-0 w-full max-w-full space-y-4 pt-3">
                 <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <button
@@ -606,6 +685,7 @@ function Home() {
                     }}
                   />
                 </div>
+                {intent === "REQUEST" && (
                 <div id="caronaa-ride-mode" className="min-w-0 w-full max-w-full">
                   <PassengerRideOptions
                   value={rideOption}
@@ -622,7 +702,8 @@ function Home() {
                   }}
                 />
                 </div>
-                {rideOption === "EXCLUSIVE" && (
+                )}
+                {intent === "REQUEST" && rideOption === "EXCLUSIVE" && (
                   <QuickRideHomePanel
                     origin={origin}
                     destination={destination}
@@ -637,7 +718,7 @@ function Home() {
                     onCoverage={updateQuickCoverage}
                   />
                 )}
-                {rideOption !== "EXCLUSIVE" && (
+                {intent === "REQUEST" && rideOption !== "EXCLUSIVE" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="min-w-0 text-sm font-semibold">
@@ -782,6 +863,26 @@ function Home() {
                   </>
                 )}
               </form>
+                {intent === "OFFER" && (
+                  <HomeOfferPanel
+                    ref={offerPanelRef}
+                    origin={origin}
+                    destination={destination}
+                    originLocation={originLocation}
+                    destinationLocation={destinationLocation}
+                    date={date}
+                    time={time}
+                    tolerance={timeTolerance}
+                    onDateChange={setDate}
+                    onTimeChange={setTime}
+                    onToleranceChange={setTimeTolerance}
+                    initialDraft={offerDraftRef.current}
+                    initialVehicle={rideOption === "MOTO" ? "MOTO" : quickVehicle}
+                    onDraftChange={updateOfferDraft}
+                    onStatusChange={updateOfferStatus}
+                    onPublished={refresh}
+                  />
+                )}
               {active && (
                 <Link
                   to="/minhas-caronas"
@@ -793,7 +894,20 @@ function Home() {
               )}
             </div>
           )}
-          {panelOpen && rideOption !== "EXCLUSIVE" && (
+          {panelOpen && intent === "OFFER" && (
+            <div className="shrink-0 border-t border-white/10 bg-[#121212] p-3 sm:rounded-b-3xl">
+              <Button type="button"
+                onClick={() => offerPanelRef.current?.next()}
+                disabled={offerStatus.busy || (offerStatus.step !== "SUCCESS" && (!offerStatus.canContinue || offerStatus.routine))}
+                className="h-14 w-full rounded-2xl bg-[#FFBB00] text-base font-bold text-[#121212] hover:bg-[#ffd04d]">
+                {offerStatus.busy ? "Publicando…" :
+                  offerStatus.step === "SUCCESS" ? "Oferecer outra carona" :
+                  offerStatus.step === "REVIEW" ? "Publicar oferta" : "Revisar oferta"}
+                <ArrowRight size={18}/>
+              </Button>
+            </div>
+          )}
+          {panelOpen && intent === "REQUEST" && rideOption !== "EXCLUSIVE" && (
             <div className="shrink-0 border-t border-white/10 bg-[#121212] p-3 sm:rounded-b-3xl">
               <Button
                 type="submit"

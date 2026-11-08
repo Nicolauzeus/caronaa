@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "@/routes/_authenticated/home";
+import { clearRideIntentDraft, consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-draft";
 
 const api = vi.hoisted(() => ({
   load: vi.fn(),
@@ -13,6 +14,7 @@ const api = vi.hoisted(() => ({
   navigate: vi.fn(),
   map: vi.fn(),
   quickPanel: vi.fn(),
+  offerPanel: vi.fn(),
   preview: null as any,
 }));
 // Isolated component tests must not initialize authenticated Supabase server middleware.
@@ -66,6 +68,12 @@ vi.mock("@/lib/formulario/account-activation", () => ({
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: { id: "user", user_metadata: {} } }),
 }));
+vi.mock("@/components/caronaa/HomeOfferPanel", () => ({
+  HomeOfferPanel: (props: any) => {
+    api.offerPanel(props);
+    return <div data-testid="home-offer-flow">Oferta no mesmo mapa · {props.origin} → {props.destination}</div>;
+  },
+}));
 vi.mock("@/components/caronaa/QuickRideHomePanel", () => ({
   QuickRideHomePanel: (props: any) => {
     api.quickPanel(props);
@@ -110,6 +118,8 @@ describe("Home mobile", () => {
   const position = (lat = -3.73, accuracy = 10) =>
     ({ coords: { latitude: lat, longitude: -38.52, accuracy } }) as GeolocationPosition;
   beforeEach(() => {
+    vi.spyOn(Route, "useSearch").mockReturnValue({intent:undefined});
+    clearRideIntentDraft();
     vi.clearAllMocks();
     api.load.mockResolvedValue([]);
     api.preview = null;
@@ -158,10 +168,53 @@ describe("Home mobile", () => {
     expect(screen.queryByRole("button", { name: "Vou dirigindo" })).not.toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
+  it("alterna pedir/oferecer no mesmo mapa e mantém a origem/destino sem navegação", () => {
+    render(<Home />);
+    expect(screen.getByRole("button", { name: "Oferecer carona" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Casa no Maracanaú" } });
+    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus Redenção" } });
+    fireEvent.click(screen.getByRole("button", { name: "Oferecer carona" }));
+    expect(screen.getByRole("heading", { name: "Ofereça sua carona" })).toBeInTheDocument();
+    expect(screen.getByTestId("home-offer-flow")).toHaveTextContent("Casa no Maracanaú");
+    expect(screen.getByTestId("home-offer-flow")).toHaveTextContent("Campus Redenção");
+    expect(screen.getByLabelText("Saída")).toHaveValue("Casa no Maracanaú");
+    expect(screen.getByLabelText("Destino")).toHaveValue("Campus Redenção");
+    expect(screen.getByLabelText("Mapa do seu trajeto")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Carona Compartilhada/ })).not.toBeInTheDocument();
+    expect(api.navigate).toHaveBeenCalledWith({
+      to: "/home", search: {intent:"offer"}, replace:true,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Pedir carona" }));
+    expect(screen.getByRole("heading", { name: "Encontre sua carona" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("Saída")).toHaveValue("Casa no Maracanaú");
+    expect(api.request).not.toHaveBeenCalled();
+  });
+  it("recupera o trajeto do motorista ao voltar para pedir carona sem reaproveitar cotação", async () => {
+    saveRideIntentDraft({
+      origin: "Centro, Fortaleza",
+      destination: "UNILAB, Redenção",
+      originLocation: { rawText:"Centro, Fortaleza",lat:-3.73,lng:-38.52 },
+      destinationLocation: { rawText:"UNILAB, Redenção",lat:-4.23,lng:-38.73 },
+      passengerMode: "MOTO",
+      offerVehicle: "MOTO",
+      date: "2026-11-10",
+      time: "15:30",
+    });
+    render(<Home />);
+    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Centro, Fortaleza"));
+    expect(screen.getByLabelText("Destino")).toHaveValue("UNILAB, Redenção");
+    expect(screen.getByRole("radio",{name:/Carona Moto/})).toBeChecked();
+    expect(screen.getByLabelText("Data da viagem")).toHaveValue("2026-11-10");
+    expect(api.request).not.toHaveBeenCalled();
+    expect(consumeRideIntentDraft()).toBeNull();
+  });
   it("expande e recolhe o painel sem controles de motorista", () => {
     render(<Home />);
     expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    expect(screen.getByText("Seus caminhos salvos").closest("details")).not.toHaveAttribute("open");
     expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeChecked();
     expect(screen.getByRole("radio", { name: /Carona Moto/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Corrida Rápida/ })).toBeInTheDocument();
