@@ -26,6 +26,7 @@ type Props = {
   following: boolean;
   recenterVersion: number;
   locating: boolean;
+  gpsFailure?: string | null;
   onDrag: () => void;
   onRecenter: () => void;
   selectingOrigin?: boolean;
@@ -51,6 +52,7 @@ export function GoogleHomeRideMap({
   following,
   recenterVersion,
   locating,
+  gpsFailure,
   onDrag,
   onRecenter,
   selectingOrigin = false,
@@ -66,6 +68,7 @@ export function GoogleHomeRideMap({
   const currentCenter = useRef<{ lat: number; lng: number } | null>(null);
   const lastManualOrigin = useRef<string | null>(null);
   const lastRecenter = useRef(recenterVersion);
+  const initialGpsCenterDone = useRef(false);
   const dragRef = useRef(onDrag);
   dragRef.current = onDrag;
   const [failed, setFailed] = useState(false);
@@ -175,6 +178,10 @@ export function GoogleHomeRideMap({
       } else if (validPoint(origin)) {
         add(origin, "Sua saída registrada · último GPS confiável (não ao vivo)", "you");
       }
+    } else if (originIsCurrent && !trustedGps && validPoint(userPosition)) {
+      // Never pretend that a Wi-Fi/browser fix with kilometre-level uncertainty
+      // precisely locates the member. Show a distinct approximate marker.
+      add(userPosition, `GPS aproximado (±${Math.round(userPosition.accuracy)} m) · ajuste sua localização`, "approximate");
     }
     add(destination, "Destino", "destination");
     if (pickupPreview) {
@@ -185,7 +192,6 @@ export function GoogleHomeRideMap({
       add(driver, "Motorista disponível no radar · posição aproximada · ainda não atribuído", "availableDriver"),
     );
     circle.current?.setMap(null);
-    circle.current = null;
     circle.current = null;
     if (originIsCurrent && trustedGps && userPosition.accuracy > 0) {
       circle.current = new G.Circle({
@@ -361,26 +367,36 @@ export function GoogleHomeRideMap({
   }, [ready, failed, pickupPreview, immersive]);
 
   useEffect(() => {
-    if (!ready || !map.current) return;
+    if (!ready || !map.current || failed) return;
     const recenterRequested = lastRecenter.current !== recenterVersion;
-    lastRecenter.current = recenterVersion;
-    if (!recenterRequested && !following) return;
-    const position = originIsCurrent
-      ? (trustedGps ? userPosition : null)
-      : (validPoint(effectiveOrigin) ? effectiveOrigin : trustedGps ? userPosition : null);
-    if (!validPoint(position)) return;
+    // Do not consume a requested recenter before the GPS coordinates arrive.
+    // This matters when a user selected a manual origin and taps locate-me
+    // while the browser is still asking for geolocation permission.
+    // Auto-position on HOME opening, before any ride is requested.
+    // One coarse reading centers the approximate area once, rather than
+    // pretending the user is at an exact address or jittering every 15 seconds.
+    const initialAutoCenter = !initialGpsCenterDone.current &&
+      originIsCurrent && following && validPoint(userPosition);
+    if (!recenterRequested && !initialAutoCenter &&
+        (!following || !originIsCurrent || !trustedGps)) return;
+    const position = validPoint(userPosition) ? userPosition : null;
+    if (!position) return; // Keep requested recenter pending until a fix arrives.
+    if (recenterRequested) lastRecenter.current = recenterVersion;
     const next = { lat: position.lat, lng: position.lng };
+    if (initialAutoCenter) initialGpsCenterDone.current = true;
     if (
-      recenterRequested ||
+      recenterRequested || initialAutoCenter ||
       !currentCenter.current ||
       Math.abs(currentCenter.current.lat - next.lat) +
-        Math.abs(currentCenter.current.lng - next.lng) >
-        0.0005
+        Math.abs(currentCenter.current.lng - next.lng) > 0.0005
     ) {
       map.current.panTo(next);
+      // Coarse GPS is a *region*, not a street address. Do not zoom to 16.
+      if (recenterRequested || initialAutoCenter)
+        map.current.setZoom?.(trustedGps ? 16 : 12);
       currentCenter.current = next;
     }
-  }, [ready, recenterVersion, following, userPosition, trustedGps, originIsCurrent, effectiveOrigin?.lat, effectiveOrigin?.lng]);
+  }, [ready, failed, recenterVersion, following, userPosition, trustedGps, originIsCurrent]);
 
   return (
     <section
@@ -417,25 +433,27 @@ export function GoogleHomeRideMap({
             : "absolute bottom-8 right-3 z-10 size-12 bg-background shadow-sm"
         }
         disabled={locating}
-        aria-label={!originIsCurrent && validPoint(origin)
-          ? "Centralizar na saída escolhida"
-          : trustedGps ? "Centralizar na minha localização" : "Tentar melhorar sinal GPS"}
-        title={!originIsCurrent && validPoint(origin)
-          ? "Centralizar na saída escolhida"
-          : trustedGps ? "Centralizar na minha localização" : "Tentar melhorar sinal GPS"}
-        onClick={() => {
-          if (!originIsCurrent && validPoint(origin)) {
-            map.current?.panTo({ lat: origin.lat, lng: origin.lng });
-          } else {
-            onRecenter();
-          }
-        }}
+        aria-label="Centralizar na minha localização"
+        title={trustedGps ? "Centralizar na minha localização" : "Localizar-me ou atualizar o GPS"}
+        onClick={onRecenter}
       >
         <LocateFixed
           size={21}
           className={locating ? "animate-pulse" : following ? "text-primary" : ""}
         />
       </Button>
+      {(locating || gpsFailure || (!trustedGps && validPoint(userPosition))) && (
+        <div
+          role={gpsFailure ? "alert" : "status"}
+          className={`pointer-events-none absolute right-3 top-48 z-10 max-w-[min(80%,19rem)] rounded-xl border border-[#FFBB00]/30 bg-[#121212]/95 px-3 py-2 text-xs text-white shadow-lg ${immersive ? "sm:top-48" : "top-24"}`}
+        >
+          {gpsFailure
+            ? gpsFailure
+            : locating
+              ? "Localizando você pelo navegador…"
+              : `Localização aproximada (±${Math.round(userPosition!.accuracy)} m). Ative a localização precisa no dispositivo ou informe a saída manualmente.`}
+        </div>
+      )}
       {professionalDrivers.length > 0 && (
         <div className={`pointer-events-none absolute left-3 z-10 max-w-[70%] rounded-lg bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm ${immersive ? "bottom-24" : "bottom-3"}`}>
           🚗 Motoristas disponíveis no radar · ainda não atribuídos à viagem

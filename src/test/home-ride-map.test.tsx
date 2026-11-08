@@ -130,9 +130,57 @@ describe("Google home map", () => {
     />);
     await waitFor(() => expect(api.marker).toHaveBeenCalled());
     const titles = api.marker.mock.calls.map(([config]) => config.title);
-    expect(titles).toEqual(["Destino"]);
+    expect(titles).toContain("Destino");
+    expect(titles.some((title: string) => title.startsWith("GPS aproximado (±1029 m)"))).toBe(true);
+    expect(titles.some((title: string) => title.startsWith("Você"))).toBe(false);
+    expect(screen.getByRole("status")).toHaveTextContent(/Localização aproximada.*1029 m/);
     expect(api.circle).not.toHaveBeenCalled();
     expect(api.polyline).not.toHaveBeenCalled();
+  });
+
+  it("centraliza automaticamente no GPS sem pedir uma corrida", async () => {
+    render(<HomeRideMap {...base} userPosition={{ lat: -3.731, lng: -38.521, accuracy: 17 }} />);
+    await waitFor(() => expect(api.panTo).toHaveBeenCalledWith({lat:-3.731,lng:-38.521}));
+    expect(api.marker).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Você · localização GPS",
+    }));
+  });
+
+  it("aperta centralizar e navega ao GPS mesmo quando há saída manual", async () => {
+    const chosen = {lat:-3.76,lng:-38.54};
+    const { rerender } = render(<HomeRideMap {...base}
+      originIsCurrent={false} following={false} origin={chosen} />);
+    await waitFor(() => expect(api.panTo).toHaveBeenCalledWith(chosen));
+    api.panTo.mockClear();
+    fireEvent.click(screen.getByRole("button", {name:"Centralizar na minha localização"}));
+    expect(base.onRecenter).toHaveBeenCalledOnce();
+    rerender(<HomeRideMap {...base} originIsCurrent={false} following={false}
+      origin={chosen} recenterVersion={1} />);
+    expect(api.panTo).toHaveBeenCalledWith({lat:-3.73,lng:-38.52});
+  });
+
+  it("mantém pedido de centralização pendente enquanto o navegador ainda não tem GPS", async () => {
+    const origin={lat:-3.77,lng:-38.53};
+    const { rerender }=render(<HomeRideMap {...base} originIsCurrent={false}
+      following={false} userPosition={null} origin={origin} />);
+    await waitFor(()=>expect(api.panTo).toHaveBeenCalledWith(origin));
+    api.panTo.mockClear();
+    rerender(<HomeRideMap {...base} originIsCurrent={false}
+      following={false} recenterVersion={1} userPosition={null} origin={origin} />);
+    expect(api.panTo).not.toHaveBeenCalled();
+    rerender(<HomeRideMap {...base} originIsCurrent={false}
+      following={false} recenterVersion={1}
+      userPosition={{lat:-3.75,lng:-38.50,accuracy:22}} origin={origin} />);
+    await waitFor(()=>expect(api.panTo).toHaveBeenCalledWith({lat:-3.75,lng:-38.50}));
+  });
+
+  it("não fica mudo quando o navegador bloqueia a localização", async () => {
+    render(<HomeRideMap {...base} userPosition={null}
+      gpsFailure="Acesso à localização negado. Habilite nas permissões." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Acesso à localização negado");
+    const button = screen.getByRole("button", {name:"Centralizar na minha localização"});
+    fireEvent.click(button);
+    expect(base.onRecenter).toHaveBeenCalledOnce();
   });
 
   it("representa a saída manual como 'Você' quando o GPS está impreciso, sem segundo pino falso", async () => {
