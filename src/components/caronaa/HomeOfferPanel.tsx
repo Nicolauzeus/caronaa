@@ -290,7 +290,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
                 <OfferFarePreview origin={origin} destination={destination}
                   seats={vehicleType==="MOTO"?1:seats} onQuote={setQuote}/>
               </div>
-              <details defaultOpen={scheduleMode === "routine"}
+              <details open={scheduleMode === "routine"}
                 onToggle={(event) => setScheduleMode(event.currentTarget.open ? "routine" : "point")}
                 className="rounded-xl border border-white/10 p-3">
                 <summary className="cursor-pointer text-sm font-semibold"><CalendarDays size={15} className="mr-2 inline"/>Oferta recorrente</summary>
