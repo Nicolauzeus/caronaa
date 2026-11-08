@@ -848,6 +848,13 @@
       "when": 1793858733892,
       "tag": "0120_professional_access_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1794110264874,
+      "tag": "0121_admin_finance_overview",
+      "breakpoints": true
     }
   ]
 }

@@ -20,7 +20,7 @@ function compatibleData(): OperationData & {
     ...empty(),
     requests: [
       {
-        request_id: "request",
+        request_id: "request", requested_vehicle_type: null, women_only: false,
         original_requested_at: null,
         idempotency_key: null,
         notes: null,
@@ -57,7 +57,7 @@ function compatibleData(): OperationData & {
     ],
     offers: [
       {
-        offer_id: "offer",
+        offer_id: "offer", allow_detours: false, vehicle_type: "CAR",
         route_path: null,
         route_duration_minutes: null,
         accepts_quoted_fares: false,
@@ -206,7 +206,7 @@ describe("administrative people", () => {
       created_at: "2026-01-01",
       updated_at: "2026-01-01",
       completed_at: null,
-      route_quote_id: null,
+      route_quote_id: null, strict_pickup_arrived_at: null,
     };
     data.rides.push(ride);
     expect(getOperationPeople(data, true)[0]?.completed).toBe(0);

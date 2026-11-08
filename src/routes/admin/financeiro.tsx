@@ -1,6 +1,7 @@
 import { AdminDataError } from "@/components/admin/AdminDataError";
 import { PlatformFeeFinance } from "@/components/admin/PlatformFeeFinance";
 import { AsaasConnectionPanel } from "@/components/admin/AsaasConnectionPanel";
+import { FinanceOverviewPanel } from "@/components/admin/FinanceOverviewPanel";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,6 +101,7 @@ function FinanceCenter() {
       <AdminDataError error={error} />
       {section === "overview" && (
         <>
+          <FinanceOverviewPanel since={new Date(Date.now() - days * 86400000).toISOString().slice(0, 13) + ":00:00Z"} refresh={refresh} />
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {currencies.length && !error ? (
               currencies.map((currency) => {
