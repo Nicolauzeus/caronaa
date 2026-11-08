@@ -265,7 +265,7 @@ GRANT EXECUTE ON FUNCTION public.admin_set_caronaa_quick_city(text,boolean,boole
 
 CREATE OR REPLACE FUNCTION public.admin_caronaa_quick_commercial_overview()
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
 BEGIN
  IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Admin only' USING ERRCODE='42501'; END IF;
  RETURN jsonb_build_object(
@@ -282,7 +282,7 @@ BEGIN
   'activities', coalesce((SELECT jsonb_agg(to_jsonb(a) ORDER BY a.starts_at DESC)
     FROM (SELECT * FROM public.caronaa_quick_official_activities ORDER BY starts_at DESC LIMIT 30) a),'[]'::jsonb)
  );
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.admin_caronaa_quick_commercial_overview() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_caronaa_quick_commercial_overview() TO authenticated;
 
@@ -293,7 +293,7 @@ CREATE OR REPLACE FUNCTION public.admin_set_caronaa_quick_tariff(
  p_commission_bps integer,p_processing_fee integer,p_margin integer,
  p_intermunicipal boolean,p_publish boolean,p_version text
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
 BEGIN
  IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Admin only' USING ERRCODE='42501'; END IF;
  IF p_region NOT IN ('FORTALEZA_CORRIDOR','MACICO_BATURITE')
@@ -330,7 +330,7 @@ BEGIN
    minimum_platform_margin_cents=excluded.minimum_platform_margin_cents,
    intermunicipal_enabled=excluded.intermunicipal_enabled,
    published=excluded.published,policy_version=excluded.policy_version,updated_at=now();
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.admin_set_caronaa_quick_tariff(
  text,text,integer,integer,integer,integer,integer,integer,integer,boolean,boolean,text
 ) FROM PUBLIC,anon;
@@ -344,7 +344,7 @@ CREATE OR REPLACE FUNCTION public.admin_upsert_caronaa_quick_activity(
  p_lat double precision,p_lng double precision,p_radius_m integer,
  p_published boolean
 ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
 DECLARE v_id uuid;
 BEGIN
  IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Admin only' USING ERRCODE='42501'; END IF;
@@ -368,7 +368,7 @@ BEGIN
    center_lat=excluded.center_lat,center_lng=excluded.center_lng,
    radius_m=excluded.radius_m,published=excluded.published,updated_at=now();
  RETURN v_id;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.admin_upsert_caronaa_quick_activity(
  uuid,text,text,timestamptz,timestamptz,double precision,double precision,integer,boolean
 ) FROM PUBLIC,anon;
