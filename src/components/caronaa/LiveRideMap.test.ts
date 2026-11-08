@@ -20,6 +20,10 @@ describe("live Google road route", () => {
       "destination",
     ]);
   });
+  it("uses the planned origin for preview routes without a driver", () => {
+    const origin = { lat: -3.71, lng: -38.49, title: "Origem", type: "origin" as const };
+    expect(routeWaypoints([origin, points[2]]).map((p) => p.type)).toEqual(["origin", "destination"]);
+  });
   it("requests server Google geometry without exposing the route key", async () => {
     vi.mocked(getMapDrivingRoute).mockResolvedValue({
       distanceKm: 12,
