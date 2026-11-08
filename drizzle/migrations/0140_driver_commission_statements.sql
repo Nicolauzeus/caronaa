@@ -222,6 +222,44 @@ REVOKE ALL ON FUNCTION public.get_my_caronaa_commission_ledger()
 GRANT EXECUTE ON FUNCTION public.get_my_caronaa_commission_ledger()
   TO authenticated;
 
+
+-- Keep older radar/driver clients compatible: the legacy status RPC now
+-- includes the quick-ride debt count, so 3 completed unpaid quick rides
+-- cannot leave the radar showing the driver as available.
+CREATE OR REPLACE FUNCTION public.get_my_driver_platform_fees()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $legacy$
+DECLARE v_driver uuid:=auth.uid(); v_shared_count integer; v_quick_count integer;
+  v_shared_total numeric; v_quick_cents bigint; v_pix text;
+BEGIN
+  IF v_driver IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT count(*)::integer,coalesce(sum(fee_amount),0)
+    INTO v_shared_count,v_shared_total
+    FROM public.driver_platform_fees
+    WHERE driver_id=v_driver AND status<>'SETTLED';
+  SELECT count(*)::integer,coalesce(sum(fee_cents),0)
+    INTO v_quick_count,v_quick_cents
+    FROM public.caronaa_quick_driver_fees
+    WHERE driver_id=v_driver AND status<>'SETTLED';
+  SELECT pix_key INTO v_pix FROM public.platform_fee_config WHERE singleton=true;
+  RETURN jsonb_build_object(
+    'driverAllowed',v_shared_count+v_quick_count<3,
+    'pendingTrips',v_shared_count+v_quick_count,
+    'limit',3,
+    'feePercent',NULL,
+    'rateVaries',true,
+    'amountOutstanding',v_shared_total+v_quick_cents/100.0,
+    'platformPixKey',v_pix,
+    'dues',coalesce((SELECT jsonb_agg(jsonb_build_object(
+      'rideId',ride_id,'grossAmount',gross_amount,'feeAmount',fee_amount,
+      'status',status,'claimReference',claim_reference,'createdAt',created_at
+    ) ORDER BY created_at DESC)
+      FROM public.driver_platform_fees WHERE driver_id=v_driver),'[]'::jsonb)
+  );
+END $legacy$;
+REVOKE ALL ON FUNCTION public.get_my_driver_platform_fees() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_my_driver_platform_fees() TO authenticated;
+
 -- Optional single-ride batch or all unbilled OPEN fees; no client amount.
 -- Existing batches never silently change their Pix amount, even after
 -- additional rides are completed.
