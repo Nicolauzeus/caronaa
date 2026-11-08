@@ -169,7 +169,7 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <section aria-label="Repasses do motorista à plataforma"
+    <section id="comissoes-caronaa" aria-label="Repasses do motorista à plataforma"
       className="min-w-0 max-w-full space-y-3 overflow-x-hidden rounded-xl border border-border bg-card p-3 text-card-foreground sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-bold">Minhas comissões CARONAA</h3>
