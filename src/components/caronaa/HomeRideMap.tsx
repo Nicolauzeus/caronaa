@@ -23,6 +23,8 @@ type Props = {
   locating: boolean;
   onDrag: () => void;
   onRecenter: () => void;
+  selectingOrigin?: boolean;
+  onPickOrigin?: (point: { lat: number; lng: number }) => void;
 };
 
 export const HomeRideMap = memo(function HomeRideMap(props: Props) {
