@@ -22,6 +22,7 @@ type Props = {
   origin?: Point;
   destination?: Point;
   originIsCurrent: boolean;
+  originAccuracyM?: number | null;
   following: boolean;
   recenterVersion: number;
   locating: boolean;
@@ -46,6 +47,7 @@ export function GoogleHomeRideMap({
   origin,
   destination,
   originIsCurrent,
+  originAccuracyM,
   following,
   recenterVersion,
   locating,
@@ -76,9 +78,12 @@ export function GoogleHomeRideMap({
   const trustedGps = isTrustedGpsFix(userPosition);
   // Always route from the origin actually selected in the form, never from a
   // different watchPosition GPS point. A coarse auto-fix must not be routable.
-  const effectiveOrigin = validPoint(origin) && (!originIsCurrent || trustedGps)
-    ? origin
-    : undefined;
+  const trustedAppliedOrigin = originIsCurrent
+    ? (originAccuracyM == null
+        ? trustedGps
+        : Number.isFinite(originAccuracyM) && originAccuracyM >= 0 && originAccuracyM <= 80)
+    : true;
+  const effectiveOrigin = validPoint(origin) && trustedAppliedOrigin ? origin : undefined;
 
   useEffect(() => {
     let active = true;
@@ -163,10 +168,14 @@ export function GoogleHomeRideMap({
         add(userPosition, "Você · localização GPS", "you");
         add(origin, "Origem escolhida · diferente da posição GPS", "origin");
       }
-    } else if (originIsCurrent && trustedGps) {
-      add(userPosition, "Você · localização GPS", "you");
-      if (validPoint(origin) && !areNearbyPoints(origin, userPosition)) {
-        add(origin, "Origem registrada anteriormente", "origin");
+    } else if (originIsCurrent && trustedAppliedOrigin) {
+      if (trustedGps) {
+        add(userPosition, "Você · localização GPS", "you");
+        if (validPoint(origin) && !areNearbyPoints(origin, userPosition)) {
+          add(origin, "Saída registrada anteriormente", "origin");
+        }
+      } else if (validPoint(origin)) {
+        add(origin, "Sua saída registrada · último GPS confiável (não ao vivo)", "you");
       }
     }
     add(destination, "Destino", "destination");
@@ -202,6 +211,7 @@ export function GoogleHomeRideMap({
     destination?.lng,
     originIsCurrent,
     trustedGps,
+    trustedAppliedOrigin,
     pickupPreview,
   ]);
 
