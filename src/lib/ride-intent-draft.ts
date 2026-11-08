@@ -16,6 +16,14 @@ export type RideIntentDraft = {
   tolerance?: TimeToleranceMinutes;
   passengerMode?: "CAR" | "MOTO" | "EXCLUSIVE";
   offerVehicle?: "CAR" | "MOTO";
+  offer?: {
+    vehicle: string;
+    seats: number;
+    notes: string;
+    allowDetours: boolean;
+    scheduleMode: "point" | "routine";
+    departureMode: "now" | "schedule";
+  };
 };
 const KEY = "caronaa:role-switch-draft:v1";
 const MAX_AGE_MS = 2 * 60_000;
@@ -43,6 +51,15 @@ const safeDraft = (value: RideIntentDraft): RideIntentDraft => ({
   passengerMode: ["CAR", "MOTO", "EXCLUSIVE"].includes(value.passengerMode ?? "")
     ? value.passengerMode : undefined,
   offerVehicle: value.offerVehicle === "MOTO" ? "MOTO" : "CAR",
+  offer: value.offer && typeof value.offer === "object" ? {
+    vehicle: shortText(value.offer.vehicle, 180),
+    seats: Number.isInteger(value.offer.seats) ?
+      Math.max(1, Math.min(4, value.offer.seats)) : 1,
+    notes: shortText(value.offer.notes, 2000),
+    allowDetours: value.offer.allowDetours === true,
+    scheduleMode: value.offer.scheduleMode === "routine" ? "routine" : "point",
+    departureMode: value.offer.departureMode === "now" ? "now" : "schedule",
+  } : undefined,
 });
 
 export function saveRideIntentDraft(value: RideIntentDraft): void {
