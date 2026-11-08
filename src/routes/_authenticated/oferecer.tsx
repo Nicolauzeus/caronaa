@@ -4,7 +4,7 @@ import { consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-d
 import type { PassengerRideOption } from "@/components/caronaa/PassengerRideOptions";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { RoutePolicySelector } from "@/components/caronaa/RoutePolicySelector";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
@@ -47,6 +47,15 @@ import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
+  // Keep the legacy form for prefilled deep links. Ordinary navigation goes
+  // straight into the same HOME map and bottom sheet as Pedir carona.
+  beforeLoad: ({search}) => {
+    const prefilled = Boolean(search.origem || search.destino || search.data ||
+      search.horario || search.olat != null || search.dlat != null);
+    if (!prefilled) throw redirect({
+      to: "/home", search: {intent: "offer"}, replace: true,
+    });
+  },
   validateSearch: z.object({
     origem: z.string().max(160).optional(),
     destino: z.string().max(160).optional(),
