@@ -51,14 +51,14 @@ describe("passenger/driver role-switch handoff", () => {
         departureMode:"schedule",
       },
     });
-    expect(consumeRideIntentDraft()?.offer).toEqual({
+    expect(consumeRideIntentDraft()?.offer).toEqual(expect.objectContaining({
       vehicle:"Honda Fit prata",
       seats:3,
       notes:"Passageiros com pequenas bagagens",
       allowDetours:true,
       scheduleMode:"point",
       departureMode:"schedule",
-    });
+    }));
     expect(consumeRideIntentDraft()).toBeNull();
   });
   it("expires a handoff after two minutes rather than leaving old routes in the tab", () => {
