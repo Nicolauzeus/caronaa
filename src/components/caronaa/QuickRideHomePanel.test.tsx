@@ -101,7 +101,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     render(<QuickRideHomePanel {...basic}/>);
     const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500});
     fireEvent.click(calc);
-    expect(await screen.findByText("R$ 7,50")).toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*7,50/)).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({
       data:{
         origin:{lat:origin.lat,lng:origin.lng},
