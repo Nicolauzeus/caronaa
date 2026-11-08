@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   account: vi.fn(),
   navigate: vi.fn(),
   map: vi.fn(),
+  quickPanel: vi.fn(),
   preview: null as any,
 }));
 // Isolated component tests must not initialize authenticated Supabase server middleware.
@@ -64,6 +65,12 @@ vi.mock("@/lib/formulario/account-activation", () => ({
 }));
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: { id: "user", user_metadata: {} } }),
+}));
+vi.mock("@/components/caronaa/QuickRideHomePanel", () => ({
+  QuickRideHomePanel: (props: any) => {
+    api.quickPanel(props);
+    return <div data-testid="quick-ride-home">Corrida Rápida integrada ao mapa · {props.vehicle}</div>;
+  },
 }));
 vi.mock("@/components/caronaa/HomeRideMap", () => ({
   HomeRideMap: (props: any) => {
@@ -294,7 +301,7 @@ describe("Home mobile", () => {
       }),
     );
   });
-  it("hands off GPS and resolved destination to the standalone pilot route", async () => {
+  it("permanece na mesma home ao escolher Corrida Rápida e preserva coordenadas", async () => {
     api.quote.mockResolvedValue({
       quoteId: "gps-quote",
       pricePerPassenger: 6,
@@ -306,21 +313,17 @@ describe("Home mobile", () => {
     act(() => fix(position()));
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
-    await waitFor(() => expect(screen.getByLabelText("Destino")).toHaveFocus());
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus" } });
-    await screen.findByText(/R\$ 6,00 por pessoa/);
+    await screen.findByText(/R\\$ 6,00 por pessoa/);
     fireEvent.click(screen.getByRole("radio", { name: /Corrida Direta/ }));
-    expect(api.navigate).toHaveBeenCalledWith({
-      to: "/viagem-rapida",
-      search: expect.objectContaining({
-        origin: "Rua A, Fortaleza",
-        destination: "Campus",
-        originLat: -3.73,
-        originLng: -38.52,
-        destinationLat: -3.75,
-        destinationLng: -38.5,
-      }),
-    });
+    expect(screen.getByTestId("quick-ride-home")).toHaveTextContent("Corrida Rápida integrada ao mapa");
+    expect(api.navigate).not.toHaveBeenCalled();
+    expect(api.quickPanel).toHaveBeenLastCalledWith(expect.objectContaining({
+      origin: "Rua A, Fortaleza",
+      destination: "Campus",
+      originPoint: expect.objectContaining({ lat: -3.73, lng: -38.52 }),
+    }));
+    expect(api.map.mock.lastCall?.[0].professionalDrivers).toEqual([]);
   });
   it("does not overwrite a manually chosen origin when an initial GPS fix arrives late", async () => {
     render(<Home />);
