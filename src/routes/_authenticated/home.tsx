@@ -28,7 +28,7 @@ import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap, type ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
-import { useUserLocation } from "@/lib/location/use-user-location";
+import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -459,8 +459,9 @@ function Home() {
             following={originSource === "CURRENT_LOCATION" && isTrustedGpsFix(location.position) && location.isFollowingUser}
             recenterVersion={location.recenterVersion}
             locating={location.locating}
+            gpsFailure={location.failure ? locationFailureMessages[location.failure] : null}
             onDrag={() => location.setFollowing(false)}
-            onRecenter={location.locate}
+            onRecenter={location.recenter}
           />
         </div>
         {selectingOrigin && (
