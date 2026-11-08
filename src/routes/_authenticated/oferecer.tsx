@@ -43,6 +43,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { ResearchSeatPicker } from "@/components/research/ResearchSeatPicker";
 import { useUserLocation, locationFailureMessages } from "@/lib/location/use-user-location";
+import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 
 export const Route = createFileRoute("/_authenticated/oferecer")({
@@ -239,7 +240,8 @@ function Oferecer() {
   }, []);
   // Resolve o endereço da posição atual uma única vez por fix de GPS.
   useEffect(() => {
-    if (!location.addressPosition || originSource !== "CURRENT_LOCATION") return;
+    if (!location.addressPosition || originSource !== "CURRENT_LOCATION" ||
+        !isTrustedGpsFix(location.addressPosition)) return;
     let alive = true;
     setResolvedAddress(null);
     setReverseFailed(false);
@@ -265,7 +267,7 @@ function Oferecer() {
   // Origem padrão: localização atual do motorista.
   useEffect(() => {
     const position = location.position;
-    if (originSource !== "CURRENT_LOCATION" || !position) return;
+    if (originSource !== "CURRENT_LOCATION" || !position || !isTrustedGpsFix(position)) return;
     const { lat, lng } = position;
     const addressStillNear =
       resolvedAddress?.lat != null &&
@@ -641,6 +643,17 @@ function Oferecer() {
                           </Button>
                         )}
                       </div>
+                    </div>
+                  )}
+                  {originSource === "CURRENT_LOCATION" && location.position &&
+                    !isTrustedGpsFix(location.position) && (
+                    <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs text-gray-200">
+                      Seu GPS indica precisão de aproximadamente {Math.round(location.position.accuracy)} metros.
+                      Para oferecer carona, informe a saída ou aguarde uma posição mais precisa.
+                      <button type="button" className="mt-2 block min-h-10 font-bold text-[#FFBB00] underline"
+                        onClick={() => { setOriginSource("MANUAL_ORIGIN"); setOriginEditing(true); }}>
+                        Informar saída manual
+                      </button>
                     </div>
                   )}
                   {/* Cápsula de trajeto conectada */}
