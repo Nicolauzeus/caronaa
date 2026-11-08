@@ -328,6 +328,9 @@ export function QuickRideExperience({
         </Link>
       )}
       <h1 className="text-2xl font-extrabold">{driverOnly ? "Painel do motorista · Corridas Rápidas" : "Viajar agora"}</h1>
+      {driverOnly && <Link to="/perfil" hash="comissoes-caronaa" className="inline-flex min-h-11 items-center rounded-xl border border-primary/40 px-3 text-sm font-bold text-primary">
+        Ver comissões e gerar QR Pix do saldo
+      </Link>}
       <p className="text-sm text-muted-foreground">
         {driverOnly
           ? "Fila profissional autorizada. Você só pode aceitar pedidos onde estiver habilitado e online."
