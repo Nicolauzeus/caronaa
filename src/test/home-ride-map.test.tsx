@@ -159,6 +159,21 @@ describe("Google home map", () => {
     expect(api.panTo).toHaveBeenCalledWith({lat:-3.73,lng:-38.52});
   });
 
+  it("mantém pedido de centralização pendente enquanto o navegador ainda não tem GPS", async () => {
+    const origin={lat:-3.77,lng:-38.53};
+    const { rerender }=render(<HomeRideMap {...base} originIsCurrent={false}
+      following={false} userPosition={null} origin={origin} />);
+    await waitFor(()=>expect(api.panTo).toHaveBeenCalledWith(origin));
+    api.panTo.mockClear();
+    rerender(<HomeRideMap {...base} originIsCurrent={false}
+      following={false} recenterVersion={1} userPosition={null} origin={origin} />);
+    expect(api.panTo).not.toHaveBeenCalled();
+    rerender(<HomeRideMap {...base} originIsCurrent={false}
+      following={false} recenterVersion={1}
+      userPosition={{lat:-3.75,lng:-38.50,accuracy:22}} origin={origin} />);
+    await waitFor(()=>expect(api.panTo).toHaveBeenCalledWith({lat:-3.75,lng:-38.50}));
+  });
+
   it("não fica mudo quando o navegador bloqueia a localização", async () => {
     render(<HomeRideMap {...base} userPosition={null}
       gpsFailure="Acesso à localização negado. Habilite nas permissões." />);
