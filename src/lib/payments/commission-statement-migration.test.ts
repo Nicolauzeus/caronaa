@@ -57,6 +57,16 @@ describe("CARONAA cross-product commission ledger v0140", () => {
     expect(migration).toContain("public.caronaa_quick_driver_fees q");
   });
 
+  it("preserves the new mainline finance/debt panels and combines both fee sources", () => {
+    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.get_admin_driver_debts_overview()");
+    expect(migration).toContain("FROM public.driver_platform_fees f");
+    expect(migration).toContain("FROM public.caronaa_quick_driver_fees q");
+    expect(migration).toContain("has_admin_department_access('finance',false)");
+    expect(migration).toContain("'blocked',count(*)>=3");
+    expect(migration).toContain("'source',d.source_kind");
+    expect(migration).toContain("coalesce(s.claim_reference,d.claim_reference)");
+  });
+
   it("keeps Asaas charges disabled and does not confuse QR display with bank confirmation", () => {
     expect(migration).not.toContain("AsaasClient");
     expect(migration).not.toContain("asaas_payment_id");
