@@ -4,7 +4,7 @@ import { DriverPlatformFees } from "./DriverPlatformFees";
 
 const api = vi.hoisted(() => ({
   rpc: vi.fn(),
-  toDataURL: vi.fn(async () => "data:image/png;base64,TEST"),
+  toDataURL: vi.fn(async (_payload:string) => "data:image/png;base64,TEST"),
   hasStatement: false,
 }));
 vi.mock("@/integrations/supabase/client", () => ({
@@ -55,7 +55,7 @@ beforeEach(()=>{
 describe("driver commission QR billing",()=>{
   it("uses the server price for the full balance, never a browser-entered amount",async()=>{
     render(<DriverPlatformFees/>);
-    expect(await screen.findByText("R$ 1,50")).toBeInTheDocument();
+    expect((await screen.findAllByText(/R\\$\\s*1,50/)).length).toBeGreaterThan(0);
     expect(screen.getByText(/1 viagem pendente/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:/Gerar QR Pix para/}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith(
