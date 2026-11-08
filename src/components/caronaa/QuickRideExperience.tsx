@@ -39,6 +39,7 @@ export function QuickRideExperience({
   initialDestinationPoint,
   initialMunicipality = "",
   embedded = false,
+  driverOnly = false,
 }: {
   initialOrigin?: string;
   initialDestination?: string;
@@ -46,8 +47,21 @@ export function QuickRideExperience({
   initialDestinationPoint?: FormLocationDetails;
   initialMunicipality?: string;
   embedded?: boolean;
+  driverOnly?: boolean;
 }) {
   const [municipality, setMunicipality] = useState(initialMunicipality);
+  useEffect(() => {
+    if (!driverOnly || initialMunicipality.trim()) return;
+    let active = true;
+    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await (supabase as any).from("professional_presence")
+        .select("municipality").eq("user_id", user.id).maybeSingle();
+      const city = typeof data?.municipality === "string" ? data.municipality : "";
+      if (active && city.length > 1) setMunicipality(city);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [driverOnly, initialMunicipality]);
   const [vehicle, setVehicle] = useState<"CAR" | "MOTO">("CAR");
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
@@ -310,11 +324,25 @@ export function QuickRideExperience({
           ← Início
         </Link>
       )}
-      <h1 className="text-2xl font-extrabold">Viajar agora</h1>
+      <h1 className="text-2xl font-extrabold">{driverOnly ? "Painel do motorista · Corridas Rápidas" : "Viajar agora"}</h1>
       <p className="text-sm text-muted-foreground">
-        Fluxo-piloto de corridas rápidas. Só funciona em municípios liberados
-        pela operação; sem cobrança ou tarifa profissional nesta fase.
+        {driverOnly
+          ? "Fila profissional autorizada. Você só pode aceitar pedidos onde estiver habilitado e online."
+          : "Corrida Rápida piloto: peça uma viagem no mapa da tela inicial."}
       </p>
+      {driverOnly && (
+        <label className="block text-sm font-semibold">
+          Município em que estou habilitado
+          <input
+            value={municipality}
+            maxLength={120}
+            onChange={(e) => setMunicipality(e.target.value)}
+            className="mt-1 h-11 w-full rounded-xl border bg-background px-3"
+            placeholder="Ex.: Redenção"
+          />
+        </label>
+      )}
+      {!driverOnly && (
       <div className="rounded-2xl border p-4 space-y-3">
         <label
           htmlFor="quick-municipality"
@@ -396,6 +424,7 @@ export function QuickRideExperience({
           transporte comercial real.
         </p>
       </div>
+      )}
       {mapOrigin?.lat != null &&
         mapOrigin.lng != null &&
         mapDestination?.lat != null &&
