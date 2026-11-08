@@ -45,6 +45,22 @@ describe("CARONAA quick ride migration security contracts",()=>{
     expect(sql).not.toMatch(/AS \$(?!\$)/);
     expect(sql).not.toMatch(/END; \$;/);
   });
+  it("rate limits Google quote spend atomically per authenticated member",()=>{
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.caronaa_quick_quote_rate_limits");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.caronaa_quick_quote_rate_gate()");
+    expect(sql).toContain("caronaa_quick_quote_rate_limits.attempts<5");
+    expect(sql).toContain("ON CONFLICT(user_id) DO UPDATE SET");
+  });
+  it("prevents updates to monetary snapshots after issuance",()=>{
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_quote_snapshot()");
+    expect(sql).toContain("caronaa_quick_quote_immutable");
+    expect(sql).toContain("NEW.customer_pays_cents IS DISTINCT FROM OLD.customer_pays_cents");
+  });
+  it("gives authorized drivers the payout before accepting",()=>{
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.caronaa_quick_driver_queue");
+    expect(sql).toContain("snapshot.driver_receives_cents");
+    expect(sql).toContain("FROM public.quick_ride_driver_queue(p_municipality)");
+  });
   it("stores event geofence, not just a generic active flag",()=>{
     expect(sql).toContain("caronaa_quick_official_activities");
     expect(sql).toContain("center_lat double precision");
