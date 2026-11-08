@@ -164,7 +164,7 @@ describe("Home mobile", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeChecked();
     expect(screen.getByRole("radio", { name: /Carona Moto/ })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Corrida Direta/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Corrida Rápida/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Recolher detalhes" }));
     expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
   });
@@ -315,7 +315,7 @@ describe("Home mobile", () => {
     await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus" } });
     await screen.findByText(/R\\$ 6,00 por pessoa/);
-    fireEvent.click(screen.getByRole("radio", { name: /Corrida Direta/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Corrida Rápida/ }));
     expect(screen.getByTestId("quick-ride-home")).toHaveTextContent("Corrida Rápida integrada ao mapa");
     expect(api.navigate).not.toHaveBeenCalled();
     expect(api.quickPanel).toHaveBeenLastCalledWith(expect.objectContaining({
