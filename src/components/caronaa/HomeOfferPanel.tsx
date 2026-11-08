@@ -63,8 +63,9 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
 }, ref) {
   const publishOffer = useServerFn(createRideOffer);
   const gender = useProfileGender();
-  const [vehicleType, setVehicleType] = useState<Vehicle>(initialVehicle);
-  const [seats, setSeats] = useState(initialDraft?.seats ?? (initialVehicle === "MOTO" ? 1 : 3));
+  const [vehicleType, setVehicleType] = useState<Vehicle>(initialDraft?.vehicleType ?? initialVehicle);
+  const [seats, setSeats] = useState(initialDraft?.vehicleType === "MOTO" || (!initialDraft?.vehicleType && initialVehicle === "MOTO")
+    ? 1 : (initialDraft?.seats ?? 3));
   const [vehicle, setVehicle] = useState(initialDraft?.vehicle ?? "");
   const [notes, setNotes] = useState(initialDraft?.notes ?? "");
   const [allowDetours, setAllowDetours] = useState(initialDraft?.allowDetours ?? false);
@@ -73,7 +74,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
   const [driverAllowed, setDriverAllowed] = useState<boolean | null>(null);
   const [quote, setQuote] = useState<OfferQuote | null>(null);
   const [preferences, setPreferences] = useState<TravelPreferences>();
-  const [womenOnly, setWomenOnly] = useState(false);
+  const [womenOnly, setWomenOnly] = useState(initialDraft?.womenOnly ?? false);
   const [step, setStep] = useState<Step>("DETAILS");
   const [busy, setBusy] = useState(false);
   const [routineSaved, setRoutineSaved] = useState(false);
@@ -99,8 +100,8 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
   }, []);
 
   useEffect(() => {
-    onDraftChange({vehicle, seats, notes, allowDetours, scheduleMode, departureMode});
-  }, [vehicle, seats, notes, allowDetours, scheduleMode, departureMode, onDraftChange]);
+    onDraftChange({vehicleType, womenOnly, vehicle, seats, notes, allowDetours, scheduleMode, departureMode});
+  }, [vehicleType, womenOnly, vehicle, seats, notes, allowDetours, scheduleMode, departureMode, onDraftChange]);
 
   // No previous confirmation or price is transferable to a changed route.
   useEffect(() => { setStep(current => current === "SUCCESS" ? current : "DETAILS"); },
@@ -158,7 +159,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
   }, [step,busy,canContinue,driverAllowed,scheduleMode,onStatusChange]);
 
   return (
-    <div className="min-w-0 w-full max-w-full space-y-3 pt-2 text-white" data-testid="home-offer-flow">
+    <div className="min-w-0 w-full max-w-full space-y-3 pt-2 text-white motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-200" data-testid="home-offer-flow">
       {step === "SUCCESS" ? (
         <div role="status" className="space-y-3 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-4 text-center">
           <CheckCircle2 className="mx-auto text-[#FFBB00]" size={32}/>
@@ -289,7 +290,9 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
                 <OfferFarePreview origin={origin} destination={destination}
                   seats={vehicleType==="MOTO"?1:seats} onQuote={setQuote}/>
               </div>
-              <details className="rounded-xl border border-white/10 p-3">
+              <details defaultOpen={scheduleMode === "routine"}
+                onToggle={(event) => setScheduleMode(event.currentTarget.open ? "routine" : "point")}
+                className="rounded-xl border border-white/10 p-3">
                 <summary className="cursor-pointer text-sm font-semibold"><CalendarDays size={15} className="mr-2 inline"/>Oferta recorrente</summary>
                 <div className="pt-3">
                   <RideRoutineForm kind="offer" initial={{
