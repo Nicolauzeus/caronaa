@@ -10,9 +10,12 @@ import { sessionRequest } from "@/lib/session-request-cache";
 import { useEffect, useRef, useState } from "react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
+import { formatBrl } from "@/lib/ride-cost";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 type QuickRide = {
+  fare_cents?: number;
+  driver_receives_cents?: number;
   id: string;
   role: "PASSENGER" | "DRIVER";
   municipality: string;
@@ -214,7 +217,7 @@ export function QuickRideExperience({
     let alive = true;
     const check = async () => {
       const { data, error: loadError } = await (supabase as any).rpc(
-        "quick_ride_driver_queue",
+        "caronaa_quick_driver_queue",
         { p_municipality: municipality.trim() },
       );
       if (alive) setQueue(loadError || !Array.isArray(data) ? [] : data);
@@ -595,8 +598,14 @@ export function QuickRideExperience({
               {r.origin_label} → {r.destination_label} ·{" "}
               {r.vehicle_type === "MOTO" ? "Moto" : "Carro"}
             </p>
+            <p className="text-sm font-semibold">
+              {typeof r.driver_receives_cents === "number"
+                ? `Sua remuneração prevista: ${formatBrl(r.driver_receives_cents / 100)}`
+                : "Remuneração indisponível. Não aceite sem valor confirmado."}
+              {typeof r.fare_cents === "number" ? ` · Total do passageiro ${formatBrl(r.fare_cents / 100)}` : ""}
+            </p>
             <button
-              disabled={busy}
+              disabled={busy || typeof r.driver_receives_cents !== "number"}
               className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground"
               onClick={() => void action(r.id, "", true)}
             >
