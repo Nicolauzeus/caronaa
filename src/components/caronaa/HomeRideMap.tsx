@@ -23,6 +23,7 @@ type Props = {
   following: boolean;
   recenterVersion: number;
   locating: boolean;
+  gpsFailure?: string | null;
   onDrag: () => void;
   onRecenter: () => void;
   selectingOrigin?: boolean;
