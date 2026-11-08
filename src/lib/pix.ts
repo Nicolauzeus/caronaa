@@ -5,7 +5,7 @@ function field(id: string, value: string) { return id + value.length.toString().
  */
 export function buildPixPayload(key: string, name: string, amount: number, txid?: string) {
   if (!Number.isFinite(amount) || amount < 0 || amount > 21_474_836.47 ||
-      Math.round(amount * 100) !== amount * 100) {
+      Math.abs(Math.round(amount * 100) - amount * 100) > 0.000001) {
     throw new Error("Valor Pix inválido");
   }
   if (txid !== undefined && !/^[A-Za-z0-9]{1,25}$/.test(txid)) {
