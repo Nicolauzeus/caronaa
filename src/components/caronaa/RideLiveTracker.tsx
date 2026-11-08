@@ -576,11 +576,19 @@ export function RideLiveTracker({
           </p>
           <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-[11px] sm:grid-cols-4" aria-label="Legenda de pessoas e lugares no mapa">
             <div className="flex items-center gap-1.5">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-[#FFBB00] bg-[#121212] text-[#FFBB00]"><Car size={12} aria-hidden /></span>
+              <span className={role === "driver"
+                ? "flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white"
+                : "flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-[#FFBB00] bg-[#121212] text-[#FFBB00]"}>
+                {role === "driver" ? <User size={12} aria-hidden /> : <Car size={12} aria-hidden />}
+              </span>
               <span className="font-semibold text-foreground">{role === "driver" ? "Você (motorista)" : "Motorista"}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white"><User size={12} aria-hidden /></span>
+              <span className={role === "passenger"
+                ? "flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white"
+                : "flex size-6 shrink-0 items-center justify-center rounded-full bg-[#0F766E] text-white"}>
+                <User size={12} aria-hidden />
+              </span>
               <span className="font-semibold text-foreground">{role === "passenger" ? "Você (passageiro)" : "Passageiro"}</span>
             </div>
             <div className="flex items-center gap-1.5">
