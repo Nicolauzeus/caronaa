@@ -1,6 +1,6 @@
 import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
 import { RideIntentSwitch } from "@/components/caronaa/RideIntentSwitch";
-import { consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-draft";
+import { consumeRideIntentDraft, saveRideIntentDraft, type RideIntentDraft } from "@/lib/ride-intent-draft";
 import type { StrictPickupPreview } from "@/lib/safe-pickup";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
 import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
@@ -82,6 +82,7 @@ function Home() {
   const location = useUserLocation({ autoLocate: true });
   const manualOriginChosen = useRef(false);
   const mapOriginRequest = useRef(0);
+  const offerDraftRef = useRef<RideIntentDraft["offer"]>(undefined);
   const [originSource, setOriginSource] = useState<"CURRENT_LOCATION" | "MANUAL_ORIGIN">(
     "CURRENT_LOCATION",
   );
@@ -162,6 +163,7 @@ function Home() {
   useEffect(() => {
     const draft = consumeRideIntentDraft();
     if (!draft) return;
+    offerDraftRef.current = draft.offer;
     mapOriginRequest.current += 1;
     manualOriginChosen.current = Boolean(draft.origin);
     setSelectingOrigin(false);
@@ -453,6 +455,7 @@ function Home() {
       destinationLocation,
       date, time, tolerance: timeTolerance,
       passengerMode: rideOption,
+      offer: offerDraftRef.current,
       offerVehicle: rideOption === "MOTO" ? "MOTO" :
         rideOption === "EXCLUSIVE" ? quickVehicle : "CAR",
     });
