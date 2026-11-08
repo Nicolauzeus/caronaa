@@ -40,7 +40,8 @@ describe("CARONAA quick ride migration security contracts",()=>{
     const opening=(sql.match(/AS \$\$/g)||[]).length;
     const closing=(sql.match(/END; \$\$;/g)||[]).length;
     expect(opening).toBeGreaterThan(5);
-    expect(opening).toBe(closing);
+    const pureSqlClosing=(sql.match(/\n\$\$;/g)||[]).length;
+    expect(opening).toBe(closing+pureSqlClosing);
     expect(sql).not.toMatch(/AS \$(?!\$)/);
     expect(sql).not.toMatch(/END; \$;/);
   });
