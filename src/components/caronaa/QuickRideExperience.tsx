@@ -10,9 +10,12 @@ import { sessionRequest } from "@/lib/session-request-cache";
 import { useEffect, useRef, useState } from "react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
+import { formatBrl } from "@/lib/ride-cost";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 type QuickRide = {
+  fare_cents?: number;
+  driver_receives_cents?: number;
   id: string;
   role: "PASSENGER" | "DRIVER";
   municipality: string;
@@ -39,6 +42,7 @@ export function QuickRideExperience({
   initialDestinationPoint,
   initialMunicipality = "",
   embedded = false,
+  driverOnly = false,
 }: {
   initialOrigin?: string;
   initialDestination?: string;
@@ -46,8 +50,21 @@ export function QuickRideExperience({
   initialDestinationPoint?: FormLocationDetails;
   initialMunicipality?: string;
   embedded?: boolean;
+  driverOnly?: boolean;
 }) {
   const [municipality, setMunicipality] = useState(initialMunicipality);
+  useEffect(() => {
+    if (!driverOnly || initialMunicipality.trim()) return;
+    let active = true;
+    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await (supabase as any).from("professional_presence")
+        .select("municipality").eq("user_id", user.id).maybeSingle();
+      const city = typeof data?.municipality === "string" ? data.municipality : "";
+      if (active && city.length > 1) setMunicipality(city);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [driverOnly, initialMunicipality]);
   const [vehicle, setVehicle] = useState<"CAR" | "MOTO">("CAR");
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
@@ -200,7 +217,7 @@ export function QuickRideExperience({
     let alive = true;
     const check = async () => {
       const { data, error: loadError } = await (supabase as any).rpc(
-        "quick_ride_driver_queue",
+        "caronaa_quick_driver_queue",
         { p_municipality: municipality.trim() },
       );
       if (alive) setQueue(loadError || !Array.isArray(data) ? [] : data);
@@ -310,11 +327,25 @@ export function QuickRideExperience({
           ← Início
         </Link>
       )}
-      <h1 className="text-2xl font-extrabold">Viajar agora</h1>
+      <h1 className="text-2xl font-extrabold">{driverOnly ? "Painel do motorista · Corridas Rápidas" : "Viajar agora"}</h1>
       <p className="text-sm text-muted-foreground">
-        Fluxo-piloto de corridas rápidas. Só funciona em municípios liberados
-        pela operação; sem cobrança ou tarifa profissional nesta fase.
+        {driverOnly
+          ? "Fila profissional autorizada. Você só pode aceitar pedidos onde estiver habilitado e online."
+          : "Corrida Rápida piloto: peça uma viagem no mapa da tela inicial."}
       </p>
+      {driverOnly && (
+        <label className="block text-sm font-semibold">
+          Município em que estou habilitado
+          <input
+            value={municipality}
+            maxLength={120}
+            onChange={(e) => setMunicipality(e.target.value)}
+            className="mt-1 h-11 w-full rounded-xl border bg-background px-3"
+            placeholder="Ex.: Redenção"
+          />
+        </label>
+      )}
+      {!driverOnly && (
       <div className="rounded-2xl border p-4 space-y-3">
         <label
           htmlFor="quick-municipality"
@@ -396,6 +427,7 @@ export function QuickRideExperience({
           transporte comercial real.
         </p>
       </div>
+      )}
       {mapOrigin?.lat != null &&
         mapOrigin.lng != null &&
         mapDestination?.lat != null &&
@@ -566,8 +598,14 @@ export function QuickRideExperience({
               {r.origin_label} → {r.destination_label} ·{" "}
               {r.vehicle_type === "MOTO" ? "Moto" : "Carro"}
             </p>
+            <p className="text-sm font-semibold">
+              {typeof r.driver_receives_cents === "number"
+                ? `Sua remuneração prevista: ${formatBrl(r.driver_receives_cents / 100)}`
+                : "Remuneração indisponível. Não aceite sem valor confirmado."}
+              {typeof r.fare_cents === "number" ? ` · Total do passageiro ${formatBrl(r.fare_cents / 100)}` : ""}
+            </p>
             <button
-              disabled={busy}
+              disabled={busy || typeof r.driver_receives_cents !== "number"}
               className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground"
               onClick={() => void action(r.id, "", true)}
             >

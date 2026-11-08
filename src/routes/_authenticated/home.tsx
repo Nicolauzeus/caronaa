@@ -1,6 +1,7 @@
 import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
 import type { StrictPickupPreview } from "@/lib/safe-pickup";
-import { buildQuickRideSearch } from "@/lib/quick-ride-search";
+import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
+import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import {
   PassengerRideOptions,
@@ -11,7 +12,7 @@ import {
   TimeToleranceSelector,
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Search, ArrowRight, LocateFixed, CalendarDays, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -75,7 +76,6 @@ function Home() {
   const loadJourneys = useServerFn(getActiveHomeJourneys);
   const requestRide = useServerFn(createRideRequest);
   const reverseGeocode = useServerFn(reverseGeocodeServerFn);
-  const navigate = useNavigate();
   const location = useUserLocation({ autoLocate: true });
   const manualOriginChosen = useRef(false);
   const mapOriginRequest = useRef(0);
@@ -87,44 +87,35 @@ function Home() {
   const [journeys, setJourneys] = useState<Awaited<ReturnType<typeof loadJourneys>>>([]);
   const [error, setError] = useState<string | null>(null);
   const [professionalMunicipality, setProfessionalMunicipality] = useState("");
+  const [quickVehicle, setQuickVehicle] = useState<"CAR" | "MOTO">("CAR");
+  const [rideOption, setRideOption] = useState<PassengerRideOption>("CAR");
   const [professionalDrivers, setProfessionalDrivers] = useState<ApproximateProfessionalDriver[]>(
     [],
   );
   const [professionalError, setProfessionalError] = useState("");
   const [professionalLoading, setProfessionalLoading] = useState(false);
-  const professionalMunicipalityEdited = useRef(false);
-  // Consult the radar automatically, using the member's registered municipality.
-  useEffect(() => {
-    let active = true;
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("city")
-        .eq("id", user.id)
-        .maybeSingle();
-      const city = typeof data?.city === "string" ? data.city.trim() : "";
-      if (active && !professionalMunicipalityEdited.current && city.length >= 2) {
-        setProfessionalMunicipality((current) => current || city);
-      }
-    });
-    return () => {
-      active = false;
-    };
+  // Never infer an active dispatch city from the user's registration.
+  // The quick ride server validates the selected departure with Google Geocoding.
+  const updateQuickCoverage = useCallback((coverage: QuickRideCoverage | null) => {
+    setProfessionalMunicipality(
+      coverage?.radar === true && coverage.municipality
+        ? coverage.municipality : "",
+    );
   }, []);
   useEffect(() => {
     const municipality = professionalMunicipality.trim();
-    if (municipality.length < 2) {
+    if (municipality.length < 2 || rideOption !== "EXCLUSIVE") {
       setProfessionalDrivers([]);
       setProfessionalError("");
+      setProfessionalLoading(false);
       return;
     }
     let alive = true;
     const refresh = async () => {
       if (alive) setProfessionalLoading(true);
       const { data, error } = await (supabase as any).rpc(
-        "discover_approximate_professional_drivers",
-        { p_municipality: municipality },
+        "discover_caronaa_quick_drivers",
+        { p_municipality: municipality, p_vehicle: quickVehicle },
       );
       if (!alive) return;
       if (error) {
@@ -146,7 +137,7 @@ function Home() {
       alive = false;
       window.clearInterval(timer);
     };
-  }, [professionalMunicipality]);
+  }, [professionalMunicipality, rideOption, quickVehicle]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectingOrigin, setSelectingOrigin] = useState(false);
@@ -307,14 +298,6 @@ function Home() {
       isApproximate: location.addressPosition.accuracy > 100,
     });
   }, [originSource, location.addressPosition, resolvedAddress, location.locating]);
-  // GPS city takes precedence unless the user manually selected a municipality.
-  useEffect(() => {
-    const city = resolvedAddress?.city?.trim();
-    if (city && city.length >= 2 && !professionalMunicipalityEdited.current) {
-      setProfessionalMunicipality(city);
-    }
-  }, [resolvedAddress?.city]);
-
   function setToday() {
     const now = new Date();
     setDate(
@@ -332,7 +315,6 @@ function Home() {
 
   const gender = useProfileGender();
   const [womenOnly, setWomenOnly] = useState(false);
-  const [rideOption, setRideOption] = useState<PassengerRideOption>("CAR");
   useEffect(() => {
     if (gender !== "FEMININO") setWomenOnly(false);
   }, [gender]);
@@ -387,6 +369,8 @@ function Home() {
   }, [reverseGeocode]);
   async function submitRequest(event: React.FormEvent) {
     event.preventDefault();
+    // Enter in a quick-ride field must never submit a scheduled/shared ride.
+    if (rideOption === "EXCLUSIVE") return;
     if (!origin.trim() || !destination.trim()) {
       setError("Informe origem e destino antes de continuar.");
       return;
@@ -448,7 +432,7 @@ function Home() {
                 ? pickupPreview.value
                 : null
             }
-            professionalDrivers={professionalDrivers}
+            professionalDrivers={rideOption === "EXCLUSIVE" ? professionalDrivers : []}
             userPosition={location.position}
             origin={point ?? currentFare?.originPoint}
             selectingOrigin={selectingOrigin}
@@ -627,23 +611,30 @@ function Home() {
                   estimate={currentFare?.pricePerPassenger ?? null}
                   onChange={(value) => {
                     if (value === "EXCLUSIVE") {
-                      void navigate({
-                        to: "/viagem-rapida",
-                        search: buildQuickRideSearch({
-                          origin,
-                          destination,
-                          municipality: professionalMunicipality,
-                          originPoint: originLocation ?? currentFare?.originPoint,
-                          destinationPoint: destinationLocation ?? currentFare?.destinationPoint,
-                        }),
-                      });
-                      return;
+                      // Stay on the same map; vehicle selection is inside the
+                      // quick-ride panel, and driver radar is filtered accordingly.
+                      setQuickVehicle(rideOption === "MOTO" ? "MOTO" : "CAR");
                     }
                     setRideOption(value);
                     setConfirmedReviewKey(null);
                     if (value === "MOTO") setCount("1");
                   }}
                 />
+                {rideOption === "EXCLUSIVE" && (
+                  <QuickRideHomePanel
+                    origin={origin}
+                    destination={destination}
+                    originPoint={originLocation}
+                    destinationPoint={destinationLocation}
+                    vehicle={quickVehicle}
+                    onVehicleChange={setQuickVehicle}
+                    driverCount={professionalDrivers.length}
+                    driverLoading={professionalLoading}
+                    driverError={professionalError}
+                    gpsOriginIsImprecise={gpsOriginIsImprecise}
+                    onCoverage={updateQuickCoverage}
+                  />
+                )}
                 {rideOption !== "EXCLUSIVE" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">

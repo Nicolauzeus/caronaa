@@ -3,6 +3,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {supabase} from "@/integrations/supabase/client";
 import {ProfessionalAccessRequest} from "@/components/caronaa/ProfessionalAccessRequest";
 import {professionalRadarConsentKey} from "@/lib/professional-radar-consent";
+import {buildQuickRideSearch} from "@/lib/quick-ride-search";
 
 export const Route=createFileRoute("/_authenticated/disponibilidade-profissional")({component:ProfessionalAvailability});
 
@@ -150,6 +151,13 @@ function ProfessionalAvailability(){
    <Link to="/home" className="text-sm text-primary">← Voltar ao aplicativo</Link>
    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
    <p className="text-sm text-muted-foreground">O radar inicia disponível para motoristas aprovados ao entrar aqui pela primeira vez. Se você escolher ficar offline, essa preferência será respeitada. O compartilhamento GPS exige sua autorização e só funciona com o app em primeiro plano. Recebimento comercial de corridas depende de homologação regional.</p>
+   {authorized&&(
+     <Link to="/viagem-rapida"
+       search={buildQuickRideSearch({origin:"",destination:"",municipality})}
+       className="flex min-h-12 w-full items-center justify-center rounded-xl border border-primary/40 bg-primary/10 px-3 text-sm font-bold text-primary">
+       Ver pedidos de Corrida Rápida e acompanhar minhas viagens
+     </Link>
+   )}
    <ProfessionalAccessRequest/>
    <label className="block text-sm">Município<input value={municipality} maxLength={120} disabled={sharing} onChange={e=>setMunicipality(e.target.value)} placeholder="Informe seu município" className="mt-2 w-full rounded-lg border bg-background p-3"/></label>
    {driverBlocked && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
