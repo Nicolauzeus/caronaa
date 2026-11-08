@@ -86,7 +86,7 @@ afterEach(() => {
 describe("Google home map", () => {
   it("renders Google markers, GPS accuracy and official road geometry", async () => {
     const { container } = render(
-      <HomeRideMap {...base} destination={{ lat: -3.79, lng: -38.48 }} />,
+      <HomeRideMap {...base} origin={{ lat: -3.73, lng: -38.52 }} destination={{ lat: -3.79, lng: -38.48 }} />,
     );
     await waitFor(() => expect(api.fitBounds).toHaveBeenCalled());
     expect(container.querySelector('[data-map-provider="google"]')).toBeTruthy();
@@ -122,6 +122,62 @@ describe("Google home map", () => {
     expect(decoded("Motorista disponível no radar")).toContain('width="48"');
     expect(screen.getByText(/ainda não atribuídos à viagem/i)).toBeInTheDocument();
   });
+  it("não desenha o pino 'Você' nem círculo para um GPS estimado em 1029m", async () => {
+    render(<HomeRideMap {...base}
+      userPosition={{ lat: -3.73, lng: -38.52, accuracy: 1029 }}
+      origin={{ lat: -3.73, lng: -38.52 }}
+      destination={{ lat: -3.76, lng: -38.50 }}
+    />);
+    await waitFor(() => expect(api.marker).toHaveBeenCalled());
+    const titles = api.marker.mock.calls.map(([config]) => config.title);
+    expect(titles).toEqual(["Destino"]);
+    expect(api.circle).not.toHaveBeenCalled();
+    expect(api.polyline).not.toHaveBeenCalled();
+  });
+
+  it("representa a saída manual como 'Você' quando o GPS está impreciso, sem segundo pino falso", async () => {
+    const selected = { lat: -3.746, lng: -38.533 };
+    render(<HomeRideMap {...base}
+      userPosition={{ lat: -3.73, lng: -38.52, accuracy: 1029 }}
+      originIsCurrent={false}
+      following={false}
+      origin={selected}
+    />);
+    await waitFor(() => expect(api.marker).toHaveBeenCalled());
+    expect(api.marker.mock.calls).toHaveLength(1);
+    const marker = api.marker.mock.calls[0][0] as {position: unknown; title: string; icon: {url:string}};
+    expect(marker.position).toEqual(selected);
+    expect(marker.title).toContain("Sua saída escolhida");
+    expect(decodeURIComponent(marker.icon.url.split(",")[1])).toContain("Você");
+    expect(api.circle).not.toHaveBeenCalled();
+    expect(api.panTo).toHaveBeenCalledWith(selected);
+  });
+
+  it("distingue uma saída manual distante do GPS confiável, sem trocar a origem", async () => {
+    const selected = { lat: -3.77, lng: -38.55 };
+    render(<HomeRideMap {...base}
+      originIsCurrent={false}
+      following={false}
+      origin={selected}
+    />);
+    await waitFor(() => expect(api.marker.mock.calls.length).toBeGreaterThanOrEqual(2));
+    const markers = api.marker.mock.calls.map(([marker]) => marker as { title:string; position:{lat:number;lng:number} });
+    expect(markers.find((x) => x.title === "Você · localização GPS")?.position).toEqual({lat:-3.73,lng:-38.52});
+    expect(markers.find((x) => x.title.includes("Origem escolhida"))?.position).toEqual(selected);
+  });
+
+  it("permite escolher a saída no mapa apenas quando esse modo é habilitado", async () => {
+    const onPickOrigin = vi.fn();
+    const { rerender } = render(<HomeRideMap {...base} onPickOrigin={onPickOrigin} />);
+    await waitFor(() => expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)));
+    expect(api.on.mock.calls.some(([name]) => name === "click")).toBe(false);
+    rerender(<HomeRideMap {...base} selectingOrigin onPickOrigin={onPickOrigin} />);
+    await waitFor(() => expect(api.on).toHaveBeenCalledWith("click", expect.any(Function)));
+    const callback = api.on.mock.calls.find(([name]) => name === "click")![1] as (event:any)=>void;
+    act(() => callback({latLng:{lat:()=>-3.754,lng:()=>-38.531}}));
+    expect(onPickOrigin).toHaveBeenCalledWith({lat:-3.754,lng:-38.531});
+  });
+
   it("updates GPS markers without recreating the map or following after a drag", async () => {
     const { rerender, unmount } = render(<HomeRideMap {...base} />);
     await waitFor(() => expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)));
