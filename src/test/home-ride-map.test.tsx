@@ -153,6 +153,23 @@ describe("Google home map", () => {
     expect(api.panTo).toHaveBeenCalledWith(selected);
   });
 
+  it("mantém a saída GPS inicialmente confiável quando a leitura ao vivo piora", async () => {
+    const selected = { lat: -3.748, lng: -38.535 };
+    render(<HomeRideMap {...base}
+      userPosition={{ lat: -3.73, lng: -38.52, accuracy: 310 }}
+      originIsCurrent
+      originAccuracyM={20}
+      origin={selected}
+      destination={{ lat: -3.78, lng: -38.55 }}
+    />);
+    await waitFor(() => expect(api.marker).toHaveBeenCalled());
+    const titles = api.marker.mock.calls.map(([m]) => m.title as string);
+    expect(titles).toContain("Sua saída registrada · último GPS confiável (não ao vivo)");
+    expect(titles).not.toContain("Você · localização GPS");
+    expect(api.circle).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText(/Trajeto pelas ruas/)).toBeInTheDocument());
+  });
+
   it("distingue uma saída manual distante do GPS confiável, sem trocar a origem", async () => {
     const selected = { lat: -3.77, lng: -38.55 };
     render(<HomeRideMap {...base}
