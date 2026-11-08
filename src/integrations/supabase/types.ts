@@ -219,6 +219,267 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_coverage_interest: {
+        Row: {
+          created_at: string
+          municipality: string
+          updated_at: string
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          created_at?: string
+          municipality: string
+          updated_at?: string
+          user_id: string
+          vehicle_type: string
+        }
+        Update: {
+          created_at?: string
+          municipality?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
+      caronaa_quick_fare_quotes: {
+        Row: {
+          activity_id: string | null
+          commission_bps: number
+          customer_pays_cents: number
+          destination_label: string
+          destination_lat: number
+          destination_lng: number
+          distance_km: number
+          driver_receives_cents: number
+          duration_minutes: number
+          expires_at: string
+          id: string
+          issued_at: string
+          municipality: string
+          origin_label: string
+          origin_lat: number
+          origin_lng: number
+          passenger_id: string
+          platform_commission_cents: number
+          platform_processing_fee_cents: number
+          policy_version: string
+          pricing_region: string
+          ride_id: string | null
+          vehicle_type: string
+        }
+        Insert: {
+          activity_id?: string | null
+          commission_bps: number
+          customer_pays_cents: number
+          destination_label: string
+          destination_lat: number
+          destination_lng: number
+          distance_km: number
+          driver_receives_cents: number
+          duration_minutes: number
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          municipality: string
+          origin_label: string
+          origin_lat: number
+          origin_lng: number
+          passenger_id: string
+          platform_commission_cents: number
+          platform_processing_fee_cents: number
+          policy_version: string
+          pricing_region: string
+          ride_id?: string | null
+          vehicle_type: string
+        }
+        Update: {
+          activity_id?: string | null
+          commission_bps?: number
+          customer_pays_cents?: number
+          destination_label?: string
+          destination_lat?: number
+          destination_lng?: number
+          distance_km?: number
+          driver_receives_cents?: number
+          duration_minutes?: number
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          municipality?: string
+          origin_label?: string
+          origin_lat?: number
+          origin_lng?: number
+          passenger_id?: string
+          platform_commission_cents?: number
+          platform_processing_fee_cents?: number
+          policy_version?: string
+          pricing_region?: string
+          ride_id?: string | null
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_quick_fare_quotes_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "caronaa_quick_official_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caronaa_quick_fare_quotes_municipality_fkey"
+            columns: ["municipality"]
+            isOneToOne: false
+            referencedRelation: "caronaa_service_municipalities"
+            referencedColumns: ["municipality"]
+          },
+          {
+            foreignKeyName: "caronaa_quick_fare_quotes_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caronaa_quick_official_activities: {
+        Row: {
+          center_lat: number
+          center_lng: number
+          ends_at: string
+          id: string
+          municipality: string
+          published: boolean
+          radius_m: number
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          center_lat: number
+          center_lng: number
+          ends_at: string
+          id?: string
+          municipality: string
+          published?: boolean
+          radius_m: number
+          starts_at: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          center_lat?: number
+          center_lng?: number
+          ends_at?: string
+          id?: string
+          municipality?: string
+          published?: boolean
+          radius_m?: number
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_quick_official_activities_municipality_fkey"
+            columns: ["municipality"]
+            isOneToOne: false
+            referencedRelation: "caronaa_service_municipalities"
+            referencedColumns: ["municipality"]
+          },
+        ]
+      }
+      caronaa_quick_quote_rate_limits: {
+        Row: {
+          attempts: number
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          attempts?: number
+          user_id: string
+          window_started_at?: string
+        }
+        Update: {
+          attempts?: number
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_quick_tariff_policies: {
+        Row: {
+          base_cents: number
+          commission_bps: number
+          intermunicipal_enabled: boolean
+          minimum_cents: number
+          minimum_platform_margin_cents: number
+          per_km_cents: number
+          per_minute_cents: number
+          policy_version: string
+          pricing_region: string
+          processing_fee_cents: number
+          published: boolean
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          base_cents?: number
+          commission_bps: number
+          intermunicipal_enabled?: boolean
+          minimum_cents?: number
+          minimum_platform_margin_cents?: number
+          per_km_cents?: number
+          per_minute_cents?: number
+          policy_version?: string
+          pricing_region: string
+          processing_fee_cents?: number
+          published?: boolean
+          updated_at?: string
+          vehicle_type: string
+        }
+        Update: {
+          base_cents?: number
+          commission_bps?: number
+          intermunicipal_enabled?: boolean
+          minimum_cents?: number
+          minimum_platform_margin_cents?: number
+          per_km_cents?: number
+          per_minute_cents?: number
+          policy_version?: string
+          pricing_region?: string
+          processing_fee_cents?: number
+          published?: boolean
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
+      caronaa_service_municipalities: {
+        Row: {
+          car_enabled: boolean
+          moto_enabled: boolean
+          municipality: string
+          pricing_region: string
+          updated_at: string
+        }
+        Insert: {
+          car_enabled?: boolean
+          moto_enabled?: boolean
+          municipality: string
+          pricing_region: string
+          updated_at?: string
+        }
+        Update: {
+          car_enabled?: boolean
+          moto_enabled?: boolean
+          municipality?: string
+          pricing_region?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       compliance_record_events: {
         Row: {
           actor_id: string | null
@@ -2755,6 +3016,7 @@ export type Database = {
       ride_offers: {
         Row: {
           accepts_quoted_fares: boolean
+          allow_detours: boolean
           available_seats: number
           created_at: string
           departure_time: string
@@ -2789,9 +3051,11 @@ export type Database = {
           updated_at: string
           user_id: string
           vehicle_description: string | null
+          vehicle_type: string
         }
         Insert: {
           accepts_quoted_fares?: boolean
+          allow_detours?: boolean
           available_seats: number
           created_at?: string
           departure_time: string
@@ -2826,9 +3090,11 @@ export type Database = {
           updated_at?: string
           user_id: string
           vehicle_description?: string | null
+          vehicle_type?: string
         }
         Update: {
           accepts_quoted_fares?: boolean
+          allow_detours?: boolean
           available_seats?: number
           created_at?: string
           departure_time?: string
@@ -2863,6 +3129,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vehicle_description?: string | null
+          vehicle_type?: string
         }
         Relationships: [
           {
@@ -3058,6 +3325,7 @@ export type Database = {
           pickup_point: string | null
           price: number | null
           request_id: string
+          requested_vehicle_type: string | null
           ride_date: string
           route_distance_km: number | null
           route_quote_id: string | null
@@ -3072,6 +3340,7 @@ export type Database = {
           travel_preferences: Json | null
           updated_at: string
           user_id: string
+          women_only: boolean
         }
         Insert: {
           created_at?: string
@@ -3093,6 +3362,7 @@ export type Database = {
           pickup_point?: string | null
           price?: number | null
           request_id?: string
+          requested_vehicle_type?: string | null
           ride_date: string
           route_distance_km?: number | null
           route_quote_id?: string | null
@@ -3107,6 +3377,7 @@ export type Database = {
           travel_preferences?: Json | null
           updated_at?: string
           user_id: string
+          women_only?: boolean
         }
         Update: {
           created_at?: string
@@ -3128,6 +3399,7 @@ export type Database = {
           pickup_point?: string | null
           price?: number | null
           request_id?: string
+          requested_vehicle_type?: string | null
           ride_date?: string
           route_distance_km?: number | null
           route_quote_id?: string | null
@@ -3142,6 +3414,7 @@ export type Database = {
           travel_preferences?: Json | null
           updated_at?: string
           user_id?: string
+          women_only?: boolean
         }
         Relationships: [
           {
@@ -3350,6 +3623,7 @@ export type Database = {
           route_distance_km: number | null
           route_quote_id: string | null
           status: string
+          strict_pickup_arrived_at: string | null
           tariff_reference: string | null
           total_price: number
           transit_stage: string
@@ -3375,6 +3649,7 @@ export type Database = {
           route_distance_km?: number | null
           route_quote_id?: string | null
           status: string
+          strict_pickup_arrived_at?: string | null
           tariff_reference?: string | null
           total_price?: number
           transit_stage?: string
@@ -3400,6 +3675,7 @@ export type Database = {
           route_distance_km?: number | null
           route_quote_id?: string | null
           status?: string
+          strict_pickup_arrived_at?: string | null
           tariff_reference?: string | null
           total_price?: number
           transit_stage?: string
@@ -4023,6 +4299,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_caronaa_quick_commercial_overview: { Args: never; Returns: Json }
       admin_driver_fee_audit: { Args: { p_ride_id: string }; Returns: Json }
       admin_operate_ride: {
         Args: {
@@ -4042,6 +4319,27 @@ export type Database = {
         Args: { p_decision: string; p_reason: string; p_request_id: string }
         Returns: undefined
       }
+      admin_set_caronaa_quick_city: {
+        Args: { p_car: boolean; p_moto: boolean; p_municipality: string }
+        Returns: undefined
+      }
+      admin_set_caronaa_quick_tariff: {
+        Args: {
+          p_base: number
+          p_commission_bps: number
+          p_intermunicipal: boolean
+          p_margin: number
+          p_minimum: number
+          p_per_km: number
+          p_per_minute: number
+          p_processing_fee: number
+          p_publish: boolean
+          p_region: string
+          p_vehicle: string
+          p_version: string
+        }
+        Returns: undefined
+      }
       admin_set_platform_pix: { Args: { p_key: string }; Returns: boolean }
       admin_set_quick_ride_driver: {
         Args: { p_approved: boolean; p_email: string; p_vehicle_type: string }
@@ -4054,6 +4352,20 @@ export type Database = {
           p_municipality: string
         }
         Returns: undefined
+      }
+      admin_upsert_caronaa_quick_activity: {
+        Args: {
+          p_city: string
+          p_ends_at: string
+          p_id: string
+          p_lat: number
+          p_lng: number
+          p_published: boolean
+          p_radius_m: number
+          p_starts_at: string
+          p_title: string
+        }
+        Returns: string
       }
       are_ride_routes_compatible: {
         Args: {
@@ -4106,6 +4418,32 @@ export type Database = {
         }
         Returns: string
       }
+      caronaa_quick_driver_queue: {
+        Args: { p_municipality: string }
+        Returns: {
+          destination_label: string
+          driver_receives_cents: number
+          expires_at: string
+          fare_cents: number
+          id: string
+          origin_label: string
+          requested_at: string
+          vehicle_type: string
+        }[]
+      }
+      caronaa_quick_quote_rate_gate: { Args: never; Returns: boolean }
+      caronaa_quick_region_status: {
+        Args: { p_municipality: string; p_vehicle: string }
+        Returns: Json
+      }
+      caronaa_quick_submit_quoted: {
+        Args: { p_quote_id: string }
+        Returns: string
+      }
+      caronaa_register_coverage_interest: {
+        Args: { p_municipality: string; p_vehicle: string }
+        Returns: boolean
+      }
       change_ride_routine_occurrence: {
         Args: {
           p_cancel?: boolean
@@ -4142,6 +4480,19 @@ export type Database = {
       confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
       create_configured_research_form: {
         Args: { p_metadata: Json; p_schema: Json; p_settings: Json }
+        Returns: string
+      }
+      create_filtered_priced_ride_request: {
+        Args: {
+          p_departure_time: string
+          p_passenger_count?: number
+          p_preferences?: Json
+          p_quote_id: string
+          p_ride_date: string
+          p_time_tolerance_minutes?: number
+          p_vehicle_type?: string
+          p_women_only?: boolean
+        }
         Returns: string
       }
       create_preferred_ride: {
@@ -4256,6 +4607,15 @@ export type Database = {
       }
       discover_approximate_professional_drivers: {
         Args: { p_municipality: string }
+        Returns: {
+          driver_key: string
+          lat: number
+          lng: number
+          seen_at: string
+        }[]
+      }
+      discover_caronaa_quick_drivers: {
+        Args: { p_municipality: string; p_vehicle: string }
         Returns: {
           driver_key: string
           lat: number
@@ -4582,6 +4942,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_strict_pickup_wait: { Args: { p_ride_id: string }; Returns: Json }
       get_sts_ride_seed: { Args: never; Returns: Json }
       get_validation_export: {
         Args: {
@@ -4666,6 +5027,10 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: undefined
       }
+      mark_strict_pickup_no_show: {
+        Args: { p_ride_id: string }
+        Returns: string
+      }
       materialize_ride_routine: {
         Args: { p_routine_id: string }
         Returns: undefined
@@ -4720,6 +5085,10 @@ export type Database = {
         Args: { p_lat: number; p_lng: number; p_path: Json }
         Returns: Json
       }
+      publish_filtered_priced_offer: {
+        Args: { p_details: Json; p_preferences?: Json; p_quote_id: string }
+        Returns: string
+      }
       publish_priced_offer: {
         Args: { p_details: Json; p_preferences?: Json; p_quote_id: string }
         Returns: string
@@ -4745,6 +5114,7 @@ export type Database = {
           vehicle_type: string
         }[]
       }
+      quick_ride_map_context: { Args: { p_id: string }; Returns: Json }
       quick_ride_my_requests: {
         Args: never
         Returns: {
@@ -4874,6 +5244,13 @@ export type Database = {
       revoke_ride_location: { Args: { p_ride_id: string }; Returns: undefined }
       ride_preferences_compatible: {
         Args: { o: Json; q: Json }
+        Returns: boolean
+      }
+      ride_product_filters_compatible: {
+        Args: {
+          o: Database["public"]["Tables"]["ride_offers"]["Row"]
+          q: Database["public"]["Tables"]["ride_requests"]["Row"]
+        }
         Returns: boolean
       }
       ride_route_inventory_version: {
