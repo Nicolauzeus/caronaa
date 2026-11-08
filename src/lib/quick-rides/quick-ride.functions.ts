@@ -196,7 +196,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
         pickupInsideApprovedArea:true,
       }:null,
     },config);
-    if(q.platformNetBeforeTaxes < safeCents(policy.minimum_platform_margin_cents))
+    if(q.platformNetBeforeTaxesCents < safeCents(policy.minimum_platform_margin_cents))
       throw new Error("Esta tarifa não cobre a margem operacional mínima. A operação precisa revisar o preço antes de abrir solicitações.");
     // Prices are only inserted from this authenticated SERVER function.
     const {data:record,error:saveError}=await admin.from("caronaa_quick_fare_quotes")
