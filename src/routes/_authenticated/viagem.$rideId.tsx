@@ -331,6 +331,7 @@ function ViagemOperacional() {
               status={ride.status}
               pickupLabel={ride.meetingPoint || ride.origin}
               destinationLabel={ride.destination}
+              driverName={ride.driver?.fullName ?? undefined}
               onChanged={refresh}
             />
           </div>
