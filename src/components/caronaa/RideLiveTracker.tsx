@@ -327,21 +327,24 @@ export function RideLiveTracker({
       lng: number;
       title: string;
       type: "driver" | "passenger" | "meeting" | "destination";
+      isViewer?: boolean;
     }> = [];
     if (driverLocation) {
       pts.push({
         lat: driverLocation.latitude,
         lng: driverLocation.longitude,
-        title: "Motorista",
+        title: role === "driver" ? "Você (motorista)" : "Motorista",
         type: "driver",
+        isViewer: role === "driver",
       });
     }
     if (passengerLocation) {
       pts.push({
         lat: passengerLocation.latitude,
         lng: passengerLocation.longitude,
-        title: "Passageiro",
+        title: role === "passenger" ? "Você (passageiro)" : "Passageiro",
         type: "passenger",
+        isViewer: role === "passenger",
       });
     }
     if (meetingPointCoords) {
@@ -361,7 +364,7 @@ export function RideLiveTracker({
       });
     }
     return pts;
-  }, [driverLocation, passengerLocation, meetingPointCoords, destinationCoords]);
+  }, [driverLocation, passengerLocation, meetingPointCoords, destinationCoords, role]);
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card/60 p-4 shadow-sm">
@@ -546,9 +549,11 @@ export function RideLiveTracker({
                 className={`size-2 rounded-full ${driverStatus.state === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
               />
               <span>
-                {driverStatus.state === "live" || passengerStatus.state === "live"
+                {driverStatus.state === "live"
                   ? "GPS do motorista atualizado"
-                  : "GPS do motorista ausente ou desatualizado"}
+                  : driverStatus.state === "paused"
+                    ? "Motorista não compartilha posição"
+                    : "Última posição do motorista desatualizada"}
               </span>
             </div>
           </div>
@@ -564,29 +569,39 @@ export function RideLiveTracker({
           </div>
         )}
 
-        {/* Legenda visual dos marcadores */}
-        <div className="border-t border-border/70 bg-background/90 p-2.5 backdrop-blur-xs">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+        {/* Rótulos persistentes no mapa + legenda acessível para cada papel. */}
+        <div className="border-t border-border/70 bg-background/95 p-2.5">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Legenda do percurso
           </p>
-          <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-[11px] sm:grid-cols-4" aria-label="Legenda de pessoas e lugares no mapa">
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-primary ring-1 ring-border" />
-              <span className="font-medium text-foreground">Motorista</span>
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-[#FFBB00] bg-[#121212] text-[#FFBB00]"><Car size={12} aria-hidden /></span>
+              <span className="font-semibold text-foreground">{role === "driver" ? "Você (motorista)" : "Motorista"}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-info ring-1 ring-border" />
-              <span className="font-medium text-foreground">Passageiro</span>
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-white"><User size={12} aria-hidden /></span>
+              <span className="font-semibold text-foreground">{role === "passenger" ? "Você (passageiro)" : "Passageiro"}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-success ring-1 ring-border" />
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-[#121212] bg-white text-[#121212]"><MapPin size={12} aria-hidden /></span>
               <span className="font-medium text-foreground">Ponto de Encontro</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-destructive ring-1 ring-border" />
-              <span className="font-medium text-foreground">Destino Final</span>
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#FFBB00] text-[#121212]"><Flag size={12} aria-hidden /></span>
+              <span className="font-semibold text-foreground">Destino Final</span>
             </div>
           </div>
+          {(role === "driver" && !driverLocation || role === "passenger" && !passengerLocation) && (
+            <p role="status" className="mt-2 text-[11px] text-muted-foreground">
+              Sua posição ao vivo ainda não aparece no mapa. Ative o compartilhamento abaixo para exibir o marcador “Você”.
+            </p>
+          )}
+          {driverStatus.state === "stale" && (
+            <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+              A posição exibida do motorista é a última transmitida, não necessariamente a posição atual.
+            </p>
+          )}
         </div>
       </div>
 
