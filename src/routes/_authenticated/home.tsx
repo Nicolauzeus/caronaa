@@ -1,4 +1,6 @@
 import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
+import { RideIntentSwitch } from "@/components/caronaa/RideIntentSwitch";
+import { consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-draft";
 import type { StrictPickupPreview } from "@/lib/safe-pickup";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
 import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
@@ -12,7 +14,7 @@ import {
   TimeToleranceSelector,
   type TimeToleranceMinutes,
 } from "@/components/caronaa/TimeToleranceSelector";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Search, ArrowRight, LocateFixed, CalendarDays, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -73,6 +75,7 @@ export const Route = createFileRoute("/_authenticated/home")({
 });
 
 function Home() {
+  const navigate = useNavigate();
   const loadJourneys = useServerFn(getActiveHomeJourneys);
   const requestRide = useServerFn(createRideRequest);
   const reverseGeocode = useServerFn(reverseGeocodeServerFn);
@@ -154,6 +157,27 @@ function Home() {
     (FarePreview & { origin: string; destination: string; routeKey: string }) | null
   >(null);
   const [requestFareRefresh, setRequestFareRefresh] = useState(0);
+  // Restore only a one-time, tab-local role switch. No GPS is passed through
+  // public URLs or reused from an unrelated past journey.
+  useEffect(() => {
+    const draft = consumeRideIntentDraft();
+    if (!draft) return;
+    mapOriginRequest.current += 1;
+    manualOriginChosen.current = Boolean(draft.origin);
+    setSelectingOrigin(false);
+    setOriginSource(draft.origin ? "MANUAL_ORIGIN" : "CURRENT_LOCATION");
+    setOrigin(draft.origin);
+    setDestination(draft.destination);
+    setOriginLocation(draft.originLocation);
+    setDestinationLocation(draft.destinationLocation);
+    if (draft.date) setDate(draft.date);
+    if (draft.time) setTime(draft.time);
+    if (draft.tolerance) setTimeTolerance(draft.tolerance);
+    if (draft.passengerMode) setRideOption(draft.passengerMode);
+    if (draft.offerVehicle) setQuickVehicle(draft.offerVehicle);
+    setPanelOpen(true);
+  }, []);
+
   const fareRouteKey = JSON.stringify([
     origin,
     destination,
@@ -421,6 +445,19 @@ function Home() {
       setBusy(false);
     }
   }
+  function switchToOffer() {
+    saveRideIntentDraft({
+      origin: gpsOriginIsImprecise ? "" : origin,
+      destination,
+      originLocation: gpsOriginIsImprecise ? undefined : originLocation,
+      destinationLocation,
+      date, time, tolerance: timeTolerance,
+      passengerMode: rideOption,
+      offerVehicle: rideOption === "MOTO" ? "MOTO" :
+        rideOption === "EXCLUSIVE" ? quickVehicle : "CAR",
+    });
+    void navigate({ to: "/oferecer" });
+  }
   return (
     <AppShell mapLayout>
       <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
@@ -471,6 +508,10 @@ function Home() {
               {panelOpen ? "Recolher detalhes" : "Expandir e planejar viagem"}
             </span>
           </button>
+          <div className="shrink-0 px-3 pb-2 sm:px-4">
+            <RideIntentSwitch value="REQUEST"
+              onChange={(intent) => { if (intent === "OFFER") switchToOffer(); }} />
+          </div>
           <h2
             id="journey-title"
             className="shrink-0 px-4 font-[family-name:var(--font-display)] text-xl font-bold"
