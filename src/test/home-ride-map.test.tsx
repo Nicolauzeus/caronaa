@@ -94,6 +94,34 @@ describe("Google home map", () => {
     expect(api.circle).toHaveBeenCalledWith(expect.objectContaining({ radius: 20 }));
     expect(screen.getByText(/11,0 km/)).toBeInTheDocument();
   });
+  it("labels GPS and destination but marks available radar drivers as unassigned", async () => {
+    render(
+      <HomeRideMap
+        {...base}
+        destination={{ lat: -3.79, lng: -38.48 }}
+        professionalDrivers={[{
+          driver_key: "available-1",
+          lat: -3.75,
+          lng: -38.51,
+          seen_at: new Date().toISOString(),
+        }]}
+      />,
+    );
+    await waitFor(() => expect(api.marker.mock.calls.length).toBeGreaterThanOrEqual(3));
+    const markers = api.marker.mock.calls.map(([options]) => options as {
+      title: string;
+      icon: { url: string };
+    });
+    const decoded = (title: string) => {
+      const marker = markers.find((m) => m.title.includes(title));
+      expect(marker).toBeDefined();
+      return decodeURIComponent(marker!.icon.url.split(",")[1]);
+    };
+    expect(decoded("Você · localização GPS")).toContain("Você");
+    expect(decoded("Destino")).toContain("Destino");
+    expect(decoded("Motorista disponível no radar")).toContain('width="48"');
+    expect(screen.getByText(/ainda não atribuídos à viagem/i)).toBeInTheDocument();
+  });
   it("updates GPS markers without recreating the map or following after a drag", async () => {
     const { rerender, unmount } = render(<HomeRideMap {...base} />);
     await waitFor(() => expect(api.on).toHaveBeenCalledWith("dragstart", expect.any(Function)));

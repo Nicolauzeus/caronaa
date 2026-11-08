@@ -7,6 +7,7 @@ import {
   onGoogleMapsAuthFailure,
 } from "@/lib/google-maps-loader";
 import { MapUnavailable } from "./MapUnavailable";
+import { tripMarkerIcon, type TripMarkerKind } from "./trip-marker-icons";
 
 export type GoogleMapPoint = {
   lat: number;
@@ -14,7 +15,7 @@ export type GoogleMapPoint = {
   title?: string;
   color?: string;
   label?: string;
-  kind?: "person" | "meeting";
+  kind?: TripMarkerKind | "person";
 };
 export type GoogleMapLine = {
   points: Array<{ lat: number; lng: number }>;
@@ -31,6 +32,8 @@ type Props = {
   children?: ReactNode;
   previewOnly?: boolean;
   fitMode?: "once" | "changes";
+  /** Refits when visible marker identities change, not on GPS jitter. */
+  fitKey?: string;
 };
 
 const isValid = (p: { lat: number; lng: number }) =>
@@ -48,12 +51,14 @@ export function GoogleMapSurface({
   children,
   previewOnly = false,
   fitMode = "changes",
+  fitKey,
 }: Props) {
   const getKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const artifacts = useRef<any[]>([]);
   const fitted = useRef(false);
+  const lastFitKey = useRef<string | undefined>(undefined);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -117,11 +122,12 @@ export function GoogleMapSurface({
       }
     };
     points.filter(isValid).forEach((point) => {
+      const badgeIcon = point.kind && point.kind !== "person" ? tripMarkerIcon(point.kind) : null;
       const marker = new G.Marker({
         map: map.current,
         position: { lat: point.lat, lng: point.lng },
         title: point.title || "Localização",
-        ...(point.label
+        ...(point.label && !badgeIcon
           ? {
               label: {
                 text: point.label,
@@ -130,7 +136,7 @@ export function GoogleMapSurface({
               },
             }
           : {}),
-        icon: {
+        icon: badgeIcon ?? {
           path:
             point.kind === "person"
               ? "M 0,-9 A 3,3 0 1,1 0,-3 A 3,3 0 1,1 0,-9 M -5,7 L -5,1 Q -5,-2 0,-2 Q 5,-2 5,1 L 5,7 Z"
@@ -143,6 +149,8 @@ export function GoogleMapSurface({
           strokeColor: "#FFFFFF",
           strokeWeight: 2,
         },
+        // The viewer must remain identifiable when nearby markers overlap.
+        zIndex: point.kind === "you" ? 50 : point.kind === "driver" ? 40 : point.kind === "destination" ? 30 : 20,
       });
       artifacts.current.push(marker);
       extend(point);
@@ -172,6 +180,10 @@ export function GoogleMapSurface({
       artifacts.current.push(polyline);
       path.forEach(extend);
     });
+    if (fitKey !== undefined && lastFitKey.current !== fitKey) {
+      lastFitKey.current = fitKey;
+      fitted.current = false;
+    }
     if (fitted.current && fitMode === "once") return;
     if (count > 0) fitted.current = true;
     if (count === 1) {
@@ -180,7 +192,7 @@ export function GoogleMapSurface({
     } else if (count > 1) {
       map.current.fitBounds(bounds, 32);
     }
-  }, [ready, failed, points, lines, fitMode]);
+  }, [ready, failed, points, lines, fitMode, fitKey]);
 
   return (
     <div

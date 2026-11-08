@@ -172,7 +172,7 @@ export function RouteMap({
                 lat: resolvedOrigin.lat,
                 lng: resolvedOrigin.lng,
                 title: resolvedOrigin.name,
-                type: "meeting",
+                type: "origin",
               },
               {
                 lat: resolvedDest.lat,
