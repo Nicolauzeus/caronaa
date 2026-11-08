@@ -33,7 +33,8 @@ describe("CARONAA quick ride migration security contracts",()=>{
     expect(sql).toContain("l.updated_at>now()-interval '90 seconds'");
     expect(sql).toContain("AND a.approved AND a.vehicle_type=p_vehicle");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.caronaa_coverage_interest");
-    expect(sql).not.toMatch(/CREATE TABLE IF NOT EXISTS public\.caronaa_coverage_interest\s*\([\s\S]*?origin_lat/);
+    const interestTable=sql.split("CREATE TABLE IF NOT EXISTS public.caronaa_coverage_interest (")[1]?.split(");")[0];
+    expect(interestTable).not.toContain("origin_lat");
   });
   it("SQL uses valid dollar quoting for every definer function",()=>{
     const opening=(sql.match(/AS \$\$/g)||[]).length;
