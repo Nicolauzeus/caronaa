@@ -109,7 +109,7 @@ GRANT EXECUTE ON FUNCTION public.mark_strict_pickup_no_show(uuid) TO authenticat
 -- historical ride_match_retry_after_cancel trigger. Keep regular cancellation
 -- rematching behavior unchanged.
 CREATE OR REPLACE FUNCTION public.rematch_cancelled_ride_proposal()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $
 BEGIN
   IF OLD.status = 'created' AND NEW.status = 'cancelled'
      AND NOT EXISTS (
