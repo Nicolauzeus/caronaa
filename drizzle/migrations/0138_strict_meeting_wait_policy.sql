@@ -105,5 +105,24 @@ BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION public.mark_strict_pickup_no_show(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mark_strict_pickup_no_show(uuid) TO authenticated;
+-- A passenger who did not appear must NOT be automatically rematched by the
+-- historical ride_match_retry_after_cancel trigger. Keep regular cancellation
+-- rematching behavior unchanged.
+CREATE OR REPLACE FUNCTION public.rematch_cancelled_ride_proposal()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $
+BEGIN
+  IF OLD.status = 'created' AND NEW.status = 'cancelled'
+     AND NOT EXISTS (
+       SELECT 1 FROM public.rides r
+       WHERE r.match_id = NEW.match_id AND r.status = 'NO_SHOW'
+     ) THEN
+    PERFORM public.try_match_ride_request(NEW.request_id, NULL);
+  END IF;
+  RETURN NEW;
+END;
+$;
+REVOKE ALL ON FUNCTION public.rematch_cancelled_ride_proposal()
+  FROM PUBLIC, anon, authenticated;
+
 NOTIFY pgrst, 'reload schema';
 COMMIT;
