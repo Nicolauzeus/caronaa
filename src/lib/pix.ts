@@ -1,8 +1,20 @@
 function field(id: string, value: string) { return id + value.length.toString().padStart(2, '0') + value; }
-export function buildPixPayload(key: string, name: string, amount: number) {
+/** Static Pix: the bank pre-fills the amount but does not confirm receipt.
+ * txid identifies the exact server-issued commission statement, not a
+ * payment receipt. Existing legacy QR calls may omit txid.
+ */
+export function buildPixPayload(key: string, name: string, amount: number, txid?: string) {
+  if (!Number.isFinite(amount) || amount < 0 || amount > 21_474_836.47 ||
+      Math.abs(Math.round(amount * 100) - amount * 100) > 0.000001) {
+    throw new Error("Valor Pix inválido");
+  }
+  if (txid !== undefined && !/^[A-Za-z0-9]{1,25}$/.test(txid)) {
+    throw new Error("Identificador Pix inválido");
+  }
+  const reference = txid ?? "***";
   const cleanName = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase().slice(0, 25) || 'MOTORISTA';
   const merchant = field('00', 'BR.GOV.BCB.PIX') + field('01', key);
-  const payload = field('00','01') + field('26',merchant) + field('52','0000') + field('53','986') + (amount > 0 ? field('54',amount.toFixed(2)) : '') + field('58','BR') + field('59',cleanName) + field('60','FORTALEZA') + field('62',field('05','***')) + '6304';
+  const payload = field('00','01') + field('26',merchant) + field('52','0000') + field('53','986') + (amount > 0 ? field('54',amount.toFixed(2)) : '') + field('58','BR') + field('59',cleanName) + field('60','FORTALEZA') + field('62',field('05',reference)) + '6304';
   let crc = 0xffff;
   for (const byte of new TextEncoder().encode(payload)) {
     crc ^= byte << 8;
