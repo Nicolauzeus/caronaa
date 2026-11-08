@@ -7,6 +7,8 @@ export type LiveMapPoint = {
   lng: number;
   title: string;
   type: "driver" | "passenger" | "meeting" | "destination";
+  /** Marks which of the authenticated participants is looking at the map. */
+  isViewer?: boolean;
 };
 type Coordinates = [number, number]; // latitude, longitude
 type RoadRoute = {
@@ -111,12 +113,16 @@ export function LiveRideMap({
         lat: p.lat,
         lng: p.lng,
         title: p.title,
-        color:
-          p.type === "driver"
+        kind: p.isViewer ? "you" : p.type,
+        color: p.isViewer
+          ? "#2563EB"
+          : p.type === "driver"
             ? "#121212"
-            : p.type === "destination"
-              ? "#FFBB00"
-              : "#2563eb",
+            : p.type === "passenger"
+              ? "#0F766E"
+              : p.type === "destination"
+                ? "#FFBB00"
+                : "#FFFFFF",
       }))}
       lines={
         road
@@ -129,6 +135,7 @@ export function LiveRideMap({
           : []
       }
       fitMode="once"
+      fitKey={positions.map((p) => p.type).sort().join("|")}
       className="h-72 w-full"
       ariaLabel={"Mapa da viagem: " + positions.map((p) => p.title).join(", ")}
     >
@@ -141,7 +148,9 @@ export function LiveRideMap({
             " min (estimativa)"
           : routeError
             ? "Rota indisponível. Marcadores não representam o percurso."
-            : "Carregando trajeto rodoviário…"}
+            : routeWaypoints(positions, skipMeeting).length < 2
+              ? "Aguardando coordenadas para calcular a rota pelas ruas…"
+              : "Carregando trajeto rodoviário…"}
       </div>
     </GoogleMapSurface>
   );
