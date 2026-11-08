@@ -19,6 +19,7 @@ export function RideSafetyPanel({
   status,
   pickupLabel,
   destinationLabel,
+  driverName,
   onChanged,
 }: {
   rideId: string;
@@ -27,6 +28,7 @@ export function RideSafetyPanel({
   status: string;
   pickupLabel?: string;
   destinationLabel?: string;
+  driverName?: string;
   onChanged: () => Promise<void>;
 }) {
   const [safety, setSafety] = useState<RideSafety | null>(null);
@@ -141,6 +143,7 @@ export function RideSafetyPanel({
           status={currentStatus}
           pickupLabel={pickupLabel}
           destinationLabel={destinationLabel}
+          driverName={driverName}
           safety={safety}
           onRefresh={async () => {
             await loadSafety();
