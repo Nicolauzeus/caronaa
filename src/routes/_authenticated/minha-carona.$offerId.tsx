@@ -323,6 +323,17 @@ function PassengerRequest({
     inFlight.current = true;
     setBusy(true);
     try {
+      if (response === "CONFIRMED") {
+        const latestDetour = await previewDetour({ data: { rideId: ride.rideId } });
+        if (!latestDetour.withinLimits) {
+          setDetour(latestDetour);
+          throw new Error("O desvio da rota excede o limite. Não foi possível confirmar.");
+        }
+        if (latestDetour.detourMinutes !== detour?.detourMinutes || latestDetour.detourKm !== detour?.detourKm || latestDetour.combinedAddedMinutes !== detour?.combinedAddedMinutes) {
+          setDetour(latestDetour);
+          throw new Error("A rota mudou. Confira a nova estimativa antes de confirmar.");
+        }
+      }
       const result = await transitionRideStatus(ride.rideId, response);
       toast.success(
         response === "CONFIRMED"
