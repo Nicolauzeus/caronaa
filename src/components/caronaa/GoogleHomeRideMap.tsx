@@ -369,7 +369,9 @@ export function GoogleHomeRideMap({
   useEffect(() => {
     if (!ready || !map.current || failed) return;
     const recenterRequested = lastRecenter.current !== recenterVersion;
-    lastRecenter.current = recenterVersion;
+    // Do not consume a requested recenter before the GPS coordinates arrive.
+    // This matters when a user selected a manual origin and taps locate-me
+    // while the browser is still asking for geolocation permission.
     // Auto-position on HOME opening, before any ride is requested.
     // One coarse reading centers the approximate area once, rather than
     // pretending the user is at an exact address or jittering every 15 seconds.
@@ -378,7 +380,8 @@ export function GoogleHomeRideMap({
     if (!recenterRequested && !initialAutoCenter &&
         (!following || !originIsCurrent || !trustedGps)) return;
     const position = validPoint(userPosition) ? userPosition : null;
-    if (!position) return; // Browser permission/error is shown on the map.
+    if (!position) return; // Keep requested recenter pending until a fix arrives.
+    if (recenterRequested) lastRecenter.current = recenterVersion;
     const next = { lat: position.lat, lng: position.lng };
     if (initialAutoCenter) initialGpsCenterDone.current = true;
     if (
