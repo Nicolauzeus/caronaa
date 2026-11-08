@@ -88,6 +88,7 @@ function Home() {
   const [error, setError] = useState<string | null>(null);
   const [professionalMunicipality, setProfessionalMunicipality] = useState("");
   const [quickVehicle, setQuickVehicle] = useState<"CAR" | "MOTO">("CAR");
+  const [rideOption, setRideOption] = useState<PassengerRideOption>("CAR");
   const [professionalDrivers, setProfessionalDrivers] = useState<ApproximateProfessionalDriver[]>(
     [],
   );
@@ -314,7 +315,6 @@ function Home() {
 
   const gender = useProfileGender();
   const [womenOnly, setWomenOnly] = useState(false);
-  const [rideOption, setRideOption] = useState<PassengerRideOption>("CAR");
   useEffect(() => {
     if (gender !== "FEMININO") setWomenOnly(false);
   }, [gender]);
