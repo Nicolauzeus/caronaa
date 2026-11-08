@@ -1,4 +1,7 @@
 import { useProfileGender } from "@/lib/use-profile-gender";
+import { RideIntentSwitch } from "@/components/caronaa/RideIntentSwitch";
+import { consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-draft";
+import type { PassengerRideOption } from "@/components/caronaa/PassengerRideOptions";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { RoutePolicySelector } from "@/components/caronaa/RoutePolicySelector";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -146,6 +149,7 @@ function Oferecer() {
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
+  const previousPassengerMode = useRef<PassengerRideOption>();
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const [quote, setQuote] = useState<OfferQuote | null>(null);
   const [profilePlate, setProfilePlate] = useState("");
@@ -182,6 +186,24 @@ function Oferecer() {
         ? { rawText: search.destino ?? "", lat: search.dlat, lng: search.dlng }
         : undefined,
   }));
+  useEffect(() => {
+    const draft = consumeRideIntentDraft();
+    if (!draft) return;
+    previousPassengerMode.current = draft.passengerMode;
+    setOriginSource(draft.origin ? "MANUAL_ORIGIN" : "CURRENT_LOCATION");
+    setForm((current) => ({
+      ...current,
+      origin: draft.origin || current.origin,
+      destination: draft.destination || current.destination,
+      originLocation: draft.originLocation ?? current.originLocation,
+      destinationLocation: draft.destinationLocation ?? current.destinationLocation,
+      date: draft.date || current.date,
+      time: draft.time || current.time,
+      timeTolerance: draft.tolerance ?? current.timeTolerance,
+      vehicleType: draft.offerVehicle || current.vehicleType,
+      seats: draft.offerVehicle === "MOTO" ? "1" : current.seats,
+    }));
+  }, []);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -403,6 +425,22 @@ function Oferecer() {
       setIdempotencyKey(crypto.randomUUID());
     }
   };
+  function switchToRequest() {
+    const coarseGps = originSource === "CURRENT_LOCATION" &&
+      ((location.position?.accuracy ?? Number.POSITIVE_INFINITY) > 80 ||
+        form.originLocation?.isApproximate === true);
+    saveRideIntentDraft({
+      origin: coarseGps ? "" : form.origin,
+      destination: form.destination,
+      originLocation: coarseGps ? undefined : form.originLocation,
+      destinationLocation: form.destinationLocation,
+      date: form.date, time: form.time, tolerance: form.timeTolerance,
+      passengerMode: previousPassengerMode.current ??
+        (form.vehicleType === "MOTO" ? "MOTO" : "CAR"),
+      offerVehicle: form.vehicleType,
+    });
+    void navigate({ to: "/home" });
+  }
   return (
     <AppShell>
       <div className="mx-auto max-w-3xl">
@@ -417,6 +455,13 @@ function Oferecer() {
             Defina seu trajeto e compartilhe os custos da viagem.
           </p>
         </header>
+        <div className="mb-4 max-w-lg">
+          <RideIntentSwitch value="OFFER" disabled={publishing}
+            onChange={(intent) => { if (intent === "REQUEST") switchToRequest(); }} />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Pode voltar a pedir carona sem perder o trajeto que preencheu.
+          </p>
+        </div>
         <RideScheduleMode value={mode} onChange={setMode} />
         {mode === "routine" ? (
           routineSaved ? (
