@@ -133,7 +133,7 @@ describe("Google home map", () => {
     expect(titles).toContain("Destino");
     expect(titles.some((title: string) => title.startsWith("GPS aproximado (±1029 m)"))).toBe(true);
     expect(titles.some((title: string) => title.startsWith("Você"))).toBe(false);
-    expect(screen.getByRole("status")).toHaveTextContent(/Localização aproximada.*1.029 m/);
+    expect(screen.getByRole("status")).toHaveTextContent(/Localização aproximada.*1029 m/);
     expect(api.circle).not.toHaveBeenCalled();
     expect(api.polyline).not.toHaveBeenCalled();
   });
