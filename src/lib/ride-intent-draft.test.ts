@@ -29,7 +29,14 @@ describe("passenger/driver role-switch handoff", () => {
   };
   it("preserves the selected trip and modal preference for one navigation only", () => {
     saveRideIntentDraft(route);
-    expect(consumeRideIntentDraft()).toEqual(expect.objectContaining(route));
+    expect(consumeRideIntentDraft()).toEqual(expect.objectContaining({
+      origin:route.origin,
+      destination:route.destination,
+      originLocation:expect.objectContaining({lat:-3.74,lng:-38.5}),
+      destinationLocation:expect.objectContaining({lat:-4.23,lng:-38.73}),
+      date:route.date,time:route.time,tolerance:route.tolerance,
+      passengerMode:"EXCLUSIVE",offerVehicle:"MOTO",
+    }));
     expect(consumeRideIntentDraft()).toBeNull();
   });
   it("expires a handoff after two minutes rather than leaving old routes in the tab", () => {
