@@ -19,6 +19,11 @@ describe("0138 strict pickup security migration contract", () => {
     expect(sql).toContain("IF r.status = 'NO_SHOW' THEN RETURN 'NO_SHOW'");
     expect(sql).toContain("RETURN public.transition_ride_status(p_ride_id, 'NO_SHOW')");
   });
+  it("does not rematch an absent passenger after NO_SHOW", () => {
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.rematch_cancelled_ride_proposal()");
+    expect(sql).toContain("r.match_id = NEW.match_id AND r.status = 'NO_SHOW'");
+    expect(sql).toContain("PERFORM public.try_match_ride_request(NEW.request_id, NULL)");
+  });
   it("exposes the wait only to authenticated participants", () => {
     expect(sql).toContain("auth.uid() NOT IN (r.driver_user_id, r.passenger_user_id)");
     expect(sql).toContain("REVOKE ALL ON FUNCTION public.get_strict_pickup_wait(uuid) FROM PUBLIC, anon");
