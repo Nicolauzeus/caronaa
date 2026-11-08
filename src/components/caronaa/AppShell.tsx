@@ -34,7 +34,7 @@ const waitingNav = [
 
 const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
-  { to: "/oferecer" as const, label: "Oferecer", icon: CarFront },
+  { to: "/home" as const, label: "Oferecer", icon: CarFront },
   { to: "/minhas-caronas" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
@@ -64,6 +64,11 @@ export function AppShell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
+  const selectedNav = (to:string,label:string) => label==="Oferecer"
+    ? (pathname==="/home" && activeIntent==="offer") || pathname==="/oferecer"
+    : label==="Início" ? pathname==="/home" && activeIntent!=="offer"
+    : pathname===to || pathname.startsWith(`${to}/`);
   const navigation = prelaunchMode ? waitingNav : authenticatedNav;
   const { user, loading } = useAuth();
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
@@ -155,10 +160,11 @@ export function AppShell({
             <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
               {navigation.map(({ to, label }) => (
                 <Link
-                  key={to}
+                  key={`${to}-${label}`}
                   to={to}
+                  search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
-                    pathname === to ? "bg-secondary text-primary" : "text-muted-foreground"
+                    selectedNav(to,label) ? "bg-secondary text-primary" : "text-muted-foreground"
                   }`}
                 >
                   {label}
@@ -316,8 +322,9 @@ export function AppShell({
                 <>
                   {authenticatedNav.map(({ to, label, icon: Icon }) => (
                     <Link
-                      key={to}
+                      key={`${to}-${label}`}
                       to={to}
+                      search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold hover:bg-secondary"
                     >
@@ -389,11 +396,12 @@ export function AppShell({
         >
           <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
-              const selected = pathname === to || pathname.startsWith(`${to}/`);
+              const selected = selectedNav(to,label);
               return (
                 <Link
-                  key={to}
+                  key={`${to}-${label}`}
                   to={to}
+                  search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   aria-current={selected ? "page" : undefined}
                   className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     selected
