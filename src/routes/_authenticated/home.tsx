@@ -423,7 +423,7 @@ function Home() {
   }
   return (
     <AppShell mapLayout>
-      <div className="relative isolate h-full min-h-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
+      <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
         <div className="absolute inset-0">
           <HomeRideMap
             immersive
@@ -444,7 +444,7 @@ function Home() {
             recenterVersion={location.recenterVersion}
             locating={location.locating}
             onDrag={() => location.setFollowing(false)}
-            onRecenter={location.locate}
+            onRecenter={location.recenter}
           />
         </div>
         {selectingOrigin && (
@@ -457,7 +457,7 @@ function Home() {
         )}
         <section
           aria-labelledby="journey-title"
-          className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex max-h-[calc(100%-9rem)] max-w-2xl flex-col rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[76%]" : "h-auto"}`}
+          className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[min(84dvh,calc(100%-5rem))] min-h-0" : "h-auto max-h-[min(44dvh,20rem)]"}`}
         >
           <button
             type="button"
@@ -478,7 +478,7 @@ function Home() {
             Encontre sua carona
           </h2>
           {!panelOpen ? (
-            <div className="space-y-3 p-4">
+            <div className="min-w-0 space-y-3 overflow-y-auto overscroll-contain p-4">
               <button
                 type="button"
                 aria-label="Pesquisar destino no painel de carona"
@@ -517,7 +517,7 @@ function Home() {
           ) : (
             <div
               id="caronaa-journey-details"
-              className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-4"
+              className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 [scrollbar-gutter:stable]"
             >
               <FavoriteCommuteSuggestion
                 onChoose={(from, to) => {
@@ -531,7 +531,7 @@ function Home() {
                   setDestinationLocation({ rawText: to.label, lat: to.lat, lng: to.lng });
                 }}
               />
-              <form id="passenger-request-form" onSubmit={submitRequest} className="space-y-4 pt-3">
+              <form id="passenger-request-form" onSubmit={submitRequest} className="min-w-0 w-full max-w-full space-y-4 pt-3">
                 <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <button
                     type="button"
@@ -606,7 +606,8 @@ function Home() {
                     }}
                   />
                 </div>
-                <PassengerRideOptions
+                <div id="caronaa-ride-mode" className="min-w-0 w-full max-w-full">
+                  <PassengerRideOptions
                   value={rideOption}
                   estimate={currentFare?.pricePerPassenger ?? null}
                   onChange={(value) => {
@@ -620,6 +621,7 @@ function Home() {
                     if (value === "MOTO") setCount("1");
                   }}
                 />
+                </div>
                 {rideOption === "EXCLUSIVE" && (
                   <QuickRideHomePanel
                     origin={origin}
