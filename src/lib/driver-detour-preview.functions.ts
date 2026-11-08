@@ -115,7 +115,7 @@ export const getDriverProposalDetour = createServerFn({ method: "POST" })
         individual.durationMinutes, individual.distanceKm,
         combined.durationMinutes,
       );
-      if (offer.allow_detours === false && computed.detourMinutes > 0)
+      if (offer.allow_detours === false && (individual.durationMinutes > original.durationMinutes || individual.distanceKm > original.distanceKm))
         computed.withinLimits = false;
       const value = previewSchema.parse(computed);
       if (previewCache.size > 250) previewCache.clear();
