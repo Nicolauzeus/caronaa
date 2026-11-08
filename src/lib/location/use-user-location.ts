@@ -14,6 +14,14 @@ export function validPoint(
   );
 }
 
+/** Replace a coarse initial fix only with a materially more trustworthy GPS reading.
+ * Do not continuously move a chosen pickup when the person walks or GPS jitters.
+ */
+export function shouldImproveGpsOrigin(previous: UserPosition | null, next: UserPosition): boolean {
+  return !previous || (previous.accuracy > 80 &&
+    (next.accuracy <= 80 || next.accuracy <= previous.accuracy / 2));
+}
+
 export const locationFailureMessages: Record<LocationFailure, string> = {
   PERMISSION_DENIED:
     "Não conseguimos acessar sua localização. Informe seu ponto de saída ou ative a localização nas permissões do navegador.",
@@ -69,7 +77,7 @@ export function useUserLocation({
       );
       if (error.code === 1) stop();
     };
-    const update = (value: GeolocationPosition) => {
+    const update = (value: GeolocationPosition, initial = false) => {
       if (!alive()) return false;
       const point = {
         lat: value.coords.latitude,
@@ -79,6 +87,11 @@ export function useUserLocation({
       if (!validPoint(point) || !Number.isFinite(point.accuracy) || point.accuracy < 0)
         return false;
       setPosition(point);
+      if (initial) {
+        setAddressPosition(point);
+      } else {
+        setAddressPosition((previous) => shouldImproveGpsOrigin(previous, point) ? point : previous);
+      }
       setFailure(null);
       setLocating(false);
       return point;
@@ -86,12 +99,12 @@ export function useUserLocation({
     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 };
     navigator.geolocation.getCurrentPosition(
       (value) => {
-        const point = update(value);
+        const point = update(value, true);
         if (!point) return;
-        // Resolve an address only for an explicit fix, never for every movement.
-        setAddressPosition(point);
+        // Follow the first fix; subsequent watches only revise a coarse fix
+        // when accuracy improves materially, not for ordinary movement.
         setRecenterVersion((value) => value + 1);
-        watch.current = navigator.geolocation.watchPosition(update, fail, options);
+        watch.current = navigator.geolocation.watchPosition((next) => { update(next); }, fail, options);
       },
       fail,
       options,
@@ -129,6 +142,8 @@ export function useUserLocation({
     addressPosition,
     accuracyM: position?.accuracy ?? null,
     isLowAccuracy: Boolean(position && position.accuracy > 80),
+    originAccuracyM: addressPosition?.accuracy ?? null,
+    isOriginLowAccuracy: Boolean(addressPosition && addressPosition.accuracy > 80),
     failure,
     locating,
     isFollowingUser,
