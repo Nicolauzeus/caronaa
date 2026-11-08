@@ -78,6 +78,15 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
       setError("");
       return;
     }
+    // Do not hide a broken financial ledger behind a legacy/partial balance.
+    // Backward compatibility is ONLY for the database function being absent.
+    const missingMigration = ["PGRST202", "42883"].includes(String(failure.code ?? "")) ||
+      /could not find the function|get_my_caronaa_commission_ledger.*does not exist/i.test(
+        String(failure.message ?? ""),
+      );
+    if (!missingMigration) throw new Error(
+      "Saldo unificado indisponível. Não gere Pix até o Financeiro verificar a integridade dos débitos.",
+    );
     // A code deploy can arrive before the DB migration. Keep the existing
     // manual shared-ride repayment workflow available in that interval.
     const { data: oldData, error: oldFailure } = await (supabase as any).rpc("get_my_driver_platform_fees");
