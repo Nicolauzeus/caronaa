@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfessionalAccessQueue } from "./ProfessionalAccessQueue";
+import { QuickRideCommercialAdmin } from "./QuickRideCommercialAdmin";
 
 type Region = { municipality: string; public_discovery_enabled: boolean; dispatch_enabled: boolean };
 type Driver = { user_id: string; name: string | null; approved: boolean; vehicle_type: string };
@@ -60,6 +61,8 @@ export function QuickRideAdminPanel() {
           </div>
         ))}
       </div>
+
+      <QuickRideCommercialAdmin />
 
       <ProfessionalAccessQueue onChange={() => void reload()} />
 
