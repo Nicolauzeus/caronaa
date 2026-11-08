@@ -45,6 +45,12 @@ describe("CARONAA quick ride migration security contracts",()=>{
     expect(sql).not.toMatch(/AS \$(?!\$)/);
     expect(sql).not.toMatch(/END; \$;/);
   });
+  it("blocks driver acceptance when dispatch, vehicle or fare policy is switched off",()=>{
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_driver_assignment()");
+    expect(sql).toContain("OLD.status='SEARCHING' AND NEW.status='ACCEPTED'");
+    expect(sql).toContain("AND policy.published");
+    expect(sql).toContain("caronaa_quick_guard_driver_assignment");
+  });
   it("rate limits Google quote spend atomically per authenticated member",()=>{
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.caronaa_quick_quote_rate_limits");
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.caronaa_quick_quote_rate_gate()");
