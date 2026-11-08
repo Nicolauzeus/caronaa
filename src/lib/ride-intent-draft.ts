@@ -17,6 +17,8 @@ export type RideIntentDraft = {
   passengerMode?: "CAR" | "MOTO" | "EXCLUSIVE";
   offerVehicle?: "CAR" | "MOTO";
   offer?: {
+    vehicleType?: "CAR" | "MOTO";
+    womenOnly?: boolean;
     vehicle: string;
     seats: number;
     notes: string;
@@ -52,6 +54,8 @@ const safeDraft = (value: RideIntentDraft): RideIntentDraft => ({
     ? value.passengerMode : undefined,
   offerVehicle: value.offerVehicle === "MOTO" ? "MOTO" : "CAR",
   offer: value.offer && typeof value.offer === "object" ? {
+    vehicleType: value.offer.vehicleType === "MOTO" ? "MOTO" : "CAR",
+    womenOnly: value.offer.womenOnly === true,
     vehicle: shortText(value.offer.vehicle, 180),
     seats: Number.isInteger(value.offer.seats) ?
       Math.max(1, Math.min(4, value.offer.seats)) : 1,
