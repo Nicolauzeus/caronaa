@@ -6,6 +6,7 @@ import { resolveGoogleMapsBrowserKey } from "@/lib/google-maps-key";
 import { loadGoogleMaps, onGoogleMapsAuthFailure } from "@/lib/google-maps-loader";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { MapUnavailable } from "./MapUnavailable";
+import { tripMarkerIcon, type TripMarkerKind } from "./trip-marker-icons";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
 import { LocateFixed, MapPin } from "lucide-react";
 import { validPoint, type UserPosition } from "@/lib/location/use-user-location";
@@ -129,34 +130,29 @@ export function GoogleHomeRideMap({
     const G = (window as any).google.maps;
     markers.current.forEach((marker) => marker.setMap(null));
     markers.current = [];
-    const add = (point: Point | null | undefined, title: string, color: string) => {
+    const add = (point: Point | null | undefined, title: string, kind: TripMarkerKind) => {
       if (!validPoint(point)) return;
       const marker = new G.Marker({
         map: map.current,
         position: { lat: point.lat, lng: point.lng },
         title,
-        icon: {
-          path: G.SymbolPath.CIRCLE,
-          fillColor: color,
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-          scale: 9,
-        },
+        icon: tripMarkerIcon(kind),
+        zIndex: kind === "you" ? 50 : kind === "destination" ? 40 : kind === "origin" ? 30 : 20,
       });
       markers.current.push(marker);
     };
-    add(userPosition, "Sua localização", "#2563eb");
-    if (!originIsCurrent) add(origin, "Saída", "#b38600");
-    add(destination, "Destino", "#f5b800");
+    add(userPosition, "Você · localização GPS", "you");
+    if (!originIsCurrent) add(origin, "Origem escolhida · não é o seu GPS", "origin");
+    add(destination, "Destino", "destination");
     if (pickupPreview) {
-      add(pickupPreview.passenger, "Origem do passageiro", "#2563eb");
-      add(pickupPreview.pickup.point, pickupPreview.pickup.label, "#FFBB00");
+      add(pickupPreview.passenger, "Origem do passageiro", "passenger");
+      add(pickupPreview.pickup.point, pickupPreview.pickup.label, "meeting");
     }
     professionalDrivers.forEach((driver) =>
-      add(driver, "Motorista disponível · posição aproximada", "#FFBB00"),
+      add(driver, "Motorista disponível no radar · posição aproximada · ainda não atribuído", "availableDriver"),
     );
     circle.current?.setMap(null);
+    circle.current = null;
     if (validPoint(userPosition) && userPosition.accuracy > 0) {
       circle.current = new G.Circle({
         map: map.current,
@@ -365,6 +361,11 @@ export function GoogleHomeRideMap({
           className={locating ? "animate-pulse" : following ? "text-primary" : ""}
         />
       </Button>
+      {professionalDrivers.length > 0 && (
+        <div className={`pointer-events-none absolute left-3 z-10 max-w-[70%] rounded-lg bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm ${immersive ? "bottom-24" : "bottom-3"}`}>
+          🚗 Motoristas disponíveis no radar · ainda não atribuídos à viagem
+        </div>
+      )}
       {routeMetrics && (
         <div
           role="status"
