@@ -57,6 +57,35 @@ describe("Localização da home", () => {
     expect(result.current.position?.lat).toBe(-3.735);
     expect(result.current.addressPosition?.lat).toBe(-3.731);
   });
+  it("localiza automaticamente na home desktop sem existir uma corrida", () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true, value: () => ({matches:false}),
+    });
+    renderHook(() => useUserLocation({autoLocate:true}));
+    expect(getCurrentPosition).toHaveBeenCalledOnce();
+  });
+  it("centraliza imediatamente no GPS conhecido sem aguardar uma nova requisição", () => {
+    const { result } = renderHook(() => useUserLocation({autoLocate:true}));
+    act(() => fix(position(-3.73, 20)));
+    const version = result.current.recenterVersion;
+    act(() => result.current.setFollowing(false));
+    act(() => result.current.recenter());
+    expect(result.current.recenterVersion).toBe(version + 1);
+    expect(result.current.isFollowingUser).toBe(true);
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+  });
+  it("centraliza a região aproximada imediatamente e solicita nova precisão", () => {
+    const { result } = renderHook(() => useUserLocation({autoLocate:true}));
+    act(() => fix(position(-3.73, 1029)));
+    const previousVersion = result.current.recenterVersion;
+    act(() => result.current.recenter());
+    expect(result.current.recenterVersion).toBe(previousVersion + 1);
+    expect(getCurrentPosition).toHaveBeenCalledTimes(2);
+    expect(result.current.locating).toBe(true);
+    act(() => fix(position(-3.732, 30)));
+    expect(result.current.isLowAccuracy).toBe(false);
+    expect(result.current.position?.lat).toBe(-3.732);
+  });
   it("solicita posição no mobile e acompanha após permissão", () => {
     const { result } = renderHook(useUserLocation);
     expect(getCurrentPosition).toHaveBeenCalledOnce();
