@@ -45,6 +45,7 @@ export interface RideLiveTrackerProps {
   safety: RideSafety;
   pickupLabel?: string;
   destinationLabel?: string;
+  driverName?: string;
   onRefresh: () => Promise<void>;
 }
 
@@ -64,6 +65,7 @@ export function RideLiveTracker({
   safety,
   pickupLabel,
   destinationLabel,
+  driverName,
   onRefresh,
 }: RideLiveTrackerProps) {
   const [sharing, setSharing] = useState(false);
@@ -333,7 +335,7 @@ export function RideLiveTracker({
       pts.push({
         lat: driverLocation.latitude,
         lng: driverLocation.longitude,
-        title: role === "driver" ? "Você (motorista)" : "Motorista",
+        title: role === "driver" ? "Você (motorista)" : driverName ? `Motorista: ${driverName}` : "Motorista",
         type: "driver",
         isViewer: role === "driver",
       });
@@ -364,7 +366,7 @@ export function RideLiveTracker({
       });
     }
     return pts;
-  }, [driverLocation, passengerLocation, meetingPointCoords, destinationCoords, role]);
+  }, [driverLocation, passengerLocation, meetingPointCoords, destinationCoords, role, driverName]);
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card/60 p-4 shadow-sm">
@@ -603,6 +605,11 @@ export function RideLiveTracker({
           {(role === "driver" && !driverLocation || role === "passenger" && !passengerLocation) && (
             <p role="status" className="mt-2 text-[11px] text-muted-foreground">
               Sua posição ao vivo ainda não aparece no mapa. Ative o compartilhamento abaixo para exibir o marcador “Você”.
+            </p>
+          )}
+          {role === "passenger" && driverName && (
+            <p className="mt-1 truncate text-[11px] font-medium text-foreground" title={driverName}>
+              Motorista confirmado: {driverName}
             </p>
           )}
           {driverStatus.state === "stale" && (
