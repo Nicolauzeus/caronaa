@@ -108,11 +108,35 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const admin=supabaseAdmin as any;
     const {data:policy,error:policyError}=await admin.from("caronaa_quick_tariff_policies")
-      .select("pricing_region,vehicle_type,base_cents,per_km_cents,per_minute_cents,minimum_cents,commission_bps,processing_fee_cents,minimum_platform_margin_cents,policy_version,published")
+      .select("pricing_region,vehicle_type,base_cents,per_km_cents,per_minute_cents,minimum_cents,commission_bps,processing_fee_cents,minimum_platform_margin_cents,intermunicipal_enabled,policy_version,published")
       .eq("pricing_region",coverage.region)
       .eq("vehicle_type",data.vehicleType)
       .eq("published",true).maybeSingle();
     if(policyError||!policy) throw new Error("Tarifa ainda não homologada pela operação.");
+    // For a point-to-point commercial trip, a destination outside the corridor
+    // is not silently assumed to be permitted. Municipal borders may require
+    // different authorizations even if Google Routes can calculate the road.
+    const destinationReverse=await sessionRequest(
+      "quick-destination-city:"+context.userId+":"+
+        data.destination.lat.toFixed(5)+":"+data.destination.lng.toFixed(5),
+      ()=>reverseGeocodeService(data.destination.lat,data.destination.lng),90_000,
+    );
+    if(!destinationReverse?.city) throw new Error("Não foi possível verificar o município de destino.");
+    const destinationCity=resolveCorridorMunicipality(
+      destinationReverse.city,destinationReverse.state,destinationReverse.country,
+    );
+    if(!destinationCity)
+      throw new Error("Destino fora da cobertura habilitada. Selecione um destino no eixo Fortaleza–Maciço.");
+    if(destinationCity.municipality!==coverage.municipality) {
+      if(policy.intermunicipal_enabled!==true)
+        throw new Error("Esta modalidade ainda não foi homologada para corridas entre municípios.");
+      const {data:destinationStatus,error:destinationError}=
+        await context.supabase.rpc("caronaa_quick_region_status",{
+          p_municipality:destinationCity.municipality,p_vehicle:data.vehicleType,
+        });
+      if(destinationError||destinationStatus?.status!=="ENABLED")
+        throw new Error("Destino ainda não habilitado para esta modalidade.");
+    }
     // No incorrect costs or unapproved tariff can be produced client-side.
     const commissionBps=safeCents(policy.commission_bps);
     if(commissionBps>4000||
