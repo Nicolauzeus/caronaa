@@ -83,6 +83,16 @@ describe("CARONAA pricing policy draft (not yet active)", () => {
     expect(quoteProposedCaronaaFare({...input,officialActivity:{...activity,published:false}},config).commissionBps).toBe(2000);
   });
 
+  it("activity 15% cannot cover a R$1.99 dynamic Pix on the R$7.50 minimum", () => {
+    const input={...base,mode:"EXCLUSIVE_MOTO" as const,
+      region:"MACICO_BATURITE" as const,officialActivity:activity};
+    expect(()=>quoteProposedCaronaaFare(input,{...config,processingFeeCents:199})).toThrow(/processamento supera/);
+    const promotional=quoteProposedCaronaaFare(input,{...config,processingFeeCents:99});
+    expect(promotional.platformGrossCommissionCents).toBe(113);
+    expect(promotional.platformNetBeforeTaxesCents).toBe(14);
+    expect(promotional.driverReceivesCents).toBe(637);
+  });
+
   it("outside-event default commission is not silently set to 15%", () => {
     expect(()=>quoteProposedCaronaaFare(base,{...config,standardCommissionBps:null})).toThrow(/não definida/);
     const q=quoteProposedCaronaaFare(base,config);
