@@ -655,7 +655,7 @@ function Oferecer() {
                     </div>
                   )}
                   {originSource === "CURRENT_LOCATION" && location.position &&
-                    !isTrustedGpsFix(location.position) && (
+                    (!Number.isFinite(location.position.accuracy) || location.position.accuracy > 80) && (
                     <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs text-gray-200">
                       Seu GPS indica precisão de aproximadamente {Math.round(location.position.accuracy)} metros.
                       Para oferecer carona, informe a saída ou aguarde uma posição mais precisa.
