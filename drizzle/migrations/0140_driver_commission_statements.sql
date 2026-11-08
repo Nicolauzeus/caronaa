@@ -75,6 +75,13 @@ BEGIN
     NEW.id,v_quote.id,NEW.driver_id,v_quote.customer_pays_cents,
     v_quote.platform_commission_cents,v_quote.commission_bps
   ) ON CONFLICT(ride_id) DO NOTHING;
+  -- Invalidate active discovery immediately when the third unsettled
+  -- obligation is accrued; do not rely on a later GPS heartbeat to notice it.
+  IF NOT public.driver_platform_access_allowed(NEW.driver_id) THEN
+    UPDATE public.professional_presence SET is_available=false
+      WHERE user_id=NEW.driver_id AND is_available=true;
+    DELETE FROM public.professional_driver_locations WHERE user_id=NEW.driver_id;
+  END IF;
   RETURN NEW;
 END $fee$;
 REVOKE ALL ON FUNCTION public.caronaa_accrue_completed_quick_ride_fee()
