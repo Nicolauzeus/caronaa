@@ -4,7 +4,7 @@
  * A readable label + distinct pictogram avoids color-only identification.
  */
 export type TripMarkerKind =
-  | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "availableDriver";
+  | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "approximate" | "availableDriver";
 
 type MarkerDesign = {
   text: string;
@@ -36,6 +36,10 @@ const designs: Record<Exclude<TripMarkerKind, "availableDriver">, MarkerDesign> 
   meeting: {
     text: "Embarque", background: "#FFFFFF", foreground: "#121212",
     border: "#121212", iconBackground: "#121212", iconForeground: "#FFFFFF", glyph: "pin",
+  },
+  approximate: {
+    text: "GPS aprox.", background: "#475569", foreground: "#FFFFFF",
+    border: "#FFFFFF", iconBackground: "#FFFFFF", iconForeground: "#475569", glyph: "pin",
   },
   origin: {
     text: "Origem", background: "#FFFFFF", foreground: "#121212",
