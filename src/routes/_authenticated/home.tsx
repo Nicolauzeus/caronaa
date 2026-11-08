@@ -369,6 +369,8 @@ function Home() {
   }, [reverseGeocode]);
   async function submitRequest(event: React.FormEvent) {
     event.preventDefault();
+    // Enter in a quick-ride field must never submit a scheduled/shared ride.
+    if (rideOption === "EXCLUSIVE") return;
     if (!origin.trim() || !destination.trim()) {
       setError("Informe origem e destino antes de continuar.");
       return;
