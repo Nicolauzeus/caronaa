@@ -474,7 +474,7 @@ function Home() {
     if (next === "OFFER") setOfferStatus({
       step: "DETAILS", busy: false, canContinue: false, driverAllowed: null, routine: false,
     });
-    avoidKeyboardOnRoleSwitch.current = true;
+    if (!panelOpen) avoidKeyboardOnRoleSwitch.current = true;
     setPanelOpen(true);
     setSelectingOrigin(false);
     setConfirmedReviewKey(null);
