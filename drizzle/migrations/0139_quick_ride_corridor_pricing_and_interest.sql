@@ -217,7 +217,7 @@ GRANT EXECUTE ON FUNCTION public.discover_caronaa_quick_drivers(text,text) TO au
 -- is permitted; this is audited in the same transaction as dispatch.
 CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_quote_snapshot()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
 BEGIN
  IF NEW.id IS DISTINCT FROM OLD.id
     OR NEW.passenger_id IS DISTINCT FROM OLD.passenger_id
@@ -244,7 +244,7 @@ BEGIN
     OR (OLD.ride_id IS NOT NULL AND NEW.ride_id IS DISTINCT FROM OLD.ride_id)
  THEN RAISE EXCEPTION 'Immutable quick fare snapshot cannot be changed'; END IF;
  RETURN NEW;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.guard_caronaa_quick_quote_snapshot() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS caronaa_quick_quote_immutable ON public.caronaa_quick_fare_quotes;
 CREATE TRIGGER caronaa_quick_quote_immutable BEFORE UPDATE ON public.caronaa_quick_fare_quotes
@@ -259,14 +259,14 @@ RETURNS TABLE(
  fare_cents integer, driver_receives_cents integer
 )
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
  SELECT q.id,q.vehicle_type,q.origin_label,q.destination_label,
    q.requested_at,q.expires_at,
    snapshot.customer_pays_cents,snapshot.driver_receives_cents
  FROM public.quick_ride_driver_queue(p_municipality) q
  JOIN public.caronaa_quick_fare_quotes snapshot ON snapshot.ride_id=q.id
  ORDER BY q.requested_at LIMIT 30;
-$;
+$$;
 REVOKE ALL ON FUNCTION public.caronaa_quick_driver_queue(text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.caronaa_quick_driver_queue(text) TO authenticated;
 
