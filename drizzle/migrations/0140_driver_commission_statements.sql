@@ -408,7 +408,7 @@ CREATE OR REPLACE FUNCTION public.admin_verify_caronaa_fee_statement(
 ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $verify$
 DECLARE v_statement public.caronaa_driver_fee_statements%ROWTYPE;
-  v_expected integer; v_shared integer; v_quick integer;
+  v_expected integer; v_total_items bigint; v_shared integer; v_quick integer;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.has_admin_department_access('finance',true) THEN
     RAISE EXCEPTION 'Finance write permission required' USING ERRCODE='42501';
@@ -427,8 +427,13 @@ BEGIN
   END IF;
   -- Atomic: only the exact statement items become SETTLED, never all
   -- current debt (which may have grown since the QR was generated).
-  SELECT count(*) INTO v_expected FROM public.caronaa_driver_fee_statement_items
+  SELECT count(*),coalesce(sum(fee_cents),0)
+    INTO v_expected,v_total_items FROM public.caronaa_driver_fee_statement_items
     WHERE statement_id=p_statement_id;
+  IF v_expected<>v_statement.item_count OR
+     v_total_items<>v_statement.total_cents THEN
+    RAISE EXCEPTION 'Commission statement total differs from locked ride items';
+  END IF;
   UPDATE public.caronaa_driver_fee_statements
     SET status='SETTLED',verified_by=auth.uid(),verified_at=now()
     WHERE id=p_statement_id;
