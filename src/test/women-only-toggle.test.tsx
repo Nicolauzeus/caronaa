@@ -59,7 +59,7 @@ describe("Passenger travel options", () => {
     rerender(<PassengerRideOptions value="MOTO" onChange={change} estimate={12} />);
     expect(screen.getAllByText(/R\$\s*12,00/)).toHaveLength(2);
     expect(
-      screen.getByRole("radio", { name: /Corrida Direta/ }).closest("label"),
+      screen.getByRole("radio", { name: /Corrida Rápida/ }).closest("label"),
     ).not.toHaveTextContent(/R\$/);
   });
 });
