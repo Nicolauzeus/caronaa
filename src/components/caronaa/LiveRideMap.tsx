@@ -6,7 +6,7 @@ export type LiveMapPoint = {
   lat: number;
   lng: number;
   title: string;
-  type: "driver" | "passenger" | "meeting" | "destination";
+  type: "origin" | "driver" | "passenger" | "meeting" | "destination";
   /** Marks which of the authenticated participants is looking at the map. */
   isViewer?: boolean;
 };
@@ -32,9 +32,10 @@ export function routeWaypoints(
   const find = (type: LiveMapPoint["type"]) =>
     points.find((p) => p.type === type && validPoint(p));
   const driver = find("driver");
+  const origin = find("origin");
   const meeting = find("meeting");
   const destination = find("destination");
-  return [driver, skipMeeting ? undefined : meeting, destination]
+  return [driver ?? origin, skipMeeting ? undefined : meeting, destination]
     .filter((p): p is LiveMapPoint => Boolean(p))
     .filter(
       (p, i, arr) =>
