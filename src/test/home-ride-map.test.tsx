@@ -170,17 +170,19 @@ describe("Google home map", () => {
     await waitFor(() => expect(screen.getByText(/Trajeto pelas ruas/)).toBeInTheDocument());
   });
 
-  it("distingue uma saída manual distante do GPS confiável, sem trocar a origem", async () => {
+  it("usa a saída manual como único ponto Você, mesmo quando GPS distante diz ter boa precisão", async () => {
     const selected = { lat: -3.77, lng: -38.55 };
     render(<HomeRideMap {...base}
       originIsCurrent={false}
       following={false}
       origin={selected}
     />);
-    await waitFor(() => expect(api.marker.mock.calls.length).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(api.marker).toHaveBeenCalled());
     const markers = api.marker.mock.calls.map(([marker]) => marker as { title:string; position:{lat:number;lng:number} });
-    expect(markers.find((x) => x.title === "Você · localização GPS")?.position).toEqual({lat:-3.73,lng:-38.52});
-    expect(markers.find((x) => x.title.includes("Origem escolhida"))?.position).toEqual(selected);
+    expect(markers).toHaveLength(1);
+    expect(markers[0].title).toContain("Sua saída escolhida");
+    expect(markers[0].position).toEqual(selected);
+    expect(api.circle).not.toHaveBeenCalled();
   });
 
   it("permite escolher a saída no mapa apenas quando esse modo é habilitado", async () => {
