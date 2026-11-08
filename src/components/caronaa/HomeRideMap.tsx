@@ -18,6 +18,8 @@ type Props = {
   origin?: Point;
   destination?: Point;
   originIsCurrent: boolean;
+  /** Accuracy of the GPS fix actually applied as the origin (may differ from live GPS). */
+  originAccuracyM?: number | null;
   following: boolean;
   recenterVersion: number;
   locating: boolean;
