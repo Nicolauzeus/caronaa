@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateDriverDetour } from "./driver-detour-preview.functions";
+import { calculateDriverDetour } from "./driver-detour";
 
 describe("Google Routes: desvio informado ao motorista", () => {
   it("usa duração rodoviária e não diferença de horários", () => {
