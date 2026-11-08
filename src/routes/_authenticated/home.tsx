@@ -455,6 +455,7 @@ function Home() {
             onPickOrigin={chooseOriginOnMap}
             destination={destinationLocation ?? currentFare?.destinationPoint}
             originIsCurrent={originSource === "CURRENT_LOCATION"}
+            originAccuracyM={location.originAccuracyM}
             following={originSource === "CURRENT_LOCATION" && isTrustedGpsFix(location.position) && location.isFollowingUser}
             recenterVersion={location.recenterVersion}
             locating={location.locating}
