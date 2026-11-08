@@ -25,6 +25,7 @@ import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
+import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
 
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
@@ -70,6 +71,7 @@ export function AppShell({
   const queryClient = useQueryClient();
 
   async function signOut() {
+    clearRideIntentDraft();
     if (user && typeof window !== "undefined") {
       // Revoke this device's GPS opt-in before terminating the session.
       window.localStorage.removeItem(professionalRadarConsentKey(user.id));
@@ -151,7 +153,7 @@ export function AppShell({
           ) : (
             /* Navegação DESKTOP para Área Autenticada */
             <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
-              {navigation.filter(({ to }) => to !== "/oferecer").map(({ to, label }) => (
+              {navigation.map(({ to, label }) => (
                 <Link
                   key={to}
                   to={to}
