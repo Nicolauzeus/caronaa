@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { LiveRideMap, type LiveMapPoint } from "@/components/caronaa/LiveRideMap";
@@ -11,7 +12,7 @@ vi.mock("@/components/caronaa/GoogleMapSurface", () => ({
     points: Array<{ kind?: string; title?: string }>;
     ariaLabel: string;
     fitKey: string;
-    children: React.ReactNode;
+    children: ReactNode;
   }) => (
     <section aria-label={ariaLabel}>
       <output data-testid="marker-kinds">{points.map((p) => p.kind).join("|")}</output>
