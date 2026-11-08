@@ -212,6 +212,64 @@ END; $$;
 REVOKE ALL ON FUNCTION public.discover_caronaa_quick_drivers(text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.discover_caronaa_quick_drivers(text,text) TO authenticated;
 
+
+-- A quote is immutable once created. Only linking the first resulting ride ID
+-- is permitted; this is audited in the same transaction as dispatch.
+CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_quote_snapshot()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $
+BEGIN
+ IF NEW.id IS DISTINCT FROM OLD.id
+    OR NEW.passenger_id IS DISTINCT FROM OLD.passenger_id
+    OR NEW.municipality IS DISTINCT FROM OLD.municipality
+    OR NEW.pricing_region IS DISTINCT FROM OLD.pricing_region
+    OR NEW.vehicle_type IS DISTINCT FROM OLD.vehicle_type
+    OR NEW.origin_label IS DISTINCT FROM OLD.origin_label
+    OR NEW.destination_label IS DISTINCT FROM OLD.destination_label
+    OR NEW.origin_lat IS DISTINCT FROM OLD.origin_lat
+    OR NEW.origin_lng IS DISTINCT FROM OLD.origin_lng
+    OR NEW.destination_lat IS DISTINCT FROM OLD.destination_lat
+    OR NEW.destination_lng IS DISTINCT FROM OLD.destination_lng
+    OR NEW.distance_km IS DISTINCT FROM OLD.distance_km
+    OR NEW.duration_minutes IS DISTINCT FROM OLD.duration_minutes
+    OR NEW.customer_pays_cents IS DISTINCT FROM OLD.customer_pays_cents
+    OR NEW.driver_receives_cents IS DISTINCT FROM OLD.driver_receives_cents
+    OR NEW.commission_bps IS DISTINCT FROM OLD.commission_bps
+    OR NEW.platform_commission_cents IS DISTINCT FROM OLD.platform_commission_cents
+    OR NEW.platform_processing_fee_cents IS DISTINCT FROM OLD.platform_processing_fee_cents
+    OR NEW.policy_version IS DISTINCT FROM OLD.policy_version
+    OR NEW.activity_id IS DISTINCT FROM OLD.activity_id
+    OR NEW.issued_at IS DISTINCT FROM OLD.issued_at
+    OR NEW.expires_at IS DISTINCT FROM OLD.expires_at
+    OR (OLD.ride_id IS NOT NULL AND NEW.ride_id IS DISTINCT FROM OLD.ride_id)
+ THEN RAISE EXCEPTION 'Immutable quick fare snapshot cannot be changed'; END IF;
+ RETURN NEW;
+END; $;
+REVOKE ALL ON FUNCTION public.guard_caronaa_quick_quote_snapshot() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS caronaa_quick_quote_immutable ON public.caronaa_quick_fare_quotes;
+CREATE TRIGGER caronaa_quick_quote_immutable BEFORE UPDATE ON public.caronaa_quick_fare_quotes
+FOR EACH ROW EXECUTE FUNCTION public.guard_caronaa_quick_quote_snapshot();
+
+-- The driver queue exposes the promised payout, but not exact pickup/destination
+-- coordinates or the identity of the passenger before assignment.
+CREATE OR REPLACE FUNCTION public.caronaa_quick_driver_queue(p_municipality text)
+RETURNS TABLE(
+ id uuid, vehicle_type text, origin_label text, destination_label text,
+ requested_at timestamptz, expires_at timestamptz,
+ fare_cents integer, driver_receives_cents integer
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $
+ SELECT q.id,q.vehicle_type,q.origin_label,q.destination_label,
+   q.requested_at,q.expires_at,
+   snapshot.customer_pays_cents,snapshot.driver_receives_cents
+ FROM public.quick_ride_driver_queue(p_municipality) q
+ JOIN public.caronaa_quick_fare_quotes snapshot ON snapshot.ride_id=q.id
+ ORDER BY q.requested_at LIMIT 30;
+$;
+REVOKE ALL ON FUNCTION public.caronaa_quick_driver_queue(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.caronaa_quick_driver_queue(text) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.caronaa_quick_submit_quoted(p_quote_id uuid)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
