@@ -151,7 +151,7 @@ export function AppShell({
           ) : (
             /* Navegação DESKTOP para Área Autenticada */
             <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
-              {navigation.map(({ to, label }) => (
+              {navigation.filter(({ to }) => to !== "/oferecer").map(({ to, label }) => (
                 <Link
                   key={to}
                   to={to}
