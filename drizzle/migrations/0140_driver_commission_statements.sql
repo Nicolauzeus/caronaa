@@ -160,7 +160,7 @@ CREATE TRIGGER caronaa_guard_legacy_shared_fee_claim
 
 -- The existing 3-outstanding-ride gate applies to BOTH shared and quick rides.
 CREATE OR REPLACE FUNCTION public.driver_platform_access_allowed(p_driver uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = ''
 AS $access$
   SELECT p_driver IS NOT NULL AND (
     (SELECT count(*) FROM public.driver_platform_fees f
