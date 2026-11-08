@@ -190,6 +190,11 @@ function Oferecer() {
     const draft = consumeRideIntentDraft();
     if (!draft) return;
     previousPassengerMode.current = draft.passengerMode;
+    if (draft.offer) {
+      setAllowDetours(draft.offer.allowDetours);
+      setMode(draft.offer.scheduleMode);
+      setDepartureMode(draft.offer.departureMode);
+    }
     setOriginSource(draft.origin ? "MANUAL_ORIGIN" : "CURRENT_LOCATION");
     setForm((current) => ({
       ...current,
@@ -201,7 +206,10 @@ function Oferecer() {
       time: draft.time || current.time,
       timeTolerance: draft.tolerance ?? current.timeTolerance,
       vehicleType: draft.offerVehicle || current.vehicleType,
-      seats: draft.offerVehicle === "MOTO" ? "1" : current.seats,
+      seats: draft.offerVehicle === "MOTO" ? "1" :
+        draft.offer ? String(draft.offer.seats) : current.seats,
+      vehicle: draft.offer?.vehicle || current.vehicle,
+      notes: draft.offer?.notes ?? current.notes,
     }));
   }, []);
   useEffect(() => {
@@ -438,6 +446,14 @@ function Oferecer() {
       passengerMode: previousPassengerMode.current ??
         (form.vehicleType === "MOTO" ? "MOTO" : "CAR"),
       offerVehicle: form.vehicleType,
+      offer: {
+        vehicle: form.vehicle,
+        seats: Number(form.seats),
+        notes: form.notes,
+        allowDetours,
+        scheduleMode: mode,
+        departureMode,
+      },
     });
     void navigate({ to: "/home" });
   }
