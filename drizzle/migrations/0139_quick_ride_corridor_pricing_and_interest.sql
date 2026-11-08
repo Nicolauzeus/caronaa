@@ -193,7 +193,7 @@ ALTER TABLE public.caronaa_quick_quote_rate_limits ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.caronaa_quick_quote_rate_limits FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION public.caronaa_quick_quote_rate_gate()
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
-AS $
+AS $$
 DECLARE allowed boolean;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
@@ -216,7 +216,7 @@ BEGIN
  IF NOT coalesce(allowed,false)
   THEN RAISE EXCEPTION 'Limite temporário de cotações atingido. Tente novamente em um minuto.'; END IF;
  RETURN true;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.caronaa_quick_quote_rate_gate() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.caronaa_quick_quote_rate_gate() TO authenticated;
 
