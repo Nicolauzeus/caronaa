@@ -25,7 +25,8 @@ describe("Manual payments and platform fee policy", () => {
     expect(migration).toContain("status='SETTLED'");
     expect(migration).toContain("has_admin_department_access('finance',true)");
     expect(migration).toContain("public.verify_driver_platform_fee");
-    expect(fees).toContain("Enviei o repasse");
+    expect(fees).toContain("Enviei o Pix");
+    expect(fees).toContain("get_my_caronaa_commission_ledger");
     expect(finance).toContain("Recebimento conferido");
     expect(migration).not.toContain("UPDATE public.payments SET status='PAID'");
   });
