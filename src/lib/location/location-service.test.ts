@@ -152,7 +152,7 @@ describe("Places API New contracts", () => {
     const [url, options] = fetch.mock.calls[0];
     expect(new URL(url).pathname).toBe("/v1/places/ChIJ_unifor_123");
     expect(new URL(url).searchParams.get("fields")).toBe(
-      "id,displayName,formattedAddress,location,addressComponents",
+      "id,formattedAddress,location,addressComponents",
     );
     expect(new URL(url).searchParams.get("languageCode")).toBe("pt-BR");
     expect(options.headers["X-Goog-Api-Key"]).toBe("maps-server-test");
