@@ -472,6 +472,8 @@ function Home() {
     setPanelOpen(true);
     setSelectingOrigin(false);
     setConfirmedReviewKey(null);
+    setRequestFare(null);
+    setRequestFareRefresh((v) => v + 1);
     // Same route and same mounted Google Map. Only the sheet flow changes;
     // the query contains a role flag, never the passenger's coordinates.
     void navigate({
