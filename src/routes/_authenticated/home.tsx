@@ -444,7 +444,7 @@ function Home() {
             recenterVersion={location.recenterVersion}
             locating={location.locating}
             onDrag={() => location.setFollowing(false)}
-            onRecenter={location.recenter}
+            onRecenter={location.locate}
           />
         </div>
         {selectingOrigin && (
