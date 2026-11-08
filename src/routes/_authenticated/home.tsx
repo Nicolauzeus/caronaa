@@ -432,6 +432,11 @@ function Home() {
             onRecenter={location.locate}
           />
         </div>
+        {originSource === "CURRENT_LOCATION" && location.addressPosition && location.addressPosition.accuracy > 80 && (
+          <div role="status" className="pointer-events-none absolute inset-x-3 top-[86px] z-20 mx-auto max-w-2xl rounded-xl border border-[#FFBB00]/30 bg-[#121212]/95 px-3 py-2 text-xs text-white/85 shadow-lg backdrop-blur-lg sm:inset-x-5">
+            📍 Sinal GPS impreciso (~{Math.round(location.addressPosition.accuracy)}m) • Confira se o marcador está no lado correto da pista.
+          </div>
+        )}
         <header className="pointer-events-none absolute inset-x-3 top-3 z-10 mx-auto max-w-2xl space-y-2 sm:inset-x-5">
           <button
             type="button"
