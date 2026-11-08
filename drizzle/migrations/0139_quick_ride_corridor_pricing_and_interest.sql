@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS public.caronaa_quick_tariff_policies (
   commission_bps integer NOT NULL CHECK (commission_bps BETWEEN 0 AND 4000),
   processing_fee_cents integer NOT NULL DEFAULT 0 CHECK (processing_fee_cents >= 0),
   minimum_platform_margin_cents integer NOT NULL DEFAULT 50 CHECK (minimum_platform_margin_cents >= 0),
+  intermunicipal_enabled boolean NOT NULL DEFAULT false,
   published boolean NOT NULL DEFAULT false,
   policy_version text NOT NULL DEFAULT 'draft-v0' CHECK(length(policy_version) BETWEEN 3 AND 100),
   updated_at timestamptz NOT NULL DEFAULT now(),
