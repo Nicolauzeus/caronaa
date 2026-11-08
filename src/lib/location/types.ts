@@ -83,8 +83,8 @@ export interface LocationDetailsResponse {
 export interface GeocodingProvider {
   readonly name: string;
   isConfigured(): boolean;
-  search(query: string): Promise<LocationSearchResponse>;
-  getDetails(placeId: string): Promise<LocationDetailsResponse>;
+  search(query: string, sessionToken?: string): Promise<LocationSearchResponse>;
+  getDetails(placeId: string, sessionToken?: string): Promise<LocationDetailsResponse>;
   geocode(addressOrPlaceId: string): Promise<GeocodingResult | null>;
 }
 

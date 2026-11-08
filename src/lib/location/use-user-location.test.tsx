@@ -34,6 +34,17 @@ describe("Localização da home", () => {
     });
   });
   afterEach(() => vi.restoreAllMocks());
+  it("sinaliza baixa precisão apenas acima de 80 metros", () => {
+    const { result } = renderHook(useUserLocation);
+    expect(result.current.accuracyM).toBeNull();
+    expect(result.current.isLowAccuracy).toBe(false);
+    act(() => fix(position(-3.73, 80)));
+    expect(result.current.accuracyM).toBe(80);
+    expect(result.current.isLowAccuracy).toBe(false);
+    act(() => move(position(-3.73, 81)));
+    expect(result.current.accuracyM).toBe(81);
+    expect(result.current.isLowAccuracy).toBe(true);
+  });
   it("solicita posição no mobile e acompanha após permissão", () => {
     const { result } = renderHook(useUserLocation);
     expect(getCurrentPosition).toHaveBeenCalledOnce();

@@ -1,4 +1,5 @@
 import { formatPickupAt } from "@/lib/intelligent-match";
+import { getDriverProposalDetour, type DriverDetourPreview } from "@/lib/driver-detour-preview.functions";
 import { RideOpportunities } from "@/components/caronaa/RideOpportunities";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -246,6 +247,10 @@ function PassengerRequest({
 }) {
   const loadProfile = useServerFn(getRideParticipantProfile);
   const quoteRide = useServerFn(calculateRideQuote);
+  const previewDetour = useServerFn(getDriverProposalDetour);
+  const [detour, setDetour] = useState<DriverDetourPreview | null>(null);
+  const [detourError, setDetourError] = useState("");
+  const [calculatingDetour, setCalculatingDetour] = useState(false);
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof loadProfile>> | null>(null);
   const [profileState, setProfileState] = useState<"loading" | "loaded" | "unavailable">("loading");
   const [busy, setBusy] = useState(false);
@@ -300,11 +305,35 @@ function PassengerRequest({
       active = false;
     };
   }, [onChanged, quoteRide, ride.pricePerPassenger, ride.rideId, ride.status]);
+  async function calculateDetour() {
+    if (!ride.rideId || calculatingDetour) return;
+    setCalculatingDetour(true);
+    setDetourError("");
+    setDetour(null);
+    try {
+      setDetour(await previewDetour({ data: { rideId: ride.rideId } }));
+    } catch (cause) {
+      setDetourError(cause instanceof Error ? cause.message : "Não foi possível calcular o desvio.");
+    } finally {
+      setCalculatingDetour(false);
+    }
+  }
   async function respond(response: "CONFIRMED" | "CANCELLED") {
-    if (!ride.rideId || inFlight.current) return;
+    if (!ride.rideId || inFlight.current || (response === "CONFIRMED" && (!detour || !detour.withinLimits))) return;
     inFlight.current = true;
     setBusy(true);
     try {
+      if (response === "CONFIRMED") {
+        const latestDetour = await previewDetour({ data: { rideId: ride.rideId } });
+        if (!latestDetour.withinLimits) {
+          setDetour(latestDetour);
+          throw new Error("O desvio da rota excede o limite. Não foi possível confirmar.");
+        }
+        if (latestDetour.detourMinutes !== detour?.detourMinutes || latestDetour.detourKm !== detour?.detourKm || latestDetour.combinedAddedMinutes !== detour?.combinedAddedMinutes) {
+          setDetour(latestDetour);
+          throw new Error("A rota mudou. Confira a nova estimativa antes de confirmar.");
+        }
+      }
       const result = await transitionRideStatus(ride.rideId, response);
       toast.success(
         response === "CONFIRMED"
@@ -404,6 +433,22 @@ function PassengerRequest({
           {ride.groupTotal != null ? ` · total ${formatBrl(ride.groupTotal)}` : ""}
         </p>
       </div>
+      <div className="mt-3 space-y-2 text-xs">
+        {detour ? (
+          detour.detourMinutes === 0 && detour.detourKm === 0 ? (
+            <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2 font-semibold">✅ Ponto de encontro na rota (0 min de desvio)</p>
+          ) : (
+            <p role="status" className="rounded-lg border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-2 font-semibold text-foreground">⏱️ Desvio estimado: +{detour.detourMinutes.toLocaleString("pt-BR")} min • +{detour.detourKm.toLocaleString("pt-BR")} km</p>
+          )
+        ) : (
+          <p role="status" className="text-muted-foreground">Desvio ainda não calculado.</p>
+        )}
+        {detour && !detour.withinLimits && <p role="alert" className="text-destructive">Desvio acima do limite permitido (6 min por passageiro ou 15 min no conjunto). Não confirme esta proposta.</p>}
+        {detourError && <p role="alert" className="text-destructive">{detourError}</p>}
+        <Button type="button" size="sm" variant="outline" disabled={calculatingDetour} onClick={() => void calculateDetour()}>
+          {calculatingDetour ? "Calculando rota..." : detour ? "Atualizar estimativa Google Routes" : "Calcular desvio pelo Google Routes"}
+        </Button>
+      </div>
       {ride.responseExpiresAt && (
         <p className="mt-2 text-xs text-muted-foreground">
           Responder até{" "}
@@ -439,7 +484,7 @@ function PassengerRequest({
           Recusar
         </Button>
         {canConfirm && (
-          <Button disabled={busy} onClick={() => void respond("CONFIRMED")}>
+          <Button disabled={busy || !detour?.withinLimits} onClick={() => void respond("CONFIRMED")}>
             {busy ? "Enviando…" : "Confirmar passageiro"}
           </Button>
         )}

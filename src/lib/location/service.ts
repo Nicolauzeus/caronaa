@@ -24,14 +24,16 @@ export function getMissingLocationConfig(): string[] {
 
 export async function searchLocationsService(
   query: string,
+  sessionToken?: string,
 ): Promise<LocationSearchResponse> {
-  return getGeocodingProvider().search(query);
+  return getGeocodingProvider().search(query, sessionToken);
 }
 
 export async function getLocationDetailsService(
   placeId: string,
+  sessionToken?: string,
 ): Promise<LocationDetailsResponse> {
-  return getGeocodingProvider().getDetails(placeId);
+  return getGeocodingProvider().getDetails(placeId, sessionToken);
 }
 
 export async function geocodeAddressService(

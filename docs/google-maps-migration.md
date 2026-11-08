@@ -119,3 +119,19 @@ quotas, faturamento e restrições devem ser validados após o deploy.
 Validação Places New: 168 arquivos / 937 testes aprovados; TypeScript sem erros;
 build cliente/servidor/Nitro aprovado. Mantida a mesma limitação do asset binário
 local descrita acima; nenhum asset é publicado nesta alteração.
+
+## Sessões Places New, SKUs e controle de custos (07/11/2026)
+
+- Cada instância de `LocationAutocomplete` cria um UUIDv4 Web Crypto para uma sessão iniciada pelo usuário.
+- Autocomplete New (`places:autocomplete`) utiliza o mesmo `sessionToken` durante a digitação. Uma seleção de previsão Google encerra a sessão com `places/{placeId}` e o mesmo token; limpar/trocar a entrada descarta o token. Não há cache de sugestões compartilhado entre sessões.
+- Place Details (New) solicita `id,formattedAddress,location,addressComponents`; não solicita `displayName` (campo Pro). O título exibido vem do texto da previsão.
+- SKUs esperadas: **Autocomplete Requests / Autocomplete Session Usage** conforme regras vigentes de precificação por sessão, e **Place Details Essentials** como chamada de encerramento. A contabilização não equivale a "uma única requisição por palavra": sessões encerradas com Essentials podem cobrar individualmente as primeiras 12 solicitações e aplicar a faixa de session usage posteriormente. Verificar fatura, quotas e tabela atual de preços no Google Cloud.
+- Digitação manual e catálogo de referências locais não fabricam coordenadas. O autocomplete é debounced; o Google Routes para prévia de desvio só é acionado sob demanda pelo condutor e possui cache curto por oferta/estado das reservas.
+- O backend não retorna chaves ao frontend. Não aplicar chaves de servidor no browser.
+
+## Embarque estrito (migração 0138, requer homologação)
+
+- Registro de chegada persistido em `rides.strict_pickup_arrived_at`, estampado pelo banco quando o motorista muda para `AWAITING_BOARDING` numa oferta com `allow_detours=false`.
+- O RPC participante `get_strict_pickup_wait` disponibiliza o horário; `mark_strict_pickup_no_show` exige autorização do condutor, oito minutos, ausência de embarque e status confirmado. O trigger de proteção se aplica inclusive ao RPC histórico de transição.
+- A funcionalidade não cobre a corrida profissional F07. Não habilitar em produção sem executar os testes de migração, concorrência, disparo de notificação, histórico de status e devolução de lugares.
+- Tempo decorrido indica tolerância, não confirma fisicamente a presença do motorista. A confirmação de posição de embarque depende de evolução posterior com consentimento e validação apropriada.

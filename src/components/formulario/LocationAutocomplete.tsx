@@ -72,9 +72,6 @@ function formatSelectedTitle(loc: FormLocationDetails): string {
   return loc.formattedAddress || loc.rawText || `${city}, ${state}`;
 }
 
-// Cache em memória no cliente para respostas em 0ms
-const CLIENT_LOCATION_CACHE = new Map<string, LocationSuggestion[]>();
-
 export function LocationAutocomplete({
   id,
   label,
@@ -103,11 +100,14 @@ export function LocationAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestRequestIdRef = useRef<number>(0);
+  // Per-instance Google Places session; no cross-session prediction cache.
+  const sessionTokenRef = useRef<string | null>(null);
 
   useEffect(
     () => () => {
       latestRequestIdRef.current += 1;
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      sessionTokenRef.current = null;
     },
     [],
   );
@@ -157,15 +157,6 @@ export function LocationAutocomplete({
         return;
       }
 
-      const cacheKey = trimmed.toLowerCase();
-      if (CLIENT_LOCATION_CACHE.has(cacheKey)) {
-        const cached = CLIENT_LOCATION_CACHE.get(cacheKey)!;
-        setSuggestions(cached);
-        setIsOpen(cached.length > 0);
-        setIsLoading(false);
-        return;
-      }
-
       // Sugestões instantâneas locais (0ms)
       const catalogResults = searchCatalogLocations(trimmed);
       if (catalogResults.length > 0) {
@@ -176,7 +167,9 @@ export function LocationAutocomplete({
       setIsLoading(true);
 
       try {
-        const response = await searchServerFn({ data: { query: trimmed } });
+        const response = await searchServerFn({
+          data: { query: trimmed, sessionToken: sessionTokenRef.current ?? undefined },
+        });
 
         // Descarta respostas obsoletas fora de ordem
         if (requestId !== latestRequestIdRef.current) return;
@@ -236,7 +229,6 @@ export function LocationAutocomplete({
             }
           }
 
-          CLIENT_LOCATION_CACHE.set(cacheKey, combined);
           setSuggestions(combined);
           setIsOpen(combined.length > 0);
         } else {
@@ -264,6 +256,11 @@ export function LocationAutocomplete({
     setSelectionWarning("");
     const nextVal = e.target.value;
     setQuery(nextVal);
+    if (nextVal.trim().length >= 2 && !sessionTokenRef.current) {
+      // Web Crypto UUIDv4 only: never use Math.random as a billing-session fallback.
+      sessionTokenRef.current = globalThis.crypto?.randomUUID?.() ?? null;
+    }
+    if (nextVal.trim().length < 2) sessionTokenRef.current = null;
 
     // Propaga alteração imediata como entrada manual
     onChange(nextVal, {
@@ -302,6 +299,9 @@ export function LocationAutocomplete({
     setIsLoading(true);
     setSelectionWarning("");
     let details = sug;
+    // Invalidate before the network request so this token cannot be reused.
+    const selectedToken = sug.source === "google" ? sessionTokenRef.current ?? undefined : undefined;
+    sessionTokenRef.current = null;
     try {
       if (
         sug.providerId &&
@@ -309,9 +309,13 @@ export function LocationAutocomplete({
         !sug.providerId.startsWith("manual_")
       ) {
         const response = await detailsServerFn({
-          data: { placeId: sug.providerId },
+          data: { placeId: sug.providerId, sessionToken: selectedToken },
         });
-        if (response?.details) details = response.details;
+        if (response?.details) details = {
+          ...response.details,
+          // Essentials intentionally omits the Pro-only displayName field.
+          mainText: sug.mainText,
+        };
       }
     } catch {
       /* Preserve the selected text; never invent GPS. */
@@ -351,6 +355,7 @@ export function LocationAutocomplete({
   };
 
   const handleClear = () => {
+    sessionTokenRef.current = null;
     latestRequestIdRef.current += 1;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setIsLoading(false);

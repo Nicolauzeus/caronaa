@@ -30,10 +30,12 @@ export const reverseGeocodeServerFn = createServerFn({ method: "POST" })
 
 const searchQuerySchema = z.object({
   query: z.string().max(200),
+  sessionToken: z.string().trim().max(100).uuid().optional(),
 });
 
 const placeDetailsSchema = z.object({
   placeId: z.string().trim().min(1).max(250),
+  sessionToken: z.string().trim().max(100).uuid().optional(),
 });
 
 const geocodeQuerySchema = z.object({
@@ -43,13 +45,13 @@ const geocodeQuerySchema = z.object({
 export const searchLocationsServerFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => searchQuerySchema.parse(input))
   .handler(async ({ data }) => {
-    return await searchLocationsService(data.query);
+    return await searchLocationsService(data.query, data.sessionToken);
   });
 
 export const getLocationDetailsServerFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => placeDetailsSchema.parse(input))
   .handler(async ({ data }) => {
-    return await getLocationDetailsService(data.placeId);
+    return await getLocationDetailsService(data.placeId, data.sessionToken);
   });
 
 export const geocodeAddressServerFn = createServerFn({ method: "POST" })
