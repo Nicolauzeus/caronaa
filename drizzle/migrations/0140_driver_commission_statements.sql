@@ -514,16 +514,16 @@ BEGIN
        'gross',d.gross,'fee',d.fee,'createdAt',d.created_at,
        'claimReference',d.display_reference,'statementId',d.statement_id
      ) ORDER BY d.created_at)
-   ) AS row
+   ) AS payload
    FROM details d
    LEFT JOIN public.profiles p ON p.id=d.driver_id
    LEFT JOIN auth.users u ON u.id=d.driver_id
    GROUP BY d.driver_id,p.full_name,u.email,
      p.vehicle_brand,p.vehicle_description,p.vehicle_plate
  )
- SELECT coalesce(jsonb_agg(row ORDER BY
-    (row->>'pendingCount')::integer DESC,
-    (row->>'pendingAmount')::numeric DESC),'[]'::jsonb)
+ SELECT coalesce(jsonb_agg(payload ORDER BY
+    (payload->>'pendingCount')::integer DESC,
+    (payload->>'pendingAmount')::numeric DESC),'[]'::jsonb)
  INTO v_rows FROM drivers;
  RETURN v_rows;
 END $admin_debts$;
