@@ -232,3 +232,34 @@ describe("Google Places New selection", () => {
     expect(screen.getByLabelText("Destino atrasado")).toHaveValue("");
   });
 });
+
+describe("session isolation for Google Places", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal("crypto", { randomUUID: () => "fd5992c0-1fac-4d32-8db0-3e7f1f2b8ce0" });
+    api.search.mockResolvedValue({ suggestions: [{
+      providerId: "ChIJ_token", mainText: "Destino de teste",
+      secondaryText: "Fortaleza", formattedAddress: "Destino de teste, Fortaleza",
+      source: "google",
+    }] });
+    api.details.mockResolvedValue({ details: {
+      providerId: "ChIJ_token", formattedAddress: "Destino de teste, Fortaleza",
+      lat: -3.73, lng: -38.52, source: "google",
+    } });
+  });
+  it("reuses one token through autocomplete and details, then starts another session", async () => {
+    render(<LocationAutocomplete id="session-test" label="Buscar ponto" onChange={vi.fn()} variant="simple" />);
+    const input = screen.getByLabelText("Buscar ponto");
+    fireEvent.change(input, { target: { value: "Destino de teste" } });
+    const option = await screen.findByRole("option", { name: /Destino de teste/ });
+    expect(api.search).toHaveBeenCalledWith({ data: {
+      query: "Destino de teste", sessionToken: "fd5992c0-1fac-4d32-8db0-3e7f1f2b8ce0",
+    } });
+    fireEvent.click(option);
+    await waitFor(() => expect(api.details).toHaveBeenCalledWith({ data: {
+      placeId: "ChIJ_token", sessionToken: "fd5992c0-1fac-4d32-8db0-3e7f1f2b8ce0",
+    } }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpar localização" }));
+    expect(screen.getByLabelText("Buscar ponto")).toHaveValue("");
+  });
+});
