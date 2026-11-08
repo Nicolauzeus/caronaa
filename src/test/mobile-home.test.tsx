@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "@/routes/_authenticated/home";
+import { clearRideIntentDraft, consumeRideIntentDraft, saveRideIntentDraft } from "@/lib/ride-intent-draft";
 
 const api = vi.hoisted(() => ({
   load: vi.fn(),
@@ -110,6 +111,7 @@ describe("Home mobile", () => {
   const position = (lat = -3.73, accuracy = 10) =>
     ({ coords: { latitude: lat, longitude: -38.52, accuracy } }) as GeolocationPosition;
   beforeEach(() => {
+    clearRideIntentDraft();
     vi.clearAllMocks();
     api.load.mockResolvedValue([]);
     api.preview = null;
@@ -157,6 +159,41 @@ describe("Home mobile", () => {
     expect(screen.queryByText("Para onde vamos?")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Vou dirigindo" })).not.toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
+  });
+  it("deixa Oferecer acessível no painel recolhido e leva o trajeto preenchido", () => {
+    render(<Home />);
+    expect(screen.getByRole("button", { name: "Oferecer carona" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
+    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Casa no Maracanaú" } });
+    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus Redenção" } });
+    fireEvent.click(screen.getByRole("button", { name: "Oferecer carona" }));
+    expect(api.navigate).toHaveBeenCalledWith({ to: "/oferecer" });
+    expect(consumeRideIntentDraft()).toEqual(expect.objectContaining({
+      origin: "Casa no Maracanaú",
+      destination: "Campus Redenção",
+      passengerMode: "CAR",
+      offerVehicle: "CAR",
+    }));
+    expect(api.request).not.toHaveBeenCalled();
+  });
+  it("recupera o trajeto do motorista ao voltar para pedir carona sem reaproveitar cotação", async () => {
+    saveRideIntentDraft({
+      origin: "Centro, Fortaleza",
+      destination: "UNILAB, Redenção",
+      originLocation: { rawText:"Centro, Fortaleza",lat:-3.73,lng:-38.52 },
+      destinationLocation: { rawText:"UNILAB, Redenção",lat:-4.23,lng:-38.73 },
+      passengerMode: "MOTO",
+      offerVehicle: "MOTO",
+      date: "2026-11-10",
+      time: "15:30",
+    });
+    render(<Home />);
+    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Centro, Fortaleza"));
+    expect(screen.getByLabelText("Destino")).toHaveValue("UNILAB, Redenção");
+    expect(screen.getByRole("radio",{name:/Carona Moto/})).toBeChecked();
+    expect(screen.getByLabelText("Data da viagem")).toHaveValue("2026-11-10");
+    expect(api.request).not.toHaveBeenCalled();
+    expect(consumeRideIntentDraft()).toBeNull();
   });
   it("expande e recolhe o painel sem controles de motorista", () => {
     render(<Home />);
