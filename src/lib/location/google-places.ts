@@ -10,7 +10,7 @@ import type {
 
 const API = "https://places.googleapis.com/v1/places";
 const PLACE_FIELDS =
-  "id,displayName,formattedAddress,location,addressComponents";
+  "id,formattedAddress,location,addressComponents"; // Place Details Essentials (no Pro displayName)
 const CEARA_BIAS = {
   circle: {
     center: { latitude: -3.7319, longitude: -38.5267 },
@@ -155,7 +155,7 @@ export class GooglePlacesProvider implements LocationProvider {
     return Boolean(getGoogleServerKey());
   }
 
-  async search(query: string): Promise<LocationSearchResponse> {
+  async search(query: string, sessionToken?: string): Promise<LocationSearchResponse> {
     const key = getGoogleServerKey();
     if (!key)
       return {
@@ -177,6 +177,7 @@ export class GooglePlacesProvider implements LocationProvider {
           includedRegionCodes: ["br"],
           languageCode: "pt-BR",
           locationBias: CEARA_BIAS,
+          ...(sessionToken ? { sessionToken } : {}),
         },
       );
       if (
@@ -213,7 +214,7 @@ export class GooglePlacesProvider implements LocationProvider {
     }
   }
 
-  async getDetails(placeId: string): Promise<LocationDetailsResponse> {
+  async getDetails(placeId: string, sessionToken?: string): Promise<LocationDetailsResponse> {
     const key = getGoogleServerKey();
     if (!key)
       return { isConfigured: false, provider: "google_places", details: null };
@@ -227,7 +228,8 @@ export class GooglePlacesProvider implements LocationProvider {
           encodeURIComponent(placeId) +
           "?fields=" +
           PLACE_FIELDS +
-          "&languageCode=pt-BR",
+          "&languageCode=pt-BR" +
+          (sessionToken ? "&sessionToken=" + encodeURIComponent(sessionToken) : ""),
         key,
       );
       return {
