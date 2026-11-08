@@ -461,6 +461,77 @@ REVOKE ALL ON FUNCTION public.admin_verify_caronaa_fee_statement(uuid,boolean)
 GRANT EXECUTE ON FUNCTION public.admin_verify_caronaa_fee_statement(uuid,boolean)
   TO authenticated;
 
+-- Mainline 0122 added an administrative driver-debt overview based only on
+-- shared rides. Replace its RPC (without dropping the existing panel) so
+-- operations sees the SAME combined debt and 3-trip block as the driver.
+-- A Pix statement declared by a driver remains outstanding until finance
+-- verifies receipt in bank records.
+CREATE OR REPLACE FUNCTION public.get_admin_driver_debts_overview()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $admin_debts$
+DECLARE v_rows jsonb;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.has_admin_department_access('finance',false) THEN
+   RAISE EXCEPTION 'Finance read permission required' USING ERRCODE='42501';
+ END IF;
+ WITH dues AS (
+   SELECT 'SHARED'::text AS source_kind, f.ride_id, f.driver_id,
+     f.gross_amount AS gross, f.fee_amount AS fee,
+     f.status::text AS status, f.claim_reference, f.created_at
+   FROM public.driver_platform_fees f
+   WHERE f.status<>'SETTLED'
+   UNION ALL
+   SELECT 'QUICK'::text AS source_kind, q.ride_id, q.driver_id,
+     (q.gross_cents::numeric/100) AS gross,
+     (q.fee_cents::numeric/100) AS fee,
+     q.status::text AS status, NULL::text AS claim_reference, q.created_at
+   FROM public.caronaa_quick_driver_fees q
+   WHERE q.status<>'SETTLED'
+ ), details AS (
+   SELECT d.*,
+     CASE WHEN s.status='CLAIMED' THEN 'CLAIMED'::text ELSE d.status END AS display_status,
+     coalesce(s.claim_reference,d.claim_reference) AS display_reference,
+     i.statement_id
+   FROM dues d
+   LEFT JOIN public.caronaa_driver_fee_statement_items i
+     ON i.source_kind=d.source_kind AND i.ride_id=d.ride_id
+   LEFT JOIN public.caronaa_driver_fee_statements s ON s.id=i.statement_id
+ ), drivers AS (
+   SELECT jsonb_build_object(
+     'driverId',d.driver_id,
+     'name',coalesce(p.full_name,'Sem nome'),
+     'email',u.email,
+     'vehicle',nullif(trim(concat_ws(' ',p.vehicle_brand,p.vehicle_description)),''),
+     'plate',p.vehicle_plate,
+     'pendingCount',count(*),
+     'openCount',count(*) FILTER(WHERE d.display_status='OPEN'),
+     'claimedCount',count(*) FILTER(WHERE d.display_status='CLAIMED'),
+     'pendingAmount',coalesce(sum(d.fee),0),
+     'blocked',count(*)>=3,
+     'oldestAt',min(d.created_at),
+     'items',jsonb_agg(jsonb_build_object(
+       'rideId',d.ride_id,'source',d.source_kind,'status',d.display_status,
+       'gross',d.gross,'fee',d.fee,'createdAt',d.created_at,
+       'claimReference',d.display_reference,'statementId',d.statement_id
+     ) ORDER BY d.created_at)
+   ) AS row
+   FROM details d
+   LEFT JOIN public.profiles p ON p.id=d.driver_id
+   LEFT JOIN auth.users u ON u.id=d.driver_id
+   GROUP BY d.driver_id,p.full_name,u.email,
+     p.vehicle_brand,p.vehicle_description,p.vehicle_plate
+ )
+ SELECT coalesce(jsonb_agg(row ORDER BY
+    (row->>'pendingCount')::integer DESC,
+    (row->>'pendingAmount')::numeric DESC),'[]'::jsonb)
+ INTO v_rows FROM drivers;
+ RETURN v_rows;
+END $admin_debts$;
+REVOKE ALL ON FUNCTION public.get_admin_driver_debts_overview()
+ FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_admin_driver_debts_overview()
+ TO authenticated;
+
 COMMENT ON TABLE public.caronaa_quick_driver_fees IS
   'One debt per quoted completed quick ride. Commission rate/amount snapshot immutable. No automatic confirmation of passenger payment.';
 COMMENT ON TABLE public.caronaa_driver_fee_statements IS
