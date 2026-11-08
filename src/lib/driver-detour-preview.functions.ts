@@ -88,7 +88,14 @@ export const getDriverProposalDetour = createServerFn({ method: "POST" })
     if (inFlight.has(fingerprint)) return inFlight.get(fingerprint)!;
 
     const calculation = (async () => {
-      const original = await getDrivingRoute([o, d]);
+      const savedPath = Array.isArray(offer.route_path) ? offer.route_path : null;
+      const parsedPath = savedPath?.map((v: any) => point(v?.lat, v?.lng));
+      const canReuseSaved = parsedPath && parsedPath.length >= 2 && parsedPath.every(Boolean) &&
+        typeof offer.route_duration_minutes === "number" && offer.route_duration_minutes > 0 &&
+        typeof offer.route_distance_km === "number" && offer.route_distance_km > 0;
+      const original = canReuseSaved
+        ? { routePath: parsedPath as RoadPoint[], durationMinutes: offer.route_duration_minutes as number, distanceKm: offer.route_distance_km as number }
+        : await getDrivingRoute([o, d]);
       const otherIds = activeRides
         .filter(x => x.ride_id !== data.rideId)
         .map(x => x.request_id);
