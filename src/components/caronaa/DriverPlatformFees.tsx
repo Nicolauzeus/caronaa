@@ -298,7 +298,7 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
                     ) : <p role="status" className="text-sm">Preparando código Pix…</p>}
                     <p className="break-all font-mono text-xs">{item.pixKey}</p>
                     <p className="text-xs text-muted-foreground">
-                      Confira no banco a chave de destino, o nome CARONAA e o valor exato.
+                      Confira no banco a chave oficial, o beneficiário e o valor exato.
                       O QR preenche o valor, mas NÃO comprova recebimento automático.
                     </p>
                     {item.status === "OPEN" && (
