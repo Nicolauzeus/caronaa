@@ -67,7 +67,7 @@ describe("driver commission QR billing",()=>{
     expect(payload).toContain("54041.50");
     expect(payload).toContain(statement.txid);
     expect(payload).toContain("caronaa@example.com");
-    expect(screen.getByRole("img",{name:/QR Pix CARONAA/})).toBeInTheDocument();
+    expect(await screen.findByRole("img",{name:/QR Pix CARONAA/})).toBeInTheDocument();
   });
   it("can issue QR for a specific quick ride, and requires bank reference for claim",async()=>{
     render(<DriverPlatformFees/>);
