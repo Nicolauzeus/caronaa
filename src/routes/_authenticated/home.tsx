@@ -588,7 +588,7 @@ function Home() {
                   }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 px-3 text-xs font-semibold text-[#FFBB00]">
                     <LocateFixed size={16} /> Escolher saída tocando no mapa
                   </button>
-                  {originSource === "MANUAL_ORIGIN" && originLocation?.lat != null && !isTrustedGpsFix(location.position) && (
+                  {originSource === "MANUAL_ORIGIN" && originLocation?.lat != null && (
                     <p role="status" className="text-xs text-gray-300">
                       “Você” no mapa indica a sua saída escolhida manualmente, não uma posição GPS confirmada.
                     </p>
