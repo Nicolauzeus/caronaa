@@ -314,7 +314,7 @@ describe("Home mobile", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
     await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus" } });
-    await screen.findByText(/R\\$ 6,00 por pessoa/);
+    await screen.findByText(/R\$ 6,00 por pessoa/);
     fireEvent.click(screen.getByRole("radio", { name: /Corrida Rápida/ }));
     expect(screen.getByTestId("quick-ride-home")).toHaveTextContent("Corrida Rápida integrada ao mapa");
     expect(api.navigate).not.toHaveBeenCalled();
