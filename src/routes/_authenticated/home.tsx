@@ -560,8 +560,14 @@ function Home() {
               id="caronaa-journey-details"
               className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 [scrollbar-gutter:stable]"
             >
-              <FavoriteCommuteSuggestion
-                onChoose={(from, to) => {
+              <details className="mt-2 min-w-0" data-testid="favorite-commutes-details">
+                <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
+                  <span>Seus caminhos salvos</span>
+                  <span className="text-xs font-normal text-gray-300">Ver atalhos</span>
+                </summary>
+                <div className="pt-2">
+                  <FavoriteCommuteSuggestion
+                    onChoose={(from, to) => {
                   mapOriginRequest.current += 1;
                   setSelectingOrigin(false);
                   manualOriginChosen.current = true;
@@ -570,8 +576,10 @@ function Home() {
                   setDestination(to.label);
                   setOriginLocation({ rawText: from.label, lat: from.lat, lng: from.lng });
                   setDestinationLocation({ rawText: to.label, lat: to.lat, lng: to.lng });
-                }}
-              />
+                    }}
+                  />
+                </div>
+              </details>
               <form id="passenger-request-form" onSubmit={submitRequest} className="min-w-0 w-full max-w-full space-y-4 pt-3">
                 <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <button
