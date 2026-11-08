@@ -24,8 +24,8 @@ export function PassengerRideOptions({
           { value: "MOTO", title: "Carona Moto", description: "1 vaga rápida", Icon: Bike },
           {
             value: "EXCLUSIVE",
-            title: "Corrida Direta (Piloto)",
-            description: "Ponto a ponto sob demanda",
+            title: "Corrida Rápida",
+            description: "Motorista ou mototáxi próximo, no mesmo mapa",
             Icon: Zap,
           },
         ] as const
@@ -50,7 +50,7 @@ export function PassengerRideOptions({
           <span className="shrink-0 text-right text-sm font-bold text-[#FFBB00]">
             {option.value === "EXCLUSIVE" ? (
               <span className="rounded-full bg-[#FFBB00] px-2 py-1 text-xs text-[#121212]">
-                Piloto
+                Agora
               </span>
             ) : estimate == null ? (
               <span className="text-xs">Econômica</span>
