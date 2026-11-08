@@ -450,7 +450,7 @@ function Home() {
             }
             professionalDrivers={professionalDrivers}
             userPosition={location.position}
-            origin={currentFare?.originPoint ?? point}
+            origin={point ?? currentFare?.originPoint}
             selectingOrigin={selectingOrigin}
             onPickOrigin={chooseOriginOnMap}
             destination={destinationLocation ?? currentFare?.destinationPoint}
