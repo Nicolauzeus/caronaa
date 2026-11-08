@@ -101,7 +101,7 @@ function FinanceCenter() {
       <AdminDataError error={error} />
       {section === "overview" && (
         <>
-          <FinanceOverviewPanel since={new Date(Date.now() - days * 86400000).toISOString().slice(0, 13)} refresh={refresh} />
+          <FinanceOverviewPanel since={new Date(Date.now() - days * 86400000).toISOString().slice(0, 13) + ":00:00Z"} refresh={refresh} />
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {currencies.length && !error ? (
               currencies.map((currency) => {
