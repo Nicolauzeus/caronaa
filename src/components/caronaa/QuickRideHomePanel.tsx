@@ -58,7 +58,7 @@ export function QuickRideHomePanel({
     setQuote(null);setCurrentQuoteKey("");setInterestSent(false);setError("");
   },[fieldsKey]);
   useEffect(()=>{
-    setCoverage(null);onCoverage?.(null);
+    setCoverage(null);onCoverage?.(null);setCoverageLoading(false);
     if(!hasOrigin||originLat==null||originLng==null)return;
     let active=true;
     setCoverageLoading(true);
