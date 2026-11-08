@@ -706,26 +706,6 @@ function Home() {
                     onCoverage={updateQuickCoverage}
                   />
                 )}
-                {intent === "OFFER" && (
-                  <HomeOfferPanel
-                    ref={offerPanelRef}
-                    origin={origin}
-                    destination={destination}
-                    originLocation={originLocation}
-                    destinationLocation={destinationLocation}
-                    date={date}
-                    time={time}
-                    tolerance={timeTolerance}
-                    onDateChange={setDate}
-                    onTimeChange={setTime}
-                    onToleranceChange={setTimeTolerance}
-                    initialDraft={offerDraftRef.current}
-                    initialVehicle={rideOption === "MOTO" ? "MOTO" : quickVehicle}
-                    onDraftChange={updateOfferDraft}
-                    onStatusChange={updateOfferStatus}
-                    onPublished={refresh}
-                  />
-                )}
                 {intent === "REQUEST" && rideOption !== "EXCLUSIVE" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
@@ -871,6 +851,26 @@ function Home() {
                   </>
                 )}
               </form>
+                {intent === "OFFER" && (
+                  <HomeOfferPanel
+                    ref={offerPanelRef}
+                    origin={origin}
+                    destination={destination}
+                    originLocation={originLocation}
+                    destinationLocation={destinationLocation}
+                    date={date}
+                    time={time}
+                    tolerance={timeTolerance}
+                    onDateChange={setDate}
+                    onTimeChange={setTime}
+                    onToleranceChange={setTimeTolerance}
+                    initialDraft={offerDraftRef.current}
+                    initialVehicle={rideOption === "MOTO" ? "MOTO" : quickVehicle}
+                    onDraftChange={updateOfferDraft}
+                    onStatusChange={updateOfferStatus}
+                    onPublished={refresh}
+                  />
+                )}
               {active && (
                 <Link
                   to="/minhas-caronas"
