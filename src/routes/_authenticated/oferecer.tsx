@@ -149,7 +149,7 @@ function Oferecer() {
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
-  const previousPassengerMode = useRef<PassengerRideOption>();
+  const previousPassengerMode = useRef<PassengerRideOption | undefined>(undefined);
   const [preferences, setPreferences] = useState<TravelPreferences>();
   const [quote, setQuote] = useState<OfferQuote | null>(null);
   const [profilePlate, setProfilePlate] = useState("");
