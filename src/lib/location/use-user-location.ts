@@ -127,6 +127,8 @@ export function useUserLocation({
   return {
     position,
     addressPosition,
+    accuracyM: position?.accuracy ?? null,
+    isLowAccuracy: Boolean(position && position.accuracy > 80),
     failure,
     locating,
     isFollowingUser,
