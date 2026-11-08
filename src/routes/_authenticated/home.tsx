@@ -253,7 +253,7 @@ function Home() {
       setOriginSource("CURRENT_LOCATION");
   }, [location.addressPosition, location.failure]);
   useEffect(() => {
-    if (!location.addressPosition || originSource !== "CURRENT_LOCATION") return;
+    if (!location.addressPosition || originSource !== "CURRENT_LOCATION" || location.locating) return;
     if (!isTrustedGpsFix(location.addressPosition)) {
       setResolvedAddress(null);
       setReverseFailed(false);
@@ -280,10 +280,10 @@ function Home() {
     return () => {
       alive = false;
     };
-  }, [location.addressPosition, reverseGeocode, originSource]);
+  }, [location.addressPosition, reverseGeocode, originSource, location.locating]);
   useEffect(() => {
     if (originSource !== "CURRENT_LOCATION" || !location.addressPosition) return;
-    if (!isTrustedGpsFix(location.addressPosition)) {
+    if (location.locating || !isTrustedGpsFix(location.addressPosition)) {
       // An estimate off by ~1 km must never generate a ride pickup or quote.
       setOrigin("");
       setOriginLocation(undefined);
@@ -306,7 +306,7 @@ function Home() {
       lng,
       isApproximate: location.addressPosition.accuracy > 100,
     });
-  }, [originSource, location.addressPosition, resolvedAddress]);
+  }, [originSource, location.addressPosition, resolvedAddress, location.locating]);
   // GPS city takes precedence unless the user manually selected a municipality.
   useEffect(() => {
     const city = resolvedAddress?.city?.trim();
