@@ -19,6 +19,9 @@ BEGIN
     IF auth.uid() IS DISTINCT FROM NEW.driver_user_id THEN
       RAISE EXCEPTION 'Only the driver can report arrival';
     END IF;
+    IF OLD.transit_stage IS DISTINCT FROM 'DRIVER_EN_ROUTE' THEN
+      RAISE EXCEPTION 'The driver must first start heading toward the meeting point';
+    END IF;
     NEW.strict_pickup_arrived_at := coalesce(OLD.strict_pickup_arrived_at, clock_timestamp());
   END IF;
   RETURN NEW;
