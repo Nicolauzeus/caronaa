@@ -124,7 +124,7 @@ function Home() {
   }, []);
   useEffect(() => {
     const municipality = professionalMunicipality.trim();
-    if (municipality.length < 2 || rideOption !== "EXCLUSIVE") {
+    if (municipality.length < 2 || intent !== "REQUEST" || rideOption !== "EXCLUSIVE") {
       setProfessionalDrivers([]);
       setProfessionalError("");
       setProfessionalLoading(false);
@@ -157,7 +157,7 @@ function Home() {
       alive = false;
       window.clearInterval(timer);
     };
-  }, [professionalMunicipality, rideOption, quickVehicle]);
+  }, [professionalMunicipality, intent, rideOption, quickVehicle]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectingOrigin, setSelectingOrigin] = useState(false);
@@ -466,6 +466,9 @@ function Home() {
   function switchIntent(next: RideIntent) {
     if (next === intent) return;
     setIntent(next);
+    if (next === "OFFER") setOfferStatus({
+      step: "DETAILS", busy: false, canContinue: false, driverAllowed: null, routine: false,
+    });
     setPanelOpen(true);
     setSelectingOrigin(false);
     setConfirmedReviewKey(null);
@@ -528,7 +531,8 @@ function Home() {
             </span>
           </button>
           <div className="shrink-0 px-3 pb-2 sm:px-4">
-            <RideIntentSwitch value={intent} onChange={switchIntent} />
+            <RideIntentSwitch value={intent} onChange={switchIntent}
+              disabled={intent === "OFFER" && offerStatus.busy} />
           </div>
           <h2
             id="journey-title"
