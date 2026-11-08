@@ -375,6 +375,7 @@ function Home() {
   ]);
   const reviewed = confirmedReviewKey === reviewKey;
   const focusOriginOnExpand = useRef(false);
+  const avoidKeyboardOnRoleSwitch = useRef(false);
   function expandDestination() {
     focusOriginOnExpand.current = false;
     setPanelOpen(true);
@@ -387,6 +388,10 @@ function Home() {
   }
   useEffect(() => {
     if (!panelOpen) return;
+    if (avoidKeyboardOnRoleSwitch.current) {
+      avoidKeyboardOnRoleSwitch.current = false;
+      return;
+    }
     document.getElementById(focusOriginOnExpand.current ? "home-origin" : "home-destination")?.focus();
     focusOriginOnExpand.current = false;
   }, [panelOpen]);
@@ -469,6 +474,7 @@ function Home() {
     if (next === "OFFER") setOfferStatus({
       step: "DETAILS", busy: false, canContinue: false, driverAllowed: null, routine: false,
     });
+    avoidKeyboardOnRoleSwitch.current = true;
     setPanelOpen(true);
     setSelectingOrigin(false);
     setConfirmedReviewKey(null);
