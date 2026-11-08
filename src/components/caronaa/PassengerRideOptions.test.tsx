@@ -28,7 +28,7 @@ describe("selection between shared/moto/quick rides", () => {
   it("keeps the home sheet at a stable viewport height with internal scrolling", () => {
     const home = readFileSync("src/routes/_authenticated/home.tsx", "utf8");
     const quickPanel = readFileSync("src/components/caronaa/QuickRideHomePanel.tsx", "utf8");
-    expect(home).toContain("h-[min(84dvh,calc(100%-5rem))]");
+    expect(home).toContain("h-[min(84dvh,calc(100%_-_5rem))]");
     expect(home).toContain("overflow-x-hidden overflow-y-auto");
     expect(quickPanel).toContain("min-w-0 w-full max-w-full");
     expect(quickPanel).toContain("flex min-w-0 flex-wrap gap-2");
