@@ -18,11 +18,15 @@ type Props = {
   origin?: Point;
   destination?: Point;
   originIsCurrent: boolean;
+  /** Accuracy of the GPS fix actually applied as the origin (may differ from live GPS). */
+  originAccuracyM?: number | null;
   following: boolean;
   recenterVersion: number;
   locating: boolean;
   onDrag: () => void;
   onRecenter: () => void;
+  selectingOrigin?: boolean;
+  onPickOrigin?: (point: { lat: number; lng: number }) => void;
 };
 
 export const HomeRideMap = memo(function HomeRideMap(props: Props) {

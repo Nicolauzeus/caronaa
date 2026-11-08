@@ -45,6 +45,18 @@ describe("Localização da home", () => {
     expect(result.current.accuracyM).toBe(81);
     expect(result.current.isLowAccuracy).toBe(true);
   });
+  it("substitui fix de 1029m por watchPosition realmente mais preciso, sem oscilações", () => {
+    const { result } = renderHook(useUserLocation);
+    act(() => fix(position(-3.73, 1029)));
+    expect(result.current.addressPosition?.accuracy).toBe(1029);
+    act(() => move(position(-3.731, 20)));
+    expect(result.current.addressPosition).toEqual({
+      lat: -3.731, lng: -38.52, accuracy: 20,
+    });
+    act(() => move(position(-3.735, 120)));
+    expect(result.current.position?.lat).toBe(-3.735);
+    expect(result.current.addressPosition?.lat).toBe(-3.731);
+  });
   it("solicita posição no mobile e acompanha após permissão", () => {
     const { result } = renderHook(useUserLocation);
     expect(getCurrentPosition).toHaveBeenCalledOnce();

@@ -10,6 +10,7 @@ import { tripMarkerIcon, type TripMarkerKind } from "./trip-marker-icons";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
 import { LocateFixed, MapPin } from "lucide-react";
 import { validPoint, type UserPosition } from "@/lib/location/use-user-location";
+import { areNearbyPoints, isTrustedGpsFix } from "@/lib/location/gps-trust";
 import type { ApproximateProfessionalDriver } from "./HomeRideMap";
 
 type Point = { lat?: number; lng?: number };
@@ -21,11 +22,14 @@ type Props = {
   origin?: Point;
   destination?: Point;
   originIsCurrent: boolean;
+  originAccuracyM?: number | null;
   following: boolean;
   recenterVersion: number;
   locating: boolean;
   onDrag: () => void;
   onRecenter: () => void;
+  selectingOrigin?: boolean;
+  onPickOrigin?: (point: { lat: number; lng: number }) => void;
 };
 
 // process.env is available on the server; the RPC applies that priority before
@@ -43,11 +47,14 @@ export function GoogleHomeRideMap({
   origin,
   destination,
   originIsCurrent,
+  originAccuracyM,
   following,
   recenterVersion,
   locating,
   onDrag,
   onRecenter,
+  selectingOrigin = false,
+  onPickOrigin,
 }: Props) {
   const getServerBrowserKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
@@ -57,6 +64,7 @@ export function GoogleHomeRideMap({
   const circle = useRef<any>(null);
   const pickupLines = useRef<any[]>([]);
   const currentCenter = useRef<{ lat: number; lng: number } | null>(null);
+  const lastManualOrigin = useRef<string | null>(null);
   const lastRecenter = useRef(recenterVersion);
   const dragRef = useRef(onDrag);
   dragRef.current = onDrag;
@@ -67,7 +75,15 @@ export function GoogleHomeRideMap({
     km: number;
     minutes: number;
   } | null>(null);
-  const effectiveOrigin = originIsCurrent && validPoint(userPosition) ? userPosition : origin;
+  const trustedGps = isTrustedGpsFix(userPosition);
+  // Always route from the origin actually selected in the form, never from a
+  // different watchPosition GPS point. A coarse auto-fix must not be routable.
+  const trustedAppliedOrigin = originIsCurrent
+    ? (originAccuracyM == null
+        ? trustedGps
+        : Number.isFinite(originAccuracyM) && originAccuracyM >= 0 && originAccuracyM <= 80)
+    : true;
+  const effectiveOrigin = validPoint(origin) && trustedAppliedOrigin ? origin : undefined;
 
   useEffect(() => {
     let active = true;
@@ -82,7 +98,7 @@ export function GoogleHomeRideMap({
       await loadGoogleMaps(browserKey);
       if (!active || !container.current) return;
       const G = (window as any).google.maps;
-      const center = [userPosition, origin, destination].find(validPoint) ?? {
+      const center = [effectiveOrigin, trustedGps ? userPosition : null, userPosition, destination].find(validPoint) ?? {
         lat: -3.73,
         lng: -38.53,
       };
@@ -141,8 +157,25 @@ export function GoogleHomeRideMap({
       });
       markers.current.push(marker);
     };
-    add(userPosition, "Você · localização GPS", "you");
-    if (!originIsCurrent) add(origin, "Origem escolhida · não é o seu GPS", "origin");
+    // A GPS accuracy of e.g. 1,029m does NOT locate the person precisely.
+    // A manually confirmed departure is authoritative for planning. When GPS
+    // is unreliable, the "Você" badge marks the explicitly selected departure,
+    // and its tooltip makes clear that this is not live GPS.
+    if (!originIsCurrent && validPoint(origin)) {
+      // In planning mode the user's selected departure is the single primary
+      // anchor. Never contradict an explicitly chosen pickup with a second
+      // "Você" badge from the browser's GPS, even if that fix reports 20m.
+      add(origin, "Sua saída escolhida · ponto informado (não GPS ao vivo)", "you");
+    } else if (originIsCurrent && trustedAppliedOrigin) {
+      if (trustedGps) {
+        add(userPosition, "Você · localização GPS", "you");
+        if (validPoint(origin) && !areNearbyPoints(origin, userPosition)) {
+          add(origin, "Saída registrada anteriormente", "origin");
+        }
+      } else if (validPoint(origin)) {
+        add(origin, "Sua saída registrada · último GPS confiável (não ao vivo)", "you");
+      }
+    }
     add(destination, "Destino", "destination");
     if (pickupPreview) {
       add(pickupPreview.passenger, "Origem do passageiro", "passenger");
@@ -153,7 +186,8 @@ export function GoogleHomeRideMap({
     );
     circle.current?.setMap(null);
     circle.current = null;
-    if (validPoint(userPosition) && userPosition.accuracy > 0) {
+    circle.current = null;
+    if (originIsCurrent && trustedGps && userPosition.accuracy > 0) {
       circle.current = new G.Circle({
         map: map.current,
         center: { lat: userPosition.lat, lng: userPosition.lng },
@@ -174,8 +208,37 @@ export function GoogleHomeRideMap({
     destination?.lat,
     destination?.lng,
     originIsCurrent,
+    trustedGps,
+    trustedAppliedOrigin,
     pickupPreview,
   ]);
+
+  // Only an explicit selection mode may change the departure from a map tap.
+  // Coordinates come from the Google Map itself, not from reverse-geocoded centroids.
+  useEffect(() => {
+    if (!ready || !map.current || failed || !selectingOrigin || !onPickOrigin) return;
+    const listener = map.current.addListener("click", (event: any) => {
+      const lat = event?.latLng?.lat?.();
+      const lng = event?.latLng?.lng?.();
+      if (validPoint({ lat, lng })) onPickOrigin({ lat, lng });
+    });
+    return () => listener?.remove?.();
+  }, [ready, failed, selectingOrigin, onPickOrigin]);
+
+  // Selecting a manual departure must recenter on that selected place,
+  // not on a coarse browser/Wi-Fi geolocation.
+  useEffect(() => {
+    if (!ready || !map.current || failed) return;
+    if (originIsCurrent || !validPoint(origin)) {
+      lastManualOrigin.current = null;
+      return;
+    }
+    const key = `${origin.lat.toFixed(6)}:${origin.lng.toFixed(6)}`;
+    if (lastManualOrigin.current !== key) {
+      lastManualOrigin.current = key;
+      map.current.panTo({ lat: origin.lat, lng: origin.lng });
+    }
+  }, [ready, failed, originIsCurrent, origin?.lat, origin?.lng]);
 
   // Keep road geometry and preview metrics on the same Google Routes contract
   // used by server-side fares. Small GPS changes do not trigger a new request.
@@ -302,7 +365,9 @@ export function GoogleHomeRideMap({
     const recenterRequested = lastRecenter.current !== recenterVersion;
     lastRecenter.current = recenterVersion;
     if (!recenterRequested && !following) return;
-    const position = validPoint(userPosition) ? userPosition : effectiveOrigin;
+    const position = originIsCurrent
+      ? (trustedGps ? userPosition : null)
+      : (validPoint(effectiveOrigin) ? effectiveOrigin : trustedGps ? userPosition : null);
     if (!validPoint(position)) return;
     const next = { lat: position.lat, lng: position.lng };
     if (
@@ -315,7 +380,7 @@ export function GoogleHomeRideMap({
       map.current.panTo(next);
       currentCenter.current = next;
     }
-  }, [ready, recenterVersion, following, userPosition, effectiveOrigin?.lat, effectiveOrigin?.lng]);
+  }, [ready, recenterVersion, following, userPosition, trustedGps, originIsCurrent, effectiveOrigin?.lat, effectiveOrigin?.lng]);
 
   return (
     <section
@@ -331,7 +396,7 @@ export function GoogleHomeRideMap({
         ref={container}
         className="absolute inset-0 z-0"
         role="img"
-        aria-label="Mapa Google do radar CARONAA"
+        aria-label={selectingOrigin ? "Toque para definir sua saída no Google Maps" : "Mapa Google do radar CARONAA"}
       />
       {failed && <MapUnavailable />}
       {!ready && !failed && (
@@ -352,9 +417,19 @@ export function GoogleHomeRideMap({
             : "absolute bottom-8 right-3 z-10 size-12 bg-background shadow-sm"
         }
         disabled={locating}
-        aria-label="Centralizar na minha localização"
-        title="Centralizar na minha localização"
-        onClick={onRecenter}
+        aria-label={!originIsCurrent && validPoint(origin)
+          ? "Centralizar na saída escolhida"
+          : trustedGps ? "Centralizar na minha localização" : "Tentar melhorar sinal GPS"}
+        title={!originIsCurrent && validPoint(origin)
+          ? "Centralizar na saída escolhida"
+          : trustedGps ? "Centralizar na minha localização" : "Tentar melhorar sinal GPS"}
+        onClick={() => {
+          if (!originIsCurrent && validPoint(origin)) {
+            map.current?.panTo({ lat: origin.lat, lng: origin.lng });
+          } else {
+            onRecenter();
+          }
+        }}
       >
         <LocateFixed
           size={21}
