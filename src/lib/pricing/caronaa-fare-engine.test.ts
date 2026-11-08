@@ -61,6 +61,16 @@ describe("CARONAA pricing policy draft (not yet active)", () => {
     expect(q.platformGrossCommissionCents).toBe(161);
   });
 
+  it("refuses a R$7.50 mototaxi quote if each Asaas Pix costs R$1.99", () => {
+    const input={...base,region:"MACICO_BATURITE" as const,mode:"EXCLUSIVE_MOTO" as const};
+    expect(()=>quoteProposedCaronaaFare(input,{...config,processingFeeCents:199})).toThrow(/processamento supera/);
+    const promo=quoteProposedCaronaaFare(input,{...config,processingFeeCents:99});
+    expect(promo.customerPaysCents).toBe(750);
+    expect(promo.driverReceivesCents).toBe(600);
+    expect(promo.platformGrossCommissionCents).toBe(150);
+    expect(promo.platformNetBeforeTaxesCents).toBe(51);
+  });
+
   it("event 15% overrides regional 20% only when active and within authorized area", () => {
     const input={...base,mode:"EXCLUSIVE_MOTO" as const,region:"MACICO_BATURITE" as const,officialActivity:activity};
     const q=quoteProposedCaronaaFare(input,config);
