@@ -47,10 +47,18 @@ CREATE TABLE IF NOT EXISTS public.caronaa_quick_tariff_policies (
   minimum_cents integer NOT NULL DEFAULT 0 CHECK (minimum_cents >= 0),
   commission_bps integer NOT NULL CHECK (commission_bps BETWEEN 0 AND 4000),
   processing_fee_cents integer NOT NULL DEFAULT 0 CHECK (processing_fee_cents >= 0),
+  minimum_platform_margin_cents integer NOT NULL DEFAULT 50 CHECK (minimum_platform_margin_cents >= 0),
   published boolean NOT NULL DEFAULT false,
   policy_version text NOT NULL DEFAULT 'draft-v0' CHECK(length(policy_version) BETWEEN 3 AND 100),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY(pricing_region,vehicle_type)
+  PRIMARY KEY(pricing_region,vehicle_type),
+  CONSTRAINT quick_rate_card_published_complete CHECK (
+    NOT published OR (
+      minimum_cents >= 450 AND
+      (pricing_region='MACICO_BATURITE' AND vehicle_type='MOTO'
+       OR (base_cents+per_km_cents+per_minute_cents)>0)
+    )
+  )
 );
 ALTER TABLE public.caronaa_quick_tariff_policies ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.caronaa_quick_tariff_policies FROM PUBLIC, anon, authenticated;
@@ -126,7 +134,7 @@ REVOKE ALL ON public.caronaa_coverage_interest FROM PUBLIC, anon, authenticated;
 CREATE OR REPLACE FUNCTION public.caronaa_quick_region_status(p_municipality text,p_vehicle text)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE r record; enabled boolean;
+DECLARE r record; enabled boolean; tariff_published boolean;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
  IF p_vehicle NOT IN ('CAR','MOTO') OR length(btrim(coalesce(p_municipality,''))) NOT BETWEEN 2 AND 120
@@ -142,9 +150,16 @@ BEGIN
   RETURN jsonb_build_object('status','OUTSIDE','region',null,'radar',false,'dispatch',false);
  END IF;
  enabled := CASE WHEN p_vehicle='MOTO' THEN r.moto_enabled ELSE r.car_enabled END;
- RETURN jsonb_build_object('status', CASE WHEN enabled AND r.dispatch AND r.radar THEN 'ENABLED' ELSE 'WAITLIST' END,
-   'region',r.pricing_region,'radar',r.radar AND enabled,
-   'dispatch',r.dispatch AND enabled AND r.radar);
+ SELECT coalesce(published,false) INTO tariff_published
+ FROM public.caronaa_quick_tariff_policies
+ WHERE pricing_region=r.pricing_region AND vehicle_type=p_vehicle;
+ RETURN jsonb_build_object(
+   'status', CASE WHEN enabled AND r.dispatch AND r.radar AND coalesce(tariff_published,false)
+       THEN 'ENABLED' ELSE 'WAITLIST' END,
+   'region',r.pricing_region,
+   'radar',r.radar AND enabled,
+   'dispatch',r.dispatch AND enabled AND r.radar AND coalesce(tariff_published,false)
+ );
 END; $$;
 REVOKE ALL ON FUNCTION public.caronaa_quick_region_status(text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.caronaa_quick_region_status(text,text) TO authenticated;
@@ -211,6 +226,9 @@ BEGIN
      AND p.public_discovery_enabled AND p.dispatch_enabled
      AND CASE WHEN q.vehicle_type='CAR' THEN m.car_enabled ELSE m.moto_enabled END
  ) THEN RAISE EXCEPTION 'Quick rides are not available in this area' USING ERRCODE='42501'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.caronaa_quick_tariff_policies p
+   WHERE p.pricing_region=q.pricing_region AND p.vehicle_type=q.vehicle_type AND p.published)
+ THEN RAISE EXCEPTION 'Quick ride tariff no longer available'; END IF;
  -- Original guarded 0129 lifecycle is reused, including active-ride uniqueness.
  ride := public.quick_ride_request(q.municipality,q.vehicle_type,q.origin_label,
    q.destination_label,q.origin_lat,q.origin_lng,q.destination_lat,q.destination_lng);
