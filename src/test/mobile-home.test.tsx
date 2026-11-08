@@ -100,8 +100,8 @@ describe("Home mobile", () => {
   let fix: PositionCallback;
   let move: PositionCallback;
   let gpsFailure: PositionErrorCallback;
-  const position = (lat = -3.73) =>
-    ({ coords: { latitude: lat, longitude: -38.52, accuracy: 10 } }) as GeolocationPosition;
+  const position = (lat = -3.73, accuracy = 10) =>
+    ({ coords: { latitude: lat, longitude: -38.52, accuracy } }) as GeolocationPosition;
   beforeEach(() => {
     vi.clearAllMocks();
     api.load.mockResolvedValue([]);
@@ -145,7 +145,9 @@ describe("Home mobile", () => {
   it("prioriza a ação sem dashboard e não espera o carregamento secundário", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
-    expect(screen.getByRole("heading", { name: /Para onde vamos/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Encontre sua carona/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pesquisar destino no painel de carona" })).toBeInTheDocument();
+    expect(screen.queryByText("Para onde vamos?")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Vou dirigindo" })).not.toBeInTheDocument();
     expect(screen.queryByText("Caronas disponíveis")).toBeNull();
   });
@@ -181,6 +183,51 @@ describe("Home mobile", () => {
       }),
     });
   });
+  it("não usa um fix de 1029m como origem real nem faz reverse geocode impreciso", async () => {
+    render(<Home />);
+    act(() => fix(position(-3.73, 1029)));
+    expect(await screen.findByText(/GPS impreciso/i)).toBeInTheDocument();
+    expect(api.reverse).not.toHaveBeenCalled();
+    expect(api.map.mock.lastCall?.[0].origin).toBeUndefined();
+    expect(screen.getAllByRole("button", { name: "Pesquisar destino no painel de carona" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Corrigir saída" }));
+    expect(screen.getByLabelText("Saída")).toHaveValue("");
+    expect(screen.getByText(/O GPS está com precisão de aproximadamente 1029 metros/)).toBeInTheDocument();
+  });
+
+  it("aceita nova leitura confiável depois de um fix inicial grosseiro", async () => {
+    render(<Home />);
+    act(() => fix(position(-3.73, 1029)));
+    expect(api.reverse).not.toHaveBeenCalled();
+    act(() => move(position(-3.731, 25)));
+    await waitFor(() => expect(api.reverse).toHaveBeenCalledWith({
+      data: { lat: -3.731, lng: -38.52 },
+    }));
+    expect(api.map.mock.lastCall?.[0].origin).toEqual(
+      expect.objectContaining({ lat: -3.731, lng: -38.52 }),
+    );
+  });
+
+  it("permite tocar no Google Maps para escolher uma saída sem usar centro aproximado", async () => {
+    render(<Home />);
+    act(() => fix(position(-3.73, 1029)));
+    fireEvent.click(screen.getByRole("button", { name: "Corrigir saída" }));
+    fireEvent.click(screen.getByRole("button", { name: /Escolher saída tocando no mapa/ }));
+    expect(screen.getByText(/toque no local correto do mapa/i)).toBeInTheDocument();
+    const onPickOrigin = api.map.mock.lastCall?.[0].onPickOrigin as (point: {lat:number;lng:number}) => void;
+    act(() => onPickOrigin({ lat: -3.755, lng: -38.531 }));
+    await waitFor(() => expect(api.map.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({
+        origin: expect.objectContaining({ lat: -3.755, lng: -38.531 }),
+        originIsCurrent: false,
+      }),
+    ));
+    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
+    expect(api.map.mock.lastCall?.[0].origin).toEqual(
+      expect.objectContaining({ lat: -3.755, lng: -38.531 }),
+    );
+  });
+
   it("preenche saída automaticamente com endereço e coordenadas reais", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
