@@ -13,7 +13,7 @@ import {
 } from "@/components/caronaa/TimeToleranceSelector";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Search, ArrowRight, LocateFixed, MapPin, CalendarDays, Minus, Plus } from "lucide-react";
+import { Search, ArrowRight, LocateFixed, CalendarDays, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
@@ -78,6 +78,7 @@ function Home() {
   const navigate = useNavigate();
   const location = useUserLocation({ autoLocate: true });
   const manualOriginChosen = useRef(false);
+  const mapOriginRequest = useRef(0);
   const [originSource, setOriginSource] = useState<"CURRENT_LOCATION" | "MANUAL_ORIGIN">(
     "CURRENT_LOCATION",
   );
@@ -148,6 +149,7 @@ function Home() {
   }, [professionalMunicipality]);
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const [selectingOrigin, setSelectingOrigin] = useState(false);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [originLocation, setOriginLocation] = useState<FormLocationDetails>();
@@ -364,6 +366,25 @@ function Home() {
     document.getElementById(focusOriginOnExpand.current ? "home-origin" : "home-destination")?.focus();
     focusOriginOnExpand.current = false;
   }, [panelOpen]);
+
+  const chooseOriginOnMap = useCallback((point: { lat: number; lng: number }) => {
+    const request = ++mapOriginRequest.current;
+    const fallback = "Ponto selecionado no mapa";
+    manualOriginChosen.current = true;
+    setOriginSource("MANUAL_ORIGIN");
+    setOrigin(fallback);
+    setOriginLocation({ rawText: fallback, formattedAddress: fallback, lat: point.lat, lng: point.lng });
+    setSelectingOrigin(false);
+    focusOriginOnExpand.current = false;
+    setPanelOpen(true);
+    // Reverse geocoding improves the label, but MUST NOT replace clicked coordinates.
+    void reverseGeocode({ data: point }).then((details) => {
+      if (request !== mapOriginRequest.current || !details) return;
+      const label = details.formattedAddress || fallback;
+      setOrigin(label);
+      setOriginLocation({ ...details, rawText: label, formattedAddress: label, lat: point.lat, lng: point.lng });
+    }).catch(() => { /* Clicked coordinates remain valid even if the address fails. */ });
+  }, [reverseGeocode]);
   async function submitRequest(event: React.FormEvent) {
     event.preventDefault();
     if (!origin.trim() || !destination.trim()) {
@@ -430,6 +451,8 @@ function Home() {
             professionalDrivers={professionalDrivers}
             userPosition={location.position}
             origin={currentFare?.originPoint ?? point}
+            selectingOrigin={selectingOrigin}
+            onPickOrigin={chooseOriginOnMap}
             destination={destinationLocation ?? currentFare?.destinationPoint}
             originIsCurrent={originSource === "CURRENT_LOCATION"}
             following={originSource === "CURRENT_LOCATION" && isTrustedGpsFix(location.position) && location.isFollowingUser}
@@ -439,6 +462,14 @@ function Home() {
             onRecenter={location.locate}
           />
         </div>
+        {selectingOrigin && (
+          <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm text-white shadow-xl backdrop-blur-xl sm:inset-x-5">
+            <p><strong className="text-[#FFBB00]">Definir saída:</strong> toque no local correto do mapa. Esse ponto será sua origem escolhida.</p>
+            <button type="button" className="min-h-10 shrink-0 rounded-lg border border-white/30 px-3 font-semibold" onClick={() => setSelectingOrigin(false)}>
+              Cancelar
+            </button>
+          </div>
+        )}
         <section
           aria-labelledby="journey-title"
           className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex max-h-[calc(100%-9rem)] max-w-2xl flex-col rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[76%]" : "h-auto"}`}
@@ -505,6 +536,8 @@ function Home() {
             >
               <FavoriteCommuteSuggestion
                 onChoose={(from, to) => {
+                  mapOriginRequest.current += 1;
+                  setSelectingOrigin(false);
                   manualOriginChosen.current = true;
                   setOriginSource("MANUAL_ORIGIN");
                   setOrigin(from.label);
@@ -519,6 +552,8 @@ function Home() {
                     type="button"
                     disabled={location.locating}
                     onClick={() => {
+                      mapOriginRequest.current += 1;
+                      setSelectingOrigin(false);
                       manualOriginChosen.current = false;
                       setOriginSource("CURRENT_LOCATION");
                       setOrigin("");
@@ -546,6 +581,17 @@ function Home() {
                       O GPS está com precisão de aproximadamente {Math.round(location.addressPosition!.accuracy)} metros. Informe sua saída abaixo ou selecione o ponto no mapa antes de solicitar carona.
                     </p>
                   )}
+                  <button type="button" onClick={() => {
+                    setSelectingOrigin(true);
+                    setPanelOpen(false);
+                  }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 px-3 text-xs font-semibold text-[#FFBB00]">
+                    <LocateFixed size={16} /> Escolher saída tocando no mapa
+                  </button>
+                  {originSource === "MANUAL_ORIGIN" && originLocation?.lat != null && !isTrustedGpsFix(location.position) && (
+                    <p role="status" className="text-xs text-gray-300">
+                      “Você” no mapa indica a sua saída escolhida manualmente, não uma posição GPS confirmada.
+                    </p>
+                  )}
                   <LocationAutocomplete
                     id="home-origin"
                     label="Saída"
@@ -554,6 +600,8 @@ function Home() {
                     required
                     placeholder="De onde você sai?"
                     onChange={(value, details) => {
+                      mapOriginRequest.current += 1;
+                      setSelectingOrigin(false);
                       manualOriginChosen.current = true;
                       setOriginSource("MANUAL_ORIGIN");
                       setOrigin(details?.formattedAddress || value);
