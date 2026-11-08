@@ -344,6 +344,41 @@ REVOKE EXECUTE ON FUNCTION public.quick_ride_request(
  text,text,text,text,double precision,double precision,double precision,double precision
 ) FROM authenticated;
 
+
+-- A region paused after quote creation must not accept new driver allocations.
+-- Existing ARRIVED/IN_PROGRESS trips retain their safe completion path.
+CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_driver_assignment()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+ IF OLD.status='SEARCHING' AND NEW.status='ACCEPTED' THEN
+  IF NOT EXISTS (
+   SELECT 1
+   FROM public.caronaa_quick_fare_quotes quote
+   JOIN public.caronaa_service_municipalities city
+     ON city.municipality=quote.municipality
+   JOIN public.professional_service_regions service
+     ON service.municipality=city.municipality
+   JOIN public.caronaa_quick_tariff_policies policy
+     ON policy.pricing_region=city.pricing_region
+     AND policy.vehicle_type=quote.vehicle_type
+   WHERE quote.ride_id=OLD.id AND quote.municipality=OLD.municipality
+     AND quote.vehicle_type=OLD.vehicle_type
+     AND service.dispatch_enabled AND service.public_discovery_enabled
+     AND policy.published
+     AND CASE WHEN OLD.vehicle_type='MOTO' THEN city.moto_enabled ELSE city.car_enabled END
+  ) THEN
+    RAISE EXCEPTION 'Quick ride region, driver mode or fare policy is no longer enabled';
+  END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
+REVOKE ALL ON FUNCTION public.guard_caronaa_quick_driver_assignment() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS caronaa_quick_guard_driver_assignment ON public.professional_quick_rides;
+CREATE TRIGGER caronaa_quick_guard_driver_assignment
+ BEFORE UPDATE OF status ON public.professional_quick_rides
+ FOR EACH ROW EXECUTE FUNCTION public.guard_caronaa_quick_driver_assignment();
+
 -- Admin control: does not grant itself professional licensing / approval.
 CREATE OR REPLACE FUNCTION public.admin_set_caronaa_quick_city(
  p_municipality text,p_car boolean,p_moto boolean
