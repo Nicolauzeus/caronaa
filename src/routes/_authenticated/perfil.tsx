@@ -625,6 +625,9 @@ function Perfil() {
       <div className="mb-3"><ProfessionalAuthorizationBadge /></div>
       <section aria-label="Radar do motorista" className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 shadow-soft">
         <h2 className="text-base font-extrabold">Radar do motorista</h2>
+        <Link to="/cadastro-motorista" className="mt-2 inline-block text-sm font-bold text-primary underline">
+          Cadastro simplificado de mototaxista / acompanhar solicitação
+        </Link>
         <p className="mt-1 text-sm text-muted-foreground">
           Motoristas aprovados iniciam disponíveis por padrão; para aparecer no mapa é necessário autorizar o GPS uma vez.
           Você pode ficar offline a qualquer momento. A administração precisa liberar o município.
