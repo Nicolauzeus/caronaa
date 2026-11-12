@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 
@@ -8,6 +10,7 @@ import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
  * Server RPCs enforce approval, region, debt and the 90-second freshness gate.
  */
 export function ProfessionalRadarSync({ userId }: { userId: string }) {
+  const publishVerified = useServerFn(publishVerifiedProfessionalPosition);
   useEffect(() => {
     if (typeof window === "undefined" ||
         window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes" ||
@@ -18,8 +21,8 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     let watchId: number | null = null;
     let timer: number | null = null;
     let publishing = false;
-    let municipality = "";
     let generation = 0;
+    let lastGpsAttemptAt = 0;
 
     const stop = () => {
       generation += 1;
@@ -33,20 +36,23 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     };
 
     const publish = async (position: GeolocationPosition) => {
-      if (disposed || document.hidden || !municipality || publishing || watchId === null) return;
+      if (disposed || document.hidden || publishing || watchId === null) return;
+      if (Date.now() - lastGpsAttemptAt < 25000) return;
+      lastGpsAttemptAt = Date.now();
       const { latitude, longitude, accuracy } = position.coords;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
           !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 5000) return;
       publishing = true;
       const epoch = generation;
       try {
-        const { error } = await (supabase as any).rpc("professional_location_opt_in", {
-          p_lat: latitude,
-          p_lng: longitude,
-          p_accuracy_m: accuracy,
-          p_municipality: municipality,
+        const result = await publishVerified({
+          data: { lat: latitude, lng: longitude, accuracyM: accuracy },
         });
-        if (error && !disposed && epoch === generation) stop();
+        // Outside an authorized zone: keep the consented GPS watch, but
+        // stop publishing until the driver returns to an approved municipality.
+        if (!result.published && !disposed && epoch === generation) {
+          void (supabase as any).rpc("professional_location_stop");
+        }
       } catch {
         if (!disposed && epoch === generation) stop();
       } finally {
@@ -71,13 +77,12 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
             access.data?.authorized !== true || fees.data?.driverAllowed !== true ||
             presence.data?.is_available !== true) return;
 
-        municipality = String(presence.data?.municipality ?? "").trim();
-        if (municipality.length < 2) return;
-        // Renew presence only after the server confirms the driver is already
-        // online; a manual offline preference must not be overridden.
+        // Do not use the stored/profile municipality for GPS publications.
+        // The privileged server endpoint resolves the CURRENT city per fix.
+        // Renew presence only when the user did not explicitly choose offline.
         const { error } = await (supabase as any).rpc("set_professional_presence", {
           p_available: true,
-          p_municipality: municipality,
+          p_municipality: null,
         });
         if (error || disposed || document.hidden || generation !== epoch) return;
 
@@ -108,7 +113,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
             }
             const { error: heartbeatError } = await (supabase as any)
               .rpc("set_professional_presence", {
-                p_available: true, p_municipality: municipality,
+                p_available: true, p_municipality: null,
               });
             if (heartbeatError || document.hidden || disposed) {
               stop();
@@ -146,6 +151,6 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       document.removeEventListener("visibilitychange", visibility);
       stop();
     };
-  }, [userId]);
+  }, [userId, publishVerified]);
   return null;
 }
