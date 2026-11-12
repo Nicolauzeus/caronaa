@@ -139,7 +139,9 @@ export function QuickRideHomePanel({
   const inactiveText=coverage?.status==="OUTSIDE"
     ?"Ainda não atendemos embarques nesse município."
     :coverage?.status==="WAITLIST"
-      ?"Este município está no nosso plano de expansão, mas a Corrida Rápida ainda não foi habilitada."
+      ?(coverage?.radar===true
+         ?"Radar de motoristas em homologação nesta zona. Corridas pagas aguardam tarifa e autorização operacional."
+         :"Este município está no nosso plano de expansão, mas a Corrida Rápida ainda não foi habilitada.")
       :coverage?.status==="UNKNOWN"
         ?"Não foi possível identificar o município do embarque."
         :"Informe um ponto de saída verificado para consultar a cobertura.";
@@ -175,7 +177,7 @@ export function QuickRideHomePanel({
             driverCount===1?"1 profissional autorizado e online.":" "+driverCount+" profissionais autorizados e online."}
         </p>
         <p className="mt-1 text-[11px] text-gray-400">
-          Os veículos no radar têm posições aproximadas. O motorista é atribuído somente após aceitar.
+          Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.
         </p>
       </div>
       {!hasOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
