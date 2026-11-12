@@ -16,6 +16,19 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
   .middleware([requireSupabaseAuth])
   .inputValidator((value: unknown) => professionalRadarPointSchema.parse(value))
   .handler(async ({ context, data }): Promise<ProfessionalRadarPublication> => {
+    // Fail early: unauthorized, offline or financially blocked users must not
+    // consume Google API calls. SQL rechecks atomically before persistence.
+    const [access, fees, presence] = await Promise.all([
+      (context.supabase as any).rpc("get_my_professional_access"),
+      (context.supabase as any).rpc("get_my_driver_platform_fees"),
+      (context.supabase as any).from("professional_presence")
+        .select("is_available").eq("user_id", context.userId).maybeSingle(),
+    ]);
+    if (access.error || access.data?.authorized !== true ||
+        fees.error || fees.data?.driverAllowed !== true ||
+        presence.error || presence.data?.is_available !== true) {
+      throw new Error("Motorista offline, sem aprovação ou com repasses bloqueantes.");
+    }
     // Rate gate before a potentially billed Google reverse lookup.
     const { data: quota, error: quotaError } =
       await (context.supabase as any).rpc("professional_radar_location_rate_gate");
