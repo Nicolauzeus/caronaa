@@ -130,6 +130,17 @@ BEGIN
     RAISE EXCEPTION 'WhatsApp invalido: informe DDD e numero' USING ERRCODE='22023';
   END IF;
   v_phone := '+55' || v_digits;
+  -- An approved profile cannot silently replace the details that an
+  -- administrator previously reviewed. Changes require a new review workflow.
+  IF EXISTS (
+    SELECT 1 FROM public.professional_driver_authorizations
+    WHERE user_id=v_uid AND approved IS TRUE AND vehicle_type='MOTO'
+  ) THEN
+    SELECT id INTO v_id FROM public.professional_access_requests
+      WHERE user_id=v_uid AND access_type='MOTOTAXI_SIMPLE' AND status='APPROVED'
+      ORDER BY submitted_at DESC LIMIT 1;
+    IF v_id IS NOT NULL THEN RETURN v_id; END IF;
+  END IF;
   SELECT avatar_url INTO v_photo FROM public.profiles WHERE id=v_uid FOR UPDATE;
   v_avatar_path := split_part(split_part(coalesce(v_photo,''), '/avatars/', 2), '?', 1);
   IF v_avatar_path !~ ('^' || v_uid::text || '/[a-zA-Z0-9-]+[.](jpg|jpeg|png|webp)
