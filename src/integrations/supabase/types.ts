@@ -243,6 +243,131 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_driver_fee_statement_items: {
+        Row: {
+          fee_cents: number
+          ride_id: string
+          source_kind: string
+          statement_id: string
+        }
+        Insert: {
+          fee_cents: number
+          ride_id: string
+          source_kind: string
+          statement_id: string
+        }
+        Update: {
+          fee_cents?: number
+          ride_id?: string
+          source_kind?: string
+          statement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_driver_fee_statement_items_statement_id_fkey"
+            columns: ["statement_id"]
+            isOneToOne: false
+            referencedRelation: "caronaa_driver_fee_statements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caronaa_driver_fee_statements: {
+        Row: {
+          claim_reference: string | null
+          claimed_at: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          item_count: number
+          pix_key_snapshot: string
+          status: string
+          total_cents: number
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          claim_reference?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          item_count: number
+          pix_key_snapshot: string
+          status?: string
+          total_cents: number
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          claim_reference?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          item_count?: number
+          pix_key_snapshot?: string
+          status?: string
+          total_cents?: number
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      caronaa_quick_driver_fees: {
+        Row: {
+          commission_bps: number
+          created_at: string
+          driver_id: string
+          fee_cents: number
+          gross_cents: number
+          quote_id: string
+          ride_id: string
+          status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          commission_bps: number
+          created_at?: string
+          driver_id: string
+          fee_cents: number
+          gross_cents: number
+          quote_id: string
+          ride_id: string
+          status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          commission_bps?: number
+          created_at?: string
+          driver_id?: string
+          fee_cents?: number
+          gross_cents?: number
+          quote_id?: string
+          ride_id?: string
+          status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_quick_driver_fees_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
+            referencedRelation: "caronaa_quick_fare_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caronaa_quick_driver_fees_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caronaa_quick_fare_quotes: {
         Row: {
           activity_id: string | null
@@ -2011,6 +2136,7 @@ export type Database = {
       }
       professional_access_requests: {
         Row: {
+          access_type: string
           car_category: string | null
           id: string
           municipality: string
@@ -2026,6 +2152,7 @@ export type Database = {
           vehicle_type: string
         }
         Insert: {
+          access_type?: string
           car_category?: string | null
           id?: string
           municipality: string
@@ -2041,6 +2168,7 @@ export type Database = {
           vehicle_type: string
         }
         Update: {
+          access_type?: string
           car_category?: string | null
           id?: string
           municipality?: string
@@ -2133,6 +2261,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      professional_mototaxi_profiles: {
+        Row: {
+          created_at: string
+          first_name: string
+          last_name: string
+          region_code: string
+          registration_number: string
+          updated_at: string
+          user_id: string
+          whatsapp_e164: string
+        }
+        Insert: {
+          created_at?: string
+          first_name: string
+          last_name: string
+          region_code: string
+          registration_number: string
+          updated_at?: string
+          user_id: string
+          whatsapp_e164: string
+        }
+        Update: {
+          created_at?: string
+          first_name?: string
+          last_name?: string
+          region_code?: string
+          registration_number?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp_e164?: string
+        }
+        Relationships: []
       }
       professional_presence: {
         Row: {
@@ -4299,6 +4460,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_caronaa_fee_statement_claims: { Args: never; Returns: Json }
       admin_caronaa_quick_commercial_overview: { Args: never; Returns: Json }
       admin_driver_fee_audit: { Args: { p_ride_id: string }; Returns: Json }
       admin_operate_ride: {
@@ -4366,6 +4528,10 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      admin_verify_caronaa_fee_statement: {
+        Args: { p_received: boolean; p_statement_id: string }
+        Returns: boolean
       }
       are_ride_routes_compatible: {
         Args: {
@@ -4465,6 +4631,10 @@ export type Database = {
         Args: { p_reference: string; p_ride_id: string }
         Returns: boolean
       }
+      claim_my_caronaa_fee_statement: {
+        Args: { p_reference: string; p_statement_id: string }
+        Returns: boolean
+      }
       claim_research_participation: {
         Args: { p_submission_key: string }
         Returns: Json
@@ -4493,6 +4663,10 @@ export type Database = {
           p_vehicle_type?: string
           p_women_only?: boolean
         }
+        Returns: string
+      }
+      create_my_caronaa_fee_statement: {
+        Args: { p_ride_id?: string; p_source?: string }
         Returns: string
       }
       create_preferred_ride: {
@@ -4794,6 +4968,7 @@ export type Database = {
       }
       get_municipal_research_overview: { Args: never; Returns: Json }
       get_my_admin_scope: { Args: never; Returns: Json }
+      get_my_caronaa_commission_ledger: { Args: never; Returns: Json }
       get_my_driver_platform_fees: { Args: never; Returns: Json }
       get_my_onboarding_research_suggestions: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
@@ -5366,6 +5541,16 @@ export type Database = {
           p_municipality: string
           p_seats: number
           p_vehicle_type: string
+        }
+        Returns: string
+      }
+      submit_simple_mototaxi_access: {
+        Args: {
+          p_first_name: string
+          p_last_name: string
+          p_region: string
+          p_registration_number: string
+          p_whatsapp: string
         }
         Returns: string
       }
