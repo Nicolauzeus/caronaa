@@ -30,6 +30,7 @@
 - Keep the shared Relationships page outside route modules and import it from both admin URLs; this preserves automatic route splitting without cross-route component imports.
 - Use the shared authenticated Google municipality selector for professional access, availability and pilot configuration; city-only predictions and Brazilian address components prevent free-text municipality mistakes while existing database eligibility remains authoritative.
 - Keep professional access requests in their own Operations tab and read missing-data eligibility from the existing admin RPC; the detail dialog must not enable approval for incomplete or unvalidated requests.
+- F07 radar pilot: a registered profile region is not a geographic fence. Resolve the current GPS municipality via Google on the authenticated server before a privileged service-only write, and gate public discovery by admin-approved municipality, approval, debt and online status; never use typed profile city as proof. The CE-060/CE-356 pilot radar does not imply tariff, dispatch, regulated transport, intermunicipal trips or permission to share GPS without consent.
 
 - Keep admin analytical sections tabbed and lists paginated, and render saved supplemental form answers only within authorized detail views; this keeps the workspace compact without discarding captured content.
 - Authorize fare reads through the participant client before privileged persistence, and return the saved quote; this prevents unauthorized access and divergent results under concurrent quoting.
