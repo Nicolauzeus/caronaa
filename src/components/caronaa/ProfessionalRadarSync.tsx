@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,8 @@ import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
  */
 export function ProfessionalRadarSync({ userId }: { userId: string }) {
   const publishVerified = useServerFn(publishVerifiedProfessionalPosition);
+  const publisherRef = useRef(publishVerified);
+  publisherRef.current = publishVerified;
   useEffect(() => {
     if (typeof window === "undefined" ||
         window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes" ||
@@ -45,7 +47,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       publishing = true;
       const epoch = generation;
       try {
-        const result = await publishVerified({
+        const result = await publisherRef.current({
           data: { lat: latitude, lng: longitude, accuracyM: accuracy },
         });
         // Outside an authorized zone: keep the consented GPS watch, but
@@ -53,7 +55,10 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         if (!result.published && !disposed && epoch === generation) {
           void (supabase as any).rpc("professional_location_stop");
         }
-      } catch {
+      } catch (e) {
+        // A shared rate gate may reject a duplicate update during navigation.
+        // Keep the consented watch; retry on the next heartbeat.
+        if (e instanceof Error && e.message.includes("Aguarde alguns segundos")) return;
         if (!disposed && epoch === generation) stop();
       } finally {
         publishing = false;
@@ -151,6 +156,6 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       document.removeEventListener("visibilitychange", visibility);
       stop();
     };
-  }, [userId, publishVerified]);
+  }, [userId]);
   return null;
 }
