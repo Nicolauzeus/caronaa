@@ -57,7 +57,9 @@ describe("Pickup preview after an authorized match", () => {
       await screen.findByText("Na rota, próximo a Posto", {}, { timeout: 2500 }),
     ).toBeInTheDocument();
     expect(screen.getByText(/150 m.*~2 min a pé/)).toBeInTheDocument();
-    expect(change).toHaveBeenCalledWith(preview);
+    // The parent callback is delivered by a React effect after the preview
+    // becomes visible; full-suite scheduling need not flush it synchronously.
+    await waitFor(() => expect(change).toHaveBeenCalledWith(preview));
     expect(screen.queryByTestId("pickup-map")).not.toBeInTheDocument();
   });
   it("retains explicit suggestion requests in the existing trip screen", async () => {

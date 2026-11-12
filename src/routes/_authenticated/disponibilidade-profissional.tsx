@@ -1,4 +1,6 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
+import {useServerFn} from "@tanstack/react-start";
+import {publishVerifiedProfessionalPosition} from "@/lib/professional-radar.functions";
 import {useCallback, useEffect, useRef, useState} from "react";
 import {supabase} from "@/integrations/supabase/client";
 import {ProfessionalAccessRequest} from "@/components/caronaa/ProfessionalAccessRequest";
@@ -13,6 +15,7 @@ export const Route=createFileRoute("/_authenticated/disponibilidade-profissional
 
 type DriverLocation = {coords: {latitude:number; longitude:number; accuracy:number}};
 function ProfessionalAvailability(){
+ const publishVerified=useServerFn(publishVerifiedProfessionalPosition);
  const [enabled,setEnabled]=useState(false);
  const [driverBlocked,setDriverBlocked]=useState(false);
  const [authorized,setAuthorized]=useState(false);
@@ -27,6 +30,7 @@ function ProfessionalAvailability(){
  const watchId=useRef<number|null>(null);
  const sharingRef=useRef(false);
  const locationRequestBusy=useRef(false);
+ const lastGpsAttemptAt=useRef(0);
  const publishPositionRef=useRef<(position:DriverLocation)=>void>(()=>{});
  const stopSharing=useCallback(async()=>{
    sharingRef.current=false;
@@ -38,25 +42,49 @@ function ProfessionalAvailability(){
  },[]);
  const publishPosition=useCallback(async(position:DriverLocation)=>{
    if(!sharingRef.current||locationRequestBusy.current)return;
-   locationRequestBusy.current=true;
+   if(Date.now()-lastGpsAttemptAt.current<25000)return;
+   lastGpsAttemptAt.current=Date.now();
    const {latitude,longitude,accuracy}=position.coords;
-   const {error:rpcError}=await (supabase as any).rpc("professional_location_opt_in",{
-     p_lat:latitude,p_lng:longitude,p_accuracy_m:accuracy,p_municipality:municipality.trim()
-   });
-   locationRequestBusy.current=false;
-   if(rpcError){
-     if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
-     setError("Compartilhamento interrompido: "+rpcError.message);
-     void stopSharing();
-   }else setLastPosition(new Date());
- },[municipality,userId,stopSharing]);
+   if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||
+      !Number.isFinite(accuracy)||accuracy<0||accuracy>5000){
+     setError("Precisão do GPS insuficiente para o radar.");
+     setLastPosition(null);
+     void (supabase as any).rpc("professional_location_stop");
+     return;
+   }
+   locationRequestBusy.current=true;
+   try{
+     const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy}});
+     if(!sharingRef.current){
+       // Consent may have been revoked while Google reverse was in flight.
+       void (supabase as any).rpc("professional_location_stop");
+       return;
+     }
+     if(result.published){
+       setMunicipality(result.municipality);
+       setError("");
+       setLastPosition(new Date());
+     }else{
+       setLastPosition(null);
+       setError(result.reason==="OUTSIDE_APPROVED_ZONE"
+         ?"Você saiu de uma zona aprovada. O radar deixou de publicar a sua localização; voltará a publicar ao entrar numa zona habilitada."
+         :"Não conseguimos confirmar seu município pelo Google. O radar interrompeu a publicação.");
+       void (supabase as any).rpc("professional_location_stop");
+     }
+   }catch(e){
+     const message=e instanceof Error?e.message:"Não foi possível confirmar seu GPS.";
+     setError(message);
+     // The 12-second server gate can reject a duplicate fix during navigation.
+     // This is temporary and must not discard the user's GPS consent.
+     if(!message.includes("Aguarde alguns segundos"))void stopSharing();
+   }finally{locationRequestBusy.current=false;}
+ },[publishVerified,stopSharing]);
  publishPositionRef.current=(position)=>{void publishPosition(position)};
  const startSharing=useCallback(()=>{
    setError("");
    if(!enabled){setError("Fique disponível antes de compartilhar a localização.");return}
    if(!authorized||driverBlocked){setError("Apenas motoristas autorizados e sem bloqueio podem aparecer no radar.");return}
-   if(!municipality.trim()){setError("Informe primeiro o município.");return}
-   if(typeof window==="undefined"||!window.isSecureContext||!navigator.geolocation){
+    if(typeof window==="undefined"||!window.isSecureContext||!navigator.geolocation){
      setError("Localização exige HTTPS e GPS disponível no navegador.");return;
    }
    if(watchId.current!==null)return;
@@ -66,7 +94,7 @@ function ProfessionalAvailability(){
      position=>{if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));setError("GPS indisponível: "+position.message);void stopSharing()},
      {enableHighAccuracy:true,timeout:15000,maximumAge:10000}
    );
- },[enabled,authorized,driverBlocked,municipality,publishPosition,stopSharing,userId]);
+ },[enabled,authorized,driverBlocked,stopSharing,userId]);
  useEffect(()=>{
    let active=true;
    void (async()=>{
@@ -93,9 +121,9 @@ function ProfessionalAvailability(){
      setMunicipality(city);
      // New approved drivers start online; a driver's explicit offline choice wins.
      // A previously online driver resumes after returning to the app.
-     const shouldActivate=approved && allowed && city.length>=2 && !presence.error && presence.data?.is_available!==false;
+     const shouldActivate=approved && allowed && !presence.error && presence.data?.is_available!==false;
      if(shouldActivate){
-       const {error:onlineError}=await (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:city});
+       const {error:onlineError}=await (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:city||null});
        if(!active)return;
        setEnabled(!onlineError);
        if(onlineError)setError("Não foi possível iniciar a disponibilidade: "+onlineError.message);
@@ -112,10 +140,10 @@ function ProfessionalAvailability(){
       setError("A disponibilidade exige autorização profissional e ausência de repasses bloqueantes. Consulte seu Perfil.");
       return;
     }
-    if(availability && municipality.trim().length<2){setError("Informe o município do radar.");return}
+    // GPS resolves the actual municipality after the driver consents.
    setBusy(true);setError("");
    if(!availability)await stopSharing();
-   const {error:presenceError}=await (supabase as any).rpc("set_professional_presence",{p_available:availability,p_municipality:municipality});
+   const {error:presenceError}=await (supabase as any).rpc("set_professional_presence",{p_available:availability,p_municipality:municipality||null});
    if(presenceError)setError(presenceError.message);else setEnabled(availability);
    setBusy(false);
  }
@@ -123,11 +151,11 @@ function ProfessionalAvailability(){
    if(!enabled)return;
    const timer=window.setInterval(()=>{
      if(document.visibilityState==="visible")
-       void (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:municipality})
+       void (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:null})
        .then(({error}:{error:any})=>{if(error){setError("Falha ao atualizar disponibilidade.");setEnabled(false);void stopSharing()}});
    },30000);
    return()=>window.clearInterval(timer);
- },[enabled,municipality,stopSharing]);
+ },[enabled,stopSharing]);
  useEffect(()=>{
    if(!sharing)return;
    const timer=window.setInterval(()=>{
@@ -148,9 +176,9 @@ function ProfessionalAvailability(){
  // A prior explicit GPS choice resumes automatically when returning to this
  // foreground page; never request location for a first-time visitor silently.
  useEffect(()=>{
-   if(!ready||!enabled||!authorized||driverBlocked||!visible||sharing||!userId||!municipality.trim())return;
+   if(!ready||!enabled||!authorized||driverBlocked||!visible||sharing||!userId)return;
    if(window.localStorage.getItem(professionalRadarConsentKey(userId))==="yes")startSharing();
- },[ready,enabled,authorized,driverBlocked,visible,sharing,userId,municipality,startSharing]);
+ },[ready,enabled,authorized,driverBlocked,visible,sharing,userId,startSharing]);
  const toggleSharing=()=>{
    if(sharing){if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));void stopSharing();return}
    if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
@@ -159,7 +187,7 @@ function ProfessionalAvailability(){
  return <main className="mx-auto max-w-2xl space-y-5 p-5">
    <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
-   <p className="text-sm text-muted-foreground">O radar inicia disponível para motoristas aprovados ao entrar aqui pela primeira vez. Se você escolher ficar offline, essa preferência será respeitada. O compartilhamento GPS exige sua autorização e só funciona com o app em primeiro plano. Recebimento comercial de corridas depende de homologação regional.</p>
+   <p className="text-sm text-muted-foreground">O radar inicia disponível para motoristas aprovados, respeitando a escolha de ficar offline. Após seu consentimento, o município é identificado pelo GPS e validado pelo servidor: pode ser diferente da região cadastrada. A publicação só ocorre em zonas aprovadas e com o app em primeiro plano. Corridas pagas exigem liberação comercial separada.</p>
    {authorized&&(
      <Link to="/viagem-rapida"
        search={buildQuickRideSearch({origin:"",destination:"",municipality})}
@@ -168,16 +196,16 @@ function ProfessionalAvailability(){
      </Link>
    )}
    <ProfessionalAccessRequest/>
-   <p className="rounded-xl border p-3 text-xs text-muted-foreground">Após a aprovação, informe seu município real de atuação para verificar a cobertura operacional. A região informada no cadastro não é um município. O GPS exige consentimento.</p>
+   <p className="rounded-xl border p-3 text-xs text-muted-foreground">O município operacional é confirmado automaticamente a partir da localização atual. A seleção abaixo é apenas um ponto de partida; não restringe a região em que você pode publicar o GPS. Se não souber o município, basta autorizar o GPS depois de ficar disponível.</p>
    <MunicipalitySelect value={municipality} disabled={enabled||sharing||busy} onChange={setMunicipality}/>
-   {enabled&&<p className="text-xs text-muted-foreground">Fique offline para alterar o município.</p>}
+   {enabled&&<p className="text-xs text-muted-foreground">Município atualizado pelo GPS verificado. Fique offline para editar o município inicial.</p>}
    {driverBlocked && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar suspenso até a quitação dos repasses.{" "}
       <Link to="/perfil" className="font-semibold underline">Ver comissões</Link>
     </p>}
     <p className="rounded-xl border p-4 text-sm">Situação: <strong>{!ready?"Carregando":!authorized?"Aguardando autorização":enabled?(sharing&&lastPosition?"Online · GPS ativo":"Disponível · GPS não publicado"):"Offline"}</strong></p>
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
-   <Button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized||!municipality))} onClick={()=>void save(!enabled)} className="min-h-12 w-full">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</Button>
+   <Button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized))} onClick={()=>void save(!enabled)} className="min-h-12 w-full">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</Button>
    <section className="rounded-xl border p-4 space-y-3">
      <h2 className="font-semibold">Localização no mapa (somente profissionais habilitados)</h2>
      <p className="text-sm text-muted-foreground">Compartilhamento opcional. Depois que você autorizar o GPS, ele será retomado automaticamente enquanto usar o CARONAA em uma aba visível. Outros usuários veem apenas uma posição aproximada, em região liberada. Ficar offline ou parar o compartilhamento interrompe a publicação.</p>
