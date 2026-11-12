@@ -55,7 +55,11 @@ function ProfessionalAvailability(){
    locationRequestBusy.current=true;
    try{
      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy}});
-     if(!sharingRef.current)return;
+     if(!sharingRef.current){
+       // Consent may have been revoked while Google reverse was in flight.
+       void (supabase as any).rpc("professional_location_stop");
+       return;
+     }
      if(result.published){
        setMunicipality(result.municipality);
        setError("");
