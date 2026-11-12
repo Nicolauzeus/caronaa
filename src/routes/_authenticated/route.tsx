@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated")({
     // without taking a passenger survey or waiting for an academic launch.
     // Approval is always checked by the server RPC, never user metadata.
     const professionalPage = location.pathname === "/disponibilidade-profissional" ||
-      location.pathname === "/perfil";
+      location.pathname === "/perfil" || location.pathname === "/viagem-rapida";
     let approvedMototaxi = false;
     if (professionalPage) {
       const [{ data: applicant, error: applicantError }, { data: access, error: accessError }] = await Promise.all([
@@ -40,8 +40,11 @@ export const Route = createFileRoute("/_authenticated")({
       ]);
       if (applicantError || accessError) throw new Error("Não foi possível validar seu acesso profissional.");
       approvedMototaxi = Boolean(applicant && access?.authorized === true);
-      if (applicant && location.pathname === "/disponibilidade-profissional") {
-        // The page itself blocks activation until the administrator approves.
+      if (applicant && (location.pathname === "/perfil" ||
+        location.pathname === "/disponibilidade-profissional" ||
+        (location.pathname === "/viagem-rapida" && approvedMototaxi))) {
+        // Authorization to inspect the profile/request is not a commercial
+        // operating permit. The ride and presence RPCs enforce their own gates.
         return { user: data.user, launchLocked: !approvedMototaxi };
       }
     }
