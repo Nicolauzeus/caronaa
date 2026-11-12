@@ -43,7 +43,10 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       lastGpsAttemptAt = Date.now();
       const { latitude, longitude, accuracy } = position.coords;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-          !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 5000) return;
+          !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 5000) {
+        void (supabase as any).rpc("professional_location_stop");
+        return;
+      }
       publishing = true;
       const epoch = generation;
       try {
