@@ -53,9 +53,16 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         const result = await publisherRef.current({
           data: { lat: latitude, lng: longitude, accuracyM: accuracy },
         });
+        // Consent may have been revoked (or page hidden) while the server
+        // was resolving Google coordinates. Delete any late publication.
+        if (disposed || epoch !== generation || document.hidden ||
+            window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") {
+          void (supabase as any).rpc("professional_location_stop");
+          return;
+        }
         // Outside an authorized zone: keep the consented GPS watch, but
         // stop publishing until the driver returns to an approved municipality.
-        if (!result.published && !disposed && epoch === generation) {
+        if (!result.published) {
           void (supabase as any).rpc("professional_location_stop");
         }
       } catch (e) {
