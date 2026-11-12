@@ -155,6 +155,8 @@ Criar conta → Nome, contato, região e foto (progressivamente)
 - Uma pessoa pode ser passageira e condutora. Dados já fornecidos não são pedidos a cada oferta.
 - Profissionais e modalidades só ficam **efetivamente disponíveis ao público** após a decisão de habilitação da operação regional e análise de conformidade aplicável. Não confundir essa condição operacional com implementar agora uma checagem documental automatizada.
 
+**Exceção aprovada — cadastro simplificado de mototaxista (11/11/2026):** em uma única conta, o mototaxista pode criar acesso por e-mail e senha confirmada, informar primeiro nome, último sobrenome, WhatsApp com DDD, região (Maciço de Baturité ou Fortaleza), matrícula profissional declaratória e foto pessoal. Não solicitar CPF, universidade, veículo, placa ou modelo nesse fluxo exclusivo. O cadastro exige confirmação de e-mail; a solicitação é imediata após completar os dados e a foto. A fila administrativa existente decide APROVAR, PEDIR CORREÇÃO ou REJEITAR; nenhuma escolha ou matrícula autodeclarada concede aprovação automática. O gate de campanhas acadêmicas não impede a solicitação/consulta da disponibilidade profissional, mas viagens pagas e descoberta no radar continuam condicionadas à autorização administrativa, regras de débitos, política regional e consentimento explícito de GPS. O município real de atuação é informado posteriormente na disponibilidade, não durante o cadastro simplificado. Contas de teste `motorista01` e `motorista02` seguem a mesma aprovação manual, sem whitelist por nome.
+
 **Aceite F02:** conta única, passagem de passageiro para condutor sem segundo cadastro, atualização de veículo, persistência e controle adequado de acesso.
 
 ### F03 — Oferecer carona pontual e cálculo do valor compartilhado
