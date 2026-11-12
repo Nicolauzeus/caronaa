@@ -34,6 +34,10 @@ export const STATUS_LABELS: Record<AccessStatus, string> = {
   CHANGES_REQUESTED: "Correções solicitadas",
 };
 
+export function canApproveProfessionalRequest(status: AccessStatus, missing: MissingCode[] | null | undefined) {
+  return status === "PENDING" && Array.isArray(missing) && missing.length === 0;
+}
+
 export function normalizePlate(plate: string | null | undefined) {
   return (plate ?? "").replace(/[\s-]/g, "").toUpperCase();
 }

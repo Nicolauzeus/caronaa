@@ -4,8 +4,12 @@ import {supabase} from "@/integrations/supabase/client";
 import {ProfessionalAccessRequest} from "@/components/caronaa/ProfessionalAccessRequest";
 import {professionalRadarConsentKey} from "@/lib/professional-radar-consent";
 import {buildQuickRideSearch} from "@/lib/quick-ride-search";
+import {MunicipalitySelect} from "@/components/caronaa/MunicipalitySelect";
+import {Button} from "@/components/ui/button";
 
-export const Route=createFileRoute("/_authenticated/disponibilidade-profissional")({component:ProfessionalAvailability});
+export const Route=createFileRoute("/_authenticated/disponibilidade-profissional")({component:ProfessionalAvailability,
+ head:()=>({meta:[{title:"Disponibilidade profissional | CARONAA"},{name:"description",content:"Controle sua disponibilidade e município de atuação no radar profissional CARONAA."},{property:"og:title",content:"Disponibilidade profissional | CARONAA"},{property:"og:description",content:"Disponibilidade autorizada e compartilhamento consentido de localização no CARONAA."},{property:"og:type",content:"website"},{name:"twitter:card",content:"summary"}]})
+});
 
 type DriverLocation = {coords: {latitude:number; longitude:number; accuracy:number}};
 function ProfessionalAvailability(){
@@ -165,14 +169,15 @@ function ProfessionalAvailability(){
    )}
    <ProfessionalAccessRequest/>
    <p className="rounded-xl border p-3 text-xs text-muted-foreground">Após a aprovação, informe seu município real de atuação para verificar a cobertura operacional. A região informada no cadastro não é um município. O GPS exige consentimento.</p>
-   <label className="block text-sm">Município<input value={municipality} maxLength={120} disabled={sharing} onChange={e=>setMunicipality(e.target.value)} placeholder="Informe seu município" className="mt-2 w-full rounded-lg border bg-background p-3"/></label>
+   <MunicipalitySelect value={municipality} disabled={enabled||sharing||busy} onChange={setMunicipality}/>
+   {enabled&&<p className="text-xs text-muted-foreground">Fique offline para alterar o município.</p>}
    {driverBlocked && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar suspenso até a quitação dos repasses.{" "}
       <Link to="/perfil" className="font-semibold underline">Ver comissões</Link>
     </p>}
     <p className="rounded-xl border p-4 text-sm">Situação: <strong>{!ready?"Carregando":!authorized?"Aguardando autorização":enabled?(sharing&&lastPosition?"Online · GPS ativo":"Disponível · GPS não publicado"):"Offline"}</strong></p>
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
-   <button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized))} onClick={()=>void save(!enabled)} className="w-full rounded-xl bg-primary p-4 font-bold text-primary-foreground disabled:opacity-50">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</button>
+   <Button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized||!municipality))} onClick={()=>void save(!enabled)} className="min-h-12 w-full">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</Button>
    <section className="rounded-xl border p-4 space-y-3">
      <h2 className="font-semibold">Localização no mapa (somente profissionais habilitados)</h2>
      <p className="text-sm text-muted-foreground">Compartilhamento opcional. Depois que você autorizar o GPS, ele será retomado automaticamente enquanto usar o CARONAA em uma aba visível. Outros usuários veem apenas uma posição aproximada, em região liberada. Ficar offline ou parar o compartilhamento interrompe a publicação.</p>

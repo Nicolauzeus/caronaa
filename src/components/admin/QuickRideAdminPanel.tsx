@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ProfessionalAccessQueue } from "./ProfessionalAccessQueue";
+import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
+import { Button } from "@/components/ui/button";
 import { QuickRideCommercialAdmin } from "./QuickRideCommercialAdmin";
 
 type Region = { municipality: string; public_discovery_enabled: boolean; dispatch_enabled: boolean };
@@ -36,7 +37,7 @@ export function QuickRideAdminPanel() {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border bg-card p-4">
+    <section className="space-y-4">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-bold">Corridas rápidas — controle do piloto</h2>
         <button className="rounded-lg border px-3 py-2 text-sm" onClick={() => void reload()}>Atualizar</button>
@@ -46,9 +47,9 @@ export function QuickRideAdminPanel() {
 
       <div className="space-y-2">
         <h3 className="font-semibold">Municípios</h3>
-        <div className="flex gap-2">
-          <input className="flex-1 rounded-lg border bg-background p-2 text-sm" placeholder="Ex.: Fortaleza" value={city} onChange={(e) => setCity(e.target.value)} />
-          <button className="rounded-lg border px-3 text-sm" disabled={city.trim().length < 2} onClick={() => { void setRegion(city, false, false); setCity(""); }}>Adicionar (desligado)</button>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-0 flex-1"><MunicipalitySelect value={city} onChange={setCity} /></div>
+          <Button variant="outline" disabled={city.trim().length < 2} onClick={() => { void setRegion(city, false, false); setCity(""); }}>Adicionar (desligado)</Button>
         </div>
         {data?.regions.length === 0 && <p className="text-sm text-muted-foreground">Nenhum município cadastrado.</p>}
         {data?.regions.map((r) => (
@@ -63,8 +64,6 @@ export function QuickRideAdminPanel() {
       </div>
 
       <QuickRideCommercialAdmin />
-
-      <ProfessionalAccessQueue onChange={() => void reload()} />
 
       <div className="space-y-2">
         <h3 className="font-semibold">Motoristas autorizados</h3>
