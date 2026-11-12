@@ -65,8 +65,11 @@ function ProfessionalAvailability(){
        void (supabase as any).rpc("professional_location_stop");
      }
    }catch(e){
-     setError(e instanceof Error?e.message:"Não foi possível confirmar seu GPS.");
-     void stopSharing();
+     const message=e instanceof Error?e.message:"Não foi possível confirmar seu GPS.";
+     setError(message);
+     // The 12-second server gate can reject a duplicate fix during navigation.
+     // This is temporary and must not discard the user's GPS consent.
+     if(!message.includes("Aguarde alguns segundos"))void stopSharing();
    }finally{locationRequestBusy.current=false;}
  },[publishVerified,stopSharing]);
  publishPositionRef.current=(position)=>{void publishPosition(position)};
