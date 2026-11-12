@@ -4,28 +4,13 @@
  * only the municipality resolved from the GPS point matters.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { professionalRadarPointSchema, municipalityFromProfessionalGps } from "@/lib/professional-radar-geo";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { reverseGeocodeService } from "@/lib/location/service";
-import { resolveCorridorMunicipality } from "@/lib/quick-rides/corridor-coverage";
-
-export const professionalRadarPointSchema = z.object({
-  lat: z.number().finite().min(-90).max(90),
-  lng: z.number().finite().min(-180).max(180),
-  accuracyM: z.number().finite().min(0).max(5000),
-});
 
 export type ProfessionalRadarPublication =
   | { published: true; municipality: string }
   | { published: false; reason: "OUTSIDE_APPROVED_ZONE" | "LOCATION_UNKNOWN"; municipality: string | null };
-
-/** Only geocoded cities within the canonical, known Ceará inventory are eligible. */
-export function municipalityFromProfessionalGps(
-  geo: { city?: string | null; state?: string | null; country?: string | null } | null,
-): string | null {
-  if (!geo?.city) return null;
-  return resolveCorridorMunicipality(geo.city, geo.state, geo.country)?.municipality ?? null;
-}
 
 export const publishVerifiedProfessionalPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
