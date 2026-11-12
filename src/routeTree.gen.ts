@@ -13,8 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as CadastroMotoristaRouteImport } from './routes/cadastro-motorista'
 import { Route as BuscarRouteImport } from './routes/buscar'
+import { Route as CadastroMotoristaRouteImport } from './routes/cadastro-motorista'
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as FormularioRouteImport } from './routes/formulario'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -88,14 +88,14 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CadastroMotoristaRoute = CadastroMotoristaRouteImport.update({
-  id: '/cadastro-motorista',
-  path: '/cadastro-motorista',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BuscarRoute = BuscarRouteImport.update({
   id: '/buscar',
   path: '/buscar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroMotoristaRoute = CadastroMotoristaRouteImport.update({
+  id: '/cadastro-motorista',
+  path: '/cadastro-motorista',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComoFuncionaRoute = ComoFuncionaRouteImport.update({
@@ -378,8 +378,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
-  '/cadastro-motorista': typeof CadastroMotoristaRoute
   '/buscar': typeof BuscarRoute
+  '/cadastro-motorista': typeof CadastroMotoristaRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -437,8 +437,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/cadastro-motorista': typeof CadastroMotoristaRoute
   '/buscar': typeof BuscarRoute
+  '/cadastro-motorista': typeof CadastroMotoristaRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/onboarding': typeof OnboardingRoute
   '/pitch': typeof PitchRoute
@@ -498,8 +498,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
-  '/cadastro-motorista': typeof CadastroMotoristaRoute
   '/buscar': typeof BuscarRoute
+  '/cadastro-motorista': typeof CadastroMotoristaRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -560,8 +560,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
-    | '/cadastro-motorista'
     | '/buscar'
+    | '/cadastro-motorista'
     | '/como-funciona'
     | '/formulario'
     | '/onboarding'
@@ -619,8 +619,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/cadastro-motorista'
     | '/buscar'
+    | '/cadastro-motorista'
     | '/como-funciona'
     | '/onboarding'
     | '/pitch'
@@ -679,8 +679,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin'
     | '/auth'
-    | '/cadastro-motorista'
     | '/buscar'
+    | '/cadastro-motorista'
     | '/como-funciona'
     | '/formulario'
     | '/onboarding'
@@ -741,8 +741,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
-  CadastroMotoristaRoute: typeof CadastroMotoristaRoute
   BuscarRoute: typeof BuscarRoute
+  CadastroMotoristaRoute: typeof CadastroMotoristaRoute
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   FormularioRoute: typeof FormularioRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
@@ -787,18 +787,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cadastro-motorista': {
-      id: '/cadastro-motorista'
-      path: '/cadastro-motorista'
-      fullPath: '/cadastro-motorista'
-      preLoaderRoute: typeof CadastroMotoristaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/buscar': {
       id: '/buscar'
       path: '/buscar'
       fullPath: '/buscar'
       preLoaderRoute: typeof BuscarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro-motorista': {
+      id: '/cadastro-motorista'
+      path: '/cadastro-motorista'
+      fullPath: '/cadastro-motorista'
+      preLoaderRoute: typeof CadastroMotoristaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/como-funciona': {
@@ -1301,8 +1301,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
-  CadastroMotoristaRoute: CadastroMotoristaRoute,
   BuscarRoute: BuscarRoute,
+  CadastroMotoristaRoute: CadastroMotoristaRoute,
   ComoFuncionaRoute: ComoFuncionaRoute,
   FormularioRoute: FormularioRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
