@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfessionalAuthorizationBadge } from "@/components/caronaa/ProfessionalAuthorizationBadge";
+import { MunicipalitySelect } from "./MunicipalitySelect";
+import { Button } from "@/components/ui/button";
 import {
   CAR_CATEGORIES, MISSING_LABELS, PROFILE_CODES, STATUS_LABELS, maxSeatsFor, parseMissingError, professionalAccessMissing,
   type AccessStatus, type CarCategory, type MissingCode, type VehicleType,
@@ -86,13 +88,11 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
           <label className="block text-sm">Vagas para passageiros (1 a {maxSeats})
             <input type="number" min={1} max={maxSeats} value={seats} disabled={type === "MOTO"} onChange={(e) => setSeats(Number(e.target.value))} className="mt-1 w-full rounded-lg border bg-background p-3" />
           </label>
-          <label className="block text-sm">Município
-            <input value={city} maxLength={120} onChange={(e) => setCity(e.target.value)} placeholder="Ex.: Fortaleza" className="mt-1 w-full rounded-lg border bg-background p-3" />
-          </label>
+          <MunicipalitySelect value={city} onChange={setCity} disabled={busy} />
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <button type="button" disabled={busy} onClick={() => void submit()} className="min-h-12 w-full rounded-xl bg-primary p-3 font-bold text-primary-foreground disabled:opacity-50">
+          <Button type="button" disabled={busy || !city} onClick={() => void submit()} className="min-h-12 w-full">
             {busy ? "Enviando…" : r ? "Reenviar solicitação" : "Solicitar autorização"}
-          </button>
+          </Button>
           <p className="text-xs text-muted-foreground">Foto, nome, veículo e placa vêm do seu perfil. Dados declaratórios, sem envio de documentos.</p>
         </div>
       )}

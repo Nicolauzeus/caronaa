@@ -6,8 +6,19 @@ import { InsightChart } from "@/components/admin/InsightChart";
 import { statusTextClass } from "@/lib/admin/chart-utils";
 import { ProfessionalLiveMonitor } from "@/components/admin/ProfessionalLiveMonitor";
 import { QuickRideAdminPanel } from "@/components/admin/QuickRideAdminPanel";
+import { ProfessionalAccessQueue } from "@/components/admin/ProfessionalAccessQueue";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export const Route = createFileRoute("/admin/operacoes")({ component: MobilityOperationsCenter });
+export const Route = createFileRoute("/admin/operacoes")({
+  component: MobilityOperationsCenter,
+  head: () => ({ meta: [
+    { title: "Operações e solicitações profissionais | CARONAA" },
+    { name: "description", content: "Controle de solicitações profissionais, indicadores e configuração do piloto CARONAA." },
+    { property: "og:title", content: "Operações e solicitações profissionais | CARONAA" },
+    { property: "og:description", content: "Análise administrativa de motoristas e operação regional CARONAA." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
+});
 const display = (value: number | null | undefined, suffix = "") =>
   typeof value === "number" && Number.isFinite(value)
     ? value.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + suffix
@@ -18,6 +29,7 @@ function MobilityOperationsCenter() {
   const [pending, setPending] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const [requestCount, setRequestCount] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
     setPending(true);
@@ -75,6 +87,16 @@ function MobilityOperationsCenter() {
   );
   return (
     <main className="space-y-6">
+      <Tabs defaultValue="requests" className="space-y-5">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1">
+          <TabsTrigger value="requests" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Solicitações{requestCount !== null ? ` (${requestCount})` : ""}</TabsTrigger>
+          <TabsTrigger value="indicators" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Painel e indicadores</TabsTrigger>
+          <TabsTrigger value="pilot" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Configuração do piloto</TabsTrigger>
+        </TabsList>
+        <TabsContent value="requests" forceMount className="data-[state=inactive]:hidden">
+          <ProfessionalAccessQueue onCountChange={setRequestCount} />
+        </TabsContent>
+        <TabsContent value="indicators" className="space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex flex-wrap gap-2">
           <label className="text-sm">
@@ -185,6 +207,8 @@ function MobilityOperationsCenter() {
       </section>
 
       <ProfessionalLiveMonitor />
+        </TabsContent>
+        <TabsContent value="pilot" className="space-y-6">
       <QuickRideAdminPanel />
       <section className="rounded-xl border bg-secondary/20 p-4">
         <h2 className="font-bold">Mobilidade profissional local</h2>
@@ -193,6 +217,8 @@ function MobilityOperationsCenter() {
           profissional permanecem indisponíveis até homologação específica.
         </p>
       </section>
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }

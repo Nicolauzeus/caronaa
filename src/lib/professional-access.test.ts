@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { isValidBrazilianPlate, parseMissingError, professionalAccessMissing, STATUS_LABELS } from "./professional-access";
+import { canApproveProfessionalRequest, isValidBrazilianPlate, parseMissingError, professionalAccessMissing, STATUS_LABELS } from "./professional-access";
 
 const ok = { avatarUrl: "https://x/a.jpg", fullName: "Ana Souza", vehicleBrand: "Fiat", vehicleDescription: "Argo",
   vehiclePlate: "ABC1D23", vehicleType: "CAR" as const, carCategory: "HATCH" as const, seats: 3, municipality: "Fortaleza" };
 
 describe("professional access validation", () => {
+  it("blocks approval when an obligation is missing", () => expect(canApproveProfessionalRequest("PENDING", ["PHOTO"])).toBe(false));
+  it("allows only complete pending requests", () => {
+    expect(canApproveProfessionalRequest("PENDING", [])).toBe(true);
+    expect(canApproveProfessionalRequest("APPROVED", [])).toBe(false);
+  });
+  it("fails closed if missing-data validation is absent", () => expect(canApproveProfessionalRequest("PENDING", undefined)).toBe(false));
   it("accepts complete data", () => expect(professionalAccessMissing(ok)).toEqual([]));
   it("requires a photo", () => expect(professionalAccessMissing({ ...ok, avatarUrl: null })).toContain("PHOTO"));
   it("requires first and last name", () => expect(professionalAccessMissing({ ...ok, fullName: "Ana" })).toContain("FULL_NAME"));

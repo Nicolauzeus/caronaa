@@ -28,6 +28,8 @@
 - Use Google Maps JavaScript API exclusively for maps and Google Routes API on the server for road geometry and distances. Show an error/reload state on provider failure; never mount an alternate map or route provider. Preserve per-ride location consent across non-loading refreshes and keep the local Ceará catalog available offline.
 
 - Keep the shared Relationships page outside route modules and import it from both admin URLs; this preserves automatic route splitting without cross-route component imports.
+- Use the shared authenticated Google municipality selector for professional access, availability and pilot configuration; city-only predictions and Brazilian address components prevent free-text municipality mistakes while existing database eligibility remains authoritative.
+- Keep professional access requests in their own Operations tab and read missing-data eligibility from the existing admin RPC; the detail dialog must not enable approval for incomplete or unvalidated requests.
 
 - Keep admin analytical sections tabbed and lists paginated, and render saved supplemental form answers only within authorized detail views; this keeps the workspace compact without discarding captured content.
 - Authorize fare reads through the participant client before privileged persistence, and return the saved quote; this prevents unauthorized access and divergent results under concurrent quoting.
