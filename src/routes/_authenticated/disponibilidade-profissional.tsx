@@ -47,7 +47,10 @@ function ProfessionalAvailability(){
    const {latitude,longitude,accuracy}=position.coords;
    if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||
       !Number.isFinite(accuracy)||accuracy<0||accuracy>5000){
-     setError("Precisão do GPS insuficiente para o radar.");return;
+     setError("Precisão do GPS insuficiente para o radar.");
+     setLastPosition(null);
+     void (supabase as any).rpc("professional_location_stop");
+     return;
    }
    locationRequestBusy.current=true;
    try{
