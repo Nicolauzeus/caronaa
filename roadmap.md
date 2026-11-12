@@ -1,4 +1,4 @@
-- [ ] F02/F07: organize Operations requests into tabs and readable details with missing-data approval guards; replace professional municipality typing with authenticated Google city selection; verify tests and authorized UI without publishing.
+- [x] F02/F07: Operations tabs, real-request detail dialog and missing-data approval guards; shared authenticated Google municipality selection for access, availability and pilot configuration. 20 tests pass, build OK, signed-in real request and mobile UI verified without decisions or publishing. Live Google selection and a new pending-request decision remain unverified; Google checks require an authorized deployed origin.
 - [ ] Repair public research deep links; verify anonymous direct access, refresh, submission, disabled forms and app guards without production publishing or historical mutations.
 - [x] Rebuild the sign-in screen from the supplied visual reference.
 - [x] Add persistent light and dark modes across the app and admin area.
