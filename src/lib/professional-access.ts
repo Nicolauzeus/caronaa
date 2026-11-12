@@ -2,7 +2,7 @@
 export type VehicleType = "CAR" | "MOTO";
 export type CarCategory = "HATCH" | "SEDAN" | "SUV" | "MINIVAN" | "PICKUP";
 export type AccessStatus = "PENDING" | "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
-export type MissingCode = "PHOTO" | "FULL_NAME" | "VEHICLE_MODEL" | "PLATE" | "VEHICLE_TYPE" | "CAR_CATEGORY" | "SEATS" | "MUNICIPALITY";
+export type MissingCode = "PHOTO" | "FULL_NAME" | "VEHICLE_MODEL" | "PLATE" | "VEHICLE_TYPE" | "CAR_CATEGORY" | "SEATS" | "MUNICIPALITY" | "WHATSAPP" | "REGISTRATION" | "REGION";
 
 export const CAR_CATEGORIES: { value: CarCategory; label: string; maxSeats: number }[] = [
   { value: "HATCH", label: "Hatch", maxSeats: 4 },
@@ -21,6 +21,9 @@ export const MISSING_LABELS: Record<MissingCode, string> = {
   CAR_CATEGORY: "Categoria do carro",
   SEATS: "Vagas para passageiros compatíveis com o veículo",
   MUNICIPALITY: "Município",
+  WHATSAPP: "WhatsApp com DDD",
+  REGISTRATION: "Matrícula / registro profissional",
+  REGION: "Região de atuação",
 };
 export const PROFILE_CODES: MissingCode[] = ["PHOTO", "FULL_NAME", "VEHICLE_MODEL", "PLATE"];
 

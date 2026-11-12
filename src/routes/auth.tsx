@@ -345,6 +345,10 @@ function AuthPage() {
         }
       </div>
 
+      <Link to="/cadastro-motorista" className="mb-5 flex min-h-12 items-center justify-center rounded-xl border border-caronaa-primary/40 bg-caronaa-primary/10 px-4 text-center text-sm font-bold text-foreground hover:bg-caronaa-primary/20">
+        Sou mototaxista — cadastro simplificado
+      </Link>
+
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">

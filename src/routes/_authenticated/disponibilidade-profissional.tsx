@@ -78,7 +78,12 @@ function ProfessionalAvailability(){
      setUserId(user.id);
      const allowed=!fees.error && fees.data?.driverAllowed===true;
      const approved=!access.error && access.data?.authorized===true;
-     const city=String(presence.data?.municipality || access.data?.request?.municipality || profile.data?.city || "").trim();
+     const requestedArea=String(access.data?.request?.municipality ?? "");
+     // Registration regions are not municipalities. Never send a region code to
+     // the municipality-restricted radar presence RPC.
+     const fallbackCity=requestedArea==="MACICO_BATURITE"||requestedArea==="FORTALEZA"
+       ? "" : requestedArea;
+     const city=String(presence.data?.municipality || profile.data?.city || fallbackCity).trim();
      setAuthorized(approved);
      setDriverBlocked(!allowed);
      setMunicipality(city);
@@ -148,7 +153,7 @@ function ProfessionalAvailability(){
    startSharing();
  };
  return <main className="mx-auto max-w-2xl space-y-5 p-5">
-   <Link to="/home" className="text-sm text-primary">← Voltar ao aplicativo</Link>
+   <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
    <p className="text-sm text-muted-foreground">O radar inicia disponível para motoristas aprovados ao entrar aqui pela primeira vez. Se você escolher ficar offline, essa preferência será respeitada. O compartilhamento GPS exige sua autorização e só funciona com o app em primeiro plano. Recebimento comercial de corridas depende de homologação regional.</p>
    {authorized&&(
@@ -159,6 +164,7 @@ function ProfessionalAvailability(){
      </Link>
    )}
    <ProfessionalAccessRequest/>
+   <p className="rounded-xl border p-3 text-xs text-muted-foreground">Após a aprovação, informe seu município real de atuação para verificar a cobertura operacional. A região informada no cadastro não é um município. O GPS exige consentimento.</p>
    <label className="block text-sm">Município<input value={municipality} maxLength={120} disabled={sharing} onChange={e=>setMunicipality(e.target.value)} placeholder="Informe seu município" className="mt-2 w-full rounded-lg border bg-background p-3"/></label>
    {driverBlocked && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar suspenso até a quitação dos repasses.{" "}

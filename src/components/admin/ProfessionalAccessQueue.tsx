@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CAR_CATEGORIES, MISSING_LABELS, STATUS_LABELS, type AccessStatus, type MissingCode } from "@/lib/professional-access";
 
 type Item = { id: string; status: AccessStatus; submitted_at: string; review_reason: string | null; current_missing: MissingCode[];
-  snapshot: { full_name: string; avatar_url: string; vehicle_model: string; vehicle_plate: string; vehicle_type: string; car_category: string | null; passenger_seats: number; municipality: string } };
+  snapshot: { full_name: string; avatar_url: string; vehicle_model: string; vehicle_plate: string; vehicle_type: string; car_category: string | null; passenger_seats: number; municipality: string; access_type?: string; whatsapp_e164?: string; registration_number?: string; region_code?: string } };
 
 export function ProfessionalAccessQueue({ onChange }: { onChange?: () => void }) {
   const [items, setItems] = useState<Item[]>([]);
@@ -34,7 +34,13 @@ export function ProfessionalAccessQueue({ onChange }: { onChange?: () => void })
               <img src={s.avatar_url} alt={`Foto de ${s.full_name}`} className="h-12 w-12 rounded-full object-cover" />
               <div><p className="font-semibold">{s.full_name}</p><p className="text-muted-foreground">{STATUS_LABELS[i.status]} · {new Date(i.submitted_at).toLocaleString("pt-BR")}</p></div>
             </div>
-            <p>{s.vehicle_type === "MOTO" ? "Moto" : `Carro ${CAR_CATEGORIES.find((c) => c.value === s.car_category)?.label ?? ""}`} · {s.vehicle_model} · {s.vehicle_plate} · {s.passenger_seats} vaga(s) · {s.municipality}</p>
+            {s.access_type === "MOTOTAXI_SIMPLE" && <div className="rounded-lg border border-primary/30 bg-primary/10 p-2 text-sm">
+              <p className="font-semibold">Mototaxista · cadastro simplificado</p>
+              <p>Região: {s.region_code === "MACICO_BATURITE" ? "Maciço de Baturité" : "Fortaleza"}</p>
+              <p>WhatsApp: {s.whatsapp_e164 ?? "Não informado"}</p>
+              <p>Matrícula: {s.registration_number ?? "Não informada"}</p>
+            </div>}
+            {s.access_type !== "MOTOTAXI_SIMPLE" && <p>{s.vehicle_type === "MOTO" ? "Moto" : `Carro ${CAR_CATEGORIES.find((c) => c.value === s.car_category)?.label ?? ""}`} · {s.vehicle_model} · {s.vehicle_plate} · {s.passenger_seats} vaga(s) · {s.municipality}</p>}
             <p className="text-xs text-muted-foreground">Dados declaratórios — documentos não verificados.</p>
             {i.current_missing.length > 0 && <p role="alert" className="text-destructive">Perfil atual incompleto: {i.current_missing.map((c) => MISSING_LABELS[c]).join("; ")}</p>}
             {i.review_reason && <p>Motivo: {i.review_reason}</p>}
