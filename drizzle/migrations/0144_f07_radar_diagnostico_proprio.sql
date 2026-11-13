@@ -45,7 +45,7 @@ BEGIN
     SELECT 1 FROM public.professional_driver_authorizations a
     JOIN public.professional_presence p ON p.user_id=a.user_id
     WHERE a.user_id=p_user_id AND a.approved AND a.vehicle_type=p_vehicle
-      AND p.is_available AND p.last_seen_at>now()-interval '90 seconds'
+      AND p.is_available
       AND public.driver_platform_access_allowed(a.user_id)
   ) THEN RETURN; END IF;
   IF NOT EXISTS(
@@ -54,6 +54,9 @@ BEGIN
       AND r.public_discovery_enabled
   ) THEN RETURN; END IF;
 
+  -- In test-only mode, synthetic preview stays valid for its explicit 15m
+  -- expiry while the professional remains online. Real GPS must also have a
+  -- fresh heartbeat within 90 seconds.
   -- Real position takes precedence, but never expose precise GPS even to
   -- the debug map: the same rounded accuracy as public discovery.
   RETURN QUERY
