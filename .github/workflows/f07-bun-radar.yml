@@ -1,0 +1,36 @@
+name: F07 Bun radar verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/components/caronaa/ProfessionalAvailabilityPage.tsx"
+      - "src/components/caronaa/ProfessionalRadarSync.tsx"
+      - "src/lib/quick-rides/f07-radar-diagnostic.functions.ts"
+      - "src/lib/professional-radar-sql-policy.test.ts"
+      - "drizzle/migrations/0144_f07_radar_diagnostico_proprio.sql"
+      - "src/routes/_authenticated/disponibilidade-profissional.tsx"
+      - "src/routes/_authenticated/home.tsx"
+      - "src/components/caronaa/GoogleHomeRideMap.tsx"
+      - ".github/workflows/f07-bun-radar.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/components/caronaa/ProfessionalAvailabilityPage.tsx"
+      - "src/lib/quick-rides/f07-radar-diagnostic.functions.ts"
+      - ".github/workflows/f07-bun-radar.yml"
+
+permissions:
+  contents: read
+jobs:
+  bun-f07:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install
+      - name: Full Vitest suite (Bun)
+        run: bunx vitest run
+      - name: Production build (Bun)
+        run: bun run build
