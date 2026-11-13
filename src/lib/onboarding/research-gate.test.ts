@@ -66,8 +66,12 @@ describe("research gate after basic onboarding", () => {
 
   it("exempts previously approved professional drivers even if onboarding was PASSAGEIRO", async () => {
     api.professionalAccess.mockResolvedValue({ data: { authorized: true }, error: null });
+    api.participations.mockRejectedValue(new Error("research unavailable"));
+    api.verifications.mockRejectedValue(new Error("badges unavailable"));
     expect(await resolvePostOnboardingDestination()).toBe("/home");
     expect(api.professionalAccess).toHaveBeenCalledWith("get_my_professional_access");
+    expect(api.participations).not.toHaveBeenCalled();
+    expect(api.verifications).not.toHaveBeenCalled();
   });
 
   it("directs pending or correction-requested professional applicants to approval status", async () => {
@@ -78,6 +82,8 @@ describe("research gate after basic onboarding", () => {
       expect(await resolvePostOnboardingDestination()).toBe("/disponibilidade-profissional");
     }
     expect(api.professionalAccess).toHaveBeenCalledTimes(3);
+    expect(api.participations).not.toHaveBeenCalled();
+    expect(api.verifications).not.toHaveBeenCalled();
   });
 
   it("does not mistake arbitrary request statuses for approval or a driver application", async () => {
