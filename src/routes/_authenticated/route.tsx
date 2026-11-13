@@ -20,36 +20,44 @@ export const Route = createFileRoute("/_authenticated")({
     if (data.user.email_confirmed_at && readPendingParticipations().length) {
       await claimPendingParticipations();
     }
-    // Shared guard: every authenticated screen (including Profile and Trips)
-    // must enforce the research step, not only /home.
+    // Availability is accessible to an authenticated pilot candidate. It
+    // cannot grant any professional permission by itself; every write and
+    // dispatch is checked by the database and pilot server dual gate.
+    const professionalPage = ["/disponibilidade-profissional","/perfil","/viagem-rapida"]
+      .includes(location.pathname);
+    let approvedProfessional = false;
+    if (professionalPage) {
+      const [{ data: applicant, error: applicantError },
+             { data: access, error: accessError }] = await Promise.all([
+        (supabase as any).from("professional_mototaxi_profiles").select("user_id")
+          .eq("user_id",data.user.id).maybeSingle(),
+        (supabase as any).rpc("get_my_professional_access"),
+      ]);
+      if (applicantError || accessError) {
+        throw new Error("Não foi possível validar seu acesso profissional.");
+      }
+      approvedProfessional=access?.authorized === true;
+      if (location.pathname === "/disponibilidade-profissional") {
+        return {user:data.user,launchLocked:!approvedProfessional};
+      }
+      if (location.pathname === "/viagem-rapida") {
+        if (approvedProfessional) {
+          return {user:data.user,launchLocked:false};
+        }
+        throw redirect({to:"/disponibilidade-profissional",replace:true});
+      }
+      if (location.pathname === "/perfil" && applicant) {
+        return {user:data.user,launchLocked:!approvedProfessional};
+      }
+    }
+    // Passenger app and other routes keep the normal research/onboarding
+    // gates. These pilot exceptions do NOT grant access to passenger Home.
     const onboarding = await readOnboarding();
     if (onboarding?.status !== "BASIC_COMPLETED") {
       throw redirect({ to: "/onboarding", replace: true });
     }
-    // A professional applicant may access the approval and availability screens
-    // without taking a passenger survey or waiting for an academic launch.
-    // Approval is always checked by the server RPC, never user metadata.
-    const professionalPage = location.pathname === "/disponibilidade-profissional" ||
-      location.pathname === "/perfil" || location.pathname === "/viagem-rapida";
-    let approvedMototaxi = false;
-    if (professionalPage) {
-      const [{ data: applicant, error: applicantError }, { data: access, error: accessError }] = await Promise.all([
-        (supabase as any).from("professional_mototaxi_profiles").select("user_id")
-          .eq("user_id", data.user.id).maybeSingle(),
-        (supabase as any).rpc("get_my_professional_access"),
-      ]);
-      if (applicantError || accessError) throw new Error("Não foi possível validar seu acesso profissional.");
-      approvedMototaxi = Boolean(applicant && access?.authorized === true);
-      if (applicant && (location.pathname === "/perfil" ||
-        location.pathname === "/disponibilidade-profissional" ||
-        (location.pathname === "/viagem-rapida" && approvedMototaxi))) {
-        // Authorization to inspect the profile/request is not a commercial
-        // operating permit. The ride and presence RPCs enforce their own gates.
-        return { user: data.user, launchLocked: !approvedMototaxi };
-      }
-    }
     const destination = await resolvePostOnboardingDestination();
-    if (destination === "/formulario" && !approvedMototaxi) {
+    if (destination === "/formulario" && !approvedProfessional) {
       throw redirect({ to: "/formulario", replace: true });
     }
     const launch = await getMyResearchLaunchState();
@@ -57,7 +65,7 @@ export const Route = createFileRoute("/_authenticated")({
     // All other app routes remain restricted, backed by the database ride guards.
     const accessibleWhileWaiting = location.pathname === "/aguardando" ||
       location.pathname === "/perfil";
-    if (launch.locked && !accessibleWhileWaiting && !approvedMototaxi) {
+    if (launch.locked && !accessibleWhileWaiting && !approvedProfessional) {
       throw redirect({ to: "/aguardando", replace: true });
     }
     return { user: data.user, launchLocked: launch.locked };
