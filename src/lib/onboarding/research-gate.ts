@@ -19,14 +19,18 @@ export function decideResearchDestination(input: {
   isPilot: boolean;
   isDriverOnly?: boolean;
   isApprovedProfessional?: boolean;
-}): "/formulario" | "/aguardando" | "/home" {
+  hasProfessionalRequest?: boolean;
+}): "/formulario" | "/aguardando" | "/home" | "/disponibilidade-profissional" {
   if (input.locked) return "/aguardando";
   if (input.isDriverOnly || input.isApprovedProfessional || input.isPilot || input.hasParticipation) return "/home";
+  // A pending professional candidate must have a path to finish the driver
+  // process, without unlocking the passenger home or professional dispatch.
+  if (input.hasProfessionalRequest) return "/disponibilidade-profissional";
   return "/formulario";
 }
 
 export async function resolvePostOnboardingDestination():
-  Promise<"/formulario" | "/aguardando" | "/home"> {
+  Promise<"/formulario" | "/aguardando" | "/home" | "/disponibilidade-profissional"> {
   // Read the verified account's persisted onboarding role, not a querystring
   // or mutable auth metadata. This does NOT grant access to paid driver RPCs.
   const onboarding = await readOnboarding();
@@ -54,10 +58,13 @@ export async function resolvePostOnboardingDestination():
   // Only an actual server-side authorization qualifies, never a form field,
   // user metadata, or an unapproved access request.
   let isApprovedProfessional = false;
+  let hasProfessionalRequest = false;
   if (participations.length === 0 &&
       !verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED")) {
     const { data, error } = await (supabase as any).rpc("get_my_professional_access");
     isApprovedProfessional = !error && data?.authorized === true;
+    hasProfessionalRequest = !error &&
+      ["PENDING", "CHANGES_REQUESTED", "REJECTED"].includes(data?.request?.status);
   }
   return decideResearchDestination({
     locked: false,
@@ -65,5 +72,6 @@ export async function resolvePostOnboardingDestination():
     isPilot: verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED"),
     isDriverOnly: false,
     isApprovedProfessional,
+    hasProfessionalRequest,
   });
 }
