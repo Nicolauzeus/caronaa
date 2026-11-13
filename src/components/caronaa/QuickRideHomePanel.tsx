@@ -12,6 +12,7 @@ import {
   type QuickRideFarePreview,
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
+import { QuickRidePixCard } from "./QuickRidePixCard";
 
 type QuickVehicle = "CAR" | "MOTO";
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
@@ -49,6 +50,7 @@ export function QuickRideHomePanel({
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
+  const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
 
   useEffect(()=>{
     mounted.current=true;
@@ -254,6 +256,7 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
+      {!liveRide&&completedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
     </section>
   );
