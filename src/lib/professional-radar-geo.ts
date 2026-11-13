@@ -6,6 +6,8 @@ export const professionalRadarPointSchema = z.object({
   lat: z.number().finite().min(-90).max(90),
   lng: z.number().finite().min(-180).max(180),
   accuracyM: z.number().finite().min(0).max(5000),
+  // Correlation only. Never an account identifier or an authorization input.
+  traceId: z.string().regex(/^[a-zA-Z0-9_-]{6,40}$/).optional(),
 });
 
 /** Validated by Google's SERVER reverse geocoding; registration never consulted. */
