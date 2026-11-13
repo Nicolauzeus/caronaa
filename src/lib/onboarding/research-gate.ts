@@ -48,30 +48,32 @@ export async function resolvePostOnboardingDestination():
     return "/home";
   }
 
+  // An approved professional or a pending driver applicant also does not
+  // depend on research services. In particular, a research outage must not
+  // strand a verified driver at the survey screen.
+  const { data: access, error: accessError } =
+    await (supabase as any).rpc("get_my_professional_access");
+  const isApprovedProfessional = !accessError && access?.authorized === true;
+  const hasProfessionalRequest = !accessError &&
+    ["PENDING", "CHANGES_REQUESTED", "REJECTED"].includes(access?.request?.status);
+  if (isApprovedProfessional || hasProfessionalRequest) {
+    return decideResearchDestination({
+      locked: false,
+      hasParticipation: false,
+      isPilot: false,
+      isApprovedProfessional,
+      hasProfessionalRequest,
+    });
+  }
+
   const [participations, verifications] = await Promise.all([
     getMyResearchParticipationBadges(),
     getMyUserVerifications(),
   ]);
-
-  // A professional already approved by the administrative flow is also a
-  // driver even if they originally onboarded as PASSAGEIRO or AMBOS.
-  // Only an actual server-side authorization qualifies, never a form field,
-  // user metadata, or an unapproved access request.
-  let isApprovedProfessional = false;
-  let hasProfessionalRequest = false;
-  if (participations.length === 0 &&
-      !verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED")) {
-    const { data, error } = await (supabase as any).rpc("get_my_professional_access");
-    isApprovedProfessional = !error && data?.authorized === true;
-    hasProfessionalRequest = !error &&
-      ["PENDING", "CHANGES_REQUESTED", "REJECTED"].includes(data?.request?.status);
-  }
   return decideResearchDestination({
     locked: false,
     hasParticipation: participations.length > 0,
     isPilot: verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED"),
     isDriverOnly: false,
-    isApprovedProfessional,
-    hasProfessionalRequest,
   });
 }
