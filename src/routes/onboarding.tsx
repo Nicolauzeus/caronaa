@@ -29,8 +29,8 @@ const affiliations: {value:Affiliation;label:string}[] = [
 ];
 const roles: {value:UsageRole;label:string;description:string}[] = [
   {value:"PASSAGEIRO",label:"Passageiro",description:"Quero encontrar caronas"},
-  {value:"MOTORISTA",label:"Motorista",description:"Quero oferecer caronas"},
-  {value:"AMBOS",label:"Ambos",description:"Quero encontrar e oferecer"},
+  {value:"MOTORISTA",label:"Motorista",description:"Quero oferecer caronas sem responder pesquisas"},
+  {value:"AMBOS",label:"Ambos",description:"Quero encontrar e oferecer (pesquisa de passageiro)"},
 ];
 
 function OnboardingPage() {
@@ -108,7 +108,7 @@ function OnboardingPage() {
           {step===0&&regions.map(item=><button key={item.value} type="button" className={optionClass(region===item.value)} onClick={()=>setRegion(item.value)}><MapPin size={19} className="shrink-0 text-[#FFBB00]"/><span className="flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="block text-xs text-white/50">{item.detail}</span></span>{region===item.value&&<Check size={19} className="text-[#FFBB00]"/>}</button>)}
           {step===1&&<><p className="mb-2 text-xs text-white/50">Instituição sugerida: {region?institutionForRegion(region)??"Sem instituição obrigatória":"Escolha sua região"}</p>{affiliations.map(item=><button key={item.value} type="button" className={optionClass(affiliation===item.value)} onClick={()=>setAffiliation(item.value)}><Users size={18} className="text-[#FFBB00]"/><span className="flex-1 text-sm font-semibold">{item.label}</span>{affiliation===item.value&&<Check size={19} className="text-[#FFBB00]"/>}</button>)}</>}
           {step===2&&roles.map(item=><button key={item.value} type="button" className={optionClass(role===item.value)} onClick={()=>setRole(item.value)}><CarFront size={19} className="text-[#FFBB00]"/><span className="flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="block text-xs text-white/50">{item.description}</span></span>{role===item.value&&<Check size={19} className="text-[#FFBB00]"/>}</button>)}
-          {step===3&&<div className="space-y-3 rounded-3xl border border-white/15 bg-white/[0.06] p-5 backdrop-blur-2xl"><p className="text-sm">Região: <b>{regions.find(x=>x.value===region)?.label}</b></p><p className="text-sm">Instituição: <b>{region?institutionForRegion(region)??"Não vinculada":"Não vinculada"}</b></p><p className="text-sm">Vínculo: <b>{affiliations.find(x=>x.value===affiliation)?.label}</b></p><p className="text-sm">Perfil: <b>{roles.find(x=>x.value===role)?.label}</b></p><p className="pt-2 text-xs text-white/55">A conclusão do cadastro não libera campanhas em pré-lançamento.</p></div>}
+          {step===3&&<div className="space-y-3 rounded-3xl border border-white/15 bg-white/[0.06] p-5 backdrop-blur-2xl"><p className="text-sm">Região: <b>{regions.find(x=>x.value===region)?.label}</b></p><p className="text-sm">Instituição: <b>{region?institutionForRegion(region)??"Não vinculada":"Não vinculada"}</b></p><p className="text-sm">Vínculo: <b>{affiliations.find(x=>x.value===affiliation)?.label}</b></p><p className="text-sm">Perfil: <b>{roles.find(x=>x.value===role)?.label}</b></p><p className="pt-2 text-xs text-white/55">{role==="MOTORISTA" ? "Motoristas não precisam preencher formulários de pesquisa para entrar no aplicativo. O radar e as corridas profissionais continuam sujeitos a autorização." : "A conclusão do cadastro não libera campanhas em pré-lançamento."}</p></div>}
         </div>
       </section>
       {step===3&&hint?.journey&&<div className="mb-3 rounded-xl border border-white/15 bg-white/[0.05] p-3 text-xs text-white/70">Trajeto lembrado da pesquisa: {hint.journey.origin} → {hint.journey.destination}. Você poderá confirmá-lo ao pedir ou oferecer carona; nenhuma viagem foi criada.</div>}
