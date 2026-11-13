@@ -448,7 +448,7 @@ export function GoogleHomeRideMap({
       )}
       {professionalDrivers.length > 0 && (
         <div className={`pointer-events-none absolute left-3 z-10 max-w-[70%] rounded-lg bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm ${immersive ? "bottom-24" : "bottom-3"}`}>
-          {professionalDrivers.some(driver=>!driver.is_self) ? "🚗 Motoristas disponíveis · não atribuídos" : "Prévia do próprio veículo · apenas teste, sem oferta de corrida"}
+          {professionalDrivers.some(driver=>!driver.is_self) ? "🚗 Motoristas disponíveis no radar · ainda não atribuídos à viagem" : "Prévia do próprio veículo · apenas teste, sem oferta de corrida"}
         </div>
       )}
       {routeMetrics && (
