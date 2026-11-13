@@ -178,7 +178,7 @@ function ProfessionalAvailability(){
  useEffect(()=>{
    if(!enabled)return;
    const timer=window.setInterval(()=>{
-     if(document.visibilityState==="visible")
+     {
        void (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:null})
        .then(({error}:{error:any})=>{if(error){setError("Falha ao atualizar disponibilidade.");setEnabled(false);void stopSharing()}});
    },30000);
@@ -187,7 +187,7 @@ function ProfessionalAvailability(){
  useEffect(()=>{
    if(!sharing)return;
    const timer=window.setInterval(()=>{
-     if(document.visibilityState!=="visible"||!sharingRef.current||!navigator.geolocation)return;
+     if(!sharingRef.current||!navigator.geolocation)return;
      navigator.geolocation.getCurrentPosition(
        position=>publishPositionRef.current(position),
        ()=>{if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));setError("Sinal GPS expirado. Compartilhamento interrompido.");void stopSharing()},
@@ -197,7 +197,7 @@ function ProfessionalAvailability(){
    return()=>window.clearInterval(timer);
  },[sharing,stopSharing,userId]);
  useEffect(()=>{
-   const visibility=()=>{setVisible(!document.hidden);if(document.hidden&&sharingRef.current)void stopSharing()};
+   const visibility=()=>setVisible(true); // Homologação: trocar de aba não desliga o radar.
    document.addEventListener("visibilitychange",visibility);
    return()=>{document.removeEventListener("visibilitychange",visibility);void stopSharing()};
  },[stopSharing]);
