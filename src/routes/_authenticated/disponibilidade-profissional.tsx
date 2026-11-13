@@ -170,6 +170,7 @@ function ProfessionalAvailability(){
        p_available:true,p_municipality:municipality||null,
      });
      if(onlineError)throw onlineError;
+     {const {data:{user:me}}=await supabase.auth.getUser(); if(me)window.localStorage.setItem(professionalRadarConsentKey(me.id),"yes");} // botão único: online + GPS
      setEnabled(true);
    }catch(e){
      setError(e instanceof Error?e.message:"Não foi possível atualizar a disponibilidade.");
@@ -178,7 +179,6 @@ function ProfessionalAvailability(){
  useEffect(()=>{
    if(!enabled)return;
    const timer=window.setInterval(()=>{
-     {
        void (supabase as any).rpc("set_professional_presence",{p_available:true,p_municipality:null})
        .then(({error}:{error:any})=>{if(error){setError("Falha ao atualizar disponibilidade.");setEnabled(false);void stopSharing()}});
    },30000);
