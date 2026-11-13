@@ -276,6 +276,8 @@ Passageiro → Viajar agora → Origem/destino → Carro ou moto elegível
 
 **Conciliação de migrations concorrentes (13/11/2026):** o Lovable adicionou `0123_radar_show_self_homologacao.sql`, que removeu a exclusão do próprio usuário da RPC pública sem checagem de homologação. Após `0142` e essa `0123`, aplicar `0145_f07_restaurar_descoberta_publica.sql` para restaurar a exclusão na consulta pública. O próprio motorista é exibido apenas pela função diagnóstica privada criada em `0144`, que nunca altera a oferta real; não aplicar `0144` ou ativar simuladores fora de banco/servidor isolados de homologação.
 
+**Conciliação com a edição Lovable de 13/11/2026:** o arquivo histórico `0123_radar_show_self_homologacao.sql` removeu o filtro do próprio usuário da **RPC pública**. A migration incremental `0145_f07_public_discovery_self_guard.sql` restaura o filtro `l.user_id <> auth.uid()` sem alterar o veículo, o município, o status online ou o TTL. **Aplicar 0145 depois de 0123/0142/0144** no ambiente isolado de homologação; a auto-visualização passa exclusivamente pela função protegida `caronaa_f07_test_self_radar` e jamais pela descoberta pública. A edição antiga do Lovable não substitui a liberação da nova migration.
+
 **Aceite F07:** simular disponibilidade, pedido, despacho, aceite, corrida, estados, cancelamento e ausência de profissional; validar conformidade antes de habilitar operação real.
 
 ### F08 — Acompanhar viagem, notificações, pagamentos e avaliação
