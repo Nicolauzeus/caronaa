@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
+import { QuickRidePixCard } from "./QuickRidePixCard";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 type QuickRide = {
@@ -54,17 +55,28 @@ export function QuickRideExperience({
 }) {
   const [municipality, setMunicipality] = useState(initialMunicipality);
   useEffect(() => {
-    if (!driverOnly || initialMunicipality.trim()) return;
-    let active = true;
-    void supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-      const { data } = await (supabase as any).from("professional_presence")
-        .select("municipality").eq("user_id", user.id).maybeSingle();
-      const city = typeof data?.municipality === "string" ? data.municipality : "";
-      if (active && city.length > 1) setMunicipality(city);
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, [driverOnly, initialMunicipality]);
+    if (!driverOnly) return;
+    let active=true;
+    const refreshOperationalMunicipality=async()=>{
+      const {data:{user}}=await supabase.auth.getUser();
+      if(!user || !active)return;
+      const {data,error}=await (supabase as any).from("professional_presence")
+        .select("municipality,is_available,last_seen_at")
+        .eq("user_id",user.id).maybeSingle();
+      if(!active)return;
+      // Driver queue always follows the CURRENT presence municipality, which
+      // the server verifies from GPS. Registration region/search params are
+      // never authorization to receive dispatch.
+      const city=!error && data?.is_available===true &&
+        typeof data.municipality==="string" ? data.municipality.trim() : "";
+      setMunicipality(city);
+    };
+    void refreshOperationalMunicipality().catch(()=>undefined);
+    const timer=window.setInterval(()=>{
+      void refreshOperationalMunicipality().catch(()=>undefined);
+    },10000);
+    return()=>{active=false;window.clearInterval(timer);};
+  },[driverOnly]);
   const [vehicle, setVehicle] = useState<"CAR" | "MOTO">("CAR");
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
@@ -338,14 +350,17 @@ export function QuickRideExperience({
       </p>
       {driverOnly && (
         <label className="block text-sm font-semibold">
-          Município em que estou habilitado
+          Município atual confirmado pelo radar
           <input
             value={municipality}
+            readOnly
             maxLength={120}
-            onChange={(e) => setMunicipality(e.target.value)}
             className="mt-1 h-11 w-full rounded-xl border bg-background px-3"
-            placeholder="Ex.: Redenção"
+            placeholder="Ative o GPS na disponibilidade profissional"
           />
+          <p className="mt-1 text-xs text-muted-foreground">
+            A fila acompanha o município atual informado pelo GPS verificado, mesmo que sua região cadastrada seja outra. Sem GPS válido, não há despacho.
+          </p>
         </label>
       )}
       {!driverOnly && (
@@ -585,6 +600,7 @@ export function QuickRideExperience({
                 Finalizar
               </button>
             )}
+            {r.status === "COMPLETED" && <QuickRidePixCard rideId={r.id} />}
           </article>
         ))}
       </section>

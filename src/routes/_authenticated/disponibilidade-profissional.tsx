@@ -1,6 +1,7 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useServerFn} from "@tanstack/react-start";
 import {publishVerifiedProfessionalPosition} from "@/lib/professional-radar.functions";
+import {getF07PilotState,activateF07PilotDriver} from "@/lib/quick-rides/f07-pilot.functions";
 import {useCallback, useEffect, useRef, useState} from "react";
 import {supabase} from "@/integrations/supabase/client";
 import {ProfessionalAccessRequest} from "@/components/caronaa/ProfessionalAccessRequest";
@@ -16,6 +17,12 @@ export const Route=createFileRoute("/_authenticated/disponibilidade-profissional
 type DriverLocation = {coords: {latitude:number; longitude:number; accuracy:number}};
 function ProfessionalAvailability(){
  const publishVerified=useServerFn(publishVerifiedProfessionalPosition);
+ const getPilot=useServerFn(getF07PilotState);
+ const activatePilot=useServerFn(activateF07PilotDriver);
+ const [pilotEnabled,setPilotEnabled]=useState(false);
+ const [pilotVehicle,setPilotVehicle]=useState<"CAR"|"MOTO">("MOTO");
+ const [pilotAuthorized,setPilotAuthorized]=useState(false);
+ const [pilotExpiresAt,setPilotExpiresAt]=useState("");
  const [enabled,setEnabled]=useState(false);
  const [driverBlocked,setDriverBlocked]=useState(false);
  const [authorized,setAuthorized]=useState(false);
@@ -100,11 +107,12 @@ function ProfessionalAvailability(){
    void (async()=>{
      const {data:{user}}=await supabase.auth.getUser();
      if(!user){if(active){setError("Entre na sua conta para ativar o radar.");setReady(true)}return}
-     const [presence, fees, access, profile]=await Promise.all([
+     const [presence, fees, access, profile, pilot]=await Promise.all([
        (supabase as any).from("professional_presence").select("is_available,municipality,last_seen_at").eq("user_id",user.id).maybeSingle(),
        (supabase as any).rpc("get_my_driver_platform_fees"),
        (supabase as any).rpc("get_my_professional_access"),
        supabase.from("profiles").select("city").eq("id",user.id).maybeSingle(),
+       getPilot().catch(()=>({enabled:false})),
      ]);
      if(!active)return;
      setUserId(user.id);
@@ -117,6 +125,7 @@ function ProfessionalAvailability(){
        ? "" : requestedArea;
      const city=String(presence.data?.municipality || profile.data?.city || fallbackCity).trim();
      setAuthorized(approved);
+     setPilotEnabled(pilot.enabled===true);
      setDriverBlocked(!allowed);
      setMunicipality(city);
      // New approved drivers start online; a driver's explicit offline choice wins.
@@ -136,16 +145,35 @@ function ProfessionalAvailability(){
    return()=>{active=false};
  },[]);
  async function save(availability:boolean){
-    if(availability && (driverBlocked||!authorized)){
-      setError("A disponibilidade exige autorização profissional e ausência de repasses bloqueantes. Consulte seu Perfil.");
-      return;
-    }
-    // GPS resolves the actual municipality after the driver consents.
+   if(availability && driverBlocked){
+     setError("Motorista bloqueado por repasses. Consulte seu Perfil.");return;
+   }
+   if(availability && !authorized && !pilotEnabled){
+     setError("A disponibilidade exige aprovação do administrativo.");return;
+   }
    setBusy(true);setError("");
-   if(!availability)await stopSharing();
-   const {error:presenceError}=await (supabase as any).rpc("set_professional_presence",{p_available:availability,p_municipality:municipality||null});
-   if(presenceError)setError(presenceError.message);else setEnabled(availability);
-   setBusy(false);
+   try{
+     if(!availability){
+       await stopSharing();
+       const {error:offlineError}=await (supabase as any).rpc("set_professional_presence",{
+         p_available:false,p_municipality:null,
+       });
+       if(offlineError)throw offlineError;
+       setEnabled(false);return;
+     }
+     if(!authorized){
+       const pilot=await activatePilot({data:{vehicleType:pilotVehicle}});
+       if(!pilot.approved)throw new Error("Piloto não autorizado.");
+       setAuthorized(true);setPilotAuthorized(true);setPilotExpiresAt(pilot.expiresAt);
+     }
+     const {error:onlineError}=await (supabase as any).rpc("set_professional_presence",{
+       p_available:true,p_municipality:municipality||null,
+     });
+     if(onlineError)throw onlineError;
+     setEnabled(true);
+   }catch(e){
+     setError(e instanceof Error?e.message:"Não foi possível atualizar a disponibilidade.");
+   }finally{setBusy(false);}
  }
  useEffect(()=>{
    if(!enabled)return;
@@ -195,7 +223,23 @@ function ProfessionalAvailability(){
        Ver pedidos de Corrida Rápida e acompanhar minhas viagens
      </Link>
    )}
-   <ProfessionalAccessRequest/>
+   {(!pilotEnabled || !pilotAuthorized) && <ProfessionalAccessRequest/>}
+    {pilotEnabled && !authorized && (
+      <section aria-label="Homologação F07" className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <p className="font-semibold">Piloto F07 — somente homologação</p>
+        <p className="text-xs text-muted-foreground">A autorização temporária é concedida ao clicar em Ficar disponível, somente em homologação. Não substitui a aprovação comercial nem permite GPS sem consentimento.</p>
+        <label className="block text-sm font-semibold">Veículo do piloto
+          <select value={pilotVehicle} onChange={e=>setPilotVehicle(e.target.value as "CAR"|"MOTO")}
+            className="mt-1 w-full rounded-xl border bg-background p-3">
+            <option value="MOTO">Moto</option><option value="CAR">Carro</option>
+          </select>
+        </label>
+      </section>
+    )}
+    {pilotAuthorized && <p role="status" className="rounded-xl border border-primary/40 p-3 text-sm">
+      Acesso temporário do piloto autorizado {pilotExpiresAt? "até "+new Date(pilotExpiresAt).toLocaleString("pt-BR"):""}.
+      O GPS continua opt-in e a operação é apenas de homologação.
+    </p>}
    <p className="rounded-xl border p-3 text-xs text-muted-foreground">O município operacional é confirmado automaticamente a partir da localização atual. A seleção abaixo é apenas um ponto de partida; não restringe a região em que você pode publicar o GPS. Se não souber o município, basta autorizar o GPS depois de ficar disponível.</p>
    <MunicipalitySelect value={municipality} disabled={enabled||sharing||busy} onChange={setMunicipality}/>
    {enabled&&<p className="text-xs text-muted-foreground">Município atualizado pelo GPS verificado. Fique offline para editar o município inicial.</p>}
@@ -205,7 +249,7 @@ function ProfessionalAvailability(){
     </p>}
     <p className="rounded-xl border p-4 text-sm">Situação: <strong>{!ready?"Carregando":!authorized?"Aguardando autorização":enabled?(sharing&&lastPosition?"Online · GPS ativo":"Disponível · GPS não publicado"):"Offline"}</strong></p>
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
-   <Button disabled={!ready||busy||(!enabled&&(driverBlocked||!authorized))} onClick={()=>void save(!enabled)} className="min-h-12 w-full">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</Button>
+   <Button disabled={!ready||busy||(!enabled&&(driverBlocked||(!authorized&&!pilotEnabled)))} onClick={()=>void save(!enabled)} className="min-h-12 w-full">{busy?"Salvando...":enabled?"Ficar offline":"Ficar disponível"}</Button>
    <section className="rounded-xl border p-4 space-y-3">
      <h2 className="font-semibold">Localização no mapa (somente profissionais habilitados)</h2>
      <p className="text-sm text-muted-foreground">Compartilhamento opcional. Depois que você autorizar o GPS, ele será retomado automaticamente enquanto usar o CARONAA em uma aba visível. Outros usuários veem apenas uma posição aproximada, em região liberada. Ficar offline ou parar o compartilhamento interrompe a publicação.</p>
