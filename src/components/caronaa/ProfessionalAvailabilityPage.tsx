@@ -37,6 +37,7 @@ export function ProfessionalAvailabilityPage() {
   const [fix,setFix]=useState<Fix|null>(null);
   const [error,setError]=useState("");
   const [tick,setTick]=useState(Date.now());
+  const onAuthorized=useCallback((value:boolean)=>setAuthorized(value),[]);
   const mounted=useRef(true);
   const watch=useRef<number|null>(null);
   const tracking=useRef(false);
@@ -277,7 +278,7 @@ export function ProfessionalAvailabilityPage() {
       Com consentimento ativo, o navegador pode continuar transmitindo ao alternar
       abas; se suspender o GPS, o sinal do radar expira em 90 segundos.
     </p>
-    <ProfessionalAccessRequest onAuthorized={value=>setAuthorized(value)}/>
+    <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>
       <p>Autorização temporária somente no ambiente de testes.</p>
