@@ -717,7 +717,7 @@ function Home() {
                     destinationPoint={destinationLocation}
                     vehicle={quickVehicle}
                     onVehicleChange={setQuickVehicle}
-                    driverCount={professionalDrivers.length}
+                    driverCount={professionalDrivers.filter(driver=>!driver.is_self).length}
                     driverLoading={professionalLoading}
                     driverError={professionalError}
                     gpsOriginIsImprecise={gpsOriginIsImprecise}
