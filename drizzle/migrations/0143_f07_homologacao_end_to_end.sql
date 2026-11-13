@@ -75,7 +75,8 @@ CREATE OR REPLACE FUNCTION public.caronaa_f07_pilot_activate_driver(
   p_user_id uuid,p_vehicle_type text
 ) RETURNS timestamptz LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $pilot$
-DECLARE v_until timestamptz; v_prior boolean:=false; v_record record;
+DECLARE v_until timestamptz; v_prior boolean:=false;
+        v_original boolean; v_record record;
 BEGIN
   IF p_user_id IS NULL OR p_vehicle_type NOT IN ('CAR','MOTO')
       OR p_vehicle_type IS NULL THEN
@@ -105,6 +106,13 @@ BEGIN
         USING ERRCODE='42501';
     END IF;
   END IF;
+  -- Do not convert an earlier pilot approval into a permanent manual
+  -- approval when this pilot endpoint is called a second time.
+  SELECT was_previously_approved INTO v_original
+    FROM public.caronaa_f07_pilot_authorization_audit
+    WHERE user_id=p_user_id;
+  IF FOUND THEN v_prior:=v_original; END IF;
+
   INSERT INTO public.professional_driver_authorizations(
     user_id,approved,vehicle_type,approved_at,updated_at
   ) VALUES(p_user_id,true,p_vehicle_type,now(),now())
@@ -349,7 +357,7 @@ BEGIN
     'rideId',r.id,
     'paymentMethod','MANUAL_DRIVER_PIX',
     'automaticConfirmation',false,
-    'pilotOnly',true
+    'pilotOnly',(q.policy_version LIKE '%-piloto')
   );
 END
 $pix$;
