@@ -83,9 +83,11 @@ export const simulateF07TestLocation = createServerFn({method:"POST"})
     // Validate the city AND state to avoid a false preview from a typo.
     const geo=await geocodeAddressService(`${data.municipality}, Ceará, Brasil`);
     const resolved=resolveCorridorMunicipality(geo?.city,geo?.state,geo?.country);
+    const lat=geo?.lat, lng=geo?.lng;
     if(!resolved || normalizeMunicipality(resolved.municipality)!==
          normalizeMunicipality(data.municipality) ||
-       !Number.isFinite(geo?.lat) || !Number.isFinite(geo?.lng)){
+       typeof lat!=="number" || !Number.isFinite(lat) ||
+       typeof lng!=="number" || !Number.isFinite(lng)){
       throw new Error("Não foi possível confirmar o centro do município pelo Google.");
     }
     const now=new Date();
@@ -93,13 +95,13 @@ export const simulateF07TestLocation = createServerFn({method:"POST"})
     const {error}=await admin.from("caronaa_f07_simulated_driver_positions")
       .upsert({
         user_id:context.userId,municipality:resolved.municipality,
-        vehicle_type:data.vehicleType,lat:geo.lat,lng:geo.lng,
+        vehicle_type:data.vehicleType,lat,lng,
         updated_at:now.toISOString(),expires_at:expiresAt,
       },{onConflict:"user_id"});
     if(error)throw new Error("Migration 0144 pendente ou simulação indisponível.");
     return {
       simulated:true as const,municipality:resolved.municipality,
-      lat:Number(geo.lat),lng:Number(geo.lng),
+      lat,lng,
       updatedAt:now.toISOString(),expiresAt,
     };
   });
