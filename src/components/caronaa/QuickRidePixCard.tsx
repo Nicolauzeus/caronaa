@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { buildPixPayload } from "@/lib/pix";
 import { formatBrl } from "@/lib/ride-cost";
+import { getF07PilotState } from "@/lib/quick-rides/f07-pilot.functions";
 
 type CompletedQuickPix = {
   available: boolean;
@@ -16,6 +18,10 @@ type CompletedQuickPix = {
 };
 
 export function QuickRidePixCard({ rideId }: { rideId: string }) {
+  const pilotFn=useServerFn(getF07PilotState);
+  const pilotRef=useRef(pilotFn);
+  pilotRef.current=pilotFn;
+  const [pilotEnabled,setPilotEnabled]=useState(false);
   const [pix, setPix] = useState<{payload:string;image:string;data:CompletedQuickPix}|null>(null);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
@@ -24,6 +30,11 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     let alive=true;
     setPix(null);setError("");setLoading(true);
     void (async()=>{
+      // Only the separate homologation environment may show a pilot Pix.
+      // Public production never invokes an RPC that was not deployed there.
+      const mode=await pilotRef.current();
+      if(!mode.enabled)return;
+      if(alive)setPilotEnabled(true);
       const {data,error:rpcError}=await (supabase as any).rpc(
         "get_completed_quick_ride_pix",{p_ride_id:rideId},
       );
@@ -53,6 +64,7 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     catch {setError("Não foi possível copiar. Selecione o código e copie manualmente.");}
   };
 
+  if(!pilotEnabled)return null;
   return <section aria-label="QR Pix da Corrida Rápida concluída"
     className="min-w-0 space-y-2 rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
     <p className="font-bold">Pix da Corrida Rápida concluída</p>
