@@ -186,7 +186,8 @@ export function ProfessionalAvailabilityPage() {
       setBlocked(fees.data?.driverAllowed!==true);
       setPilotEnabled(pilot.enabled===true);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
-      setEnabled(presence.data?.is_available===true);
+      setEnabled(presence.data?.is_available===true &&
+        access.data?.authorized===true && fees.data?.driverAllowed===true);
       setReady(true);
     })().catch(e=>{if(active){setReady(true);setError(e instanceof Error?e.message:"Falha no radar.");}});
     return()=>{active=false;mounted.current=false;discardWatch();
