@@ -2,6 +2,7 @@ import { getMyResearchParticipationBadges } from "@/lib/formulario/research-part
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { getMyUserVerifications } from "@/lib/user-verifications";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Research is not a prerequisite for accounts whose completed onboarding
@@ -17,9 +18,10 @@ export function decideResearchDestination(input: {
   hasParticipation: boolean;
   isPilot: boolean;
   isDriverOnly?: boolean;
+  isApprovedProfessional?: boolean;
 }): "/formulario" | "/aguardando" | "/home" {
   if (input.locked) return "/aguardando";
-  if (input.isDriverOnly || input.isPilot || input.hasParticipation) return "/home";
+  if (input.isDriverOnly || input.isApprovedProfessional || input.isPilot || input.hasParticipation) return "/home";
   return "/formulario";
 }
 
@@ -46,10 +48,22 @@ export async function resolvePostOnboardingDestination():
     getMyResearchParticipationBadges(),
     getMyUserVerifications(),
   ]);
+
+  // A professional already approved by the administrative flow is also a
+  // driver even if they originally onboarded as PASSAGEIRO or AMBOS.
+  // Only an actual server-side authorization qualifies, never a form field,
+  // user metadata, or an unapproved access request.
+  let isApprovedProfessional = false;
+  if (participations.length === 0 &&
+      !verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED")) {
+    const { data, error } = await (supabase as any).rpc("get_my_professional_access");
+    isApprovedProfessional = !error && data?.authorized === true;
+  }
   return decideResearchDestination({
     locked: false,
     hasParticipation: participations.length > 0,
     isPilot: verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED"),
     isDriverOnly: false,
+    isApprovedProfessional,
   });
 }
