@@ -113,6 +113,22 @@ describe("F07 corridor radar migration safety contracts", () => {
     expect(correction).toContain("COMMIT;");
   });
 
+  it("repairs Lovable 0123 public self-exposure separately from the owner-only pilot RPC",()=>{
+    const repair=readFileSync("drizzle/migrations/0145_f07_public_discovery_self_guard.sql","utf8");
+    expect(repair).toContain("CREATE OR REPLACE FUNCTION public.discover_caronaa_quick_drivers(");
+    expect(repair).toContain("AND l.user_id<>auth.uid()");
+    expect(repair).toContain("a.approved AND a.vehicle_type=p_vehicle");
+    expect(repair).toContain("r.public_discovery_enabled");
+    expect(repair).toContain("AND l.updated_at>now()-interval '90 seconds'");
+    expect(repair).toContain("GRANT EXECUTE ON FUNCTION public.discover_caronaa_quick_drivers(text,text)");
+    expect(repair).not.toContain("SET dispatch_enabled");
+    expect(repair).not.toContain("SET published");
+    const isolated=readFileSync("drizzle/migrations/0144_f07_radar_diagnostico_proprio.sql","utf8");
+    expect(isolated).toContain("caronaa_f07_test_self_radar");
+    expect(isolated).toContain("TO service_role");
+    expect(isolated).toContain("is_self boolean, simulated boolean");
+  });
+
   it("has one transaction and balanced dollar quote delimiters", () => {
     expect(sql.trim().endsWith("COMMIT;")).toBe(true);
     expect((sql.match(/^BEGIN;$/gm)??[]).length).toBe(1);
