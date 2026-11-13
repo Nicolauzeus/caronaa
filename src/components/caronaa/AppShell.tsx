@@ -90,7 +90,12 @@ export function AppShell({
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      {!publicPage && !prelaunchMode && user && <ProfessionalRadarSync userId={user.id} />}
+      {/* The availability screen owns the first GPS watcher. On navigation away,
+          this shared watcher mounts and resumes the same explicit consent,
+          without running two GPS transmitters/rate-gate calls in parallel. */}
+      {!publicPage && !prelaunchMode && user &&
+        pathname !== "/disponibilidade-profissional" &&
+        <ProfessionalRadarSync userId={user.id} />}
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
