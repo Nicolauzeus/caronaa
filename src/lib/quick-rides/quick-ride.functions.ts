@@ -39,6 +39,7 @@ export type QuickRideCoverage = {
 };
 export type QuickRideFarePreview = {
   quoteId:string; expiresAt:string; municipality:string;
+  destinationMunicipality?:string;
   region:string; vehicleType:"CAR"|"MOTO";
   distanceKm:number; durationMinutes:number;
   customerPaysCents:number; driverReceivesCents:number;
@@ -189,7 +190,9 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       occupiedSeats:1,
       party:"INDIVIDUAL",
       quotedAt,
-      officialActivity:matchingEvent?{
+      // Pilot rates are the four approved matrices. Event campaigns must not
+      // silently override their explicit 15%/20% commission decisions.
+      officialActivity:!String(policy.policy_version).endsWith("-piloto")&&matchingEvent?{
         id:String(matchingEvent.id),published:true,enabled:true,
         startsAt:String(matchingEvent.starts_at),
         endsAt:String(matchingEvent.ends_at),
@@ -202,6 +205,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const {data:record,error:saveError}=await admin.from("caronaa_quick_fare_quotes")
       .insert({
         passenger_id:context.userId,municipality:coverage.municipality,
+        destination_municipality:destinationCity.municipality,
         pricing_region:coverage.region,vehicle_type:data.vehicleType,
         origin_label:data.originLabel,destination_label:data.destinationLabel,
         origin_lat:data.origin.lat,origin_lng:data.origin.lng,
@@ -218,7 +222,8 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     if(saveError||!record)throw new Error("Não foi possível registrar a cotação da corrida.");
     return {
       quoteId:String(record.id),expiresAt:String(record.expires_at),
-      municipality:coverage.municipality,region:coverage.region,vehicleType:data.vehicleType,
+      municipality:coverage.municipality,destinationMunicipality:destinationCity.municipality,
+      region:coverage.region,vehicleType:data.vehicleType,
       distanceKm:road.distanceKm,durationMinutes:road.durationMinutes,
       customerPaysCents:q.customerPaysCents,driverReceivesCents:q.driverReceivesCents,
       platformCommissionCents:q.platformGrossCommissionCents,
