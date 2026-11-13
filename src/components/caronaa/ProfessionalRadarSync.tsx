@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
+import { f07RadarAccuracyBand, f07RadarFailureCode, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
 
 /**
  * Keeps a previously consented professional driver visible when navigating
@@ -26,8 +27,15 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     let publishing = false;
     let generation = 0;
     let lastGpsAttemptAt = 0;
+    const log=(stage:string,code?:string, details:Record<string,string>={})=>{
+      // No GPS coordinates, account IDs, access tokens or raw SQL errors.
+      const entry={at:new Date().toISOString(),stage,...(code?{code}:{}),...details};
+      if(code)console.warn("[CARONAA][F07][GPS][sync]",entry);
+      else console.info("[CARONAA][F07][GPS][sync]",entry);
+    };
 
     const stop = (deleteStored = true) => {
+      log("SYNC_STOP",undefined,{deleteStored:deleteStored?"yes":"no"});
       generation += 1;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       watchId = null;
@@ -41,6 +49,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     const publish = async (position: GeolocationPosition) => {
       if (disposed || publishing || watchId === null) return;
       if (Date.now() - lastGpsAttemptAt < 25000) return;
+      log("SYNC_GPS_FIX",undefined,{accuracy:f07RadarAccuracyBand(position.coords.accuracy)});
       lastGpsAttemptAt = Date.now();
       const { latitude, longitude, accuracy } = position.coords;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
@@ -50,9 +59,11 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       }
       publishing = true;
       const epoch = generation;
+      const ref=f07RadarTraceId();
+      log("SYNC_PUBLISH_REQUEST",undefined,{ref});
       try {
         const result = await publisherRef.current({
-          data: { lat: latitude, lng: longitude, accuracyM: accuracy },
+          data: { lat: latitude, lng: longitude, accuracyM: accuracy, traceId:ref },
         });
         // Consent may have been revoked (or page hidden) while the server
         // was resolving Google coordinates. Delete any late publication.
@@ -66,9 +77,13 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         // Outside an authorized zone: keep the consented GPS watch, but
         // stop publishing until the driver returns to an approved municipality.
         if (!result.published) {
+          log("SYNC_NOT_PUBLISHED",result.reason,{ref:result.traceId??ref});
           void (supabase as any).rpc("professional_location_stop");
+        }else{
+          log("SYNC_PUBLISHED",undefined,{ref:result.traceId??ref,city:result.municipality});
         }
       } catch (e) {
+        log("SYNC_PUBLISH_ERROR",f07RadarFailureCode(e),{ref});
         // A shared rate gate may reject a duplicate update during navigation.
         // Keep the consented watch; retry on the next heartbeat.
         if (e instanceof Error && e.message.includes("Aguarde alguns segundos")) return;
@@ -90,10 +105,20 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
           (supabase as any).rpc("get_my_professional_access"),
           (supabase as any).rpc("get_my_driver_platform_fees"),
         ]);
-        if (disposed || generation !== epoch ||
-            presence.error || access.error || fees.error ||
+        if (disposed || generation !== epoch) return;
+        if (presence.error || access.error || fees.error ||
             access.data?.authorized !== true || fees.data?.driverAllowed !== true ||
-            presence.data?.is_available !== true) return;
+            presence.data?.is_available !== true) {
+          log("SYNC_START_BLOCKED",presence.error?"PRESENCE_RPC_ERROR":
+            access.error?"ACCESS_RPC_ERROR":fees.error?"FEES_RPC_ERROR":
+            access.data?.authorized!==true?"ACCESS_NOT_AUTHORIZED":
+            fees.data?.driverAllowed!==true?"FEES_BLOCKED":"DRIVER_OFFLINE", {
+              authorized:access.data?.authorized===true?"yes":"no",
+              presenceOnline:presence.data?.is_available===true?"yes":"no",
+              feesAllowed:fees.data?.driverAllowed===true?"yes":"no",
+            });
+          return;
+        }
 
         // Do not use the stored/profile municipality for GPS publications.
         // The privileged server endpoint resolves the CURRENT city per fix.
@@ -102,11 +127,17 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
           p_available: true,
           p_municipality: null,
         });
-        if (error || disposed || generation !== epoch) return;
+        if (error || disposed || generation !== epoch) {
+          if (error) log("SYNC_PRESENCE_REFRESH_FAILED",String(error.code??"PRESENCE_RPC_ERROR"));
+          return;
+        }
 
+        log("SYNC_WATCH_STARTED");
         watchId = navigator.geolocation.watchPosition(
           position => { void publish(position); },
           position => {
+            log("SYNC_BROWSER_GPS_ERROR",position.code===1?"GPS_PERMISSION_DENIED":
+              position.code===3?"GPS_TIMEOUT":"GPS_UNAVAILABLE");
             if (position.code === 1) {
               window.localStorage.removeItem(professionalRadarConsentKey(userId));
               stop();
@@ -128,6 +159,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
               .from("professional_presence").select("is_available")
               .eq("user_id", userId).maybeSingle();
             if (stateError || state?.is_available !== true || disposed) {
+              log("SYNC_HEARTBEAT_STOPPED",stateError?"PRESENCE_RPC_ERROR":"DRIVER_OFFLINE");
               stop();
               return;
             }
@@ -136,6 +168,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
                 p_available: true, p_municipality: null,
               });
             if (heartbeatError || disposed) {
+              if(heartbeatError) log("SYNC_HEARTBEAT_FAILED",String(heartbeatError.code??"PRESENCE_RPC_ERROR"));
               stop();
               return;
             }
@@ -147,6 +180,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
           })();
         }, 30000);
       } catch {
+        log("SYNC_START_FAILED","NETWORK_OR_SERVER_ERROR");
         // An unavailable session/network never authorizes location sharing.
       } finally {
         starting = false;
@@ -156,6 +190,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     const visibility = () => {
       // Do NOT erase position on tab switch. An existing consented watch may
       // continue; if throttled, the server-side 90s TTL removes stale pins.
+      log(document.hidden?"SYNC_TAB_HIDDEN":"SYNC_TAB_VISIBLE");
       if (!document.hidden)void start();
     };
     const consentChanged = (event: StorageEvent) => {

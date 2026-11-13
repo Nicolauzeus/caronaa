@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
+import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTraceId, type SafeF07RadarEvent } from "@/lib/professional-radar-diagnostics";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
@@ -36,6 +37,8 @@ export function ProfessionalAvailabilityPage() {
   const [sharing,setSharing]=useState(false);
   const [fix,setFix]=useState<Fix|null>(null);
   const [error,setError]=useState("");
+  const [diagnostics,setDiagnostics]=useState<SafeF07RadarEvent[]>([]);
+  const [copied,setCopied]=useState(false);
   const [tick,setTick]=useState(Date.now());
   const onAuthorized=useCallback((value:boolean)=>setAuthorized(value),[]);
   const mounted=useRef(true);
@@ -45,6 +48,13 @@ export function ProfessionalAvailabilityPage() {
   const simulating=useRef(false);
   const lastAttempt=useRef(0);
   const positionHandler=useRef<(position:GeolocationPosition)=>void>(()=>{});
+  const record=useCallback((stage:string, details:Omit<Partial<SafeF07RadarEvent>,"at"|"stage">={}, level:"info"|"warn"="info")=>{
+    const entry=f07RadarEvent(stage,details);
+    // Safe allowlisted fields only: never leak precise GPS coordinates,
+    // account identifiers, phone, authentication tokens or raw SQL errors.
+    console[level]("[CARONAA][F07][GPS][client]",entry);
+    if(mounted.current)setDiagnostics(previous=>[entry,...previous].slice(0,30));
+  },[]);
 
   const discardWatch=useCallback(()=>{
     tracking.current=false;
@@ -56,17 +66,20 @@ export function ProfessionalAvailabilityPage() {
   },[]);
 
   const stop=useCallback(async()=>{
+    record("LOCATION_STOP_REQUEST");
     discardWatch();
     if(mounted.current)setFix(null);
     await Promise.allSettled([
       (supabase as any).rpc("professional_location_stop"),
       clearTest(),
     ]);
-  },[discardWatch,clearTest]);
+  },[discardWatch,clearTest,record]);
 
   const onFix=useCallback(async(position:GeolocationPosition)=>{
     if(!tracking.current || sending.current || Date.now()-lastAttempt.current<25000)return;
+    record("GPS_FIX_RECEIVED",{accuracy:f07RadarAccuracyBand(position.coords.accuracy)});
     if(userId && window.localStorage.getItem(professionalRadarConsentKey(userId))!=="yes"){
+      record("CONSENT_REVOKED",{},"warn");
       discardWatch();
       void (supabase as any).rpc("professional_location_stop");
       return;
@@ -74,13 +87,16 @@ export function ProfessionalAvailabilityPage() {
     const {latitude,longitude,accuracy}=position.coords;
     if(!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
        !Number.isFinite(accuracy) || accuracy<0 || accuracy>5000){
+      record("GPS_FIX_REJECTED",{code:"GPS_INVALID_FIX"},"warn");
       if(mounted.current)setError("Sinal GPS com precisão insuficiente.");
       return;
     }
     sending.current=true;
     lastAttempt.current=Date.now();
+    const ref=f07RadarTraceId();
+    record("SERVER_PUBLISH_REQUEST",{ref,accuracy:f07RadarAccuracyBand(accuracy)});
     try{
-      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy}});
+      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy,traceId:ref}});
       if(!tracking.current){
         // Route switch is not withdrawal of consent. Do not let a late
         // server response erase an active watch started on the next page.
@@ -89,6 +105,7 @@ export function ProfessionalAvailabilityPage() {
         return;
       }
       if(result.published){
+        record("SERVER_PUBLISH_SUCCESS",{ref:result.traceId??ref,city:result.municipality});
         if(mounted.current){
           setMunicipality(result.municipality);
           setFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});
@@ -96,6 +113,7 @@ export function ProfessionalAvailabilityPage() {
         }
         void clearTest().catch(()=>undefined);
       }else{
+        record("SERVER_PUBLISH_NOT_PUBLISHED",{ref:result.traceId??ref,code:result.reason,city:result.municipality??undefined},"warn");
         if(mounted.current){
           setFix(null);
           setError(result.reason==="OUTSIDE_APPROVED_ZONE"
@@ -104,12 +122,14 @@ export function ProfessionalAvailabilityPage() {
         }
       }
     }catch(e){
+      record("SERVER_PUBLISH_ERROR",{ref,code:f07RadarFailureCode(e)},"warn");
       if(mounted.current)setError(e instanceof Error?e.message:"Falha ao enviar GPS verificado.");
     }finally{sending.current=false;}
-  },[publishVerified,clearTest,userId,discardWatch]);
+  },[publishVerified,clearTest,userId,discardWatch,record]);
   positionHandler.current=position=>{void onFix(position);};
 
   const simulationFallback=useCallback(async(city:string,vehicle:Vehicle,reason:string)=>{
+    record("GPS_FALLBACK_REQUEST",{code:"GPS_UNAVAILABLE",city},"warn");
     if(mounted.current)setError("GPS indisponível: "+reason);
     if(!pilotEnabled || !city.trim())return;
     if(simulating.current)return;
@@ -120,14 +140,17 @@ export function ProfessionalAvailabilityPage() {
       setFix({lat:test.lat,lng:test.lng,at:new Date(test.updatedAt),simulated:true});
       setMunicipality(test.municipality);
       setError("SIMULAÇÃO de homologação — centro do município; visível só para a própria conta, nunca usado para despachar viagens.");
+      record("SIMULATED_PREVIEW_AVAILABLE",{city:test.municipality});
     }catch(e){
+      record("SIMULATED_PREVIEW_FAILED",{code:f07RadarFailureCode(e)},"warn");
       if(mounted.current)setError(
         e instanceof Error?e.message:"Não foi possível criar a prévia simulada.");
     }finally{simulating.current=false;}
-  },[pilotEnabled,simulateTest]);
+  },[pilotEnabled,simulateTest,record]);
 
   const startGps=useCallback((city:string,vehicle:Vehicle,uid:string)=>{
     if(tracking.current)return;
+    record("GPS_START_REQUEST",{city});
     if(typeof window==="undefined" || !window.isSecureContext || !navigator.geolocation){
       void simulationFallback(city,vehicle,"precisa de HTTPS e geolocalização permitida.");
       return;
@@ -139,6 +162,7 @@ export function ProfessionalAvailabilityPage() {
     }
     const fail=(reason:GeolocationPositionError)=>{
       if(!tracking.current)return;
+      record("GPS_BROWSER_ERROR",{code:reason.code===1?"GPS_PERMISSION_DENIED":reason.code===3?"GPS_TIMEOUT":"GPS_UNAVAILABLE"},"warn");
       discardWatch();
       window.localStorage.removeItem(professionalRadarConsentKey(uid));
       void (supabase as any).rpc("professional_location_stop");
@@ -157,7 +181,7 @@ export function ProfessionalAvailabilityPage() {
       void simulationFallback(city,vehicle,
         e instanceof Error?e.message:"O navegador não iniciou o GPS.");
     }
-  },[discardWatch,simulationFallback]);
+  },[discardWatch,simulationFallback,record]);
 
   useEffect(()=>{
     mounted.current=true;
@@ -188,8 +212,17 @@ export function ProfessionalAvailabilityPage() {
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
       setEnabled(presence.data?.is_available===true &&
         access.data?.authorized===true && fees.data?.driverAllowed===true);
+      record("INITIAL_STATE",{
+        city:String(presence.data?.municipality||profile.data?.city||candidate).trim()||undefined,
+        authorized:access.data?.authorized===true,
+        presenceOnline:presence.data?.is_available===true,
+        feesAllowed:fees.data?.driverAllowed===true,
+      });
       setReady(true);
-    })().catch(e=>{if(active){setReady(true);setError(e instanceof Error?e.message:"Falha no radar.");}});
+    })().catch(e=>{if(active){
+      record("INITIAL_STATE_FAILED",{code:"NETWORK_OR_SERVER_ERROR"},"warn");
+      setReady(true);setError(e instanceof Error?e.message:"Falha no radar.");
+    }});
     return()=>{active=false;mounted.current=false;discardWatch();
       // On navigation, the common AppShell radar resumes an earlier opt-in.
       // Do not erase a valid fix when merely changing routes.
@@ -259,6 +292,7 @@ export function ProfessionalAvailabilityPage() {
 
   async function toggleOnline(next:boolean) {
     if(busy)return;
+    record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized,feesAllowed:!blocked});
     if(next && blocked){setError("Motorista bloqueado por repasses.");return;}
     if(next && !authorized && !pilotEnabled){
       setError("É necessária aprovação administrativa para entrar no radar.");return;
@@ -284,12 +318,17 @@ export function ProfessionalAvailabilityPage() {
       const {error}=await (supabase as any).rpc("set_professional_presence",{
         p_available:true,p_municipality:municipality||null,
       });
-      if(error)throw error;
+      if(error){
+        record("PRESENCE_ENABLE_FAILED",{code:String(error.code??"PRESENCE_RPC_ERROR")},"warn");
+        throw error;
+      }
+      record("PRESENCE_ENABLED",{city:municipality,presenceOnline:true});
       setEnabled(true);
       // The user explicitly chose availability + GPS in ONE labeled button.
       if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
       startGps(municipality,pilotVehicle,userId);
     }catch(e){
+      record("PRESENCE_TRANSITION_FAILED",{code:f07RadarFailureCode(e)},"warn");
       setError(e instanceof Error?e.message:"Não foi possível mudar a disponibilidade.");
     }finally{setBusy(false);}
   }
@@ -331,6 +370,19 @@ export function ProfessionalAvailabilityPage() {
       </p>}
       {error&&<p role="alert" className="text-destructive">{error}</p>}
     </section>
+    <details className="rounded-xl border border-muted-foreground/30 p-4 text-sm">
+      <summary className="cursor-pointer font-semibold">Diagnóstico técnico F07 ({diagnostics.length} eventos)</summary>
+      <p className="my-2 text-xs text-muted-foreground">Eventos também aparecem no Console sob [CARONAA][F07][GPS]. Este relatório não inclui coordenadas exatas, identidade, senhas nem tokens.</p>
+      <button type="button" className="mb-2 min-h-10 rounded-lg border px-3"
+        onClick={()=>void navigator.clipboard.writeText(
+          diagnostics.slice().reverse().map(entry=>JSON.stringify(entry)).join("\n")
+        ).then(()=>setCopied(true)).catch(()=>setCopied(false))}>
+        {copied?"Log copiado":"Copiar diagnóstico sem GPS"}
+      </button>
+      <pre aria-label="Eventos do radar" className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted/30 p-2 text-xs">
+        {diagnostics.length ? diagnostics.map(entry=>JSON.stringify(entry)).join("\n") : "Nenhum evento registrado."}
+      </pre>
+    </details>
     <Button className="min-h-12 w-full"
       disabled={!ready||busy||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
       onClick={()=>void toggleOnline(!enabled)}>
