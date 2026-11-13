@@ -20,6 +20,9 @@ vi.mock("@/lib/quick-rides/quick-ride.functions", () => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc: api.rpc },
 }));
+vi.mock("./QuickRidePixCard",()=>({
+  QuickRidePixCard:({rideId}:{rideId:string})=><div>QR Pix pronto: {rideId}</div>,
+}));
 
 const origin = { rawText:"Saída",lat:-4.224,lng:-38.71 };
 const destination = { rawText:"Destino",lat:-4.24,lng:-38.72 };
@@ -127,4 +130,36 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     expect(screen.queryByRole("button",{name:"Solicitar corrida ao valor indicado"})).not.toBeInTheDocument();
     expect(api.submit).not.toHaveBeenCalled();
   });
+
+  it("permite cotação de Carro com destino intermunicipal validado no servidor", async()=>{
+    api.preview.mockResolvedValueOnce({
+      quoteId:"135e553c-1516-4a28-a49c-9ad0e3926821",
+      expiresAt:"2099-01-01T00:00:00.000Z",
+      municipality:"Redenção",destinationMunicipality:"Fortaleza",
+      region:"MACICO_BATURITE",vehicleType:"CAR",
+      distanceKm:70,durationMinutes:95,customerPaysCents:17350,
+      driverReceivesCents:13880,platformCommissionCents:3470,
+      commissionBps:2000,commissionSource:"MACICO",
+      policyVersion:"macico-car-piloto",
+    });
+    render(<QuickRideHomePanel {...basic} vehicle="CAR" destination="Fortaleza"
+      destinationPoint={{rawText:"Fortaleza",lat:-3.73,lng:-38.52}}/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500}));
+    expect(await screen.findByText(/R\\$\\s*173,50/)).toBeInTheDocument();
+    expect(api.preview).toHaveBeenCalledWith({data:expect.objectContaining({
+      vehicleType:"CAR",destination:{lat:-3.73,lng:-38.52},
+    })});
+  });
+
+  it("mostra o QR Pix de uma corrida concluída, sem recotar preço",async()=>{
+    api.rpc.mockResolvedValue({data:[{
+      id:"0f066ee8-bb89-47e2-85cf-20121e1b021f",
+      role:"PASSENGER",status:"COMPLETED",vehicle_type:"MOTO",
+      municipality:"Redenção",
+    }],error:null});
+    render(<QuickRideHomePanel {...basic}/>);
+    expect(await screen.findByText("QR Pix pronto: 0f066ee8-bb89-47e2-85cf-20121e1b021f")).toBeInTheDocument();
+    expect(api.preview).not.toHaveBeenCalled();
+  });
+
 });
