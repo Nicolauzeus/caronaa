@@ -314,6 +314,57 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_f07_pilot_authorization_audit: {
+        Row: {
+          activated_at: string
+          expires_at: string
+          revoked_at: string | null
+          user_id: string
+          vehicle_type: string
+          was_previously_approved: boolean
+        }
+        Insert: {
+          activated_at?: string
+          expires_at: string
+          revoked_at?: string | null
+          user_id: string
+          vehicle_type: string
+          was_previously_approved: boolean
+        }
+        Update: {
+          activated_at?: string
+          expires_at?: string
+          revoked_at?: string | null
+          user_id?: string
+          vehicle_type?: string
+          was_previously_approved?: boolean
+        }
+        Relationships: []
+      }
+      caronaa_f07_pilot_control: {
+        Row: {
+          activated_at: string | null
+          enabled: boolean
+          expires_at: string | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          enabled?: boolean
+          expires_at?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          enabled?: boolean
+          expires_at?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       caronaa_quick_driver_fees: {
         Row: {
           commission_bps: number
@@ -376,6 +427,7 @@ export type Database = {
           destination_label: string
           destination_lat: number
           destination_lng: number
+          destination_municipality: string | null
           distance_km: number
           driver_receives_cents: number
           duration_minutes: number
@@ -401,6 +453,7 @@ export type Database = {
           destination_label: string
           destination_lat: number
           destination_lng: number
+          destination_municipality?: string | null
           distance_km: number
           driver_receives_cents: number
           duration_minutes: number
@@ -426,6 +479,7 @@ export type Database = {
           destination_label?: string
           destination_lat?: number
           destination_lng?: number
+          destination_municipality?: string | null
           distance_km?: number
           driver_receives_cents?: number
           duration_minutes?: number
@@ -451,6 +505,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "caronaa_quick_official_activities"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caronaa_quick_fare_quotes_destination_municipality_fkey"
+            columns: ["destination_municipality"]
+            isOneToOne: false
+            referencedRelation: "caronaa_service_municipalities"
+            referencedColumns: ["municipality"]
           },
           {
             foreignKeyName: "caronaa_quick_fare_quotes_municipality_fkey"
@@ -2406,6 +2467,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      professional_radar_location_rate_limits: {
+        Row: {
+          attempted_at: string
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       professional_service_regions: {
         Row: {
@@ -4584,6 +4660,15 @@ export type Database = {
         }
         Returns: string
       }
+      caronaa_f07_pilot_activate_driver: {
+        Args: { p_user_id: string; p_vehicle_type: string }
+        Returns: string
+      }
+      caronaa_f07_pilot_deactivate_driver: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      caronaa_f07_test_dispatch_allowed: { Args: never; Returns: boolean }
       caronaa_quick_driver_queue: {
         Args: { p_municipality: string }
         Returns: {
@@ -4896,6 +4981,10 @@ export type Database = {
         }[]
       }
       get_admin_users: { Args: { p_user_id?: string }; Returns: Json }
+      get_completed_quick_ride_pix: {
+        Args: { p_ride_id: string }
+        Returns: Json
+      }
       get_configured_research_summary: {
         Args: { p_filters?: Json }
         Returns: {
@@ -5258,6 +5347,7 @@ export type Database = {
         Returns: boolean
       }
       professional_location_stop: { Args: never; Returns: undefined }
+      professional_radar_location_rate_gate: { Args: never; Returns: boolean }
       project_ride_route: {
         Args: { p_lat: number; p_lng: number; p_path: Json }
         Returns: Json
@@ -5277,6 +5367,16 @@ export type Database = {
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
         Returns: string
+      }
+      publish_verified_professional_position: {
+        Args: {
+          p_accuracy_m: number
+          p_lat: number
+          p_lng: number
+          p_municipality: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
       quick_ride_confirm_pickup: { Args: { p_id: string }; Returns: boolean }
