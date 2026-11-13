@@ -9,6 +9,8 @@ export type ApproximateProfessionalDriver = {
   lat: number;
   lng: number;
   seen_at: string;
+  is_self?: boolean;
+  simulated?: boolean;
 };
 type Props = {
   pickupPreview?: StrictPickupPreview | null;
