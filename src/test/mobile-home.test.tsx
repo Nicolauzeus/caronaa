@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   navigate: vi.fn(),
   map: vi.fn(),
   quickPanel: vi.fn(),
+  selfRadar: vi.fn(),
   offerPanel: vi.fn(),
   preview: null as any,
 }));
@@ -53,6 +54,9 @@ vi.mock("@/lib/home.functions", () => ({
 vi.mock("@/lib/ride-matching.functions", () => ({ createRideRequest: api.request }));
 vi.mock("@/lib/ride-pricing.functions", () => ({ previewRequestFare: api.quote }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
+vi.mock("@/lib/quick-rides/f07-radar-diagnostic.functions", () => ({
+  getF07TestSelfRadar: api.selfRadar,
+}));
 vi.mock("@/components/caronaa/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 }));
@@ -122,6 +126,7 @@ describe("Home mobile", () => {
     clearRideIntentDraft();
     vi.clearAllMocks();
     api.load.mockResolvedValue([]);
+    api.selfRadar.mockResolvedValue([]);
     api.preview = null;
     api.request.mockResolvedValue({ requestId: "request" });
     api.quote.mockResolvedValue({
