@@ -56,9 +56,11 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         });
         // Consent may have been revoked (or page hidden) while the server
         // was resolving Google coordinates. Delete any late publication.
-        if (disposed || epoch !== generation ||
-            window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") {
-          void (supabase as any).rpc("professional_location_stop");
+        const consented = window.localStorage.getItem(professionalRadarConsentKey(userId)) === "yes";
+        if (disposed || epoch !== generation || !consented) {
+          // A page navigation is not consent revocation. An old asynchronous
+          // response must not delete a newer watch's published GPS.
+          if (!consented) void (supabase as any).rpc("professional_location_stop");
           return;
         }
         // Outside an authorized zone: keep the consented GPS watch, but
