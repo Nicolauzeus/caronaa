@@ -5,6 +5,7 @@ import { consumeRideIntentDraft, type RideIntentDraft } from "@/lib/ride-intent-
 import type { StrictPickupPreview } from "@/lib/safe-pickup";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
 import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
+import { getF07TestSelfRadar } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import {
   PassengerRideOptions,
@@ -106,6 +107,7 @@ function Home() {
   const [reverseFailed, setReverseFailed] = useState(false);
   const [journeys, setJourneys] = useState<Awaited<ReturnType<typeof loadJourneys>>>([]);
   const [error, setError] = useState<string | null>(null);
+  const getSelfRadar = useServerFn(getF07TestSelfRadar);
   const [professionalMunicipality, setProfessionalMunicipality] = useState("");
   const [quickVehicle, setQuickVehicle] = useState<"CAR" | "MOTO">("CAR");
   const [rideOption, setRideOption] = useState<PassengerRideOption>("CAR");
@@ -133,20 +135,24 @@ function Home() {
     let alive = true;
     const refresh = async () => {
       if (alive) setProfessionalLoading(true);
-      const { data, error } = await (supabase as any).rpc(
-        "discover_caronaa_quick_drivers",
-        { p_municipality: municipality, p_vehicle: quickVehicle },
-      );
+      const [{ data, error }, self] = await Promise.all([
+        (supabase as any).rpc(
+          "discover_caronaa_quick_drivers",
+          { p_municipality: municipality, p_vehicle: quickVehicle },
+        ),
+        getSelfRadar({data:{municipality,vehicleType:quickVehicle}})
+          .catch(():ApproximateProfessionalDriver[]=>[]),
+      ]);
       if (!alive) return;
       if (error) {
         setProfessionalDrivers([]);
         setProfessionalError("Mapa profissional indisponível nesta região.");
       } else {
-        setProfessionalDrivers(
-          (data ?? []).filter(
-            (d: ApproximateProfessionalDriver) => Number.isFinite(d.lat) && Number.isFinite(d.lng),
-          ),
-        );
+        const combined:ApproximateProfessionalDriver[]=[...(data??[]),...self]
+          .filter((d:ApproximateProfessionalDriver)=>Number.isFinite(d.lat)&&Number.isFinite(d.lng));
+        setProfessionalDrivers(combined.filter((driver,index)=>
+          index===combined.findIndex(other=>other.driver_key===driver.driver_key)
+        ));
         setProfessionalError("");
       }
       setProfessionalLoading(false);
@@ -711,7 +717,7 @@ function Home() {
                     destinationPoint={destinationLocation}
                     vehicle={quickVehicle}
                     onVehicleChange={setQuickVehicle}
-                    driverCount={professionalDrivers.length}
+                    driverCount={professionalDrivers.filter(driver=>!driver.is_self).length}
                     driverLoading={professionalLoading}
                     driverError={professionalError}
                     gpsOriginIsImprecise={gpsOriginIsImprecise}
