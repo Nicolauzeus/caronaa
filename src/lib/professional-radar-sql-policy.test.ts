@@ -96,23 +96,6 @@ describe("F07 corridor radar migration safety contracts", () => {
     expect(sql144).not.toMatch(/(?:INSERT INTO|UPDATE) public\.professional_driver_locations/);
   });
 
-  it("restores public self exclusion after concurrent Lovable 0123 while leaving private diagnostic separate",()=>{
-    const correction=readFileSync("drizzle/migrations/0145_f07_restaurar_descoberta_publica.sql","utf8");
-    const concurrent=readFileSync("drizzle/migrations/0123_radar_show_self_homologacao.sql","utf8");
-    const diagnostic=readFileSync("drizzle/migrations/0144_f07_radar_diagnostico_proprio.sql","utf8");
-    expect(concurrent).toContain("discover_caronaa_quick_drivers");
-    expect(correction).toContain("CREATE OR REPLACE FUNCTION public.discover_caronaa_quick_drivers");
-    expect(correction).toContain("AND l.user_id<>auth.uid()");
-    expect(correction).toContain("AND a.approved AND a.vehicle_type=p_vehicle");
-    expect(correction).toContain("r.public_discovery_enabled");
-    expect(correction).toContain("interval '90 seconds'");
-    expect(correction).toContain("round(l.lat::numeric,2)");
-    expect(correction).toContain("TO authenticated");
-    expect(diagnostic).toContain("caronaa_f07_test_self_radar");
-    expect(correction).not.toContain("caronaa_f07_test_self_radar");
-    expect(correction).toContain("COMMIT;");
-  });
-
   it("repairs Lovable 0123 public self-exposure separately from the owner-only pilot RPC",()=>{
     const repair=readFileSync("drizzle/migrations/0145_f07_public_discovery_self_guard.sql","utf8");
     expect(repair).toContain("CREATE OR REPLACE FUNCTION public.discover_caronaa_quick_drivers(");
