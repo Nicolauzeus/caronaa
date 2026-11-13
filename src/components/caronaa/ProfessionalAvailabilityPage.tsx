@@ -66,6 +66,11 @@ export function ProfessionalAvailabilityPage() {
 
   const onFix=useCallback(async(position:GeolocationPosition)=>{
     if(!tracking.current || sending.current || Date.now()-lastAttempt.current<25000)return;
+    if(userId && window.localStorage.getItem(professionalRadarConsentKey(userId))!=="yes"){
+      discardWatch();
+      void (supabase as any).rpc("professional_location_stop");
+      return;
+    }
     const {latitude,longitude,accuracy}=position.coords;
     if(!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
        !Number.isFinite(accuracy) || accuracy<0 || accuracy>5000){
@@ -77,7 +82,10 @@ export function ProfessionalAvailabilityPage() {
     try{
       const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy}});
       if(!tracking.current){
-        void (supabase as any).rpc("professional_location_stop");
+        // Route switch is not withdrawal of consent. Do not let a late
+        // server response erase an active watch started on the next page.
+        if(!userId || window.localStorage.getItem(professionalRadarConsentKey(userId))!=="yes")
+          void (supabase as any).rpc("professional_location_stop");
         return;
       }
       if(result.published){
@@ -98,7 +106,7 @@ export function ProfessionalAvailabilityPage() {
     }catch(e){
       if(mounted.current)setError(e instanceof Error?e.message:"Falha ao enviar GPS verificado.");
     }finally{sending.current=false;}
-  },[publishVerified,clearTest]);
+  },[publishVerified,clearTest,userId,discardWatch]);
   positionHandler.current=position=>{void onFix(position);};
 
   const simulationFallback=useCallback(async(city:string,vehicle:Vehicle,reason:string)=>{
@@ -183,6 +191,19 @@ export function ProfessionalAvailabilityPage() {
       // Do not erase a valid fix when merely changing routes.
     };
   },[]);
+
+  useEffect(()=>{
+    if(!userId)return;
+    const consentChanged=(event:StorageEvent)=>{
+      if(event.key!==professionalRadarConsentKey(userId))return;
+      if(event.newValue!=="yes"){
+        // Explicit withdrawal from another tab: remove precise position now.
+        void stop();
+      }
+    };
+    window.addEventListener("storage",consentChanged);
+    return()=>window.removeEventListener("storage",consentChanged);
+  },[userId,stop]);
 
   useEffect(()=>{
     const t=window.setInterval(()=>setTick(Date.now()),10000);
