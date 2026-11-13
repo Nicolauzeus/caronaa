@@ -278,6 +278,8 @@ Passageiro → Viajar agora → Origem/destino → Carro ou moto elegível
 
 **Conciliação com a edição Lovable de 13/11/2026:** o arquivo histórico `0123_radar_show_self_homologacao.sql` removeu o filtro do próprio usuário da **RPC pública**. A migration incremental `0145_f07_public_discovery_self_guard.sql` restaura o filtro `l.user_id <> auth.uid()` sem alterar o veículo, o município, o status online ou o TTL. **Aplicar 0145 depois de 0123/0142/0144** no ambiente isolado de homologação; a auto-visualização passa exclusivamente pela função protegida `caronaa_f07_test_self_radar` e jamais pela descoberta pública. A edição antiga do Lovable não substitui a liberação da nova migration.
 
+**Diagnóstico estruturado de publicação GPS F07 (13/11/2026):** a tela de disponibilidade inclui histórico técnico copiável, e o Console identifica eventos com prefixo `[CARONAA][F07][GPS]`. Toda tentativa de publicação recebe uma referência curta, usada também nos logs do servidor; os erros são classificados por etapa (autorização, repasses, presença, rate limit, Google, cobertura e RPC SQL). O servidor registra apenas códigos SQLSTATE, estado booleano de autorização/presença e a existência de configuração de credencial administrativa, sem exibir chaves. Logs e cópia nunca incluem GPS exato, dados pessoais, tokens ou mensagens SQL brutas. A instrumentação não libera motorista ou despacho e não altera o TTL nem a privacidade.
+
 **Aceite F07:** simular disponibilidade, pedido, despacho, aceite, corrida, estados, cancelamento e ausência de profissional; validar conformidade antes de habilitar operação real.
 
 ### F08 — Acompanhar viagem, notificações, pagamentos e avaliação
