@@ -180,6 +180,9 @@ export function ProfessionalAvailabilityPage() {
         ? "":registeredCity;
       setUserId(user.id);
       setAuthorized(access.data?.authorized===true);
+      const registeredVehicle=access.data?.request?.vehicle_type;
+      if(registeredVehicle==="CAR"||registeredVehicle==="MOTO")
+        setPilotVehicle(registeredVehicle);
       setBlocked(fees.data?.driverAllowed!==true);
       setPilotEnabled(pilot.enabled===true);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
