@@ -70,12 +70,21 @@ describe("research gate after basic onboarding", () => {
     expect(api.professionalAccess).toHaveBeenCalledWith("get_my_professional_access");
   });
 
-  it("does not exempt a pending professional request or a forged driver flag", async () => {
-    api.professionalAccess.mockResolvedValue({ data: {
-      authorized: false, request: { status: "PENDING", access_type: "MOTOTAXI_SIMPLE" },
-    }, error: null });
+  it("directs pending or correction-requested professional applicants to approval status", async () => {
+    for (const status of ["PENDING", "CHANGES_REQUESTED", "REJECTED"]) {
+      api.professionalAccess.mockResolvedValue({ data: {
+        authorized: false, request: { status, access_type: "MOTOTAXI_SIMPLE" },
+      }, error: null });
+      expect(await resolvePostOnboardingDestination()).toBe("/disponibilidade-profissional");
+    }
+    expect(api.professionalAccess).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not mistake arbitrary request statuses for approval or a driver application", async () => {
+    api.professionalAccess.mockResolvedValue({
+      data: { authorized: false, request: { status: "UNKNOWN" } }, error: null,
+    });
     expect(await resolvePostOnboardingDestination()).toBe("/formulario");
-    expect(api.professionalAccess).toHaveBeenCalledTimes(1);
   });
 
   it("fails closed to the form when the professional authorization RPC is unavailable", async () => {
@@ -128,6 +137,7 @@ describe("research gate after basic onboarding", () => {
     expect(decideResearchDestination({ locked: true, hasParticipation: true, isPilot: true })).toBe("/aguardando");
     expect(decideResearchDestination({ locked: false, hasParticipation: false, isPilot: false, isDriverOnly: true })).toBe("/home");
     expect(decideResearchDestination({ locked: false, hasParticipation: false, isPilot: false, isApprovedProfessional: true })).toBe("/home");
+    expect(decideResearchDestination({ locked: false, hasParticipation: false, isPilot: false, hasProfessionalRequest: true })).toBe("/disponibilidade-profissional");
     expect(decideResearchDestination({ locked: true, hasParticipation: false, isPilot: false, isDriverOnly: true })).toBe("/aguardando");
   });
 });
