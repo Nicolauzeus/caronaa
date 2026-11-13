@@ -85,7 +85,7 @@ BEGIN
   SELECT enabled,expires_at INTO v_record
     FROM public.caronaa_f07_pilot_control WHERE id=true FOR UPDATE;
   IF NOT FOUND OR v_record.enabled IS DISTINCT FROM true
-     OR v_record.expires_at<=now() THEN
+     OR v_record.expires_at IS NULL OR v_record.expires_at<=now() THEN
     RAISE EXCEPTION 'Homologacao F07 indisponivel' USING ERRCODE='42501';
   END IF;
   v_until:=v_record.expires_at;
@@ -177,6 +177,36 @@ REVOKE ALL ON FUNCTION public.caronaa_f07_pilot_deactivate_driver(uuid)
   FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.caronaa_f07_pilot_deactivate_driver(uuid)
   TO service_role;
+
+-- An expired pilot permission cannot continue to send fresh GPS even when
+-- the historical approved flag remains set pending controlled cleanup.
+CREATE OR REPLACE FUNCTION public.caronaa_f07_pilot_location_expiry_guard()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $locationguard$
+BEGIN
+  IF EXISTS(
+    SELECT 1 FROM public.caronaa_f07_pilot_authorization_audit a
+    WHERE a.user_id=NEW.user_id AND a.revoked_at IS NULL
+      AND a.expires_at<=now() AND NOT a.was_previously_approved
+      AND NOT EXISTS(
+        SELECT 1 FROM public.professional_access_requests q
+        WHERE q.user_id=NEW.user_id AND q.status='APPROVED'
+          AND q.reviewed_by IS NOT NULL
+      )
+  ) THEN
+    RAISE EXCEPTION 'Piloto F07 expirado; encerre a autorizacao temporaria'
+      USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END
+$locationguard$;
+REVOKE ALL ON FUNCTION public.caronaa_f07_pilot_location_expiry_guard()
+  FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS caronaa_f07_pilot_location_expiry
+  ON public.professional_driver_locations;
+CREATE TRIGGER caronaa_f07_pilot_location_expiry
+BEFORE INSERT OR UPDATE ON public.professional_driver_locations
+FOR EACH ROW EXECUTE FUNCTION public.caronaa_f07_pilot_location_expiry_guard();
 
 -- Back-compatible status response; prevents the test switch from surviving
 -- its expiration, without disabling pre-existing non-pilot service areas.
