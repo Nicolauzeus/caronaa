@@ -182,7 +182,12 @@ export function GoogleHomeRideMap({
       add(pickupPreview.pickup.point, pickupPreview.pickup.label, "meeting");
     }
     professionalDrivers.forEach((driver) =>
-      add(driver, "Motorista disponível no radar · posição aproximada · ainda não atribuído", "availableDriver"),
+      add(driver, driver.simulated
+        ? "MINHA SIMULAÇÃO DE HOMOLOGAÇÃO · centro municipal fictício · sem viagens"
+        : driver.is_self
+          ? "MEU VEÍCULO · GPS real aproximado · visualização de teste"
+          : "Motorista disponível no radar · posição aproximada · ainda não atribuído",
+        "availableDriver"),
     );
     circle.current?.setMap(null);
     circle.current = null;
@@ -436,6 +441,11 @@ export function GoogleHomeRideMap({
           className={locating ? "animate-pulse" : following ? "text-primary" : ""}
         />
       </Button>
+      {professionalDrivers.some(driver=>driver.simulated) && (
+        <div role="status" className="pointer-events-none absolute bottom-14 left-3 z-10 rounded-lg border border-[#FFBB00]/60 bg-background/95 px-3 py-2 text-[11px] font-semibold">
+          SIMULAÇÃO F07 · ponto fictício somente nesta conta · sem despacho
+        </div>
+      )}
       {professionalDrivers.length > 0 && (
         <div className={`pointer-events-none absolute left-3 z-10 max-w-[70%] rounded-lg bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm ${immersive ? "bottom-24" : "bottom-3"}`}>
           🚗 Motoristas disponíveis no radar · ainda não atribuídos à viagem
