@@ -129,6 +129,15 @@ describe("F07 corridor radar migration safety contracts", () => {
     expect(isolated).toContain("is_self boolean, simulated boolean");
   });
 
+  it("hands off the GPS watch from availability to the authenticated shell without duplicate transmitters",()=>{
+    const shell=readFileSync("src/components/caronaa/AppShell.tsx","utf8");
+    expect(shell).toContain('pathname !== "/disponibilidade-profissional"');
+    expect(shell).toContain('<ProfessionalRadarSync userId={user.id} />');
+    expect(page).toContain('return()=>{active=false;mounted.current=false;discardWatch()');
+    expect(sync).toContain('window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes"');
+    expect(sync).not.toContain('if (document.hidden) stop()');
+  });
+
   it("has one transaction and balanced dollar quote delimiters", () => {
     expect(sql.trim().endsWith("COMMIT;")).toBe(true);
     expect((sql.match(/^BEGIN;$/gm)??[]).length).toBe(1);
