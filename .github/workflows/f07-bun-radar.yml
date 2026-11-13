@@ -8,6 +8,7 @@ on:
       - "src/lib/quick-rides/f07-radar-diagnostic.functions.ts"
       - "src/lib/professional-radar-sql-policy.test.ts"
       - "drizzle/migrations/0144_f07_radar_diagnostico_proprio.sql"
+      - "drizzle/migrations/0145_f07_restaurar_descoberta_publica.sql"
       - "src/routes/_authenticated/disponibilidade-profissional.tsx"
       - "src/routes/_authenticated/home.tsx"
       - "src/components/caronaa/GoogleHomeRideMap.tsx"
