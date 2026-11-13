@@ -145,7 +145,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     render(<QuickRideHomePanel {...basic} vehicle="CAR" destination="Fortaleza"
       destinationPoint={{rawText:"Fortaleza",lat:-3.73,lng:-38.52}}/>);
     fireEvent.click(await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500}));
-    expect(await screen.findByText(/R\\$\\s*173,50/)).toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*173,50/)).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({data:expect.objectContaining({
       vehicleType:"CAR",destination:{lat:-3.73,lng:-38.52},
     })});
