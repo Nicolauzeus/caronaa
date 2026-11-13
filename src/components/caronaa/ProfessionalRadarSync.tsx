@@ -6,8 +6,9 @@ import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 
 /**
  * Keeps a previously consented professional driver visible when navigating
- * between authenticated screens. No background GPS and no silent first opt-in.
- * Server RPCs enforce approval, region, debt and the 90-second freshness gate.
+ * between authenticated screens. Never silently opt in for the first time.
+ * Browser background GPS is best-effort and may be throttled; DB freshness
+ * automatically removes stale pins after 90 seconds.
  */
 export function ProfessionalRadarSync({ userId }: { userId: string }) {
   const publishVerified = useServerFn(publishVerifiedProfessionalPosition);
@@ -26,7 +27,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     let generation = 0;
     let lastGpsAttemptAt = 0;
 
-    const stop = () => {
+    const stop = (deleteStored = true) => {
       generation += 1;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       watchId = null;
@@ -34,11 +35,11 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       timer = null;
       // Delete precise stored location immediately; stale heartbeat is also
       // excluded from discovery server-side after 90 seconds.
-      void (supabase as any).rpc("professional_location_stop");
+      if (deleteStored)void (supabase as any).rpc("professional_location_stop");
     };
 
     const publish = async (position: GeolocationPosition) => {
-      if (disposed || document.hidden || publishing || watchId === null) return;
+      if (disposed || publishing || watchId === null) return;
       if (Date.now() - lastGpsAttemptAt < 25000) return;
       lastGpsAttemptAt = Date.now();
       const { latitude, longitude, accuracy } = position.coords;
@@ -55,9 +56,11 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         });
         // Consent may have been revoked (or page hidden) while the server
         // was resolving Google coordinates. Delete any late publication.
-        if (disposed || epoch !== generation || document.hidden ||
-            window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") {
-          void (supabase as any).rpc("professional_location_stop");
+        const consented = window.localStorage.getItem(professionalRadarConsentKey(userId)) === "yes";
+        if (disposed || epoch !== generation || !consented) {
+          // A page navigation is not consent revocation. An old asynchronous
+          // response must not delete a newer watch's published GPS.
+          if (!consented) void (supabase as any).rpc("professional_location_stop");
           return;
         }
         // Outside an authorized zone: keep the consented GPS watch, but
@@ -76,7 +79,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     };
 
     const start = async () => {
-      if (starting || disposed || document.hidden || watchId !== null ||
+      if (starting || disposed || watchId !== null ||
           window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") return;
       starting = true;
       const epoch = generation;
@@ -87,7 +90,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
           (supabase as any).rpc("get_my_professional_access"),
           (supabase as any).rpc("get_my_driver_platform_fees"),
         ]);
-        if (disposed || document.hidden || generation !== epoch ||
+        if (disposed || generation !== epoch ||
             presence.error || access.error || fees.error ||
             access.data?.authorized !== true || fees.data?.driverAllowed !== true ||
             presence.data?.is_available !== true) return;
@@ -99,20 +102,22 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
           p_available: true,
           p_municipality: null,
         });
-        if (error || disposed || document.hidden || generation !== epoch) return;
+        if (error || disposed || generation !== epoch) return;
 
         watchId = navigator.geolocation.watchPosition(
           position => { void publish(position); },
           position => {
             if (position.code === 1) {
               window.localStorage.removeItem(professionalRadarConsentKey(userId));
+              stop();
             }
-            stop();
+            // Timeouts are not a revocation. Keep trying while the user
+            // retains permission; never fabricate or publish a stale GPS.
           },
           { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
         );
         timer = window.setInterval(() => {
-          if (document.hidden || disposed) return;
+          if (disposed) return;
           if (window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") {
             stop();
             return;
@@ -122,7 +127,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
             const { data: state, error: stateError } = await (supabase as any)
               .from("professional_presence").select("is_available")
               .eq("user_id", userId).maybeSingle();
-            if (stateError || state?.is_available !== true || document.hidden || disposed) {
+            if (stateError || state?.is_available !== true || disposed) {
               stop();
               return;
             }
@@ -130,13 +135,13 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
               .rpc("set_professional_presence", {
                 p_available: true, p_municipality: null,
               });
-            if (heartbeatError || document.hidden || disposed) {
+            if (heartbeatError || disposed) {
               stop();
               return;
             }
             navigator.geolocation.getCurrentPosition(
               position => { void publish(position); },
-              () => { stop(); },
+              () => { /* Browser may throttle background GPS: TTL handles stale points. */ },
               { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
             );
           })();
@@ -149,8 +154,9 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     };
 
     const visibility = () => {
-      if (document.hidden) stop();
-      else void start();
+      // Do NOT erase position on tab switch. An existing consented watch may
+      // continue; if throttled, the server-side 90s TTL removes stale pins.
+      if (!document.hidden)void start();
     };
     const consentChanged = (event: StorageEvent) => {
       if (event.key !== professionalRadarConsentKey(userId)) return;
@@ -164,7 +170,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       disposed = true;
       window.removeEventListener("storage", consentChanged);
       document.removeEventListener("visibilitychange", visibility);
-      stop();
+      stop(window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes");
     };
   }, [userId]);
   return null;
