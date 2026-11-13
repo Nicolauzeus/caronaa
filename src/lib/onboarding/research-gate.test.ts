@@ -6,8 +6,12 @@ const api = vi.hoisted(() => ({
   verifications: vi.fn(),
   launch: vi.fn(),
   onboarding: vi.fn(),
+  professionalAccess: vi.fn(),
 }));
 
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { rpc: api.professionalAccess },
+}));
 vi.mock("@/lib/formulario/research-participation", () => ({
   getMyResearchParticipationBadges: api.participations,
 }));
@@ -28,6 +32,7 @@ describe("research gate after basic onboarding", () => {
     api.participations.mockResolvedValue([]);
     api.verifications.mockResolvedValue([]);
     api.launch.mockResolvedValue({ locked: false, launches: [] });
+    api.professionalAccess.mockResolvedValue({ data: { authorized: false }, error: null });
   });
 
   it("requires the survey for an account without participation or a pilot badge", async () => {
@@ -43,6 +48,7 @@ describe("research gate after basic onboarding", () => {
     expect(await resolvePostOnboardingDestination()).toBe("/home");
     expect(api.participations).not.toHaveBeenCalled();
     expect(api.verifications).not.toHaveBeenCalled();
+    expect(api.professionalAccess).not.toHaveBeenCalled();
     expect(api.launch).toHaveBeenCalledTimes(1);
   });
 
@@ -56,6 +62,25 @@ describe("research gate after basic onboarding", () => {
     api.onboarding.mockResolvedValue({ status: "BASIC_COMPLETED", usage_role: "AMBOS" });
     expect(await resolvePostOnboardingDestination()).toBe("/formulario");
     expect(api.participations).toHaveBeenCalledTimes(1);
+  });
+
+  it("exempts previously approved professional drivers even if onboarding was PASSAGEIRO", async () => {
+    api.professionalAccess.mockResolvedValue({ data: { authorized: true }, error: null });
+    expect(await resolvePostOnboardingDestination()).toBe("/home");
+    expect(api.professionalAccess).toHaveBeenCalledWith("get_my_professional_access");
+  });
+
+  it("does not exempt a pending professional request or a forged driver flag", async () => {
+    api.professionalAccess.mockResolvedValue({ data: {
+      authorized: false, request: { status: "PENDING", access_type: "MOTOTAXI_SIMPLE" },
+    }, error: null });
+    expect(await resolvePostOnboardingDestination()).toBe("/formulario");
+    expect(api.professionalAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed to the form when the professional authorization RPC is unavailable", async () => {
+    api.professionalAccess.mockResolvedValue({ data: null, error: { message: "offline" } });
+    expect(await resolvePostOnboardingDestination()).toBe("/formulario");
   });
 
   it("keeps the institutional launch waiting gate for drivers already enrolled in a campaign", async () => {
@@ -102,6 +127,7 @@ describe("research gate after basic onboarding", () => {
     expect(decideResearchDestination({ locked: false, hasParticipation: true, isPilot: false })).toBe("/home");
     expect(decideResearchDestination({ locked: true, hasParticipation: true, isPilot: true })).toBe("/aguardando");
     expect(decideResearchDestination({ locked: false, hasParticipation: false, isPilot: false, isDriverOnly: true })).toBe("/home");
+    expect(decideResearchDestination({ locked: false, hasParticipation: false, isPilot: false, isApprovedProfessional: true })).toBe("/home");
     expect(decideResearchDestination({ locked: true, hasParticipation: false, isPilot: false, isDriverOnly: true })).toBe("/aguardando");
   });
 });
