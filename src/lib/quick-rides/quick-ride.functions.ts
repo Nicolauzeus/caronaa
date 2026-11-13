@@ -10,6 +10,7 @@ import {
   type ExclusiveRateCard,
 } from "@/lib/pricing/caronaa-fare-engine";
 import { insideApprovedActivityRadius, resolveCorridorMunicipality } from "./corridor-coverage";
+import { f07TestEnvironmentConfigured } from "./f07-pilot.functions";
 
 const point = z.object({
   lat: z.number().finite().min(-90).max(90),
@@ -205,7 +206,11 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const {data:record,error:saveError}=await admin.from("caronaa_quick_fare_quotes")
       .insert({
         passenger_id:context.userId,municipality:coverage.municipality,
-        destination_municipality:destinationCity.municipality,
+        // Public production may not yet have migration 0143. Never change
+        // its legacy quote inserts unless this is the isolated F07 pilot.
+        ...(f07TestEnvironmentConfigured()
+          ? {destination_municipality:destinationCity.municipality}
+          : {}),
         pricing_region:coverage.region,vehicle_type:data.vehicleType,
         origin_label:data.originLabel,destination_label:data.destinationLabel,
         origin_lat:data.origin.lat,origin_lng:data.origin.lng,
