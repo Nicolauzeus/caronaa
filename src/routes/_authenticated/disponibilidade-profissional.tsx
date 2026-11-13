@@ -239,7 +239,7 @@ function ProfessionalAvailability(){
     {pilotAuthorized && <p role="status" className="rounded-xl border border-primary/40 p-3 text-sm">
       Acesso temporário do piloto autorizado {pilotExpiresAt? "até "+new Date(pilotExpiresAt).toLocaleString("pt-BR"):""}.
       O GPS continua opt-in e a operação é apenas de homologação.
-    </p>
+    </p>}
    <p className="rounded-xl border p-3 text-xs text-muted-foreground">O município operacional é confirmado automaticamente a partir da localização atual. A seleção abaixo é apenas um ponto de partida; não restringe a região em que você pode publicar o GPS. Se não souber o município, basta autorizar o GPS depois de ficar disponível.</p>
    <MunicipalitySelect value={municipality} disabled={enabled||sharing||busy} onChange={setMunicipality}/>
    {enabled&&<p className="text-xs text-muted-foreground">Município atualizado pelo GPS verificado. Fique offline para editar o município inicial.</p>}
