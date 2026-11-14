@@ -103,7 +103,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
   it("exibe valor verificado no servidor antes de confirmar a solicitação",async()=>{
     render(<QuickRideHomePanel {...basic}/>);
     expect(screen.queryByRole("button",{name:/Calcular preço/})).not.toBeInTheDocument();
-    expect(await screen.findByText(/R\$\s*7,50/,{exact:false},{timeout:3000})).toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*7,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({
       data:{
         origin:{lat:origin.lat,lng:origin.lng},
@@ -142,7 +142,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic} vehicle="CAR" destination="Fortaleza"
       destinationPoint={{rawText:"Fortaleza",lat:-3.73,lng:-38.52}}/>);
-    expect(await screen.findByText(/R\$\s*173,50/,{exact:false},{timeout:3000})).toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*173,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({data:expect.objectContaining({
       vehicleType:"CAR",destination:{lat:-3.73,lng:-38.52},
     })});
@@ -150,7 +150,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
 
   it("calcula sem clique, mas não permite confirmar sem motorista online",async()=>{
     render(<QuickRideHomePanel {...basic} driverCount={0}/>);
-    expect(await screen.findByText(/R\$\s*7,50/,{exact:false},{timeout:3000})).toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*7,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     const confirm=screen.getByRole("button",{name:"Aguardando motorista disponível"});
     expect(confirm).toBeDisabled();
     expect(api.submit).not.toHaveBeenCalled();
