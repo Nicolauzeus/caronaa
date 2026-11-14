@@ -30,6 +30,9 @@ describe("F07 regression: verified fare, SQL dispatch and driver race", () => {
     expect(sql).toContain("AND r.public_discovery_enabled AND r.dispatch_enabled AND t.published");
     expect(sql).toContain("AND (v_destination=o.municipality OR t.intermunicipal_enabled)");
     expect(sql).toContain("WHERE d.municipality=v_destination");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_driver_assignment()");
+    expect(sql).toContain("d.municipality=COALESCE(q.destination_municipality,v.destination_municipality)");
+    expect(sql).toContain("v.verified_at>=q.issued_at");
     expect(sql).toContain("public.caronaa_f07_test_dispatch_allowed()");
     expect(sql).toContain("public.quick_ride_request(");
     expect(sql).toContain("UPDATE public.caronaa_quick_fare_quotes SET ride_id=r_id");
