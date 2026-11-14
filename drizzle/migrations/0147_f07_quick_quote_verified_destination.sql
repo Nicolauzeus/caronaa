@@ -95,4 +95,45 @@ $submit$;
 REVOKE ALL ON FUNCTION public.caronaa_quick_submit_quoted(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.caronaa_quick_submit_quoted(uuid) TO authenticated;
 
+-- Driver allocation must honor the same trusted legacy-verification record;
+-- otherwise an old same-city quote could be requested but never accepted.
+CREATE OR REPLACE FUNCTION public.guard_caronaa_quick_driver_assignment()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $assignment$
+BEGIN
+  IF OLD.status='SEARCHING' AND NEW.status='ACCEPTED' THEN
+    IF NOT public.caronaa_f07_test_dispatch_allowed() OR NOT EXISTS (
+      SELECT 1 FROM public.caronaa_quick_fare_quotes q
+      JOIN public.caronaa_service_municipalities o
+        ON o.municipality=q.municipality
+      JOIN public.professional_service_regions os
+        ON os.municipality=o.municipality
+      JOIN public.caronaa_quick_tariff_policies t
+        ON t.pricing_region=o.pricing_region AND t.vehicle_type=q.vehicle_type
+      LEFT JOIN public.caronaa_quick_legacy_destination_verifications v
+        ON v.quote_id=q.id AND v.destination_municipality=q.municipality
+           AND v.verified_at>=q.issued_at
+      JOIN public.caronaa_service_municipalities d
+        ON d.municipality=COALESCE(q.destination_municipality,v.destination_municipality)
+      JOIN public.professional_service_regions ds
+        ON ds.municipality=d.municipality
+      WHERE q.ride_id=OLD.id
+        AND q.municipality=OLD.municipality
+        AND q.vehicle_type=OLD.vehicle_type
+        AND os.dispatch_enabled AND os.public_discovery_enabled
+        AND ds.dispatch_enabled AND ds.public_discovery_enabled
+        AND t.published
+        AND (o.municipality=d.municipality OR t.intermunicipal_enabled)
+        AND CASE WHEN q.vehicle_type='MOTO' THEN o.moto_enabled AND d.moto_enabled
+                 ELSE o.car_enabled AND d.car_enabled END
+    ) THEN
+      RAISE EXCEPTION 'Destination, origin or tariff is no longer approved';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$assignment$;
+REVOKE ALL ON FUNCTION public.guard_caronaa_quick_driver_assignment()
+  FROM PUBLIC,anon,authenticated;
+
 COMMIT;
