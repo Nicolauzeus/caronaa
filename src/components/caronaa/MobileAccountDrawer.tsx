@@ -30,7 +30,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { NotificationControls } from "./NotificationControls";
 import { getMyUserVerifications } from "@/lib/user-verifications";
 
-export function MobileAccountDrawer({ signOut, prelaunchMode = false }: { signOut: () => Promise<void>; prelaunchMode?: boolean }) {
+export function MobileAccountDrawer({ signOut, prelaunchMode = false, professionalOnly = false }: { signOut: () => Promise<void>; prelaunchMode?: boolean; professionalOnly?: boolean }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
@@ -124,7 +124,30 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false }: { signOu
           </div>
         </div>
 
-        {prelaunchMode ? (
+        {professionalOnly && !prelaunchMode ? (
+          <nav aria-label="Menu do motorista" className="space-y-2 py-4">
+            <Link to="/disponibilidade-profissional" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl bg-primary/10 px-3 font-semibold">
+              <CarFront size={19} /> Minha disponibilidade
+            </Link>
+            <Link to="/viagem-rapida" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
+              <House size={19} /> Pedidos de corrida
+            </Link>
+            <Link to="/perfil" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
+              <UserRound size={19} /> Perfil, Pix e comissões
+            </Link>
+            <Link to="/como-funciona" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
+              <HelpCircle size={19} /> Ajuda
+            </Link>
+            {admin && <Link to="/admin" onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
+              <LayoutDashboard size={19} /> Administração
+            </Link>}
+          </nav>
+        ) : prelaunchMode ? (
           <nav aria-label="Acesso durante o pré-lançamento" className="space-y-2 border-t border-border py-4">
             <p className="text-xs leading-5 text-muted-foreground">Enquanto sua campanha não começa, personalize seus dados e acompanhe a contagem regressiva.</p>
             <Link to="/aguardando" onClick={() => setOpen(false)}
