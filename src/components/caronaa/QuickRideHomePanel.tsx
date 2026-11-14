@@ -96,7 +96,7 @@ export function QuickRideHomePanel({
   // repeated Google Routes calls while the user edits the address.
   useEffect(()=>{
     if(!covered||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
-       origin.trim().length<3||destination.trim().length<3||liveRide||
+       origin.trim().length<3||destination.trim().length<3||liveRide||completedRide||
        originLat==null||originLng==null||destinationLat==null||destinationLng==null){
       setQuoteLoading(false);
       return;
