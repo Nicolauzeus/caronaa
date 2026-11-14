@@ -19,6 +19,9 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
       .toBe("DB_REGION_DISABLED");
     expect(classifyF07RadarDbError({code:"22023",message:"Posicao GPS invalida"}))
       .toBe("DB_LOCATION_INVALID");
+    expect(classifyF07RadarDbError({code:"42703",message:"column absent"})).toBe("DB_SCHEMA_MISMATCH");
+    expect(classifyF07RadarDbError({code:"23514",message:"check constraint"})).toBe("DB_CONSTRAINT_FAILED");
+    expect(classifyF07RadarDbError({code:"42501",message:"Piloto F07 expirado; encerre a autorizacao temporaria"})).toBe("DB_DRIVER_NOT_APPROVED");
     expect(classifyF07RadarDbError({code:"99999",message:"unknown SQL exception"}))
       .toBe("DB_WRITE_FAILED");
     expect(classifyF07RadarDbError(null)).toBe("DB_WRITE_FAILED");
