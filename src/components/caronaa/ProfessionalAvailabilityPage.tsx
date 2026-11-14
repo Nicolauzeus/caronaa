@@ -37,7 +37,8 @@ export function ProfessionalAvailabilityPage() {
   const [municipality,setMunicipality]=useState("");
   const [sharing,setSharing]=useState(false);
   const [fix,setFix]=useState<Fix|null>(null);
-  const [observedFix,setObservedFix]=useState<Fix|null>(null); // real GPS in the browser, even when publication fails
+  const [observedFix,setObservedFix]=useState<Fix|null>(null);
+  const [accuracyWarning,setAccuracyWarning]=useState(false); // real GPS in the browser, even when publication fails
   const [error,setError]=useState("");
   const [diagnostics,setDiagnostics]=useState<SafeF07RadarEvent[]>([]);
   const [copied,setCopied]=useState(false);
@@ -70,7 +71,7 @@ export function ProfessionalAvailabilityPage() {
   const stop=useCallback(async()=>{
     record("LOCATION_STOP_REQUEST");
     discardWatch();
-    if(mounted.current){setFix(null);setObservedFix(null);}
+    if(mounted.current){setFix(null);setObservedFix(null);setAccuracyWarning(false);}
     await Promise.allSettled([
       (supabase as any).rpc("professional_location_stop"),
       clearTest(),
@@ -93,7 +94,7 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError("Sinal GPS com precisão insuficiente.");
       return;
     }
-    if(mounted.current)setObservedFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});
+    if(mounted.current){setObservedFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});setAccuracyWarning(accuracy>100);}
     sending.current=true;
     lastAttempt.current=Date.now();
     const ref=f07RadarTraceId();
@@ -167,10 +168,17 @@ export function ProfessionalAvailabilityPage() {
     const fail=(reason:GeolocationPositionError)=>{
       if(!tracking.current)return;
       record("GPS_BROWSER_ERROR",{code:reason.code===1?"GPS_PERMISSION_DENIED":reason.code===3?"GPS_TIMEOUT":"GPS_UNAVAILABLE"},"warn");
-      discardWatch();
-      window.localStorage.removeItem(professionalRadarConsentKey(uid));
-      void (supabase as any).rpc("professional_location_stop");
-      void simulationFallback(city,vehicle,reason.message);
+      // A transient timeout is NOT revocation. Keep the browser watcher alive
+      // and let the 90-second server cutoff hide stale positions.
+      if(reason.code===1){
+        discardWatch();
+        window.localStorage.removeItem(professionalRadarConsentKey(uid));
+        void (supabase as any).rpc("professional_location_stop");
+      }
+      if(mounted.current)setError(reason.code===1
+        ? "Permissão GPS negada. Ative a localização nas configurações do navegador."
+        : "Sinal GPS temporariamente indisponível. Continuaremos tentando automaticamente.");
+      if(reason.code===1)void simulationFallback(city,vehicle,reason.message);
     };
     try{
       // First fix immediately after the same click; the watch provides updates.
@@ -355,7 +363,7 @@ export function ProfessionalAvailabilityPage() {
     </Link>}
     <section className="space-y-3 rounded-2xl border border-primary/30 p-4" aria-label="Controle de disponibilidade">
       <p className="text-lg font-bold">
-        {!ready ? "Verificando seu cadastro..." : fresh ? "● Você está no radar" :
+        {!ready ? "Verificando seu cadastro..." : fresh ? "● Online e transmitindo GPS" :
           enabled ? "● Disponível · aguardando GPS" : "○ Você está offline"}
       </p>
       <p className="text-sm text-muted-foreground">
@@ -381,6 +389,7 @@ export function ProfessionalAvailabilityPage() {
         Parar compartilhamento de GPS
       </button>}
     </section>
+    {accuracyWarning && enabled && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">GPS com precisão reduzida (acima de 100 m). Aproxime-se de uma janela ou vá para um local com céu aberto. A sincronização continua ativa; confirme sua posição antes de aceitar corridas.</p>}
     <section aria-label="Mapa do motorista" className="space-y-3 rounded-2xl border p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
@@ -431,7 +440,7 @@ export function ProfessionalAvailabilityPage() {
       Radar bloqueado por repasses. <Link to="/perfil" className="underline">Consultar comissões</Link>
     </p>}
     <section aria-label="Status da localização" className="space-y-2 rounded-xl border p-4 text-sm">
-      <p className="font-bold">{!ready?"Carregando...":fresh?"Online e no radar":fix?.simulated?"SIMULAÇÃO — somente na sua conta":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
+      <p className="font-bold">{!ready?"Carregando...":fresh?"Online e transmitindo GPS":fix?.simulated?"SIMULAÇÃO — somente na sua conta":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
       <p>Município: <strong>{municipality||"Aguardando verificação"}</strong></p>
       <p>Coordenadas: <strong>{fix?`${fix.lat.toFixed(5)}, ${fix.lng.toFixed(5)}`:"Não enviadas"}</strong>
         {fix?.simulated?" (centro simulado do município)":""}</p>
@@ -440,7 +449,7 @@ export function ProfessionalAvailabilityPage() {
         Sem GPS confirmado recente, o veículo não aparece no radar público.
       </p>}
       {error&&<p role="alert" className="text-destructive">{error}</p>}
-      {error.includes("DB_WRITE_FAILED") && <p className="text-xs text-muted-foreground">
+      {(error.includes("DB_WRITE_FAILED") || error.includes("DB_SCHEMA_MISMATCH")) && <p className="text-xs text-muted-foreground">
         GPS obtido, mas o banco recusou a publicação. Procure nos logs do servidor a referência (ref)
         do diagnóstico F07 e confira SQLSTATE, autorização e migrations. A posição não foi publicada.
       </p>}
