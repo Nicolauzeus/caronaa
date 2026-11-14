@@ -102,9 +102,8 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
 
   it("exibe valor verificado no servidor antes de confirmar a solicitação",async()=>{
     render(<QuickRideHomePanel {...basic}/>);
-    const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500});
-    fireEvent.click(calc);
-    expect(await screen.findByText(/R\$\s*7,50/)).toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:/Calcular preço/})).not.toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*7,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({
       data:{
         origin:{lat:origin.lat,lng:origin.lng},
@@ -114,7 +113,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
         vehicleType:"MOTO",
       },
     });
-    fireEvent.click(screen.getByRole("button",{name:"Solicitar corrida ao valor indicado"}));
+    fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({
       data:{quoteId:"135e553c-1516-4a28-a49c-9ad0e3926821"},
     }));
@@ -122,12 +121,11 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
 
   it("invalida cotação anterior quando o destino muda",async()=>{
     const {rerender}=render(<QuickRideHomePanel {...basic}/>);
-    const calc=await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500});
-    fireEvent.click(calc);
-    await screen.findByRole("button",{name:"Solicitar corrida ao valor indicado"});
+    await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3000});
     rerender(<QuickRideHomePanel {...basic} destination="Novo destino"
       destinationPoint={{rawText:"Novo destino",lat:-4.26,lng:-38.75}}/>);
-    expect(screen.queryByRole("button",{name:"Solicitar corrida ao valor indicado"})).not.toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:/Confirmar corrida por/})).not.toBeInTheDocument();
+    await waitFor(()=>expect(api.preview).toHaveBeenCalledTimes(2),{timeout:3000});
     expect(api.submit).not.toHaveBeenCalled();
   });
 
@@ -144,11 +142,24 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic} vehicle="CAR" destination="Fortaleza"
       destinationPoint={{rawText:"Fortaleza",lat:-3.73,lng:-38.52}}/>);
-    fireEvent.click(await screen.findByRole("button",{name:/Calcular preço da Corrida Rápida/},{timeout:2500}));
-    expect(await screen.findByText(/R\$\s*173,50/)).toBeInTheDocument();
+    expect(await screen.findByText(/R\$\s*173,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({data:expect.objectContaining({
       vehicleType:"CAR",destination:{lat:-3.73,lng:-38.52},
     })});
+  });
+
+  it("calcula sem clique, mas não permite confirmar sem motorista online",async()=>{
+    render(<QuickRideHomePanel {...basic} driverCount={0}/>);
+    expect(await screen.findByText(/R\$\s*7,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
+    const confirm=screen.getByRole("button",{name:"Aguardando motorista disponível"});
+    expect(confirm).toBeDisabled();
+    expect(api.submit).not.toHaveBeenCalled();
+  });
+
+  it("não realiza cotação antes de destino válido",async()=>{
+    render(<QuickRideHomePanel {...basic} destination="" destinationPoint={undefined}/>);
+    await screen.findByText(/Escolha o destino para visualizar o preço automaticamente/,{exact:false});
+    expect(api.preview).not.toHaveBeenCalled();
   });
 
   it("mostra o QR Pix de uma corrida concluída, sem recotar preço",async()=>{

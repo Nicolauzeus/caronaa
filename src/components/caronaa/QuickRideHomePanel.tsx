@@ -38,6 +38,9 @@ export function QuickRideHomePanel({
   const [coverageLoading,setCoverageLoading]=useState(false);
   const [quote,setQuote]=useState<QuickRideFarePreview|null>(null);
   const [busy,setBusy]=useState(false);
+  const [quoteLoading,setQuoteLoading]=useState(false);
+  const [quoteRefresh,setQuoteRefresh]=useState(0);
+  const [coverageResolvedKey,setCoverageResolvedKey]=useState("");
   const [error,setError]=useState("");
   const [interestSent,setInterestSent]=useState(false);
   const [rides,setRides]=useState<ExistingQuickRide[]>([]);
@@ -46,11 +49,15 @@ export function QuickRideHomePanel({
   const destinationLat=destinationPoint?.lat, destinationLng=destinationPoint?.lng;
   const hasOrigin=Number.isFinite(originLat)&&Number.isFinite(originLng)&&!gpsOriginIsImprecise;
   const hasDestination=Number.isFinite(destinationLat)&&Number.isFinite(destinationLng);
+  // The quote follows the selected itinerary, not every radar refresh.
   const fieldsKey=JSON.stringify([origin,originLat,originLng,destination,destinationLat,destinationLng,vehicle]);
+  const coveragePointKey=JSON.stringify([originLat,originLng,vehicle,gpsOriginIsImprecise]);
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  // A coverage result only applies to the coordinates and vehicle that produced it.
+  const covered=coverage?.status==="ENABLED"&&coverageResolvedKey===coveragePointKey;
 
   useEffect(()=>{
     mounted.current=true;
@@ -60,13 +67,13 @@ export function QuickRideHomePanel({
     setQuote(null);setCurrentQuoteKey("");setInterestSent(false);setError("");
   },[fieldsKey]);
   useEffect(()=>{
-    setCoverage(null);onCoverage?.(null);setCoverageLoading(false);
+    setCoverage(null);setCoverageResolvedKey("");onCoverage?.(null);setCoverageLoading(false);
     if(!hasOrigin||originLat==null||originLng==null)return;
     let active=true;
     setCoverageLoading(true);
     const timer=window.setTimeout(()=>{
       void availabilityFn({data:{lat:originLat,lng:originLng,vehicleType:vehicle}})
-        .then(value=>{if(active){setCoverage(value);onCoverage?.(value);}})
+        .then(value=>{if(active){setCoverage(value);setCoverageResolvedKey(coveragePointKey);onCoverage?.(value);}})
         .catch(()=>{if(active){setError("Não foi possível verificar a cobertura agora.");}})
         .finally(()=>{if(active)setCoverageLoading(false);});
     },450);
@@ -84,26 +91,37 @@ export function QuickRideHomePanel({
     const interval=window.setInterval(refresh,12000);
     return ()=>{alive=false;window.clearInterval(interval);};
   },[]);
-  async function preview() {
-    if(busy||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
-       originLat==null||originLng==null||destinationLat==null||destinationLng==null)return;
-    setBusy(true);setError("");setQuote(null);setCurrentQuoteKey("");
-    const startKey=fieldsKey;
-    try{
-      const result=await previewFn({data:{
+  // No separate "Calcular preço" step: selecting a valid destination
+  // automatically requests the immutable server quote. Debounce limits
+  // repeated Google Routes calls while the user edits the address.
+  useEffect(()=>{
+    if(!covered||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
+       origin.trim().length<3||destination.trim().length<3||liveRide||completedRide||
+       originLat==null||originLng==null||destinationLat==null||destinationLng==null){
+      setQuoteLoading(false);
+      return;
+    }
+    let active=true;
+    const timer=window.setTimeout(()=>{
+      if(!active)return;
+      setQuoteLoading(true);setError("");
+      void previewFn({data:{
         origin:{lat:originLat,lng:originLng},
         destination:{lat:destinationLat,lng:destinationLng},
         originLabel:origin,destinationLabel:destination,vehicleType:vehicle,
-      }});
-      if(mounted.current){
-        setQuote(result);setCurrentQuoteKey(startKey);
-      }
-    }catch(cause){
-      if(mounted.current)setError(cause instanceof Error?cause.message:"Cotação indisponível.");
-    }finally{if(mounted.current)setBusy(false);}
-  }
+      }})
+        .then(result=>{if(active){setQuote(result);setCurrentQuoteKey(fieldsKey);}})
+        .catch(cause=>{if(active)setError(cause instanceof Error?cause.message:"Cotação indisponível.");})
+        .finally(()=>{if(active)setQuoteLoading(false);});
+    },800);
+    return ()=>{active=false;window.clearTimeout(timer);};
+    // fieldsKey captures the labels, coordinates and vehicle; covered is
+    // associated with the same origin/vehicle. Ignore stale responses.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[fieldsKey,covered,liveRide?.id,quoteRefresh]);
   async function request() {
-    if(busy||!currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
+    if(busy||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
+       !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
     setBusy(true);setError("");
     try{
       await submitFn({data:{quoteId:currentQuote.quoteId}});
@@ -137,7 +155,6 @@ export function QuickRideHomePanel({
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível atualizar.");}
     finally{if(mounted.current)setBusy(false);}
   }
-  const covered=coverage?.status==="ENABLED";
   const inactiveText=coverage?.status==="OUTSIDE"
     ?"Ainda não atendemos embarques nesse município."
     :coverage?.status==="WAITLIST"
@@ -225,18 +242,25 @@ export function QuickRideHomePanel({
         </div>
       ):(
         <>
-          {covered&&hasDestination&&(
-            <button type="button" disabled={busy} onClick={()=>void preview()}
-              className="min-h-12 w-full rounded-xl border border-[#FFBB00] font-bold text-[#FFBB00] disabled:opacity-60">
-              {busy?"Calculando…":"Calcular preço da Corrida Rápida"}
-            </button>
+          {covered&&hasDestination&&!currentQuote&&!error&&(
+            <p role="status" className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs text-gray-200">
+              {quoteLoading?"Calculando o preço da viagem…":"Preparando preço automaticamente para o destino selecionado…"}
+            </p>
           )}
           {covered&&!hasDestination&&(
-            <p className="text-xs text-gray-300"><MapPin className="mr-1 inline" size={13}/>Selecione o destino para calcular o valor.</p>
+            <p className="text-xs text-gray-300"><MapPin className="mr-1 inline" size={13}/>Escolha o destino para visualizar o preço automaticamente.</p>
           )}
           {currentQuote&&(
             <div role="status" className="min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3">
-              <p className="text-xs text-gray-200">Preço da corrida · {vehicle==="MOTO"?"Moto":"Carro"}</p>
+              <p className="text-xs text-gray-200">Preço até {destination} · {vehicle==="MOTO"?"Moto":"Carro"}</p>
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                {vehicle==="MOTO"?<Bike size={16} className="text-[#FFBB00]"/>:<CarFront size={16} className="text-[#FFBB00]"/>}
+                <span>{driverLoading?"Buscando motoristas online…":
+                  driverError?"Não foi possível verificar motoristas online.":
+                  driverCount===0?"Sem motorista online para esta modalidade.":
+                  driverCount===1?"1 motorista online para receber seu pedido.":
+                  driverCount+" motoristas online para receber seu pedido."}</span>
+              </div>
               <p className="break-words text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
               <p className="flex items-center gap-1 text-xs text-gray-200">
                 <Clock3 size={13}/>{currentQuote.distanceKm.toFixed(1)} km • aprox. {Math.round(currentQuote.durationMinutes)} min
@@ -246,18 +270,34 @@ export function QuickRideHomePanel({
                 O motorista recebe {formatBrl(currentQuote.driverReceivesCents/100)}.
               </p>
               <p className="text-[11px] text-gray-300">Fase piloto: sem débito automático. O pagamento e o repasse precisam ser homologados antes da operação comercial.</p>
-              <button type="button" disabled={busy||Date.parse(currentQuote.expiresAt)<=Date.now()}
+              <button type="button"
+                disabled={busy||quoteLoading||driverLoading||Boolean(driverError)||driverCount<1||
+                  Date.parse(currentQuote.expiresAt)<=Date.now()}
                 onClick={()=>void request()}
                 className="min-h-12 w-full rounded-xl bg-[#FFBB00] text-sm font-bold text-[#121212] disabled:opacity-40">
-                {busy?"Solicitando…":"Solicitar corrida ao valor indicado"}
+                {busy?"Enviando pedido…":driverCount<1?"Aguardando motorista disponível":
+                  "Confirmar corrida por "+formatBrl(currentQuote.customerPaysCents/100)}
               </button>
-              {Date.parse(currentQuote.expiresAt)<=Date.now()&&<p className="text-xs">Cotação expirada. Calcule novamente.</p>}
+              <p className="text-[11px] text-gray-300">Ao confirmar, enviaremos o pedido aos motoristas online. O condutor só será definido quando aceitar; estar no radar não reserva um veículo.</p>
+              {Date.parse(currentQuote.expiresAt)<=Date.now()&&(
+                <button type="button" onClick={()=>{setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);}}
+                  className="min-h-10 rounded-lg border border-white/30 px-3 text-xs font-semibold">
+                  Atualizar preço expirado
+                </button>
+              )}
             </div>
           )}
         </>
       )}
       {!liveRide&&completedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
+      {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
+        <button type="button" disabled={quoteLoading||busy}
+          onClick={()=>{setError("");setQuoteRefresh(value=>value+1);}}
+          className="min-h-10 rounded-xl border border-white/30 px-3 text-xs font-semibold disabled:opacity-50">
+          Tentar obter preço novamente
+        </button>
+      )}
     </section>
   );
 }
