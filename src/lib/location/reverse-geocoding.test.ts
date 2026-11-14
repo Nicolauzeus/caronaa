@@ -10,13 +10,16 @@ describe("Google reverse geocoding", () => {
     const request = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        results: [
-          {
-            formattedAddress: "Rua A, Fortaleza, Ceará",
-            addressComponents: [],
-            location: { latitude: -3.7, longitude: -38.5 },
-          },
-        ],
+        places: [{
+          id: "nearby-test-id",
+          formattedAddress: "Rua A, Fortaleza, Ceará",
+          addressComponents: [
+            {longText:"Fortaleza",types:["administrative_area_level_2"]},
+            {shortText:"CE",types:["administrative_area_level_1"]},
+            {shortText:"BR",types:["country"]},
+          ],
+          location: { latitude: -3.7301, longitude: -38.52 },
+        }],
       }),
     });
     vi.stubGlobal("fetch", request);
@@ -25,21 +28,27 @@ describe("Google reverse geocoding", () => {
         formattedAddress: "Rua A, Fortaleza, Ceará",
         lat: -3.73,
         lng: -38.52,
+        city: "Fortaleza",
+        isApproximate: true,
       }),
     );
-    expect(new URL(request.mock.calls[0][0]).hostname).toBe(
-      "geocode.googleapis.com",
-    );
-    expect(new URL(request.mock.calls[0][0]).pathname).toBe(
-      "/v4/geocode/location/-3.73,-38.52",
-    );
+    const [url,options]=request.mock.calls[0];
+    expect(new URL(url).hostname).toBe("places.googleapis.com");
+    expect(new URL(url).pathname).toBe("/v1/places:searchNearby");
+    expect(options.method).toBe("POST");
+    expect(JSON.parse(options.body)).toEqual(expect.objectContaining({
+      locationRestriction:{circle:{
+        center:{latitude:-3.73,longitude:-38.52},radius:150,
+      }},
+      maxResultCount:1,
+    }));
   });
   it("does not invent addresses when results are empty", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ results: [] }),
+        json: async () => ({ places: [] }),
       }),
     );
     expect(await new GooglePlacesProvider().reverse(-3.73, -38.52)).toBeNull();
