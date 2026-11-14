@@ -336,12 +336,45 @@ export function ProfessionalAvailabilityPage() {
   const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
   return <main className="mx-auto max-w-2xl space-y-5 p-5">
     <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
-    <h1 className="text-3xl font-bold">Disponibilidade profissional</h1>
+    <h1 className="text-3xl font-bold">Painel do motorista</h1>
     <p className="text-sm text-muted-foreground">
-      Ficar disponível ativa a presença e pede permissão de GPS no mesmo toque.
-      Com consentimento ativo, o navegador pode continuar transmitindo ao alternar
-      abas; se suspender o GPS, o sinal do radar expira em 90 segundos.
+      Um toque para ficar disponível e compartilhar sua localização.
+      Você pode trabalhar em qualquer município habilitado onde estiver fisicamente,
+      mesmo que seu cadastro seja de outra cidade.
     </p>
+    {authorized && <Link to="/viagem-rapida"
+      search={buildQuickRideSearch({origin:"",destination:"",municipality})}
+      className="flex min-h-14 items-center justify-center rounded-xl bg-primary px-4 text-center font-bold text-primary-foreground">
+      Ver pedidos de corrida
+    </Link>}
+    <section className="space-y-3 rounded-2xl border border-primary/30 p-4" aria-label="Controle de disponibilidade">
+      <p className="text-lg font-bold">
+        {!ready ? "Verificando seu cadastro..." : fresh ? "● Você está no radar" :
+          enabled ? "● Disponível · aguardando GPS" : "○ Você está offline"}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {fresh ? "Sua localização está atualizada e os passageiros podem encontrar você." :
+          enabled ? "Permita o GPS do navegador. Sem sinal recente, o radar não mostra sua posição." :
+          "Ative a disponibilidade para receber pedidos na sua localização atual."}
+      </p>
+      <Button className="min-h-14 w-full text-base font-bold"
+        disabled={!ready||busy||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+        onClick={()=>void toggleOnline(!enabled)}>
+        {busy ? "Atualizando..." : enabled ? "Ficar offline" : "Ficar disponível e compartilhar GPS"}
+      </Button>
+      {enabled && !sharing && <button type="button" onClick={()=>{
+        if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
+        startGps(municipality,pilotVehicle,userId);
+      }} className="min-h-12 w-full rounded-xl border border-primary/40 p-3 font-semibold">
+        Tentar compartilhar GPS novamente
+      </button>}
+      {enabled && <button type="button" onClick={()=>{
+        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
+        void stop();
+      }} className="min-h-11 w-full rounded-xl border px-3 text-sm font-semibold">
+        Parar compartilhamento de GPS
+      </button>}
+    </section>
     <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>
@@ -354,8 +387,10 @@ export function ProfessionalAvailabilityPage() {
       </label>
     </section>}
     {pilotExpiry&&<p className="text-xs">Piloto autorizado até {new Date(pilotExpiry).toLocaleString("pt-BR")}</p>}
-    <p className="text-xs text-muted-foreground">Município inicial (não substitui a localização real):</p>
-    <MunicipalitySelect value={municipality} onChange={setMunicipality} disabled={enabled||busy}/>
+    <details className="rounded-xl border p-3 text-sm"><summary className="cursor-pointer font-semibold">Município inicial e configurações</summary>
+      <p className="my-2 text-xs text-muted-foreground">A cidade selecionada não limita sua atuação: o GPS verificado define onde você pode receber pedidos.</p>
+      <MunicipalitySelect value={municipality} onChange={setMunicipality} disabled={enabled||busy}/>
+    </details>
     {blocked&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar bloqueado por repasses. <Link to="/perfil" className="underline">Consultar comissões</Link>
     </p>}
@@ -383,29 +418,6 @@ export function ProfessionalAvailabilityPage() {
         {diagnostics.length ? diagnostics.map(entry=>JSON.stringify(entry)).join("\n") : "Nenhum evento registrado."}
       </pre>
     </details>
-    <Button className="min-h-12 w-full"
-      disabled={!ready||busy||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
-      onClick={()=>void toggleOnline(!enabled)}>
-      {busy?"Atualizando...":enabled?"Ficar offline":"Ficar disponível e compartilhar GPS"}
-    </Button>
-    {enabled&&<div className="space-y-2">
-      <button type="button" onClick={()=>{
-        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
-        void stop();
-      }} className="min-h-12 w-full rounded-xl border p-3 font-semibold">
-        Parar compartilhamento de localização
-      </button>
-      {!sharing&&<button type="button" onClick={()=>{
-        if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
-        startGps(municipality,pilotVehicle,userId);
-      }} className="min-h-12 w-full rounded-xl border p-3 font-semibold">
-        Tentar GPS novamente
-      </button>}
-    </div>}
-    {authorized&&<Link to="/viagem-rapida"
-      search={buildQuickRideSearch({origin:"",destination:"",municipality})}
-      className="flex min-h-12 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 p-3 text-center text-sm font-semibold">
-      Ver pedidos e acompanhar Corrida Rápida
-    </Link>}
+
   </main>;
 }
