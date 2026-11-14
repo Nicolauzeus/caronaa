@@ -10,12 +10,12 @@ ALTER TABLE public.caronaa_quick_queue_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.caronaa_quick_queue_events FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON public.caronaa_quick_queue_events TO authenticated;
 
-DROP POLICY IF EXISTS quick_queue_events_verified_driver_select
-  ON public.caronaa_quick_queue_events;
-CREATE POLICY quick_queue_events_verified_driver_select
-ON public.caronaa_quick_queue_events FOR SELECT TO authenticated
-USING(
-  EXISTS (
+-- SECURITY DEFINER is required because driver GPS and authorization tables
+-- are not directly readable through client RLS, by design.
+CREATE OR REPLACE FUNCTION public.caronaa_quick_event_allowed(p_municipality text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $allowed$
+ SELECT auth.uid() IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.professional_driver_authorizations a
     JOIN public.professional_presence p ON p.user_id=a.user_id
     JOIN public.professional_driver_locations l ON l.user_id=a.user_id
@@ -23,10 +23,20 @@ USING(
     WHERE a.user_id=auth.uid() AND a.approved
       AND p.is_available AND p.last_seen_at>now()-interval '90 seconds'
       AND l.updated_at>now()-interval '90 seconds'
-      AND l.municipality=caronaa_quick_queue_events.municipality
+      AND l.municipality=p_municipality
       AND r.dispatch_enabled AND r.public_discovery_enabled
-  )
-);
+ );
+$allowed$;
+REVOKE ALL ON FUNCTION public.caronaa_quick_event_allowed(text)
+  FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.caronaa_quick_event_allowed(text)
+  TO authenticated;
+
+DROP POLICY IF EXISTS quick_queue_events_verified_driver_select
+  ON public.caronaa_quick_queue_events;
+CREATE POLICY quick_queue_events_verified_driver_select
+ON public.caronaa_quick_queue_events FOR SELECT TO authenticated
+USING(public.caronaa_quick_event_allowed(municipality));
 
 CREATE OR REPLACE FUNCTION public.notify_caronaa_quick_queue_change()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
