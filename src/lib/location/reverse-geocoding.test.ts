@@ -53,6 +53,20 @@ describe("Google reverse geocoding", () => {
     );
     expect(await new GooglePlacesProvider().reverse(-3.73, -38.52)).toBeNull();
   });
+  it("backs off after Google returns HTTP 429 instead of repeating the request", async () => {
+    const now=vi.spyOn(Date,"now").mockReturnValue(100000);
+    try {
+      const request=vi.fn().mockResolvedValue({ok:false,status:429});
+      vi.stubGlobal("fetch",request);
+      await expect(new GooglePlacesProvider().reverse(-3.73,-38.52)).rejects.toThrow("429");
+      await expect(new GooglePlacesProvider().reverse(-3.73,-38.52)).rejects.toThrow("429");
+      expect(request).toHaveBeenCalledTimes(1);
+      now.mockReturnValue(161000);
+      request.mockResolvedValue({ok:true,json:async()=>({places:[]})});
+      expect(await new GooglePlacesProvider().reverse(-3.73,-38.52)).toBeNull();
+      expect(request).toHaveBeenCalledTimes(2);
+    } finally { now.mockRestore(); }
+  });
   it("fails on HTTP and authentication errors", async () => {
     vi.stubGlobal(
       "fetch",
