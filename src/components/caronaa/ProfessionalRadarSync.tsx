@@ -50,6 +50,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       if (disposed || publishing || watchId === null) return;
       if (Date.now() - lastGpsAttemptAt < 25000) return;
       log("SYNC_GPS_FIX",undefined,{accuracy:f07RadarAccuracyBand(position.coords.accuracy)});
+      if(position.coords.accuracy>100 && position.coords.accuracy<=5000) log("SYNC_GPS_LOW_ACCURACY","GPS_LOW_ACCURACY",{accuracy:f07RadarAccuracyBand(position.coords.accuracy),guidance:"Procure janela ou ceu aberto"});
       lastGpsAttemptAt = Date.now();
       const { latitude, longitude, accuracy } = position.coords;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
@@ -87,7 +88,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         // A shared rate gate may reject a duplicate update during navigation.
         // Keep the consented watch; retry on the next heartbeat.
         if (e instanceof Error && e.message.includes("Aguarde alguns segundos")) return;
-        if (!disposed && epoch === generation) stop();
+        if (!disposed && epoch === generation) log("SYNC_RETRY_SCHEDULED",f07RadarFailureCode(e),{ref});
       } finally {
         publishing = false;
       }
@@ -174,7 +175,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
             }
             navigator.geolocation.getCurrentPosition(
               position => { void publish(position); },
-              () => { /* Browser may throttle background GPS: TTL handles stale points. */ },
+              reason => { log("SYNC_HEARTBEAT_GPS_ERROR",reason.code===1?"GPS_PERMISSION_DENIED":reason.code===3?"GPS_TIMEOUT":"GPS_UNAVAILABLE"); },
               { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
             );
           })();
