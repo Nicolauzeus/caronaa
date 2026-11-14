@@ -11,6 +11,7 @@ import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAcce
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { buildQuickRideSearch } from "@/lib/quick-ride-search";
 import { Button } from "@/components/ui/button";
+import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
 type Fix = { lat:number; lng:number; at:Date; simulated:boolean };
 type Vehicle = "CAR" | "MOTO";
@@ -36,6 +37,7 @@ export function ProfessionalAvailabilityPage() {
   const [municipality,setMunicipality]=useState("");
   const [sharing,setSharing]=useState(false);
   const [fix,setFix]=useState<Fix|null>(null);
+  const [observedFix,setObservedFix]=useState<Fix|null>(null); // real GPS in the browser, even when publication fails
   const [error,setError]=useState("");
   const [diagnostics,setDiagnostics]=useState<SafeF07RadarEvent[]>([]);
   const [copied,setCopied]=useState(false);
@@ -68,7 +70,7 @@ export function ProfessionalAvailabilityPage() {
   const stop=useCallback(async()=>{
     record("LOCATION_STOP_REQUEST");
     discardWatch();
-    if(mounted.current)setFix(null);
+    if(mounted.current){setFix(null);setObservedFix(null);}
     await Promise.allSettled([
       (supabase as any).rpc("professional_location_stop"),
       clearTest(),
@@ -91,6 +93,7 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError("Sinal GPS com precisão insuficiente.");
       return;
     }
+    if(mounted.current)setObservedFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});
     sending.current=true;
     lastAttempt.current=Date.now();
     const ref=f07RadarTraceId();
@@ -138,6 +141,7 @@ export function ProfessionalAvailabilityPage() {
       const test=await simulateTest({data:{municipality:city,vehicleType:vehicle}});
       if(!mounted.current)return;
       setFix({lat:test.lat,lng:test.lng,at:new Date(test.updatedAt),simulated:true});
+      setObservedFix(null);
       setMunicipality(test.municipality);
       setError("SIMULAÇÃO de homologação — centro do município; visível só para a própria conta, nunca usado para despachar viagens.");
       record("SIMULATED_PREVIEW_AVAILABLE",{city:test.municipality});
@@ -334,6 +338,8 @@ export function ProfessionalAvailabilityPage() {
   }
 
   const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
+  const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
+  const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
   return <main className="mx-auto max-w-2xl space-y-5 p-5">
     <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
     <h1 className="text-3xl font-bold">Painel do motorista</h1>
@@ -375,6 +381,36 @@ export function ProfessionalAvailabilityPage() {
         Parar compartilhamento de GPS
       </button>}
     </section>
+    <section aria-label="Mapa do motorista" className="space-y-3 rounded-2xl border p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${fresh ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
+          {fresh ? "GPS publicado no radar" : observedFresh ? "GPS local · publicação pendente" :
+            mapFix?.simulated ? "SIMULAÇÃO · só você" : "Aguardando GPS"}
+        </span>
+      </div>
+      <div className="relative overflow-hidden rounded-xl border">
+        <GoogleMapSurface
+          points={mapFix ? [{lat:mapFix.lat,lng:mapFix.lng,
+            title: mapFix.simulated ? "Prévia simulada, não publicada" :
+              fresh ? "Sua posição publicada" : "Posição apenas neste navegador",
+            kind:"driver",label:"EU"}] : []}
+          fitMode="once"
+          fitKey={mapFix ? `${mapFix.simulated ? "sim" : "gps"}-${fresh ? "published" : "local"}` : "empty"}
+          className="h-64 w-full sm:h-80"
+          ariaLabel="Mapa da posição atual do motorista"
+        />
+        {!mapFix && <div role="status" className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg border bg-background/95 p-3 text-center text-xs font-semibold shadow">
+          Aguardando localização real. Ative ou autorize o GPS para centralizar o mapa.
+        </div>}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {fresh ? `Última publicação confirmada às ${fix?.at.toLocaleTimeString("pt-BR")}. Município verificado: ${municipality}.` :
+          observedFresh ? "Localização capturada no aparelho, mas ainda NÃO publicada. Você não está visível no radar." :
+          mapFix?.simulated ? "A posição simulada é apenas para homologação e não recebe pedidos reais." :
+          "Nenhuma posição válida publicada. O município do cadastro não substitui o GPS."}
+      </p>
+    </section>
     <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>
@@ -404,6 +440,10 @@ export function ProfessionalAvailabilityPage() {
         Sem GPS confirmado recente, o veículo não aparece no radar público.
       </p>}
       {error&&<p role="alert" className="text-destructive">{error}</p>}
+      {error.includes("DB_WRITE_FAILED") && <p className="text-xs text-muted-foreground">
+        GPS obtido, mas o banco recusou a publicação. Procure nos logs do servidor a referência (ref)
+        do diagnóstico F07 e confira SQLSTATE, autorização e migrations. A posição não foi publicada.
+      </p>}
     </section>
     <details className="rounded-xl border border-muted-foreground/30 p-4 text-sm">
       <summary className="cursor-pointer font-semibold">Diagnóstico técnico F07 ({diagnostics.length} eventos)</summary>
