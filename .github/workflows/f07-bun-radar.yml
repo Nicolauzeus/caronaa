@@ -11,6 +11,12 @@ on:
       - "drizzle/migrations/0145_f07_restaurar_descoberta_publica.sql"
       - "src/routes/_authenticated/disponibilidade-profissional.tsx"
       - "src/routes/_authenticated/home.tsx"
+      - "src/components/caronaa/QuickRideExperience.tsx"
+      - "src/lib/quick-rides/quick-ride.functions.ts"
+      - "src/lib/quick-rides/quick-ride-errors.ts"
+      - "src/lib/quick-rides/quick-ride-errors.test.ts"
+      - "src/lib/quick-rides/quick-ride-0147-regression.test.ts"
+      - "drizzle/migrations/0147_f07_quick_quote_verified_destination.sql"
       - "src/components/caronaa/GoogleHomeRideMap.tsx"
       - ".github/workflows/f07-bun-radar.yml"
   push:
