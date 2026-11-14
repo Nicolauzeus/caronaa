@@ -13,6 +13,7 @@ import { LocationAutocomplete } from "@/components/formulario/LocationAutocomple
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import type { FormLocationDetails } from "@/lib/location/types";
 
 type QuickRide = {
@@ -55,29 +56,27 @@ export function QuickRideExperience({
   driverOnly?: boolean;
 }) {
   const [municipality, setMunicipality] = useState(initialMunicipality);
-  useEffect(() => {
-    if (!driverOnly) return;
-    let active=true;
-    const refreshOperationalMunicipality=async()=>{
-      const {data:{user}}=await supabase.auth.getUser();
-      if(!user || !active)return;
-      const {data,error}=await (supabase as any).from("professional_presence")
-        .select("municipality,is_available,last_seen_at")
-        .eq("user_id",user.id).maybeSingle();
-      if(!active)return;
-      // Driver queue always follows the CURRENT presence municipality, which
-      // the server verifies from GPS. Registration region/search params are
-      // never authorization to receive dispatch.
-      const city=!error && data?.is_available===true &&
-        typeof data.municipality==="string" ? data.municipality.trim() : "";
-      setMunicipality(city);
-    };
-    void refreshOperationalMunicipality().catch(()=>undefined);
-    const timer=window.setInterval(()=>{
-      void refreshOperationalMunicipality().catch(()=>undefined);
-    },10000);
-    return()=>{active=false;window.clearInterval(timer);};
+  // GPS presence is not client-authoritative. Refresh from the server when
+  // returning to the tab and upon realtime queue invalidation.
+  const refreshOperationalMunicipality=useCallback(async()=>{
+    if(!driverOnly)return;
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user)return;
+    const {data,error}=await (supabase as any).from("professional_presence")
+      .select("municipality,is_available,last_seen_at")
+      .eq("user_id",user.id).maybeSingle();
+    const city=!error && data?.is_available===true &&
+      typeof data.municipality==="string" ? data.municipality.trim() : "";
+    setMunicipality(city);
   },[driverOnly]);
+  useEffect(()=>{
+    if(!driverOnly)return;
+    void refreshOperationalMunicipality().catch(()=>undefined);
+    const visible=()=>{if(!document.hidden)
+      void refreshOperationalMunicipality().catch(()=>undefined);};
+    document.addEventListener("visibilitychange",visible);
+    return()=>document.removeEventListener("visibilitychange",visible);
+  },[driverOnly,refreshOperationalMunicipality]);
   const [vehicle, setVehicle] = useState<"CAR" | "MOTO">("CAR");
   const [origin, setOrigin] = useState(initialOrigin);
   const [destination, setDestination] = useState(initialDestination);
@@ -220,11 +219,7 @@ export function QuickRideExperience({
     }
   };
 
-  useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 5000);
-    return () => window.clearInterval(timer);
-  }, []);
+
   const refreshQueue = useCallback(async () => {
     const selectedCity = municipality.trim();
     const version = ++queueRequestVersion.current;
@@ -250,14 +245,16 @@ export function QuickRideExperience({
     }
   }, [municipality]);
 
-  useEffect(() => {
+  // The private municipal invalidation channel drives both queue and
+  // participant views; only a disconnected channel triggers 60s fallback.
+  useQuickRideRealtime(municipality,()=>{
     void refreshQueue();
-    const timer = window.setInterval(() => void refreshQueue(), 5000);
-    return () => {
-      window.clearInterval(timer);
-      ++queueRequestVersion.current;
-    };
-  }, [refreshQueue]);
+    void refresh();
+    void refreshOperationalMunicipality().catch(()=>undefined);
+  },driverOnly);
+  useEffect(()=>()=>{
+    ++queueRequestVersion.current;
+  },[refreshQueue]);
   const useGps = () => {
     if (!window.isSecureContext || !navigator.geolocation) {
       setError("GPS requer HTTPS e um navegador compatível.");
