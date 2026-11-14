@@ -335,13 +335,13 @@ export function QuickRideExperience({
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4">
       {!embedded && (
-        <Link to="/home" className="text-sm font-semibold text-primary">
+        <Link to={driverOnly ? "/disponibilidade-profissional" : "/home"} className="text-sm font-semibold text-primary">
           ← Início
         </Link>
       )}
-      <h1 className="text-2xl font-extrabold">{driverOnly ? "Painel do motorista · Corridas Rápidas" : "Viajar agora"}</h1>
-      {driverOnly && <Link to="/perfil" hash="comissoes-caronaa" className="inline-flex min-h-11 items-center rounded-xl border border-primary/40 px-3 text-sm font-bold text-primary">
-        Ver comissões e gerar QR Pix do saldo
+      <h1 className="text-2xl font-extrabold">{driverOnly ? "Pedidos para você" : "Viajar agora"}</h1>
+      {driverOnly && <Link to="/disponibilidade-profissional" className="inline-flex min-h-11 items-center rounded-xl border border-primary/40 px-3 text-sm font-bold text-primary">
+        Consultar minha disponibilidade e GPS
       </Link>}
       <p className="text-sm text-muted-foreground">
         {driverOnly
@@ -605,7 +605,11 @@ export function QuickRideExperience({
         ))}
       </section>
       <section className="space-y-3">
-        <h2 className="font-bold">Pedidos próximos (motorista credenciado)</h2>
+        <h2 className="text-lg font-bold">Pedidos na sua região atual {queue.length > 0 ? `(${queue.length})` : ""}</h2>
+        {!municipality.trim() && <p className="rounded-xl border p-3 text-sm">
+          Você precisa estar disponível com GPS válido para consultar pedidos.
+          <Link to="/disponibilidade-profissional" className="ml-1 font-bold text-primary underline">Ativar GPS</Link>
+        </p>}
         {queue.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Nenhum pedido disponível ou motorista sem autorização/online.
@@ -625,10 +629,10 @@ export function QuickRideExperience({
             </p>
             <button
               disabled={busy || typeof r.driver_receives_cents !== "number"}
-              className="rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground"
+              className="min-h-14 w-full rounded-xl bg-primary px-4 py-3 text-base font-bold text-primary-foreground disabled:opacity-50"
               onClick={() => void action(r.id, "", true)}
             >
-              Aceitar pedido
+              Aceitar esta corrida
             </button>
           </article>
         ))}
