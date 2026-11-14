@@ -7,7 +7,8 @@ import {
   getQuickRideApproach,
 } from "@/lib/quick-ride-map.functions";
 import { sessionRequest } from "@/lib/session-request-cache";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
@@ -89,6 +90,8 @@ export function QuickRideExperience({
   const [rides, setRides] = useState<QuickRide[]>([]);
   const [queue, setQueue] = useState<QuickRide[]>([]);
   const [queueError, setQueueError] = useState(false);
+  const queueRequestVersion = useRef(0);
+  const rejectedQueueIds = useRef(new Set<string>());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitting = useRef(false);
@@ -222,27 +225,39 @@ export function QuickRideExperience({
     const timer = window.setInterval(() => void refresh(), 5000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    if (municipality.trim().length < 2) {
+  const refreshQueue = useCallback(async () => {
+    const selectedCity = municipality.trim();
+    const version = ++queueRequestVersion.current;
+    if (selectedCity.length < 2) {
       setQueue([]);
       setQueueError(false);
       return;
     }
-    let alive = true;
-    const check = async () => {
+    try {
       const { data, error: loadError } = await (supabase as any).rpc(
-        "caronaa_quick_driver_queue",
-        { p_municipality: municipality.trim() },
+        "caronaa_quick_driver_queue", { p_municipality: selectedCity },
       );
-      if (alive) { setQueueError(Boolean(loadError)); setQueue(loadError || !Array.isArray(data) ? [] : data); }
-    };
-    void check();
-    const timer = window.setInterval(() => void check(), 5000);
-    return () => {
-      alive = false;
-      window.clearInterval(timer);
-    };
+      if(version!==queueRequestVersion.current) return;
+      setQueueError(Boolean(loadError));
+      setQueue(loadError||!Array.isArray(data)?[]:data.filter(
+        (ride:QuickRide)=>!rejectedQueueIds.current.has(ride.id),
+      ));
+    } catch {
+      if(version===queueRequestVersion.current){
+        setQueueError(true);
+        setQueue([]);
+      }
+    }
   }, [municipality]);
+
+  useEffect(() => {
+    void refreshQueue();
+    const timer = window.setInterval(() => void refreshQueue(), 5000);
+    return () => {
+      window.clearInterval(timer);
+      ++queueRequestVersion.current;
+    };
+  }, [refreshQueue]);
   const useGps = () => {
     if (!window.isSecureContext || !navigator.geolocation) {
       setError("GPS requer HTTPS e um navegador compatível.");
@@ -318,16 +333,37 @@ export function QuickRideExperience({
         accept ? "quick_ride_accept" : "quick_ride_transition",
         accept ? { p_id: id } : { p_id: id, p_status: status },
       );
-      if (actionError || data === false)
-        setError(
-          actionError?.message ??
-            "A solicitação já foi atendida por outro motorista.",
-        );
+      if (actionError) {
+        setError("Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
+        await refreshQueue();
+        return;
+      }
+      if (accept && data === false) {
+        // SQL accepts are atomic. The losing client must not keep a stale
+        // actionable card while another driver already owns the ride.
+        rejectedQueueIds.current.add(id);
+        setQueue(items => items.filter(item => item.id !== id));
+        const message = "Corrida já aceita por outro motorista da região.";
+        setError(message);
+        toast.error(message);
+        await refreshQueue();
+        await refresh();
+        return;
+      }
+      if (accept && data !== true) {
+        setError("Aceite não confirmado. Atualize a lista antes de tentar novamente.");
+        await refreshQueue();
+        return;
+      }
+      if (accept) {
+        rejectedQueueIds.current.add(id);
+        setQueue(items => items.filter(item => item.id !== id));
+        toast.success("Corrida aceita. Acompanhe o embarque no seu painel.");
+      }
       await refresh();
+      await refreshQueue();
     } catch {
-      setError(
-        "Conexão indisponível. Atualize o estado antes de tentar novamente.",
-      );
+      setError("Conexão indisponível. Atualize o estado antes de tentar novamente.");
     } finally {
       setBusy(false);
       submitting.current = false;
