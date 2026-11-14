@@ -29,7 +29,8 @@ describe("Institutional cohort access regression",()=>{
    expect(route).toContain("launch.locked && !accessibleWhileWaiting");
    expect(route).toContain('to: "/aguardando"');
    expect(route).toContain("launchLocked: launch.locked");
-   expect(shell).toContain("prelaunchMode ? waitingNav : authenticatedNav");
+   expect(shell).toContain("prelaunchMode ? waitingNav : professionalOnly ? professionalNav : authenticatedNav");
+   expect(shell).toContain("professionalOnly ? \"grid-cols-3\" : \"grid-cols-4\"");
    expect(drawer).toContain("prelaunchMode ?");
  });
  it("allows profile photos, preferences and account personalization during the wait",()=>{
