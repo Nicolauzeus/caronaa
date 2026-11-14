@@ -529,6 +529,39 @@ export type Database = {
           },
         ]
       }
+      caronaa_quick_legacy_destination_verifications: {
+        Row: {
+          destination_municipality: string
+          quote_id: string
+          verified_at: string
+        }
+        Insert: {
+          destination_municipality: string
+          quote_id: string
+          verified_at?: string
+        }
+        Update: {
+          destination_municipality?: string
+          quote_id?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_quick_legacy_destination__destination_municipality_fkey"
+            columns: ["destination_municipality"]
+            isOneToOne: false
+            referencedRelation: "caronaa_service_municipalities"
+            referencedColumns: ["municipality"]
+          },
+          {
+            foreignKeyName: "caronaa_quick_legacy_destination_verifications_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
+            referencedRelation: "caronaa_quick_fare_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caronaa_quick_official_activities: {
         Row: {
           center_lat: number
