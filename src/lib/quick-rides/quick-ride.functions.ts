@@ -10,7 +10,7 @@ import {
   type ExclusiveRateCard,
 } from "@/lib/pricing/caronaa-fare-engine";
 import { insideApprovedActivityRadius, resolveCorridorMunicipality } from "./corridor-coverage";
-import { f07TestEnvironmentConfigured } from "./f07-pilot.functions";
+import { quickRideSubmissionError } from "./quick-ride-errors";
 
 const point = z.object({
   lat: z.number().finite().min(-90).max(90),
@@ -206,11 +206,9 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const {data:record,error:saveError}=await admin.from("caronaa_quick_fare_quotes")
       .insert({
         passenger_id:context.userId,municipality:coverage.municipality,
-        // Public production may not yet have migration 0143. Never change
-        // its legacy quote inserts unless this is the isolated F07 pilot.
-        ...(f07TestEnvironmentConfigured()
-          ? {destination_municipality:destinationCity.municipality}
-          : {}),
+        // Always write the municipality verified by server-side Google geocoding.
+        // Migration 0143/0147 must be applied before this code is deployed.
+        destination_municipality:destinationCity.municipality,
         pricing_region:coverage.region,vehicle_type:data.vehicleType,
         origin_label:data.originLabel,destination_label:data.destinationLabel,
         origin_lat:data.origin.lat,origin_lng:data.origin.lng,
@@ -237,14 +235,62 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     } satisfies QuickRideFarePreview;
   });
 
+/** Recover only an old same-city quote, with trusted server geocoding.
+ * Its fare snapshot remains immutable; the verification is stored separately.
+ * Do not infer a municipality from coordinates, free-text, or registration.
+ */
+async function verifyLegacyQuickRideDestination(quoteId:string,passengerId:string){
+  const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+  const admin=supabaseAdmin as any;
+  const {data:quote,error}=await admin.from("caronaa_quick_fare_quotes")
+    .select("id,passenger_id,municipality,destination_municipality,destination_lat,destination_lng,expires_at,ride_id")
+    .eq("id",quoteId).maybeSingle();
+  if(error||!quote||quote.passenger_id!==passengerId)
+    throw new Error("Esta cotação não está disponível para sua conta. Selecione o destino novamente.");
+  if(quote.ride_id) return false;
+  if(Date.parse(String(quote.expires_at))<=Date.now())
+    throw new Error("O preço desta corrida expirou. Atualize a cotação antes de confirmar.");
+  if(quote.destination_municipality!==null)
+    return false;
+  const lat=Number(quote.destination_lat),lng=Number(quote.destination_lng);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))
+    throw new Error("Destino não verificado. Selecione o destino novamente.");
+  const resolved=await sessionRequest(
+    "legacy-quick-destination:"+quoteId,
+    ()=>reverseGeocodeService(lat,lng),30_000,
+  );
+  const city=resolved?.city
+    ?resolveCorridorMunicipality(resolved.city,resolved.state,resolved.country)
+    :null;
+  // Only same-city recovery is authorized. Intercity fares require a fresh
+  // immutable quote reflecting the destination's exact approved municipality.
+  if(!city||city.municipality!==quote.municipality)
+    throw new Error("Esta cotação anterior precisa de uma nova verificação do destino. Selecione o destino novamente.");
+  const {error:writeError}=await admin.from("caronaa_quick_legacy_destination_verifications")
+    .upsert({quote_id:quoteId,destination_municipality:city.municipality,
+      verified_at:new Date().toISOString()},{onConflict:"quote_id"});
+  if(writeError)
+    throw new Error("Verificação do destino indisponível. Atualize o preço e tente novamente.");
+  return true;
+}
+
 export const submitQuotedQuickRide = createServerFn({method:"POST"})
   .middleware([requireSupabaseAuth])
   .inputValidator((v:unknown)=>quoteIdSchema.parse(v))
   .handler(async({context,data})=>{
-    const {data:rideId,error}=await (context.supabase as any)
+    const request=()=> (context.supabase as any)
       .rpc("caronaa_quick_submit_quoted",{p_quote_id:data.quoteId});
+    let {data:rideId,error}=await request();
+    if(error && /quote.*(missing verified destination|destination is not verified)/i.test(
+      String(error.message??"")
+    )){
+      // A previous app version left this field empty. Reverify the exact
+      // coordinates under service_role, then retry the atomic SQL RPC once.
+      const recovered=await verifyLegacyQuickRideDestination(data.quoteId,context.userId);
+      if(recovered) ({data:rideId,error}=await request());
+    }
     if(error||typeof rideId!=="string")
-      throw new Error("Não foi possível solicitar a corrida. Verifique se a cotação ainda é válida.");
+      throw new Error(quickRideSubmissionError(error?.message));
     return {rideId};
   });
 
