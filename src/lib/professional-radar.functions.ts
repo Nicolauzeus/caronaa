@@ -8,6 +8,7 @@ import { professionalRadarPointSchema, municipalityFromProfessionalGps } from "@
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { reverseGeocodeService } from "@/lib/location/service";
 import { classifyF07RadarDbError, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
+import { forgetVerifiedGpsCity, rememberVerifiedGpsCity, verifiedGpsCity } from "@/lib/professional-radar-geo-cache";
 
 export type ProfessionalRadarPublication =
   | { published: true; municipality: string; traceId?: string }
@@ -66,6 +67,7 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const admin = supabaseAdmin as any;
     const clearStaleLocation = async () => {
+      forgetVerifiedGpsCity(context.userId);
       const { error } = await admin.from("professional_driver_locations")
         .delete().eq("user_id", context.userId);
       if (error) return reject("LOCATION_CLEAR_FAILED", "Não foi possível suspender um sinal GPS antigo.", {
@@ -73,20 +75,36 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       });
     };
 
-    let city: string | null = null;
-    try {
-      log("reverse_geocoding_started");
-      const geo = await reverseGeocodeService(data.lat, data.lng);
-      city = municipalityFromProfessionalGps(geo);
-    } catch {
-      log("reverse_geocoding_failed", "GOOGLE_REVERSE_FAILED");
-      await clearStaleLocation();
-      return { published: false, reason: "LOCATION_UNKNOWN", municipality: null, traceId };
-    }
-    if (!city) {
-      log("municipality_unknown", "GPS_CITY_UNKNOWN");
-      await clearStaleLocation();
-      return { published: false, reason: "OUTSIDE_APPROVED_ZONE", municipality: null, traceId };
+    // Recent Google-verified municipality may be reused only inside a 300m
+    // radius and 3-minute TTL. An HTTP 429 never fabricates a municipality.
+    const point={lat:data.lat,lng:data.lng};
+    let city: string | null = verifiedGpsCity(context.userId,point);
+    if(city){
+      log("municipality_cache_hit", undefined, {ageBoundSeconds:180});
+    } else {
+      try {
+        log("reverse_geocoding_started");
+        const geo = await reverseGeocodeService(data.lat, data.lng);
+        city = municipalityFromProfessionalGps(geo);
+        if(!city){
+          log("municipality_unknown","GPS_CITY_UNKNOWN");
+          // A definitive OUTSIDE city requires actual address components.
+          if(geo?.city){
+            await clearStaleLocation();
+            return {published:false,reason:"OUTSIDE_APPROVED_ZONE",municipality:null,traceId};
+          }
+          // A POI lookup may return no result even in an approved area.
+          // Preserve the previous real fix only until the server's 90s TTL.
+          return {published:false,reason:"LOCATION_UNKNOWN",municipality:null,traceId};
+        }
+      } catch (cause) {
+        log("reverse_geocoding_failed",
+          cause instanceof Error && /HTTP 429/.test(cause.message)
+            ? "GOOGLE_QUOTA_LIMITED" : "GOOGLE_REVERSE_FAILED");
+        // Temporary upstream failures are not revocations of GPS consent.
+        // Never replay an older coordinate as the current driver position.
+        return {published:false,reason:"LOCATION_UNKNOWN",municipality:null,traceId};
+      }
     }
     log("municipality_resolved", undefined, { city });
 
@@ -95,7 +113,7 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       .select("public_discovery_enabled")
       .eq("municipality", city).maybeSingle();
     if (zoneError) {
-      await clearStaleLocation();
+      // DB outages must not erase real, previously consented GPS evidence.
       return reject("REGION_RPC_ERROR", "Não foi possível consultar a cobertura do radar.", {
         sqlState: String(zoneError.code ?? ""), city,
       });
@@ -137,9 +155,11 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
         city,
         serviceRoleConfigured: Boolean(process.env["SUPABASE_SERVICE_ROLE_KEY"]),
       });
-      await clearStaleLocation();
+      // Leave the last real fix to expire naturally after 90s on transient SQL
+      // errors; the DB itself continues to enforce all authorization checks.
       return reject(code, "O banco recusou publicar a localização. Consulte o diagnóstico F07 e o log do servidor.");
     }
+    rememberVerifiedGpsCity(context.userId,point,city);
     log("db_publish_success", undefined, { city });
     return { published: true, municipality: city, traceId };
   });
