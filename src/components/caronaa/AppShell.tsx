@@ -13,7 +13,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { getAdminAppPreview, leaveAdminAppPreview } from "@/lib/admin/entry";
@@ -30,6 +30,12 @@ import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
   { to: "/perfil" as const, label: "Meu perfil", icon: UserRound },
+];
+
+const professionalNav = [
+  { to: "/disponibilidade-profissional" as const, label: "Disponível", icon: CarFront },
+  { to: "/viagem-rapida" as const, label: "Pedidos", icon: CalendarClock },
+  { to: "/perfil" as const, label: "Minha conta", icon: UserRound },
 ];
 
 const authenticatedNav = [
@@ -63,14 +69,35 @@ export function AppShell({
   mapLayout?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [professionalOnly, setProfessionalOnly] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
   const selectedNav = (to:string,label:string) => label==="Oferecer"
     ? (pathname==="/home" && activeIntent==="offer") || pathname==="/oferecer"
     : label==="Início" ? pathname==="/home" && activeIntent!=="offer"
     : pathname===to || pathname.startsWith(`${to}/`);
-  const navigation = prelaunchMode ? waitingNav : authenticatedNav;
   const { user, loading } = useAuth();
+  useEffect(() => {
+    let live = true;
+    setProfessionalOnly(false);
+    if (!user || publicPage) return () => { live = false; };
+    // A server/database-backed professional application or exclusive onboarding role
+    // determines the simplified driver experience, never a self-declared URL flag.
+    void Promise.all([
+      (supabase as any).from("professional_mototaxi_profiles").select("user_id")
+        .eq("user_id", user.id).maybeSingle(),
+      (supabase as any).from("user_onboarding_progress").select("usage_role,status")
+        .eq("user_id", user.id).maybeSingle(),
+    ]).then(([professional, onboarding]) => {
+      if (!live) return;
+      if (professional.error || onboarding.error) return;
+      setProfessionalOnly(Boolean(professional.data) ||
+        (onboarding.data?.usage_role === "MOTORISTA" &&
+         onboarding.data?.status === "BASIC_COMPLETED"));
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [user?.id, publicPage]);
+  const navigation = prelaunchMode ? waitingNav : professionalOnly ? professionalNav : authenticatedNav;
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -270,7 +297,7 @@ export function AppShell({
 
             {/* Botão de Menu para MOBILE */}
             {!publicPage ? (
-              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} />
+              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} professionalOnly={professionalOnly} />
             ) : (
               <Button
                 variant="ghost"
@@ -325,7 +352,7 @@ export function AppShell({
                 </>
               ) : (
                 <>
-                  {authenticatedNav.map(({ to, label, icon: Icon }) => (
+                  {navigation.map(({ to, label, icon: Icon }) => (
                     <Link
                       key={`${to}-${label}`}
                       to={to}
@@ -399,7 +426,7 @@ export function AppShell({
           aria-label="Navegação principal mobile"
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-xl md:hidden"
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : "grid-cols-4"}`}>
+          <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : professionalOnly ? "grid-cols-3" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
               const selected = selectedNav(to,label);
               return (
