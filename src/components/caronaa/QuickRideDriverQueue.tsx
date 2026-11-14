@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
+import { QuickRidePixCard } from "./QuickRidePixCard";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -21,6 +22,7 @@ export function QuickRideDriverQueue({
 }) {
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
+  const [lastCompleted,setLastCompleted]=useState<string|null>(null);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const requestLock=useRef(false);
@@ -47,6 +49,7 @@ export function QuickRideDriverQueue({
       const requests:ActiveDriverRide[]=Array.isArray(mine.data)?mine.data:[];
       setActive(requests.find(r=>r.role==="DRIVER" &&
         ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
+      setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")?.id??null);
       setQueue((Array.isArray(offers.data)?offers.data:[]).filter(
         (ride:DriverQueueRide)=>!rejected.current.has(ride.id),
       ));
@@ -129,6 +132,7 @@ export function QuickRideDriverQueue({
             onClick={()=>void action(active.id,"COMPLETED")}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Concluir viagem</button>}
         </article>}
+        {!active&&lastCompleted&&<QuickRidePixCard rideId={lastCompleted}/>}
         {queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
