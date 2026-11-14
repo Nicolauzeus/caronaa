@@ -27,6 +27,32 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     expect(classifyF07RadarDbError(null)).toBe("DB_WRITE_FAILED");
   });
 
+  it("keeps F07 SQL UPSERT fixed and restricted to service_role",()=>{
+    const sql=readFileSync("drizzle/migrations/0146_f07_fix_gps_schema_mismatch.sql","utf8");
+    expect(sql).toContain("sampled_at=now(),updated_at=now()");
+    expect(sql).toContain("TO service_role");
+    expect(sql).toContain("FROM PUBLIC,anon,authenticated");
+    expect(sql).toContain("public.driver_platform_access_allowed(p_user_id)");
+    expect(sql).toContain("municipality=v_city,last_seen_at=now(),updated_at=now()");
+    expect(sql).not.toContain("sampled_at=now,");
+  });
+
+  it("keeps coarse fixes publishable without bypassing server municipality checks",async()=>{
+    const { professionalRadarPointSchema } = await import("./professional-radar-geo");
+    expect(professionalRadarPointSchema.safeParse({
+      lat:-4.2,lng:-38.7,accuracyM:1500,traceId:"coarse01",
+    }).success).toBe(true);
+    expect(professionalRadarPointSchema.safeParse({
+      lat:-4.2,lng:-38.7,accuracyM:6000,traceId:"invalid01",
+    }).success).toBe(false);
+    const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
+    const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
+    expect(page).toContain("Online e transmitindo GPS");
+    expect(page).toContain("accuracy>100");
+    expect(sync).toContain("SYNC_GPS_LOW_ACCURACY");
+    expect(sync).toContain("SYNC_RETRY_SCHEDULED");
+  });
+
   it("copies only allowlisted safe fields into diagnostic events",()=>{
     const entry=f07RadarEvent("SERVER_PUBLISH_ERROR",{
       ref:"abc-123",code:"DB_PERMISSION_DENIED",accuracy:"21-100m",
