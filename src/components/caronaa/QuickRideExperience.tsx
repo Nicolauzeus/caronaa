@@ -88,6 +88,7 @@ export function QuickRideExperience({
   >(initialDestinationPoint);
   const [rides, setRides] = useState<QuickRide[]>([]);
   const [queue, setQueue] = useState<QuickRide[]>([]);
+  const [queueError, setQueueError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitting = useRef(false);
@@ -224,6 +225,7 @@ export function QuickRideExperience({
   useEffect(() => {
     if (municipality.trim().length < 2) {
       setQueue([]);
+      setQueueError(false);
       return;
     }
     let alive = true;
@@ -232,7 +234,7 @@ export function QuickRideExperience({
         "caronaa_quick_driver_queue",
         { p_municipality: municipality.trim() },
       );
-      if (alive) setQueue(loadError || !Array.isArray(data) ? [] : data);
+      if (alive) { setQueueError(Boolean(loadError)); setQueue(loadError || !Array.isArray(data) ? [] : data); }
     };
     void check();
     const timer = window.setInterval(() => void check(), 5000);
@@ -446,6 +448,40 @@ export function QuickRideExperience({
         </p>
       </div>
       )}
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">Pedidos na sua região atual {queue.length > 0 ? `(${queue.length})` : ""}</h2>
+        {!municipality.trim() && <p className="rounded-xl border p-3 text-sm">
+          Você precisa estar disponível com GPS válido para consultar pedidos.
+          <Link to="/disponibilidade-profissional" className="ml-1 font-bold text-primary underline">Ativar GPS</Link>
+        </p>}
+        {queueError && <p role="alert" className="rounded-xl border border-red-400/50 p-3 text-sm">Não foi possível consultar pedidos. Verifique conexão e autorização profissional.</p>}
+        {queue.length === 0 && !queueError && (
+          <p className="text-sm text-muted-foreground">
+            Nenhum pedido disponível ou motorista sem autorização/online.
+          </p>
+        )}
+        {queue.map((r) => (
+          <article key={r.id} className="rounded-xl border p-3 space-y-2">
+            <p className="text-sm">
+              {r.origin_label} → {r.destination_label} ·{" "}
+              {r.vehicle_type === "MOTO" ? "Moto" : "Carro"}
+            </p>
+            <p className="text-sm font-semibold">
+              {typeof r.driver_receives_cents === "number"
+                ? `Sua remuneração prevista: ${formatBrl(r.driver_receives_cents / 100)}`
+                : "Remuneração indisponível. Não aceite sem valor confirmado."}
+              {typeof r.fare_cents === "number" ? ` · Total do passageiro ${formatBrl(r.fare_cents / 100)}` : ""}
+            </p>
+            <button
+              disabled={busy || typeof r.driver_receives_cents !== "number"}
+              className="min-h-14 w-full rounded-xl bg-primary px-4 py-3 text-base font-bold text-primary-foreground disabled:opacity-50"
+              onClick={() => void action(r.id, "", true)}
+            >
+              Aceitar esta corrida
+            </button>
+          </article>
+        ))}
+      </section>
       {mapOrigin?.lat != null &&
         mapOrigin.lng != null &&
         mapDestination?.lat != null &&
@@ -604,39 +640,7 @@ export function QuickRideExperience({
           </article>
         ))}
       </section>
-      <section className="space-y-3">
-        <h2 className="text-lg font-bold">Pedidos na sua região atual {queue.length > 0 ? `(${queue.length})` : ""}</h2>
-        {!municipality.trim() && <p className="rounded-xl border p-3 text-sm">
-          Você precisa estar disponível com GPS válido para consultar pedidos.
-          <Link to="/disponibilidade-profissional" className="ml-1 font-bold text-primary underline">Ativar GPS</Link>
-        </p>}
-        {queue.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Nenhum pedido disponível ou motorista sem autorização/online.
-          </p>
-        )}
-        {queue.map((r) => (
-          <article key={r.id} className="rounded-xl border p-3 space-y-2">
-            <p className="text-sm">
-              {r.origin_label} → {r.destination_label} ·{" "}
-              {r.vehicle_type === "MOTO" ? "Moto" : "Carro"}
-            </p>
-            <p className="text-sm font-semibold">
-              {typeof r.driver_receives_cents === "number"
-                ? `Sua remuneração prevista: ${formatBrl(r.driver_receives_cents / 100)}`
-                : "Remuneração indisponível. Não aceite sem valor confirmado."}
-              {typeof r.fare_cents === "number" ? ` · Total do passageiro ${formatBrl(r.fare_cents / 100)}` : ""}
-            </p>
-            <button
-              disabled={busy || typeof r.driver_receives_cents !== "number"}
-              className="min-h-14 w-full rounded-xl bg-primary px-4 py-3 text-base font-bold text-primary-foreground disabled:opacity-50"
-              onClick={() => void action(r.id, "", true)}
-            >
-              Aceitar esta corrida
-            </button>
-          </article>
-        ))}
-      </section>
+
     </div>
   );
 }
