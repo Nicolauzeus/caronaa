@@ -50,9 +50,22 @@ export const Route = createFileRoute("/_authenticated")({
         return {user:data.user,launchLocked:!approvedProfessional};
       }
     }
+    // A professional applicant or exclusive driver starts in a dedicated cockpit,
+    // not on the passenger Home. This is UX routing only, not dispatch approval.
+    const onboarding = await readOnboarding();
+    const exclusiveDriver = onboarding?.status === "BASIC_COMPLETED" &&
+      (onboarding as { usage_role?: string } | null)?.usage_role === "MOTORISTA";
+    if (location.pathname === "/home" || location.pathname === "/minhas-caronas" ||
+        location.pathname === "/buscar") {
+      const { data: professional, error: professionalError } = await (supabase as any)
+        .from("professional_mototaxi_profiles").select("user_id")
+        .eq("user_id", data.user.id).maybeSingle();
+      if (!professionalError && (professional || exclusiveDriver)) {
+        throw redirect({ to: "/disponibilidade-profissional", replace: true });
+      }
+    }
     // Passenger app and other routes keep the normal research/onboarding
     // gates. These pilot exceptions do NOT grant access to passenger Home.
-    const onboarding = await readOnboarding();
     if (onboarding?.status !== "BASIC_COMPLETED") {
       throw redirect({ to: "/onboarding", replace: true });
     }
