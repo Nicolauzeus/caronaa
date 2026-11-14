@@ -13,7 +13,7 @@ export type F07RadarDiagnosticCode =
   | "DB_FUNCTION_MISSING" | "DB_PERMISSION_DENIED"
   | "DB_DRIVER_NOT_APPROVED" | "DB_FINANCIAL_BLOCK"
   | "DB_DRIVER_OFFLINE" | "DB_REGION_DISABLED"
-  | "DB_LOCATION_INVALID" | "DB_WRITE_FAILED"
+  | "DB_LOCATION_INVALID" | "DB_SCHEMA_MISMATCH" | "DB_CONSTRAINT_FAILED" | "DB_WRITE_FAILED"
   | "DB_WRITE_FALSE" | "LOCATION_CLEAR_FAILED"
   | "NETWORK_OR_SERVER_ERROR" | "GPS_PERMISSION_DENIED"
   | "GPS_TIMEOUT" | "GPS_UNAVAILABLE" | "GPS_INVALID_FIX";
@@ -52,6 +52,10 @@ export function classifyF07RadarDbError(error: PostgrestLike | null | undefined)
     // distinguishes whether the authorization row really is approved.
     return "DB_DRIVER_NOT_APPROVED";
   }
+  // Migration/schema drift and integrity constraints are distinct from generic write errors.
+  if (["42703", "42P01", "42804"].includes(sqlState)) return "DB_SCHEMA_MISMATCH";
+  if (["23502", "23503", "23505", "23514"].includes(sqlState)) return "DB_CONSTRAINT_FAILED";
+  if (message.includes("piloto f07 expirado")) return "DB_DRIVER_NOT_APPROVED";
   if (sqlState === "42501" || sqlState === "PGRST301" ||
       message.includes("permission denied") || message.includes("insufficient privilege")) {
     return "DB_PERMISSION_DENIED";
