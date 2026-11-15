@@ -1,5 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
+import { Eye, EyeOff, KeyRound, LoaderCircle } from "lucide-react";
+import { BrandLogo } from "@/components/caronaa/BrandElements";
+import { generateProfessionalPassword, passwordGuidance, registrationPasswordError, professionalAuthErrorMessage } from "@/lib/professional-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -31,6 +34,12 @@ function SimpleMotorcycleRegistration() {
   const [authorized, setAuthorized] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const strength = passwordGuidance(password);
 
   useEffect(() => {
     if (!user?.email_confirmed_at) return;
@@ -60,10 +69,11 @@ function SimpleMotorcycleRegistration() {
 
   async function authenticate(event: FormEvent) {
     event.preventDefault();
-    if (mode === "signup" && (password !== confirm || password.length < 8)) {
-      toast.error(password !== confirm ? "As senhas não conferem." : "Use pelo menos oito caracteres.");
+    if (mode === "signup" && registrationPasswordError(password, confirm)) {
+      setFeedback(registrationPasswordError(password, confirm) ?? "Confira sua senha.");
       return;
     }
+    setFeedback("");
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -83,8 +93,50 @@ function SimpleMotorcycleRegistration() {
       }
       setPassword(""); setConfirm("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha na autenticação.");
+      setFeedback(professionalAuthErrorMessage(error));
     } finally { setBusy(false); }
+  }
+
+  function changeMode(next: "signup" | "login") {
+    setMode(next);
+    setPassword("");
+    setConfirm("");
+    setFeedback("");
+    setResetMode(false);
+    setShowPassword(false);
+    setShowConfirm(false);
+  }
+
+  function suggestPassword() {
+    try {
+      const generated = generateProfessionalPassword();
+      setPassword(generated);
+      setConfirm(generated);
+      setShowPassword(true);
+      setFeedback("Senha forte preenchida. Guarde-a em um gerenciador de senhas.");
+    } catch {
+      setFeedback("Não foi possível gerar uma senha. Escolha uma senha segura.");
+    }
+  }
+
+  async function resetPassword(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setFeedback("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: window.location.origin + "/reset-password",
+      });
+      if (error && /rate limit|too many requests/i.test(error.message)) {
+        setFeedback("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+      } else {
+        setResetSent(true);
+      }
+    } catch {
+      setResetSent(true);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function sendRequest(event: FormEvent) {
@@ -132,29 +184,63 @@ function SimpleMotorcycleRegistration() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#121212] px-4 py-8 text-white">
-      <section className="mx-auto max-w-md space-y-5 rounded-3xl border border-white/15 bg-white/[0.04] p-5 sm:p-7">
-        <Link to="/" className="font-display text-xl font-extrabold tracking-wide">CARONAA<span className="text-[#FFBB00]">.</span></Link>
+    <main className="flex min-h-[100dvh] items-start justify-center bg-[#121212] px-3 py-5 text-white sm:items-center sm:px-5 sm:py-10">
+      <section className="w-full max-w-[460px] space-y-5 rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 shadow-xl sm:p-7">
+        <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
-          <h1 className="mt-2 font-display text-2xl font-bold">Quero ser mototaxista</h1>
-          <p className="mt-2 text-sm text-white/65">Cadastro simplificado. Envie os dados e peça aprovação ao administrativo, sem aguardar o lançamento.</p>
+          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Acesso profissional</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{user?.email_confirmed_at ? "Seu cadastro de mototaxista" : resetMode ? "Recuperar acesso" : confirmationSent ? "Confirme seu e-mail" : mode === "login" ? "Bem-vindo de volta" : "Quero ser mototaxista"}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{user?.email_confirmed_at ? "Revise seus dados profissionais e acompanhe sua solicitação." : resetMode ? "Enviaremos instruções para redefinir sua senha." : mode === "login" ? "Entre para continuar seu cadastro ou consultar sua aprovação." : "Crie sua conta para enviar seus dados profissionais e solicitar aprovação."}</p>
         </div>
         {authLoading ? <p>Verificando sua conta...</p> : !user?.email_confirmed_at ? confirmationSent ? (
           <div className="space-y-3" role="status">
             <p>Enviamos um link de confirmação para {email}. Após confirmar, retorne a esta página para concluir seu cadastro.</p>
             <button type="button" className="rounded-xl border border-white/30 p-3" onClick={() => { setConfirmationSent(false); setMode("login"); }}>Já confirmei — entrar</button>
           </div>
+        ) : resetMode ? (
+          <form className="space-y-4" onSubmit={resetPassword}>
+            {resetSent ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">Se existir uma conta com este e-mail, enviaremos as instruções de recuperação.</p> : (
+              <>
+                <label className="block text-sm">E-mail
+                  <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={e => setEmail(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base focus-visible:border-[#FFBB00]" />
+                </label>
+                {feedback && <p role="alert" className="rounded-xl border border-red-400/40 p-3 text-sm text-red-200">{feedback}</p>}
+                <button disabled={busy} className="min-h-12 w-full rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy ? "Enviando..." : "Enviar instruções"}</button>
+              </>
+            )}
+            <button type="button" onClick={() => { setResetMode(false); setResetSent(false); setFeedback(""); }} className="min-h-11 w-full text-sm text-white/75 underline">Voltar ao login</button>
+          </form>
         ) : (
-          <form className="space-y-3" onSubmit={authenticate}>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" className={mode === "signup" ? "rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212]" : "rounded-xl border border-white/20 p-3"} onClick={() => setMode("signup")}>Criar conta</button>
-              <button type="button" className={mode === "login" ? "rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212]" : "rounded-xl border border-white/20 p-3"} onClick={() => setMode("login")}>Já tenho conta</button>
+          <form className="space-y-4" onSubmit={authenticate}>
+            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Opções de acesso">
+              <button type="button" disabled={busy} aria-pressed={mode === "signup"} className={mode === "signup" ? "min-h-12 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212]" : "min-h-12 rounded-xl border border-white/20 p-3"} onClick={() => changeMode("signup")}>Criar conta</button>
+              <button type="button" disabled={busy} aria-pressed={mode === "login"} className={mode === "login" ? "min-h-12 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212]" : "min-h-12 rounded-xl border border-white/20 p-3"} onClick={() => changeMode("login")}>Já tenho conta</button>
             </div>
-            <label className="block text-sm">E-mail (login)<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
-            <label className="block text-sm">Senha<input type="password" minLength={mode === "signup" ? 8 : 1} autoComplete={mode === "signup" ? "new-password" : "current-password"} required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
-            {mode === "signup" && <label className="block text-sm">Confirmar senha<input type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>}
-            <button disabled={busy} className="min-h-12 w-full rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
-            <Link to="/auth" className="block text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
+            <label className="block text-sm">E-mail (login)<input type="email" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" /></label>
+            <div>
+              <label htmlFor="professional-password" className="block text-sm">Senha</label>
+              <div className="relative">
+                <input id="professional-password" type={showPassword ? "text" : "password"} minLength={mode === "signup" ? 8 : 1} autoComplete={mode === "signup" ? "new-password" : "current-password"} required value={password} onChange={e => { setPassword(e.target.value); setFeedback(""); }} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 pr-14 text-base outline-none focus-visible:border-[#FFBB00]" />
+                <button type="button" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} aria-pressed={showPassword} onClick={() => setShowPassword(v => !v)} className="absolute inset-y-1 right-1 flex w-11 items-center justify-center rounded-lg text-white/70 focus-visible:ring-2 focus-visible:ring-[#FFBB00]">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
+              </div>
+              {mode === "signup" ? <div className="mt-2 space-y-2">
+                <div className="flex gap-1" aria-hidden="true">{[1,2,3,4].map(n => <span key={n} className={"h-1 flex-1 rounded-full " + (strength.score >= n ? "bg-[#FFBB00]" : "bg-white/15")} />)}</div>
+                <div className="flex items-center justify-between gap-2 text-xs"><span aria-live="polite" className="text-white/70">Força: {strength.label}</span><button type="button" onClick={suggestPassword} className="inline-flex min-h-10 items-center gap-1.5 font-semibold text-[#FFBB00] underline"><KeyRound size={15} /> Sugerir senha forte</button></div>
+                <p className="text-xs text-white/55">Prefira uma senha longa e exclusiva. Você pode usar a sugestão do navegador.</p>
+              </div> : <button type="button" onClick={() => { setResetMode(true); setFeedback(""); }} className="mt-1 min-h-10 text-sm font-semibold text-[#FFBB00] underline">Esqueci minha senha</button>}
+            </div>
+            {mode === "signup" && <div>
+              <label htmlFor="professional-confirm" className="block text-sm">Confirmar senha</label>
+              <div className="relative">
+                <input id="professional-confirm" type={showConfirm ? "text" : "password"} autoComplete="new-password" required value={confirm} aria-invalid={Boolean(confirm && confirm !== password)} onChange={e => { setConfirm(e.target.value); setFeedback(""); }} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 pr-14 text-base outline-none focus-visible:border-[#FFBB00]" />
+                <button type="button" aria-label={showConfirm ? "Ocultar confirmação" : "Mostrar confirmação"} aria-pressed={showConfirm} onClick={() => setShowConfirm(v => !v)} className="absolute inset-y-1 right-1 flex w-11 items-center justify-center rounded-lg text-white/70 focus-visible:ring-2 focus-visible:ring-[#FFBB00]">{showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}</button>
+              </div>
+              <p aria-live="polite" className={"mt-1 min-h-4 text-xs " + (confirm && confirm !== password ? "text-red-300" : "text-white/65")}>{confirm ? (confirm === password ? "As senhas coincidem." : "As senhas não coincidem.") : "Repita a senha para confirmar."}</p>
+            </div>}
+            {feedback && <p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">{feedback}</p>}
+            <button disabled={busy} aria-busy={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy && <LoaderCircle size={18} className="animate-spin" />}{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
+            <p className="text-center text-xs text-white/60">{mode === "signup" ? "Próximo passo: dados profissionais e aprovação" : "Acesso seguro CARONAA"}</p>
+            <Link to="/auth" className="block min-h-10 pt-2 text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
           </form>
         ) : (
           <>
