@@ -17,13 +17,14 @@ type Props={
   originPoint?:{lat?:number;lng?:number}|null;
   originMunicipality:string;
   gender:string|null;
+  onDestinationChange?:(label:string,details?:FormLocationDetails)=>void;
 };
 const formatPrice=(amount:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(amount);
 const validPoint=(p:Props["originPoint"]):p is {lat:number;lng:number} =>
   Boolean(p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
     Math.abs(p.lat!)<=90 && Math.abs(p.lng!)<=180);
 export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
-  originPoint,originMunicipality,gender}:Props){
+  originPoint,originMunicipality,gender,onDestinationChange}:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
   const [mode,setMode]=useState<UnifiedFareMode>("ON_ROUTE");
@@ -164,7 +165,9 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
       </button>:
       <LocationAutocomplete id="shell-destination" label="Destino" value={destination}
         selectedLocation={destinationPoint} variant="glass" placeholder="Para onde vamos?"
-        onChange={(label,location)=>{setDestination(label);setDestinationPoint(location);}}/>}
+        onChange={(label,location)=>{
+          setDestination(label);setDestinationPoint(location);onDestinationChange?.(label,location);
+        }}/> }
       <ServiceTypeDock compact={snap==="peek"} value={serviceType} onChange={type=>{
         onServiceTypeChange(type);
         setFlashStartedAt(null);
