@@ -285,7 +285,7 @@ export function ShellJourneyPlanner({
           {kind==="EXCLUSIVE"?"Exclusiva":"Na Rota"}
         </span>
         <span className="font-[family-name:var(--font-display)] font-extrabold text-[#FFBB00]">
-          {prices?formatBrl(prices[kind].totalFare):"—"}
+          {serviceType==="FLASH"&&kind==="EXCLUSIVE"?"Cotação oficial no próximo passo":prices?formatBrl(prices[kind].totalFare):"—"}
         </span>
       </button>
       <p className="my-2 text-xs leading-relaxed text-white/75">
@@ -294,9 +294,10 @@ export function ShellJourneyPlanner({
       </p>
       <div className="grid grid-cols-2 gap-2">
         {(["CAR","MOTO"] as const).map(value=><button key={value} type="button"
-          onClick={()=>{setMode(kind);changeVehicle(value,kind);}}
+          disabled={flashRideActive}
+          onClick={()=>{if(flashRideActive)return;setMode(kind);changeVehicle(value,kind);}}
           aria-pressed={(kind==="EXCLUSIVE"?exclusiveVehicle:onRouteVehicle)===value}
-          className={selectedButton((kind==="EXCLUSIVE"?exclusiveVehicle:onRouteVehicle)===value)}>
+          className={selectedButton((kind==="EXCLUSIVE"?exclusiveVehicle:onRouteVehicle)===value)+" disabled:opacity-60"}>
           {value==="CAR"?<CarFront size={17} className="mx-auto mb-1"/>:<Bike size={17} className="mx-auto mb-1"/>}
           {value==="CAR"?"Carro":"Moto"}
         </button>)}

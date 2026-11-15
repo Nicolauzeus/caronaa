@@ -72,16 +72,16 @@ export function QuickRideOperationalMap({
 
   useEffect(()=>{
     if(!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
+    if(!context?.driver)return;
     let active=true;
     // Snapshot the authorized driver's position when the in-progress route starts.
     // Avoid recalculating this Google route on every GPS pulse.
-    const routeStart=context?.driver
-      ? {lat:context.driver.lat,lng:context.driver.lng} : origin;
+    const routeStart={lat:context.driver.lat,lng:context.driver.lng};
     void readRoute({data:{points:[routeStart,destination]}})
       .then(result=>{if(active)setRoute(result);})
       .catch(()=>{if(active)setError("Não foi possível calcular a rota ao destino.");});
     return()=>{active=false;};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,readRoute]);
+  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver),readRoute]);
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
