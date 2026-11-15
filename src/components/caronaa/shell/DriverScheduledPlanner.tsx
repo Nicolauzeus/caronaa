@@ -90,6 +90,7 @@ export function DriverScheduledPlanner({
   routeFnRef.current=routeFn;
   const routeCache=useRef(new Map<string,Promise<ShellRoute>>());
   const fixedOrigin=useRef<Point|null>(null);
+  const fixedOriginLabel=useRef("");
   const lastOriginRevision=useRef(originRevision);
   const callbackRef=useRef(onRouteChange);callbackRef.current=onRouteChange;
   const loadOpportunityRef=useRef<()=>Promise<void>>(async()=>{});
@@ -104,8 +105,10 @@ export function DriverScheduledPlanner({
     if(serviceType!=="AGENDADA"||!valid(destPoint)){
       setRoute(null);setPrice(null);callbackRef.current(null,null);return;
     }
-    if(valid(originPoint)&&(!fixedOrigin.current||originRevision!==lastOriginRevision.current))
+    if(valid(originPoint)&&(!fixedOrigin.current||originRevision!==lastOriginRevision.current)){
       fixedOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
+      fixedOriginLabel.current=originLabel||"Origem confirmada";
+    }
     lastOriginRevision.current=originRevision;
     const from=fixedOrigin.current;
     if(!from){setRoute(null);callbackRef.current(null,null);return;}
@@ -185,17 +188,18 @@ export function DriverScheduledPlanner({
   const chooseDestination=(label:string,details?:FormLocationDetails)=>{
     setDestination(label);setDestPoint(details);
     fixedOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
+    fixedOriginLabel.current=originLabel||"Origem confirmada";
     setRoute(null);setPrice(null);setPublishedId(null);setSeatsLeft(null);
     setOpportunities([]);setPublicationError("");setDebtPending(false);
     onDestinationChange(label,details);
     if(valid(details))onSnapChange("half");
   };
   const publish=async()=>{
-    if(busy||publishedId||!validScheduleDate(scheduledAt)||!route||price===null||!valid(originPoint))return;
+    if(busy||publishedId||!validScheduleDate(scheduledAt)||!route||price===null||!fixedOrigin.current)return;
     setBusy(true);setPublicationError("");setDebtPending(false);
     try{
       const id=await publishScheduledDriverOffer({
-        origin:originLabel||"Origem confirmada",destination,
+        origin:fixedOriginLabel.current||"Origem confirmada",destination,
         departureAt:new Date(scheduledAt).toISOString(),routePath:route.routePath,
         bookingMode,vehicleType,seats:vehicleType==="MOTO"?1:seats,
         suggestedFarePerSeat:price,preferences,womenOnly:gender==="FEMININO"&&womenOnly,
@@ -308,7 +312,7 @@ export function DriverScheduledPlanner({
           className="min-h-11 text-sm text-[#FFBB00]">Voltar à edição</button>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">Publicar Carona Agendada</h2>
         <section className="space-y-2 rounded-2xl border border-white/20 p-4 text-sm">
-          <p><MapPin size={15} className="mr-1 inline text-[#FFBB00]"/> {originLabel||"Origem confirmada"}</p>
+          <p><MapPin size={15} className="mr-1 inline text-[#FFBB00]"/> {fixedOriginLabel.current||originLabel||"Origem confirmada"}</p>
           <p><Navigation size={15} className="mr-1 inline text-[#FFBB00]"/> {destination||"Destino não selecionado"}</p>
           {scheduledAt&&<p><CalendarClock size={15} className="mr-1 inline text-[#FFBB00]"/> {formatTripDate(scheduledAt)}</p>}
           <p><Users size={15} className="mr-1 inline text-[#FFBB00]"/> {vehicleType==="MOTO"?1:seats} vaga(s) · {bookingMode}</p>
