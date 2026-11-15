@@ -52,6 +52,7 @@ export function QuickRideHomePanel({
   const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
   const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
+  const [ratingReopen,setRatingReopen]=useState<string|null>(null);
   const [completedHidden,setCompletedHidden]=useState<string|null>(null);
   const mounted=useRef(true);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
@@ -410,8 +411,8 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
-      {!liveRide&&shownCompletedRide&&<>
-        <div className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
+      {!liveRide&&completedRide&&<div className="space-y-3">
+        {shownCompletedRide&&<div className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-semibold text-[#FFBB00]">Corrida anterior concluída</p>
           <p className="mt-1 text-white/80">Você já pode solicitar outra corrida, sem precisar avaliar agora.</p>
           <button type="button" onClick={releaseCompletedRide}
@@ -419,10 +420,18 @@ export function QuickRideHomePanel({
             Concluir e fazer nova corrida
           </button>
         </div>
-        <QuickRidePixCard rideId={shownCompletedRide.id}/>
-        {ratingDismissed!==shownCompletedRide.id&&<QuickRideRatingModal rideId={shownCompletedRide.id}
-          subject="motorista" onClose={()=>setRatingDismissed(shownCompletedRide.id)}/>}
-      </>}
+        {shownCompletedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
+        <button type="button" onClick={()=>{
+          try {window.localStorage.removeItem("caronaa-rating-dismissed:"+completedRide.id);}catch{}
+          setRatingReopen(completedRide.id);
+        }} className="min-h-11 w-full rounded-xl border border-[#FFBB00]/40 px-4 text-sm font-semibold text-[#FFBB00]">
+          Avaliar corrida anterior
+        </button>
+        {((shownCompletedRide&&ratingDismissed!==completedRide.id)||ratingReopen===completedRide.id)&&
+          <QuickRideRatingModal rideId={completedRide.id} subject="motorista"
+            forceOpen={ratingReopen===completedRide.id}
+            onClose={()=>{setRatingDismissed(completedRide.id);setRatingReopen(null);}}/>}
+      </div>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
         <button type="button" disabled={quoteLoading||busy}
