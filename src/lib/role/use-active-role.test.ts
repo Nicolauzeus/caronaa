@@ -112,9 +112,11 @@ describe("useActiveRole / elegibilidade sem burocracia",()=>{
     setup({...fullProfile,vehicle_color:null},false);
     const {result}=renderHook(()=>useActiveRole());
     await waitFor(()=>expect(result.current.loading).toBe(false));
-    await act(async()=>{await result.current.saveVehicle({
-      brand:"",model:"",color:"Prata",plate:"",vehicleType:"car",vehicleSeats:3,
-    });});
+    await act(async()=>{
+      await expect(result.current.saveVehicle({
+        brand:"",model:"",color:"Prata",plate:"",vehicleType:"car",vehicleSeats:3,
+      })).rejects.toThrow(/Supabase/);
+    });
     expect(api.update).toHaveBeenCalledWith({
       vehicle_type:"car",vehicle_seats:3,vehicle_color:"Prata",
     });
