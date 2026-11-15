@@ -1810,6 +1810,69 @@ export type Database = {
           },
         ]
       }
+      geocoding_cache: {
+        Row: {
+          city: string
+          country: string
+          created_at: string
+          expires_at: string
+          lat_rounded: number
+          lng_rounded: number
+          state: string
+        }
+        Insert: {
+          city: string
+          country?: string
+          created_at?: string
+          expires_at?: string
+          lat_rounded: number
+          lng_rounded: number
+          state?: string
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string
+          expires_at?: string
+          lat_rounded?: number
+          lng_rounded?: number
+          state?: string
+        }
+        Relationships: []
+      }
+      google_api_usage: {
+        Row: {
+          api_service: string
+          call_date: string
+          caller_function: string
+          created_at: string
+          error_code: string | null
+          id: string
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          api_service: string
+          call_date?: string
+          caller_function: string
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          api_service?: string
+          call_date?: string
+          caller_function?: string
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       manual_ride_payment_confirmations: {
         Row: {
           created_at: string
@@ -2053,6 +2116,42 @@ export type Database = {
             referencedColumns: ["ride_id"]
           },
         ]
+      }
+      pilot_areas: {
+        Row: {
+          active: boolean
+          center_lat: number
+          center_lng: number
+          created_at: string
+          id: string
+          municipality: string
+          radius_km: number
+          region: string
+          state: string
+        }
+        Insert: {
+          active?: boolean
+          center_lat: number
+          center_lng: number
+          created_at?: string
+          id: string
+          municipality: string
+          radius_km: number
+          region: string
+          state?: string
+        }
+        Update: {
+          active?: boolean
+          center_lat?: number
+          center_lng?: number
+          created_at?: string
+          id?: string
+          municipality?: string
+          radius_km?: number
+          region?: string
+          state?: string
+        }
+        Relationships: []
       }
       pitch_contacts: {
         Row: {
@@ -5169,6 +5268,17 @@ export type Database = {
           requires_onsite: boolean | null
           sort_order: number | null
           unit_label: string | null
+        }
+        Relationships: []
+      }
+      v_google_api_daily_usage: {
+        Row: {
+          api_service: string | null
+          call_date: string | null
+          error_calls: number | null
+          error_rate_pct: number | null
+          success_calls: number | null
+          total_calls: number | null
         }
         Relationships: []
       }
