@@ -32,6 +32,8 @@ export function ProfessionalAvailabilityPage() {
   const [busy,setBusy]=useState(false);
   const [enabled,setEnabled]=useState(false);
   const [activeQuickRide,setActiveQuickRide]=useState(false);
+  const [hasPendingCalls,setHasPendingCalls]=useState(false);
+  const [sheetExpanded,setSheetExpanded]=useState(false);
   const [activeRide,setActiveRide]=useState<ActiveDriverRide|null>(null);
   const [authorized,setAuthorized]=useState(false);
   const [blocked,setBlocked]=useState(false);
@@ -389,7 +391,7 @@ export function ProfessionalAvailabilityPage() {
           className="h-full w-full"
           ariaLabel="Mapa da posição atual do motorista"
         />
-        {!mapFix && <div role="status" className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg border bg-background/95 p-3 text-center text-xs font-semibold shadow">
+        {!mapFix && <div role="status" className="professional-cockpit__map-status pointer-events-none absolute inset-x-3 bottom-3 rounded-lg border bg-background/95 p-3 text-center text-xs font-semibold shadow">
           Aguardando localização real. Ative ou autorize o GPS para centralizar o mapa.
         </div>}
       </div>
@@ -402,6 +404,14 @@ export function ProfessionalAvailabilityPage() {
     </section>}
 
     <div className="professional-cockpit__columns">
+      <div className="professional-cockpit__mobile-header" role="status">
+        <span className="text-[11px] font-black tracking-wider text-[#FFBB00]">CARONAA</span>
+        <span className={`professional-cockpit__mobile-pill ${fresh ? "professional-cockpit__mobile-pill--online" : ""}`}>
+          <span className={`professional-cockpit__status-dot ${fresh ? "professional-cockpit__status-dot--online" : ""}`} aria-hidden="true"/>
+          {!ready ? "Verificando..." : fresh ? "Disponível" : enabled ? "Buscando GPS" : "Você está Offline"}
+          {fresh && municipality && <span className="max-w-[125px] truncate">· {municipality}</span>}
+        </span>
+      </div>
       <div className="professional-cockpit__left">
         <div className="professional-cockpit__card professional-cockpit__heading space-y-2">
           <div className="flex items-center justify-between gap-2">
@@ -444,12 +454,12 @@ export function ProfessionalAvailabilityPage() {
       </p>}
       <Button
         variant={enabled ? "outline" : "default"}
-        className={`professional-cockpit__availability-button min-h-[54px] w-full rounded-xl text-sm font-extrabold transition-colors ${enabled
+        className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black transition-colors ${enabled
           ? "border-amber-400/55 bg-transparent text-amber-200 hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-100"
           : "bg-[#FFBB00] text-[#121212] hover:bg-[#eeb000]"}`}
         disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
         onClick={()=>void toggleOnline(!enabled)}>
-        {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "Pausar Disponibilidade" : "Ficar Disponível"}
+        {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
       </Button>
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
@@ -460,31 +470,50 @@ export function ProfessionalAvailabilityPage() {
     </section>
     {error && <div role="alert" className="professional-cockpit__banner">
       <AlertTriangle size={15} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
-      <div className="min-w-0">
-        <p className="font-semibold text-white/90">Localização ou disponibilidade precisa de atenção</p>
-        <p className="mt-0.5 line-clamp-2 text-white/75" title={error}>{error}</p>
-      </div>
+      <span className="text-white/90">{enabled ? "Buscando sinal de GPS... Confira sua localização nas configurações." : "Disponibilidade indisponível. Consulte os detalhes."}</span>
     </div>}
     {accuracyWarning && enabled && <div role="status" className="professional-cockpit__banner">
       <AlertTriangle size={15} className="shrink-0 text-amber-300" aria-hidden="true"/>
-      <span className="line-clamp-2 text-white/80">GPS com precisão reduzida (acima de 100 m). Confirme sua posição antes de aceitar corridas.</span>
+      <span className="text-white/85">Localização com precisão reduzida. Verifique seu sinal.</span>
     </div>}
 
       </div>
-      <div className="professional-cockpit__right">
+      <div className="professional-cockpit__right" data-expanded={activeQuickRide || hasPendingCalls || sheetExpanded ? "true" : "false"}>
+        <button
+          type="button"
+          className="professional-cockpit__sheet-toggle"
+          aria-label={activeQuickRide || hasPendingCalls || sheetExpanded ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
+          aria-expanded={activeQuickRide || hasPendingCalls || sheetExpanded}
+          onClick={()=>setSheetExpanded(v=>!v)}>
+          <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
+          <span>{activeQuickRide ? "Corrida em andamento" : hasPendingCalls ? "Novos chamados" : "Chamados e disponibilidade"}</span>
+        </button>
+        <div className="professional-cockpit__mobile-connection">
+          <Button variant={enabled ? "outline" : "default"}
+            className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black ${enabled
+              ? "border border-[#FFBB00] bg-[#121212] text-[#FFBB00]"
+              : "bg-[#FFBB00] text-[#121212]"}`}
+            disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+            onClick={()=>void toggleOnline(!enabled)}>
+            {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
+          </Button>
+          {(!authorized || blocked) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">{blocked ? "Acesso bloqueado por repasses. Consulte Conta." : "Aguardando autorização profissional."}</p>}
+        </div>
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
       onActiveRideChange={setActiveRide}
+      onHasPendingChange={setHasPendingCalls}
       municipality={municipality}
       online={enabled && authorized && !blocked}
       gpsReady={fresh}
     />
 
         <details className="professional-cockpit__card professional-cockpit__advanced">
-          <summary className="cursor-pointer text-xs font-semibold text-white/50 transition-colors hover:text-white/80">Opções avançadas e diagnóstico</summary>
+          <summary className="cursor-pointer text-xs font-semibold text-white/50 transition-colors hover:text-white/80">Configurações do motorista</summary>
           <div className="professional-cockpit__details mt-3 space-y-3">
     <div className="space-y-2">
       <h3 className="font-semibold text-white">Privacidade da localização</h3>
+      {error && <details className="hidden sm:block opacity-40"><summary className="cursor-pointer text-xs">Detalhes técnicos</summary><p className="mt-1 break-words text-xs">{error}</p></details>}
       <p className="text-xs text-white/70">Você pode retirar seu consentimento de GPS a qualquer momento. Isso impede novos chamados enquanto estiver sem localização válida.</p>
       {enabled && <button type="button" onClick={()=>{
         if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
@@ -512,7 +541,7 @@ export function ProfessionalAvailabilityPage() {
     {blocked&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
       Radar bloqueado por repasses. <Link to="/perfil" className="underline">Consultar comissões</Link>
     </p>}
-    <section aria-label="Status da localização" className="space-y-2 rounded-xl border p-4 text-sm">
+    <section aria-label="Status da localização" className="hidden space-y-2 rounded-xl border p-4 text-sm sm:block">
       <p className="font-bold">{!ready?"Carregando...":fresh?"Online e transmitindo GPS":fix?.simulated?"SIMULAÇÃO — somente na sua conta":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
       <p>Município: <strong>{municipality||"Aguardando verificação"}</strong></p>
       <p>Coordenadas: <strong>{fix?`${fix.lat.toFixed(5)}, ${fix.lng.toFixed(5)}`:"Não enviadas"}</strong>
@@ -527,7 +556,7 @@ export function ProfessionalAvailabilityPage() {
         do diagnóstico F07 e confira SQLSTATE, autorização e migrations. A posição não foi publicada.
       </p>}
     </section>
-    <details className="rounded-xl border border-muted-foreground/30 p-4 text-sm">
+    <details className="hidden rounded-xl border border-muted-foreground/30 p-4 text-sm opacity-40 sm:block">
       <summary className="cursor-pointer font-semibold">Diagnóstico técnico F07 ({diagnostics.length} eventos)</summary>
       <p className="my-2 text-xs text-muted-foreground">Eventos também aparecem no Console sob [CARONAA][F07][GPS]. Este relatório não inclui coordenadas exatas, identidade, senhas nem tokens.</p>
       <button type="button" className="mb-2 min-h-10 rounded-lg border px-3"
