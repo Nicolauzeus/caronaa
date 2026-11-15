@@ -1,7 +1,6 @@
 -- 0154 | F07/F08 post-acceptance: 4-digit boarding OTP and declared Pix reconciliation.
 -- Requires 0149-0153. Never treats a passenger declaration as bank settlement.
 BEGIN;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Existing locked rides retain their previous secret; new codes are four digits.
 CREATE OR REPLACE FUNCTION public.quick_ride_issue_boarding_pin(p_id uuid)
@@ -19,7 +18,7 @@ BEGIN
  END IF;
  v_code:=lpad(((('x'||substr(replace(gen_random_uuid()::text,'-',''),1,8))::bit(32)::bigint)%10000)::text,4,'0');
  INSERT INTO public.quick_ride_boarding_secrets(ride_id,pin_hash,salt,attempts,expires_at)
- VALUES(p_id,encode(extensions.digest(convert_to(v_code||v_salt::text,'UTF8'),'sha256'),'hex'),
+ VALUES(p_id,encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
         v_salt,0,now()+interval '15 minutes');
  RETURN v_code;
 END; $fn$;
@@ -40,7 +39,7 @@ BEGIN
   RAISE EXCEPTION 'Boarding OTP expired or locked' USING ERRCODE='42501';
  END IF;
  IF p_code IS NULL OR p_code !~ '^([0-9]{4}|[0-9]{6})$'
-    OR encode(extensions.digest(convert_to(p_code||s.salt::text,'UTF8'),'sha256'),'hex')<>s.pin_hash THEN
+    OR encode(sha256(convert_to(p_code||s.salt::text,'UTF8')),'hex')<>s.pin_hash THEN
   UPDATE public.quick_ride_boarding_secrets SET attempts=attempts+1 WHERE ride_id=p_id;
   RETURN false;
  END IF;
@@ -87,7 +86,7 @@ BEGIN
  END IF;
  v_code:=lpad(((('x'||substr(replace(gen_random_uuid()::text,'-',''),1,8))::bit(32)::bigint)%10000)::text,4,'0');
  INSERT INTO public.quick_ride_pix_declarations(ride_id,code_hash,salt,expires_at)
- VALUES(p_id,encode(extensions.digest(convert_to(v_code||v_salt::text,'UTF8'),'sha256'),'hex'),
+ VALUES(p_id,encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
         v_salt,now()+interval '24 hours');
  RETURN v_code;
 END; $fn$;
@@ -108,7 +107,7 @@ BEGIN
   RAISE EXCEPTION 'Payment confirmation expired, locked, or already submitted' USING ERRCODE='42501';
  END IF;
  IF p_code IS NULL OR p_code !~ '^[0-9]{4}$'
-    OR encode(extensions.digest(convert_to(p_code||d.salt::text,'UTF8'),'sha256'),'hex')<>d.code_hash THEN
+    OR encode(sha256(convert_to(p_code||d.salt::text,'UTF8')),'hex')<>d.code_hash THEN
   UPDATE public.quick_ride_pix_declarations SET attempts=attempts+1 WHERE ride_id=p_id;
   RETURN false;
  END IF;
