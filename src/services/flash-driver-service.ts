@@ -146,6 +146,22 @@ export async function getMyActiveFlashRide():Promise<FlashDriverRide|null>{
     };
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
+export type FlashPassengerDetails={name:string;photo:string|null;whatsapp:string|null;seatsRemaining:number|null};
+export async function getFlashPassengerDetails(rideId:string):Promise<FlashPassengerDetails|null>{
+  if(!rideId)return null;
+  try{
+    const {data,error}=await (supabase as any).rpc("get_flash_passenger_details",{p_ride_id:rideId});
+    if(error)return null;
+    const row=record(data);
+    if(!row||!string(row.name))return null;
+    const seatsRemaining=numeric(row.seats_remaining);
+    return {
+      name:string(row.name),photo:string(row.photo)||null,
+      whatsapp:string(row.whatsapp)||null,
+      seatsRemaining:Number.isInteger(seatsRemaining)&&seatsRemaining>=0?seatsRemaining:null,
+    };
+  }catch{return null;}
+}
 export async function markFlashDriverArrived(rideId:string):Promise<void>{
   if(!rideId)throw new FlashDriverError("INVALID");
   const {data,error}=await (supabase as any).rpc("quick_ride_transition",{
