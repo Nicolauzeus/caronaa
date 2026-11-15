@@ -137,7 +137,7 @@ export function QuickRideExperience({
   }, [activeId, activeStatus, readMap]);
   useEffect(() => {
     setApproach(null);
-    if (!activeId || activeStatus !== "ACCEPTED") return;
+    if (!activeId || !["ACCEPTED","ARRIVED"].includes(activeStatus ?? "")) return;
     let alive = true;
     const refreshEta = () =>
       void approachRequest({ data: { rideId: activeId } })
@@ -549,15 +549,23 @@ export function QuickRideExperience({
                   : []),
               ]}
               lines={[
-                ...(route
+                ...(activeStatus === "IN_PROGRESS" && route
                   ? [{ points: route.routePath, color: "#FFBB00" }]
                   : []),
-                ...(approach
+                ...(["ACCEPTED","ARRIVED"].includes(activeStatus ?? "") && approach
                   ? [{ points: approach.routePath, color: "#2563eb" }]
                   : []),
+                ...(!activeRide && route
+                  ? [{ points: route.routePath, color: "#FFBB00" }]
+                  : []),
               ]}
+              fitMode="once"
+              fitKey={activeId + ":" + (activeStatus === "IN_PROGRESS" ? "destination" : "pickup")}
+              smoothTracking
               className="h-72 w-full rounded-2xl"
-              ariaLabel="Corrida direta e aproximação do motorista"
+              ariaLabel={activeStatus === "IN_PROGRESS"
+                ? "Motorista em deslocamento até o destino"
+                : "Acompanhamento da chegada do motorista ao passageiro"}
             />
             {route && (
               <p className="text-xs">
