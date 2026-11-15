@@ -6,6 +6,8 @@ import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
 import { ShellJourneyPlanner, type ShellRoute } from "@/components/caronaa/shell/ShellJourneyPlanner";
 import { UnifiedMyTripsPanel, type UnifiedTrip } from "@/components/caronaa/shell/UnifiedMyTripsPanel";
 import { DriverScheduledPlanner } from "@/components/caronaa/shell/DriverScheduledPlanner";
+import { DriverFlashPlanner } from "@/components/caronaa/shell/DriverFlashPlanner";
+import type { FlashDriverRide } from "@/services/flash-driver-service";
 import { DriverScheduledTripsPanel } from "@/components/caronaa/shell/DriverScheduledTripsPanel";
 import type { OnRouteMatch } from "@/types/ride";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
@@ -132,7 +134,7 @@ function Home() {
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const [missingVehicleFields, setMissingVehicleFields] = useState<VehicleMissingField[]>([]);
   const handleShellRoleSwitch = async (target: ActiveRole) => {
-    const check=await canSwitchCaronaaRole(operationalRide);
+    const check=await canSwitchCaronaaRole(driverFlashRide??operationalRide);
     if(!check.allowed) {
       toast[check.reason==="ACTIVE_RIDE"?"info":"error"](
         check.reason==="ACTIVE_RIDE"
@@ -233,6 +235,7 @@ function Home() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [operationalRide,setOperationalRide]=useState<{id:string;status:string;municipality:string}|null>(null);
+  const [driverFlashRide,setDriverFlashRide]=useState<FlashDriverRide|null>(null);
   const onOperationalRideChange=useCallback((ride:{id:string;status:string;municipality:string}|null)=>{
     setOperationalRide(previous=>previous?.id===ride?.id && previous?.status===ride?.status?previous:ride);
     if(ride)setPanelOpen(true);
@@ -576,7 +579,11 @@ function Home() {
       <CaronaaPerformanceDiagnostic />
       <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
         <div className="absolute inset-0">
-          {activeRoleState.activeRole==="PASSAGEIRO" && operationalRide && rideOption==="EXCLUSIVE" && intent==="REQUEST"
+          {activeRoleState.activeRole==="MOTORISTA"&&serviceType==="FLASH"&&driverFlashRide
+            ? <QuickRideOperationalMap rideId={driverFlashRide.id}
+                status={driverFlashRide.status} role="DRIVER"
+                vehicleType={driverFlashRide.vehicleType} immersive/>
+            : activeRoleState.activeRole==="PASSAGEIRO" && operationalRide && rideOption==="EXCLUSIVE" && intent==="REQUEST"
             ? <QuickRideOperationalMap rideId={operationalRide.id} status={operationalRide.status}
                 municipality={operationalRide.municipality} role="PASSENGER" immersive/>
             : <HomeRideMap
@@ -657,7 +664,28 @@ function Home() {
             }}
           />}
           <div style={{display:tripsPanelOpen?"none":undefined}}>
-          {activeRoleState.activeRole==="MOTORISTA"?
+          {activeRoleState.activeRole==="MOTORISTA"&&serviceType==="FLASH"?
+            <DriverFlashPlanner
+              snap={sheetSnap}
+              onSnapChange={setSheetSnap}
+              serviceType={serviceType}
+              onServiceTypeChange={setServiceType}
+              vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"}
+              municipality={resolvedAddress?.city??""}
+              originPoint={originLocation}
+              originLabel={origin}
+              originRevision={shellOriginRevision}
+              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("half");}}
+              onRouteChange={handleShellRouteChange}
+              onActiveRideChange={setDriverFlashRide}
+              onDestinationChange={(_label,details)=>{
+                setSelectedOnRouteMatch(null);
+                setShellDestinationLocation(details);
+                setShellSelectedDestination(Boolean(details?.lat!=null&&details?.lng!=null));
+                setShellRoute(null);
+              }}
+            />
+            : activeRoleState.activeRole==="MOTORISTA"?
             <DriverScheduledPlanner
               snap={sheetSnap}
               onSnapChange={setSheetSnap}
