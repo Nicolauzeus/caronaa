@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/caronaa/AppShell";
+import { ProfessionalAccountDashboard } from "@/components/caronaa/ProfessionalAccountDashboard";
 import {
   NotificationControls,
   NotificationPreferences,
@@ -48,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/perfil")({
       { property: "og:title", content: "Meu perfil — CARONAA" },
       {
         property: "og:description",
-        content: "Gerencie seus dados e preferências de viagem no CARONAA.",
+        content: "Gerencie seus dados de condutor e sua conta no CARONAA.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -122,6 +123,8 @@ function Perfil() {
   const [vehicleBrand, setVehicleBrand] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [isMotoProfile, setIsMotoProfile] = useState(false);
+  const [isProfessionalProfile, setIsProfessionalProfile] = useState(false);
+  const [professionalAuthorized, setProfessionalAuthorized] = useState(false);
   const [motoRegistration, setMotoRegistration] = useState("");
   const [motoWhatsapp, setMotoWhatsapp] = useState("");
 
@@ -171,19 +174,25 @@ function Perfil() {
 
         const verificationRows = await getMyUserVerifications();
         // Existing professional data defines the UI variant; it never grants access.
-        const [mototaxiRow, professionalAccess] = await Promise.all([
+        const [mototaxiRow, professionalAccess, onboarding] = await Promise.all([
           (supabase as any).from("professional_mototaxi_profiles")
             .select("registration_number,whatsapp_e164")
             .eq("user_id", user.id).maybeSingle(),
           (supabase as any).rpc("get_my_professional_access"),
+          (supabase as any).from("user_onboarding_progress")
+            .select("usage_role").eq("user_id",user.id).maybeSingle(),
         ]);
+        if (cancelled) return;
+        const access = !professionalAccess.error ? professionalAccess.data : null;
         const motoRegistered = !mototaxiRow.error && Boolean(mototaxiRow.data);
-        setIsMotoProfile(motoRegistered ||
-          (!professionalAccess.error && professionalAccess.data?.request?.vehicle_type === "MOTO"));
+        setIsMotoProfile(motoRegistered || access?.request?.vehicle_type === "MOTO");
+        setIsProfessionalProfile(
+          motoRegistered || Boolean(access?.authorized) || Boolean(access?.request) ||
+          onboarding.data?.usage_role === "MOTORISTA"
+        );
+        setProfessionalAuthorized(access?.authorized === true);
         setMotoRegistration(String(mototaxiRow.data?.registration_number ?? ""));
         setMotoWhatsapp(String(mototaxiRow.data?.whatsapp_e164 ?? ""));
-
-        if (cancelled) return;
 
         const profileData = data as ProfileData;
 
@@ -598,6 +607,7 @@ function Perfil() {
 
   return (
     <AppShell prelaunchMode={launchLocked}>
+      {!isProfessionalProfile && (
       <PageHeading
         eyebrow={isMotoProfile ? "CARONAA MOTORISTA" : "SUA COMUNIDADE"}
         title={isMotoProfile ? "Conta profissional" : "Meu perfil"}
@@ -605,13 +615,15 @@ function Perfil() {
           ? "Seu espaço para personalizar o CARONAA antes do lançamento."
           : isMotoProfile ? "Seus dados de condutor, moto e recebimentos em um só lugar." : "Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."}
       />
+      )}
+      {!isProfessionalProfile && (<>
       {launchLocked && (
         <section role="status" aria-label="Acesso ao perfil durante o pré-lançamento"
           className="mb-5 flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-sm font-extrabold text-foreground">Seu perfil já está liberado</p>
             <p className="text-xs leading-5 text-muted-foreground">
-              Adicione sua foto, cidade, preferências e veículo. Sua campanha ainda não permite pedir ou oferecer caronas.
+              Adicione sua foto, cidade e veículo. Sua campanha ainda não permite pedir ou oferecer caronas.
             </p>
           </div>
           <Button asChild variant="outline" className="min-h-11 w-full shrink-0 border-primary/30 sm:w-auto">
@@ -907,6 +919,126 @@ function Perfil() {
         </section>
       </div>
 
+      </>)}
+
+      {isProfessionalProfile && (
+        <>
+          <ProfessionalAccountDashboard
+            name={fullName || "Motorista CARONAA"}
+            initials={initials}
+            photo={photo}
+            city={city}
+            isMoto={isMotoProfile}
+            authorized={professionalAuthorized}
+            vehicleBrand={vehicleBrand}
+            vehicleDescription={vehicleDescription}
+            vehiclePlate={vehiclePlate}
+            registration={motoRegistration}
+            whatsapp={motoWhatsapp}
+            onEditPhoto={() => setAvatarSheetOpen(true)}
+            saving={saving}
+            onSave={() => void saveProfile()}
+            driverForm={
+              <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome" />
+
+              <LocationAutocomplete
+                id="perfil-cidade"
+                label="Cidade"
+                value={city}
+                onChange={(val, details) => setCity(details?.city || val)}
+                placeholder="Ex.: Fortaleza"
+                variant="simple"
+              />
+
+              <label className="block text-xs font-bold text-muted-foreground">
+                GÊNERO
+                <select
+                  value={gender}
+                  onChange={(event) =>
+                    setGender(event.target.value as "FEMININO" | "MASCULINO" | "")
+                  }
+                  className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground"
+                >
+                  <option value="">Prefiro não informar agora</option>
+                  <option value="FEMININO">Feminino</option>
+                  <option value="MASCULINO">Masculino</option>
+                </select>
+              </label>
+
+              {isMotoProfile && (
+                <div className="md:col-span-2 rounded-xl border border-white/15 bg-white/5 p-3">
+                  <p className="text-xs font-bold text-white/65">WHATSAPP PROFISSIONAL</p>
+                  <p className="mt-1 text-sm text-white">{motoWhatsapp || "Não informado"}</p>
+                  <Link to="/cadastro-motorista" className="mt-1 inline-flex min-h-11 items-center text-xs font-bold text-[#FFBB00] underline">
+                    Consultar cadastro de mototaxista
+                  </Link>
+                </div>
+              )}
+              <div className="md:col-span-2">
+                <Field label="E-mail" value={email} readOnly />
+
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Mail size={13} />O e-mail vem da sua conta de autenticação e não pode ser
+                  alterado por esta tela.
+                </p>
+              </div>
+            </div>
+            }
+            vehicleForm={
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field
+                label={isMotoProfile ? "Modelo e Cor da Moto" : "Modelo e cor do veículo"}
+                value={vehicleDescription}
+                onChange={setVehicleDescription}
+                placeholder={isMotoProfile ? "Ex.: CG 160 Fan - Vermelha" : "Ex.: Honda Fit prata"}
+              />
+              <Field label={isMotoProfile ? "Marca da Moto" : "Marca do carro"}
+                value={vehicleBrand} onChange={setVehicleBrand}
+                placeholder={isMotoProfile ? "Ex.: Honda, Yamaha" : "Ex.: Honda"} />
+              <Field label={isMotoProfile ? "Placa da Moto" : "Placa do carro"}
+                value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())}
+                placeholder="ABC1D23" />
+              {isMotoProfile && <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                <p className="text-xs font-bold text-white/65">MATRÍCULA DE MOTOTAXISTA</p>
+                <p className="mt-2 text-sm font-semibold">{motoRegistration || "Não informada"}</p>
+                <p className="mt-1 text-xs text-white/55">Dados do cadastro profissional; consulte o suporte para atualizar.</p>
+              </div>}
+            </div>
+            }
+            financeContent={
+              <div className="space-y-4">
+                <DriverPixSettings />
+                <DriverPlatformFees />
+              </div>
+            }
+            settingsContent={
+              <div className="space-y-4">
+                <NotificationPreferences />
+                <section className="rounded-xl border border-white/15 bg-white/5 p-3">
+                  <h3 className="font-[Sora] text-sm font-bold text-white">Autorização profissional</h3>
+                  <ProfessionalAuthorizationBadge />
+                  <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#FFBB00] underline">
+                    Consultar situação do cadastro
+                  </Link>
+                </section>
+                <section className="rounded-xl border border-white/15 bg-white/5 p-3">
+                  <h3 className="font-[Sora] text-sm font-bold text-white">Vínculos e verificações</h3>
+                  <p className="mb-3 text-xs text-white/65">Vínculos não representam verificação documental completa.</p>
+                  {verifications.length > 0 ? <VerificationBadges verifications={verifications}/> :
+                    <p className="text-xs text-white/60">Nenhum vínculo identificado.</p>}
+                </section>
+                <ResearchParticipationCard />
+              </div>
+            }
+          />
+          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+            onChange={selectPhoto} className="sr-only" />
+          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+            capture="user" onChange={selectPhoto} className="sr-only" />
+        </>
+      )}
+
       {photoOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-background p-5 shadow-2xl">
@@ -973,7 +1105,7 @@ function Perfil() {
               Foto de perfil
             </SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground">
-              Escolha uma imagem JPG, PNG ou WEBP de até 5MB.
+              Escolha uma imagem JPG, PNG ou WEBP de até 25 MB. A imagem será otimizada.
             </SheetDescription>
           </SheetHeader>
 
