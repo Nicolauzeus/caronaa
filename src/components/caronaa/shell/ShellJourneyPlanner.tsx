@@ -295,13 +295,18 @@ export function ShellJourneyPlanner({
   return <div className={snap==="peek"?"space-y-1":"space-y-4 pb-4"}
     style={{fontFamily:"Manrope, sans-serif"}}>
     {snap==="peek"&&<>
-      <button type="button" onClick={()=>onSnapChange?.("half")}
-        className="flex min-h-9 w-full items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 text-sm">
-        <Search size={18} className="text-[#FFBB00]"/>
-        <span className="truncate">{destination||"Para onde vamos?"}</span>
-      </button>
-      <button type="button" className="block w-full truncate text-left text-[11px] text-white/80"
-        onClick={onAdjustOrigin}>Origem: {originLabel||"GPS atual"} · Ajustar no mapa</button>
+      <div className="flex min-w-0 gap-1">
+        <button type="button" onClick={()=>onSnapChange?.("half")}
+          className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 text-sm">
+          <Search size={18} className="shrink-0 text-[#FFBB00]"/>
+          <span className="truncate">{destination||"Para onde vamos?"}</span>
+        </button>
+        <button type="button" aria-label="Ajustar no mapa a origem" onClick={onAdjustOrigin}
+          title={"Origem: "+(originLabel||"GPS atual")}
+          className="flex min-h-9 w-10 shrink-0 items-center justify-center rounded-xl border border-[#FFBB00]/40 text-[#FFBB00]">
+          <MapPin size={18}/>
+        </button>
+      </div>
       <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
     </>}
     {snap==="half"&&<>
