@@ -5,6 +5,8 @@ import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/she
 import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
 import { ShellJourneyPlanner, type ShellRoute } from "@/components/caronaa/shell/ShellJourneyPlanner";
 import { UnifiedMyTripsPanel, type UnifiedTrip } from "@/components/caronaa/shell/UnifiedMyTripsPanel";
+import { DriverScheduledPlanner } from "@/components/caronaa/shell/DriverScheduledPlanner";
+import { DriverScheduledTripsPanel } from "@/components/caronaa/shell/DriverScheduledTripsPanel";
 import type { OnRouteMatch } from "@/types/ride";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
@@ -120,6 +122,7 @@ function Home() {
     setShellRouteOrigin(from);
   },[]);
   const [serviceType, setServiceType] = useState<ServiceType>("FLASH");
+  const [driverTripsRefreshKey,setDriverTripsRefreshKey]=useState(0);
   useEffect(()=>{
     const expand=()=>setSheetSnap("half");
     document.addEventListener("caronaa-shell-expand",expand);
@@ -635,15 +638,27 @@ function Home() {
           missingFields={missingVehicleFields}
           initialType={activeRoleState.vehicleType}
           initialSeats={activeRoleState.vehicleSeats}
-          onSave={activeRoleState.saveVehicle}/>
+          onSave={async vehicle=>{
+            if(operationalRide&&!["CANCELLED","CANCELED","COMPLETED","FINISHED","REJECTED"].includes(
+              operationalRide.status.toUpperCase()
+            ))throw new Error("Não é possível alternar durante uma corrida.");
+            const {data:rides,error}=await (supabase as any).rpc("quick_ride_my_requests");
+            if(error||!Array.isArray(rides)||rides.some((ride:any)=>
+              ["REQUESTED","PENDING","ACCEPTED","ARRIVED","IN_PROGRESS","DRIVER_EN_ROUTE","MATCHED","CONFIRMED"].includes(
+                String(ride.status??"").toUpperCase()
+              )))throw new Error("Corrida ativa ou estado indisponível.");
+            await activeRoleState.saveVehicle(vehicle);
+          }}/>
         <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
           title="Casca Única CARONAA"
           headerAction={!tripsPanelOpen?
             <button type="button" onClick={showTrips}
               className="min-h-8 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">
-              Minhas Viagens
+              {activeRoleState.activeRole==="MOTORISTA"?"Agendados":"Minhas Viagens"}
             </button>:undefined}>
-          {tripsPanelOpen&&<UnifiedMyTripsPanel
+          {tripsPanelOpen&&activeRoleState.activeRole==="MOTORISTA"&&
+            <DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
+          {tripsPanelOpen&&activeRoleState.activeRole!=="MOTORISTA"&&<UnifiedMyTripsPanel
             onClose={closeTrips}
             refreshKey={tripsRefreshKey}
             onShowOnMap={(trip:UnifiedTrip)=>{
@@ -658,6 +673,29 @@ function Home() {
             }}
           />}
           <div style={{display:tripsPanelOpen?"none":undefined}}>
+          {activeRoleState.activeRole==="MOTORISTA"?
+            <DriverScheduledPlanner
+              snap={sheetSnap}
+              onSnapChange={setSheetSnap}
+              serviceType={serviceType}
+              onServiceTypeChange={setServiceType}
+              vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"}
+              maxSeats={activeRoleState.vehicleSeats}
+              gender={gender}
+              originPoint={originLocation}
+              originLabel={origin}
+              originRevision={shellOriginRevision}
+              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
+              onRouteChange={handleShellRouteChange}
+              onDestinationChange={(_label,details)=>{
+                setSelectedOnRouteMatch(null);
+                setShellDestinationLocation(details);
+                setShellSelectedDestination(Boolean(details?.lat!=null&&details?.lng!=null));
+                setShellRoute(null);
+              }}
+              onPublished={()=>setDriverTripsRefreshKey(x=>x+1)}
+              onOpenTrips={showTrips}
+            />:
           <ShellJourneyPlanner
             snap={sheetSnap}
             onSnapChange={setSheetSnap}
@@ -687,6 +725,7 @@ function Home() {
               setConfirmedReviewKey(null);
             }}
           />
+          }
           </div>
         </InteractiveBottomSheet>
         {selectingOrigin && (
