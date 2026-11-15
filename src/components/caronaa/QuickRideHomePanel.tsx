@@ -313,7 +313,7 @@ export function QuickRideHomePanel({
               "Viagem em andamento."}
           </p>
           <div className="flex min-w-0 flex-wrap gap-2">
-          {["ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
+          {liveRide.status==="ARRIVED"&&(
             <div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
               <p className="text-xs text-gray-300">Informe este código ao motorista para iniciar a corrida.</p>
               {boardingCode?
