@@ -64,9 +64,9 @@ export function useFlashDriverPresence(){
   },[stopWatch]);
 
   const goOnline=useCallback(async(input:FlashDriverOnlineInput)=>{
-    if(active.current||inFlightStart.current)return;
+    if(active.current||inFlightStart.current)return false;
     if(typeof window==="undefined"||!window.isSecureContext||!navigator.geolocation){
-      setState(s=>({...s,error:"O GPS precisa de HTTPS e permissão de localização."}));return;
+      setState(s=>({...s,error:"O GPS precisa de HTTPS e permissão de localização."}));return false;
     }
     inFlightStart.current=true;
     setState(s=>({...s,busy:true,error:null,gpsConnected:false}));
@@ -111,6 +111,7 @@ export function useFlashDriverPresence(){
           void sendHeartbeat(currentFix.current);
         }
       },4000);
+      return true;
     }catch(error){
       active.current=false;
       stopWatch();
@@ -118,6 +119,7 @@ export function useFlashDriverPresence(){
       // The activation RPC may have succeeded before a browser GPS exception.
       // Best-effort rollback; the server must also enforce a 60-second TTL.
       void setFlashDriverOffline().catch(()=>undefined);
+      return false;
     }finally{
       inFlightStart.current=false;
       setState(s=>({...s,busy:false}));
