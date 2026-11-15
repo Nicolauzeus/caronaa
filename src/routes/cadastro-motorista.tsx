@@ -227,8 +227,7 @@ function SimpleMotorcycleRegistration() {
               </div>
               {mode === "signup" ? <div className="mt-2 space-y-2">
                 <div className="flex gap-1" aria-hidden="true">{[1,2,3,4].map(n => <span key={n} className={"h-1 flex-1 rounded-full " + (strength.score >= n ? "bg-[#FFBB00]" : "bg-white/15")} />)}</div>
-                <div className="flex items-center justify-between gap-2 text-xs"><span aria-live="polite" className="text-white/70">Força: {strength.label}</span><button type="button" onClick={suggestPassword} className="inline-flex min-h-10 items-center gap-1.5 font-semibold text-[#FFBB00] underline"><KeyRound size={15} /> Sugerir senha forte</button></div>
-                <p className="text-xs text-white/55">Prefira uma senha longa e exclusiva. Você pode usar a sugestão do navegador.</p>
+                <div className="flex items-center justify-between gap-2 text-xs">{password && <span aria-live="polite" className="text-white/70">Força: {strength.label}</span>}<button type="button" onClick={suggestPassword} className="ml-auto inline-flex min-h-10 items-center gap-1.5 font-semibold text-[#FFBB00] underline"><KeyRound size={15} /> Sugerir senha forte</button></div>
               </div> : <button type="button" onClick={() => { setResetMode(true); setFeedback(""); }} className="mt-1 min-h-10 text-sm font-semibold text-[#FFBB00] underline">Esqueci minha senha</button>}
             </div>
             {mode === "signup" && <div>
@@ -237,11 +236,10 @@ function SimpleMotorcycleRegistration() {
                 <input id="professional-confirm" type={showConfirm ? "text" : "password"} autoComplete="new-password" required value={confirm} aria-invalid={Boolean(confirm && confirm !== password)} onChange={e => { setConfirm(e.target.value); setFeedback(""); }} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 pr-14 text-base outline-none focus-visible:border-[#FFBB00]" />
                 <button type="button" aria-label={showConfirm ? "Ocultar confirmação" : "Mostrar confirmação"} aria-pressed={showConfirm} onClick={() => setShowConfirm(v => !v)} className="absolute inset-y-1 right-1 flex w-11 items-center justify-center rounded-lg text-white/70 focus-visible:ring-2 focus-visible:ring-[#FFBB00]">{showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}</button>
               </div>
-              <p aria-live="polite" className={"mt-1 min-h-4 text-xs " + (confirm && confirm !== password ? "text-red-300" : "text-white/65")}>{confirm ? (confirm === password ? "As senhas coincidem." : "As senhas não coincidem.") : "Repita a senha para confirmar."}</p>
+              {confirm && <p aria-live="polite" className={"mt-1 text-xs " + (confirm !== password ? "text-red-300" : "text-white/65")}>{confirm === password ? "As senhas coincidem." : "As senhas não coincidem."}</p>}
             </div>}
             {feedback && <p role={feedback.includes("não") || feedback.includes("incorret") || feedback.includes("Muitas") ? "alert" : "status"} className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">{feedback}</p>}
             <button disabled={busy} aria-busy={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy && <LoaderCircle size={18} className="animate-spin" />}{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
-            <p className="text-center text-xs text-white/60">{mode === "signup" ? "Próximo passo: dados profissionais e aprovação" : "Acesso seguro CARONAA"}</p>
             <Link to="/auth" className="block min-h-10 pt-2 text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
           </form>
         ) : (
