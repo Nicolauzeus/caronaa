@@ -9,7 +9,7 @@ export function ServiceTypeDock({value,onChange,disabled=false,compact=false}:Pr
       <Zap size={18}/> Flash
     </button>
     <button type="button" disabled={disabled} aria-pressed={value==="AGENDADA"} onClick={()=>onChange("AGENDADA")}
-      className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold transition-colors ${value==="AGENDADA"?"bg-[#FFBB00] text-[#121212]":"bg-white/10 text-white hover:bg-white/20"}`}>
+      className={`flex ${compact?"min-h-9":"min-h-12"} items-center justify-center gap-2 rounded-xl text-sm font-bold transition-colors ${value==="AGENDADA"?"bg-[#FFBB00] text-[#121212]":"bg-white/10 text-white hover:bg-white/20"}`}>
       <CalendarDays size={18}/> Agendada
     </button>
   </nav>;
