@@ -153,8 +153,11 @@ export function DriverFlashPlanner({
         }
         route=await pending;
       }
+      // Without a destination, only EXCLUSIVE bookings can be routed safely.
+      const effectiveMode=valid(destPoint)?mode:"EXCLUSIVE";
+      if(effectiveMode!==mode)setMode(effectiveMode);
       const config={
-        online:true as const,mode,seats:vehicleType==="MOTO"?1:seats,vehicleType,
+        online:true as const,mode:effectiveMode,seats:vehicleType==="MOTO"?1:seats,vehicleType,
         destination:valid(destPoint)?{lat:destPoint.lat!,lng:destPoint.lng!,label:destination}:null,
         routePath:route?.routePath??null,
       };
