@@ -64,6 +64,9 @@ export function GoogleMapSurface({
   const movementFrames = useRef<Map<string, number>>(new Map());
   const fitted = useRef(false);
   const lastFitKey = useRef<string | undefined>(undefined);
+  const lastFitPointCount = useRef(0);
+  const lastFitRouteCount = useRef(0);
+  const lastBounds = useRef<any>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -84,8 +87,11 @@ export function GoogleMapSurface({
       if (!active || !container.current) return;
       const G = (window as any).google?.maps;
       if (!G?.Map) throw new Error("Google Maps JS missing after load");
+      const initialPoint = points.find(isValid);
       map.current = new G.Map(container.current, {
-        center: { lat: -3.73, lng: -38.53 },
+        center: initialPoint
+          ? { lat: initialPoint.lat, lng: initialPoint.lng }
+          : { lat: -3.73, lng: -38.53 },
         zoom: 13,
         disableDefaultUI: true,
         clickableIcons: false,
@@ -110,11 +116,40 @@ export function GoogleMapSurface({
       movementFrames.current.forEach(frame=>window.cancelAnimationFrame(frame));
       movementFrames.current.clear();
       trackingMarkers.current.clear();
+      lastBounds.current = null;
       map.current = null;
     };
     // Initialize exactly once; update markers and polylines separately.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!ready || !map.current || failed || !container.current ||
+        typeof ResizeObserver === "undefined") return;
+    let frame: number | null = null;
+    let previousWidth = 0;
+    let previousHeight = 0;
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      const height = entries[0]?.contentRect.height ?? 0;
+      if (width <= 0 || height <= 0 ||
+          (Math.abs(width - previousWidth) < 1 && Math.abs(height - previousHeight) < 1)) return;
+      const hadSize = previousWidth > 0 && previousHeight > 0;
+      previousWidth = width;
+      previousHeight = height;
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        const G = (window as any).google?.maps;
+        if (!map.current) return;
+        G?.event?.trigger(map.current, "resize");
+        if (hadSize && lastBounds.current && fitted.current)
+          map.current.fitBounds(lastBounds.current, { top: 48, right: 48, bottom: 48, left: 48 });
+      });
+    });
+    observer.observe(container.current);
+    return () => { observer.disconnect(); if (frame !== null) window.cancelAnimationFrame(frame); };
+  }, [ready, failed]);
 
   useEffect(() => {
     if (!ready || !map.current || failed) return;
@@ -208,8 +243,10 @@ export function GoogleMapSurface({
         movementFrames.current.delete(key);
       });
     }
+    let validRouteCount = 0;
     lines.forEach((line) => {
       const path = line.points.filter(isValid);
+      if (path.length >= 2) validRouteCount += 1;
       if (path.length < 2) return;
       const polyline = new G.Polyline({
         map: map.current,
@@ -233,17 +270,24 @@ export function GoogleMapSurface({
       artifacts.current.push(polyline);
       path.forEach(extend);
     });
-    if (fitKey !== undefined && lastFitKey.current !== fitKey) {
-      lastFitKey.current = fitKey;
-      fitted.current = false;
+    const validMarkerCount = points.filter(isValid).length;
+    const newFitKey = fitKey !== undefined && lastFitKey.current !== fitKey;
+    const newRoute = validRouteCount > lastFitRouteCount.current;
+    const moreMarkers = validMarkerCount > lastFitPointCount.current;
+    lastFitKey.current = fitKey;
+    lastFitRouteCount.current = validRouteCount;
+    lastFitPointCount.current = validMarkerCount;
+    if (fitted.current && fitMode === "once" && !newFitKey && !newRoute && !moreMarkers) return;
+    if (count > 0) {
+      fitted.current = true;
+      lastBounds.current = bounds;
     }
-    if (fitted.current && fitMode === "once") return;
-    if (count > 0) fitted.current = true;
     if (count === 1) {
-      map.current.setCenter(bounds.getCenter());
-      map.current.setZoom(15);
+      map.current.panTo(bounds.getCenter());
+      if (!fitted.current || !map.current.getZoom?.() || map.current.getZoom() < 14)
+        map.current.setZoom(15);
     } else if (count > 1) {
-      map.current.fitBounds(bounds, 32);
+      map.current.fitBounds(bounds, { top: 48, right: 48, bottom: 48, left: 48 });
     }
   }, [ready, failed, points, lines, fitMode, fitKey, smoothTracking]);
 
