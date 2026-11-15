@@ -14,7 +14,6 @@ import {
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
 import { QuickRideRatingModal } from "./QuickRideRatingModal";
-import { QuickRideOperationalMap } from "./QuickRideOperationalMap";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { toast } from "sonner";
 
@@ -25,7 +24,7 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  onCoverage,
+  onCoverage, onOperationalRideChange,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
@@ -33,6 +32,7 @@ export function QuickRideHomePanel({
   driverCount:number;driverLoading?:boolean;driverError?:string;
   gpsOriginIsImprecise?:boolean;
   onCoverage?:(coverage:QuickRideCoverage|null)=>void;
+  onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
 }) {
   const availabilityFn=useServerFn(getQuickRideCoverage);
   const previewFn=useServerFn(getQuickRideFarePreview);
@@ -66,6 +66,12 @@ export function QuickRideHomePanel({
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  useEffect(()=>{
+    onOperationalRideChange?.(liveRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)
+      ?{id:liveRide.id,status:liveRide.status,municipality:liveRide.municipality}:null);
+    return ()=>onOperationalRideChange?.(null);
+  },[liveRide?.id,liveRide?.status,liveRide?.municipality,onOperationalRideChange]);
+
   const shownCompletedRide=completedRide?.id!==completedHidden?completedRide:null;
   useEffect(()=>{
     if(!completedRide)return;
@@ -323,10 +329,6 @@ export function QuickRideHomePanel({
       )}
       {liveRide?(
         <div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
-          {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status) && (
-            <QuickRideOperationalMap rideId={liveRide.id} status={liveRide.status}
-              municipality={liveRide.municipality} role="PASSENGER"/>
-          )}
           <p className="font-semibold">Sua Corrida Rápida</p>
           <p role="status" className="mt-1 text-gray-300">
             {liveRide.status==="SEARCHING"?"Procurando um profissional autorizado…":
@@ -431,7 +433,7 @@ export function QuickRideHomePanel({
         {((shownCompletedRide&&ratingDismissed!==completedRide.id)||ratingReopen===completedRide.id)&&
           <QuickRideRatingModal rideId={completedRide.id} subject="motorista"
             forceOpen={ratingReopen===completedRide.id}
-            onClose={()=>{setRatingDismissed(completedRide.id);setRatingReopen(null);}}/>}
+            onClose={()=>{releaseCompletedRide();setRatingReopen(null);}}/>}
       </div>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
