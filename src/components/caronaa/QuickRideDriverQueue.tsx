@@ -18,9 +18,10 @@ type ActiveDriverRide={
 };
 
 export function QuickRideDriverQueue({
-  municipality,online,gpsReady,
+  municipality,online,gpsReady,onActiveChange,
 }:{
   municipality:string;online:boolean;gpsReady:boolean;
+  onActiveChange?:(hasActive:boolean)=>void;
 }) {
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
