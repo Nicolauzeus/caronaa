@@ -90,7 +90,7 @@ export function QuickRideOperationalMap({
       lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
       fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}`}
-      smoothTracking ariaLabel="Mapa Google com deslocamento da corrida"
+      smoothTracking showControls={immersive} gestureHandling={immersive?"greedy":"cooperative"} ariaLabel="Mapa Google com deslocamento da corrida"
       className={immersive?"h-full w-full":"h-64 w-full rounded-2xl"} />;
   if(immersive) return <section aria-label="Mapa operacional da Corrida Rápida"
     className="relative h-full w-full overflow-hidden bg-[#121212]">
