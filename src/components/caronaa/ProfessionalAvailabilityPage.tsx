@@ -411,7 +411,9 @@ export function ProfessionalAvailabilityPage() {
           <h1 className="professional-cockpit__title text-white">Cockpit Operacional</h1>
           <p className="text-xs leading-relaxed text-white/65">Acompanhe chamados, viagens e disponibilidade.</p>
         </div>
-    {/* GPS, consent and dispatch logic are unchanged; only presentation differs. */}
+    {/* GPS, consent and dispatch logic are unchanged; only presentation differs.
+        The legacy one-tap action "Ficar disponível e compartilhar GPS" remains the
+        same operational command; its shorter visible label is "Ficar Disponível". */}
     <section className="professional-cockpit__card space-y-3" aria-label="Controle de disponibilidade">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span role="status" className={`professional-cockpit__status-pill rounded-full px-3 py-1.5 text-xs font-bold ${!ready
