@@ -1,6 +1,7 @@
 - [x] F07/Google: Audited policies/view grants, migration ordering and historical self-radar regression; complete proposed SQL presented for approval, with no database mutations.
 - [ ] F07: Separate trip tracking from new-dispatch coverage checks without weakening public discovery; resolve README coverage conflict before implementation.
-- [ ] Google item 7: Approved schema applied as 0125 and verified; RLS blocks both new tables, but inherited anon/authenticated grants require a separately approved REVOKE correction. Wrapper integration, limits/TTL tests and background logging remain pending. Do not implement items 4–6 or 8.
+- [ ] Google item 7: Approved schema applied as 0125; separately approved private-grant correction applied as 0126, awaiting readback. Wrapper integration, limits/TTL tests and background logging remain pending. Do not implement items 4–6 or 8.
+- [ ] Replace existing GOOGLE_MAPS_API_KEY through the secure secret form; never write the private value into committed environment files. Published app needs publishing to pick up replacement.
 - [x] F02/F07: Operations tabs, real-request detail dialog and missing-data approval guards; shared authenticated Google municipality selection for access, availability and pilot configuration. 20 tests pass, build OK, signed-in real request and mobile UI verified without decisions or publishing. Live Google selection and a new pending-request decision remain unverified; Google checks require an authorized deployed origin.
 - [ ] Repair public research deep links; verify anonymous direct access, refresh, submission, disabled forms and app guards without production publishing or historical mutations.
 - [x] Rebuild the sign-in screen from the supplied visual reference.
