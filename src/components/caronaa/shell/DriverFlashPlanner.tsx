@@ -241,8 +241,8 @@ export function DriverFlashPlanner({
       toast.warning(presence.error);
   },[presence.error]);
   const canListen=presence.online&&presence.gpsConnected&&
-    (!active||mode!=="EXCLUSIVE"&&mode!=="ALL"&&
-      (passenger?.seatsRemaining??0)>0);
+    (!active||((active.mode??passenger?.rideMode)==="ON_ROUTE"&&
+      (passenger?.seatsRemaining??0)>0));
   const visibleOrders=orders.filter(order=>!ignored.current.has(order.id));
   const current=visibleOrders[0]??null;
   return <>
@@ -366,7 +366,7 @@ export function DriverFlashPlanner({
         {active.status==="IN_PROGRESS"&&
           <p className="text-xs text-white/70">Siga a rota até o destino. A finalização permanece no fluxo operacional autorizado.</p>}
       </section>}
-      {canListen&&active?.status==="IN_PROGRESS"&&mode==="ON_ROUTE"&&
+      {canListen&&active?.status==="IN_PROGRESS"&&
         <p className="rounded-xl border border-[#FFBB00]/25 p-2 text-xs text-white/65">
           Você continua recebendo oportunidades Na Rota enquanto houver vagas confirmadas pelo servidor.
         </p>}
