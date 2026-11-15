@@ -493,10 +493,8 @@ export function ShellJourneyPlanner({
         <p><strong>Modalidade:</strong> {mode==="EXCLUSIVE"?
           "Exclusiva ("+(vehicle==="CAR"?"Carro":"Moto")+")":
           "Na Rota ("+(onRouteVehicle==="MOTO"?1:entireCar?3:seats)+" vagas)"} </p>
-        {serviceType==="FLASH"&&mode==="EXCLUSIVE"?
-          <p className="text-xs text-white/75">A cotação oficial e o pedido são apresentados abaixo pelo servidor operacional.</p>:
-          <><p className="font-[family-name:var(--font-display)] text-2xl font-black text-[#FFBB00]">{selectedPrice?formatBrl(selectedPrice.totalFare):"Calculando..."}</p>
-          <p className="text-xs text-white/70">Tarifa estimada, sujeita à confirmação operacional.</p></>}
+        <p className="font-[family-name:var(--font-display)] text-2xl font-black text-[#FFBB00]">{selectedPrice?formatBrl(selectedPrice.totalFare):"Calculando..."}</p>
+        <p className="text-xs text-white/70">Tarifa estimada, sujeita à confirmação operacional.</p>
         <p><strong>Pagamento:</strong> Pix ou dinheiro direto ao motorista</p>
         <p className="text-xs text-white/70">O app não retém valores nesta etapa.</p>
       </section>
@@ -516,8 +514,6 @@ export function ShellJourneyPlanner({
         </button>}
         {scheduleError&&<p role="alert" className="text-sm text-[#FFBB00]">{scheduleError}</p>}
       </>}
-      {serviceType==="FLASH"&&mode==="ON_ROUTE"&&!onRouteConfirmedId&&
-        <p className="text-xs text-white/70">Para viajar Na Rota, volte às modalidades e confirme uma oferta existente. Nenhuma busca simulada será iniciada.</p>}
     </>}
     {snap==="full"&&serviceType==="FLASH"&&<>
       {onRouteConfirmedId&&<section role="status" className="rounded-2xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 p-4">
