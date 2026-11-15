@@ -38,8 +38,9 @@ export function QuickVehicleModal({
   },[open,initialType,initialSeats]);
 
   const required=fields.filter(field=>missingFields.includes(field.key));
+  // Brazilian legacy ABC1234 and Mercosul ABC1D23 (fifth char A-J).
   const valid=required.every(field=>draft[field.key].trim().length>0) &&
-    (!missingFields.includes("plate") || /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(draft.plate));
+    (!missingFields.includes("plate") || /^[A-Z]{3}[0-9](?:[0-9]|[A-J])[0-9]{2}$/.test(draft.plate));
   const submit=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
     if(busy || !valid)return;
@@ -49,7 +50,7 @@ export function QuickVehicleModal({
       await onSave(draft);
       onOpenChange(false);
     }catch{
-      setError("Não foi possível salvar ou validar o veículo. Confira a conexão e tente novamente.");
+      setError("Não foi possível ativar Motorista. Confira os dados ou a configuração de elegibilidade no Supabase.");
     }finally{
       setBusy(false);
     }
@@ -62,7 +63,7 @@ export function QuickVehicleModal({
           Complete seu veículo
         </DialogTitle>
         <DialogDescription className="text-white/70">
-          Apenas os campos pendentes são solicitados. Depois de salvar, o CARONAA verifica sua elegibilidade.
+          Informe os dados do veículo. Sem CNH, fotos ou aprovação manual nesta etapa. A ativação depende da validação do servidor.
         </DialogDescription>
       </DialogHeader>
       <form className="max-h-[75dvh] space-y-3 overflow-y-auto" onSubmit={event=>void submit(event)}>
