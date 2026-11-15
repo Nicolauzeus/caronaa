@@ -672,8 +672,8 @@ function Home() {
               onServiceTypeChange={setServiceType}
               vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"}
               municipality={resolvedAddress?.city??""}
-              originPoint={originLocation}
-              originLabel={origin}
+              originPoint={originLocation??location.position}
+              originLabel={origin||"Localização atual (GPS)"}
               originRevision={shellOriginRevision}
               onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("half");}}
               onRouteChange={handleShellRouteChange}
