@@ -194,7 +194,7 @@ export function QuickRideDriverQueue({
           {active.status==="ARRIVED"&&<>
             <label htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Peça ao passageiro o código secreto de quatro dígitos.</label>
             <input id="quick-ride-driver-pin" type="text" inputMode="numeric" autoComplete="off"
-              maxLength={4} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\\D/g,"").slice(0,6))}
+              maxLength={4} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\D/g,"").slice(0,4))}
               placeholder="Código de embarque" className="min-h-12 w-full rounded-xl border border-white/30 bg-white/10 px-3 text-white" />
             <button type="button"
               onClick={()=>void action(active.id,"IN_PROGRESS")} disabled={busy||boardingPin.length!==4}
