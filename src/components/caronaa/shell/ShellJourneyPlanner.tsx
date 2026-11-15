@@ -48,7 +48,7 @@ const selectedButton=(chosen:boolean)=>"min-h-11 rounded-xl border p-3 text-sm f
   (chosen?"border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]":"border-white/20 bg-white/5 text-white");
 const localDateTime=(offsetMs=0)=>new Date(Date.now()+offsetMs-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
 export const validScheduleDate=(localValue:string,now=Date.now()):boolean=>{
-  if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(localValue))return false;
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localValue))return false;
   const value=new Date(localValue);
   return Number.isFinite(value.getTime()) && value.getTime()>=now+30*60*1000 &&
     // Roundtrip detects dates silently normalized by the browser.
