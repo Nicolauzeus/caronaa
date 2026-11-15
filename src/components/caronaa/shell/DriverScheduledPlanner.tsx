@@ -10,6 +10,7 @@ import { loadTravelPreferences } from "@/lib/travel-preferences-service";
 import { formatBrl } from "@/lib/ride-cost";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { TravelPreferenceFields } from "@/components/caronaa/TravelPreferences";
+import { DriverPlatformFees } from "@/components/caronaa/DriverPlatformFees";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
 import type { SheetSnap } from "./InteractiveBottomSheet";
@@ -78,6 +79,7 @@ export function DriverScheduledPlanner({
   const [publishedId,setPublishedId]=useState<string|null>(null);
   const [publicationError,setPublicationError]=useState("");
   const [debtPending,setDebtPending]=useState(false);
+  const [showFees,setShowFees]=useState(false);
   const [opportunities,setOpportunities]=useState<DriverOpportunity[]>([]);
   const [opportunityError,setOpportunityError]=useState("");
   const [acceptBusy,setAcceptBusy]=useState<string|null>(null);
@@ -315,10 +317,13 @@ export function DriverScheduledPlanner({
         </p>}
         {publicationError&&<div role="alert" className="space-y-2 rounded-xl border border-[#FFBB00]/50 p-3 text-sm">
           <p>{publicationError}</p>
-          {debtPending&&<button type="button" onClick={onOpenTrips}
+          {debtPending&&<button type="button" onClick={()=>setShowFees(value=>!value)}
             className="min-h-11 rounded-xl border border-[#FFBB00]/60 px-3 text-[#FFBB00]">
-            Consultar regularização
+            {showFees?"Ocultar regularização":"Regularizar pendências"}
           </button>}
+        </div>}
+        {debtPending&&showFees&&<div className="max-h-[40dvh] overflow-y-auto rounded-xl border border-white/20 p-2">
+          <DriverPlatformFees compact/>
         </div>}
         {publishedId&&<section className="space-y-3 rounded-2xl border border-[#FFBB00]/30 p-3">
           <h3 className="font-[family-name:var(--font-display)] font-bold">Oportunidades no seu trajeto</h3>
