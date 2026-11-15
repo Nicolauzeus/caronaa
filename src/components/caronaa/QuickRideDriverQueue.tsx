@@ -180,7 +180,7 @@ export function QuickRideDriverQueue({
             <input id="quick-ride-driver-pin" type="text" inputMode="numeric" autoComplete="off"
               maxLength={4} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\\D/g,"").slice(0,6))}
               placeholder="Código de embarque" className="min-h-12 w-full rounded-xl border border-white/30 bg-white/10 px-3 text-white" />
-            <button type="button" disabled={busy}
+            <button type="button"
               onClick={()=>void action(active.id,"IN_PROGRESS")} disabled={busy||boardingPin.length!==4}
               className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Validar código e iniciar viagem</button>
           </>}
