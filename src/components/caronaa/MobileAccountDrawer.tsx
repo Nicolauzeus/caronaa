@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Search,
   LayoutDashboard,
-  MessageSquare,
   KeyRound,
   Camera,
   HelpCircle,
@@ -176,15 +175,6 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
             Início
           </Link>
 
-
-          <Link
-            to="/minhas-caronas"
-            onClick={() => setOpen(false)}
-            className="flex min-h-12 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-          >
-            <MessageSquare size={19} className="text-muted-foreground" />
-            Mensagens
-          </Link>
 
           <Link
             to="/buscar"
