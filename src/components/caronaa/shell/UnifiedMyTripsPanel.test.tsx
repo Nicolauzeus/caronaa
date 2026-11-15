@@ -30,7 +30,7 @@ describe("CARONAA — Minhas Viagens na Casca Única",()=>{
     expect(screen.getByText("Centro")).toBeTruthy();
     expect(screen.getByText("Universidade")).toBeTruthy();
     expect(screen.getByText(/Na Rota/)).toBeTruthy();
-    expect(screen.getByText(/R\\$\\s?12,00/)).toBeTruthy();
+    expect(screen.getByText(/R\$\s?12,00/)).toBeTruthy();
     expect(screen.getByText(/Nenhum motorista confirmou ainda/)).toBeTruthy();
     expect(api.rpc).toHaveBeenCalledWith("get_my_unified_trips");
   });
