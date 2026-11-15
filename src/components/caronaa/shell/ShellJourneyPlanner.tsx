@@ -39,17 +39,30 @@ type Props = {
   onDestinationChange?:(label:string,details?:FormLocationDetails)=>void;
   onRouteChange?:(route:ShellRoute|null,origin:Point|null)=>void;
   onAdjustOrigin?:()=>void;
+  onScheduled?:(id:string)=>void;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
   !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
     Math.abs(p.lat!)<=90 && Math.abs(p.lng!)<=180;
 const selectedButton=(chosen:boolean)=>"min-h-11 rounded-xl border p-3 text-sm font-bold transition-colors "+
   (chosen?"border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]":"border-white/20 bg-white/5 text-white");
-const localDateTime=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+const localDateTime=(offsetMs=0)=>new Date(Date.now()+offsetMs-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+export const validScheduleDate=(localValue:string,now=Date.now()):boolean=>{
+  if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(localValue))return false;
+  const value=new Date(localValue);
+  return Number.isFinite(value.getTime()) && value.getTime()>=now+30*60*1000 &&
+    // Roundtrip detects dates silently normalized by the browser.
+    localValue===[
+      value.getFullYear(),String(value.getMonth()+1).padStart(2,"0"),String(value.getDate()).padStart(2,"0"),
+    ].join("-")+"T"+String(value.getHours()).padStart(2,"0")+":"+String(value.getMinutes()).padStart(2,"0");
+};
+const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
+  dateStyle:"full",timeStyle:"short",
+}).format(new Date(localValue));
 
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
-  originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,
+  originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -66,6 +79,9 @@ export function ShellJourneyPlanner({
   const [preferences,setPreferences]=useState<TravelPreferences>({...emptyTravelPreferences});
   const [womenOnly,setWomenOnly]=useState(false);
   const [scheduledAt,setScheduledAt]=useState("");
+  const [scheduling,setScheduling]=useState(false);
+  const [scheduledId,setScheduledId]=useState<string|null>(null);
+  const [scheduleError,setScheduleError]=useState("");
   const [phase,setPhase]=useState<SearchPhase>("REVIEW");
   const [startedAt,setStartedAt]=useState<number|null>(null);
   const [secondsLeft,setSecondsLeft]=useState(60);
@@ -243,6 +259,39 @@ export function ShellJourneyPlanner({
     }finally{setWaitlistBusy(false);}
   };
 
+  const scheduleValid=validScheduleDate(scheduledAt);
+  const submitSchedule=async()=>{
+    if(scheduling||scheduledId||!scheduleValid||!route||!prices||!valid(originPoint)||!valid(destinationPoint)){
+      setScheduleError("Revise o trajeto e escolha um horário com pelo menos 30 minutos de antecedência.");
+      return;
+    }
+    setScheduling(true);setScheduleError("");
+    try{
+      const reservedSeats=vehicle==="MOTO"?1:mode==="EXCLUSIVE"?3:entireCar?3:seats;
+      // The RPC contract must be deployed and reviewed before this can succeed.
+      // No direct INSERT into legacy ride_requests: it could trigger F03-F06 matching.
+      const {data,error}=await (supabase as any).rpc("schedule_caronaa_ride",{
+        p_origin:originLabel?.trim()||"Origem confirmada",
+        p_destination:destination.trim(),
+        p_departure_at:new Date(scheduledAt).toISOString(),
+        p_service_mode:mode,
+        p_vehicle_type:vehicle,
+        p_seats:reservedSeats,
+        p_reserved_entire_vehicle:mode==="EXCLUSIVE"||entireCar,
+        p_travel_preferences:preferences,
+        p_women_only:gender==="FEMININO"&&womenOnly,
+        p_estimated_fare:prices[mode].totalFare,
+      });
+      if(error||!data)throw new Error("SCHEDULE_NOT_CONFIRMED");
+      const id=typeof data==="string"?data:
+        typeof data==="object"&&data!==null?(data.request_id??data.id):null;
+      if(typeof id!=="string"||!id)throw new Error("SCHEDULE_ID_MISSING");
+      setScheduledId(id);
+      onScheduled?.(id);
+    }catch{
+      setScheduleError("Não foi possível agendar agora. Verifique a disponibilidade do serviço e tente novamente.");
+    }finally{setScheduling(false);}
+  };
   const selectedPrice=prices?.[mode]??null;
   const optionCard=(kind:UnifiedFareMode)=>(
     <div key={kind} className={"rounded-2xl border p-3 "+(mode===kind?
