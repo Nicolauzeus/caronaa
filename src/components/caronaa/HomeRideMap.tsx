@@ -17,6 +17,7 @@ type Props = {
   pickupPreview?: StrictPickupPreview | null;
   immersive?: boolean;
   routeManagedExternally?: boolean;
+  routeBottomInset?:number;
   plannedRoute?: {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
