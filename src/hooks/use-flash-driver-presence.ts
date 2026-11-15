@@ -38,15 +38,17 @@ export function useFlashDriverPresence(){
     staleTimer.current=null;
   },[]);
   const sendHeartbeat=useCallback(async(fix:DriverGpsFix,force=false)=>{
-    if(!active.current||sending.current)return;
-    if(!force && Date.now()-lastSentAt.current<FLASH_GPS_THROTTLE_MS)return;
+    if(!active.current||sending.current)return false;
+    if(!force && Date.now()-lastSentAt.current<FLASH_GPS_THROTTLE_MS)return true;
     sending.current=true;
     try{
       await updateFlashDriverHeartbeatGPS(fix.lat,fix.lng,fix.accuracyM);
       lastSentAt.current=Date.now();
       setState(s=>({...s,gpsConnected:true,error:null}));
+      return true;
     }catch(error){
       setState(s=>({...s,gpsConnected:false,error:gpsFailure(error)}));
+      return false;
     }finally{sending.current=false;}
   },[]);
   const markOffline=useCallback(async()=>{
@@ -80,10 +82,12 @@ export function useFlashDriverPresence(){
       active.current=true;
       lastGpsAt.current=Date.now();
       currentFix.current=initial;
-      setState(s=>({...s,online:true,gps:initial}));
+      setState(s=>({...s,gps:initial}));
       // A successful online RPC is not sufficient to claim connected GPS:
       // GPS publication must still be acknowledged.
-      await sendHeartbeat(initial,true);
+      const published=await sendHeartbeat(initial,true);
+      if(!published)throw new FlashDriverError("UNAVAILABLE");
+      setState(s=>({...s,online:true,gpsConnected:true}));
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;
         const fix=sample(pos);
