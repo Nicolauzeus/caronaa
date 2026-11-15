@@ -122,6 +122,28 @@ describe("useActiveRole / elegibilidade sem burocracia",()=>{
     expect(result.current.activeRole).toBe("PASSAGEIRO");
   });
 
+  it("requests vehicle review when readiness is false, even with complete profile",async()=>{
+    setup({...fullProfile},false);
+    const {result}=renderHook(()=>useActiveRole());
+    await waitFor(()=>expect(result.current.loading).toBe(false));
+    let response:Awaited<ReturnType<typeof result.current.switchRole>>|undefined;
+    await act(async()=>{response=await result.current.switchRole("MOTORISTA");});
+    expect(response).toEqual({needsVehicleModal:true,missingFields:[]});
+    expect(result.current.activeRole).toBe("PASSAGEIRO");
+  });
+
+  it("does not activate after saving if the server rejects readiness",async()=>{
+    setup({...fullProfile,vehicle_color:null},false);
+    const {result}=renderHook(()=>useActiveRole());
+    await waitFor(()=>expect(result.current.loading).toBe(false));
+    await act(async()=>{
+      await expect(result.current.saveVehicle({brand:"",model:"",color:"Preta",plate:"",
+        vehicleType:"moto",vehicleSeats:1})).rejects.toThrow(/Supabase/);
+    });
+    expect(result.current.activeRole).toBe("PASSAGEIRO");
+    expect(api.rpc).not.toHaveBeenCalledWith("switch_user_active_role",expect.anything());
+  });
+
   it("rejects invalid motorcycle seat count and does not write",async()=>{
     setup({...fullProfile,vehicle_color:null});
     const {result}=renderHook(()=>useActiveRole());
