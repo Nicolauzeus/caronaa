@@ -159,7 +159,11 @@ export function QuickRideDriverQueue({
         await refresh();
         return;
       }
-      if(data===false)throw new Error(next==="IN_PROGRESS"?"Código de embarque inválido.":"A atualização não foi autorizada para o estado atual.");
+      if(data===false)throw new Error(next==="IN_PROGRESS"
+        ?"Código de embarque inválido."
+        :next==="ARRIVED"
+          ?"Para confirmar a chegada, esteja a até 75 m do embarque, com precisão GPS de até 50 m e localização atualizada nos últimos 45 segundos."
+          :"A atualização não foi autorizada para o estado atual.");
       if(next==="IN_PROGRESS")setBoardingPin("");
       if(next==="COMPLETED")await loadDropoff(rideId);
       if(accept){
@@ -198,7 +202,11 @@ export function QuickRideDriverQueue({
           <p className="font-semibold text-[#FFBB00]">Sua corrida em andamento</p>
           <p className="text-sm">{active.origin_label} → {active.destination_label}</p>
           <p className="text-xs text-white/70">Status: {active.status}</p>
-          <QuickRideOperationalMap rideId={active.id} status={active.status} municipality={municipality} role="DRIVER"/>
+          <QuickRideOperationalMap rideId={active.id} status={active.status} municipality={municipality} role="DRIVER"
+            vehicleType={active.vehicle_type==="MOTO"?"MOTO":"CAR"}/>
+          {active.status==="ACCEPTED"&&<p className="text-xs text-white/70">
+            A chegada exige GPS válido a até 75 m do ponto de embarque. Aproximar-se na rota não garante confirmação até o servidor validar a posição.
+          </p>}
           {active.status==="ACCEPTED"&&<button type="button" disabled={busy}
             onClick={()=>void action(active.id,"ARRIVED")}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Cheguei no local</button>}
