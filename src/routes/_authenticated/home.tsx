@@ -291,6 +291,9 @@ function Home() {
     if (location.addressPosition && !manualOriginChosen.current && !location.failure)
       setOriginSource("CURRENT_LOCATION");
   }, [location.addressPosition, location.failure]);
+  // Display coordinates are always fresh; address lookup is not tied to every GPS pulse.
+  const reverseLookupRef = useRef<{lat:number;lng:number;at:number}|null>(null);
+  const reverseLookupSequence = useRef(0);
   useEffect(() => {
     if (!location.addressPosition || originSource !== "CURRENT_LOCATION" || location.locating) return;
     if (!isTrustedGpsFix(location.addressPosition)) {
@@ -298,27 +301,31 @@ function Home() {
       setReverseFailed(false);
       return;
     }
-    let alive = true;
-    setResolvedAddress(null);
+    const {lat,lng}=location.addressPosition;
+    const previous=reverseLookupRef.current;
+    // Rough local distance in meters. Do not pay for a new label on GPS jitter.
+    const distance=previous ? 111_195*Math.hypot(
+      lat-previous.lat,
+      (lng-previous.lng)*Math.cos(lat*Math.PI/180),
+    ):Infinity;
+    if(previous && distance<75 && Date.now()-previous.at<120_000)return;
+    reverseLookupRef.current={lat,lng,at:Date.now()};
+    const sequence=++reverseLookupSequence.current;
     setReverseFailed(false);
-    void reverseGeocode({
-      data: {
-        lat: location.addressPosition.lat,
-        lng: location.addressPosition.lng,
-      },
-    })
-      .then((value) => {
-        if (alive) {
-          setResolvedAddress(value);
-          setReverseFailed(!value);
-        }
+    void sessionRequest("home-reverse:"+lat.toFixed(3)+":"+lng.toFixed(3),()=>reverseGeocode({
+      data:{lat,lng},
+    }),120_000)
+      .then(value=>{
+        if(sequence!==reverseLookupSequence.current)return;
+        setResolvedAddress(value);
+        setReverseFailed(!value);
       })
-      .catch(() => {
-        if (alive) setReverseFailed(true);
+      .catch(()=>{
+        if(sequence!==reverseLookupSequence.current)return;
+        // Failed lookups are not retained in the session cache.
+        reverseLookupRef.current=null;
+        setReverseFailed(true);
       });
-    return () => {
-      alive = false;
-    };
   }, [location.addressPosition, reverseGeocode, originSource, location.locating]);
   useEffect(() => {
     if (originSource !== "CURRENT_LOCATION" || !location.addressPosition) return;
