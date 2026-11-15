@@ -121,14 +121,25 @@ export function ProfessionalAvailabilityPage() {
         record("SERVER_PUBLISH_NOT_PUBLISHED",{ref:result.traceId??ref,code:result.reason,city:result.municipality??undefined},"warn");
         if(mounted.current){
           setFix(null);
+          if(result.reason==="LOCATION_UNKNOWN" || result.reason==="GOOGLE_QUOTA_LIMITED")
+            lastAttempt.current=Date.now()+35000; // 60s total before retrying upstream geocoding
           setError(result.reason==="OUTSIDE_APPROVED_ZONE"
             ?"Localização fora dos municípios habilitados; publicação suspensa."
-            :"Google não confirmou o município atual. Nenhum GPS foi publicado.");
+            :result.reason==="GOOGLE_QUOTA_LIMITED"
+              ?"O Google Maps atingiu o limite temporário. Nova verificação automática em cerca de 60 segundos."
+              :"O Google não conseguiu identificar o município pelo GPS. Tentaremos novamente; confira a API Geocoding e o sinal GPS.");
         }
       }
     }catch(e){
-      record("SERVER_PUBLISH_ERROR",{ref,code:f07RadarFailureCode(e)},"warn");
-      if(mounted.current)setError(e instanceof Error?e.message:"Falha ao enviar GPS verificado.");
+      const code=f07RadarFailureCode(e);
+      record("SERVER_PUBLISH_ERROR",{ref,code},"warn");
+      if(code==="RATE_LIMITED")
+        lastAttempt.current=Date.now()+20000; // 45s total to reduce cross-tab contention
+      if(mounted.current)setError(code==="RATE_LIMITED"
+        ?"Publicação temporariamente limitada. O GPS continuará ativo e tentará novamente em até 45 segundos."
+        :code==="GOOGLE_REVERSE_FAILED"
+          ?"O Google não confirmou o município. Verifique a configuração da API Geocoding no servidor."
+          :"Não foi possível publicar o GPS. Consulte o diagnóstico técnico F07.");
     }finally{sending.current=false;}
   },[publishVerified,clearTest,userId,discardWatch,record]);
   positionHandler.current=position=>{void onFix(position);};
