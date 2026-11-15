@@ -51,7 +51,7 @@ export function isValidUnifiedPricingConfig(value: unknown): value is UnifiedPri
 }
 
 /**
- * Only known policy fields are consumed. Do not infer a configuration from
+ * Only the two requested database columns are consumed; the 1.30 exclusive\n * multiplier is fixed by business rule. Do not infer a configuration from
  * prices sent by the browser. A failed/empty/malformed query uses defaults.
  */
 export async function loadUnifiedPricingConfig(): Promise<{
@@ -61,14 +61,14 @@ export async function loadUnifiedPricingConfig(): Promise<{
   try {
     const { data, error } = await (supabase as any)
       .from("caronaa_unified_pricing_configs")
-      .select("on_route_rate_per_km,minimum_fare,exclusive_multiplier")
+      .select("on_route_rate_per_km,minimum_fare")
       .limit(1)
       .maybeSingle();
     if (error || !data) throw new Error("UNIFIED_PRICING_CONFIG_UNAVAILABLE");
     const config = {
       on_route_rate_per_km: Number(data.on_route_rate_per_km),
       minimum_fare: Number(data.minimum_fare),
-      exclusive_multiplier: Number(data.exclusive_multiplier),
+      exclusive_multiplier: 1.30,
     };
     if (!isValidUnifiedPricingConfig(config)) throw new Error("UNIFIED_PRICING_CONFIG_INVALID");
     return { config, source: "DATABASE" };
