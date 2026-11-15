@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import "./professional-cockpit.css";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -360,45 +361,8 @@ export function ProfessionalAvailabilityPage() {
   const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
   const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
   const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
-  return <main className="mx-auto max-w-2xl space-y-5 p-5">
-    <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
-    <h1 className="text-3xl font-bold">Painel do motorista</h1>
-    <p className="text-sm text-muted-foreground">
-      Um toque para ficar disponível e compartilhar sua localização.
-      Você pode trabalhar em qualquer município habilitado onde estiver fisicamente,
-      mesmo que seu cadastro seja de outra cidade.
-    </p>
-    {/* The driver remains on this screen for dispatch, acceptance and GPS. */}
-    <section className="space-y-3 rounded-2xl border border-primary/30 p-4" aria-label="Controle de disponibilidade">
-      <p className="text-lg font-bold">
-        {!ready ? "Verificando seu cadastro..." : fresh ? "● Online e transmitindo GPS" :
-          enabled ? "● Disponível · aguardando GPS" : "○ Você está offline"}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {fresh ? "Sua localização está atualizada e os passageiros podem encontrar você." :
-          enabled ? "Permita o GPS do navegador. Sem sinal recente, o radar não mostra sua posição." :
-          "Ative a disponibilidade para receber pedidos na sua localização atual."}
-      </p>
-      <Button className="min-h-14 w-full text-base font-bold"
-        disabled={!ready||busy||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
-        onClick={()=>void toggleOnline(!enabled)}>
-        {busy ? "Atualizando..." : enabled ? "Ficar offline" : "Ficar disponível e compartilhar GPS"}
-      </Button>
-      {enabled && !sharing && <button type="button" onClick={()=>{
-        if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
-        startGps(municipality,pilotVehicle,userId);
-      }} className="min-h-12 w-full rounded-xl border border-primary/40 p-3 font-semibold">
-        Tentar compartilhar GPS novamente
-      </button>}
-      {enabled && <button type="button" onClick={()=>{
-        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
-        void stop();
-      }} className="min-h-11 w-full rounded-xl border px-3 text-sm font-semibold">
-        Parar compartilhamento de GPS
-      </button>}
-    </section>
-    {accuracyWarning && enabled && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">GPS com precisão reduzida (acima de 100 m). Aproxime-se de uma janela ou vá para um local com céu aberto. A sincronização continua ativa; confirme sua posição antes de aceitar corridas.</p>}
-    {!activeQuickRide&&<section aria-label="Mapa do motorista" className="space-y-3 rounded-2xl border p-3 sm:p-4">
+  return <div className="professional-cockpit">
+    {!activeQuickRide&&<section aria-label="Mapa do motorista" className="professional-cockpit__map">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${fresh ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
@@ -414,7 +378,7 @@ export function ProfessionalAvailabilityPage() {
             kind:"driver",label:"EU"}] : []}
           fitMode="once"
           fitKey={mapFix ? `${mapFix.simulated ? "sim" : "gps"}-${fresh ? "published" : "local"}` : "empty"}
-          className="h-64 w-full sm:h-80"
+          className="h-full w-full"
           ariaLabel="Mapa da posição atual do motorista"
         />
         {!mapFix && <div role="status" className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg border bg-background/95 p-3 text-center text-xs font-semibold shadow">
@@ -428,12 +392,63 @@ export function ProfessionalAvailabilityPage() {
           "Nenhuma posição válida publicada. O município do cadastro não substitui o GPS."}
       </p>
     </section>}
+
+    <div className="professional-cockpit__columns">
+      <div className="professional-cockpit__left">
+        <div className="professional-cockpit__card space-y-1 professional-cockpit__heading">
+
+    <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
+    <h1 className="professional-cockpit__title">Painel do motorista</h1>
+    <p className="text-xs text-white/75 professional-cockpit__heading">
+      Um toque para ficar disponível e compartilhar sua localização.
+      Você pode trabalhar em qualquer município habilitado onde estiver fisicamente,
+      mesmo que seu cadastro seja de outra cidade.
+    </p>
+
+        </div>
+    {/* The driver remains on this screen for dispatch, acceptance and GPS. */}
+    <section className="professional-cockpit__card space-y-3" aria-label="Controle de disponibilidade">
+      <p className="text-lg font-bold">
+        {!ready ? "Verificando seu cadastro..." : fresh ? "● Online e transmitindo GPS" :
+          enabled ? "● Disponível · aguardando GPS" : "○ Você está offline"}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {fresh ? "Sua localização está atualizada e os passageiros podem encontrar você." :
+          enabled ? "Permita o GPS do navegador. Sem sinal recente, o radar não mostra sua posição." :
+          "Ative a disponibilidade para receber pedidos na sua localização atual."}
+      </p>
+      <Button className="min-h-14 w-full text-base font-bold"
+        disabled={!ready||busy||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+        onClick={()=>void toggleOnline(!enabled)}>
+        {busy ? "Atualizando..." : enabled ? "Pausar disponibilidade" : "Ficar disponível e compartilhar GPS"}
+      </Button>
+      {enabled && !sharing && <button type="button" onClick={()=>{
+        if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
+        startGps(municipality,pilotVehicle,userId);
+      }} className="min-h-12 w-full rounded-xl border border-primary/40 p-3 font-semibold">
+        Tentar compartilhar GPS novamente
+      </button>}
+      {enabled && <button type="button" onClick={()=>{
+        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
+        void stop();
+      }} className="min-h-11 w-full rounded-xl border px-3 text-sm font-semibold">
+        Parar compartilhamento de GPS
+      </button>}
+    </section>
+    {accuracyWarning && enabled && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">GPS com precisão reduzida (acima de 100 m). Aproxime-se de uma janela ou vá para um local com céu aberto. A sincronização continua ativa; confirme sua posição antes de aceitar corridas.</p>}
+
+      </div>
+      <div className="professional-cockpit__right">
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
       municipality={municipality}
       online={enabled && authorized && !blocked}
       gpsReady={fresh}
     />
+
+        <details className="professional-cockpit__card">
+          <summary className="cursor-pointer text-sm font-semibold">Configurações e diagnóstico</summary>
+          <div className="professional-cockpit__details mt-3 space-y-3">
     <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>
@@ -482,5 +497,10 @@ export function ProfessionalAvailabilityPage() {
       </pre>
     </details>
 
-  </main>;
+
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>;
 }
