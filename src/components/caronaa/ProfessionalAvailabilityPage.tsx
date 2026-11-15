@@ -482,8 +482,9 @@ export function ProfessionalAvailabilityPage() {
         <button
           type="button"
           className="professional-cockpit__sheet-toggle"
-          aria-label={activeQuickRide || hasPendingCalls || sheetExpanded ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
+          aria-label={activeQuickRide || hasPendingCalls ? "Painel de atendimento em destaque" : sheetExpanded ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
           aria-expanded={activeQuickRide || hasPendingCalls || sheetExpanded}
+          disabled={activeQuickRide || hasPendingCalls}
           onClick={()=>setSheetExpanded(v=>!v)}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
           <span>{activeQuickRide ? "Corrida em andamento" : hasPendingCalls ? "Novos chamados" : "Chamados e disponibilidade"}</span>
