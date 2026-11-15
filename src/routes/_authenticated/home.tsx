@@ -154,7 +154,7 @@ function Home() {
         setProfessionalDrivers([]);
         setProfessionalError("Mapa profissional indisponível nesta região.");
       } else {
-        const combined:ApproximateProfessionalDriver[]=[...(data??[]),...self]
+        const combined:ApproximateProfessionalDriver[]=[...(data??[]),...self].map((driver:ApproximateProfessionalDriver)=>({...driver,vehicle_type:quickVehicle}))
           .filter((d:ApproximateProfessionalDriver)=>Number.isFinite(d.lat)&&Number.isFinite(d.lng));
         setProfessionalDrivers(combined.filter((driver,index)=>
           index===combined.findIndex(other=>other.driver_key===driver.driver_key)
