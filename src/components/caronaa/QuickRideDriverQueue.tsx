@@ -31,6 +31,22 @@ export function QuickRideDriverQueue({
   const [dropoffDeadline,setDropoffDeadline]=useState<string|null>(null);
   const [dropoffResponse,setDropoffResponse]=useState<string|null>(null);
   const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
+  const [completedDismissed,setCompletedDismissed]=useState<string|null>(null);
+  const lastCompletedVisible=lastCompleted!==null && completedDismissed!==lastCompleted &&
+    (()=>{try{return window.localStorage.getItem("caronaa-driver-dismissed:"+lastCompleted)!=="1";}catch{return true}})();
+  const releaseCompleted=()=>{
+    if(!lastCompleted)return;
+    try{
+      window.localStorage.setItem("caronaa-driver-dismissed:"+lastCompleted,"1");
+      window.localStorage.setItem("caronaa-rating-dismissed:"+lastCompleted,"1");
+    }catch{}
+    setCompletedDismissed(lastCompleted);
+    setRatingDismissed(lastCompleted);
+  };
+  useEffect(()=>{
+    onActiveChange?.(Boolean(active));
+  },[active?.id,active?.status,onActiveChange]);
+  useEffect(()=>()=>onActiveChange?.(false),[onActiveChange]);
   const requestLock=useRef(false);
   const rejected=useRef(new Set<string>());
   const refreshVersion=useRef(0);
@@ -191,7 +207,15 @@ export function QuickRideDriverQueue({
                className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Concluir Corrida</button>}
           </>}
         </article>}
-        {!active&&lastCompleted&&<><QuickRideDriverSettlement rideId={lastCompleted}/>{ratingDismissed!==lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro" onClose={()=>setRatingDismissed(lastCompleted)}/>}</>}
+        {!active&&lastCompletedVisible&&lastCompleted&&<div className="space-y-3">
+          <QuickRideDriverSettlement rideId={lastCompleted}/>
+          {ratingDismissed!==lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro"
+            onClose={releaseCompleted}/>}
+          <button type="button" onClick={releaseCompleted}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
+            Liberar tela para novos chamados
+          </button>
+        </div>}
         {queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
