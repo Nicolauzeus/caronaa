@@ -9,6 +9,7 @@ import { DriverScheduledPlanner } from "@/components/caronaa/shell/DriverSchedul
 import { DriverScheduledTripsPanel } from "@/components/caronaa/shell/DriverScheduledTripsPanel";
 import type { OnRouteMatch } from "@/types/ride";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
+import { canSwitchCaronaaRole } from "@/lib/role/role-switch-guard";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
 import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
 import { consumeRideIntentDraft, type RideIntentDraft } from "@/lib/ride-intent-draft";
@@ -131,30 +132,17 @@ function Home() {
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const [missingVehicleFields, setMissingVehicleFields] = useState<VehicleMissingField[]>([]);
   const handleShellRoleSwitch = async (target: ActiveRole) => {
-    // Never change roles while an operational F07 journey is underway.
-    if (operationalRide && !["CANCELLED","CANCELED","COMPLETED","FINISHED","REJECTED"].includes(operationalRide.status.toUpperCase())) {
-      toast.info("Não é possível alternar de papel durante uma corrida em andamento");
-      return;
-    }
-    // Read-only server-side check. Fail closed if the journey status cannot be verified.
-    const {data:rides,error:ridesError}=await (supabase as any).rpc("quick_ride_my_requests");
-    if(ridesError){
-      toast.error("Não foi possível verificar as corridas ativas. Tente novamente.");
-      return;
-    }
-    if(Array.isArray(rides)&&rides.some((ride:any)=>
-      ["REQUESTED","PENDING","ACCEPTED","ARRIVED","IN_PROGRESS","DRIVER_EN_ROUTE","MATCHED","CONFIRMED"].includes(
-        String(ride.status??"").toUpperCase()
-      ))) {
-      toast.info("Não é possível alternar de papel durante uma corrida em andamento");
-      return;
-    }
-    if(!Array.isArray(rides)){
-      toast.error("Não foi possível confirmar o estado das corridas.");
+    const check=await canSwitchCaronaaRole(operationalRide);
+    if(!check.allowed) {
+      toast[check.reason==="ACTIVE_RIDE"?"info":"error"](
+        check.reason==="ACTIVE_RIDE"
+          ?"Não é possível alternar de papel durante uma corrida em andamento"
+          :"Não foi possível verificar suas corridas. Tente novamente."
+      );
       return;
     }
     const result=await activeRoleState.switchRole(target);
-    if(result.needsVehicleModal || (target==="MOTORISTA"&&!activeRoleState.isDriverEligible)){
+    if(result.needsVehicleModal){
       setMissingVehicleFields(result.missingFields);
       setVehicleModalOpen(true);
     }
@@ -630,7 +618,7 @@ function Home() {
         <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
           <RoleSwitchHeader
             activeRole={activeRoleState.activeRole}
-            disabled={activeRoleState.loading}
+            disabled={activeRoleState.loading||activeRoleState.busy}
             onSwitch={handleShellRoleSwitch}
           />
         </div>
@@ -639,16 +627,12 @@ function Home() {
           initialType={activeRoleState.vehicleType}
           initialSeats={activeRoleState.vehicleSeats}
           onSave={async vehicle=>{
-            if(operationalRide&&!["CANCELLED","CANCELED","COMPLETED","FINISHED","REJECTED"].includes(
-              operationalRide.status.toUpperCase()
-            ))throw new Error("Não é possível alternar durante uma corrida.");
-            const {data:rides,error}=await (supabase as any).rpc("quick_ride_my_requests");
-            if(error||!Array.isArray(rides)||rides.some((ride:any)=>
-              ["REQUESTED","PENDING","ACCEPTED","ARRIVED","IN_PROGRESS","DRIVER_EN_ROUTE","MATCHED","CONFIRMED"].includes(
-                String(ride.status??"").toUpperCase()
-              )))throw new Error("Corrida ativa ou estado indisponível.");
+            const check=await canSwitchCaronaaRole(operationalRide);
+            if(!check.allowed)throw new Error(check.reason==="ACTIVE_RIDE"
+              ?"Não é possível alternar durante uma corrida."
+              :"Não foi possível verificar suas corridas.");
             await activeRoleState.saveVehicle(vehicle);
-          }}/>
+          }}/> 
         <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
           title="Casca Única CARONAA"
           headerAction={!tripsPanelOpen?
