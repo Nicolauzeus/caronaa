@@ -302,9 +302,10 @@ export function QuickRideHomePanel({
       )}
       {liveRide?(
         <div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
-          {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&
+          {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status) && (
             <QuickRideOperationalMap rideId={liveRide.id} status={liveRide.status}
               municipality={liveRide.municipality} role="PASSENGER"/>
+          )}
           <p className="font-semibold">Sua Corrida Rápida</p>
           <p role="status" className="mt-1 text-gray-300">
             {liveRide.status==="SEARCHING"?"Procurando um profissional autorizado…":
