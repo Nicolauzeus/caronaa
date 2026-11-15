@@ -15,8 +15,7 @@ type Props={
   serviceType:ServiceType;
   onServiceTypeChange:(type:ServiceType)=>void;
   originPoint?:{lat?:number;lng?:number}|null;
-  driverCount:number;
-  driversLoaded:boolean;
+  originMunicipality:string;
   gender:string|null;
 };
 const formatPrice=(amount:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(amount);
@@ -24,7 +23,7 @@ const validPoint=(p:Props["originPoint"]):p is {lat:number;lng:number} =>
   Boolean(p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
     Math.abs(p.lat!)<=90 && Math.abs(p.lng!)<=180);
 export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
-  originPoint,driverCount,driversLoaded,gender}:Props){
+  originPoint,originMunicipality,gender}:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
   const [mode,setMode]=useState<UnifiedFareMode>("ON_ROUTE");
@@ -39,8 +38,30 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
   const [flashStartedAt,setFlashStartedAt]=useState<number|null>(null);
   const [remaining,setRemaining]=useState(60);
   const [waitlistBusy,setWaitlistBusy]=useState(false);
+  const [radarCount,setRadarCount]=useState(0);
+  const [radarState,setRadarState]=useState<"unknown"|"loading"|"ready"|"error">("unknown");
   const [waitlistStatus,setWaitlistStatus]=useState("");
   const routePreview=useServerFn(getMapDrivingRoute);
+  useEffect(()=>{
+    const municipality=originMunicipality.trim();
+    if(serviceType!=="FLASH" || municipality.length<2){
+      setRadarState("unknown");
+      setRadarCount(0);
+      return;
+    }
+    let mounted=true;
+    setRadarState("loading");
+    void (supabase as any).rpc("discover_caronaa_quick_drivers",{
+      p_municipality:municipality,p_vehicle:vehicle,
+    }).then(({data,error}:{data:unknown;error:unknown})=>{
+      if(!mounted)return;
+      if(error){setRadarState("error");setRadarCount(0);return;}
+      const drivers=Array.isArray(data)?data:[];
+      setRadarCount(drivers.filter(driver=>!driver.is_self && !driver.simulated).length);
+      setRadarState("ready");
+    }).catch(()=>{if(mounted){setRadarState("error");setRadarCount(0);}});
+    return()=>{mounted=false;};
+  },[originMunicipality,vehicle,serviceType]);
 
   useEffect(()=>{
     if(flashStartedAt===null)return;
@@ -86,11 +107,13 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
       setWaitlistStatus("Escolha um destino válido e permita localizar a origem.");
       return;
     }
-    if(!driversLoaded){
-      setWaitlistStatus("Ainda estamos verificando a disponibilidade de motoristas.");
+    if(radarState!=="ready"){
+      setWaitlistStatus(radarState==="error"
+        ?"Radar temporariamente indisponível. Tente novamente mais tarde."
+        :"Ainda estamos verificando a disponibilidade de motoristas e o município pelo GPS.");
       return;
     }
-    if(driverCount>0){
+    if(radarCount>0){
       setWaitlistStatus("Há motoristas no radar. A solicitação de corrida ainda depende da confirmação operacional.");
       return;
     }
