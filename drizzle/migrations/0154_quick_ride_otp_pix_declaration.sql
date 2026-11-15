@@ -236,5 +236,16 @@ CREATE POLICY quick_queue_events_ride_passenger_select
 ON public.caronaa_quick_queue_events FOR SELECT TO authenticated
 USING(public.caronaa_quick_event_allowed_passenger(municipality));
 
+-- Compatibility alias; retains the existing completed-trip and one-rating guards.
+CREATE OR REPLACE FUNCTION public.rate_quick_ride(
+ p_ride_id uuid,p_score integer,p_comment text DEFAULT ''
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $fn$
+BEGIN
+ RETURN public.quick_ride_rate(p_ride_id,p_score,p_comment);
+END; $fn$;
+REVOKE ALL ON FUNCTION public.rate_quick_ride(uuid,integer,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.rate_quick_ride(uuid,integer,text) TO authenticated;
+
 NOTIFY pgrst,'reload schema';
 COMMIT;
