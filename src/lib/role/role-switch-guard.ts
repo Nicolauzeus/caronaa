@@ -18,7 +18,10 @@ export function isQuickRideActive(status:unknown):boolean {
 export async function canSwitchCaronaaRole(
   operationalRide:{id:string;status:string}|null|undefined,
 ):Promise<QuickRideGuardResult> {
-  if(operationalRide && isQuickRideActive(operationalRide.status))
+  // A mounted operational ride with any nonterminal/unknown status blocks
+  // switching, even if its status isn't listed in the known F07 enum.
+  if(operationalRide && !new Set(["COMPLETED","CANCELLED","CANCELED","EXPIRED","REJECTED","FINISHED"])
+    .has(operationalRide.status.toUpperCase()))
     return {allowed:false,reason:"ACTIVE_RIDE"};
   try {
     const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
