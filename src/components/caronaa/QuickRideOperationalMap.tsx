@@ -14,6 +14,7 @@ export function QuickRideOperationalMap({
   rideId, status, role,
 }: {
   rideId:string;
+  municipality?:string;
   status:string;
   role:"DRIVER"|"PASSENGER";
 }) {
