@@ -51,7 +51,7 @@ export function Brand({ light = false }: { light?: boolean }) {
       <img
         src={logoAsset.url}
         alt="CARONAA"
-        className={`h-10 sm:h-11 w-auto object-contain ${light ? "brightness-0 invert" : ""}`}
+        className={`h-9 w-auto max-w-[120px] object-contain sm:h-11 sm:max-w-none ${light ? "brightness-0 invert" : ""}`}
       />
     </Link>
   );
@@ -126,11 +126,11 @@ export function AppShell({
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
-          <div className={!publicPage && user ? "hidden lg:block" : ""}>
+          <div className="min-w-0 shrink-0">
             <Brand />
           </div>
           {!publicPage && user && (
-            <Link to="/perfil" className="flex min-w-0 items-center gap-3 lg:hidden">
+            <Link to="/perfil" className="hidden min-w-0 items-center gap-3 sm:flex lg:hidden">
               {typeof (user.user_metadata.avatar_url || user.user_metadata.picture) === "string" ? (
                 <img
                   src={user.user_metadata.avatar_url || user.user_metadata.picture}
@@ -189,7 +189,7 @@ export function AppShell({
             </nav>
           ) : (
             /* Navegação DESKTOP para Área Autenticada */
-            <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
+            <nav className={professionalOnly ? "hidden" : "hidden items-center gap-1 lg:flex"} aria-label="Navegação principal">
               {navigation.map(({ to, label }) => (
                 <Link
                   key={`${to}-${label}`}
@@ -407,11 +407,30 @@ export function AppShell({
           </p>
         </div>
       )}
+      {!publicPage && !prelaunchMode && professionalOnly === true && (
+        <aside aria-label="Navegação profissional desktop"
+          className="fixed bottom-0 left-0 top-16 z-30 hidden w-48 flex-col border-r border-white/10 bg-[#121212] px-3 py-6 text-white lg:flex">
+          <nav className="space-y-2">
+            {professionalNav.map(({ to, label, icon: Icon }) => (
+              <Link key={to} to={to} aria-current={selectedNav(to,label) ? "page" : undefined}
+                className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${selectedNav(to,label) ? "bg-[#FFBB00] text-[#121212]" : "text-white/85 hover:bg-white/10"}`}>
+                <Icon size={19} aria-hidden="true" />
+                <span>{label}</span>
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-auto rounded-xl border border-[#FFBB00]/25 p-3">
+            <p className="text-sm font-bold text-[#FFBB00]">CARONAA</p>
+            <p className="mt-1 text-xs text-white/70">Painel profissional</p>
+          </div>
+        </aside>
+      )}
+
       {/* Conteúdo Principal */}
       <main
         className={
           mapLayout
-            ? "relative h-[calc(100dvh-9rem-env(safe-area-inset-bottom))] min-h-0 w-full md:h-[calc(100dvh-4rem)]"
+            ? `relative h-[calc(100dvh-9rem-env(safe-area-inset-bottom))] min-h-0 w-full md:h-[calc(100dvh-4rem)] ${professionalOnly ? "lg:ml-48 lg:w-[calc(100%-12rem)]" : ""}`
             : publicPage
             ? "flex-1"
             : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
