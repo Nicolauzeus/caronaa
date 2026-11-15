@@ -121,19 +121,22 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
     setRemaining(60);
   };
   const joinWaitlist=async()=>{
-    if(waitlistBusy||!destination.trim()||!validPoint(destinationPoint))return;
+    if(waitlistBusy||!destination.trim()||!validPoint(destinationPoint)||
+      originMunicipality.trim().length<2)return;
     setWaitlistBusy(true);
     setWaitlistStatus("");
     try{
       const {data:auth,error:authError}=await supabase.auth.getUser();
       if(authError||!auth.user)throw new Error("AUTH");
-      const {error}=await (supabase as any).from("flash_waitlist").insert({
+      const {error}=await (supabase as any).from("flash_waitlist").upsert({
         user_id:auth.user.id,
         vehicle_type:vehicle,
         service_mode:mode,
-        // Never store raw GPS or coordinates in the waitlist.
-        destination_label:destination.trim(),
-      });
+        // Store only municipality-level interest, not home addresses or GPS.
+        origin_municipality:originMunicipality.trim(),
+        destination_municipality:destinationPoint?.city ?? null,
+        updated_at:new Date().toISOString(),
+      },{onConflict:"user_id,origin_municipality,vehicle_type,service_mode"});
       if(error)throw error;
       setWaitlistStatus("Você entrou na lista de espera. Avisaremos quando houver disponibilidade.");
       setFlashStartedAt(null);
