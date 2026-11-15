@@ -565,7 +565,10 @@ function Home() {
           />
         </div>
         <QuickVehicleModal open={vehicleModalOpen} onOpenChange={setVehicleModalOpen}
-          missingFields={missingVehicleFields}/>
+          missingFields={missingVehicleFields}
+          initialType={activeRoleState.vehicleType}
+          initialSeats={activeRoleState.vehicleSeats}
+          onSave={activeRoleState.saveVehicle}/>
         <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
           title="Casca Única CARONAA">
           <div className="space-y-4">
