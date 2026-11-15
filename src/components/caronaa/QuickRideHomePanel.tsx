@@ -81,6 +81,19 @@ export function QuickRideHomePanel({
     const timer=window.setInterval(()=>setNowMs(Date.now()),1000);
     return()=>window.clearInterval(timer);
   },[dropoff?.deadline_at]);
+  useEffect(()=>{
+    if(!liveRide || liveRide.status!=="IN_PROGRESS" || !dropoff?.deadline_at
+      || dropoff.passenger_response || dropoff.resolved_at
+      || Date.parse(dropoff.deadline_at)>nowMs)return;
+    let alive=true;
+    void (supabase as any).rpc("quick_ride_finalize_after_timeout",{p_id:liveRide.id})
+      .then(async({data,error:rpcError}:{data:any;error:any})=>{
+        if(!alive||rpcError||data!==true)return;
+        const {data:ridesData}=await (supabase as any).rpc("quick_ride_my_requests");
+        if(alive&&mounted.current)setRides(Array.isArray(ridesData)?ridesData:[]);
+      });
+    return()=>{alive=false;};
+  },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
   const remainingDropoffSeconds=dropoff?.deadline_at?
     Math.max(0,Math.ceil((Date.parse(dropoff.deadline_at)-nowMs)/1000)):0;
   async function issueBoardingCode(){
