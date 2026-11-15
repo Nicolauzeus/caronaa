@@ -383,6 +383,7 @@ export function ProfessionalAvailabilityPage() {
               fresh ? "Sua posição publicada" : "Posição apenas neste navegador",
             kind:"driver",label:"EU"}] : []}
           fitMode="once"
+          showControls gestureHandling="greedy"
           fitKey={mapFix ? `${mapFix.simulated ? "sim" : "gps"}-${fresh ? "published" : "local"}` : "empty"}
           className="h-full w-full"
           ariaLabel="Mapa da posição atual do motorista"
