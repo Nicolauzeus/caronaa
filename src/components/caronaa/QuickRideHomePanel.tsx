@@ -52,6 +52,7 @@ export function QuickRideHomePanel({
   const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
   const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
+  const [completedHidden,setCompletedHidden]=useState<string|null>(null);
   const mounted=useRef(true);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
   const destinationLat=destinationPoint?.lat, destinationLng=destinationPoint?.lng;
@@ -64,6 +65,24 @@ export function QuickRideHomePanel({
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  const shownCompletedRide=completedRide?.id!==completedHidden?completedRide:null;
+  useEffect(()=>{
+    if(!completedRide)return;
+    try {
+      if(window.localStorage.getItem(`caronaa-completed-dismissed:${completedRide.id}`)==="1")
+        setCompletedHidden(completedRide.id);
+    }catch{ /* fallback to in-memory dismissal */ }
+  },[completedRide?.id]);
+  function releaseCompletedRide(){
+    if(!completedRide)return;
+    try {
+      window.localStorage.setItem(`caronaa-completed-dismissed:${completedRide.id}`,"1");
+      window.localStorage.setItem(`caronaa-rating-dismissed:${completedRide.id}`,"1");
+    }catch{ /* fallback to in-memory dismissal */ }
+    setCompletedHidden(completedRide.id);
+    setRatingDismissed(completedRide.id);
+    setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
+  }
   useEffect(()=>{
     if(!liveRide || !["ACCEPTED","ARRIVED"].includes(liveRide.status)){
       setBoardingCode("");
@@ -182,7 +201,7 @@ export function QuickRideHomePanel({
   // repeated Google Routes calls while the user edits the address.
   useEffect(()=>{
     if(!covered||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
-       origin.trim().length<3||destination.trim().length<3||liveRide||completedRide||
+       origin.trim().length<3||destination.trim().length<3||liveRide||
        originLat==null||originLng==null||destinationLat==null||destinationLng==null){
       setQuoteLoading(false);
       return;
@@ -391,10 +410,18 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
-      {!liveRide&&completedRide&&<>
-        <QuickRidePixCard rideId={completedRide.id}/>
-        {ratingDismissed!==completedRide.id&&<QuickRideRatingModal rideId={completedRide.id}
-          subject="motorista" onClose={()=>setRatingDismissed(completedRide.id)}/>}
+      {!liveRide&&shownCompletedRide&&<>
+        <div className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
+          <p className="font-semibold text-[#FFBB00]">Corrida anterior concluída</p>
+          <p className="mt-1 text-white/80">Você já pode solicitar outra corrida, sem precisar avaliar agora.</p>
+          <button type="button" onClick={releaseCompletedRide}
+            className="mt-3 min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
+            Concluir e fazer nova corrida
+          </button>
+        </div>
+        <QuickRidePixCard rideId={shownCompletedRide.id}/>
+        {ratingDismissed!==shownCompletedRide.id&&<QuickRideRatingModal rideId={shownCompletedRide.id}
+          subject="motorista" onClose={()=>setRatingDismissed(shownCompletedRide.id)}/>}
       </>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
