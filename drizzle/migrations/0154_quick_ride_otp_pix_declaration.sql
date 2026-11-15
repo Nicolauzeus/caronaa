@@ -10,7 +10,7 @@ DECLARE q public.professional_quick_rides%ROWTYPE; v_salt uuid:=gen_random_uuid(
 BEGIN
  SELECT * INTO q FROM public.professional_quick_rides WHERE id=p_id FOR UPDATE;
  IF auth.uid() IS NULL OR NOT FOUND OR q.passenger_id IS DISTINCT FROM auth.uid()
-    OR q.status NOT IN ('ACCEPTED','ARRIVED') THEN
+    OR q.status<>'ARRIVED' THEN
   RAISE EXCEPTION 'Boarding OTP unavailable' USING ERRCODE='42501';
  END IF;
  IF EXISTS(SELECT 1 FROM public.quick_ride_boarding_secrets WHERE ride_id=p_id) THEN
