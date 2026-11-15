@@ -13,7 +13,8 @@ import { LocationAutocomplete } from "@/components/formulario/LocationAutocomple
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
-import { QuickRideRating } from "./QuickRideRating";
+import { QuickRideRatingModal } from "./QuickRideRatingModal";
+import { QuickRideDriverSettlement } from "./QuickRideDriverSettlement";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import type { FormLocationDetails } from "@/lib/location/types";
 
@@ -95,6 +96,7 @@ export function QuickRideExperience({
   const [busy, setBusy] = useState(false);
   const [boardingCode,setBoardingCode]=useState("");
   const [driverPin,setDriverPin]=useState("");
+  const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
   const [error, setError] = useState("");
   const submitting = useRef(false);
   const routeRequest = useServerFn(getMapDrivingRoute);
@@ -331,10 +333,10 @@ export function QuickRideExperience({
     try {
       const { data, error: actionError } = await (supabase as any).rpc(
         accept ? "quick_ride_accept" :
-          status==="IN_PROGRESS"?"quick_ride_verify_boarding_pin":
-          status==="COMPLETED"?"quick_ride_request_dropoff":"quick_ride_transition",
+          status==="IN_PROGRESS"?"quick_ride_start_with_code":
+          status==="COMPLETED"?"quick_ride_complete_ride":"quick_ride_transition",
         accept ? {p_id:id} :
-          status==="IN_PROGRESS"?{p_id:id,p_pin:driverPin}:
+          status==="IN_PROGRESS"?{p_id:id,p_code:driverPin}:
           status==="COMPLETED"?{p_id:id}:{p_id:id,p_status:status},
       );
       if (actionError) {
@@ -668,17 +670,22 @@ export function QuickRideExperience({
               <div className="space-y-2">
                 <label htmlFor={"quick-pin-"+r.id} className="block text-xs">Digite o código do passageiro</label>
                 <input id={"quick-pin-"+r.id} inputMode="numeric" autoComplete="off" value={driverPin}
-                  onChange={e=>setDriverPin(e.target.value.replace(/\\D/g,"").slice(0,6))}
-                  maxLength={6} className="rounded-lg border bg-transparent px-3 py-2"/>
-                <button disabled={busy||driverPin.length!==6} onClick={()=>void action(r.id,"IN_PROGRESS")}
+                  onChange={e=>setDriverPin(e.target.value.replace(/\\D/g,"").slice(0,4))}
+                  maxLength={4} className="rounded-lg border bg-transparent px-3 py-2"/>
+                <button disabled={busy||driverPin.length!==4} onClick={()=>void action(r.id,"IN_PROGRESS")}
                   className="rounded-lg border px-3 py-2 text-sm">Validar código e iniciar</button>
               </div>
             )}
             {r.role==="DRIVER" && r.status==="IN_PROGRESS" && (
               <button disabled={busy} onClick={()=>void action(r.id,"COMPLETED")}
-                className="rounded-lg border px-3 py-2 text-sm">Solicitar finalização ao passageiro</button>
+                className="rounded-lg border px-3 py-2 text-sm">Concluir Corrida</button>
             )}
-            {r.status==="COMPLETED" && <><QuickRideRating rideId={r.id} subject={r.role==="DRIVER"?"passageiro":"motorista"}/><QuickRidePixCard rideId={r.id}/></>}
+            {r.status==="COMPLETED" && <>
+              {r.role==="DRIVER"?<QuickRideDriverSettlement rideId={r.id}/>:<QuickRidePixCard rideId={r.id}/>}
+              {ratingDismissed!==r.id&&<QuickRideRatingModal rideId={r.id}
+                subject={r.role==="DRIVER"?"passageiro":"motorista"}
+                onClose={()=>setRatingDismissed(r.id)}/>}
+            </>}
           </article>
         ))}
       </section>
