@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { Eye, EyeOff, KeyRound, LoaderCircle } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/caronaa/BrandElements";
 import { generateProfessionalPassword, passwordGuidance, registrationPasswordError, professionalAuthErrorMessage } from "@/lib/professional-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,9 @@ function SimpleMotorcycleRegistration() {
   const [photoUrl, setPhotoUrl] = useState("");
   const [request, setRequest] = useState<{ status: string; review_reason?: string | null } | null>(null);
   const [authorized, setAuthorized] = useState(false);
+  const [reviewState, setReviewState] = useState<"loading" | "ready" | "error">("loading");
+  const [reviewRetry, setReviewRetry] = useState(0);
+  const [vehiclePlate, setVehiclePlate] = useState("");
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -44,9 +47,10 @@ function SimpleMotorcycleRegistration() {
   useEffect(() => {
     if (!user?.email_confirmed_at) return;
     let active = true;
+    setReviewState("loading");
     void Promise.all([
       (supabase as any).from("professional_mototaxi_profiles").select("first_name,last_name,whatsapp_e164,region_code,registration_number").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("avatar_url,vehicle_plate").eq("id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
     ]).then(([details, profile, access]) => {
       if (!active) return;
@@ -57,15 +61,27 @@ function SimpleMotorcycleRegistration() {
         setRegion(details.data.region_code === "FORTALEZA" ? "FORTALEZA" : "MACICO_BATURITE");
         setRegistrationNumber(details.data.registration_number ?? "");
       }
+      if (access.error) {
+        setReviewState("error");
+        toast.error("Não foi possível confirmar a situação do seu acesso profissional.");
+        return;
+      }
       setPhotoUrl(profile.data?.avatar_url ?? "");
+      setVehiclePlate(profile.data?.vehicle_plate ?? "");
       setRequest(access.data?.request ?? null);
       setAuthorized(access.data?.authorized === true);
-      if (details.error || profile.error || access.error) {
-        toast.error("Não foi possível carregar todos os dados do cadastro.");
+      setReviewState("ready");
+      if (details.error || profile.error) {
+        toast.error("Alguns dados cadastrais não puderam ser carregados.");
       }
-    }).catch(() => { if (active) toast.error("Falha ao consultar o cadastro."); });
+    }).catch(() => {
+      if (active) {
+        setReviewState("error");
+        toast.error("Falha ao consultar a situação do cadastro.");
+      }
+    });
     return () => { active = false; };
-  }, [user?.id, user?.email_confirmed_at]);
+  }, [user?.id, user?.email_confirmed_at, reviewRetry]);
 
   async function authenticate(event: FormEvent) {
     event.preventDefault();
@@ -191,8 +207,8 @@ function SimpleMotorcycleRegistration() {
         <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
           <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Acesso profissional</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">{user?.email_confirmed_at ? "Seu cadastro de mototaxista" : resetMode ? "Recuperar acesso" : confirmationSent ? "Confirme seu e-mail" : mode === "login" ? "Bem-vindo de volta" : "Quero ser mototaxista"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{user?.email_confirmed_at ? "Revise seus dados profissionais e acompanhe sua solicitação." : resetMode ? "Enviaremos instruções para redefinir sua senha." : mode === "login" ? "Entre para continuar seu cadastro ou consultar sua aprovação." : "Crie sua conta para enviar seus dados profissionais e solicitar aprovação."}</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{user?.email_confirmed_at ? authorized && reviewState === "ready" ? "Cadastro aprovado" : "Seu cadastro de mototaxista" : resetMode ? "Recuperar acesso" : confirmationSent ? "Confirme seu e-mail" : mode === "login" ? "Bem-vindo de volta" : "Quero ser mototaxista"}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{user?.email_confirmed_at ? authorized && reviewState === "ready" ? "Seu acesso está liberado. Abra o cockpit para trabalhar." : "Revise seus dados profissionais e acompanhe sua solicitação." : resetMode ? "Enviaremos instruções para redefinir sua senha." : mode === "login" ? "Entre para continuar seu cadastro ou consultar sua aprovação." : "Crie sua conta para enviar seus dados profissionais e solicitar aprovação."}</p>
         </div>
         {authLoading ? <p>Verificando sua conta...</p> : !user?.email_confirmed_at ? confirmationSent ? (
           <div className="space-y-3" role="status">
@@ -242,13 +258,73 @@ function SimpleMotorcycleRegistration() {
             <button disabled={busy} aria-busy={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy && <LoaderCircle size={18} className="animate-spin" />}{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
             <Link to="/auth" className="block min-h-10 pt-2 text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
           </form>
+        ) : reviewState !== "ready" ? (
+          <div className="space-y-4" role="status" aria-live="polite">
+            {reviewState === "loading" ? (
+              <div className="space-y-3">
+                <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10"/>
+                <div className="h-20 animate-pulse rounded-2xl bg-white/10"/>
+                <p className="text-sm text-white/70">Consultando sua aprovação profissional...</p>
+              </div>
+            ) : (
+              <>
+                <p role="alert" className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4 text-sm">
+                  Não foi possível confirmar sua aprovação. Para evitar um novo pedido indevido, o formulário está temporariamente oculto.
+                </p>
+                <button type="button" onClick={() => setReviewRetry(value => value + 1)}
+                  className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
+                  Tentar novamente
+                </button>
+              </>
+            )}
+          </div>
+        ) : authorized || request?.status === "APPROVED" ? (
+          <section className="space-y-5 rounded-2xl border border-[#FFBB00]/25 bg-[#121212] p-4 sm:p-5" aria-label="Credencial profissional">
+            <div className="flex justify-center">
+              <span className="relative flex size-16 items-center justify-center rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/15">
+                <ShieldCheck className="size-9 text-[#FFBB00]" aria-hidden="true"/>
+                <CheckCircle2 className="absolute -bottom-1 -right-1 size-5 rounded-full bg-[#121212] text-emerald-400" aria-hidden="true"/>
+              </span>
+            </div>
+            <div className="space-y-2 text-center">
+              <h2 className="font-[Sora] text-xl font-extrabold">
+                {authorized ? "Você é um Mototaxista Verificado CARONAA" : "Seu cadastro foi aprovado"}
+              </h2>
+              <p className="text-xs leading-relaxed text-white/65">
+                {authorized ? "Acesso profissional autorizado pelo CARONAA." : "A liberação operacional ainda precisa ser confirmada."}
+                {" "}A aprovação administrativa não substitui a validação documental ou exigências legais.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl bg-white/5 p-3 text-center">
+                <p className="text-[11px] text-white/55">Região cadastrada</p>
+                <p className="mt-1 break-words text-xs font-bold">{region === "FORTALEZA" ? "Fortaleza" : "Maciço de Baturité"}</p>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3 text-center">
+                <p className="text-[11px] text-white/55">Matrícula</p>
+                <p className="mt-1 break-words text-xs font-bold">{registrationNumber || "Não informada"}</p>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3 text-center">
+                <p className="text-[11px] text-white/55">Placa</p>
+                <p className="mt-1 break-words text-xs font-bold">{vehiclePlate || "Não informada"}</p>
+              </div>
+            </div>
+            {authorized && <Link to="/disponibilidade-profissional"
+              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-4 text-center font-[Sora] text-sm font-black text-[#121212]">
+              IR PARA O COCKPIT DO MOTORISTA
+            </Link>}
+            <p className="text-center text-xs text-white/55">
+              Precisa atualizar seus dados cadastrais? Fale com o suporte.
+            </p>
+            <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))}
+              className="min-h-11 w-full text-sm text-white/65 underline">Sair da conta</button>
+          </section>
         ) : (
           <>
             {request && <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
               Solicitação: <strong>{request.status === "PENDING" ? "Em análise" : request.status === "APPROVED" ? "Aprovada" : request.status === "REJECTED" ? "Rejeitada" : "Correções solicitadas"}</strong>
               {request.review_reason && <p>Observação: {request.review_reason}</p>}
             </div>}
-            {authorized && <p className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">Seu acesso foi aprovado. <Link to="/disponibilidade-profissional" className="font-bold text-[#FFBB00] underline">Abrir disponibilidade profissional</Link></p>}
             <form className="space-y-3" onSubmit={sendRequest}>
               <div className="grid gap-3 min-[390px]:grid-cols-2">
                 <label className="block text-sm">Primeiro nome<input required value={firstName} onChange={e => setFirstName(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" /></label>
