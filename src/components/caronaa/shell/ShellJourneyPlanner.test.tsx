@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShellJourneyPlanner } from "./ShellJourneyPlanner";
 import type { SheetSnap } from "./InteractiveBottomSheet";
 
-const api=vi.hoisted(()=>({route:vi.fn(),quote:vi.fn(),rpc:vi.fn(),preferences:vi.fn(),approach:vi.fn(),refresh:null as null|(()=>Promise<void>)}));
+const api=vi.hoisted(()=>({route:vi.fn(),quote:vi.fn(),rpc:vi.fn(),preferences:vi.fn(),approach:vi.fn(),search:vi.fn(),confirm:vi.fn(),toastInfo:vi.fn(),toastSuccess:vi.fn(),toastError:vi.fn(),refresh:null as null|(()=>Promise<void>)}));
 vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
 vi.mock("@/lib/map-routing.functions",()=>({getMapDrivingRoute:api.route}));
 vi.mock("@/lib/quick-ride-map.functions",()=>({getQuickRideApproach:api.approach}));
@@ -14,6 +14,14 @@ vi.mock("@/lib/quick-rides/use-quick-ride-realtime",()=>({
   },
 }));
 vi.mock("@/lib/pricing/unified-fare-engine",()=>({quoteUnifiedFare:api.quote}));
+vi.mock("sonner",()=>({toast:{info:api.toastInfo,success:api.toastSuccess,error:api.toastError}}));
+vi.mock("@/services/on-route-service",()=>({
+  searchOnRouteMatches:api.search,
+  confirmOnRouteBooking:api.confirm,
+  OnRouteServiceError:class OnRouteServiceError extends Error{
+    constructor(public code:string){super(code);}
+  },
+}));
 vi.mock("@/lib/travel-preferences-service",()=>({loadTravelPreferences:api.preferences}));
 vi.mock("@/components/caronaa/TravelPreferences",()=>({
   TravelPreferenceFields:()=> <div>Preferências de viagem</div>,
@@ -40,6 +48,8 @@ const testRoute={distanceKm:11,durationMinutes:18,
 beforeEach(()=>{
   vi.clearAllMocks();
   api.refresh=null;
+  api.search.mockResolvedValue({matches:[],diagnostic:"NO_ON_ROUTE_MATCHES"});
+  api.confirm.mockResolvedValue({bookingId:"booking-1",status:"CONFIRMED"});
   api.approach.mockResolvedValue({distanceKm:1,durationMinutes:4,routePath:[]});
   api.rpc.mockResolvedValue({data:true,error:null});
   api.route.mockResolvedValue(testRoute);
@@ -202,6 +212,31 @@ describe("CARONAA Flash passenger shell",()=>{
     await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Agendar Caronaa"}));});
     expect(screen.queryByText("Carona agendada! Seus dados foram salvos.")).toBeNull();
     expect(screen.getByRole("alert")).toBeTruthy();
+  });
+
+  it("Na Rota displays meeting POI and walking distance without another Google route call",async()=>{
+    api.search.mockResolvedValue({diagnostic:"OK",matches:[{
+      offerId:"offer-1",driverUserId:"driver-1",driverName:"Motorista disponível",
+      departureTime:"2026-11-16T12:00:00Z",availableSeats:3,seatsRemaining:2,
+      pickupMeeting:{lat:-4.221,lng:-38.731,walkMeters:80,poiName:"Parada Unifor"},
+      dropoffMeeting:{lat:-4.23,lng:-38.72,walkMeters:60,poiName:"Destino"},
+      totalWalkMeters:140,estimatedPrice:6.5,
+    }]});
+    const selected=vi.fn();
+    render(<ShellJourneyPlanner {...props} snap="half" onOnRouteMatchSelected={selected}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button",{name:"Na Rota"}));
+    fireEvent.click(screen.getByRole("button",{name:"Buscar caronas Na Rota"}));
+    await screen.findByText("Ponto de Encontro no Trajeto");
+    expect(screen.getByText(/80 m a pé até o ponto de encontro/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button",{name:"Ver ponto no mapa"}));
+    expect(selected).toHaveBeenCalledWith(expect.objectContaining({offerId:"offer-1"}));
+    expect(api.route).toHaveBeenCalledTimes(1);
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Confirmar Carona"}));});
+    expect(api.confirm).toHaveBeenCalledWith("offer-1",1,expect.objectContaining({
+      pickupMeeting:expect.objectContaining({walkMeters:80}),
+    }));
   });
 
 });
