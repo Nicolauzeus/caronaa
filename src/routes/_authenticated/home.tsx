@@ -331,7 +331,7 @@ function Home() {
               serviceType={serviceType} onServiceTypeChange={setServiceType}
               vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"}
               municipality={resolvedAddress?.city??""}
-              originPoint={originLocation??location.position}
+              originPoint={originLocation&&typeof originLocation.lat==="number"&&typeof originLocation.lng==="number"?{lat:originLocation.lat,lng:originLocation.lng}:location.position}
               originLabel={origin||"Localização atual (GPS)"}
               originRevision={shellOriginRevision}
               onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("half");}}
@@ -367,7 +367,7 @@ function Home() {
                 <QuickRideHomePanel
                   origin={origin||"Minha localização atual"}
                   destination={passengerDestinationLabel}
-                  originPoint={shellRouteOrigin ? {...originLocation,lat:shellRouteOrigin.lat,lng:shellRouteOrigin.lng} : originLocation}
+                  originPoint={shellRouteOrigin ? {...originLocation,rawText:originLocation?.rawText??origin,lat:shellRouteOrigin.lat,lng:shellRouteOrigin.lng} : originLocation}
                   destinationPoint={shellDestinationLocation}
                   vehicle={quickVehicle}
                   onVehicleChange={setQuickVehicle}
