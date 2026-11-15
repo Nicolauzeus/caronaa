@@ -3,7 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getQuickRideApproach, getQuickRideMapContext } from "@/lib/quick-ride-map.functions";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
-import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { GoogleMapSurface } from "./GoogleMapSurface";
 
 type Route = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
@@ -12,11 +11,10 @@ type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
 
 export function QuickRideOperationalMap({
-  rideId, status, municipality, role,
+  rideId, status, role,
 }: {
   rideId:string;
   status:string;
-  municipality:string;
   role:"DRIVER"|"PASSENGER";
 }) {
   const readMap=useServerFn(getQuickRideMapContext);
@@ -35,7 +33,6 @@ export function QuickRideOperationalMap({
       if(mounted.current){setContext(result);setError("");}
     }catch{if(mounted.current)setError("Não foi possível acompanhar a localização. Verifique sua conexão.");}
   },[readMap,rideId]);
-  useQuickRideRealtime(municipality,reload,Boolean(rideId));
   useEffect(()=>{
     void reload();
     // Reading GPS from the own authorized backend is not a Google Routes request.
