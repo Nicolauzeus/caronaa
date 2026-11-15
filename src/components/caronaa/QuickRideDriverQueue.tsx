@@ -56,6 +56,15 @@ export function QuickRideDriverQueue({
     const city=municipality.trim();
     if(!online||!gpsReady||!city){
       setQueue([]);
+      // A driver must still see an accepted trip after GPS goes stale or a page reload.
+      try{
+        const {data,error:mineError}=await (supabase as any).rpc("quick_ride_my_requests");
+        if(version!==refreshVersion.current||mineError)return;
+        const requests:ActiveDriverRide[]=Array.isArray(data)?data:[];
+        setActive(requests.find(r=>r.role==="DRIVER"&&
+          ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
+        setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")?.id??null);
+      }catch{/* Availability stays blocked without a verified GPS fix. */}
       return;
     }
     try {
@@ -81,7 +90,8 @@ export function QuickRideDriverQueue({
         setError("Conexão temporariamente indisponível. Os chamados serão atualizados.");
     }
   },[municipality,online,gpsReady]);
-  useQuickRideRealtime(municipality,refresh,online&&gpsReady);
+  useEffect(()=>{void refresh();},[refresh]);
+  useQuickRideRealtime(municipality,refresh,Boolean(active)||online&&gpsReady);
   const loadDropoff=useCallback(async(rideId:string)=>{
     const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:rideId});
     if(error)return;
@@ -176,7 +186,7 @@ export function QuickRideDriverQueue({
         {municipality||"Município ainda não verificado"} · GPS e autorização obrigatórios
       </p>
     </div>
-    {!online||!gpsReady?(
+    {(!online||!gpsReady)&&!active?(
       <p role="status" className="text-sm text-white/75">
         {online?"Aguardando posição GPS publicada e válida no radar.":
           "Fique disponível e compartilhe o GPS para receber chamados."}
