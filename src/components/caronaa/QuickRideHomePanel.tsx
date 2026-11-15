@@ -24,7 +24,7 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  onCoverage, onOperationalRideChange,
+  onCoverage, onOperationalRideChange, onRidePhaseChange, shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
@@ -33,6 +33,10 @@ export function QuickRideHomePanel({
   gpsOriginIsImprecise?:boolean;
   onCoverage?:(coverage:QuickRideCoverage|null)=>void;
   onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
+  onRidePhaseChange?:(status:RideStatus|null)=>void;
+  shellMode?:boolean;
+  shellSnap?:"peek"|"half"|"full";
+  onOpenOperational?:()=>void;
 }) {
   const availabilityFn=useServerFn(getQuickRideCoverage);
   const previewFn=useServerFn(getQuickRideFarePreview);
@@ -66,6 +70,7 @@ export function QuickRideHomePanel({
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  useEffect(()=>{onRidePhaseChange?.(liveRide?.status??null);},[liveRide?.id,liveRide?.status,onRidePhaseChange]);
   useEffect(()=>{
     onOperationalRideChange?.(liveRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)
       ?{id:liveRide.id,status:liveRide.status,municipality:liveRide.municipality}:null);
@@ -275,16 +280,21 @@ export function QuickRideHomePanel({
       :coverage?.status==="UNKNOWN"
         ?"Não foi possível identificar o município do embarque."
         :"Informe um ponto de saída verificado para consultar a cobertura.";
+  if(shellMode && shellSnap!=="full") return liveRide ? <section aria-label="Corrida Rápida em andamento" className="mt-2 rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-2 text-white">
+    <button type="button" className="min-h-12 w-full text-left font-bold text-[#FFBB00]" onClick={onOpenOperational}>
+      {liveRide.status==="SEARCHING"?"Buscando motorista — acompanhar pedido":liveRide.status==="ACCEPTED"?"Motorista aceitou — acompanhar":"Acompanhar corrida atual"}
+    </button>
+  </section> : null;
   return (
     <section aria-label="Corrida Rápida no mapa" className="min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white">
-      <div className="flex min-w-0 items-start justify-between gap-2">
+      {!shellMode&&<div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p>
           <p className="text-xs text-gray-300">Mesmo mapa, embarque no local escolhido, sem troca de página.</p>
         </div>
         <ShieldCheck size={20} className="shrink-0 text-[#FFBB00]" aria-label="Motoristas autorizados pela plataforma"/>
-      </div>
-      <div className="grid grid-cols-2 gap-2" aria-label="Escolher tipo de corrida rápida">
+      </div>}
+      {!shellMode&&<div className="grid grid-cols-2 gap-2" aria-label="Escolher tipo de corrida rápida">
         {(["CAR","MOTO"] as const).map(mode=>(
           <button key={mode} type="button" aria-pressed={vehicle===mode} onClick={()=>onVehicleChange(mode)}
             className={"flex min-h-12 items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-colors "+
@@ -293,7 +303,7 @@ export function QuickRideHomePanel({
             {mode==="CAR"?"Carro":"Moto"}
           </button>
         ))}
-      </div>
+      </div>}
       <div className="min-w-0 rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
         <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
           <Users size={16} className="text-[#FFBB00]"/>
@@ -401,7 +411,7 @@ export function QuickRideHomePanel({
                 onClick={()=>void request()}
                 className="min-h-12 w-full rounded-xl bg-[#FFBB00] text-sm font-bold text-[#121212] disabled:opacity-40">
                 {busy?"Enviando pedido…":driverCount<1?"Aguardando motorista disponível":
-                  "Confirmar corrida por "+formatBrl(currentQuote.customerPaysCents/100)}
+                  (shellMode?"Pedir Caronaa Flash — ":"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
               </button>
               <p className="text-[11px] text-gray-300">Ao confirmar, enviaremos o pedido aos motoristas online. O condutor só será definido quando aceitar; estar no radar não reserva um veículo.</p>
               {Date.parse(currentQuote.expiresAt)<=Date.now()&&(

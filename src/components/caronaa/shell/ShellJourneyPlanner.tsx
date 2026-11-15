@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search, UserRound } from "lucide-react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
-import { TravelPreferenceFields } from "@/components/caronaa/TravelPreferences";
 import { emptyTravelPreferences, type TravelPreferences } from "@/lib/travel-preferences";
 import { loadTravelPreferences } from "@/lib/travel-preferences-service";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
-import { getQuickRideApproach } from "@/lib/quick-ride-map.functions";
-import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { quoteUnifiedFare, type UnifiedFareResult, type UnifiedFareMode } from "@/lib/pricing/unified-fare-engine";
 import { formatBrl } from "@/lib/ride-cost";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,12 +20,6 @@ import { toast } from "sonner";
 export type ShellRoute = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
 type Point = {lat:number;lng:number};
 type Vehicle = "CAR"|"MOTO";
-type SearchPhase = "REVIEW"|"SEARCHING"|"TIMEOUT"|"MATCHED"|"WAITLISTED";
-type MatchedDriver = {
-  name:string;photo:string|null;vehicle:string|null;plate:string|null;
-  color?:string|null;rating?:number|null;etaMinutes?:number|null;
-  meetingLabel?:string|null;walkDistanceMeters?:number|null;
-};
 type Props = {
   snap:SheetSnap;
   onSnapChange?:(snap:SheetSnap)=>void;
@@ -44,6 +35,8 @@ type Props = {
   onAdjustOrigin?:()=>void;
   onScheduled?:(id:string)=>void;
   onOnRouteMatchSelected?:(match:OnRouteMatch|null)=>void;
+  flashOperationalPanel?:ReactNode;
+  onFlashVehicleChange?:(vehicle:Vehicle)=>void;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
   !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
@@ -67,6 +60,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
+  flashOperationalPanel,onFlashVehicleChange,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -92,24 +86,14 @@ export function ShellJourneyPlanner({
   const [scheduling,setScheduling]=useState(false);
   const [scheduledId,setScheduledId]=useState<string|null>(null);
   const [scheduleError,setScheduleError]=useState("");
-  const [phase,setPhase]=useState<SearchPhase>("REVIEW");
-  const [startedAt,setStartedAt]=useState<number|null>(null);
-  const [secondsLeft,setSecondsLeft]=useState(60);
-  const [waitlistBusy,setWaitlistBusy]=useState(false);
-  const [feedback,setFeedback]=useState("");
-  const [matched,setMatched]=useState<MatchedDriver|null>(null);
   const onRouteSearchRef=useRef(0);
   const routeReader=useServerFn(getMapDrivingRoute);
-  const approachReader=useServerFn(getQuickRideApproach);
-  const approachRef=useRef(approachReader);
-  approachRef.current=approachReader;
   const routeReaderRef=useRef(routeReader);
   routeReaderRef.current=routeReader;
   const routeCache=useRef(new Map<string,Promise<ShellRoute>>());
   const frozenOrigin=useRef<Point|null>(null);
   const selectedKey=useRef("");
   const lastOriginRevision=useRef(originRevision);
-  const searchSession=useRef(0);
   const onRouteRef=useRef(onRouteChange);
   onRouteRef.current=onRouteChange;
 
@@ -169,54 +153,6 @@ export function ShellJourneyPlanner({
     return()=>{active=false;};
   },[route,onRouteVehicle,exclusiveVehicle,seats,entireCar]);
 
-  // The countdown is UI-only until the booking/dispatch RPC is integrated.
-  // Never report a fabricated acceptance, payment or notification.
-  useEffect(()=>{
-    if(phase!=="SEARCHING"||startedAt===null)return;
-    const tick=()=>{
-      const remaining=Math.max(0,60-Math.floor((Date.now()-startedAt)/1000));
-      setSecondsLeft(remaining);
-      if(remaining===0)setPhase("TIMEOUT");
-    };
-    tick();
-    const timer=window.setInterval(tick,1000);
-    return()=>window.clearInterval(timer);
-  },[phase,startedAt]);
-
-  // Subscribe to the existing read-only queue event. The hook rechecks the
-  // authorized ride RPC; it never trusts realtime event payloads for PII.
-  useEffect(()=>{searchSession.current+=1;},[phase]);
-  const checkMatched=useCallback(async()=>{
-    if(phase!=="SEARCHING")return;
-    const session=searchSession.current;
-    try{
-      const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
-      if(error||!Array.isArray(data)||session!==searchSession.current)return;
-      const relevant=data.find((ride:any)=>ride.role==="PASSENGER" &&
-        ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(ride.status) &&
-        ride.destination_label===destination && ride.requested_at &&
-        Date.parse(ride.requested_at)>=((startedAt??0)-5000));
-      if(!relevant?.id)return;
-      const {data:details,error:detailsError}=await (supabase as any).rpc(
-        "quick_ride_driver_details",{p_id:relevant.id});
-      if(session!==searchSession.current||detailsError||!details?.name)return;
-      const approach=await approachRef.current({data:{rideId:relevant.id}}).catch(()=>null);
-      if(session!==searchSession.current)return;
-      const driver:MatchedDriver={
-        name:details.name,photo:details.photo??null,vehicle:details.vehicle??null,
-        plate:details.plate??null,color:details.color??null,
-        rating:Number.isFinite(details.rating)?details.rating:null,
-        etaMinutes:approach && Number.isFinite(approach.durationMinutes)
-          ?Math.max(1,Math.ceil(approach.durationMinutes)):null,
-        meetingLabel:typeof details.meetingLabel==="string"?details.meetingLabel:null,
-        walkDistanceMeters:Number.isFinite(details.walkDistanceMeters)
-          ?Math.round(details.walkDistanceMeters):null,
-      };
-      setMatched(driver);setPhase("MATCHED");
-    }catch{/* No driver is claimed without authorized server data. */}
-  },[phase,destination,startedAt]);
-  useQuickRideRealtime(originMunicipality,checkMatched,phase==="SEARCHING");
-
   const pickDestination=useCallback((label:string,details?:FormLocationDetails)=>{
     onRouteSearchRef.current+=1;
     setOnRouteMatches([]);
@@ -224,11 +160,9 @@ export function ShellJourneyPlanner({
     setOnRouteConfirmedId(null);
     setOnRouteDiagnostic("");
     onOnRouteMatchSelected?.(null);
-    searchSession.current+=1;
     setDestination(label);
     setDestinationPoint(details);
     onDestinationChange?.(label,details);
-    setPhase("REVIEW");setMatched(null);setFeedback("");setStartedAt(null);
     setRoute(null);setPrices(null);
     frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
     if(details && valid(details))onSnapChange?.("half");
@@ -246,47 +180,10 @@ export function ShellJourneyPlanner({
   },[mode,onRouteVehicle,seats,entireCar,scheduledAt,originRevision,onOnRouteMatchSelected]);
 
   const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
-    if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);return;}
+    if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);onFlashVehicleChange?.(value);return;}
     setOnRouteVehicle(value);
     if(value==="MOTO"){setSeats(1);setEntireCar(false);}
   };
-  const start=()=>{
-    if(!valid(originPoint)||!valid(destinationPoint)||!route||!prices){
-      setFeedback("Confirme a origem e o destino para continuar.");return;
-    }
-    setFeedback("");
-    setSecondsLeft(60);setStartedAt(Date.now());setPhase("SEARCHING");
-  };
-  const cancel=()=>{
-    searchSession.current+=1;
-    setPhase("REVIEW");setStartedAt(null);setMatched(null);setFeedback("");
-  };
-  const schedule=()=>{
-    cancel();
-    onServiceTypeChange("AGENDADA");
-    onSnapChange?.("full");
-    setFeedback("Escolha o horário para agendar.");
-  };
-  const waitlist=async()=>{
-    if(waitlistBusy || !valid(destinationPoint) || !originMunicipality.trim())return;
-    setWaitlistBusy(true);setFeedback("");
-    try{
-      const onRouteSeats=onRouteVehicle==="MOTO"?1:entireCar?3:seats;
-      const {error}=await (supabase as any).rpc("register_flash_waitlist",{
-        p_origin_municipality:originMunicipality.trim(),
-        p_destination_municipality:destinationPoint.city??null,
-        p_vehicle_type:vehicle,p_service_mode:mode,
-        p_seats:mode==="EXCLUSIVE"?(vehicle==="CAR"?3:1):onRouteSeats,
-        p_reserved_entire_vehicle:mode==="EXCLUSIVE"||entireCar,
-      });
-      if(error)throw error;
-      setPhase("WAITLISTED");
-      setFeedback("Você está na lista de espera! Assim que os avisos por WhatsApp estiverem disponíveis, poderemos informar sobre motoristas na sua rota.");
-    }catch{
-      setFeedback("Não conseguimos confirmar sua inscrição. Tente novamente.");
-    }finally{setWaitlistBusy(false);}
-  };
-
   const scheduleValid=validScheduleDate(scheduledAt);
   const submitSchedule=async()=>{
     if(scheduling||scheduledId||!scheduleValid||!route||!prices||!valid(originPoint)||!valid(destinationPoint)){
@@ -536,17 +433,13 @@ export function ShellJourneyPlanner({
         <p><strong>Modalidade:</strong> {mode==="EXCLUSIVE"?
           "Exclusiva ("+(vehicle==="CAR"?"Carro":"Moto")+")":
           "Na Rota ("+(onRouteVehicle==="MOTO"?1:entireCar?3:seats)+" vagas)"} </p>
-        <p className="font-[family-name:var(--font-display)] text-2xl font-black text-[#FFBB00]">
-          {selectedPrice?formatBrl(selectedPrice.totalFare):"Calculando..."}
-        </p>
-        <p className="text-xs text-white/70">Tarifa estimada, sujeita à confirmação operacional.</p>
+        {serviceType==="FLASH"&&mode==="EXCLUSIVE"?
+          <p className="text-xs text-white/75">A cotação oficial e o pedido são apresentados abaixo pelo servidor operacional.</p>:
+          <><p className="font-[family-name:var(--font-display)] text-2xl font-black text-[#FFBB00]">{selectedPrice?formatBrl(selectedPrice.totalFare):"Calculando..."}</p>
+          <p className="text-xs text-white/70">Tarifa estimada, sujeita à confirmação operacional.</p></>}
         <p><strong>Pagamento:</strong> Pix ou dinheiro direto ao motorista</p>
         <p className="text-xs text-white/70">O app não retém valores nesta etapa.</p>
       </section>
-      <div className="rounded-2xl border border-white/15 bg-white/5 p-3
-        [&_select]:bg-[#121212] [&_select]:text-white [&_label]:text-white">
-        <TravelPreferenceFields kind="request" value={preferences} onChange={setPreferences}/>
-      </div>
       {gender==="FEMININO"&&<WomenOnlyToggle kind="request" gender={gender}
         checked={womenOnly} onChange={setWomenOnly}/>}
       {serviceType==="AGENDADA"&&!onRouteConfirmedId&&<>
@@ -563,57 +456,9 @@ export function ShellJourneyPlanner({
         </button>}
         {scheduleError&&<p role="alert" className="text-sm text-[#FFBB00]">{scheduleError}</p>}
       </>}
-      {serviceType==="FLASH"&&phase==="REVIEW"&&!onRouteConfirmedId&&<>
-        <button type="button" disabled={!selectedPrice||!route}
-          onClick={start} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-40">
-          Pedir Caronaa Flash
-        </button>
-        <p className="text-xs text-white/65">
-          A busca nesta casca é uma prévia. Nenhum pedido é enviado ou cobrado até conectar o despacho autorizado.
-        </p>
-      </>}
-      {phase==="SEARCHING"&&<section className="space-y-3 rounded-2xl border border-[#FFBB00]/40 p-4">
-        <p className="text-sm font-semibold">O app está em fase inicial e estamos avisando nossos motoristas da sua região.</p>
-        <p className="text-xs text-white/70">Prévia de busca: notificações não foram disparadas.</p>
-        <p role="timer" className="font-[family-name:var(--font-display)] text-3xl font-bold text-[#FFBB00]">
-          {secondsLeft}s
-        </p>
-        <button type="button" onClick={cancel}
-          className="min-h-12 w-full rounded-xl border border-white/30 font-semibold">Cancelar busca</button>
-      </section>}
-      {phase==="TIMEOUT"&&<section className="space-y-3 rounded-2xl border border-[#FFBB00]/35 p-4">
-        <p className="text-sm font-bold">Nenhum motorista confirmou neste período.</p>
-        <button type="button" onClick={schedule}
-          className="min-h-12 w-full rounded-xl border border-white/30 font-bold">Agendar para daqui a pouco</button>
-        <button type="button" disabled={waitlistBusy} onClick={()=>void waitlist()}
-          className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-          {waitlistBusy?"Registrando...":"Entrar na lista de espera"}
-        </button>
-        <button type="button" onClick={cancel} className="min-h-11 w-full text-sm text-white/70">Voltar ao resumo</button>
-      </section>}
-      {phase==="WAITLISTED"&&<p role="status" className="rounded-xl border border-[#FFBB00]/30 p-4 text-sm text-[#FFBB00]">{feedback}</p>}
-      {phase==="MATCHED"&&matched&&<section className="space-y-3 rounded-xl border border-[#FFBB00]/50 p-3">
-        <h3 className="font-bold text-[#FFBB00]">Motorista confirmou</h3>
-        <div className="flex items-center gap-3">
-          {matched.photo?<img src={matched.photo} alt="Foto do motorista" className="size-14 rounded-full object-cover"/>:
-            <span aria-label="Motorista sem foto" className="flex size-14 items-center justify-center rounded-full bg-white/10">
-              <UserRound size={25}/>
-            </span>}
-          <div className="text-sm">
-            <p className="font-bold">{matched.name}</p>
-            {matched.rating!=null&&<p>★ {matched.rating.toFixed(1)}</p>}
-            <p>{[matched.vehicle,matched.color,matched.plate].filter(Boolean).join(" · ")}</p>
-            {!matched.color&&<p className="text-xs text-white/65">Cor não informada</p>}
-            {matched.rating==null&&<p className="text-xs text-white/65">Avaliação indisponível</p>}
-            {matched.etaMinutes!=null&&<p>Chegada estimada: {matched.etaMinutes} min</p>}
-          </div>
-        </div>
-        {mode==="ON_ROUTE"&&<p className="text-xs text-white/80">
-          Ponto de embarque: {matched.meetingLabel||"Aguardando confirmação do motorista"}.
-          {matched.walkDistanceMeters!=null?" Caminhada: "+matched.walkDistanceMeters+" m.":" Distância a pé indisponível."}
-        </p>}
-      </section>}
-      {feedback&&phase!=="WAITLISTED"&&<p role="status" className="text-xs text-[#FFBB00]">{feedback}</p>}
+      {serviceType==="FLASH"&&mode==="ON_ROUTE"&&!onRouteConfirmedId&&
+        <p className="text-xs text-white/70">Para viajar Na Rota, volte às modalidades e confirme uma oferta existente. Nenhuma busca simulada será iniciada.</p>}
     </>}
+    {serviceType==="FLASH"&&mode==="EXCLUSIVE"&&flashOperationalPanel}
   </div>;
 }

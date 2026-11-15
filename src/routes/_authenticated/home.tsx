@@ -18,6 +18,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
+import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
+import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -92,6 +94,19 @@ function Home() {
   const [selectedOnRouteMatch,setSelectedOnRouteMatch]=useState<OnRouteMatch|null>(null);
   const [shellOriginRevision,setShellOriginRevision]=useState(0);
   const [driverFlashRide,setDriverFlashRide]=useState<FlashDriverRide|null>(null);
+  const [passengerRide,setPassengerRide]=useState<{id:string;status:string;municipality:string}|null>(null);
+  const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
+  const [quickMunicipality,setQuickMunicipality]=useState("");
+  const [quickDriverCount,setQuickDriverCount]=useState(0);
+  const [quickDriverLoading,setQuickDriverLoading]=useState(false);
+  const [quickDriverError,setQuickDriverError]=useState("");
+  const onQuickCoverage=useCallback((value:QuickRideCoverage|null)=>setQuickMunicipality(value?.radar&&value.municipality?value.municipality:""),[]);
+  const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>setPassengerRide(ride),[]);
+  const onPassengerPhase=useCallback((status:string|null)=>{
+    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
+      setTripsPanelOpen(false);setSheetSnap("full");
+    }
+  },[]);
 
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
@@ -117,7 +132,9 @@ function Home() {
     setShellRoute(route);
     setShellRouteOrigin(from);
   },[]);
+  const [passengerDestinationLabel,setPassengerDestinationLabel]=useState("");
   const handleDestinationChange=useCallback((_label:string,details?:FormLocationDetails)=>{
+    setPassengerDestinationLabel(_label);
     setSelectedOnRouteMatch(null);
     setShellDestinationLocation(details);
     setShellSelectedDestination(details?.lat!=null&&details?.lng!=null);
@@ -194,7 +211,7 @@ function Home() {
   },[reverseGeocode]);
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
-    const check=await canSwitchCaronaaRole(driverFlashRide);
+    const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
     if(!check.allowed){
       toast[check.reason==="ACTIVE_RIDE"?"info":"error"](
         check.reason==="ACTIVE_RIDE"
@@ -209,17 +226,38 @@ function Home() {
     }
   };
 
+  useEffect(()=>{
+    if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){setQuickDriverCount(0);setQuickDriverError("");setQuickDriverLoading(false);return;}
+    let alive=true;
+    const refresh=async()=>{
+      if(alive)setQuickDriverLoading(true);
+      try{
+        const {data,error}=await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_municipality:quickMunicipality,p_vehicle:quickVehicle});
+        if(!alive)return;
+        if(error)throw error;
+        setQuickDriverCount((Array.isArray(data)?data:[]).filter((item:any)=>!item.is_self).length);
+        setQuickDriverError("");
+      }catch{if(alive){setQuickDriverCount(0);setQuickDriverError("Radar indisponível. Tente novamente.");}}
+      finally{if(alive)setQuickDriverLoading(false);}
+    };
+    void refresh();
+    const timer=window.setInterval(refresh,15000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[activeRoleState.activeRole,serviceType,quickMunicipality,quickVehicle]);
   const mapOrigin=shellSelectedDestination&&shellRouteOrigin
     ?shellRouteOrigin:originLocation??location.position??undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;
   const driverRole=activeRoleState.activeRole==="MOTORISTA";
   const shouldShowOperationalMap=driverRole&&serviceType==="FLASH"&&driverFlashRide!=null;
+  const shouldShowPassengerMap=!driverRole&&serviceType==="FLASH"&&passengerRide!==null;
 
   return <AppShell mapLayout>
     <CaronaaPerformanceDiagnostic/>
     <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
       <div className="absolute inset-0">
-        {shouldShowOperationalMap&&driverFlashRide?
+        {shouldShowPassengerMap&&passengerRide?
+          <QuickRideOperationalMap rideId={passengerRide.id} status={passengerRide.status} role="PASSENGER" immersive/>:
+        shouldShowOperationalMap&&driverFlashRide?
           <QuickRideOperationalMap
             rideId={driverFlashRide.id} status={driverFlashRide.status}
             role="DRIVER" vehicleType={driverFlashRide.vehicleType} immersive/>:
@@ -261,7 +299,7 @@ function Home() {
         initialType={activeRoleState.vehicleType}
         initialSeats={activeRoleState.vehicleSeats}
         onSave={async vehicle=>{
-          const check=await canSwitchCaronaaRole(driverFlashRide);
+          const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
           if(!check.allowed)throw new Error(check.reason==="ACTIVE_RIDE"
             ?"Não é possível alternar durante uma corrida."
             :"Não foi possível verificar suas corridas.");
@@ -279,7 +317,7 @@ function Home() {
         {tripsPanelOpen&&!driverRole&&
           <UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey}
             onShowOnMap={(trip:UnifiedTrip)=>{
-              if(trip.operationalRideId!==driverFlashRide?.id){
+              if(trip.operationalRideId!==passengerRide?.id){
                 toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");
                 return;
               }
@@ -324,6 +362,26 @@ function Home() {
               originRevision={shellOriginRevision}
               originMunicipality={resolvedAddress?.city??""}
               gender={gender}
+              onFlashVehicleChange={setQuickVehicle}
+              flashOperationalPanel={
+                <QuickRideHomePanel
+                  origin={origin||"Minha localização atual"}
+                  destination={passengerDestinationLabel}
+                  originPoint={shellRouteOrigin ? {...originLocation,lat:shellRouteOrigin.lat,lng:shellRouteOrigin.lng} : originLocation}
+                  destinationPoint={shellDestinationLocation}
+                  vehicle={quickVehicle}
+                  onVehicleChange={setQuickVehicle}
+                  driverCount={quickDriverCount}
+                  driverLoading={quickDriverLoading}
+                  driverError={quickDriverError}
+                  gpsOriginIsImprecise={Boolean(location.addressPosition&&!isTrustedGpsFix(location.addressPosition))&&originSource==="CURRENT_LOCATION"}
+                  onCoverage={onQuickCoverage}
+                  onOperationalRideChange={onPassengerRide}
+                  onRidePhaseChange={onPassengerPhase}
+                  onOpenOperational={()=>setSheetSnap("full")}
+                  shellMode shellSnap={sheetSnap}
+                />
+              }
               onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
               onRouteChange={handleShellRouteChange}
               onOnRouteMatchSelected={setSelectedOnRouteMatch}
