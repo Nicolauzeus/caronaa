@@ -24,7 +24,7 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  onCoverage, onOperationalRideChange, onRidePhaseChange, shellMode=false, shellSnap="full", onOpenOperational,
+  onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
@@ -34,6 +34,7 @@ export function QuickRideHomePanel({
   onCoverage?:(coverage:QuickRideCoverage|null)=>void;
   onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
   onRidePhaseChange?:(status:RideStatus|null)=>void;
+  onDropoffPendingChange?:(pending:boolean)=>void;
   shellMode?:boolean;
   shellSnap?:"peek"|"half"|"full";
   onOpenOperational?:()=>void;
@@ -133,6 +134,9 @@ export function QuickRideHomePanel({
   },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
   const remainingDropoffSeconds=dropoff?.deadline_at?
     Math.max(0,Math.ceil((Date.parse(dropoff.deadline_at)-nowMs)/1000)):0;
+  const dropoffIsPending=liveRide?.status==="IN_PROGRESS"&&Boolean(dropoff?.deadline_at)&&
+    !dropoff?.resolved_at&&!dropoff?.passenger_response;
+  useEffect(()=>{onDropoffPendingChange?.(Boolean(dropoffIsPending));},[dropoffIsPending,onDropoffPendingChange]);
   async function issueBoardingCode(){
     if(!liveRide || busy)return;
     setBusy(true);setError("");
@@ -243,10 +247,19 @@ export function QuickRideHomePanel({
        !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
     setBusy(true);setError("");
     try{
-      await submitFn({data:{quoteId:currentQuote.quoteId}});
-      const {data}=await (supabase as any).rpc("quick_ride_my_requests");
+      const submitted=await submitFn({data:{quoteId:currentQuote.quoteId}});
+      // The acknowledgement contains the actual authorized ride ID. If the
+      // read replica is briefly behind, preserve the real SEARCHING state
+      // until Realtime or a later refresh returns that same request.
+      const acknowledged:ExistingQuickRide={
+        id:submitted.rideId,role:"PASSENGER",status:"SEARCHING",
+        municipality:coverage?.municipality??"",vehicle_type:vehicle,
+      };
+      const {data,error:reloadError}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current){
-        setRides(Array.isArray(data)?data:[]);
+        const fromServer:ExistingQuickRide[]=!reloadError&&Array.isArray(data)?data:[];
+        setRides(fromServer.some(r=>r.id===submitted.rideId)
+          ?fromServer:[acknowledged,...fromServer]);
         setQuote(null);setCurrentQuoteKey("");
       }
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Pedido indisponível.");}
