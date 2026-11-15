@@ -1,0 +1,27 @@
+name: CARONAA F07/F08 regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/caronaa/QuickRide*.tsx'
+      - 'src/lib/quick-ride-map.functions.ts'
+      - 'drizzle/migrations/0154_quick_ride_otp_pix_declaration.sql'
+      - '.github/workflows/f07-quick-ride.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run regression tests
+        run: bunx vitest run
+      - name: Build
+        run: bun run build
