@@ -614,9 +614,12 @@ function Home() {
             onClose={closeTrips}
             refreshKey={tripsRefreshKey}
             onShowOnMap={(trip:UnifiedTrip)=>{
-              // Operational ride requires its authorized map context. Never
-              // synthesize driver coordinates or requery the route here.
-              if(!trip.operationalRideId)return;
+              // The persistent map may only expose an already authorized,
+              // active ride. Never invent an operational map context.
+              if(operationalRide?.id!==trip.operationalRideId){
+                toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");
+                return;
+              }
               closeTrips();
               setSheetSnap("peek");
             }}
