@@ -83,7 +83,14 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível confirmar.");}
     finally{setSubmitting(false);}
   }
-  if(!pilotEnabled)return null;
+  if(!pilotEnabled)return <section aria-label="Situação do pagamento da Corrida Rápida"
+    className="rounded-xl border border-white/20 bg-[#121212] p-4 text-sm text-white">
+    <p className="font-bold text-[#FFBB00]">Pagamento da corrida</p>
+    <p className="mt-2 text-xs leading-relaxed text-white/75">
+      {loading?"Verificando se o Pix desta corrida está disponível...":
+        "O QR Pix automático não está habilitado nesta modalidade. Consulte o meio de pagamento combinado; não faça transferências sem confirmar os dados do destinatário."}
+    </p>
+  </section>;
   return <section aria-label="QR Pix da Corrida Rápida concluída"
     className="min-w-0 space-y-2 rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
     <p className="font-bold">Pix da Corrida Rápida concluída</p>
