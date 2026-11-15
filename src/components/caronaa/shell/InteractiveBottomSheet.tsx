@@ -2,10 +2,10 @@ import { useCallback, useRef, useState, type ReactNode, type PointerEvent } from
 import { ChevronUp } from "lucide-react";
 
 export type SheetSnap = "peek" | "half" | "full";
-type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void;title?:string};
+type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void;title?:string;headerAction?:ReactNode};
 const heights:Record<SheetSnap,string>={peek:"15dvh",half:"50dvh",full:"85dvh"};
 const order:SheetSnap[]=["peek","half","full"];
-export function InteractiveBottomSheet({children,value,onChange,title="Planejar viagem"}:Props){
+export function InteractiveBottomSheet({children,value,onChange,title="Planejar viagem",headerAction}:Props){
   const [internal,setInternal]=useState<SheetSnap>("peek");
   const snap=value??internal;
   const start=useRef<{y:number;id:number}|null>(null);
@@ -35,6 +35,7 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
       <span className="h-1.5 w-12 rounded-full bg-[#FFBB00]/75"/>
       <ChevronUp size={15} className={snap==="full"?"rotate-180":""}/>
     </button>
+    {headerAction&&<div className="absolute right-2 top-0 z-10 flex min-h-8 items-center">{headerAction}</div>}
     <div className={"min-h-0 flex-1 overflow-y-auto overscroll-contain "+(snap==="peek"?"px-2 pb-1":"px-4 pb-4")}>{children}</div>
   </section>;
 }
