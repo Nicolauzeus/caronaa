@@ -637,7 +637,7 @@ function Perfil() {
       <ProfileTravelPreferences />
       {isMotoProfile ? (
         <section aria-label="Chave Pix para Recebimento"
-          className="mb-6 rounded-2xl border border-[#FFBB00]/20 bg-[#121212]/95 p-4 text-white shadow-lg backdrop-blur-xl sm:p-5">
+          className="mb-6 rounded-2xl border border-[#FFBB00]/20 bg-[#121212]/95 p-4 text-white dark shadow-lg backdrop-blur-xl sm:p-5">
           <h2 className="font-[Sora] text-lg font-extrabold text-[#FFBB00]">Chave Pix para Recebimento</h2>
           <p className="mb-4 mt-1 text-xs text-white/65">Gerencie a chave usada para receber pagamentos.</p>
           <DriverPixSettings />
@@ -665,7 +665,7 @@ function Perfil() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className={`h-fit rounded-2xl border p-5 shadow-soft ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white" : "border-border bg-card"}`}>
+        <aside className={`h-fit rounded-2xl border p-5 shadow-soft ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white dark" : "border-border bg-card"}`}>
           <div className="text-center">
             <div className="relative mx-auto size-28">
               <button
@@ -758,7 +758,7 @@ function Perfil() {
         </aside>
 
         <section className="space-y-5">
-          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white" : "border-border bg-card"}`}>
+          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white dark" : "border-border bg-card"}`}>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="font-display text-lg font-extrabold">{isMotoProfile ? "Dados do Condutor" : "Dados pessoais"}</h3>
@@ -828,7 +828,7 @@ function Perfil() {
             </div>
           </div>
 
-          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white" : "border-border bg-card"}`}>
+          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white dark" : "border-border bg-card"}`}>
             <h3 className="font-[Sora] text-lg font-extrabold">{isMotoProfile ? "Dados da Moto" : "Dados do Veículo"}</h3>
             <p className={`mt-1 text-xs ${isMotoProfile ? "text-white/65" : "text-muted-foreground"}`}>Informações exibidas ao identificar seu veículo.</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
