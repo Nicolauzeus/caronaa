@@ -18,6 +18,9 @@ vi.mock("./road-routing", () => ({
   getWalkingRoute: mocks.walk,
   getDrivingRoute: mocks.drive,
 }));
+vi.mock("./google-request.server", () => ({
+  googleActionFetch: () => (input: RequestInfo | URL, init?: RequestInit) => fetch(input, init),
+}));
 import { suggestStrictPickup, getStrictPickupContext } from "./safe-pickup.functions";
 import { getQuickRideMapContext, getQuickRideApproach } from "./quick-ride-map.functions";
 import { createRideOffer } from "./ride-matching.functions";

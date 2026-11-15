@@ -128,8 +128,9 @@ async function requestGoogle(
   key: string,
   fieldMask?: string,
   body?: unknown,
+  request: typeof fetch = fetch,
 ): Promise<any> {
-  const response = await fetch(url, {
+  const response = await request(url, {
     method: body === undefined ? "GET" : "POST",
     headers: {
       "X-Goog-Api-Key": key,
@@ -153,6 +154,7 @@ async function requestGoogle(
 }
 
 export class GooglePlacesProvider implements LocationProvider {
+  constructor(private readonly request: typeof fetch = (input, init) => fetch(input, init)) {}
   readonly name = "Google Places (New)";
   isConfigured() {
     return Boolean(getGoogleServerKey());
@@ -182,6 +184,7 @@ export class GooglePlacesProvider implements LocationProvider {
           locationBias: CEARA_BIAS,
           ...(sessionToken ? { sessionToken } : {}),
         },
+        this.request,
       );
       if (
         result.suggestions !== undefined &&
@@ -234,6 +237,9 @@ export class GooglePlacesProvider implements LocationProvider {
           "&languageCode=pt-BR" +
           (sessionToken ? "&sessionToken=" + encodeURIComponent(sessionToken) : ""),
         key,
+        undefined,
+        undefined,
+        this.request,
       );
       return {
         isConfigured: true,
@@ -276,6 +282,7 @@ export class GooglePlacesProvider implements LocationProvider {
           locationBias: CEARA_BIAS,
           pageSize: 1,
         },
+        this.request,
       );
       const item =
         Array.isArray(result.places) && result.places.length
@@ -315,6 +322,7 @@ export class GooglePlacesProvider implements LocationProvider {
           languageCode: "pt-BR",
           regionCode: "BR",
         },
+        this.request,
       );
       const first: GooglePlace | undefined = Array.isArray(result.places)
         ? result.places[0] : undefined;

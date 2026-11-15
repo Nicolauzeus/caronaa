@@ -15,10 +15,12 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
+    const { googleActionFetch } = await import("./google-request.server");
+    const request = googleActionFetch(context.userId, "quote", "quoteOfferRoute");
     const { geocodeAddressService } = await import("./location/service");
     const [origin, destination] = await Promise.all([
-      geocodeAddressService(data.origin),
-      geocodeAddressService(data.destination),
+      geocodeAddressService(data.origin, request),
+      geocodeAddressService(data.destination, request),
     ]);
     if (
       !origin ||
@@ -37,7 +39,7 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
       route = await getDrivingRoute([
         { lat: origin.lat, lng: origin.lng },
         { lat: destination.lat, lng: destination.lng },
-      ]);
+      ], request);
     } catch {
       throw new Error("Não foi possível calcular o percurso rodoviário. Tente novamente.");
     }

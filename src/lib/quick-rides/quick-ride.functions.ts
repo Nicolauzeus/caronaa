@@ -182,7 +182,10 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const key="quick-fare-route:"+context.userId+":"+data.origin.lat.toFixed(5)+":"+
       data.origin.lng.toFixed(5)+":"+data.destination.lat.toFixed(5)+":"+
       data.destination.lng.toFixed(5);
-    const road=await sessionRequest(key,()=>getDrivingRoute([data.origin,data.destination]),60_000);
+    const road=await sessionRequest(key,async()=>{
+      const {googleActionFetch}=await import("@/lib/google-request.server");
+      return getDrivingRoute([data.origin,data.destination],googleActionFetch(context.userId,"quote","getQuickRideFarePreview"));
+    },60_000);
     const q=quoteProposedCaronaaFare({
       distanceKm:road.distanceKm,
       durationMinutes:road.durationMinutes,

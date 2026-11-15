@@ -43,18 +43,20 @@ export const previewRequestFare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => routeInput.parse(input))
   .handler(async ({ context, data }) => {
+    const { googleActionFetch } = await import("./google-request.server");
+    const googleRequest = googleActionFetch(context.userId, "quote", "previewRequestFare");
     const { geocodeAddressService } = await import("./location/service");
     const [origin, destination] = await Promise.all([
       data.originLat != null && data.originLng != null
         ? Promise.resolve({ lat: data.originLat, lng: data.originLng, isApproximate: false })
-        : geocodeAddressService(data.origin),
+        : geocodeAddressService(data.origin, googleRequest),
       data.destinationLat != null && data.destinationLng != null
         ? Promise.resolve({
             lat: data.destinationLat,
             lng: data.destinationLng,
             isApproximate: false,
           })
-        : geocodeAddressService(data.destination),
+        : geocodeAddressService(data.destination, googleRequest),
     ]);
     if (
       !origin ||
@@ -78,6 +80,7 @@ export const previewRequestFare = createServerFn({ method: "POST" })
       distanceKm = await getDrivingDistanceKm(
         { lat: origin.lat, lng: origin.lng },
         { lat: destination.lat, lng: destination.lng },
+        googleRequest,
       );
     } catch {
       throw new Error("Não foi possível estimar o preço agora. Tente novamente.");
@@ -174,9 +177,11 @@ export const calculateOfferRemainingPotential = createServerFn({ method: "POST" 
     }
     let distanceKm: number;
     try {
+      const { googleActionFetch } = await import("./google-request.server");
       distanceKm = await getDrivingDistanceKm(
         { lat: data.latitude, lng: data.longitude },
         { lat: destinationLat, lng: destinationLng },
+        googleActionFetch(context.userId, "quote", "calculateOfferRemainingPotential"),
       );
     } catch {
       throw new Error(
@@ -258,10 +263,12 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
     }
 
     // Re-geocode server-side; browser coordinates and prices are never trusted.
+    const { googleActionFetch } = await import("./google-request.server");
+    const googleRequest = googleActionFetch(context.userId, "quote", "calculateRideQuote");
     const { geocodeAddressService } = await import("./location/service");
     const [origin, destination] = await Promise.all([
-      geocodeAddressService(request.origin),
-      geocodeAddressService(request.destination),
+      geocodeAddressService(request.origin, googleRequest),
+      geocodeAddressService(request.destination, googleRequest),
     ]);
     if (
       !origin ||
@@ -287,6 +294,7 @@ export const calculateRideQuote = createServerFn({ method: "POST" })
       distanceKm = await getDrivingDistanceKm(
         { lat: origin.lat, lng: origin.lng },
         { lat: destination.lat, lng: destination.lng },
+        googleRequest,
       );
     } catch {
       throw new Error(

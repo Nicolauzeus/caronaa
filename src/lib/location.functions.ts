@@ -21,7 +21,9 @@ export const reverseGeocodeServerFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
-      return await reverseGeocodeService(data.lat, data.lng);
+      const { optionalGoogleSearchFetch } = await import("./google-search-access.server");
+      const request = await optionalGoogleSearchFetch("details", "reverseGeocodeServerFn");
+      return await reverseGeocodeService(data.lat, data.lng, request);
     } catch {
       console.warn("[Location] Reverse geocoding unavailable");
       return null;
@@ -45,19 +47,22 @@ const geocodeQuerySchema = z.object({
 export const searchLocationsServerFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => searchQuerySchema.parse(input))
   .handler(async ({ data }) => {
-    return await searchLocationsService(data.query, data.sessionToken);
+    const { optionalGoogleSearchFetch } = await import("./google-search-access.server");
+    return await searchLocationsService(data.query, data.sessionToken, await optionalGoogleSearchFetch("autocomplete", "searchLocationsServerFn"));
   });
 
 export const getLocationDetailsServerFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => placeDetailsSchema.parse(input))
   .handler(async ({ data }) => {
-    return await getLocationDetailsService(data.placeId, data.sessionToken);
+    const { optionalGoogleSearchFetch } = await import("./google-search-access.server");
+    return await getLocationDetailsService(data.placeId, data.sessionToken, await optionalGoogleSearchFetch("details", "getLocationDetailsServerFn"));
   });
 
 export const geocodeAddressServerFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => geocodeQuerySchema.parse(input))
   .handler(async ({ data }) => {
-    return await geocodeAddressService(data.address);
+    const { optionalGoogleSearchFetch } = await import("./google-search-access.server");
+    return await geocodeAddressService(data.address, await optionalGoogleSearchFetch("details", "geocodeAddressServerFn"));
   });
 
 export const getLocationConfigStatusServerFn = createServerFn({
