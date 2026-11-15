@@ -5,6 +5,7 @@ import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/she
 import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
 import { ShellJourneyPlanner, type ShellRoute } from "@/components/caronaa/shell/ShellJourneyPlanner";
 import { UnifiedMyTripsPanel, type UnifiedTrip } from "@/components/caronaa/shell/UnifiedMyTripsPanel";
+import type { OnRouteMatch } from "@/types/ride";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
 import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
@@ -109,6 +110,7 @@ function Home() {
     setSheetSnap(lastPlanningSnap.current);
   };
   const [shellRoute,setShellRoute]=useState<ShellRoute|null>(null);
+  const [selectedOnRouteMatch,setSelectedOnRouteMatch]=useState<OnRouteMatch|null>(null);
   const [shellDestinationLocation,setShellDestinationLocation]=useState<FormLocationDetails>();
   const [shellRouteOrigin,setShellRouteOrigin]=useState<{lat:number;lng:number}|null>(null);
   const [shellSelectedDestination,setShellSelectedDestination]=useState(false);
@@ -568,6 +570,14 @@ function Home() {
             immersive
             plannedRoute={shellSelectedDestination?shellRoute:null}
             routeManagedExternally={shellSelectedDestination}
+            onRouteMeeting={selectedOnRouteMatch&&shellRouteOrigin?{
+              origin:shellRouteOrigin,
+              pickup:{
+                lat:selectedOnRouteMatch.pickupMeeting.lat,
+                lng:selectedOnRouteMatch.pickupMeeting.lng,
+                poiName:selectedOnRouteMatch.pickupMeeting.poiName,
+              },
+            }:null}
             routeBottomInset={shellSelectedDestination
               ? Math.round((typeof window==="undefined"?800:window.innerHeight)*
                 (sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24
@@ -636,6 +646,7 @@ function Home() {
               setSheetSnap("peek");
             }}
             onRouteChange={handleShellRouteChange}
+            onOnRouteMatchSelected={setSelectedOnRouteMatch}
             serviceType={serviceType}
             onServiceTypeChange={setServiceType}
             originPoint={originLocation}
@@ -647,6 +658,7 @@ function Home() {
             onDestinationChange={(_label,details)=>{
               // Keep the legacy F03-F06 forms untouched; the new Flash planner
               // owns its destination and the single map route preview.
+              setSelectedOnRouteMatch(null);
               setShellDestinationLocation(details);
               setShellSelectedDestination(Boolean(details?.lat!=null && details?.lng!=null));
               setShellRoute(null);
