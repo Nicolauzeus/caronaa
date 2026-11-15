@@ -478,16 +478,19 @@ export function ProfessionalAvailabilityPage() {
     </div>}
 
       </div>
-      <div className="professional-cockpit__right" data-expanded={activeQuickRide || hasPendingCalls || sheetExpanded ? "true" : "false"}>
+      <div className="professional-cockpit__right" data-expanded={activeQuickRide || hasPendingCalls || sheetExpanded ? "true" : "false"} data-can-start={ready && !enabled && !blocked && (authorized || pilotEnabled) ? "true" : "false"}>
         <button
           type="button"
           className="professional-cockpit__sheet-toggle"
-          aria-label={activeQuickRide || hasPendingCalls ? "Painel de atendimento em destaque" : sheetExpanded ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
+          aria-label={activeQuickRide || hasPendingCalls ? "Painel de atendimento em destaque" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : sheetExpanded ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
           aria-expanded={activeQuickRide || hasPendingCalls || sheetExpanded}
           disabled={activeQuickRide || hasPendingCalls}
-          onClick={()=>setSheetExpanded(v=>!v)}>
+          onClick={()=>{
+            if (ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded) void toggleOnline(true);
+            else setSheetExpanded(v=>!v);
+          }}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
-          <span>{activeQuickRide ? "Corrida em andamento" : hasPendingCalls ? "Novos chamados" : "Chamados e disponibilidade"}</span>
+          <span>{activeQuickRide ? "Corrida em andamento" : hasPendingCalls ? "Novos chamados" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
         </button>
         <div className="professional-cockpit__mobile-connection">
           <Button variant={enabled ? "outline" : "default"}
