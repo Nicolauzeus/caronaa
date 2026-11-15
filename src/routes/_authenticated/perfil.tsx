@@ -194,7 +194,7 @@ function Perfil() {
           onboarding.data?.usage_role === "MOTORISTA"
         );
         setProfessionalAuthorized(access?.authorized === true);
-        setActiveProfileRole(roleRow?.active_role==="MOTORISTA"||roleRow?.active_role==="PASSAGEIRO"?roleRow.active_role:null);
+        setActiveProfileRole(roleRow?.data?.active_role==="MOTORISTA"||roleRow?.data?.active_role==="PASSAGEIRO"?roleRow.data.active_role:null);
         setMotoRegistration(String(mototaxiRow.data?.registration_number ?? ""));
         setMotoWhatsapp(String(mototaxiRow.data?.whatsapp_e164 ?? ""));
 
