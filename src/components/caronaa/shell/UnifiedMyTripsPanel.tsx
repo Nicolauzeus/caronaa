@@ -67,7 +67,7 @@ function prettyDate(iso: string): string {
 const isWaiting = (status: string) =>
   ["WAITING","PENDING","OPEN","AGUARDANDO_MOTORISTA"].includes(status.toUpperCase());
 const isConfirmed = (status: string) =>
-  ["CONFIRMED","MATCHED","CONFIRMADA"].includes(status.toUpperCase());
+  ["CONFIRMED","CONFIRMADA"].includes(status.toUpperCase());
 
 export function UnifiedMyTripsPanel({onClose,onShowOnMap,refreshKey=0}: Props) {
   const [tab,setTab] = useState<"AGENDADAS"|"EM_ANDAMENTO">("AGENDADAS");
@@ -98,7 +98,11 @@ export function UnifiedMyTripsPanel({onClose,onShowOnMap,refreshKey=0}: Props) {
     setBusy(true);
     try{
       const {data,error:rpcError}=await (supabase as any).rpc("cancel_scheduled_caronaa_request",{p_request_id:cancelId});
-      if(rpcError||data===false)throw new Error("CANCEL_FAILED");
+      // Never treat an absent/ambiguous RPC response as a successful cancellation.
+      const confirmed=data===true ||
+        (data && typeof data==="object" &&
+          (data.cancelled===true || data.success===true || data.status==="CANCELLED"));
+      if(rpcError||!confirmed)throw new Error("CANCEL_FAILED");
       setCancelId(null);
       toast.success("Agendamento cancelado.");
       await load();
@@ -159,7 +163,7 @@ export function UnifiedMyTripsPanel({onClose,onShowOnMap,refreshKey=0}: Props) {
     </div>}
     {cancelId&&<div role="dialog" aria-modal="true" aria-label="Confirmar cancelamento"
       className="space-y-4 rounded-2xl border border-[#FFBB00]/50 bg-[#121212] p-4 shadow-xl">
-      <p className="font-bold">Deseja cancelar seu agendamento? O cancelamento é gratuito e sem taxas.</p>
+      <p className="font-bold">Deseja cancelar seu agendamento? Não haverá cobrança pelo aplicativo. O servidor precisa confirmar o cancelamento.</p>
       <div className="flex gap-2">
         <button type="button" disabled={busy} onClick={()=>setCancelId(null)}
           className="min-h-12 flex-1 rounded-xl border border-white/30">Voltar</button>
