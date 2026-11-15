@@ -25,7 +25,8 @@ vi.mock("./QuickRideOperationalMap",()=>({
   QuickRideOperationalMap:()=>null,
 }));
 vi.mock("./QuickRideRatingModal",()=>({
-  QuickRideRatingModal:()=>null,
+  QuickRideRatingModal:({onClose}:{onClose:()=>void})=>
+    <button type="button" onClick={onClose}>Fechar avaliação de teste</button>,
 }));
 vi.mock("@/lib/quick-rides/use-quick-ride-realtime",()=>({
   useQuickRideRealtime:()=>undefined,
@@ -202,6 +203,36 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     expect(await screen.findByRole("button",{name:/Confirmar corrida por/})).toBeEnabled();
     fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));
     await waitFor(()=>expect(api.submit).toHaveBeenCalled());
+  });
+
+  it("libera automaticamente a tela quando a avaliação é encerrada",async()=>{
+    const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";
+    api.rpc.mockImplementation(async (name:string)=>
+      name==="quick_ride_my_requests"
+        ?{data:[{id:completed,role:"PASSENGER",status:"COMPLETED",
+          vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
+        :{data:[],error:null});
+    render(<QuickRideHomePanel {...basic}/>);
+    await screen.findByText("QR Pix pronto: "+completed);
+    fireEvent.click(screen.getByRole("button",{name:"Fechar avaliação de teste"}));
+    expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBe("1");
+    expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
+    expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
+  });
+
+  it("entrega ao pai a viagem ativa para usar um único mapa na Home",async()=>{
+    const changed=vi.fn();
+    api.rpc.mockImplementation(async (name:string)=>
+      name==="quick_ride_my_requests"
+        ?{data:[{id:"0f066ee8-bb89-47e2-85cf-20121e1b021f",
+          role:"PASSENGER",status:"ACCEPTED",vehicle_type:"MOTO",
+          municipality:"Redenção"}],error:null}
+        :{data:[],error:null});
+    render(<QuickRideHomePanel {...basic} onOperationalRideChange={changed}/>);
+    await waitFor(()=>expect(changed).toHaveBeenCalledWith({
+      id:"0f066ee8-bb89-47e2-85cf-20121e1b021f",
+      status:"ACCEPTED",municipality:"Redenção",
+    }));
   });
 
   it("mantém dispensada a corrida concluída após remontar o painel",async()=>{
