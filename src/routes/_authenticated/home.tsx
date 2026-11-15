@@ -32,6 +32,7 @@ import { getActiveHomeJourneys } from "@/lib/home.functions";
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { HomeRideMap, type ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
+import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { RequestFarePreview, type FarePreview } from "@/components/caronaa/RequestFarePreview";
 import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 import { useUserLocation } from "@/lib/location/use-user-location";
@@ -172,6 +173,11 @@ function Home() {
   }, [professionalMunicipality, intent, rideOption, quickVehicle]);
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const [operationalRide,setOperationalRide]=useState<{id:string;status:string;municipality:string}|null>(null);
+  const onOperationalRideChange=useCallback((ride:{id:string;status:string;municipality:string}|null)=>{
+    setOperationalRide(previous=>previous?.id===ride?.id && previous?.status===ride?.status?previous:ride);
+    if(ride)setPanelOpen(true);
+  },[]);
   const [selectingOrigin, setSelectingOrigin] = useState(false);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
@@ -512,7 +518,10 @@ function Home() {
       <CaronaaPerformanceDiagnostic />
       <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
         <div className="absolute inset-0">
-          <HomeRideMap
+          {operationalRide && rideOption==="EXCLUSIVE" && intent==="REQUEST"
+            ? <QuickRideOperationalMap rideId={operationalRide.id} status={operationalRide.status}
+                municipality={operationalRide.municipality} role="PASSENGER" immersive/>
+            : <HomeRideMap
             immersive
             pickupPreview={
               intent === "REQUEST" && rideOption === "CAR" && pickupPreview && pickupPreview.rideId === pickupRideId
@@ -532,7 +541,7 @@ function Home() {
             locating={location.locating}
             onDrag={() => location.setFollowing(false)}
             onRecenter={location.locate}
-          />
+          />}
         </div>
         {selectingOrigin && (
           <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm text-white shadow-xl backdrop-blur-xl sm:inset-x-5">
@@ -544,7 +553,7 @@ function Home() {
         )}
         <section
           aria-labelledby="journey-title"
-          className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${panelOpen ? "h-[min(84dvh,calc(100%_-_5rem))] min-h-0" : "h-auto max-h-[min(44dvh,20rem)]"}`}
+          className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${operationalRide ? "h-[min(44dvh,28rem)] min-h-0" : panelOpen ? "h-[min(84dvh,calc(100%_-_5rem))] min-h-0" : "h-auto max-h-[min(44dvh,20rem)]"}`}
         >
           <button
             type="button"
@@ -736,6 +745,7 @@ function Home() {
                     driverError={professionalError}
                     gpsOriginIsImprecise={gpsOriginIsImprecise}
                     onCoverage={updateQuickCoverage}
+                    onOperationalRideChange={onOperationalRideChange}
                   />
                 )}
                 {intent === "REQUEST" && rideOption !== "EXCLUSIVE" && (
