@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Bike, CarFront, Clock3, MapPin, ShieldCheck, Users } from "lucide-react";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -13,7 +13,9 @@ import {
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
-import { QuickRideRating } from "./QuickRideRating";
+import { QuickRideRatingModal } from "./QuickRideRatingModal";
+import { QuickRideOperationalMap } from "./QuickRideOperationalMap";
+import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 
 type QuickVehicle = "CAR" | "MOTO";
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
@@ -48,6 +50,7 @@ export function QuickRideHomePanel({
   const [boardingCode,setBoardingCode]=useState("");
   const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
+  const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
   const mounted=useRef(true);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
   const destinationLat=destinationPoint?.lat, destinationLng=destinationPoint?.lng;
@@ -143,16 +146,12 @@ export function QuickRideHomePanel({
   // Only rerun when the selected origin/vehicle changes, not on live GPS pulses.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[originLat,originLng,vehicle,gpsOriginIsImprecise]);
-  useEffect(()=>{
-    let alive=true;
-    const refresh=async()=>{
-      const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
-      if(alive&&!error)setRides(Array.isArray(data)?data:[]);
-    };
-    void refresh();
-    const interval=window.setInterval(refresh,12000);
-    return ()=>{alive=false;window.clearInterval(interval);};
+  const refreshQuickRides=useCallback(async()=>{
+    const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
+    if(mounted.current&&!error)setRides(Array.isArray(data)?data:[]);
   },[]);
+  useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
+  useQuickRideRealtime(liveRide?.municipality??coverage?.municipality??"",refreshQuickRides,true);
   // No separate "Calcular preço" step: selecting a valid destination
   // automatically requests the immutable server quote. Debounce limits
   // repeated Google Routes calls while the user edits the address.
@@ -278,17 +277,20 @@ export function QuickRideHomePanel({
       )}
       {liveRide?(
         <div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
+          {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&
+            <QuickRideOperationalMap rideId={liveRide.id} status={liveRide.status}
+              municipality={liveRide.municipality} role="PASSENGER"/>
           <p className="font-semibold">Sua Corrida Rápida</p>
           <p role="status" className="mt-1 text-gray-300">
             {liveRide.status==="SEARCHING"?"Procurando um profissional autorizado…":
-              liveRide.status==="ACCEPTED"?"Motorista confirmou sua corrida.":
-              liveRide.status==="ARRIVED"?"Motorista informou chegada ao ponto.":
+              liveRide.status==="ACCEPTED"?"Motorista a caminho.":
+              liveRide.status==="ARRIVED"?"Seu motorista chegou!":
               "Viagem em andamento."}
           </p>
           <div className="flex min-w-0 flex-wrap gap-2">
           {["ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
             <div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
-              <p className="text-xs text-gray-300">O motorista solicitará seu código secreto para confirmar o embarque.</p>
+              <p className="text-xs text-gray-300">Informe este código ao motorista para iniciar a corrida.</p>
               {boardingCode?
                 <p role="status" className="text-center text-3xl font-bold tracking-widest text-[#FFBB00]">{boardingCode}</p>:
                 <button type="button" disabled={busy} onClick={()=>void issueBoardingCode()}
@@ -363,7 +365,11 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
-      {!liveRide&&completedRide&&<><QuickRideRating rideId={completedRide.id} subject="motorista"/><QuickRidePixCard rideId={completedRide.id}/></>}
+      {!liveRide&&completedRide&&<>
+        <QuickRidePixCard rideId={completedRide.id}/>
+        {ratingDismissed!==completedRide.id&&<QuickRideRatingModal rideId={completedRide.id}
+          subject="motorista" onClose={()=>setRatingDismissed(completedRide.id)}/>}
+      </>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
         <button type="button" disabled={quoteLoading||busy}
