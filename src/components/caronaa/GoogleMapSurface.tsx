@@ -216,7 +216,8 @@ export function GoogleMapSurface({
         const distance = Math.hypot(from.lat-point.lat,from.lng-point.lng);
         const pending=movementFrames.current.get(markerKey);
         if (pending!==undefined) window.cancelAnimationFrame(pending);
-        if (distance > 0 && distance < 0.01) {
+        const reduceMotion=typeof window.matchMedia==="function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reduceMotion && distance > 0 && distance < 0.01) {
           const start=performance.now();
           const animate=(now:number)=>{
             const t=Math.min(1,(now-start)/950);

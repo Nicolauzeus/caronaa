@@ -73,7 +73,11 @@ export function QuickRideOperationalMap({
   useEffect(()=>{
     if(!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
     let active=true;
-    void readRoute({data:{points:[origin,destination]}})
+    // Snapshot the authorized driver's position when the in-progress route starts.
+    // Avoid recalculating this Google route on every GPS pulse.
+    const routeStart=context?.driver
+      ? {lat:context.driver.lat,lng:context.driver.lng} : origin;
+    void readRoute({data:{points:[routeStart,destination]}})
       .then(result=>{if(active)setRoute(result);})
       .catch(()=>{if(active)setError("Não foi possível calcular a rota ao destino.");});
     return()=>{active=false;};
@@ -81,7 +85,7 @@ export function QuickRideOperationalMap({
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
-        {lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const},
+        ...(statusNow==="IN_PROGRESS"?[]:[{lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const}]),
         ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
         ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,
           title:isMoto?"Mototaxista":"Motorista",
