@@ -1,20 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/caronaa/AppShell";
-import { QuickRideExperience } from "@/components/caronaa/QuickRideExperience";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { quickRideSearchSchema } from "@/lib/quick-ride-search";
 
-/** Passenger dispatch lives in the HOME map; this route is for authorized
- * professional drivers to receive and complete incoming ride requests.
+/**
+ * Legacy driver URL. The operational queue and ride transitions now live in
+ * the unified driver cockpit. Preserve old deep links as redirects.
  */
 export const Route = createFileRoute("/_authenticated/viagem-rapida")({
   validateSearch: quickRideSearchSchema,
-  component: QuickRideDriverPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/disponibilidade-profissional", replace: true });
+  },
 });
-function QuickRideDriverPage() {
-  const search = Route.useSearch();
-  return (
-    <AppShell>
-      <QuickRideExperience initialMunicipality={search.municipality} driverOnly />
-    </AppShell>
-  );
-}
