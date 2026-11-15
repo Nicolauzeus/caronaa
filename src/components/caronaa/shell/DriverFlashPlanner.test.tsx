@@ -45,7 +45,7 @@ const props={
 beforeEach(()=>{
   vi.clearAllMocks();
   api.route.mockResolvedValue({routePath:points,distanceKm:11,durationMinutes:18});
-  api.goOnline.mockResolvedValue(undefined);
+  api.goOnline.mockResolvedValue(true);
   api.markOffline.mockResolvedValue(undefined);
   api.getOrders.mockResolvedValue([]);
   api.getRide.mockResolvedValue(null);
