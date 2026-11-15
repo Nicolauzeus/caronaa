@@ -234,6 +234,17 @@ export function ShellJourneyPlanner({
     if(details && valid(details))onSnapChange?.("half");
   },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange,onOnRouteMatchSelected]);
 
+  // Invalidate previously selected offers whenever the requested seats,
+  // vehicle, departure time or origin changes. This never invokes Google APIs.
+  useEffect(()=>{
+    onRouteSearchRef.current+=1;
+    setOnRouteMatches([]);
+    setSelectedMatch(null);
+    setOnRouteDiagnostic("");
+    setOnRouteConfirmedId(null);
+    onOnRouteMatchSelected?.(null);
+  },[mode,onRouteVehicle,seats,entireCar,scheduledAt,originRevision,onOnRouteMatchSelected]);
+
   const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
     if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);return;}
     setOnRouteVehicle(value);
@@ -339,6 +350,11 @@ export function ShellJourneyPlanner({
   };
   const confirmSelectedOnRoute=async()=>{
     if(!selectedMatch||bookingBusy||onRouteConfirmedId)return;
+    const needed=onRouteVehicle==="MOTO"?1:entireCar?3:seats;
+    if(selectedMatch.seatsRemaining<needed){
+      toast.info("Essa carona não tem vagas suficientes. Atualize as opções.");
+      return;
+    }
     const count=onRouteVehicle==="MOTO"?1:entireCar?3:seats;
     setBookingBusy(true);
     try{
