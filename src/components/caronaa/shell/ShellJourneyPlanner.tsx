@@ -150,21 +150,21 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
     setWaitlistStatus("Modo agendado selecionado. Informe o horário quando o agendamento estiver disponível.");
   };
 
-  return <div className="space-y-4 pb-3" style={{fontFamily:"Manrope, sans-serif"}}>
-    <div className="space-y-2">
-      <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-white">
+  return <div className={snap==="peek"?"space-y-1":"space-y-4 pb-3"} style={{fontFamily:"Manrope, sans-serif"}}>
+    <div className={snap==="peek"?"space-y-1":"space-y-2"}>
+      <h2 className={snap==="peek"?"sr-only":"font-[family-name:var(--font-display)] text-lg font-bold text-white"}>
         Para onde vamos?
       </h2>
       {snap==="peek"?<button type="button" onClick={()=>{
         document.dispatchEvent(new CustomEvent("caronaa-shell-expand"));
-      }} className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-4 text-left text-sm">
+      }} className="flex min-h-9 w-full items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-3 text-left text-sm">
         <Search size={18} className="text-[#FFBB00]"/>
         <span className="truncate text-white/75">{destination||"Para onde vamos?"}</span>
       </button>:
       <LocationAutocomplete id="shell-destination" label="Destino" value={destination}
         selectedLocation={destinationPoint} variant="glass" placeholder="Para onde vamos?"
         onChange={(label,location)=>{setDestination(label);setDestinationPoint(location);}}/>}
-      <ServiceTypeDock value={serviceType} onChange={type=>{
+      <ServiceTypeDock compact={snap==="peek"} value={serviceType} onChange={type=>{
         onServiceTypeChange(type);
         setFlashStartedAt(null);
         setWaitlistStatus("");
