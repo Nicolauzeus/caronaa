@@ -366,6 +366,20 @@ export function ShellJourneyPlanner({
         <MapPin size={16}/> Origem: {originLabel||"GPS atual"} · Ajustar no mapa
       </button>
       <ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
+      {serviceType==="AGENDADA"&&<label className="block space-y-2 rounded-2xl border border-white/20 bg-white/5 p-3 text-sm">
+        <span className="flex items-center gap-2 font-bold"><Clock3 size={18} className="text-[#FFBB00]"/> Data e hora da viagem</span>
+        <input type="datetime-local" aria-label="Data e hora do agendamento"
+          required min={localDateTime(30*60*1000)}
+          value={scheduledAt}
+          onChange={event=>{setScheduledAt(event.target.value);setScheduledId(null);setScheduleError("");}}
+          className="min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] px-3 text-white [color-scheme:dark]"/>
+        <p className="text-xs text-white/70">
+          Agende com pelo menos 30 minutos de antecedência.
+        </p>
+        {scheduledAt&&!scheduleValid&&<p role="alert" className="text-xs text-[#FFBB00]">
+          Escolha uma data e hora válidas, pelo menos 30 minutos no futuro.
+        </p>}
+      </label>}
       {optionCard("EXCLUSIVE")}
       {optionCard("ON_ROUTE")}
       <div aria-live="polite" className="text-xs text-white/75">
@@ -373,10 +387,11 @@ export function ShellJourneyPlanner({
           routeError||(!route?"Selecione um destino válido para calcular a rota.":
           route.distanceKm.toFixed(1)+" km pelas ruas · estimativa, sem cobrança")}
       </div>
-      <button type="button" disabled={!route||!selectedPrice||routeBusy}
+      <button type="button"
+        disabled={!route||!selectedPrice||routeBusy||(serviceType==="AGENDADA"&&!scheduleValid)}
         onClick={()=>onSnapChange?.("full")}
         className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-50">
-        Revisar e Continuar
+        {serviceType==="AGENDADA"?"Revisar Agendamento":"Revisar e Continuar"}
       </button>
     </>}
     {snap==="full"&&<>
@@ -384,8 +399,12 @@ export function ShellJourneyPlanner({
         className="flex min-h-11 items-center gap-2 text-sm font-bold">
         <ArrowLeft size={18} className="text-[#FFBB00]"/> Voltar às modalidades
       </button>
-      <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">Confirme seu Caronaa Flash</h2>
+      <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
+        {serviceType==="AGENDADA"?"Confirme seu agendamento":"Confirme seu Caronaa Flash"}
+      </h2>
       <section aria-label="Resumo da corrida" className="space-y-2 rounded-2xl border border-[#FFBB00]/35 bg-white/5 p-4 text-sm">
+        {serviceType==="AGENDADA"&&scheduledAt&&
+          <p><strong>Data e horário:</strong> {scheduledLabel(scheduledAt)}</p>}
         <p><strong>Embarque:</strong> {originLabel||"Sua localização atual"}</p>
         <p><strong>Destino:</strong> {destination||"Não selecionado"}</p>
         <p><strong>Modalidade:</strong> {mode==="EXCLUSIVE"?
@@ -404,13 +423,20 @@ export function ShellJourneyPlanner({
       </div>
       {gender==="FEMININO"&&<WomenOnlyToggle kind="request" gender={gender}
         checked={womenOnly} onChange={setWomenOnly}/>}
-      {serviceType==="AGENDADA"&&<label className="block text-sm">
-        <span className="flex items-center gap-2"><Clock3 size={16} className="text-[#FFBB00]"/> Horário desejado</span>
-        <input type="datetime-local" aria-label="Horário da viagem agendada" value={scheduledAt}
-          onChange={e=>setScheduledAt(e.target.value)} min={localDateTime()}
-          className="mt-2 min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] p-3 [color-scheme:dark]"/>
-        <small className="block py-2 text-white/65">O agendamento ainda precisa ser confirmado pelo serviço operacional.</small>
-      </label>}
+      {serviceType==="AGENDADA"&&<>
+        {scheduledId?
+          <section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 p-4">
+            <p className="font-bold text-[#FFBB00]">Carona agendada! Seus dados foram salvos.</p>
+            <p className="text-sm">Aguardando motorista</p>
+            <p className="text-xs text-white/70">Sua solicitação foi registrada. A confirmação do motorista será exibida quando houver aceite real.</p>
+          </section>
+        :<button type="button" disabled={scheduling||!scheduleValid||!selectedPrice||!route}
+          onClick={()=>void submitSchedule()}
+          className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-40">
+          {scheduling?"Salvando agendamento...":"Agendar Caronaa"}
+        </button>}
+        {scheduleError&&<p role="alert" className="text-sm text-[#FFBB00]">{scheduleError}</p>}
+      </>}
       {serviceType==="FLASH"&&phase==="REVIEW"&&<>
         <button type="button" disabled={!selectedPrice||!route}
           onClick={start} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-40">
