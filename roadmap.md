@@ -1,3 +1,6 @@
+- [ ] F07/Google: Audit policies/view grants, migration ordering and historical self-radar test; present SQL before any database change.
+- [ ] F07: Separate trip tracking from new-dispatch coverage checks without weakening public discovery; resolve README coverage conflict before implementation.
+- [ ] Google item 7: Central server wrapper, atomic database limits (30/10/20 per minute), nonblocking usage logging, 5-second timeout/one 5xx retry and database caches (30 days/10 minutes). Await explicit SQL approval; do not implement items 4–6 or 8.
 - [x] F02/F07: Operations tabs, real-request detail dialog and missing-data approval guards; shared authenticated Google municipality selection for access, availability and pilot configuration. 20 tests pass, build OK, signed-in real request and mobile UI verified without decisions or publishing. Live Google selection and a new pending-request decision remain unverified; Google checks require an authorized deployed origin.
 - [ ] Repair public research deep links; verify anonymous direct access, refresh, submission, disabled forms and app guards without production publishing or historical mutations.
 - [x] Rebuild the sign-in screen from the supplied visual reference.
