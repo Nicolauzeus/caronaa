@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { GoogleMapSurface } from "./GoogleMapSurface";
+import { QuickRideOperationalMap } from "./QuickRideOperationalMap";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import {
   getQuickRideMapContext,
@@ -252,14 +253,15 @@ export function QuickRideExperience({
 
   // The private municipal invalidation channel drives both queue and
   // participant views; only a disconnected channel triggers 60s fallback.
-  useQuickRideRealtime(municipality,()=>{
+  useQuickRideRealtime(activeRide?.municipality??municipality,()=>{
     void refreshQueue();
     void refresh();
     void refreshOperationalMunicipality().catch(()=>undefined);
-  },driverOnly);
+  },Boolean(driverOnly||activeRide));
   useEffect(()=>()=>{
     ++queueRequestVersion.current;
   },[refreshQueue]);
+  useEffect(()=>{void refresh();},[]);
   const useGps = () => {
     if (!window.isSecureContext || !navigator.geolocation) {
       setError("GPS requer HTTPS e um navegador compatível.");
@@ -526,7 +528,10 @@ export function QuickRideExperience({
           </article>
         ))}
       </section>
-      {mapOrigin?.lat != null &&
+      {activeRide && ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(activeRide.status) &&
+        <QuickRideOperationalMap rideId={activeRide.id} status={activeRide.status}
+          municipality={activeRide.municipality} role={activeRide.role}/>}
+      {!activeRide && mapOrigin?.lat != null &&
         mapOrigin.lng != null &&
         mapDestination?.lat != null &&
         mapDestination.lng != null && (
