@@ -418,7 +418,7 @@ export function ShellJourneyPlanner({
         <p className="text-sm">Embarque em: {selectedMatch?.pickupMeeting.poiName||"ponto confirmado"}</p>
         <p className="text-xs text-white/75">A confirmação foi retornada pelo servidor. Não há pagamento antecipado no aplicativo.</p>
       </section>}
-      <button type="button" onClick={()=>{cancel();onSnapChange?.("half");}}
+      <button type="button" onClick={()=>{onSnapChange?.("half");}}
         className="flex min-h-11 items-center gap-2 text-sm font-bold">
         <ArrowLeft size={18} className="text-[#FFBB00]"/> Voltar às modalidades
       </button>

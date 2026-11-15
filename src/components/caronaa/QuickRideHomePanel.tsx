@@ -301,7 +301,7 @@ export function QuickRideHomePanel({
           <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")}
             className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda não desembarquei / Contestar</button>
         </div>:<p role="status" className="text-sm text-white/90">Prazo encerrado. Aguardando confirmação do servidor.</p>}
-      </section>
+      </section>}
       {!shellMode&&<div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p>

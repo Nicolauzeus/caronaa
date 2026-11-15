@@ -869,6 +869,13 @@
       "when": 1794539269262,
       "tag": "0123_radar_show_self_homologacao",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1794771326681,
+      "tag": "0124_lock_spatial_ref_sys",
+      "breakpoints": true
     }
   ]
 }
