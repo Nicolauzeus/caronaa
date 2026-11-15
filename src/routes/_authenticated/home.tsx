@@ -37,6 +37,7 @@ import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 import { useUserLocation } from "@/lib/location/use-user-location";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
+import { sessionRequest } from "@/lib/session-request-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
