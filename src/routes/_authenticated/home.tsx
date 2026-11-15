@@ -4,6 +4,7 @@ import { QuickVehicleModal } from "@/components/caronaa/shell/QuickVehicleModal"
 import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/shell/InteractiveBottomSheet";
 import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
 import { ShellJourneyPlanner, type ShellRoute } from "@/components/caronaa/shell/ShellJourneyPlanner";
+import { UnifiedMyTripsPanel, type UnifiedTrip } from "@/components/caronaa/shell/UnifiedMyTripsPanel";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
 import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
@@ -95,6 +96,18 @@ function Home() {
   // Stage 2: visual shell only. No new dispatch, fare, or booking handlers.
   const activeRoleState = useActiveRole();
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>("peek");
+  const [tripsPanelOpen,setTripsPanelOpen]=useState(false);
+  const [tripsRefreshKey,setTripsRefreshKey]=useState(0);
+  const lastPlanningSnap=useRef<SheetSnap>("peek");
+  const showTrips=()=>{
+    lastPlanningSnap.current=sheetSnap;
+    setSheetSnap("full");
+    setTripsPanelOpen(true);
+  };
+  const closeTrips=()=>{
+    setTripsPanelOpen(false);
+    setSheetSnap(lastPlanningSnap.current);
+  };
   const [shellRoute,setShellRoute]=useState<ShellRoute|null>(null);
   const [shellDestinationLocation,setShellDestinationLocation]=useState<FormLocationDetails>();
   const [shellRouteOrigin,setShellRouteOrigin]=useState<{lat:number;lng:number}|null>(null);
@@ -593,6 +606,22 @@ function Home() {
           onSave={activeRoleState.saveVehicle}/>
         <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
           title="Casca Única CARONAA">
+          {!tripsPanelOpen&&<button type="button" onClick={showTrips}
+            className="mb-1 min-h-8 w-full text-right text-xs font-semibold text-[#FFBB00]">
+            Minhas Viagens
+          </button>}
+          {tripsPanelOpen&&<UnifiedMyTripsPanel
+            onClose={closeTrips}
+            refreshKey={tripsRefreshKey}
+            onShowOnMap={(trip:UnifiedTrip)=>{
+              // Operational ride requires its authorized map context. Never
+              // synthesize driver coordinates or requery the route here.
+              if(!trip.operationalRideId)return;
+              closeTrips();
+              setSheetSnap("peek");
+            }}
+          />}
+          <div style={{display:tripsPanelOpen?"none":undefined}}>
           <ShellJourneyPlanner
             snap={sheetSnap}
             onSnapChange={setSheetSnap}
@@ -608,6 +637,9 @@ function Home() {
             originPoint={originLocation}
             originMunicipality={resolvedAddress?.city ?? ""}
             gender={gender}
+            onScheduled={()=>{
+              setTripsRefreshKey(value=>value+1);
+            }}
             onDestinationChange={(_label,details)=>{
               // Keep the legacy F03-F06 forms untouched; the new Flash planner
               // owns its destination and the single map route preview.
@@ -617,6 +649,7 @@ function Home() {
               setConfirmedReviewKey(null);
             }}
           />
+          </div>
         </InteractiveBottomSheet>
         {selectingOrigin && (
           <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm text-white shadow-xl backdrop-blur-xl sm:inset-x-5">
