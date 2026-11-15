@@ -86,7 +86,7 @@ describe("CARONAA Flash passenger shell",()=>{
   it("Full shows price, direct payment and female preferences",async()=>{
     render(<Harness/>);
     await prepareFull();
-    expect(screen.getByText("Resumo da corrida")).toBeTruthy();
+    expect(screen.getByRole("region",{name:"Resumo da corrida"})).toBeTruthy();
     expect(screen.getByText(/Pix ou dinheiro direto ao motorista/)).toBeTruthy();
     expect(screen.getByText(/não retém valores/)).toBeTruthy();
     expect(screen.getByText("Preferências de viagem")).toBeTruthy();
@@ -111,7 +111,7 @@ describe("CARONAA Flash passenger shell",()=>{
     await act(async()=>{vi.advanceTimersByTime(60_000);});
     fireEvent.click(screen.getByRole("button",{name:"Entrar na lista de espera"}));
     await act(async()=>{await Promise.resolve();await Promise.resolve();});
-    const waitlistCall=api.rpc.mock.calls.find(([name]:[string])=>name==="register_flash_waitlist");
+    const waitlistCall=api.rpc.mock.calls.find((call)=>call[0]==="register_flash_waitlist");
     expect(waitlistCall).toBeDefined();
     expect(waitlistCall?.[1]).toMatchObject({
       p_origin_municipality:"Redenção",p_destination_municipality:"Redenção",
@@ -127,6 +127,6 @@ describe("CARONAA Flash passenger shell",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
     await act(async()=>{vi.advanceTimersByTime(60_000);});
     fireEvent.click(screen.getByRole("button",{name:"Agendar para daqui a pouco"}));
-    expect(screen.getByRole("button",{name:/agendar para daqui a pouco/i})).toBeTruthy();
+    expect(screen.getByRole("textbox",{name:"Horário da viagem agendada"})).toBeTruthy();
   });
 });
