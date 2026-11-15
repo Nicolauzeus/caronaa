@@ -130,9 +130,9 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
               className="flex min-h-12 items-center gap-3 rounded-xl bg-primary/10 px-3 font-semibold">
               <CarFront size={19} /> Minha disponibilidade
             </Link>
-            <Link to="/viagem-rapida" onClick={() => setOpen(false)}
+            <Link to="/viagens-profissionais" onClick={() => setOpen(false)}
               className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
-              <House size={19} /> Pedidos de corrida
+              <House size={19} /> Viagens profissionais
             </Link>
             <Link to="/perfil" onClick={() => setOpen(false)}
               className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
