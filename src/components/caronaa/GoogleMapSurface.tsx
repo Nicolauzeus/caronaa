@@ -36,6 +36,8 @@ type Props = {
   fitKey?: string;
   /** Preserve markers and ease their GPS positions without camera jumps. */
   smoothTracking?: boolean;
+  showControls?: boolean;
+  gestureHandling?: "cooperative" | "greedy";
 };
 
 const isValid = (p: { lat: number; lng: number }) =>
@@ -55,6 +57,8 @@ export function GoogleMapSurface({
   fitMode = "changes",
   fitKey,
   smoothTracking = false,
+  showControls = false,
+  gestureHandling = "cooperative",
 }: Props) {
   const getKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
@@ -95,7 +99,7 @@ export function GoogleMapSurface({
         zoom: 13,
         disableDefaultUI: true,
         clickableIcons: false,
-        gestureHandling: previewOnly ? "none" : "cooperative",
+        gestureHandling: previewOnly ? "none" : gestureHandling,
         keyboardShortcuts: !previewOnly,
       });
       setReady(true);
@@ -312,6 +316,22 @@ export function GoogleMapSurface({
           className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-muted-foreground"
         >
           Carregando Google Maps...
+        </div>
+      )}
+      {ready && !failed && showControls && !previewOnly && (
+        <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">
+          <button type="button" aria-label="Centralizar mapa no motorista"
+            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-xl font-bold text-slate-900 shadow-lg"
+            onClick={() => {
+              const driver = points.find(point => point.kind === "driver" || point.kind === "availableMoto") ?? points[0];
+              if (driver && isValid(driver)) map.current?.panTo({ lat: driver.lat, lng: driver.lng });
+            }}>◎</button>
+          <button type="button" aria-label="Aumentar zoom do mapa"
+            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
+            onClick={() => map.current?.setZoom(Math.min(20, (map.current?.getZoom() ?? 13) + 1))}>+</button>
+          <button type="button" aria-label="Diminuir zoom do mapa"
+            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
+            onClick={() => map.current?.setZoom(Math.max(3, (map.current?.getZoom() ?? 13) - 1))}>−</button>
         </div>
       )}
       {ready && !failed && children}
