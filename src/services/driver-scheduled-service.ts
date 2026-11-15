@@ -10,6 +10,7 @@ export type ScheduledDriverOfferDraft={
   vehicleType:DriverVehicleType;seats:number;
   suggestedFarePerSeat:number;preferences:TravelPreferences;
   womenOnly:boolean;
+  airConditioning:boolean;
 };
 export type DriverOpportunity={
   requestId:string;passengerName:string;passengerAvatarUrl?:string;
@@ -63,6 +64,7 @@ export async function publishScheduledDriverOffer(draft:ScheduledDriverOfferDraf
       p_suggested_fare_per_seat:draft.suggestedFarePerSeat,
       p_preferences:draft.preferences,
       p_women_only:draft.womenOnly,
+      p_air_conditioning:draft.airConditioning,
     });
     if(error)throw new DriverScheduledError(rpcCode(error));
     const row=object(data);
