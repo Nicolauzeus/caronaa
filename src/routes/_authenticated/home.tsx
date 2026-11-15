@@ -581,9 +581,7 @@ function Home() {
             serviceType={serviceType}
             onServiceTypeChange={setServiceType}
             originPoint={originLocation}
-            driverCount={professionalDrivers.filter(driver=>!driver.is_self).length}
-            driversLoaded={!professionalLoading && professionalMunicipality.trim().length>1 &&
-              rideOption==="EXCLUSIVE" && intent==="REQUEST"}
+            originMunicipality={resolvedAddress?.city ?? ""}
             gender={gender}
           />
         </InteractiveBottomSheet>
