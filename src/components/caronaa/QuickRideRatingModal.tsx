@@ -11,7 +11,8 @@ export function QuickRideRatingModal({
   subject: "motorista" | "passageiro";
   onClose?: () => void;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [comment, setComment] = useState("");
@@ -21,24 +22,30 @@ export function QuickRideRatingModal({
 
   useEffect(() => {
     let alive = true;
-    setOpen(true);
+    setOpen(false);
+    setSuccess(false);
     setScore(0);
     setSelected([]);
     setComment("");
     setLoading(true);
+    // Never mount a fullscreen backdrop while checking an existing rating.
+    try { if (window.localStorage.getItem(`caronaa-rating-dismissed:${rideId}`) === "1") { setLoading(false); return; } } catch { /* storage may be unavailable */ }
     void (supabase as any).rpc("quick_ride_my_rating", { p_id: rideId })
       .then(({ data, error: rpcError }: { data: any; error: any }) => {
         if (!alive) return;
         if (rpcError) throw rpcError;
         // Never prompt twice for the same trip after it was rated.
-        if (Array.isArray(data) && data.length > 0) setOpen(false);
+        setOpen(!(Array.isArray(data) && data.length > 0));
       })
-      .catch(() => { if (alive) setError("Não foi possível consultar a avaliação."); })
+      .catch(() => { if (alive) { setError("Não foi possível consultar a avaliação."); setOpen(false); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [rideId]);
 
-  const close = () => { setOpen(false); onClose?.(); };
+  const close = () => {
+    try { window.localStorage.setItem(`caronaa-rating-dismissed:${rideId}`, "1"); } catch { /* storage may be unavailable */ }
+    setOpen(false); onClose?.();
+  };
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy || score < 1 || score > 5) return;
@@ -46,11 +53,12 @@ export function QuickRideRatingModal({
     setError("");
     try {
       const detail = [selected.join(", "), comment.trim()].filter(Boolean).join(" — ").slice(0, 1000);
-      const { error: rpcError } = await (supabase as any).rpc("rate_quick_ride", {
-        p_ride_id: rideId, p_score: score, p_comment: detail,
+      const { data, error: rpcError } = await (supabase as any).rpc("quick_ride_rate", {
+        p_id: rideId, p_score: score, p_comment: detail,
       });
-      if (rpcError) throw rpcError;
-      close();
+      if (rpcError || data !== true) throw rpcError ?? new Error("Evaluation not confirmed");
+      setSuccess(true);
+      window.setTimeout(close, 850);
     } catch {
       setError("Não foi possível registrar a avaliação. Tente novamente.");
     } finally {
@@ -58,7 +66,7 @@ export function QuickRideRatingModal({
     }
   }
 
-  if (!open) return null;
+  if (loading || !open) return null;
   return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-3 sm:items-center"
     role="presentation">
     <section role="dialog" aria-modal="true" aria-labelledby="quick-rating-title"
@@ -71,7 +79,7 @@ export function QuickRideRatingModal({
         <button type="button" onClick={close} aria-label="Fechar avaliação"
           className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/20"><X size={20}/></button>
       </div>
-      {loading ? <p role="status">Carregando avaliação...</p> :
+      {success ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 p-4 font-semibold text-[#FFBB00]">Avaliação enviada!</p> :
         <form onSubmit={submit} className="space-y-4">
           <div className="flex justify-center gap-1" role="radiogroup" aria-label="Nota">
             {[1, 2, 3, 4, 5].map(n => <button type="button" role="radio" aria-checked={score === n}
