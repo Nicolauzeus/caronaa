@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShellJourneyPlanner } from "./ShellJourneyPlanner";
 import type { SheetSnap } from "./InteractiveBottomSheet";
 
-const api=vi.hoisted(()=>({route:vi.fn(),quote:vi.fn(),rpc:vi.fn(),preferences:vi.fn(),approach:vi.fn(),search:vi.fn(),confirm:vi.fn(),toastInfo:vi.fn(),toastSuccess:vi.fn(),toastError:vi.fn(),refresh:null as null|(()=>Promise<void>)}));
+const api=vi.hoisted(()=>({route:vi.fn(),quote:vi.fn(),rpc:vi.fn(),preferences:vi.fn(),approach:vi.fn(),search:vi.fn(),confirm:vi.fn(),toastInfo:vi.fn(),toastSuccess:vi.fn(),toastError:vi.fn(),dispatch:vi.fn(),refresh:null as null|(()=>Promise<void>)}));
 vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
 vi.mock("@/lib/map-routing.functions",()=>({getMapDrivingRoute:api.route}));
 vi.mock("@/lib/quick-ride-map.functions",()=>({getQuickRideApproach:api.approach}));
@@ -67,7 +67,8 @@ function Harness(){
   const [snap,setSnap]=useState<SheetSnap>("peek");
   const [service,setService]=useState<"FLASH"|"AGENDADA">("FLASH");
   return <ShellJourneyPlanner {...props} snap={snap}
-    serviceType={service} onServiceTypeChange={setService} onSnapChange={setSnap}/>;
+    serviceType={service} onServiceTypeChange={setService} onSnapChange={setSnap}
+    flashOperationalPanel={<button type="button" onClick={api.dispatch}>Pedir Caronaa Flash</button>}/>;
 }
 async function prepareFull(){
   fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
@@ -101,71 +102,30 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(api.route).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("combobox",{name:"Quantidade de vagas"})).toBeDisabled();
   });
-  it("Full shows price, direct payment and female preferences",async()=>{
+  it("Full delegates Flash pricing to operational quote and keeps scheduled options",async()=>{
     render(<Harness/>);
     await prepareFull();
     expect(screen.getByRole("region",{name:"Resumo da corrida"})).toBeTruthy();
     expect(screen.getByText(/Pix ou dinheiro direto ao motorista/)).toBeTruthy();
     expect(screen.getByText(/não retém valores/)).toBeTruthy();
-    expect(screen.getByText("Preferências de viagem")).toBeTruthy();
+    expect(screen.queryByText("Preferências de viagem")).toBeNull();
     expect(screen.getByText("Carona entre mulheres")).toBeTruthy();
   });
-  it("search starts on explicit click, cancels back to summary without dispatch",async()=>{
+  it("delegates Flash CTA to the real operational panel, not an isolated timer",async()=>{
     render(<Harness/>);
     await prepareFull();
     fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
-    expect(screen.getByText(/fase inicial e estamos avisando nossos motoristas da sua região/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button",{name:"Cancelar busca"}));
-    expect(screen.getByRole("button",{name:"Pedir Caronaa Flash"})).toBeTruthy();
+    expect(api.dispatch).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("timer")).toBeNull();
+    expect(screen.queryByText(/Prévia de busca: notificações não foram disparadas/i)).toBeNull();
     expect(api.rpc).not.toHaveBeenCalledWith("register_flash_waitlist",expect.anything());
   });
-  it("timeout after 60 seconds registers waitlist through RPC, never writes raw GPS",async()=>{
-    api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"?
-      {data:[],error:null}:{data:true,error:null});
+  it("does not create fake search expiration or driver matches",async()=>{
     render(<Harness/>);
     await prepareFull();
-    vi.useFakeTimers();
     fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
-    await act(async()=>{vi.advanceTimersByTime(60_000);});
-    fireEvent.click(screen.getByRole("button",{name:"Entrar na lista de espera"}));
-    await act(async()=>{await Promise.resolve();await Promise.resolve();});
-    const waitlistCall=api.rpc.mock.calls.find((call)=>call[0]==="register_flash_waitlist");
-    expect(waitlistCall).toBeDefined();
-    expect(waitlistCall?.[1]).toMatchObject({
-      p_origin_municipality:"Redenção",p_destination_municipality:"Redenção",
-      p_vehicle_type:"CAR",p_service_mode:"EXCLUSIVE",
-    });
-    expect(JSON.stringify(waitlistCall?.[1])).not.toContain("-4.22");
-  });
-  it("timeout can switch to Agendada without losing destination or mode",async()=>{
-    api.rpc.mockResolvedValue({data:[],error:null});
-    render(<Harness/>);
-    await prepareFull();
-    vi.useFakeTimers();
-    fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
-    await act(async()=>{vi.advanceTimersByTime(60_000);});
-    fireEvent.click(screen.getByRole("button",{name:"Agendar para daqui a pouco"}));
-    expect(screen.getByLabelText("Horário da viagem agendada")).toBeTruthy();
-  });
-  it("shows a driver card only after an authorized accepted ride is returned",async()=>{
-    render(<Harness/>);
-    await prepareFull();
-    api.rpc.mockImplementation(async(name:string)=>{
-      if(name==="quick_ride_my_requests")return {data:[{
-        id:"accepted-ride",role:"PASSENGER",status:"ACCEPTED",
-        destination_label:"Praça central",requested_at:new Date().toISOString(),
-      }],error:null};
-      if(name==="quick_ride_driver_details")return {data:{
-        name:"Motorista confirmado",photo:null,vehicle:"Honda CG 160",
-        color:"Preta",plate:"ABC1D23",rating:4.8,
-      },error:null};
-      return {data:true,error:null};
-    });
-    fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
-    await act(async()=>{await api.refresh?.();});
-    expect(screen.getByText("Motorista confirmado")).toBeTruthy();
-    expect(screen.getByText("Chegada estimada: 4 min")).toBeTruthy();
-    expect(api.rpc).toHaveBeenCalledWith("quick_ride_driver_details",{p_id:"accepted-ride"});
+    expect(screen.queryByText("Motorista confirmou")).toBeNull();
+    expect(screen.queryByText(/Nenhum motorista confirmou neste período/i)).toBeNull();
   });
 
   it("Agendada validates 30-minute minimum, reuses route and confirms only after RPC",async()=>{
