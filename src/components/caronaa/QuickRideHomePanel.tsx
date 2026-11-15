@@ -419,7 +419,7 @@ export function QuickRideHomePanel({
             className="mt-3 min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
             Concluir e fazer nova corrida
           </button>
-        </div>
+        </div>}
         {shownCompletedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
         <button type="button" onClick={()=>{
           try {window.localStorage.removeItem("caronaa-rating-dismissed:"+completedRide.id);}catch{}
