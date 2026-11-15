@@ -12,10 +12,10 @@
   font-family: Manrope, sans-serif;
 }
 .professional-cockpit__map { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #e8ebe8; }
-.professional-cockpit__map > section { height: 100%; position: relative; border: 0; border-radius: 0; padding: 0; margin: 0; }
-.professional-cockpit__map > section > div:first-child { display: none; }
-.professional-cockpit__map > section > div:nth-child(2) { height: 100%; border: 0; border-radius: 0; }
-.professional-cockpit__map > section > p { position: absolute; bottom: 14px; left: 12px; right: 12px; width: max-content; max-width: calc(100% - 24px); border-radius: 12px; background: rgba(18,18,18,.84); color: #fff; padding: 8px 10px; z-index: 1; }
+.professional-cockpit__map { border: 0; border-radius: 0; padding: 0; margin: 0; }
+.professional-cockpit__map > div:first-child { display: none; }
+.professional-cockpit__map > div:nth-child(2) { height: 100%; border: 0; border-radius: 0; }
+.professional-cockpit__map > p { position: absolute; bottom: 14px; left: 12px; right: 12px; width: max-content; max-width: calc(100% - 24px); border-radius: 12px; background: rgba(18,18,18,.84); color: #fff; padding: 8px 10px; z-index: 1; }
 .professional-cockpit__columns { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(290px, 365px) minmax(0, 1fr) minmax(310px, 390px); gap: 16px; height: 100%; padding: 18px; pointer-events: none; }
 .professional-cockpit__left, .professional-cockpit__right { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; pointer-events: auto; }
 .professional-cockpit__right { grid-column: 3; }
@@ -54,9 +54,14 @@
   .professional-cockpit__left .professional-cockpit__details { display: none; }
   .professional-cockpit__right { flex: 0 1 auto; min-height: 0; max-height: min(53dvh, 470px); overflow-y: auto; border-radius: 18px; }
   .professional-cockpit__right > section { padding: 13px; }
-  .professional-cockpit__map > section > p { display: none; }
-  .professional-cockpit__map > section > div:nth-child(2) { height: 100%; }
+  .professional-cockpit__map > p { display: none; }
+  .professional-cockpit__map > div:nth-child(2) { height: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .professional-cockpit *, .professional-cockpit *::before, .professional-cockpit *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* The live queue is the current bottom sheet; keep its content reachable. */
+.professional-cockpit__right > section { min-width: 0; overflow-wrap: anywhere; }
+.professional-cockpit__right > section > div { min-width: 0; }
+@media(max-width:767px) { .professional-cockpit__right { max-height: 58dvh; } }
