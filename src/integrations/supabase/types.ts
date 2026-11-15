@@ -1873,6 +1873,42 @@ export type Database = {
         }
         Relationships: []
       }
+      google_public_daily_budget: {
+        Row: {
+          budget_day: string
+          request_count: number
+        }
+        Insert: {
+          budget_day: string
+          request_count: number
+        }
+        Update: {
+          budget_day?: string
+          request_count?: number
+        }
+        Relationships: []
+      }
+      google_public_session_buckets: {
+        Row: {
+          operation: string
+          request_count: number
+          session_hash: string
+          window_started_at: string
+        }
+        Insert: {
+          operation: string
+          request_count: number
+          session_hash: string
+          window_started_at: string
+        }
+        Update: {
+          operation?: string
+          request_count?: number
+          session_hash?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       google_request_rate_buckets: {
         Row: {
           operation: string
@@ -5682,6 +5718,10 @@ export type Database = {
         Returns: Json
       }
       confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
+      consume_google_public_request_limit: {
+        Args: { p_operation: string; p_session_hash: string }
+        Returns: string
+      }
       consume_google_request_limit: {
         Args: { p_operation: string; p_user_id: string }
         Returns: boolean
@@ -6613,6 +6653,7 @@ export type Database = {
         Returns: boolean
       }
       purge_google_cost_tables: { Args: never; Returns: undefined }
+      purge_google_public_request_budgets: { Args: never; Returns: undefined }
       purge_google_wrapper_tables: { Args: never; Returns: undefined }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
       quick_ride_complete_ride: { Args: { p_id: string }; Returns: boolean }
