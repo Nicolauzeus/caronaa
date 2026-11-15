@@ -37,6 +37,8 @@ import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 import { useUserLocation } from "@/lib/location/use-user-location";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
+import { sessionRequest } from "@/lib/session-request-cache";
+import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
@@ -47,6 +49,8 @@ export const Route = createFileRoute("/_authenticated/home")({
   // Parent route already verifies login and applies institution waiting gates.
   // Resolve role before any passenger/driver dashboard renders.
   beforeLoad: async () => {
+    beginCaronaaPhase("home-before-load");
+    try {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return;
     if (getAdminAppPreview(data.user.id)) return;
@@ -58,6 +62,7 @@ export const Route = createFileRoute("/_authenticated/home")({
     }
     const next = await resolvePostOnboardingDestination();
     if (next !== "/home") throw redirect({ to: next, replace: true });
+    } finally {endCaronaaPhase("home-before-load");beginCaronaaPhase("home-first-render");}
   },
   head: () => ({
     meta: [
@@ -79,6 +84,7 @@ export const Route = createFileRoute("/_authenticated/home")({
 });
 
 function Home() {
+  useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [intent, setIntent] = useState<RideIntent>(search.intent === "offer" ? "OFFER" : "REQUEST");
@@ -291,6 +297,9 @@ function Home() {
     if (location.addressPosition && !manualOriginChosen.current && !location.failure)
       setOriginSource("CURRENT_LOCATION");
   }, [location.addressPosition, location.failure]);
+  // Display coordinates are always fresh; address lookup is not tied to every GPS pulse.
+  const reverseLookupRef = useRef<{lat:number;lng:number;at:number}|null>(null);
+  const reverseLookupSequence = useRef(0);
   useEffect(() => {
     if (!location.addressPosition || originSource !== "CURRENT_LOCATION" || location.locating) return;
     if (!isTrustedGpsFix(location.addressPosition)) {
@@ -298,27 +307,31 @@ function Home() {
       setReverseFailed(false);
       return;
     }
-    let alive = true;
-    setResolvedAddress(null);
+    const {lat,lng}=location.addressPosition;
+    const previous=reverseLookupRef.current;
+    // Rough local distance in meters. Do not pay for a new label on GPS jitter.
+    const distance=previous ? 111_195*Math.hypot(
+      lat-previous.lat,
+      (lng-previous.lng)*Math.cos(lat*Math.PI/180),
+    ):Infinity;
+    if(previous && distance<75 && Date.now()-previous.at<120_000)return;
+    reverseLookupRef.current={lat,lng,at:Date.now()};
+    const sequence=++reverseLookupSequence.current;
     setReverseFailed(false);
-    void reverseGeocode({
-      data: {
-        lat: location.addressPosition.lat,
-        lng: location.addressPosition.lng,
-      },
-    })
-      .then((value) => {
-        if (alive) {
-          setResolvedAddress(value);
-          setReverseFailed(!value);
-        }
+    void sessionRequest("home-reverse:"+lat.toFixed(3)+":"+lng.toFixed(3),()=>reverseGeocode({
+      data:{lat,lng},
+    }),120_000)
+      .then(value=>{
+        if(sequence!==reverseLookupSequence.current)return;
+        setResolvedAddress(value);
+        setReverseFailed(!value);
       })
-      .catch(() => {
-        if (alive) setReverseFailed(true);
+      .catch(()=>{
+        if(sequence!==reverseLookupSequence.current)return;
+        // Failed lookups are not retained in the session cache.
+        reverseLookupRef.current=null;
+        setReverseFailed(true);
       });
-    return () => {
-      alive = false;
-    };
   }, [location.addressPosition, reverseGeocode, originSource, location.locating]);
   useEffect(() => {
     if (originSource !== "CURRENT_LOCATION" || !location.addressPosition) return;
@@ -496,6 +509,7 @@ function Home() {
   }
   return (
     <AppShell mapLayout>
+      <CaronaaPerformanceDiagnostic />
       <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
         <div className="absolute inset-0">
           <HomeRideMap

@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { QuickRideRating } from "./QuickRideRating";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -25,6 +26,9 @@ export function QuickRideDriverQueue({
   const [lastCompleted,setLastCompleted]=useState<string|null>(null);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
+  const [boardingPin,setBoardingPin]=useState("");
+  const [dropoffDeadline,setDropoffDeadline]=useState<string|null>(null);
+  const [dropoffResponse,setDropoffResponse]=useState<string|null>(null);
   const requestLock=useRef(false);
   const rejected=useRef(new Set<string>());
   const refreshVersion=useRef(0);
@@ -60,7 +64,48 @@ export function QuickRideDriverQueue({
     }
   },[municipality,online,gpsReady]);
   useQuickRideRealtime(municipality,refresh,online&&gpsReady);
+  const loadDropoff=useCallback(async(rideId:string)=>{
+    const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:rideId});
+    if(error)return;
+    const entry=Array.isArray(data)?data[0]:null;
+    setDropoffDeadline(entry?.deadline_at??null);
+    setDropoffResponse(entry?.passenger_response??null);
+  },[]);
 
+
+  useEffect(()=>{
+    if(!active?.id || active.status!=="IN_PROGRESS"){
+      setDropoffDeadline(null);setDropoffResponse(null);return;
+    }
+    let alive=true;
+    const load=async()=>{
+      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:active.id});
+      if(!alive||error)return;
+      const entry=Array.isArray(data)?data[0]:null;
+      setDropoffDeadline(entry?.deadline_at??null);
+      setDropoffResponse(entry?.passenger_response??null);
+      if(entry?.deadline_at && !entry?.resolved_at && !entry?.passenger_response
+        && Date.parse(entry.deadline_at)<=Date.now()){
+        const {data:finished,error:finalError}=await (supabase as any).rpc(
+          "quick_ride_finalize_after_timeout",{p_id:active.id});
+        if(!finalError && finished===true && alive)void refresh();
+      }
+    };
+    void load();
+    const timer=window.setInterval(load,5000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[active?.id,active?.status,refresh]);
+  useEffect(()=>{
+    if(!online||!gpsReady||active?.status!=="ACCEPTED")return;
+    let alive=true;
+    const check=async()=>{
+      const {data,error}=await (supabase as any).rpc("quick_ride_detect_arrival",{p_id:active.id});
+      if(alive&&!error&&data===true)void refresh();
+    };
+    void check();
+    const timer=window.setInterval(check,5000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[online,gpsReady,active?.id,active?.status,refresh]);
   const action=async(rideId:string,next:"ACCEPT"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED")=>{
     if(requestLock.current)return;
     requestLock.current=true;
@@ -68,12 +113,15 @@ export function QuickRideDriverQueue({
     setError("");
     try {
       const accept=next==="ACCEPT";
-      const {data,error:rpcError}=await (supabase as any).rpc(
-        accept?"quick_ride_accept":"quick_ride_transition",
-        accept?{p_id:rideId}:{p_id:rideId,p_status:next},
-      );
+      const rpc=next==="IN_PROGRESS"?"quick_ride_verify_boarding_pin":
+        next==="COMPLETED"?"quick_ride_request_dropoff":
+        accept?"quick_ride_accept":"quick_ride_transition";
+      const args=next==="IN_PROGRESS"?{p_id:rideId,p_pin:boardingPin}:
+        next==="COMPLETED"?{p_id:rideId}:
+        accept?{p_id:rideId}:{p_id:rideId,p_status:next};
+      const {data,error:rpcError}=await (supabase as any).rpc(rpc,args);
       if(rpcError)throw new Error(next==="IN_PROGRESS"
-        ?"Aguarde o passageiro confirmar o embarque antes de iniciar."
+        ?"Código incorreto, expirado ou bloqueado. Confira com o passageiro."
         :"Não foi possível atualizar a corrida. Verifique GPS e disponibilidade.");
       if(accept && data!==true){
         rejected.current.add(rideId);
@@ -82,14 +130,16 @@ export function QuickRideDriverQueue({
         await refresh();
         return;
       }
-      if(data===false)throw new Error("A atualização não foi autorizada para o estado atual.");
+      if(data===false)throw new Error(next==="IN_PROGRESS"?"Código de embarque inválido.":"A atualização não foi autorizada para o estado atual.");
+      if(next==="IN_PROGRESS")setBoardingPin("");
+      if(next==="COMPLETED")await loadDropoff(rideId);
       if(accept){
         rejected.current.add(rideId);
         setQueue(items=>items.filter(r=>r.id!==rideId));
         toast.success("Corrida aceita. Continue no seu painel.");
       }else{
         toast.success(next==="ARRIVED"?"Chegada ao embarque registrada.":
-          next==="IN_PROGRESS"?"Viagem iniciada.":"Corrida concluída.");
+          next==="IN_PROGRESS"?"Embarque validado. Viagem iniciada.":"Finalização enviada ao passageiro.");
       }
       await refresh();
     }catch(cause){
@@ -121,18 +171,24 @@ export function QuickRideDriverQueue({
           <p className="text-xs text-white/70">Status: {active.status}</p>
           {active.status==="ACCEPTED"&&<button type="button" disabled={busy}
             onClick={()=>void action(active.id,"ARRIVED")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Cheguei</button>}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Confirmar chegada por GPS</button>}
           {active.status==="ARRIVED"&&<>
-            <p className="text-xs text-white/70">O passageiro deve confirmar o embarque antes de iniciar.</p>
+            <label htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Peça ao passageiro o código secreto de seis dígitos.</label>
+            <input id="quick-ride-driver-pin" type="text" inputMode="numeric" autoComplete="off"
+              maxLength={6} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\\D/g,"").slice(0,6))}
+              placeholder="Código de embarque" className="min-h-12 w-full rounded-xl border border-white/30 bg-white/10 px-3 text-white" />
             <button type="button" disabled={busy}
-              onClick={()=>void action(active.id,"IN_PROGRESS")}
+              onClick={()=>void action(active.id,"IN_PROGRESS")} disabled={busy||boardingPin.length!==6}
               className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Iniciar viagem</button>
           </>}
-          {active.status==="IN_PROGRESS"&&<button type="button" disabled={busy}
-            onClick={()=>void action(active.id,"COMPLETED")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Concluir viagem</button>}
+          {active.status==="IN_PROGRESS"&&<>
+            {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado. Aguarde atendimento da plataforma.</p>:
+             dropoffDeadline?<p role="status" className="text-sm text-white/80">Finalização solicitada. Aguardando confirmação do passageiro (janela de 30 segundos).</p>:
+             <button type="button" disabled={busy} onClick={()=>void action(active.id,"COMPLETED")}
+               className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Solicitar finalização</button>}
+          </>}
         </article>}
-        {!active&&lastCompleted&&<QuickRidePixCard rideId={lastCompleted}/>}
+        {!active&&lastCompleted&&<><QuickRideRating rideId={lastCompleted} subject="passageiro"/><QuickRidePixCard rideId={lastCompleted}/></>}
         {queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}

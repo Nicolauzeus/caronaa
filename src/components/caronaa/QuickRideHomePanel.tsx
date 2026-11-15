@@ -13,6 +13,7 @@ import {
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { QuickRideRating } from "./QuickRideRating";
 
 type QuickVehicle = "CAR" | "MOTO";
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
@@ -44,6 +45,9 @@ export function QuickRideHomePanel({
   const [error,setError]=useState("");
   const [interestSent,setInterestSent]=useState(false);
   const [rides,setRides]=useState<ExistingQuickRide[]>([]);
+  const [boardingCode,setBoardingCode]=useState("");
+  const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
+  const [nowMs,setNowMs]=useState(Date.now());
   const mounted=useRef(true);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
   const destinationLat=destinationPoint?.lat, destinationLng=destinationPoint?.lng;
@@ -56,6 +60,64 @@ export function QuickRideHomePanel({
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  useEffect(()=>{
+    if(!liveRide || !["ACCEPTED","ARRIVED"].includes(liveRide.status)){
+      setBoardingCode("");
+    }
+  },[liveRide?.id,liveRide?.status]);
+  useEffect(()=>{
+    if(!liveRide || liveRide.status!=="IN_PROGRESS"){setDropoff(null);return;}
+    let cancelled=false;
+    const load=async()=>{
+      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:liveRide.id});
+      if(!cancelled&&!error)setDropoff(Array.isArray(data)?data[0]??null:null);
+    };
+    void load();
+    const timer=window.setInterval(load,5000);
+    return()=>{cancelled=true;window.clearInterval(timer);};
+  },[liveRide?.id,liveRide?.status]);
+  useEffect(()=>{
+    if(!dropoff?.deadline_at)return;
+    const timer=window.setInterval(()=>setNowMs(Date.now()),1000);
+    return()=>window.clearInterval(timer);
+  },[dropoff?.deadline_at]);
+  useEffect(()=>{
+    if(!liveRide || liveRide.status!=="IN_PROGRESS" || !dropoff?.deadline_at
+      || dropoff.passenger_response || dropoff.resolved_at
+      || Date.parse(dropoff.deadline_at)>nowMs)return;
+    let alive=true;
+    void (supabase as any).rpc("quick_ride_finalize_after_timeout",{p_id:liveRide.id})
+      .then(async({data,error:rpcError}:{data:any;error:any})=>{
+        if(!alive||rpcError||data!==true)return;
+        const {data:ridesData}=await (supabase as any).rpc("quick_ride_my_requests");
+        if(alive&&mounted.current)setRides(Array.isArray(ridesData)?ridesData:[]);
+      });
+    return()=>{alive=false;};
+  },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
+  const remainingDropoffSeconds=dropoff?.deadline_at?
+    Math.max(0,Math.ceil((Date.parse(dropoff.deadline_at)-nowMs)/1000)):0;
+  async function issueBoardingCode(){
+    if(!liveRide || busy)return;
+    setBusy(true);setError("");
+    try{
+      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_issue_boarding_pin",{p_id:liveRide.id});
+      if(rpcError||typeof data!=="string")throw new Error("Não foi possível emitir o código de embarque.");
+      setBoardingCode(data);
+    }catch(cause){setError(cause instanceof Error?cause.message:"Falha ao gerar código.");}
+    finally{setBusy(false);}
+  }
+  async function respondDropoff(response:"CONFIRMED"|"CONTESTED"){
+    if(!liveRide||busy||remainingDropoffSeconds===0)return;
+    setBusy(true);setError("");
+    try{
+      const {error:rpcError}=await (supabase as any).rpc("quick_ride_respond_dropoff",{p_id:liveRide.id,p_response:response});
+      if(rpcError)throw new Error("Não foi possível registrar a resposta.");
+      const {data}=await (supabase as any).rpc("quick_ride_my_requests");
+      if(mounted.current)setRides(Array.isArray(data)?data:[]);
+      setDropoff(previous=>previous?{...previous,passenger_response:response,resolved_at:new Date().toISOString()}:previous);
+    }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível responder.");}
+    finally{setBusy(false);}
+  }
   // A coverage result only applies to the coordinates and vehicle that produced it.
   const covered=coverage?.status==="ENABLED"&&coverageResolvedKey===coveragePointKey;
 
@@ -142,13 +204,11 @@ export function QuickRideHomePanel({
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível registrar o interesse.");}
     finally{if(mounted.current)setBusy(false);}
   }
-  async function rideAction(action:"CANCELLED"|"CONFIRM_PICKUP"){
+  async function rideAction(action:"CANCELLED"){
     if(!liveRide||busy)return;
     setBusy(true);setError("");
     try{
-      const {error:rpcError}=action==="CANCELLED"
-        ?await (supabase as any).rpc("quick_ride_transition",{p_id:liveRide.id,p_status:"CANCELLED"})
-        :await (supabase as any).rpc("quick_ride_confirm_pickup",{p_id:liveRide.id});
+      const {error:rpcError}=await (supabase as any).rpc("quick_ride_transition",{p_id:liveRide.id,p_status:action});
       if(rpcError)throw new Error("Não foi possível atualizar a corrida.");
       const {data}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current)setRides(Array.isArray(data)?data:[]);
@@ -226,11 +286,25 @@ export function QuickRideHomePanel({
               "Viagem em andamento."}
           </p>
           <div className="flex min-w-0 flex-wrap gap-2">
-          {liveRide.status==="ARRIVED"&&(
-            <button type="button" disabled={busy} onClick={()=>void rideAction("CONFIRM_PICKUP")}
-              className="mt-2 min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-              Confirmar embarque
-            </button>
+          {["ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
+            <div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
+              <p className="text-xs text-gray-300">O motorista solicitará seu código secreto para confirmar o embarque.</p>
+              {boardingCode?
+                <p role="status" className="text-center text-3xl font-bold tracking-widest text-[#FFBB00]">{boardingCode}</p>:
+                <button type="button" disabled={busy} onClick={()=>void issueBoardingCode()}
+                  className="min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
+                  Gerar código secreto
+                </button>}
+            </div>
+          )}
+          {liveRide.status==="IN_PROGRESS"&&dropoff?.deadline_at&&(
+            <div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
+              <p role="status" className="text-sm">Motorista solicitou o desembarque. {dropoff.passenger_response==="CONTESTED"?"Contestação registrada.":dropoff.passenger_response==="CONFIRMED"?"Desembarque confirmado.":`Confirme ou conteste em ${remainingDropoffSeconds} segundos.`}</p>
+              {!dropoff.passenger_response&&remainingDropoffSeconds>0&&<div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")} className="min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Confirmar desembarque</button>
+                <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")} className="min-h-11 rounded-xl border border-red-300/60 px-4 font-bold text-white">Contestar</button>
+              </div>}
+            </div>
           )}
           {["SEARCHING","ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
             <button type="button" disabled={busy} onClick={()=>void rideAction("CANCELLED")}
@@ -289,7 +363,7 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
-      {!liveRide&&completedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
+      {!liveRide&&completedRide&&<><QuickRideRating rideId={completedRide.id} subject="motorista"/><QuickRidePixCard rideId={completedRide.id}/></>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
         <button type="button" disabled={quoteLoading||busy}

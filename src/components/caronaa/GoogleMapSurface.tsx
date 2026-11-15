@@ -34,6 +34,8 @@ type Props = {
   fitMode?: "once" | "changes";
   /** Refits when visible marker identities change, not on GPS jitter. */
   fitKey?: string;
+  /** Preserve markers and ease their GPS positions without camera jumps. */
+  smoothTracking?: boolean;
 };
 
 const isValid = (p: { lat: number; lng: number }) =>
@@ -52,11 +54,14 @@ export function GoogleMapSurface({
   previewOnly = false,
   fitMode = "changes",
   fitKey,
+  smoothTracking = false,
 }: Props) {
   const getKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const artifacts = useRef<any[]>([]);
+  const trackingMarkers = useRef<Map<string, any>>(new Map());
+  const movementFrames = useRef<Map<string, number>>(new Map());
   const fitted = useRef(false);
   const lastFitKey = useRef<string | undefined>(undefined);
   const [ready, setReady] = useState(false);
@@ -102,6 +107,9 @@ export function GoogleMapSurface({
       unsubscribe();
       artifacts.current.forEach((item) => item.setMap(null));
       artifacts.current = [];
+      movementFrames.current.forEach(frame=>window.cancelAnimationFrame(frame));
+      movementFrames.current.clear();
+      trackingMarkers.current.clear();
       map.current = null;
     };
     // Initialize exactly once; update markers and polylines separately.
@@ -113,6 +121,13 @@ export function GoogleMapSurface({
     const G = (window as any).google.maps;
     artifacts.current.forEach((item) => item.setMap(null));
     artifacts.current = [];
+    if (!smoothTracking) {
+      movementFrames.current.forEach(frame=>window.cancelAnimationFrame(frame));
+      movementFrames.current.clear();
+      trackingMarkers.current.forEach(marker=>marker.setMap(null));
+      trackingMarkers.current.clear();
+    }
+    const visibleKeys = new Set<string>();
     const bounds = new G.LatLngBounds();
     let count = 0;
     const extend = (point: { lat: number; lng: number }) => {
@@ -121,9 +136,11 @@ export function GoogleMapSurface({
         count += 1;
       }
     };
-    points.filter(isValid).forEach((point) => {
+    points.filter(isValid).forEach((point, index) => {
+      const markerKey = point.title || point.kind || point.label || String(index);
+      visibleKeys.add(markerKey);
       const badgeIcon = point.kind && point.kind !== "person" ? tripMarkerIcon(point.kind) : null;
-      const marker = new G.Marker({
+      const options = {
         map: map.current,
         position: { lat: point.lat, lng: point.lng },
         title: point.title || "Localização",
@@ -151,10 +168,46 @@ export function GoogleMapSurface({
         },
         // The viewer must remain identifiable when nearby markers overlap.
         zIndex: point.kind === "you" ? 50 : point.kind === "driver" ? 40 : point.kind === "destination" ? 30 : 20,
-      });
-      artifacts.current.push(marker);
+      };
+      let marker = smoothTracking ? trackingMarkers.current.get(markerKey) : null;
+      if (marker) {
+        marker.setOptions({title: options.title,icon: options.icon,zIndex:options.zIndex});
+        const oldPosition = marker.getPosition();
+        const from = oldPosition ? {lat:oldPosition.lat(),lng:oldPosition.lng()} : {lat:point.lat,lng:point.lng};
+        const distance = Math.hypot(from.lat-point.lat,from.lng-point.lng);
+        const pending=movementFrames.current.get(markerKey);
+        if (pending!==undefined) window.cancelAnimationFrame(pending);
+        if (distance > 0 && distance < 0.01) {
+          const start=performance.now();
+          const animate=(now:number)=>{
+            const t=Math.min(1,(now-start)/950);
+            const eased=t*t*(3-2*t);
+            marker.setPosition({
+              lat:from.lat+(point.lat-from.lat)*eased,
+              lng:from.lng+(point.lng-from.lng)*eased,
+            });
+            if(t<1)movementFrames.current.set(markerKey,window.requestAnimationFrame(animate));
+            else movementFrames.current.delete(markerKey);
+          };
+          movementFrames.current.set(markerKey,window.requestAnimationFrame(animate));
+        } else marker.setPosition({lat:point.lat,lng:point.lng});
+      } else {
+        marker = new G.Marker(options);
+        if(smoothTracking)trackingMarkers.current.set(markerKey,marker);
+        else artifacts.current.push(marker);
+      }
       extend(point);
     });
+    if(smoothTracking) {
+      trackingMarkers.current.forEach((marker,key)=>{
+        if(visibleKeys.has(key))return;
+        marker.setMap(null);
+        trackingMarkers.current.delete(key);
+        const pending=movementFrames.current.get(key);
+        if(pending!==undefined)window.cancelAnimationFrame(pending);
+        movementFrames.current.delete(key);
+      });
+    }
     lines.forEach((line) => {
       const path = line.points.filter(isValid);
       if (path.length < 2) return;
@@ -192,7 +245,7 @@ export function GoogleMapSurface({
     } else if (count > 1) {
       map.current.fitBounds(bounds, 32);
     }
-  }, [ready, failed, points, lines, fitMode, fitKey]);
+  }, [ready, failed, points, lines, fitMode, fitKey, smoothTracking]);
 
   return (
     <div
