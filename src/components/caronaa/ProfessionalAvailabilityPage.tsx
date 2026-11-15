@@ -13,6 +13,7 @@ import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { Button } from "@/components/ui/button";
+import { AlertTriangle, MapPin, ShieldAlert } from "lucide-react";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
 type Fix = { lat:number; lng:number; at:Date; simulated:boolean };
@@ -402,46 +403,70 @@ export function ProfessionalAvailabilityPage() {
 
     <div className="professional-cockpit__columns">
       <div className="professional-cockpit__left">
-        <div className="professional-cockpit__card space-y-1 professional-cockpit__heading">
-
-    <Link to="/cadastro-motorista" className="text-sm text-primary">← Meu cadastro profissional</Link>
-    <h1 className="professional-cockpit__title">Painel do motorista</h1>
-    <p className="text-xs text-white/75 professional-cockpit__heading">
-      Um toque para ficar disponível e compartilhar sua localização.
-      Você pode trabalhar em qualquer município habilitado onde estiver fisicamente,
-      mesmo que seu cadastro seja de outra cidade.
-    </p>
-
+        <div className="professional-cockpit__card professional-cockpit__heading space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#FFBB00]/80">CARONAA MOTORISTA</span>
+            <Link to="/cadastro-motorista" className="shrink-0 text-xs font-semibold text-[#FFBB00] hover:underline">← Cadastro</Link>
+          </div>
+          <h1 className="professional-cockpit__title text-white">Cockpit Operacional</h1>
+          <p className="text-xs leading-relaxed text-white/65">Acompanhe chamados, viagens e disponibilidade.</p>
         </div>
-    {/* The driver remains on this screen for dispatch, acceptance and GPS. */}
+    {/* GPS, consent and dispatch logic are unchanged; only presentation differs. */}
     <section className="professional-cockpit__card space-y-3" aria-label="Controle de disponibilidade">
-      <p className="text-lg font-bold">
-        {!ready ? "Verificando seu cadastro..." : fresh ? "● Online e transmitindo GPS" :
-          enabled ? "● Disponível · aguardando GPS" : "○ Você está offline"}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span role="status" className={`professional-cockpit__status-pill rounded-full px-3 py-1.5 text-xs font-bold ${!ready
+          ? "border border-white/15 bg-white/10 text-white/60"
+          : fresh
+            ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
+            : enabled
+              ? "border border-amber-500/30 bg-amber-500/15 text-amber-400"
+              : "bg-white/10 text-white/60"}`}>
+          <span aria-hidden="true" className={`professional-cockpit__status-dot ${fresh ? "professional-cockpit__status-dot--online" : ""}`} />
+          {!ready ? "Verificando cadastro" : fresh ? "Online" : enabled ? "Aguardando GPS" : "Offline"}
+        </span>
+        <span className="inline-flex min-w-0 items-center gap-1 text-xs text-white/65">
+          <MapPin aria-hidden="true" size={13} className="shrink-0 text-[#FFBB00]" />
+          <span className="max-w-[145px] truncate">{municipality || "Município não confirmado"}</span>
+        </span>
+      </div>
+      <p className="professional-cockpit__status-description text-xs leading-relaxed text-white/65">
+        {!ready ? "Verificando sua disponibilidade." :
+          fresh ? "Localização verificada. Você pode receber chamados." :
+          enabled ? "Disponibilidade ativada. Aguardando confirmação da localização." :
+          "Ative sua disponibilidade quando estiver pronto para receber chamados."}
       </p>
-      {fresh && <p role="status" className="rounded-lg border border-green-400/30 bg-green-500/10 px-3 py-2 text-xs font-semibold text-green-300">✓ Localização verificada · GPS publicado</p>}
-      {!authorized && ready && <p role="status" className="rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Aguardando autorização profissional. <Link to="/cadastro-motorista" className="font-bold underline">Consultar cadastro</Link></p>}
-      {blocked && ready && <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-200">Disponibilidade bloqueada por comissões. <Link to="/perfil" className="font-bold underline">Consultar conta</Link></p>}
-      <p className="text-sm text-muted-foreground">
-        {fresh ? "Sua localização está atualizada e os passageiros podem encontrar você." :
-          enabled ? "Permita o GPS do navegador. Sem sinal recente, o radar não mostra sua posição." :
-          "Ative a disponibilidade para receber pedidos na sua localização atual."}
-      </p>
-      <Button className="min-h-14 w-full text-base font-bold"
+      {!authorized && ready && <p role="status" className="text-xs text-amber-200">Aguardando autorização profissional. <Link to="/cadastro-motorista" className="font-bold underline">Consultar cadastro</Link></p>}
+      {blocked && ready && <p role="alert" className="flex items-start gap-2 text-xs text-red-200">
+        <ShieldAlert size={15} className="shrink-0" aria-hidden="true"/>
+        <span>Disponibilidade bloqueada por comissões. <Link to="/perfil" className="font-bold underline">Consultar conta</Link></span>
+      </p>}
+      <Button
+        variant={enabled ? "outline" : "default"}
+        className={`professional-cockpit__availability-button min-h-[54px] w-full rounded-xl text-sm font-extrabold transition-colors ${enabled
+          ? "border-amber-400/55 bg-transparent text-amber-200 hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-100"
+          : "bg-[#FFBB00] text-[#121212] hover:bg-[#eeb000]"}`}
         disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
         onClick={()=>void toggleOnline(!enabled)}>
-        {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "Pausar disponibilidade" : "Ficar disponível e compartilhar GPS"}
+        {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "Pausar Disponibilidade" : "Ficar Disponível"}
       </Button>
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
         startGps(municipality,pilotVehicle,userId);
-      }} className="min-h-12 w-full rounded-xl border border-primary/40 p-3 font-semibold">
+      }} className="min-h-11 w-full rounded-xl border border-white/20 bg-white/5 px-3 text-xs font-semibold text-white hover:bg-white/10">
         Tentar compartilhar GPS novamente
       </button>}
-
     </section>
-    {error && <p role="alert" className="professional-cockpit__card text-sm text-red-200">{error}</p>}
-    {accuracyWarning && enabled && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">GPS com precisão reduzida (acima de 100 m). Aproxime-se de uma janela ou vá para um local com céu aberto. A sincronização continua ativa; confirme sua posição antes de aceitar corridas.</p>}
+    {error && <div role="alert" className="professional-cockpit__banner">
+      <AlertTriangle size={15} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
+      <div className="min-w-0">
+        <p className="font-semibold text-white/90">Localização ou disponibilidade precisa de atenção</p>
+        <p className="mt-0.5 line-clamp-2 text-white/75" title={error}>{error}</p>
+      </div>
+    </div>}
+    {accuracyWarning && enabled && <div role="status" className="professional-cockpit__banner">
+      <AlertTriangle size={15} className="shrink-0 text-amber-300" aria-hidden="true"/>
+      <span className="line-clamp-2 text-white/80">GPS com precisão reduzida (acima de 100 m). Confirme sua posição antes de aceitar corridas.</span>
+    </div>}
 
       </div>
       <div className="professional-cockpit__right">
@@ -453,8 +478,8 @@ export function ProfessionalAvailabilityPage() {
       gpsReady={fresh}
     />
 
-        <details className="professional-cockpit__card">
-          <summary className="cursor-pointer text-sm font-semibold">Configurações e diagnóstico</summary>
+        <details className="professional-cockpit__card professional-cockpit__advanced">
+          <summary className="cursor-pointer text-xs font-semibold text-white/50 transition-colors hover:text-white/80">Opções avançadas e diagnóstico</summary>
           <div className="professional-cockpit__details mt-3 space-y-3">
     <div className="space-y-2">
       <h3 className="font-semibold text-white">Privacidade da localização</h3>
