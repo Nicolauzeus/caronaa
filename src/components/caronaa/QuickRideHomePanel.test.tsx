@@ -194,10 +194,10 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic}/>);
     expect(await screen.findByText("QR Pix pronto: "+completed)).toBeInTheDocument();
-    expect(screen.getByRole("button",{name:/Concluir e fazer nova corrida/i})).toBeInTheDocument();
+    expect(screen.getByRole("button",{name:/Nova corrida/i})).toBeInTheDocument();
     // A historical COMPLETED must not block a fresh quoted trip.
     await waitFor(()=>expect(api.preview).toHaveBeenCalled(),{timeout:3500});
-    fireEvent.click(screen.getByRole("button",{name:/Concluir e fazer nova corrida/i}));
+    fireEvent.click(screen.getByRole("button",{name:/Nova corrida/i}));
     expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBe("1");
     expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
     expect(await screen.findByRole("button",{name:/Confirmar corrida por/})).toBeEnabled();
@@ -205,7 +205,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     await waitFor(()=>expect(api.submit).toHaveBeenCalled());
   });
 
-  it("libera automaticamente a tela quando a avaliação é encerrada",async()=>{
+  it("fecha avaliação sem remover Pix ou resumo; só Nova corrida libera a tela",async()=>{
     const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";
     api.rpc.mockImplementation(async (name:string)=>
       name==="quick_ride_my_requests"
@@ -214,10 +214,44 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
         :{data:[],error:null});
     render(<QuickRideHomePanel {...basic}/>);
     await screen.findByText("QR Pix pronto: "+completed);
+    fireEvent.click(screen.getByRole("button",{name:"Avaliar viagem (opcional)"}));
     fireEvent.click(screen.getByRole("button",{name:"Fechar avaliação de teste"}));
+    expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBeNull();
+    expect(screen.getByText("QR Pix pronto: "+completed)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Nova corrida"}));
     expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBe("1");
     expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
-    expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
+  });
+
+  it("exibe SEARCHING apenas depois da criação real retornar o ID autorizado",async()=>{
+    render(<QuickRideHomePanel {...basic} shellMode shellSnap="full"/>);
+    const button=await screen.findByRole("button",{name:/Pedir Caronaa Flash/i},{timeout:3500});
+    expect(api.submit).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({
+      data:{quoteId:"135e553c-1516-4a28-a49c-9ad0e3926821"},
+    }));
+    expect(await screen.findByText("Procurando um profissional autorizado…")).toBeInTheDocument();
+  });
+
+  it("prioriza o desembarque e contesta pela RPC real",async()=>{
+    const rideId="0f066ee8-bb89-47e2-85cf-20121e1b021f";
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="quick_ride_my_requests")return {data:[{
+        id:rideId,role:"PASSENGER",status:"IN_PROGRESS",vehicle_type:"MOTO",municipality:"Redenção",
+      }],error:null};
+      if(name==="quick_ride_dropoff_state")return {data:[{
+        deadline_at:new Date(Date.now()+25000).toISOString(),
+        passenger_response:null,resolved_at:null,
+      }],error:null};
+      return {data:true,error:null};
+    });
+    render(<QuickRideHomePanel {...basic}/>);
+    expect(await screen.findByRole("alert",{name:"Confirmação de desembarque pendente"})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Ainda não desembarquei / Contestar"}));
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith(
+      "quick_ride_respond_dropoff",{p_id:rideId,p_response:"CONTESTED"}
+    ));
   });
 
   it("entrega ao pai a viagem ativa para usar um único mapa na Home",async()=>{
