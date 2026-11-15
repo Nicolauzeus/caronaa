@@ -53,7 +53,13 @@ vi.mock("@/lib/home.functions", () => ({
 }));
 vi.mock("@/lib/ride-matching.functions", () => ({ createRideRequest: api.request }));
 vi.mock("@/lib/ride-pricing.functions", () => ({ previewRequestFare: api.quote }));
-vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
+vi.mock("@tanstack/react-start", () => ({
+  useServerFn: (fn: unknown) => fn,
+  createMiddleware: () => {
+    const chain: any = { server: () => chain, client: () => chain, middleware: () => chain };
+    return chain;
+  },
+}));
 vi.mock("@/lib/quick-rides/f07-radar-diagnostic.functions", () => ({
   getF07TestSelfRadar: api.selfRadar,
 }));
