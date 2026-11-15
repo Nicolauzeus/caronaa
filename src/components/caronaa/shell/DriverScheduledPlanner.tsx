@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarClock, MapPin, Navigation, UserRound, Users, Volume2 } from "lucide-react";
+import { CalendarClock, MapPin, Navigation, UserRound, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
@@ -85,7 +85,6 @@ export function DriverScheduledPlanner({
   const [acceptBusy,setAcceptBusy]=useState<string|null>(null);
   const [seatsLeft,setSeatsLeft]=useState<number|null>(null);
   const [ignored,setIgnored]=useState<string[]>([]);
-  const [revision,setRevision]=useState(0);
   const routeFn=useServerFn(getMapDrivingRoute);
   const routeFnRef=useRef(routeFn);
   routeFnRef.current=routeFn;
@@ -94,7 +93,6 @@ export function DriverScheduledPlanner({
   const lastOriginRevision=useRef(originRevision);
   const callbackRef=useRef(onRouteChange);callbackRef.current=onRouteChange;
   const loadOpportunityRef=useRef<()=>Promise<void>>(async()=>{});
-  const requestNonce=useRef(0);
 
   useEffect(()=>{let mounted=true;void loadTravelPreferences().then(x=>{if(mounted)setPreferences(x);}).catch(()=>undefined);
     return()=>{mounted=false;routeCache.current.clear();};
@@ -185,7 +183,6 @@ export function DriverScheduledPlanner({
   },[publishedId]);
 
   const chooseDestination=(label:string,details?:FormLocationDetails)=>{
-    requestNonce.current+=1;
     setDestination(label);setDestPoint(details);
     fixedOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
     setRoute(null);setPrice(null);setPublishedId(null);setSeatsLeft(null);
@@ -223,7 +220,6 @@ export function DriverScheduledPlanner({
       setOpportunities(list=>list.filter(x=>x.requestId!==item.requestId));
       playConfirmationSound();toast.success("Passageiro confirmado para sua viagem!");
       onPublished?.();
-      setRevision(v=>v+1);
     }catch(error){
       if(error instanceof DriverScheduledError&&error.code==="ALREADY_MATCHED")
         toast.info("Este passageiro acabou de ser atendido por outra carona");
@@ -249,6 +245,9 @@ export function DriverScheduledPlanner({
         <button type="button" onClick={onAdjustOrigin} aria-label="Ajustar origem no mapa"
           className="flex min-h-9 w-10 items-center justify-center rounded-xl border border-[#FFBB00]/50"><MapPin size={17}/></button>
       </div>
+      <p className="truncate px-1 text-[11px] text-white/70">
+        Origem: {originLabel||"GPS atual"} · toque no marcador para ajustar
+      </p>
       <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
     </>:
     <>
@@ -263,7 +262,7 @@ export function DriverScheduledPlanner({
         <ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
         <label className="block space-y-2 text-sm font-semibold">
           Data e hora de saída
-          <input type="datetime-local" aria-label="Data e hora de saída" min={localTime(30*60000)}
+          <input type="datetime-local" lang="pt-BR" aria-label="Data e hora de saída" min={localTime(30*60000)}
             value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)}
             className="min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] px-3 [color-scheme:dark]"/>
           {scheduledAt&&!validScheduleDate(scheduledAt)&&
