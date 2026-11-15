@@ -382,6 +382,7 @@ function Home() {
               originMunicipality={resolvedAddress?.city??""}
               gender={gender}
               onFlashVehicleChange={setQuickVehicle}
+              flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
               flashOperationalPanel={
                 <QuickRideHomePanel
                   origin={origin||"Minha localização atual"}

@@ -37,6 +37,7 @@ type Props = {
   onOnRouteMatchSelected?:(match:OnRouteMatch|null)=>void;
   flashOperationalPanel?:ReactNode;
   onFlashVehicleChange?:(vehicle:Vehicle)=>void;
+  flashRideActive?:boolean;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
   !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
@@ -60,7 +61,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
-  flashOperationalPanel,onFlashVehicleChange,
+  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -180,6 +181,7 @@ export function ShellJourneyPlanner({
   },[mode,onRouteVehicle,seats,entireCar,scheduledAt,originRevision,onOnRouteMatchSelected]);
 
   const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
+    if(flashRideActive){toast.info("Finalize ou cancele a corrida atual antes de mudar o veículo.");return;}
     if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);onFlashVehicleChange?.(value);return;}
     setOnRouteVehicle(value);
     if(value==="MOTO"){setSeats(1);setEntireCar(false);}
@@ -278,7 +280,7 @@ export function ShellJourneyPlanner({
     <div key={kind} className={"rounded-2xl border p-3 "+(mode===kind?
       "border-[#FFBB00] bg-[#FFBB00]/10":"border-white/20 bg-white/5")}>
       <button type="button" aria-pressed={mode===kind}
-        onClick={()=>setMode(kind)} className="flex min-h-10 w-full items-center justify-between gap-2 text-left">
+        disabled={flashRideActive} onClick={()=>setMode(kind)} className="flex min-h-12 w-full items-center justify-between gap-2 text-left disabled:opacity-60">
         <span className="font-[family-name:var(--font-display)] font-bold">
           {kind==="EXCLUSIVE"?"Exclusiva":"Na Rota"}
         </span>
@@ -418,7 +420,7 @@ export function ShellJourneyPlanner({
         <p className="text-sm">Embarque em: {selectedMatch?.pickupMeeting.poiName||"ponto confirmado"}</p>
         <p className="text-xs text-white/75">A confirmação foi retornada pelo servidor. Não há pagamento antecipado no aplicativo.</p>
       </section>}
-      <button type="button" onClick={()=>{cancel();onSnapChange?.("half");}}
+      <button type="button" onClick={()=>{if(flashRideActive){toast.info("Cancele a solicitação antes de retornar às modalidades.");return;}onSnapChange?.("half");}}
         className="flex min-h-11 items-center gap-2 text-sm font-bold">
         <ArrowLeft size={18} className="text-[#FFBB00]"/> Voltar às modalidades
       </button>

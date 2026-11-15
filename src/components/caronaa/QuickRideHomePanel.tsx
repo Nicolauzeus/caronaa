@@ -76,8 +76,8 @@ export function QuickRideHomePanel({
   useEffect(()=>{
     onOperationalRideChange?.(liveRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)
       ?{id:liveRide.id,status:liveRide.status,municipality:liveRide.municipality}:null);
-    return ()=>onOperationalRideChange?.(null);
   },[liveRide?.id,liveRide?.status,liveRide?.municipality,onOperationalRideChange]);
+  useEffect(()=>()=>onOperationalRideChange?.(null),[onOperationalRideChange]);
 
   const shownCompletedRide=completedRide?.id!==completedHidden?completedRide:null;
   useEffect(()=>{
