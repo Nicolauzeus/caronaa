@@ -74,8 +74,7 @@ async function prepareFull(){
   fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
   fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
   await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1),{timeout:3000});
-  await waitFor(()=>expect(screen.getByRole("button",{name:"Revisar e Continuar"})).not.toBeDisabled(),{timeout:3000});
-  fireEvent.click(screen.getByRole("button",{name:"Revisar e Continuar"}));
+  await screen.findByRole("radio",{name:/Flash Carro/});
   await screen.findByRole("button",{name:"Pedir Caronaa Flash"});
 }
 
@@ -87,29 +86,44 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(screen.getByRole("button",{name:/ajustar no mapa/i})).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:/ajustar no mapa/i}));
     expect(adjust).toHaveBeenCalledOnce();
-    expect(screen.getByRole("button",{name:/flash/i})).toBeTruthy();
+    expect(screen.getByRole("button",{name:/agora/i})).toBeTruthy();
   });
-  it("caches one Google route across card/seat/vehicle changes",async()=>{
+  it("shows three direct choices and switches vehicle without extra Google routes",async()=>{
     render(<Harness/>);
     fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
-    await waitFor(()=>expect(api.quote).toHaveBeenCalledTimes(2),{timeout:3000});
-    fireEvent.click(screen.getByRole("button",{name:"Na Rota"}));
-    fireEvent.click(screen.getAllByRole("button",{name:"Moto"})[1]);
+    await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1),{timeout:3000});
+    expect(screen.getByRole("radio",{name:/Flash Carro/})).toHaveAttribute("aria-checked","true");
+    fireEvent.click(screen.getByRole("radio",{name:/Flash Moto/}));
+    expect(screen.getByRole("radio",{name:/Flash Moto/})).toHaveAttribute("aria-checked","true");
     await waitFor(()=>expect(api.quote).toHaveBeenCalledWith(expect.objectContaining({
-      vehicleType:"MOTO",mode:"ON_ROUTE",seats:1,
+      vehicleType:"MOTO",mode:"EXCLUSIVE",
     })),{timeout:3000});
+    fireEvent.click(screen.getByRole("radio",{name:/Carona Na Rota/}));
+    expect(screen.getByRole("radio",{name:/Carona Na Rota/})).toHaveAttribute("aria-checked","true");
     expect(api.route).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("combobox",{name:"Quantidade de vagas"})).toBeDisabled();
+    expect(screen.queryByRole("button",{name:"Revisar e Continuar"})).toBeNull();
   });
-  it("Full delegates Flash pricing to operational quote and keeps scheduled options",async()=>{
+  it("shows a single Flash decision without internal pricing or duplicated review",async()=>{
     render(<Harness/>);
     await prepareFull();
-    expect(screen.getByRole("region",{name:"Resumo da corrida"})).toBeTruthy();
-    expect(screen.getByText(/Pix ou dinheiro direto ao motorista/)).toBeTruthy();
-    expect(screen.getByText(/não retém valores/)).toBeTruthy();
+    expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeTruthy();
+    expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeTruthy();
+    expect(screen.getByRole("radio",{name:/Carona Na Rota/})).toBeTruthy();
+    expect(screen.queryByRole("button",{name:"Revisar e Continuar"})).toBeNull();
     expect(screen.queryByText("Preferências de viagem")).toBeNull();
-    expect(screen.getByText("Carona entre mulheres")).toBeTruthy();
+    expect(screen.queryByText(/Comissão de/)).toBeNull();
+  });
+  it("shows only real Flash price when quote belongs to the selected vehicle",async()=>{
+    render(<ShellJourneyPlanner {...props} snap="half"
+      flashFare={{quoteId:"valid",vehicleType:"CAR",expiresAt:new Date(Date.now()+60000).toISOString(),
+        customerPaysCents:1450,distanceKm:7,durationMinutes:14,region:"M",municipality:"Redenção",
+        driverReceivesCents:1232,platformCommissionCents:218,commissionBps:1500,commissionSource:"STANDARD",
+        policyVersion:"pilot"}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    await screen.findByRole("radio",{name:/Flash Carro/});
+    expect(screen.getByText(/R\\$\\s*14,50/)).toBeTruthy();
+    expect(screen.getAllByText("Ver preço").length).toBeGreaterThanOrEqual(1);
   });
   it("delegates Flash CTA to the real operational panel, not an isolated timer",async()=>{
     render(<Harness/>);
@@ -132,7 +146,7 @@ describe("CARONAA Flash passenger shell",()=>{
     api.rpc.mockImplementation(async(name:string)=>name==="schedule_caronaa_ride"
       ?{data:"scheduled-test-uuid",error:null}:{data:[],error:null});
     render(<Harness/>);
-    fireEvent.click(screen.getByRole("button",{name:"Agendada"}));
+    fireEvent.click(screen.getByRole("button",{name:"Agendar"}));
     fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     const field=screen.getByLabelText("Data e hora do agendamento") as HTMLInputElement;
@@ -160,7 +174,7 @@ describe("CARONAA Flash passenger shell",()=>{
     api.rpc.mockImplementation(async(name:string)=>name==="schedule_caronaa_ride"
       ?{data:null,error:{code:"PGRST202"}}:{data:[],error:null});
     render(<Harness/>);
-    fireEvent.click(screen.getByRole("button",{name:"Agendada"}));
+    fireEvent.click(screen.getByRole("button",{name:"Agendar"}));
     fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     const later=new Date(Date.now()+90*60000);
@@ -174,7 +188,7 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(screen.getByRole("alert")).toBeTruthy();
   });
 
-  it("Na Rota displays meeting POI and walking distance without another Google route call",async()=>{
+  it("Na Rota automatically finds real offers and displays the safe meeting point",async()=>{
     api.search.mockResolvedValue({diagnostic:"OK",matches:[{
       offerId:"offer-1",driverUserId:"driver-1",driverName:"Motorista disponível",
       departureTime:"2026-11-16T12:00:00Z",availableSeats:3,seatsRemaining:2,
@@ -186,14 +200,13 @@ describe("CARONAA Flash passenger shell",()=>{
     render(<ShellJourneyPlanner {...props} snap="half" onOnRouteMatchSelected={selected}/>);
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole("button",{name:"Na Rota"}));
-    fireEvent.click(screen.getByRole("button",{name:"Buscar caronas Na Rota"}));
-    await screen.findByText("Ponto de Encontro no Trajeto");
-    expect(screen.getByText(/80 m a pé até o ponto de encontro/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button",{name:"Ver ponto no mapa"}));
+    fireEvent.click(screen.getByRole("radio",{name:/Carona Na Rota/}));
+    await screen.findByText("Parada Unifor");
+    expect(screen.getByText(/80 m de caminhada até o embarque/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button",{name:"Escolher ponto de encontro"}));
     expect(selected).toHaveBeenCalledWith(expect.objectContaining({offerId:"offer-1"}));
     expect(api.route).toHaveBeenCalledTimes(1);
-    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Confirmar Carona"}));});
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:/Confirmar carona/i}));});
     expect(api.confirm).toHaveBeenCalledWith("offer-1",1,expect.objectContaining({
       pickupMeeting:expect.objectContaining({walkMeters:80}),
     }));
