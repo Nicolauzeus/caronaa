@@ -3,7 +3,7 @@ import { RoleSwitchHeader } from "@/components/caronaa/shell/RoleSwitchHeader";
 import { QuickVehicleModal } from "@/components/caronaa/shell/QuickVehicleModal";
 import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/shell/InteractiveBottomSheet";
 import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
-import { ShellJourneyPlanner } from "@/components/caronaa/shell/ShellJourneyPlanner";
+import { ShellJourneyPlanner, type ShellRoute } from "@/components/caronaa/shell/ShellJourneyPlanner";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
 import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
@@ -95,6 +95,14 @@ function Home() {
   // Stage 2: visual shell only. No new dispatch, fare, or booking handlers.
   const activeRoleState = useActiveRole();
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>("peek");
+  const [shellRoute,setShellRoute]=useState<ShellRoute|null>(null);
+  const [shellRouteOrigin,setShellRouteOrigin]=useState<{lat:number;lng:number}|null>(null);
+  const [shellSelectedDestination,setShellSelectedDestination]=useState(false);
+  const [shellOriginRevision,setShellOriginRevision]=useState(0);
+  const handleShellRouteChange=useCallback((next:ShellRoute|null,from:{lat:number;lng:number}|null)=>{
+    setShellRoute(next);
+    setShellRouteOrigin(from);
+  },[]);
   const [serviceType, setServiceType] = useState<ServiceType>("FLASH");
   useEffect(()=>{
     const expand=()=>setSheetSnap("half");
@@ -449,6 +457,8 @@ function Home() {
     setOrigin(fallback);
     setOriginLocation({ rawText: fallback, formattedAddress: fallback, lat: point.lat, lng: point.lng });
     setSelectingOrigin(false);
+    setShellOriginRevision(value=>value+1);
+    setSheetSnap("half");
     focusOriginOnExpand.current = false;
     setPanelOpen(true);
     // Reverse geocoding improves the label, but MUST NOT replace clicked coordinates.
@@ -542,6 +552,8 @@ function Home() {
                 municipality={operationalRide.municipality} role="PASSENGER" immersive/>
             : <HomeRideMap
             immersive
+            plannedRoute={shellSelectedDestination?shellRoute:null}
+            routeManagedExternally={shellSelectedDestination}
             pickupPreview={
               intent === "REQUEST" && rideOption === "CAR" && pickupPreview && pickupPreview.rideId === pickupRideId
                 ? pickupPreview.value
@@ -549,7 +561,7 @@ function Home() {
             }
             professionalDrivers={intent === "REQUEST" && rideOption === "EXCLUSIVE" ? professionalDrivers : []}
             userPosition={location.position}
-            origin={point ?? currentFare?.originPoint}
+            origin={shellSelectedDestination&&shellRouteOrigin?shellRouteOrigin:point ?? currentFare?.originPoint}
             selectingOrigin={selectingOrigin}
             onPickOrigin={chooseOriginOnMap}
             destination={destinationLocation ?? currentFare?.destinationPoint}
@@ -578,6 +590,14 @@ function Home() {
           title="Casca Única CARONAA">
           <ShellJourneyPlanner
             snap={sheetSnap}
+            onSnapChange={setSheetSnap}
+            originRevision={shellOriginRevision}
+            originLabel={origin}
+            onAdjustOrigin={()=>{
+              setSelectingOrigin(true);
+              setSheetSnap("peek");
+            }}
+            onRouteChange={handleShellRouteChange}
             serviceType={serviceType}
             onServiceTypeChange={setServiceType}
             originPoint={originLocation}
@@ -586,6 +606,8 @@ function Home() {
             onDestinationChange={(label,details)=>{
               setDestination(label);
               setDestinationLocation(details);
+              setShellSelectedDestination(Boolean(details?.lat!=null && details?.lng!=null));
+              setShellRoute(null);
               setConfirmedReviewKey(null);
             }}
           />
