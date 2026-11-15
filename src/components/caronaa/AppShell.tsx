@@ -33,9 +33,9 @@ const waitingNav = [
 ];
 
 const professionalNav = [
-  { to: "/disponibilidade-profissional" as const, label: "Disponível", icon: CarFront },
-  { to: "/viagem-rapida" as const, label: "Pedidos", icon: CalendarClock },
-  { to: "/perfil" as const, label: "Minha conta", icon: UserRound },
+  { to: "/disponibilidade-profissional" as const, label: "Painel", icon: LayoutDashboard },
+  { to: "/viagens-profissionais" as const, label: "Viagens", icon: CalendarClock },
+  { to: "/perfil" as const, label: "Conta", icon: UserRound },
 ];
 
 const authenticatedNav = [
@@ -69,7 +69,7 @@ export function AppShell({
   mapLayout?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [professionalOnly, setProfessionalOnly] = useState(false);
+  const [professionalOnly, setProfessionalOnly] = useState<boolean | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
   const selectedNav = (to:string,label:string) => label==="Oferecer"
@@ -79,8 +79,8 @@ export function AppShell({
   const { user, loading } = useAuth();
   useEffect(() => {
     let live = true;
-    setProfessionalOnly(false);
-    if (!user || publicPage) return () => { live = false; };
+    setProfessionalOnly(null);
+    if (!user || publicPage) { setProfessionalOnly(false); return () => { live = false; }; }
     // A server/database-backed professional application or exclusive onboarding role
     // determines the simplified driver experience, never a self-declared URL flag.
     void Promise.all([
@@ -90,14 +90,14 @@ export function AppShell({
         .eq("user_id", user.id).maybeSingle(),
     ]).then(([professional, onboarding]) => {
       if (!live) return;
-      if (professional.error || onboarding.error) return;
+      if (professional.error || onboarding.error) { setProfessionalOnly(false); return; }
       setProfessionalOnly(Boolean(professional.data) ||
         (onboarding.data?.usage_role === "MOTORISTA" &&
          onboarding.data?.status === "BASIC_COMPLETED"));
-    }).catch(() => undefined);
+    }).catch(() => { if (live) setProfessionalOnly(false); });
     return () => { live = false; };
   }, [user?.id, publicPage]);
-  const navigation = prelaunchMode ? waitingNav : professionalOnly ? professionalNav : authenticatedNav;
+  const navigation = prelaunchMode ? waitingNav : professionalOnly === true ? professionalNav : professionalOnly === null ? [] : authenticatedNav;
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
