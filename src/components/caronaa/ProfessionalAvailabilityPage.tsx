@@ -10,7 +10,8 @@ import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAccessRequest";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
-import { QuickRideDriverQueue } from "@/components/caronaa/QuickRideDriverQueue";
+import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
+import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { Button } from "@/components/ui/button";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
@@ -30,6 +31,7 @@ export function ProfessionalAvailabilityPage() {
   const [busy,setBusy]=useState(false);
   const [enabled,setEnabled]=useState(false);
   const [activeQuickRide,setActiveQuickRide]=useState(false);
+  const [activeRide,setActiveRide]=useState<ActiveDriverRide|null>(null);
   const [authorized,setAuthorized]=useState(false);
   const [blocked,setBlocked]=useState(false);
   const [pilotEnabled,setPilotEnabled]=useState(false);
@@ -362,7 +364,11 @@ export function ProfessionalAvailabilityPage() {
   const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
   const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
   return <div className="professional-cockpit">
-    {!activeQuickRide&&<section aria-label="Mapa do motorista" className="professional-cockpit__map">
+    {activeRide && <div className="professional-cockpit__map">
+      <QuickRideOperationalMap rideId={activeRide.id} status={activeRide.status}
+        role="DRIVER" immersive vehicleType={activeRide.vehicle_type==="MOTO"?"MOTO":"CAR"} />
+    </div>}
+    {!activeQuickRide&&!activeRide&&<section aria-label="Mapa do motorista" className="professional-cockpit__map">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${fresh ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
@@ -441,6 +447,7 @@ export function ProfessionalAvailabilityPage() {
       <div className="professional-cockpit__right">
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
+      onActiveRideChange={setActiveRide}
       municipality={municipality}
       online={enabled && authorized && !blocked}
       gpsReady={fresh}
