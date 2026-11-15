@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight, Bike, Camera, CarFront, CheckCircle2, ChevronRight,
-  Headset, IdCard, MapPin, Pencil, Settings2, ShieldCheck, Wallet,
+  IdCard, MapPin, Pencil, Settings2, ShieldCheck, Wallet,
 } from "lucide-react";
 import { DriverWhatsAppSupport } from "./DriverWhatsAppSupport";
 import "./professional-account.css";
