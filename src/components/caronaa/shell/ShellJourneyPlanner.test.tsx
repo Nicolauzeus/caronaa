@@ -127,6 +127,6 @@ describe("CARONAA Flash passenger shell",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
     await act(async()=>{vi.advanceTimersByTime(60_000);});
     fireEvent.click(screen.getByRole("button",{name:"Agendar para daqui a pouco"}));
-    expect(screen.getByRole("textbox",{name:"Horário da viagem agendada"})).toBeTruthy();
+    expect(screen.getByLabelText("Horário da viagem agendada")).toBeTruthy();
   });
 });
