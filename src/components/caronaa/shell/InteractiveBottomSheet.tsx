@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode, type PointerEvent } from "react";
 import { ChevronUp } from "lucide-react";
+import "./interactive-bottom-sheet.css";
 
 export type SheetSnap = "peek" | "half" | "full";
 type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void;title?:string;headerAction?:ReactNode};
@@ -31,7 +32,7 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
     change(order[Math.min(2,Math.max(0,index+(delta<0?1:-1)))]);
   };
   return <section aria-label={title}
-    className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-[#FFBB00]/30 bg-[#121212]/95 text-white shadow-2xl backdrop-blur-xl transition-[height] duration-300 ease-out"
+    className="caronaa-journey-sheet pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-[#FFBB00]/30 bg-[#121212]/95 text-white shadow-2xl backdrop-blur-xl transition-[height] duration-300 ease-out"
     style={{height:heights[snap].fallback, minHeight:heights[snap].dynamic,
       fontFamily:"Manrope, sans-serif",paddingBottom:"env(safe-area-inset-bottom)"}}>
     <button type="button" aria-label="Alça do painel: toque ou arraste para expandir ou recolher"
@@ -39,11 +40,11 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
       onPointerDown={down} onPointerUp={up} onPointerCancel={()=>{start.current=null;}}
       onKeyDown={e=>{if(e.key==="ArrowUp"){e.preventDefault();change(order[Math.min(2,order.indexOf(snap)+1)]);}
         if(e.key==="ArrowDown"){e.preventDefault();change(order[Math.max(0,order.indexOf(snap)-1)]);}}}
-      className="flex min-h-[44px] shrink-0 touch-none items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
+      className="caronaa-journey-sheet__handle flex min-h-[44px] shrink-0 touch-none items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
       <span className="h-1.5 w-12 rounded-full bg-[#FFBB00]/75"/>
       <ChevronUp size={15} className={snap==="full"?"rotate-180":""}/>
     </button>
     {headerAction&&<div className="absolute right-2 top-0 z-10 flex min-h-8 items-center">{headerAction}</div>}
-    <div className={"min-h-0 flex-1 overflow-y-auto overscroll-contain "+(snap==="peek"?"px-2 pb-1":"px-4 pb-4")}>{children}</div>
+    <div className={"caronaa-journey-sheet__content min-h-0 flex-1 overflow-y-auto overscroll-contain "+(snap==="peek"?"px-2 pb-1":"px-4 pb-4")}>{children}</div>
   </section>;
 }
