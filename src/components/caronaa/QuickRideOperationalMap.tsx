@@ -97,12 +97,12 @@ export function QuickRideOperationalMap({
     {origin&&destination&&<GoogleMapSurface
       points={[
         {lat:origin.lat,lng:origin.lng,title:"Embarque",label:"P",color:"#2563eb"},
-        {lat:destination.lat,lng:destination.lng,title:"Destino",label:"D",color:"#FFBB00"},
+        ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",label:"D",color:"#FFBB00"}]:[]),
         ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,title:"Motorista",label:"M",color:"#121212"}]:[]),
       ]}
       lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
-      fitMode="once" fitKey={rideId+":"+(statusNow==="IN_PROGRESS"?"destination":"pickup")}
+      fitMode="once" fitKey={rideId+":"+(statusNow==="IN_PROGRESS"?"destination":statusNow==="ARRIVED"?"meeting":"pickup")}
       smoothTracking ariaLabel="Mapa Google com deslocamento da corrida"
       className="h-64 w-full rounded-2xl" />}
     {["ACCEPTED","ARRIVED"].includes(statusNow)&&approach&&<p className="text-sm">
