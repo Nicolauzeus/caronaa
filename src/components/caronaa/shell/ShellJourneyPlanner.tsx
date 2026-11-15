@@ -298,7 +298,7 @@ export function ShellJourneyPlanner({
             className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors motion-reduce:transition-none ${checked?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20 bg-white/[0.06]"} disabled:opacity-60`}>
             {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:
               <CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
-            <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">Flash {type==="MOTO"?"Moto":"Carro"}</strong>
+            <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto":"Flash Carro"}</strong>
               <small className="block text-xs text-white/65">{type==="MOTO"?"Direto ao destino":"Viagem exclusiva"}</small></span>
             <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">{price||"Ver preço"}
               {price&&<small className="block text-[10px] font-normal text-white/65">Preço oficial</small>}
