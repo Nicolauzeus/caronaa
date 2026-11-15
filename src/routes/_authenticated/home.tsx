@@ -114,7 +114,7 @@ function Home() {
   },[]);
   const onPassengerPhase=useCallback((status:string|null)=>{
     setPassengerPhase(status);
-    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
+    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(status)){
       setTripsPanelOpen(false);setSheetSnap("full");
     }
   },[]);
@@ -222,7 +222,7 @@ function Home() {
   },[reverseGeocode]);
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
-    if(passengerPhase==="SEARCHING"){
+    if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
       toast.info("Cancele a solicitação Flash antes de alternar de papel.");
       setSheetSnap("full");
       return;
@@ -373,7 +373,7 @@ function Home() {
             <ShellJourneyPlanner
               snap={sheetSnap} onSnapChange={setSheetSnap}
               serviceType={serviceType} onServiceTypeChange={next=>{
-                if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase)){
+                if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
                   toast.info("Finalize ou cancele a corrida atual antes de mudar de modalidade.");
                   setSheetSnap("full");
                   return;
