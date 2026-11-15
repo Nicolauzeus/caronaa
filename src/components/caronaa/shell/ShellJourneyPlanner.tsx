@@ -16,6 +16,9 @@ import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
 import type { SheetSnap } from "./InteractiveBottomSheet";
 import type { FormLocationDetails } from "@/lib/location/types";
 import type { ProfileGender } from "@/lib/use-profile-gender";
+import { confirmOnRouteBooking, searchOnRouteMatches, OnRouteServiceError } from "@/services/on-route-service";
+import type { OnRouteMatch } from "@/types/ride";
+import { toast } from "sonner";
 
 export type ShellRoute = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
 type Point = {lat:number;lng:number};
@@ -40,6 +43,7 @@ type Props = {
   onRouteChange?:(route:ShellRoute|null,origin:Point|null)=>void;
   onAdjustOrigin?:()=>void;
   onScheduled?:(id:string)=>void;
+  onOnRouteMatchSelected?:(match:OnRouteMatch|null)=>void;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
   !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
@@ -62,7 +66,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
 
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
-  originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,
+  originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -79,6 +83,12 @@ export function ShellJourneyPlanner({
   const [preferences,setPreferences]=useState<TravelPreferences>({...emptyTravelPreferences});
   const [womenOnly,setWomenOnly]=useState(false);
   const [scheduledAt,setScheduledAt]=useState("");
+  const [onRouteMatches,setOnRouteMatches]=useState<OnRouteMatch[]>([]);
+  const [onRouteDiagnostic,setOnRouteDiagnostic]=useState("");
+  const [onRouteBusy,setOnRouteBusy]=useState(false);
+  const [bookingBusy,setBookingBusy]=useState(false);
+  const [selectedMatch,setSelectedMatch]=useState<OnRouteMatch|null>(null);
+  const [onRouteConfirmedId,setOnRouteConfirmedId]=useState<string|null>(null);
   const [scheduling,setScheduling]=useState(false);
   const [scheduledId,setScheduledId]=useState<string|null>(null);
   const [scheduleError,setScheduleError]=useState("");
@@ -88,6 +98,7 @@ export function ShellJourneyPlanner({
   const [waitlistBusy,setWaitlistBusy]=useState(false);
   const [feedback,setFeedback]=useState("");
   const [matched,setMatched]=useState<MatchedDriver|null>(null);
+  const onRouteSearchRef=useRef(0);
   const routeReader=useServerFn(getMapDrivingRoute);
   const approachReader=useServerFn(getQuickRideApproach);
   const approachRef=useRef(approachReader);
@@ -207,6 +218,12 @@ export function ShellJourneyPlanner({
   useQuickRideRealtime(originMunicipality,checkMatched,phase==="SEARCHING");
 
   const pickDestination=useCallback((label:string,details?:FormLocationDetails)=>{
+    onRouteSearchRef.current+=1;
+    setOnRouteMatches([]);
+    setSelectedMatch(null);
+    setOnRouteConfirmedId(null);
+    setOnRouteDiagnostic("");
+    onOnRouteMatchSelected?.(null);
     searchSession.current+=1;
     setDestination(label);
     setDestinationPoint(details);
@@ -215,7 +232,7 @@ export function ShellJourneyPlanner({
     setRoute(null);setPrices(null);
     frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
     if(details && valid(details))onSnapChange?.("half");
-  },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange]);
+  },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange,onOnRouteMatchSelected]);
 
   const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
     if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);return;}
@@ -291,6 +308,57 @@ export function ShellJourneyPlanner({
     }catch{
       setScheduleError("Não foi possível agendar agora. Verifique a disponibilidade do serviço e tente novamente.");
     }finally{setScheduling(false);}
+  };
+  const searchAvailableOnRoute=async()=>{
+    if(onRouteBusy||mode!=="ON_ROUTE"||!valid(destinationPoint)||!frozenOrigin.current)return;
+    const generation=++onRouteSearchRef.current;
+    setOnRouteBusy(true);
+    setOnRouteDiagnostic("");
+    setOnRouteMatches([]);
+    setSelectedMatch(null);
+    onOnRouteMatchSelected?.(null);
+    const from=frozenOrigin.current;
+    const result=await searchOnRouteMatches({
+      originLat:from.lat,originLng:from.lng,
+      destLat:destinationPoint.lat!,destLng:destinationPoint.lng!,
+      seats:onRouteVehicle==="MOTO"?1:entireCar?3:seats,
+      targetTime:serviceType==="AGENDADA"&&validScheduleDate(scheduledAt)
+        ?new Date(scheduledAt):undefined,
+    });
+    if(generation===onRouteSearchRef.current){
+      setOnRouteMatches(result.matches);
+      setOnRouteDiagnostic(result.diagnostic);
+      setOnRouteBusy(false);
+    }
+  };
+  const selectOnRoute=(match:OnRouteMatch)=>{
+    if(selectedMatch?.offerId===match.offerId)return;
+    setSelectedMatch(match);
+    setOnRouteConfirmedId(null);
+    onOnRouteMatchSelected?.(match);
+  };
+  const confirmSelectedOnRoute=async()=>{
+    if(!selectedMatch||bookingBusy||onRouteConfirmedId)return;
+    const count=onRouteVehicle==="MOTO"?1:entireCar?3:seats;
+    setBookingBusy(true);
+    try{
+      const result=await confirmOnRouteBooking(selectedMatch.offerId,count,{
+        pickupMeeting:selectedMatch.pickupMeeting,
+        dropoffMeeting:selectedMatch.dropoffMeeting,
+      });
+      setOnRouteConfirmedId(result.bookingId);
+      onSnapChange?.("full");
+      toast.success("Carona confirmada. Confira o resumo.");
+    }catch(error){
+      if(error instanceof OnRouteServiceError&&error.code==="OVERBOOKING_PREVENTED"){
+        toast.info("Essa carona acabou de ser preenchida. Buscando outras opções...");
+        setSelectedMatch(null);
+        onOnRouteMatchSelected?.(null);
+        await searchAvailableOnRoute();
+      }else{
+        toast.error("Não conseguimos confirmar essa carona. Tente novamente.");
+      }
+    }finally{setBookingBusy(false);}
   };
   const selectedPrice=prices?.[mode]??null;
   const optionCard=(kind:UnifiedFareMode)=>(
