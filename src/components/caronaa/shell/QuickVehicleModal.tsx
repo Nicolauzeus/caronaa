@@ -60,7 +60,7 @@ export function QuickVehicleModal({
       style={{fontFamily:"Manrope, sans-serif"}}>
       <DialogHeader>
         <DialogTitle className="font-[family-name:var(--font-display)] text-xl text-[#FFBB00]">
-          Complete seu veículo
+          {missingFields.length?"Complete seu veículo":"Confirme os dados do veículo"}
         </DialogTitle>
         <DialogDescription className="text-white/70">
           Informe os dados do veículo. Sem CNH, fotos ou aprovação manual nesta etapa. A ativação depende da validação do servidor.
@@ -110,7 +110,7 @@ export function QuickVehicleModal({
           </Button>
           <Button type="submit" disabled={!valid||busy}
             className="min-h-12 bg-[#FFBB00] font-bold text-[#121212] hover:bg-[#ffd24d]">
-            {busy?"Salvando...":"Salvar veículo"}
+            {busy?"Salvando...":"Salvar e ativar motorista"}
           </Button>
         </DialogFooter>
       </form>
