@@ -9,7 +9,7 @@ import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAccessRequest";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
-import { buildQuickRideSearch } from "@/lib/quick-ride-search";
+import { QuickRideDriverQueue } from "@/components/caronaa/QuickRideDriverQueue";
 import { Button } from "@/components/ui/button";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
@@ -356,11 +356,7 @@ export function ProfessionalAvailabilityPage() {
       Você pode trabalhar em qualquer município habilitado onde estiver fisicamente,
       mesmo que seu cadastro seja de outra cidade.
     </p>
-    {authorized && <Link to="/viagem-rapida"
-      search={buildQuickRideSearch({origin:"",destination:"",municipality})}
-      className="flex min-h-14 items-center justify-center rounded-xl bg-primary px-4 text-center font-bold text-primary-foreground">
-      Ver pedidos de corrida
-    </Link>}
+    {/* The driver remains on this screen for dispatch, acceptance and GPS. */}
     <section className="space-y-3 rounded-2xl border border-primary/30 p-4" aria-label="Controle de disponibilidade">
       <p className="text-lg font-bold">
         {!ready ? "Verificando seu cadastro..." : fresh ? "● Online e transmitindo GPS" :
@@ -420,6 +416,11 @@ export function ProfessionalAvailabilityPage() {
           "Nenhuma posição válida publicada. O município do cadastro não substitui o GPS."}
       </p>
     </section>
+    <QuickRideDriverQueue
+      municipality={municipality}
+      online={enabled && authorized && !blocked}
+      gpsReady={fresh}
+    />
     <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>

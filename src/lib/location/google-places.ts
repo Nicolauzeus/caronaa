@@ -9,6 +9,9 @@ import type {
 } from "./types";
 
 const API = "https://places.googleapis.com/v1/places";
+// A transient quota failure must not initiate paid reverse lookups on every GPS pulse.
+let reverseQuotaCooldownUntil = 0;
+
 const PLACE_FIELDS =
   "id,formattedAddress,location,addressComponents"; // Place Details Essentials (no Pro displayName)
 const CEARA_BIAS = {
@@ -294,22 +297,53 @@ export class GooglePlacesProvider implements LocationProvider {
       throw new Error("Coordenadas inválidas.");
     const key = getGoogleServerKey();
     if (!key) return null;
-    // Text Search does not reverse-geocode GPS. Use the official v4 service.
-    const result = await requestGoogle(
-      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?languageCode=pt-BR`,
-      key,
-      "results.placeId,results.formattedAddress,results.addressComponents",
-    );
-    const first = Array.isArray(result.results) ? result.results[0] : null;
-    if (!first?.formattedAddress) return null;
-    return {
-      rawText: first.formattedAddress,
-      formattedAddress: first.formattedAddress,
-      ...parseAddressComponents(first.addressComponents),
-      lat,
-      lng,
-      placeId: first.placeId,
-      source: "google",
-    };
+    if (Date.now() < reverseQuotaCooldownUntil)
+      throw new Error("Google Maps temporariamente limitado (HTTP 429).");
+    try {
+      // Nearby Search is a nearby *place* lookup, not a guaranteed civic
+      // reverse-geocoder. Never treat an out-of-radius POI as the GPS location.
+      const result = await requestGoogle(
+        API + ":searchNearby",
+        key,
+        "places.id,places.formattedAddress,places.addressComponents,places.location",
+        {
+          locationRestriction: {
+            circle: { center: { latitude: lat, longitude: lng }, radius: 150.0 },
+          },
+          rankPreference: "DISTANCE",
+          maxResultCount: 1,
+          languageCode: "pt-BR",
+          regionCode: "BR",
+        },
+      );
+      const first: GooglePlace | undefined = Array.isArray(result.places)
+        ? result.places[0] : undefined;
+      if (!first?.formattedAddress || !first.location) return null;
+      const placeLat=first.location.latitude,placeLng=first.location.longitude;
+      if (!Number.isFinite(placeLat) || !Number.isFinite(placeLng)) return null;
+      const rad=Math.PI/180;
+      const a=Math.sin(((placeLat as number)-lat)*rad/2)**2+
+        Math.cos(lat*rad)*Math.cos((placeLat as number)*rad)*
+        Math.sin(((placeLng as number)-lng)*rad/2)**2;
+      const meters=6371000*2*Math.asin(Math.min(1,Math.sqrt(a)));
+      if (meters>150) return null;
+      const parts=parseAddressComponents(first.addressComponents);
+      // Unrecognizable place boundaries must remain unverified.
+      if(!parts.city || !parts.state || !parts.country) return null;
+      return {
+        rawText: first.formattedAddress,
+        formattedAddress: first.formattedAddress,
+        ...parts,
+        lat,
+        lng,
+        placeId: first.id,
+        source: "google",
+        isApproximate: true,
+      };
+    } catch (error) {
+      if(error instanceof Error && /HTTP 429/.test(error.message))
+        reverseQuotaCooldownUntil=Date.now()+60_000;
+      throw error;
+    }
   }
 }

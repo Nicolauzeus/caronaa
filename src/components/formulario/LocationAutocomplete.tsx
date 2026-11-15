@@ -139,6 +139,8 @@ export function LocationAutocomplete({
         !wrapperRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
+        // Abandoned sessions must not be reused for a later location search.
+        sessionTokenRef.current = null;
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -256,11 +258,11 @@ export function LocationAutocomplete({
     setSelectionWarning("");
     const nextVal = e.target.value;
     setQuery(nextVal);
-    if (nextVal.trim().length >= 2 && !sessionTokenRef.current) {
+    if (nextVal.trim().length >= 1 && !sessionTokenRef.current) {
       // Web Crypto UUIDv4 only: never use Math.random as a billing-session fallback.
       sessionTokenRef.current = globalThis.crypto?.randomUUID?.() ?? null;
     }
-    if (nextVal.trim().length < 2) sessionTokenRef.current = null;
+    if (nextVal.trim().length < 1) sessionTokenRef.current = null;
 
     // Propaga alteração imediata como entrada manual
     onChange(nextVal, {
@@ -286,10 +288,10 @@ export function LocationAutocomplete({
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Debounce ágil de 150ms para máxima rapidez
+    // Keep local catalogue instant; debounce paid Google lookups.
     debounceTimerRef.current = setTimeout(() => {
       void executeSearch(nextVal);
-    }, 150);
+    }, 350);
   };
 
   const handleSelectSuggestion = async (sug: LocationSuggestion) => {
