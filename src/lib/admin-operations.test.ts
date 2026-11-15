@@ -207,7 +207,7 @@ describe("administrative people", () => {
       updated_at: "2026-01-01",
       completed_at: null,
       route_quote_id: null, strict_pickup_arrived_at: null,
-    } as never;
+    } as unknown as (typeof data.rides)[number];
     data.rides.push(ride);
     expect(getOperationPeople(data, true)[0]?.completed).toBe(0);
     ride.status = "COMPLETED";
