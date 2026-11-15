@@ -113,6 +113,13 @@ export function DriverFlashPlanner({
   },Boolean((presence.online&&presence.gpsConnected)||active));
   useEffect(()=>()=>{readVersion.current+=1;onRideRef.current?.(null);},[]);
 
+  const changeService=(next:ServiceType)=>{
+    if(next!==serviceType&&(active||presence.online)){
+      toast.info("Fique indisponível e finalize corridas ativas antes de mudar de serviço.");
+      return;
+    }
+    onServiceTypeChange(next);
+  };
   const pickDestination=(label:string,details?:FormLocationDetails)=>{
     if(presence.online)return;
     setDestination(label);setDestPoint(details);
@@ -256,7 +263,7 @@ export function DriverFlashPlanner({
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
             {presence.busy?"Ativando GPS...":"Ficar Disponível"}
           </button>}
-        <ServiceTypeDock value={serviceType} onChange={onServiceTypeChange} compact/>
+        <ServiceTypeDock value={serviceType} onChange={changeService} compact/>
       </>}
       {snap==="half"&&<>
         <LocationAutocomplete id="flash-driver-dest-edit" label="Para onde você vai? (opcional)"
@@ -291,7 +298,7 @@ export function DriverFlashPlanner({
           className="flex min-h-11 items-center gap-2 text-sm text-[#FFBB00]">
           <MapPin size={16}/> Ajustar origem no mapa
         </button>
-        <ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
+        <ServiceTypeDock value={serviceType} onChange={changeService}/>
         <button type="button" disabled={presence.busy} onClick={()=>void (presence.online?deactivate():activate())}
           className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
           {presence.online?"Ficar Indisponível":"Ficar Disponível"}
