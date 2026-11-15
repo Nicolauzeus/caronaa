@@ -154,12 +154,20 @@ export function DriverScheduledPlanner({
   useEffect(()=>{
     if(!publishedId)return;
     let disposed=false;let debounce:ReturnType<typeof setTimeout>|null=null;
-    const signal=()=>{
+    let lastRun=0;
+    const signal=(force=false)=>{
       if(disposed)return;
+      // The existing shared table produces unrelated changes. Limit reads
+      // without processing any event payload or exposing passenger PII.
+      if(!force&&Date.now()-lastRun<10000)return;
       if(debounce)clearTimeout(debounce);
-      debounce=setTimeout(()=>{if(!disposed)void loadOpportunityRef.current();},450);
+      debounce=setTimeout(()=>{
+        if(disposed)return;
+        lastRun=Date.now();
+        void loadOpportunityRef.current();
+      },450);
     };
-    const onFocus=()=>{if(!document.hidden)signal();};
+    const onFocus=()=>{if(!document.hidden)signal(true);};
     window.addEventListener("focus",onFocus);
     document.addEventListener("visibilitychange",onFocus);
     // Read-only Realtime signal; details are always re-fetched by authorized RPC.
