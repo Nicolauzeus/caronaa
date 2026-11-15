@@ -13,6 +13,7 @@ import {
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { QuickRideRating } from "./QuickRideRating";
 
 type QuickVehicle = "CAR" | "MOTO";
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
@@ -349,7 +350,7 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
-      {!liveRide&&completedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
+      {!liveRide&&completedRide&&<><QuickRideRating rideId={completedRide.id} subject="motorista"/><QuickRidePixCard rideId={completedRide.id}/></>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
         <button type="button" disabled={quoteLoading||busy}
