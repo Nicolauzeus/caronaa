@@ -555,6 +555,10 @@ function Home() {
             immersive
             plannedRoute={shellSelectedDestination?shellRoute:null}
             routeManagedExternally={shellSelectedDestination}
+            routeBottomInset={shellSelectedDestination
+              ? Math.round((typeof window==="undefined"?800:window.innerHeight)*
+                (sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24
+              : undefined}
             pickupPreview={
               intent === "REQUEST" && rideOption === "CAR" && pickupPreview && pickupPreview.rideId === pickupRideId
                 ? pickupPreview.value
