@@ -20,6 +20,17 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
     }).catch(()=>undefined);
     return()=>{active=false};
   },[rideId]);
+  useEffect(()=>{
+    if(declared)return;
+    const read=async()=>{
+      if(document.hidden)return;
+      const {data,error:rpcError}=await (supabase as any).rpc(
+        "quick_ride_payment_declaration_state",{p_id:rideId});
+      if(!rpcError && (Array.isArray(data)?data[0]:null)?.passenger_declared_at)setDeclared(true);
+    };
+    const timer=window.setInterval(()=>{void read();},10000);
+    return()=>window.clearInterval(timer);
+  },[rideId,declared]);
   async function issue(){
     if(busy)return;
     setBusy(true);setError("");
