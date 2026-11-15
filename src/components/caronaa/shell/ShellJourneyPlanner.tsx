@@ -450,6 +450,43 @@ export function ShellJourneyPlanner({
       </label>}
       {optionCard("EXCLUSIVE")}
       {optionCard("ON_ROUTE")}
+      {mode==="ON_ROUTE"&&<section aria-label="Resultados Na Rota" className="space-y-3 rounded-2xl border border-white/20 bg-white/5 p-3">
+        <button type="button"
+          disabled={!route||!valid(destinationPoint)||!frozenOrigin.current||onRouteBusy}
+          onClick={()=>void searchAvailableOnRoute()}
+          className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-bold text-[#121212] disabled:opacity-50">
+          {onRouteBusy?"Procurando caronas...":"Buscar caronas Na Rota"}
+        </button>
+        {onRouteDiagnostic==="NO_ON_ROUTE_MATCHES"&&
+          <p role="status" className="text-sm text-white/75">Ainda não há caronas nesse trajeto.</p>}
+        {onRouteDiagnostic==="ON_ROUTE_SERVICE_UNAVAILABLE"&&
+          <p role="alert" className="text-sm text-white/75">Busca indisponível agora. Tente novamente.</p>}
+        {onRouteMatches.map(match=><article key={match.offerId}
+          className={"space-y-2 rounded-xl border p-3 "+(selectedMatch?.offerId===match.offerId?
+            "border-[#FFBB00]":"border-white/20")}>
+          <span className="inline-flex rounded-full bg-[#FFBB00] px-2 py-1 text-xs font-bold text-[#121212]">
+            Ponto de Encontro no Trajeto
+          </span>
+          <p className="text-sm font-semibold">{match.driverName}</p>
+          <p className="text-xs text-white/75">{match.pickupMeeting.poiName}</p>
+          <p className="text-sm font-bold text-[#FFBB00]">
+            🚶 {Math.round(match.pickupMeeting.walkMeters)} m a pé até o ponto de encontro
+          </p>
+          <p className="text-xs text-white/70">
+            {match.seatsRemaining} vaga(s) disponíveis · {formatBrl(match.estimatedPrice)} estimados
+          </p>
+          <button type="button" onClick={()=>selectOnRoute(match)}
+            aria-pressed={selectedMatch?.offerId===match.offerId}
+            className="min-h-11 w-full rounded-lg border border-[#FFBB00]/60 px-3 text-sm font-bold text-[#FFBB00]">
+            {selectedMatch?.offerId===match.offerId?"Selecionada no mapa":"Ver ponto no mapa"}
+          </button>
+        </article>)}
+        {selectedMatch&&<button type="button" disabled={bookingBusy||onRouteConfirmedId!==null}
+          onClick={()=>void confirmSelectedOnRoute()}
+          className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
+          {bookingBusy?"Confirmando...":"Confirmar Carona"}
+        </button>}
+      </section>}
       <div aria-live="polite" className="text-xs text-white/75">
         {routeBusy?"Calculando rota pelas ruas...":
           routeError||(!route?"Selecione um destino válido para calcular a rota.":
@@ -463,6 +500,11 @@ export function ShellJourneyPlanner({
       </button>
     </>}
     {snap==="full"&&<>
+      {onRouteConfirmedId&&<section role="status" className="space-y-1 rounded-xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 p-3">
+        <p className="font-bold text-[#FFBB00]">Carona Na Rota confirmada.</p>
+        <p className="text-sm">Embarque em: {selectedMatch?.pickupMeeting.poiName||"ponto confirmado"}</p>
+        <p className="text-xs text-white/75">A confirmação foi retornada pelo servidor. Não há pagamento antecipado no aplicativo.</p>
+      </section>}
       <button type="button" onClick={()=>{cancel();onSnapChange?.("half");}}
         className="flex min-h-11 items-center gap-2 text-sm font-bold">
         <ArrowLeft size={18} className="text-[#FFBB00]"/> Voltar às modalidades
@@ -491,7 +533,7 @@ export function ShellJourneyPlanner({
       </div>
       {gender==="FEMININO"&&<WomenOnlyToggle kind="request" gender={gender}
         checked={womenOnly} onChange={setWomenOnly}/>}
-      {serviceType==="AGENDADA"&&<>
+      {serviceType==="AGENDADA"&&!onRouteConfirmedId&&<>
         {scheduledId?
           <section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 p-4">
             <p className="font-bold text-[#FFBB00]">Carona agendada! Seus dados foram salvos.</p>
@@ -505,7 +547,7 @@ export function ShellJourneyPlanner({
         </button>}
         {scheduleError&&<p role="alert" className="text-sm text-[#FFBB00]">{scheduleError}</p>}
       </>}
-      {serviceType==="FLASH"&&phase==="REVIEW"&&<>
+      {serviceType==="FLASH"&&phase==="REVIEW"&&!onRouteConfirmedId&&<>
         <button type="button" disabled={!selectedPrice||!route}
           onClick={start} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-40">
           Pedir Caronaa Flash
