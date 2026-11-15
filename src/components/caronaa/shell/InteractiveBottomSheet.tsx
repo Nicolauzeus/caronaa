@@ -31,10 +31,10 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
       onPointerDown={down} onPointerUp={up} onPointerCancel={()=>{start.current=null;}}
       onKeyDown={e=>{if(e.key==="ArrowUp"){e.preventDefault();change(order[Math.min(2,order.indexOf(snap)+1)]);}
         if(e.key==="ArrowDown"){e.preventDefault();change(order[Math.max(0,order.indexOf(snap)-1)]);}}}
-      className="flex min-h-9 shrink-0 touch-none items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
+      className={"flex shrink-0 touch-none items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] "+(snap==="peek"?"min-h-5":"min-h-9")}>
       <span className="h-1.5 w-12 rounded-full bg-[#FFBB00]/75"/>
       <ChevronUp size={15} className={snap==="full"?"rotate-180":""}/>
     </button>
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">{children}</div>
+    <div className={"min-h-0 flex-1 overflow-y-auto overscroll-contain "+(snap==="peek"?"px-2 pb-1":"px-4 pb-4")}>{children}</div>
   </section>;
 }
