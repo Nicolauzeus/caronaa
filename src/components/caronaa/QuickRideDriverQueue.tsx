@@ -95,6 +95,17 @@ export function QuickRideDriverQueue({
     const timer=window.setInterval(load,5000);
     return()=>{alive=false;window.clearInterval(timer);};
   },[active?.id,active?.status,refresh]);
+  useEffect(()=>{
+    if(!online||!gpsReady||active?.status!=="ACCEPTED")return;
+    let alive=true;
+    const check=async()=>{
+      const {data,error}=await (supabase as any).rpc("quick_ride_detect_arrival",{p_id:active.id});
+      if(alive&&!error&&data===true)void refresh();
+    };
+    void check();
+    const timer=window.setInterval(check,5000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[online,gpsReady,active?.id,active?.status,refresh]);
   const action=async(rideId:string,next:"ACCEPT"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED")=>{
     if(requestLock.current)return;
     requestLock.current=true;
@@ -160,7 +171,7 @@ export function QuickRideDriverQueue({
           <p className="text-xs text-white/70">Status: {active.status}</p>
           {active.status==="ACCEPTED"&&<button type="button" disabled={busy}
             onClick={()=>void action(active.id,"ARRIVED")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Cheguei</button>}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Confirmar chegada por GPS</button>}
           {active.status==="ARRIVED"&&<>
             <label htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Peça ao passageiro o código secreto de seis dígitos.</label>
             <input id="quick-ride-driver-pin" type="text" inputMode="numeric" autoComplete="off"
