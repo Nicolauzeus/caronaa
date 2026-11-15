@@ -6,13 +6,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { professionalRadarPointSchema, municipalityFromProfessionalGps } from "@/lib/professional-radar-geo";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { reverseGeocodeService } from "@/lib/location/service";
+import { reverseGeocodeRadarMunicipality } from "@/lib/professional-radar-civic-geocode.server";
 import { classifyF07RadarDbError, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
 import { forgetVerifiedGpsCity, rememberVerifiedGpsCity, verifiedGpsCity } from "@/lib/professional-radar-geo-cache";
 
 export type ProfessionalRadarPublication =
   | { published: true; municipality: string; traceId?: string }
-  | { published: false; reason: "OUTSIDE_APPROVED_ZONE" | "LOCATION_UNKNOWN"; municipality: string | null; traceId?: string };
+  | { published: false; reason: "OUTSIDE_APPROVED_ZONE" | "LOCATION_UNKNOWN" | "GOOGLE_QUOTA_LIMITED"; municipality: string | null; traceId?: string };
 
 export const publishVerifiedProfessionalPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -84,7 +84,7 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
     } else {
       try {
         log("reverse_geocoding_started");
-        const geo = await reverseGeocodeService(data.lat, data.lng);
+        const geo = await reverseGeocodeRadarMunicipality(data.lat, data.lng);
         city = municipalityFromProfessionalGps(geo);
         if(!city){
           log("municipality_unknown","GPS_CITY_UNKNOWN");
@@ -99,11 +99,14 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
         }
       } catch (cause) {
         log("reverse_geocoding_failed",
-          cause instanceof Error && /HTTP 429/.test(cause.message)
+          cause instanceof Error && cause.message==="GOOGLE_QUOTA_LIMITED"
             ? "GOOGLE_QUOTA_LIMITED" : "GOOGLE_REVERSE_FAILED");
         // Temporary upstream failures are not revocations of GPS consent.
         // Never replay an older coordinate as the current driver position.
-        return {published:false,reason:"LOCATION_UNKNOWN",municipality:null,traceId};
+        return {published:false,
+          reason:cause instanceof Error && cause.message==="GOOGLE_QUOTA_LIMITED"
+            ?"GOOGLE_QUOTA_LIMITED":"LOCATION_UNKNOWN",
+          municipality:null,traceId};
       }
     }
     log("municipality_resolved", undefined, { city });
