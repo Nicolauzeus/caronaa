@@ -53,6 +53,11 @@ vi.mock("@/lib/home.functions", () => ({
 }));
 vi.mock("@/lib/ride-matching.functions", () => ({ createRideRequest: api.request }));
 vi.mock("@/lib/ride-pricing.functions", () => ({ previewRequestFare: api.quote }));
+// This is a component test: isolate reverse-geocoding responses per test.
+// The real session-wide request cache is exercised by its own tests.
+vi.mock("@/lib/session-request-cache", () => ({
+  sessionRequest: (_key: string, request: () => Promise<unknown>) => request(),
+}));
 vi.mock("@tanstack/react-start", () => {
   // Server functions are imported transitively by map components.
   // Keep this component test isolated from actual server middleware creation.
