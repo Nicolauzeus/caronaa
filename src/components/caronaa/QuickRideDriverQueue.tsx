@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { CheckCircle2, Clock3, Navigation2, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
@@ -187,12 +188,16 @@ export function QuickRideDriverQueue({
   };
 
   return <section aria-label="Chamados em tempo real na sua região"
-    className="min-w-0 space-y-3 rounded-2xl border border-[#FFBB00]/30 bg-[#121212] p-4 text-white">
-    <div>
-      <h2 className="text-lg font-bold text-[#FFBB00]">Chamados em tempo real na sua região</h2>
-      <p className="text-xs text-white/70">
-        {municipality||"Município ainda não verificado"} · GPS e autorização obrigatórios
-      </p>
+    className="min-w-0 space-y-3 text-white">
+    <div className="flex items-start justify-between gap-3">
+      <div className="space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FFBB00]/75">CARONAA · CORRIDAS</span>
+        <h2 className="professional-cockpit__queue-heading text-white">{active ? "Corrida em andamento" : "Chamados em tempo real"}</h2>
+        <p className="text-xs text-white/60">{municipality || "Município em verificação"}</p>
+      </div>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#FFBB00]/20 bg-[#FFBB00]/10 text-[#FFBB00]">
+        <Route size={18} aria-hidden="true"/>
+      </span>
     </div>
     {(!online||!gpsReady)&&!active?(
       <p role="status" className="text-sm text-white/75">
@@ -201,31 +206,52 @@ export function QuickRideDriverQueue({
       </p>
     ):(
       <>
-        {active&&<article className="space-y-2 rounded-xl border border-[#FFBB00]/40 p-3">
-          <p className="font-semibold text-[#FFBB00]">Sua corrida em andamento</p>
-          <p className="text-sm">{active.origin_label} → {active.destination_label}</p>
-          <p className="text-xs text-white/70">Status: {active.status}</p>
-
-          {active.status==="ACCEPTED"&&<p className="text-xs text-white/70">
-            A chegada exige GPS válido a até 75 m do ponto de embarque. Aproximar-se na rota não garante confirmação até o servidor validar a posição.
+        {active&&<article className="space-y-4 rounded-2xl border border-[#FFBB00]/25 bg-white/[0.035] p-4" aria-label="Sua corrida em andamento">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-[Sora] text-base font-extrabold text-white">Sua corrida em andamento</h3>
+            <span aria-live="polite" className="inline-flex items-center gap-1.5 rounded-full border border-[#FFBB00]/25 bg-[#FFBB00]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#FFBB00]">
+              <Navigation2 size={12} aria-hidden="true"/>
+              {active.status==="ACCEPTED" ? "A caminho do embarque"
+                : active.status==="ARRIVED" ? "No local · aguardando passageiro"
+                  : active.status==="IN_PROGRESS" ? "Em viagem até o destino"
+                    : active.status}
+            </span>
+          </div>
+          <div className="professional-cockpit__timeline" aria-label="Origem e destino da corrida">
+            <span className="professional-cockpit__timeline-marker" aria-hidden="true"/>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Embarque</p>
+              <p className="mt-0.5 break-words text-sm font-semibold leading-relaxed text-white">{active.origin_label}</p>
+            </div>
+            <span className="professional-cockpit__timeline-line" aria-hidden="true"/>
+            <span aria-hidden="true"/>
+            <span className="professional-cockpit__timeline-marker professional-cockpit__timeline-marker--destination" aria-hidden="true"/>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-rose-300">Destino</p>
+              <p className="mt-0.5 break-words text-sm font-semibold leading-relaxed text-white">{active.destination_label}</p>
+            </div>
+          </div>
+          {active.status==="ACCEPTED"&&<p className="text-xs leading-relaxed text-white/65">
+            Aproxime-se do local de embarque para liberar a confirmação de chegada. O servidor verifica o GPS.
           </p>}
           {active.status==="ACCEPTED"&&<button type="button" disabled={busy}
             onClick={()=>void action(active.id,"ARRIVED")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Cheguei no local</button>}
+            className="professional-cockpit__primary-action w-full">Cheguei no local</button>}
           {active.status==="ARRIVED"&&<>
-            <label htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Peça ao passageiro o código secreto de quatro dígitos.</label>
+            <label id="quick-ride-pin-help" htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Informe os quatro dígitos fornecidos pelo passageiro.</label>
             <input id="quick-ride-driver-pin" type="text" inputMode="numeric" autoComplete="off"
               maxLength={4} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\D/g,"").slice(0,4))}
-              placeholder="Código de embarque" className="min-h-12 w-full rounded-xl border border-white/30 bg-white/10 px-3 text-white" />
+              placeholder="••••" aria-describedby="quick-ride-pin-help"
+              className="h-14 w-full rounded-xl border border-white/20 bg-white/10 px-3 text-center font-[Sora] text-2xl font-bold tracking-[0.5em] text-white placeholder:text-white/25 focus:border-[#FFBB00] focus:outline-none focus:ring-2 focus:ring-[#FFBB00]/25" />
             <button type="button"
               onClick={()=>void action(active.id,"IN_PROGRESS")} disabled={busy||boardingPin.length!==4}
-              className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Validar código e iniciar viagem</button>
+              className="professional-cockpit__primary-action w-full">Validar código e iniciar viagem</button>
           </>}
           {active.status==="IN_PROGRESS"&&<>
             {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado. Aguarde atendimento da plataforma.</p>:
              dropoffDeadline?<p role="status" className="text-sm text-white/80">Finalização solicitada. Aguardando confirmação do passageiro (janela de 30 segundos).</p>:
              <button type="button" disabled={busy} onClick={()=>void action(active.id,"COMPLETED")}
-               className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Concluir Corrida</button>}
+               className="professional-cockpit__primary-action w-full">Concluir Corrida</button>}
           </>}
         </article>}
         {!active&&lastCompletedVisible&&lastCompleted&&<div className="space-y-3">
@@ -233,42 +259,58 @@ export function QuickRideDriverQueue({
           {ratingDismissed!==lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro"
             onClose={releaseCompleted}/>}
           <button type="button" onClick={releaseCompleted}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-            Liberar tela para novos chamados
+            className="professional-cockpit__primary-action flex w-full items-center justify-center gap-2 px-4">
+            <CheckCircle2 size={18} aria-hidden="true"/> Liberar tela para novos chamados
           </button>
         </div>}
         {!active&&queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
         {!active&&queue.map(ride=><article key={ride.id}
-          className="min-w-0 space-y-3 rounded-xl border border-white/20 bg-white/5 p-3">
-          <p className="font-semibold text-[#FFBB00]">⚡ Nova solicitação · {ride.vehicle_type==="MOTO"?"Mototáxi":"Carro"}</p>
-          <div className="space-y-2 rounded-xl bg-white/5 p-3 text-sm"><p className="break-words"><span className="font-semibold text-green-400">● Embarque</span> · {ride.origin_label}</p><p className="break-words"><span className="font-semibold text-red-400">● Destino</span> · {ride.destination_label}</p></div>
-          <p className="text-xs text-white/65">
+          className="min-w-0 space-y-3 rounded-2xl border border-white/15 bg-white/[0.04] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-[Sora] text-sm font-extrabold text-white">Nova solicitação</h3>
+            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white/85">
+              {ride.vehicle_type==="MOTO"?"Mototáxi":"Carro"}
+            </span>
+          </div>
+          <div className="professional-cockpit__timeline rounded-xl bg-white/[0.035] p-3" aria-label="Trajeto solicitado">
+            <span className="professional-cockpit__timeline-marker" aria-hidden="true"/>
+            <p className="min-w-0 break-words text-sm"><span className="font-bold text-emerald-300">Embarque</span> · {ride.origin_label}</p>
+            <span className="professional-cockpit__timeline-line" aria-hidden="true"/>
+            <span aria-hidden="true"/>
+            <span className="professional-cockpit__timeline-marker professional-cockpit__timeline-marker--destination" aria-hidden="true"/>
+            <p className="min-w-0 break-words text-sm"><span className="font-bold text-rose-300">Destino</span> · {ride.destination_label}</p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/75">
+            <Clock3 size={13} aria-hidden="true"/>
             {typeof ride.distance_km==="number"
               ?ride.distance_km.toFixed(1)+" km estimados"
               :"Distância detalhada após o aceite"}
-          </p>
-          <p className="text-sm font-bold text-[#FFBB00]">
-            {typeof ride.driver_receives_cents==="number"
-              ?"Você recebe "+formatBrl(ride.driver_receives_cents/100)
-              :"Remuneração não informada"}
-          </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-white/60">Você recebe</p>
+            <p className="professional-cockpit__money text-2xl font-black tracking-tight text-[#FFBB00]">
+              {typeof ride.driver_receives_cents==="number"
+                ?formatBrl(ride.driver_receives_cents/100)
+                :"Remuneração não informada"}
+            </p>
+          </div>
           {typeof ride.fare_cents==="number"&&
-            <p className="text-xs">Preço do passageiro: {formatBrl(ride.fare_cents/100)}</p>}
+            <p className="text-xs text-white/55">Preço do passageiro: {formatBrl(ride.fare_cents/100)}</p>}
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2">
             <button type="button" disabled={busy} aria-label="Dispensar esta solicitação"
               onClick={()=>{
                 rejected.current.add(ride.id);
                 setQueue(items=>items.filter(item=>item.id!==ride.id));
               }}
-              className="min-h-12 rounded-xl border border-white/30 bg-white/5 px-2 text-sm font-bold text-white disabled:opacity-60">
+              className="min-h-[52px] rounded-xl border border-white/20 bg-white/5 px-2 text-sm font-semibold text-white/80 hover:bg-white/10 disabled:opacity-60">
               Dispensar
             </button>
             <button type="button" disabled={busy||!!active||
               typeof ride.driver_receives_cents!=="number"}
               onClick={()=>void action(ride.id,"ACCEPT")}
-              className="min-h-12 rounded-xl bg-[#FFBB00] px-2 text-sm font-bold text-[#121212] disabled:opacity-60">
+              className="professional-cockpit__primary-action px-2">
               {busy?"Processando…":"Aceitar corrida"}
             </button>
           </div>
