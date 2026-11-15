@@ -18,4 +18,7 @@ const schema = z.object({
 // quotes a fare; publication/participant endpoints keep their authorization.
 export const getMapDrivingRoute = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => schema.parse(input))
-  .handler(async ({ data }) => getDrivingRoute(data.points));
+  .handler(async ({ data }) => {
+    const { optionalGoogleSearchFetch } = await import("./google-search-access.server");
+    return getDrivingRoute(data.points, await optionalGoogleSearchFetch("quote", "getMapDrivingRoute"));
+  });

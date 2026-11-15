@@ -154,7 +154,7 @@ async function requestGoogle(
 }
 
 export class GooglePlacesProvider implements LocationProvider {
-  constructor(private readonly request: typeof fetch = fetch) {}
+  constructor(private readonly request: typeof fetch = (input, init) => fetch(input, init)) {}
   readonly name = "Google Places (New)";
   isConfigured() {
     return Boolean(getGoogleServerKey());

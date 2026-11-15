@@ -155,6 +155,7 @@ describe("passenger fare estimate before requesting a ride", () => {
     expect(mocks.route).toHaveBeenCalledWith(
       { lat: -4.22, lng: -38.71 },
       { lat: -4.23, lng: -38.72 },
+      expect.any(Function),
     );
     expect(mocks.adminInsert).toHaveBeenCalledWith(
       expect.objectContaining({ passenger_price: 6, origin_lat: -4.22, origin_lng: -38.71 }),

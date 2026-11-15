@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { authenticatedGoogleRequest, type GoogleRequestDependencies } from "./google-request.server";
+import { authenticatedGoogleRequest, googleActionFetch, type GoogleRequestDependencies } from "./google-request.server";
 import { GOOGLE_CACHE_TTL_MS, GOOGLE_REQUEST_LIMITS, GOOGLE_TIMEOUT_MS } from "./google-request-policy";
 
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: vi.fn() }));
@@ -47,5 +47,38 @@ describe("Google request policy", () => {
   });
   it("rejects external hosts before consuming a limit", async () => {
     const d = dependencies(); await expect(authenticatedGoogleRequest({ ...input, url: "https://example.org/" }, d)).rejects.toThrow("inválido"); expect(d.consume).not.toHaveBeenCalled();
+  });
+});
+describe("authenticated multi-request actions", () => {
+  const options = { method: "POST", headers: { "X-Goog-Api-Key": "test-only" }, body: JSON.stringify({ travelMode: "DRIVE" }) };
+  const url = "https://routes.googleapis.com/directions/v2:computeRoutes";
+  it("consumes one quote budget for six parallel legs, not six", async () => {
+    const deps = dependencies();
+    deps.fetch = vi.fn(async () => new Response("{}"));
+    const request = googleActionFetch("verified-user", "quote", "group", deps);
+    await Promise.all(Array.from({ length: 6 }, () => request(url, options)));
+    expect(deps.consume).toHaveBeenCalledExactlyOnceWith("verified-user", "quote");
+    expect(deps.fetch).toHaveBeenCalledTimes(6);
+  });
+  it("blocks all concurrent legs when the atomic gate denies the action", async () => {
+    const deps = dependencies(); vi.mocked(deps.consume).mockResolvedValue(false);
+    const request = googleActionFetch("verified-user", "quote", "group", deps);
+    const results = await Promise.allSettled([request(url, options), request(url, options)]);
+    expect(results.map(result => result.status)).toEqual(["rejected", "rejected"]);
+    expect(deps.consume).toHaveBeenCalledTimes(1);
+    expect(deps.fetch).not.toHaveBeenCalled();
+  });
+  it("never shares permission between separate actions", async () => {
+    const deps = dependencies();
+    await googleActionFetch("verified-user", "quote", "first", deps)(url, options);
+    await googleActionFetch("verified-user", "quote", "second", deps)(url, options);
+    expect(deps.consume).toHaveBeenCalledTimes(2);
+  });
+  it("bounds one action to 16 outbound requests", async () => {
+    const deps = dependencies(); deps.fetch = vi.fn(async () => new Response("{}"));
+    const request = googleActionFetch("verified-user", "quote", "bounded", deps);
+    for (let i = 0; i < 16; i++) await request(url, options);
+    await expect(request(url, options)).rejects.toThrow("demais");
+    expect(deps.fetch).toHaveBeenCalledTimes(16);
   });
 });
