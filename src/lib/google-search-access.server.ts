@@ -6,9 +6,12 @@ import type { GoogleOperation } from "./google-request-policy";
 /** Public research remains anonymous. A supplied bearer must be verified;
  * failure never downgrades an authenticated request to the anonymous path.
  */
-export async function optionalGoogleSearchFetch(operation: GoogleOperation, caller: string): Promise<typeof fetch | undefined> {
+export async function optionalGoogleSearchFetch(operation: GoogleOperation, caller: string): Promise<typeof fetch> {
   const authorization = getRequest().headers.get("authorization");
-  if (!authorization) return undefined;
+  if (!authorization) {
+    const { anonymousGoogleSearchFetch } = await import("./google-public-request.server");
+    return anonymousGoogleSearchFetch(operation, caller);
+  }
   if (!/^Bearer \S+$/.test(authorization)) throw new Error("Sessão inválida. Entre novamente.");
   const token = authorization.slice(7);
   const url = process.env["SUPABASE_URL"];
