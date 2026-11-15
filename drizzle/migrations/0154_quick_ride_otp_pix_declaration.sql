@@ -3,23 +3,38 @@
 BEGIN;
 
 -- Existing locked rides retain their previous secret; new codes are four digits.
+ALTER TABLE public.quick_ride_boarding_secrets
+ ADD COLUMN IF NOT EXISTS reissue_count integer NOT NULL DEFAULT 0
+ CHECK(reissue_count BETWEEN 0 AND 2);
+
 CREATE OR REPLACE FUNCTION public.quick_ride_issue_boarding_pin(p_id uuid)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $fn$
-DECLARE q public.professional_quick_rides%ROWTYPE; v_salt uuid:=gen_random_uuid(); v_code text;
+DECLARE q public.professional_quick_rides%ROWTYPE;
+ s public.quick_ride_boarding_secrets%ROWTYPE;
+ v_salt uuid:=gen_random_uuid(); v_code text;
 BEGIN
  SELECT * INTO q FROM public.professional_quick_rides WHERE id=p_id FOR UPDATE;
  IF auth.uid() IS NULL OR NOT FOUND OR q.passenger_id IS DISTINCT FROM auth.uid()
     OR q.status<>'ARRIVED' THEN
   RAISE EXCEPTION 'Boarding OTP unavailable' USING ERRCODE='42501';
  END IF;
- IF EXISTS(SELECT 1 FROM public.quick_ride_boarding_secrets WHERE ride_id=p_id) THEN
-  RAISE EXCEPTION 'Boarding OTP already issued; contact support if lost or expired' USING ERRCODE='42501';
+ SELECT * INTO s FROM public.quick_ride_boarding_secrets WHERE ride_id=p_id FOR UPDATE;
+ IF FOUND AND (s.consumed_at IS NOT NULL OR s.attempts>=5 OR s.reissue_count>=2) THEN
+  RAISE EXCEPTION 'Boarding OTP already consumed, locked, or reissue limit reached'
+   USING ERRCODE='42501';
  END IF;
  v_code:=lpad(((('x'||substr(replace(gen_random_uuid()::text,'-',''),1,8))::bit(32)::bigint)%10000)::text,4,'0');
- INSERT INTO public.quick_ride_boarding_secrets(ride_id,pin_hash,salt,attempts,expires_at)
- VALUES(p_id,encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
-        v_salt,0,now()+interval '15 minutes');
+ IF s.ride_id IS NULL THEN
+  INSERT INTO public.quick_ride_boarding_secrets(ride_id,pin_hash,salt,attempts,expires_at)
+  VALUES(p_id,encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
+    v_salt,0,now()+interval '15 minutes');
+ ELSE
+  UPDATE public.quick_ride_boarding_secrets SET
+   pin_hash=encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
+   salt=v_salt,expires_at=now()+interval '15 minutes',
+   reissue_count=reissue_count+1 WHERE ride_id=p_id;
+ END IF;
  RETURN v_code;
 END; $fn$;
 
@@ -63,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.quick_ride_pix_declarations (
  salt uuid NOT NULL,
  attempts integer NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 5),
  expires_at timestamptz NOT NULL,
+ reissue_count integer NOT NULL DEFAULT 0 CHECK(reissue_count BETWEEN 0 AND 2),
  passenger_declared_at timestamptz,
  driver_acknowledged_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now()
@@ -74,20 +90,31 @@ REVOKE ALL ON public.quick_ride_pix_declarations FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION public.quick_ride_issue_payment_code(p_id uuid)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $fn$
-DECLARE q public.professional_quick_rides%ROWTYPE; v_salt uuid:=gen_random_uuid(); v_code text;
+DECLARE q public.professional_quick_rides%ROWTYPE;
+ d public.quick_ride_pix_declarations%ROWTYPE;
+ v_salt uuid:=gen_random_uuid(); v_code text;
 BEGIN
  SELECT * INTO q FROM public.professional_quick_rides WHERE id=p_id FOR UPDATE;
  IF auth.uid() IS NULL OR NOT FOUND OR q.driver_id IS DISTINCT FROM auth.uid()
     OR q.status<>'COMPLETED' THEN
   RAISE EXCEPTION 'Payment code unavailable' USING ERRCODE='42501';
  END IF;
- IF EXISTS(SELECT 1 FROM public.quick_ride_pix_declarations WHERE ride_id=p_id) THEN
-  RAISE EXCEPTION 'Payment code already issued; contact support if lost' USING ERRCODE='42501';
+ SELECT * INTO d FROM public.quick_ride_pix_declarations WHERE ride_id=p_id FOR UPDATE;
+ IF FOUND AND (d.passenger_declared_at IS NOT NULL OR d.attempts>=5 OR d.reissue_count>=2) THEN
+  RAISE EXCEPTION 'Payment code already consumed, locked, or reissue limit reached'
+   USING ERRCODE='42501';
  END IF;
  v_code:=lpad(((('x'||substr(replace(gen_random_uuid()::text,'-',''),1,8))::bit(32)::bigint)%10000)::text,4,'0');
- INSERT INTO public.quick_ride_pix_declarations(ride_id,code_hash,salt,expires_at)
- VALUES(p_id,encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
-        v_salt,now()+interval '24 hours');
+ IF d.ride_id IS NULL THEN
+  INSERT INTO public.quick_ride_pix_declarations(ride_id,code_hash,salt,expires_at)
+  VALUES(p_id,encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
+    v_salt,now()+interval '24 hours');
+ ELSE
+  UPDATE public.quick_ride_pix_declarations SET
+   code_hash=encode(sha256(convert_to(v_code||v_salt::text,'UTF8')),'hex'),
+   salt=v_salt,expires_at=now()+interval '24 hours',
+   reissue_count=reissue_count+1 WHERE ride_id=p_id;
+ END IF;
  RETURN v_code;
 END; $fn$;
 
