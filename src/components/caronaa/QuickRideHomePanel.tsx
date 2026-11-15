@@ -16,6 +16,7 @@ import { QuickRidePixCard } from "./QuickRidePixCard";
 import { QuickRideRatingModal } from "./QuickRideRatingModal";
 import { QuickRideOperationalMap } from "./QuickRideOperationalMap";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
+import { toast } from "sonner";
 
 type QuickVehicle = "CAR" | "MOTO";
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
@@ -109,6 +110,30 @@ export function QuickRideHomePanel({
     }catch(cause){setError(cause instanceof Error?cause.message:"Falha ao gerar código.");}
     finally{setBusy(false);}
   }
+  const notifiedArrival=useRef<string|null>(null);
+  useEffect(()=>{
+    if(!liveRide || liveRide.status!=="ARRIVED")return;
+    if(notifiedArrival.current===liveRide.id)return;
+    notifiedArrival.current=liveRide.id;
+    toast.success("Seu motorista chegou! Informe o código de embarque.");
+    if(!boardingCode)void issueBoardingCode();
+    // Audio alerts may be blocked by browser autoplay rules.
+    try{
+      const AudioContextType=window.AudioContext;
+      if(AudioContextType){
+        const ctx=new AudioContextType();
+        if(ctx.state==="running"){
+          const oscillator=ctx.createOscillator();
+          const gain=ctx.createGain();
+          oscillator.type="sine"; oscillator.frequency.value=880;
+          gain.gain.value=0.035;
+          oscillator.connect(gain);gain.connect(ctx.destination);
+          oscillator.start();oscillator.stop(ctx.currentTime+0.15);
+          oscillator.onended=()=>{void ctx.close();};
+        }else void ctx.close();
+      }
+    }catch{ /* Visual alert remains accessible without sound. */ }
+  },[liveRide?.id,liveRide?.status]);
   async function respondDropoff(response:"CONFIRMED"|"CONTESTED"){
     if(!liveRide||busy||remainingDropoffSeconds===0)return;
     setBusy(true);setError("");
