@@ -357,14 +357,14 @@ export function QuickRideHomePanel({
       {hasOrigin&&!coverageLoading&&!covered&&(
         <div className="min-w-0 break-words rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
           <p className="font-semibold">{coverage?.municipality??"Região não identificada"}</p>
-          <p className="mt-1 text-gray-300">{inactiveText}</p>
+          <p className="mt-1 text-gray-300">{shellMode?"Corrida não disponível neste local. Escolha uma origem ou modalidade atendida.":inactiveText}</p>
           {coverage?.municipality&&(
             <button type="button" disabled={busy||interestSent} onClick={()=>void registerInterest()}
               className="mt-2 min-h-11 rounded-xl border border-[#FFBB00]/40 px-3 font-bold text-[#FFBB00] disabled:opacity-60">
               {interestSent?"Interesse registrado":"Avise-me quando chegar aqui"}
             </button>
           )}
-          <p className="mt-2 text-gray-400">Você pode escolher outra saída numa região habilitada. A região do seu cadastro não limita os pedidos.</p>
+          {!shellMode&&<p className="mt-2 text-gray-400">Você pode escolher outra saída numa região habilitada. A região do seu cadastro não limita os pedidos.</p>}
         </div>
       )}
       {liveRide?(
@@ -402,7 +402,7 @@ export function QuickRideHomePanel({
         </div>
       ):(
         <>
-          {covered&&hasDestination&&!currentQuote&&!error&&!shellMode&&(
+          {covered&&hasDestination&&!currentQuote&&!error&&(
             <p role="status" className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs text-gray-200">
               {quoteLoading?"Calculando o preço da viagem…":"Preparando preço automaticamente para o destino selecionado…"}
             </p>
@@ -472,7 +472,7 @@ export function QuickRideHomePanel({
         {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen
           onClose={()=>setRatingOpen(null)}/>}
       </div>}
-      {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
+      {error&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível concluir a solicitação agora. Verifique sua conexão e tente novamente.":error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
         <button type="button" disabled={quoteLoading||busy}
           onClick={()=>{setError("");setQuoteRefresh(value=>value+1);}}
