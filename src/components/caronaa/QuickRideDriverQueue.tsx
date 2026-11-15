@@ -151,7 +151,9 @@ export function QuickRideDriverQueue({
       const {data,error:rpcError}=await (supabase as any).rpc(rpc,args);
       if(rpcError)throw new Error(next==="IN_PROGRESS"
         ?"Código incorreto, expirado ou bloqueado. Confira com o passageiro."
-        :"Não foi possível atualizar a corrida. Verifique GPS e disponibilidade.");
+        :next==="ARRIVED"
+          ?"Não foi possível confirmar a chegada. Verifique se o GPS está recente, com precisão de até 50 m, e se você está a até 75 m do embarque."
+          :"Não foi possível atualizar a corrida. Verifique GPS e disponibilidade.");
       if(accept && data!==true){
         rejected.current.add(rideId);
         setQueue(items=>items.filter(r=>r.id!==rideId));
