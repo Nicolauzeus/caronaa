@@ -7,14 +7,16 @@ import { municipalityFromGoogle } from "./municipality";
 export const searchMunicipalities = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ query: z.string().trim().min(2).max(120), sessionToken: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { getGoogleServerKey } = await import("./location/google-server-key");
     const key = getGoogleServerKey();
     if (!key) throw new Error("Busca de municípios Google não configurada.");
-    const response = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
-      method: "POST", signal: AbortSignal.timeout(5000),
-      headers: { "X-Goog-Api-Key": key, "Content-Type": "application/json", "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text" },
-      body: JSON.stringify({ input: data.query, sessionToken: data.sessionToken, includedPrimaryTypes: ["(cities)"], includedRegionCodes: ["br"], languageCode: "pt-BR", locationBias: { circle: { center: { latitude: -4.22, longitude: -38.71 }, radius: 50000 } } }),
+    const { authenticatedGoogleRequest } = await import("./google-request.server");
+    const response = await authenticatedGoogleRequest({
+      url: "https://places.googleapis.com/v1/places:autocomplete", key,
+      userId: context.userId, caller: "searchMunicipalities", operation: "autocomplete",
+      fieldMask: "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text",
+      body: { input: data.query, sessionToken: data.sessionToken, includedPrimaryTypes: ["(cities)"], includedRegionCodes: ["br"], languageCode: "pt-BR", locationBias: { circle: { center: { latitude: -4.22, longitude: -38.71 }, radius: 50000 } } },
     });
     await checkGoogle(response);
     const result = await response.json() as { suggestions?: { placePrediction?: { placeId?: string; text?: { text?: string } } }[] };
@@ -24,12 +26,15 @@ export const searchMunicipalities = createServerFn({ method: "POST" })
 export const resolveMunicipality = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ placeId: z.string().regex(/^[A-Za-z0-9_-]{1,250}$/), sessionToken: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { getGoogleServerKey } = await import("./location/google-server-key");
     const key = getGoogleServerKey();
     if (!key) throw new Error("Busca de municípios Google não configurada.");
-    const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(data.placeId)}?languageCode=pt-BR&sessionToken=${encodeURIComponent(data.sessionToken)}`, {
-      signal: AbortSignal.timeout(5000), headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "id,types,addressComponents" },
+    const { authenticatedGoogleRequest } = await import("./google-request.server");
+    const response = await authenticatedGoogleRequest({
+      url: `https://places.googleapis.com/v1/places/${encodeURIComponent(data.placeId)}?languageCode=pt-BR&sessionToken=${encodeURIComponent(data.sessionToken)}`, key,
+      userId: context.userId, caller: "resolveMunicipality", operation: "details",
+      fieldMask: "id,types,addressComponents",
     });
     await checkGoogle(response);
     const city = municipalityFromGoogle(await response.json());
