@@ -612,7 +612,8 @@ function Perfil() {
 
   return (
     <AppShell prelaunchMode={launchLocked}>
-      {!showProfessionalDashboard && <PassengerAccountDashboard
+      {!showProfessionalDashboard && <>
+        <PassengerAccountDashboard
         fullName={fullName} initials={initials} photo={photo} city={city}
         verified={verifications.some(value=>value.status==="VERIFIED")}
         onPhoto={()=>setAvatarSheetOpen(true)}
@@ -639,7 +640,12 @@ function Perfil() {
           <ResearchParticipationCard/>
         </div>}
         notificationContent={<NotificationPreferences/>}
-      />}
+      />
+      <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+        onChange={selectPhoto} className="sr-only" />
+      <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+        capture="user" onChange={selectPhoto} className="sr-only" />
+      </>}
 
       {showProfessionalDashboard && (
         <>
