@@ -90,7 +90,7 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
-    expect(server).toContain("reverseGeocodeService(data.lat, data.lng)");
+    expect(server).toContain("reverseGeocodeRadarMunicipality(data.lat, data.lng)");
     expect(server).toContain("municipalityFromProfessionalGps(geo)");
     expect(server).toContain("p_user_id: context.userId");
     expect(server).toContain("db_publish_rejected");
