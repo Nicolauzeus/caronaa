@@ -26,6 +26,19 @@ describe("CARONAA identity markers", () => {
     expect(tripMarkerSvg("destination")).toContain("Destino");
   });
 
+  it("renders a distinct valid motorcycle radar marker", () => {
+    const svg = tripMarkerSvg("availableMoto");
+    expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
+    expect(svg).toContain('width="48"');
+    expect(svg).toContain('stroke="#FFBB00"');
+    expect(svg).toContain('fill="#121212"');
+    expect(svg).toContain('<circle cx="16" cy="27"');
+    expect(svg).toContain('<circle cx="32" cy="27"');
+    expect(svg).not.toContain('Motorista</text>');
+    expect(decodeURIComponent(tripMarkerIcon("availableMoto").url.split(",")[1])).toBe(svg);
+    expect(svg).not.toBe(tripMarkerSvg("availableDriver"));
+  });
+
   it("does not mislabel a radar driver as the assigned driver", () => {
     const available = tripMarkerSvg("availableDriver");
     expect(available).not.toContain("Motorista</text>");
