@@ -32,7 +32,7 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
   };
   return <section aria-label={title}
     className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-[#FFBB00]/30 bg-[#121212]/95 text-white shadow-2xl backdrop-blur-xl transition-[height] duration-300 ease-out"
-    style={{height:heights[snap].dynamic, minHeight:heights[snap].fallback,
+    style={{height:heights[snap].fallback, minHeight:heights[snap].dynamic,
       fontFamily:"Manrope, sans-serif",paddingBottom:"env(safe-area-inset-bottom)"}}>
     <button type="button" aria-label="Alça do painel: toque ou arraste para expandir ou recolher"
       aria-expanded={snap!=="peek"}
