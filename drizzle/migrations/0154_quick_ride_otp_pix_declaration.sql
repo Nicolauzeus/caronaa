@@ -126,6 +126,29 @@ AS $fn$
    AND auth.uid() IN (q.driver_id,q.passenger_id);
 $fn$;
 
+-- Contract amounts: driver's net and passenger's gross are different.
+CREATE OR REPLACE FUNCTION public.quick_ride_settlement_amount(p_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $fn$
+DECLARE q public.professional_quick_rides%ROWTYPE;
+        fare public.caronaa_quick_fare_quotes%ROWTYPE;
+BEGIN
+ SELECT * INTO q FROM public.professional_quick_rides WHERE id=p_id;
+ IF auth.uid() IS NULL OR NOT FOUND OR q.status<>'COMPLETED'
+    OR auth.uid() NOT IN (q.driver_id,q.passenger_id) THEN
+  RAISE EXCEPTION 'Settlement unavailable' USING ERRCODE='42501';
+ END IF;
+ SELECT * INTO fare FROM public.caronaa_quick_fare_quotes WHERE ride_id=p_id;
+ IF NOT FOUND OR fare.customer_pays_cents<450 OR
+    fare.customer_pays_cents IS DISTINCT FROM
+      (fare.driver_receives_cents+fare.platform_commission_cents) THEN
+  RAISE EXCEPTION 'Fare contract invalid' USING ERRCODE='22023';
+ END IF;
+ RETURN jsonb_build_object('grossCents',fare.customer_pays_cents,
+   'driverReceivesCents',fare.driver_receives_cents,
+   'commissionCents',fare.platform_commission_cents);
+END; $fn$;
+
 -- Only assigned ride participants may see this driver's identity and vehicle.
 CREATE OR REPLACE FUNCTION public.quick_ride_driver_details(p_id uuid)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
@@ -160,10 +183,12 @@ END; $fn$;
 REVOKE ALL ON FUNCTION public.quick_ride_start_with_code(uuid,text),
  public.quick_ride_complete_ride(uuid),public.quick_ride_issue_payment_code(uuid),
  public.quick_ride_confirm_payment_code(uuid,text),
- public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid) FROM PUBLIC,anon;
+ public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid),
+ public.quick_ride_settlement_amount(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.quick_ride_start_with_code(uuid,text),
  public.quick_ride_complete_ride(uuid),public.quick_ride_issue_payment_code(uuid),
  public.quick_ride_confirm_payment_code(uuid,text),
- public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid) TO authenticated;
+ public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid),
+ public.quick_ride_settlement_amount(uuid) TO authenticated;
 NOTIFY pgrst,'reload schema';
 COMMIT;
