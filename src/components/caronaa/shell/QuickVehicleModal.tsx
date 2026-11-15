@@ -1,55 +1,116 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { VehicleMissingField } from "@/lib/role/use-active-role";
+import type { VehicleDraft, VehicleMissingField, VehicleType } from "@/lib/role/use-active-role";
 
-export type VehicleDraft = { brand:string; model:string; color:string; plate:string };
-type Props = {
+type Props={
   open:boolean;
   onOpenChange:(open:boolean)=>void;
   missingFields:VehicleMissingField[];
-  onReview?:(vehicle:VehicleDraft)=>void;
+  onSave:(vehicle:VehicleDraft)=>Promise<void>;
+  initialType?:VehicleType;
+  initialSeats?:number;
 };
-const fields: {key:keyof VehicleDraft;label:string;hint:string}[] = [
+const fields: {key:VehicleMissingField;label:string;hint:string}[]=[
   {key:"brand",label:"Marca",hint:"Ex.: Honda"},
   {key:"model",label:"Modelo",hint:"Ex.: CG 160"},
   {key:"color",label:"Cor",hint:"Ex.: Preto"},
   {key:"plate",label:"Placa",hint:"Ex.: ABC1D23"},
 ];
-const emptyDraft:VehicleDraft={brand:"",model:"",color:"",plate:""};
-export function QuickVehicleModal({open,onOpenChange,missingFields,onReview}:Props) {
-  const [draft,setDraft]=useState<VehicleDraft>(emptyDraft);
-  const [reviewed,setReviewed]=useState(false);
-  useEffect(()=>{if(open){setDraft(emptyDraft);setReviewed(false);}},[open]);
-  const required=fields.filter(f=>missingFields.includes(f.key));
-  const valid=required.every(f=>draft[f.key].trim().length>0) &&
+
+export function QuickVehicleModal({
+  open,onOpenChange,missingFields,onSave,initialType="car",initialSeats=1,
+}:Props){
+  const [draft,setDraft]=useState<VehicleDraft>({
+    brand:"",model:"",color:"",plate:"",
+    vehicleType:initialType,vehicleSeats:initialType==="moto"?1:Math.min(3,Math.max(1,initialSeats)),
+  });
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  useEffect(()=>{
+    if(!open)return;
+    setDraft({
+      brand:"",model:"",color:"",plate:"",
+      vehicleType:initialType,
+      vehicleSeats:initialType==="moto"?1:Math.min(3,Math.max(1,initialSeats)),
+    });
+    setError("");
+  },[open,initialType,initialSeats]);
+
+  const required=fields.filter(field=>missingFields.includes(field.key));
+  const valid=required.every(field=>draft[field.key].trim().length>0) &&
     (!missingFields.includes("plate") || /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(draft.plate));
-  const submit=(event:FormEvent)=>{
+  const submit=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    if(!valid)return;
-    onReview?.(draft);
-    setReviewed(true);
+    if(busy || !valid)return;
+    setBusy(true);
+    setError("");
+    try{
+      await onSave(draft);
+      onOpenChange(false);
+    }catch{
+      setError("Não foi possível salvar ou validar o veículo. Confira a conexão e tente novamente.");
+    }finally{
+      setBusy(false);
+    }
   };
-  return <Dialog open={open} onOpenChange={onOpenChange}>
+  return <Dialog open={open} onOpenChange={value=>{if(!busy)onOpenChange(value);}}>
     <DialogContent className="max-w-sm border-[#FFBB00]/40 bg-[#121212] text-white"
       style={{fontFamily:"Manrope, sans-serif"}}>
       <DialogHeader>
-        <DialogTitle className="font-[family-name:var(--font-display)] text-xl text-[#FFBB00]">Complete seu veículo</DialogTitle>
-        <DialogDescription className="text-white/70">Preencha os campos pendentes para revisar seu cadastro de motorista.</DialogDescription>
+        <DialogTitle className="font-[family-name:var(--font-display)] text-xl text-[#FFBB00]">
+          Complete seu veículo
+        </DialogTitle>
+        <DialogDescription className="text-white/70">
+          Apenas os campos pendentes são solicitados. Depois de salvar, o CARONAA verifica sua elegibilidade.
+        </DialogDescription>
       </DialogHeader>
-      <form onSubmit={submit} className="space-y-3">
+      <form className="max-h-[75dvh] space-y-3 overflow-y-auto" onSubmit={event=>void submit(event)}>
         {required.map(field=><label key={field.key} className="block text-sm font-semibold">
           {field.label}
-          <input autoComplete="off" value={draft[field.key]}
-            onChange={event=>setDraft(prev=>({...prev,[field.key]:field.key==="plate"?event.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7):event.target.value}))}
+          <input required autoComplete="off" value={draft[field.key]}
+            onChange={event=>setDraft(prev=>({
+              ...prev,[field.key]:field.key==="plate"
+                ?event.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7)
+                :event.target.value,
+            }))}
             placeholder={field.hint}
-            className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-white/10 px-3 text-white placeholder:text-white/45 focus:border-[#FFBB00] focus:outline-none"/>
+            className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-white/10 px-3 text-white placeholder:text-white/50 focus:border-[#FFBB00] focus:outline-none"/>
         </label>)}
-        {reviewed && <p role="status" className="text-sm text-[#FFBB00]">Dados preparados para revisão. Ainda não foram salvos no perfil.</p>}
-        <p className="text-xs text-white/60">Nesta etapa visual, nenhum dado é enviado ao banco. A ativação depende do cadastro persistido e da autorização existente.</p>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-bold">Tipo de veículo</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(["car","moto"] as const).map(type=><button key={type} type="button"
+              disabled={busy} aria-pressed={draft.vehicleType===type}
+              onClick={()=>setDraft(prev=>({
+                ...prev,vehicleType:type,
+                vehicleSeats:type==="moto"?1:Math.max(1,Math.min(3,prev.vehicleSeats)),
+              }))}
+              className={`min-h-12 rounded-xl border px-2 font-bold ${draft.vehicleType===type
+                ?"border-[#FFBB00] bg-[#FFBB00] text-[#121212]"
+                :"border-white/25 bg-white/10 text-white"}`}>
+              {type==="car"?"Carro":"Moto"}
+            </button>)}
+          </div>
+        </fieldset>
+        <label className="block text-sm font-semibold">
+          Vagas para passageiros
+          <select value={draft.vehicleSeats} disabled={busy||draft.vehicleType==="moto"}
+            onChange={event=>setDraft(prev=>({...prev,vehicleSeats:Number(event.target.value)}))}
+            className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] px-3 text-white">
+            {Array.from({length:draft.vehicleType==="moto"?1:3},(_,index)=>index+1)
+              .map(seats=><option key={seats} value={seats}>{seats} {seats===1?"vaga":"vagas"}</option>)}
+          </select>
+        </label>
+        {error&&<p role="alert" className="text-sm text-red-300">{error}</p>}
         <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" onClick={()=>onOpenChange(false)}>Voltar</Button>
-          <Button type="submit" disabled={!valid} className="bg-[#FFBB00] text-[#121212] hover:bg-[#ffd24d]">Revisar dados</Button>
+          <Button type="button" variant="outline" disabled={busy} onClick={()=>onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={!valid||busy}
+            className="min-h-12 bg-[#FFBB00] font-bold text-[#121212] hover:bg-[#ffd24d]">
+            {busy?"Salvando...":"Salvar veículo"}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>
