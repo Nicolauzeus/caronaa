@@ -19,6 +19,7 @@ type Props = {
   immersive?: boolean;
   routeManagedExternally?:boolean;
   routeBottomInset?:number;
+  onRouteMeeting?: {origin:{lat:number;lng:number};pickup:{lat:number;lng:number;poiName:string}}|null;
   plannedRoute?:{routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
@@ -47,6 +48,7 @@ export function GoogleHomeRideMap({
   pickupPreview = null,
   routeManagedExternally = false,
   routeBottomInset = 160,
+  onRouteMeeting = null,
   plannedRoute = null,
   userPosition,
   professionalDrivers = [],
@@ -69,6 +71,7 @@ export function GoogleHomeRideMap({
   const routePolyline = useRef<any>(null);
   const circle = useRef<any>(null);
   const pickupLines = useRef<any[]>([]);
+  const onRouteOverlay = useRef<any[]>([]);
   const currentCenter = useRef<{ lat: number; lng: number } | null>(null);
   const lastManualOrigin = useRef<string | null>(null);
   const lastRecenter = useRef(recenterVersion);
@@ -141,6 +144,8 @@ export function GoogleHomeRideMap({
       circle.current = null;
       pickupLines.current.forEach((line) => line.setMap(null));
       pickupLines.current = [];
+      onRouteOverlay.current.forEach(item=>item.setMap(null));
+      onRouteOverlay.current = [];
       map.current = null;
     };
     // Create once; markers and camera are updated in separate effects.
@@ -236,6 +241,35 @@ export function GoogleHomeRideMap({
     });
     return () => listener?.remove?.();
   }, [ready, failed, selectingOrigin, onPickOrigin]);
+
+  // A meeting point comes from the authorized match RPC. The dotted connector
+  // is a visual link, not a walking navigation route or distance measurement.
+  useEffect(()=>{
+    onRouteOverlay.current.forEach(item=>item.setMap(null));
+    onRouteOverlay.current=[];
+    if(!ready||!map.current||failed||!onRouteMeeting)return;
+    const {origin,pickup}=onRouteMeeting;
+    if(!validPoint(origin)||!validPoint(pickup))return;
+    const G=(window as any).google.maps;
+    const marker=new G.Marker({
+      map:map.current,position:{lat:pickup.lat,lng:pickup.lng},
+      title:pickup.poiName||"Ponto de Encontro no Trajeto",
+      icon:{
+        path:"M -7,-8 L 7,-8 L 7,3 L 0,10 L -7,3 Z",
+        fillColor:"#FFBB00",fillOpacity:1,strokeColor:"#121212",strokeWeight:2,scale:1.6,
+      },
+      zIndex:60,
+    });
+    const connector=new G.Polyline({
+      map:map.current,
+      path:[{lat:origin.lat,lng:origin.lng},{lat:pickup.lat,lng:pickup.lng}],
+      geodesic:false,strokeOpacity:0,strokeWeight:4,
+      icons:[{icon:{path:"M 0,-1 0,1",strokeColor:"#FFBB00",strokeOpacity:1,scale:2},offset:"0",repeat:"12px"}],
+    });
+    onRouteOverlay.current=[marker,connector];
+    return()=>{onRouteOverlay.current.forEach(item=>item.setMap(null));onRouteOverlay.current=[];};
+  },[ready,failed,onRouteMeeting?.origin.lat,onRouteMeeting?.origin.lng,
+    onRouteMeeting?.pickup.lat,onRouteMeeting?.pickup.lng,onRouteMeeting?.pickup.poiName]);
 
   // Selecting a manual departure must recenter on that selected place,
   // not on a coarse browser/Wi-Fi geolocation.
