@@ -3,6 +3,7 @@ import { ArrowLeft, CalendarClock, CarFront, MapPin, Navigation, X } from "lucid
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export type UnifiedTrip = {
   id: string;
@@ -161,18 +162,25 @@ export function UnifiedMyTripsPanel({onClose,onShowOnMap,refreshKey=0}: Props) {
             className="min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Ver no mapa</button>}
       </article>)}
     </div>}
-    {cancelId&&<div role="dialog" aria-modal="true" aria-label="Confirmar cancelamento"
-      className="space-y-4 rounded-2xl border border-[#FFBB00]/50 bg-[#121212] p-4 shadow-xl">
-      <p className="font-bold">Deseja cancelar seu agendamento? Não haverá cobrança pelo aplicativo. O servidor precisa confirmar o cancelamento.</p>
-      <div className="flex gap-2">
-        <button type="button" disabled={busy} onClick={()=>setCancelId(null)}
-          className="min-h-12 flex-1 rounded-xl border border-white/30">Voltar</button>
-        <button type="button" disabled={busy} onClick={()=>void cancel()}
-          className="min-h-12 flex-1 rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
-          {busy?"Cancelando...":"Confirmar cancelamento"}
-        </button>
-      </div>
-    </div>}
+    <Dialog open={cancelId!==null} onOpenChange={open=>{if(!open&&!busy)setCancelId(null);}}>
+      <DialogContent className="max-w-sm border-[#FFBB00]/50 bg-[#121212] text-white">
+        <DialogHeader>
+          <DialogTitle className="font-[family-name:var(--font-display)]">Confirmar cancelamento</DialogTitle>
+          <DialogDescription className="text-white/70">
+            Deseja cancelar seu agendamento? Não haverá cobrança pelo aplicativo.
+            O servidor precisa confirmar o cancelamento.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex gap-2">
+          <button type="button" disabled={busy} onClick={()=>setCancelId(null)}
+            className="min-h-12 flex-1 rounded-xl border border-white/30">Voltar</button>
+          <button type="button" disabled={busy} onClick={()=>void cancel()}
+            className="min-h-12 flex-1 rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
+            {busy?"Cancelando...":"Confirmar cancelamento"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
     <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 text-sm text-white/75">
       <ArrowLeft size={16}/> Voltar ao planejamento
     </button>
