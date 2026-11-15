@@ -91,6 +91,11 @@ export function useFlashDriverPresence(){
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;
         const fix=sample(pos);
+        if(!Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>5000){
+          setState(state=>({...state,gpsConnected:false,
+            error:"O GPS está impreciso. Aguardando uma localização válida."}));
+          return;
+        }
         lastGpsAt.current=fix.at;
         currentFix.current=fix;
         setState(s=>({...s,gps:fix}));
@@ -101,7 +106,8 @@ export function useFlashDriverPresence(){
       staleTimer.current=setInterval(()=>{
         if(!active.current)return;
         const age=Date.now()-lastGpsAt.current;
-        if(age>FLASH_GPS_STALE_MS){
+        const backendAge=Date.now()-lastSentAt.current;
+        if(age>FLASH_GPS_STALE_MS||backendAge>FLASH_GPS_STALE_MS){
           active.current=false;
           stopWatch();
           setState(s=>({...s,gpsConnected:false,error:"Sem GPS por mais de 60 segundos. Disponibilidade encerrada."}));
