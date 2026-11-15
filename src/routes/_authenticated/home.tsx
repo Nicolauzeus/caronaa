@@ -38,6 +38,7 @@ import { useUserLocation } from "@/lib/location/use-user-location";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { sessionRequest } from "@/lib/session-request-cache";
+import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
@@ -48,6 +49,8 @@ export const Route = createFileRoute("/_authenticated/home")({
   // Parent route already verifies login and applies institution waiting gates.
   // Resolve role before any passenger/driver dashboard renders.
   beforeLoad: async () => {
+    beginCaronaaPhase("home-before-load");
+    try {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return;
     if (getAdminAppPreview(data.user.id)) return;
@@ -59,6 +62,7 @@ export const Route = createFileRoute("/_authenticated/home")({
     }
     const next = await resolvePostOnboardingDestination();
     if (next !== "/home") throw redirect({ to: next, replace: true });
+    } finally {endCaronaaPhase("home-before-load");beginCaronaaPhase("home-first-render");}
   },
   head: () => ({
     meta: [
@@ -80,6 +84,7 @@ export const Route = createFileRoute("/_authenticated/home")({
 });
 
 function Home() {
+  useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [intent, setIntent] = useState<RideIntent>(search.intent === "offer" ? "OFFER" : "REQUEST");
