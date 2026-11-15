@@ -126,6 +126,29 @@ AS $fn$
    AND auth.uid() IN (q.driver_id,q.passenger_id);
 $fn$;
 
+-- Only assigned ride participants may see this driver's identity and vehicle.
+CREATE OR REPLACE FUNCTION public.quick_ride_driver_details(p_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $fn$
+DECLARE q public.professional_quick_rides%ROWTYPE; p record;
+BEGIN
+ SELECT * INTO q FROM public.professional_quick_rides WHERE id=p_id;
+ IF auth.uid() IS NULL OR NOT FOUND OR q.driver_id IS NULL
+    OR auth.uid() NOT IN (q.passenger_id,q.driver_id)
+    OR q.status NOT IN ('ACCEPTED','ARRIVED','IN_PROGRESS','COMPLETED') THEN
+  RAISE EXCEPTION 'Driver details unavailable' USING ERRCODE='42501';
+ END IF;
+ SELECT full_name,avatar_url,vehicle_brand,vehicle_description,vehicle_plate
+ INTO p FROM public.profiles WHERE id=q.driver_id;
+ RETURN jsonb_build_object(
+   'name',coalesce(nullif(btrim(p.full_name),''),'Motorista'),
+   'photo',nullif(btrim(p.avatar_url),''),
+   'vehicle',nullif(btrim(concat_ws(' ',p.vehicle_brand,p.vehicle_description)),''),
+   'plate',nullif(btrim(p.vehicle_plate),''),
+   'vehicleType',q.vehicle_type
+ );
+END; $fn$;
+
 -- Prevent bypassing the four-digit OTP through the earlier six-digit RPC.
 CREATE OR REPLACE FUNCTION public.quick_ride_verify_boarding_pin(p_id uuid,p_pin text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
@@ -137,10 +160,10 @@ END; $fn$;
 REVOKE ALL ON FUNCTION public.quick_ride_start_with_code(uuid,text),
  public.quick_ride_complete_ride(uuid),public.quick_ride_issue_payment_code(uuid),
  public.quick_ride_confirm_payment_code(uuid,text),
- public.quick_ride_payment_declaration_state(uuid) FROM PUBLIC,anon;
+ public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.quick_ride_start_with_code(uuid,text),
  public.quick_ride_complete_ride(uuid),public.quick_ride_issue_payment_code(uuid),
  public.quick_ride_confirm_payment_code(uuid,text),
- public.quick_ride_payment_declaration_state(uuid) TO authenticated;
+ public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid) TO authenticated;
 NOTIFY pgrst,'reload schema';
 COMMIT;
