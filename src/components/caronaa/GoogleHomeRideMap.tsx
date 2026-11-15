@@ -20,7 +20,6 @@ type Props = {
   routeManagedExternally?:boolean;
   routeBottomInset?:number;
   routeLeftInset?:number;
-  routeLeftInset?:number;
   onRouteMeeting?: {origin:{lat:number;lng:number};pickup:{lat:number;lng:number;poiName:string}}|null;
   plannedRoute?:{routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
