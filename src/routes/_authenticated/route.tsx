@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated")({
     // Availability is accessible to an authenticated pilot candidate. It
     // cannot grant any professional permission by itself; every write and
     // dispatch is checked by the database and pilot server dual gate.
-    const professionalPage = ["/disponibilidade-profissional","/perfil","/viagem-rapida"]
+    const professionalPage = ["/disponibilidade-profissional","/perfil","/viagem-rapida","/viagens-profissionais"]
       .includes(location.pathname);
     let approvedProfessional = false;
     if (professionalPage) {
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/_authenticated")({
       if (location.pathname === "/disponibilidade-profissional") {
         return {user:data.user,launchLocked:!approvedProfessional};
       }
-      if (location.pathname === "/viagem-rapida") {
+      if (location.pathname === "/viagem-rapida" || location.pathname === "/viagens-profissionais") {
         if (approvedProfessional) {
           return {user:data.user,launchLocked:false};
         }
