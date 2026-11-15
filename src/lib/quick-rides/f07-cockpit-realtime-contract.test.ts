@@ -22,8 +22,8 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(google).toContain('maxResultCount: 1');
     expect(google).toContain('radius: 150.0');
     expect(google).toContain('reverseQuotaCooldownUntil');
-    expect(server).toContain('verifiedGpsCity(context.userId,point)');
-    expect(server).toContain('rememberVerifiedGpsCity(context.userId,point,city)');
+    expect(server).toContain('resolvePilotCivic(data.lat, data.lng)');
+    expect(server).not.toContain('verifiedGpsCity');
     expect(server).not.toContain('await clearStaleLocation();\n      return { published: false, reason: "LOCATION_UNKNOWN"');
   });
   it("places driver queue and trip controls inside existing GPS cockpit",()=>{
