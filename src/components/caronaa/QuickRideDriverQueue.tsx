@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { QuickRideRating } from "./QuickRideRating";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -155,7 +156,7 @@ export function QuickRideDriverQueue({
                className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Solicitar finalização</button>}
           </>}
         </article>}
-        {!active&&lastCompleted&&<QuickRidePixCard rideId={lastCompleted}/>}
+        {!active&&lastCompleted&&<><QuickRideRating rideId={lastCompleted} subject="passageiro"/><QuickRidePixCard rideId={lastCompleted}/></>}
         {queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
