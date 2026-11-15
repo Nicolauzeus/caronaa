@@ -297,7 +297,7 @@ export function AppShell({
 
             {/* Botão de Menu para MOBILE */}
             {!publicPage ? (
-              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} professionalOnly={professionalOnly} />
+              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} professionalOnly={professionalOnly === true} />
             ) : (
               <Button
                 variant="ghost"
