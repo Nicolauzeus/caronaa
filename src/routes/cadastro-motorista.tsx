@@ -84,6 +84,8 @@ function SimpleMotorcycleRegistration() {
         if (error) throw error;
         if (!data.session) {
           setConfirmationSent(true);
+          setPassword("");
+          setConfirm("");
           toast.success("Confira o e-mail para confirmar sua conta.");
           return;
         }
@@ -237,7 +239,7 @@ function SimpleMotorcycleRegistration() {
               </div>
               <p aria-live="polite" className={"mt-1 min-h-4 text-xs " + (confirm && confirm !== password ? "text-red-300" : "text-white/65")}>{confirm ? (confirm === password ? "As senhas coincidem." : "As senhas não coincidem.") : "Repita a senha para confirmar."}</p>
             </div>}
-            {feedback && <p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">{feedback}</p>}
+            {feedback && <p role={feedback.includes("não") || feedback.includes("incorret") || feedback.includes("Muitas") ? "alert" : "status"} className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">{feedback}</p>}
             <button disabled={busy} aria-busy={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy && <LoaderCircle size={18} className="animate-spin" />}{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
             <p className="text-center text-xs text-white/60">{mode === "signup" ? "Próximo passo: dados profissionais e aprovação" : "Acesso seguro CARONAA"}</p>
             <Link to="/auth" className="block min-h-10 pt-2 text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
@@ -250,8 +252,8 @@ function SimpleMotorcycleRegistration() {
             </div>}
             {authorized && <p className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">Seu acesso foi aprovado. <Link to="/disponibilidade-profissional" className="font-bold text-[#FFBB00] underline">Abrir disponibilidade profissional</Link></p>}
             <form className="space-y-3" onSubmit={sendRequest}>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm">Primeiro nome<input required value={firstName} onChange={e => setFirstName(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
+              <div className="grid gap-3 min-[390px]:grid-cols-2">
+                <label className="block text-sm">Primeiro nome<input required value={firstName} onChange={e => setFirstName(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" /></label>
                 <label className="block text-sm">Último sobrenome<input required value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
               </div>
               <label className="block text-sm">E-mail (login)<input disabled value={user.email ?? ""} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3 opacity-70" /></label>
@@ -269,7 +271,7 @@ function SimpleMotorcycleRegistration() {
                 {busy ? "Enviando..." : request?.status === "PENDING" ? "Aguardando análise administrativa" : authorized ? "Acesso aprovado" : "Solicitar acesso ao radar"}
               </button>
             </form>
-            <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))} className="text-sm text-white/65 underline">Sair da conta</button>
+            <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))} className="min-h-11 text-sm text-white/65 underline">Sair da conta</button>
           </>
         )}
       </section>
