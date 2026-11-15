@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search, Zap } from "lucide-react";
+import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search } from "lucide-react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { TravelPreferenceFields } from "@/components/caronaa/TravelPreferences";
@@ -225,7 +225,7 @@ export function ShellJourneyPlanner({
       });
       if(error)throw error;
       setPhase("WAITLISTED");
-      setFeedback("Você está na lista de espera! Avisaremos pelo WhatsApp assim que houver motoristas disponíveis na sua rota.");
+      setFeedback("Você está na lista de espera! Assim que os avisos por WhatsApp estiverem disponíveis, poderemos informar sobre motoristas na sua rota.");
     }catch{
       setFeedback("Não conseguimos confirmar sua inscrição. Tente novamente.");
     }finally{setWaitlistBusy(false);}
@@ -273,6 +273,7 @@ export function ShellJourneyPlanner({
           <input type="checkbox" checked={entireCar} onChange={e=>setEntireCar(e.target.checked)}
             className="size-5 accent-[#FFBB00]"/>
         </label>}
+        {vehicle==="CAR"&&entireCar&&<p className="text-xs text-white/70">O bloqueio das outras vagas só vale após o servidor confirmar a reserva.</p>}
       </div>}
     </div>
   );
