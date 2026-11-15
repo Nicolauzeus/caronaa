@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 type QuickVehicle = "CAR" | "MOTO";
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
-type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string};
+type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
 
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
@@ -56,7 +56,8 @@ export function QuickRideHomePanel({
   const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
   const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
-  const [ratingReopen,setRatingReopen]=useState<string|null>(null);
+  const [ratingOpen,setRatingOpen]=useState<string|null>(null);
+  const [timeoutCompletedId,setTimeoutCompletedId]=useState<string|null>(null);
   const [completedHidden,setCompletedHidden]=useState<string|null>(null);
   const mounted=useRef(true);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
@@ -126,7 +127,7 @@ export function QuickRideHomePanel({
       .then(async({data,error:rpcError}:{data:any;error:any})=>{
         if(!alive||rpcError||data!==true)return;
         const {data:ridesData}=await (supabase as any).rpc("quick_ride_my_requests");
-        if(alive&&mounted.current)setRides(Array.isArray(ridesData)?ridesData:[]);
+        if(alive&&mounted.current){setTimeoutCompletedId(liveRide.id);setRides(Array.isArray(ridesData)?ridesData:[]);}
       });
     return()=>{alive=false;};
   },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
@@ -287,6 +288,20 @@ export function QuickRideHomePanel({
   </section> : null;
   return (
     <section aria-label="Corrida Rápida no mapa" className="min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white">
+      {liveRide?.status==="IN_PROGRESS"&&dropoff?.deadline_at&&!dropoff.resolved_at&&!dropoff.passenger_response&&<section role="alert" aria-label="Confirmação de desembarque pendente"
+        className="space-y-3 rounded-2xl border-2 border-[#FFBB00] bg-[#FFBB00]/15 p-4">
+        <h2 className="font-[Sora] text-lg font-black text-[#FFBB00]">Motorista solicitou o desembarque</h2>
+        <p className="text-sm leading-relaxed text-white">Você já desembarcou no destino combinado?</p>
+        <p role="timer" className="font-[Sora] text-2xl font-extrabold tabular-nums text-[#FFBB00]">
+          Aguardando resposta · {String(Math.floor(remainingDropoffSeconds/60)).padStart(2,"0")}:{String(remainingDropoffSeconds%60).padStart(2,"0")}
+        </p>
+        {remainingDropoffSeconds>0?<div className="grid gap-2">
+          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-extrabold text-[#121212] disabled:opacity-50">Confirmar desembarque no destino</button>
+          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")}
+            className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda não desembarquei / Contestar</button>
+        </div>:<p role="status" className="text-sm text-white/90">Prazo encerrado. Aguardando confirmação do servidor.</p>}
+      </section>
       {!shellMode&&<div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p>
@@ -358,15 +373,10 @@ export function QuickRideHomePanel({
                 </button>}
             </div>
           )}
-          {liveRide.status==="IN_PROGRESS"&&dropoff?.deadline_at&&(
-            <div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
-              <p role="status" className="text-sm">Motorista solicitou o desembarque. {dropoff.passenger_response==="CONTESTED"?"Contestação registrada.":dropoff.passenger_response==="CONFIRMED"?"Desembarque confirmado.":`Confirme ou conteste em ${remainingDropoffSeconds} segundos.`}</p>
-              {!dropoff.passenger_response&&remainingDropoffSeconds>0&&<div className="flex flex-wrap gap-2">
-                <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")} className="min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Confirmar desembarque</button>
-                <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")} className="min-h-11 rounded-xl border border-red-300/60 px-4 font-bold text-white">Contestar</button>
-              </div>}
-            </div>
-          )}
+          {liveRide.status==="IN_PROGRESS"&&dropoff?.passenger_response&&
+            <p role="status" className="w-full rounded-xl border border-white/20 p-3 text-sm text-white/85">
+              {dropoff.passenger_response==="CONTESTED"?"Contestação registrada. Aguarde orientação da plataforma.":"Desembarque confirmado. Aguardando conclusão registrada pelo servidor."}
+            </p>}
           {["SEARCHING","ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
             <button type="button" disabled={busy} onClick={()=>void rideAction("CANCELLED")}
               className="min-h-11 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">
@@ -424,26 +434,23 @@ export function QuickRideHomePanel({
           )}
         </>
       )}
-      {!liveRide&&completedRide&&<div className="space-y-3">
-        {shownCompletedRide&&<div className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-          <p className="font-semibold text-[#FFBB00]">Corrida anterior concluída</p>
-          <p className="mt-1 text-white/80">Você já pode solicitar outra corrida, sem precisar avaliar agora.</p>
-          <button type="button" onClick={releaseCompletedRide}
-            className="mt-3 min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-            Concluir e fazer nova corrida
-          </button>
-        </div>}
-        {shownCompletedRide&&<QuickRidePixCard rideId={completedRide.id}/>}
-        <button type="button" onClick={()=>{
-          try {window.localStorage.removeItem("caronaa-rating-dismissed:"+completedRide.id);}catch{}
-          setRatingReopen(completedRide.id);
-        }} className="min-h-11 w-full rounded-xl border border-[#FFBB00]/40 px-4 text-sm font-semibold text-[#FFBB00]">
-          Avaliar corrida anterior
-        </button>
-        {((shownCompletedRide&&ratingDismissed!==completedRide.id)||ratingReopen===completedRide.id)&&
-          <QuickRideRatingModal rideId={completedRide.id} subject="motorista"
-            forceOpen={ratingReopen===completedRide.id}
-            onClose={()=>{releaseCompletedRide();setRatingReopen(null);}}/>}
+      {!liveRide&&completedRide&&shownCompletedRide&&<div className="space-y-3">
+        <section role="status" className="space-y-2 rounded-2xl border border-emerald-400/35 bg-emerald-400/10 p-4">
+          <h2 className="font-[Sora] text-lg font-bold text-white">
+            {timeoutCompletedId===completedRide.id?"Corrida concluída após o prazo de confirmação":"Desembarque confirmado · Corrida concluída"}
+          </h2>
+          <p className="text-xs text-white/80">Resumo financeiro e meio de pagamento abaixo. Você pode avaliar depois.</p>
+          {typeof completedRide.distance_km==="number"&&<p className="text-sm">Distância: {completedRide.distance_km.toFixed(1)} km</p>}
+          {typeof completedRide.duration_minutes==="number"&&<p className="text-sm">Tempo estimado: {Math.round(completedRide.duration_minutes)} min</p>}
+          {typeof completedRide.fare_cents==="number"&&<p className="font-[Sora] text-xl font-black text-[#FFBB00]">Valor contratado: {formatBrl(completedRide.fare_cents/100)}</p>}
+        </section>
+        <QuickRidePixCard rideId={completedRide.id}/>
+        <button type="button" onClick={()=>setRatingOpen(completedRide.id)}
+          className="min-h-12 w-full rounded-xl border border-[#FFBB00]/40 px-4 text-sm font-semibold text-[#FFBB00]">Avaliar viagem (opcional)</button>
+        <button type="button" onClick={releaseCompletedRide}
+          className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Nova corrida</button>
+        {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen
+          onClose={()=>setRatingOpen(null)}/>}
       </div>}
       {error&&<p role="alert" className="rounded-xl border border-red-400/40 p-3 text-xs text-red-200">{error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
