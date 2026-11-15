@@ -1,0 +1,31 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { canSwitchCaronaaRole, isQuickRideActive } from "./role-switch-guard";
+
+const mock=vi.hoisted(()=>({rpc:vi.fn()}));
+vi.mock("@/integrations/supabase/client",()=>({supabase:{rpc:mock.rpc}}));
+beforeEach(()=>{vi.clearAllMocks();mock.rpc.mockResolvedValue({data:[],error:null});});
+describe("role switch operational safety",()=>{
+  it.each(["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","MATCHED","CONFIRMED"])(
+    "blocks an active %s F07 ride",async status=>{
+      expect(isQuickRideActive(status)).toBe(true);
+      expect(await canSwitchCaronaaRole({id:"ride-1",status})).toEqual({
+        allowed:false,reason:"ACTIVE_RIDE",
+      });
+      expect(mock.rpc).not.toHaveBeenCalled();
+    },
+  );
+  it("blocks a remotely active driver ride before switching roles",async()=>{
+    mock.rpc.mockResolvedValue({data:[{role:"DRIVER",status:"SEARCHING"}],error:null});
+    expect(await canSwitchCaronaaRole(null)).toEqual({allowed:false,reason:"ACTIVE_RIDE"});
+  });
+  it("allows switching after all rides have ended",async()=>{
+    mock.rpc.mockResolvedValue({data:[{status:"COMPLETED"},{status:"CANCELLED"}],error:null});
+    expect(await canSwitchCaronaaRole(null)).toEqual({allowed:true});
+  });
+  it("fails closed for RPC errors or unexpected payloads",async()=>{
+    mock.rpc.mockRejectedValue(new Error("disconnected"));
+    expect(await canSwitchCaronaaRole(null)).toEqual({allowed:false,reason:"UNAVAILABLE"});
+    mock.rpc.mockResolvedValue({data:{items:[]},error:null});
+    expect(await canSwitchCaronaaRole(null)).toEqual({allowed:false,reason:"UNAVAILABLE"});
+  });
+});
