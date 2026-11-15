@@ -641,7 +641,7 @@ export function QuickRideExperience({
                 Cancelar
               </button>
             )}
-            {r.role==="PASSENGER" && ["ACCEPTED","ARRIVED"].includes(r.status) && (
+            {r.role==="PASSENGER" && r.status==="ARRIVED" && (
               <div className="space-y-2">
                 <p className="text-xs">Informe o código secreto apenas ao motorista, no embarque.</p>
                 {boardingCode ? <p role="status" className="text-2xl font-bold tracking-widest">{boardingCode}</p> :
