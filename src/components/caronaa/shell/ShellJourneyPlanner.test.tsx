@@ -137,4 +137,25 @@ describe("CARONAA Flash passenger shell",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Agendar para daqui a pouco"}));
     expect(screen.getByLabelText("Horário da viagem agendada")).toBeTruthy();
   });
+  it("shows a driver card only after an authorized accepted ride is returned",async()=>{
+    render(<Harness/>);
+    await prepareFull();
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="quick_ride_my_requests")return {data:[{
+        id:"accepted-ride",role:"PASSENGER",status:"ACCEPTED",
+        destination_label:"Praça central",requested_at:new Date().toISOString(),
+      }],error:null};
+      if(name==="quick_ride_driver_details")return {data:{
+        name:"Motorista confirmado",photo:null,vehicle:"Honda CG 160",
+        color:"Preta",plate:"ABC1D23",rating:4.8,
+      },error:null};
+      return {data:true,error:null};
+    });
+    fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
+    await act(async()=>{await api.refresh?.();});
+    expect(screen.getByText("Motorista confirmado")).toBeTruthy();
+    expect(screen.getByText("Chegada estimada: 4 min")).toBeTruthy();
+    expect(api.rpc).toHaveBeenCalledWith("quick_ride_driver_details",{p_id:"accepted-ride"});
+  });
+
 });
