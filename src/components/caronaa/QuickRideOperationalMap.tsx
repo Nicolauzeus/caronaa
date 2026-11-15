@@ -85,7 +85,7 @@ export function QuickRideOperationalMap({
         ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
         ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,
           title:isMoto?"Mototaxista":"Motorista",
-          kind:(isMoto?"availableMoto":"driver") as const}]:[]),
+          kind:isMoto?("availableMoto" as const):("driver" as const)}]:[]),
       ]}
       lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
