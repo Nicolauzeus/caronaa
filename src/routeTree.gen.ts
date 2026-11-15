@@ -30,6 +30,7 @@ import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authen
 import { Route as AuthenticatedOferecerRouteImport } from './routes/_authenticated/oferecer'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedViagemRapidaRouteImport } from './routes/_authenticated/viagem-rapida'
+import { Route as AuthenticatedViagensProfissionaisRouteImport } from './routes/_authenticated/viagens-profissionais'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAtendimentoRouteImport } from './routes/admin/atendimento'
 import { Route as AdminCaronasRouteImport } from './routes/admin/caronas'
@@ -174,6 +175,12 @@ const AuthenticatedViagemRapidaRoute =
   AuthenticatedViagemRapidaRouteImport.update({
     id: '/viagem-rapida',
     path: '/viagem-rapida',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedViagensProfissionaisRoute =
+  AuthenticatedViagensProfissionaisRouteImport.update({
+    id: '/viagens-profissionais',
+    path: '/viagens-profissionais',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -395,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/viagem-rapida': typeof AuthenticatedViagemRapidaRoute
+  '/viagens-profissionais': typeof AuthenticatedViagensProfissionaisRoute
   '/admin/atendimento': typeof AdminAtendimentoRoute
   '/admin/caronas': typeof AdminCaronasRoute
   '/admin/compliance': typeof AdminComplianceRoute
@@ -453,6 +461,7 @@ export interface FileRoutesByTo {
   '/oferecer': typeof AuthenticatedOferecerRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/viagem-rapida': typeof AuthenticatedViagemRapidaRoute
+  '/viagens-profissionais': typeof AuthenticatedViagensProfissionaisRoute
   '/admin/atendimento': typeof AdminAtendimentoRoute
   '/admin/caronas': typeof AdminCaronasRoute
   '/admin/compliance': typeof AdminComplianceRoute
@@ -515,6 +524,7 @@ export interface FileRoutesById {
   '/_authenticated/oferecer': typeof AuthenticatedOferecerRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/viagem-rapida': typeof AuthenticatedViagemRapidaRoute
+  '/_authenticated/viagens-profissionais': typeof AuthenticatedViagensProfissionaisRoute
   '/admin/atendimento': typeof AdminAtendimentoRoute
   '/admin/caronas': typeof AdminCaronasRoute
   '/admin/compliance': typeof AdminComplianceRoute
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
     | '/oferecer'
     | '/perfil'
     | '/viagem-rapida'
+    | '/viagens-profissionais'
     | '/admin/atendimento'
     | '/admin/caronas'
     | '/admin/compliance'
@@ -635,6 +646,7 @@ export interface FileRouteTypes {
     | '/oferecer'
     | '/perfil'
     | '/viagem-rapida'
+    | '/viagens-profissionais'
     | '/admin/atendimento'
     | '/admin/caronas'
     | '/admin/compliance'
@@ -696,6 +708,7 @@ export interface FileRouteTypes {
     | '/_authenticated/oferecer'
     | '/_authenticated/perfil'
     | '/_authenticated/viagem-rapida'
+    | '/_authenticated/viagens-profissionais'
     | '/admin/atendimento'
     | '/admin/caronas'
     | '/admin/compliance'
@@ -904,6 +917,13 @@ declare module '@tanstack/react-router' {
       path: '/viagem-rapida'
       fullPath: '/viagem-rapida'
       preLoaderRoute: typeof AuthenticatedViagemRapidaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/viagens-profissionais': {
+      id: '/_authenticated/viagens-profissionais'
+      path: '/viagens-profissionais'
+      fullPath: '/viagens-profissionais'
+      preLoaderRoute: typeof AuthenticatedViagensProfissionaisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/admin/': {
@@ -1183,6 +1203,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOferecerRoute: typeof AuthenticatedOferecerRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedViagemRapidaRoute: typeof AuthenticatedViagemRapidaRoute
+  AuthenticatedViagensProfissionaisRoute: typeof AuthenticatedViagensProfissionaisRoute
   AuthenticatedMinhaCaronaOfferIdRoute: typeof AuthenticatedMinhaCaronaOfferIdRoute
   AuthenticatedViagemRideIdRoute: typeof AuthenticatedViagemRideIdRoute
   AuthenticatedPerfilViagemRideIdUserIdRoute: typeof AuthenticatedPerfilViagemRideIdUserIdRoute
@@ -1197,6 +1218,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedViagemRapidaRoute: AuthenticatedViagemRapidaRoute,
+  AuthenticatedViagensProfissionaisRoute: AuthenticatedViagensProfissionaisRoute,
   AuthenticatedMinhaCaronaOfferIdRoute: AuthenticatedMinhaCaronaOfferIdRoute,
   AuthenticatedViagemRideIdRoute: AuthenticatedViagemRideIdRoute,
   AuthenticatedPerfilViagemRideIdUserIdRoute:
