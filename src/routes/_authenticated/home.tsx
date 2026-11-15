@@ -2,7 +2,8 @@ import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
 import { RoleSwitchHeader } from "@/components/caronaa/shell/RoleSwitchHeader";
 import { QuickVehicleModal } from "@/components/caronaa/shell/QuickVehicleModal";
 import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/shell/InteractiveBottomSheet";
-import { ServiceTypeDock, type ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
+import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
+import { ShellJourneyPlanner } from "@/components/caronaa/shell/ShellJourneyPlanner";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
 import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
@@ -93,9 +94,13 @@ function Home() {
   const search = Route.useSearch();
   // Stage 2: visual shell only. No new dispatch, fare, or booking handlers.
   const activeRoleState = useActiveRole();
-  const [sheetSnap, setSheetSnap] = useState<SheetSnap>("half");
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>("peek");
   const [serviceType, setServiceType] = useState<ServiceType>("FLASH");
-  const [shellDestination, setShellDestination] = useState("");
+  useEffect(()=>{
+    const expand=()=>setSheetSnap("half");
+    document.addEventListener("caronaa-shell-expand",expand);
+    return ()=>document.removeEventListener("caronaa-shell-expand",expand);
+  },[]);
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const [missingVehicleFields, setMissingVehicleFields] = useState<VehicleMissingField[]>([]);
   const handleShellRoleSwitch = async (target: ActiveRole) => {
@@ -571,25 +576,16 @@ function Home() {
           onSave={activeRoleState.saveVehicle}/>
         <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
           title="Casca Única CARONAA">
-          <div className="space-y-4">
-            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-white">
-              {activeRoleState.activeRole === "MOTORISTA" ? "Seu próximo trajeto" : "Para onde vamos?"}
-            </h2>
-            <label className="block">
-              <span className="sr-only">Para onde vamos?</span>
-              <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-4 focus-within:border-[#FFBB00]">
-                <Search size={20} className="shrink-0 text-[#FFBB00]"/>
-                <input value={shellDestination} onChange={event=>setShellDestination(event.target.value)}
-                  aria-label="Para onde vamos?" placeholder="Para onde vamos?"
-                  className="min-w-0 flex-1 bg-transparent py-3 text-sm text-white placeholder:text-white/65 focus:outline-none"/>
-              </div>
-            </label>
-            <ServiceTypeDock value={serviceType} onChange={setServiceType}/>
-            <p className="text-xs text-white/60">
-              Selecione o papel e o tipo de serviço. Cotação e solicitação de corrida não fazem parte desta etapa.
-            </p>
-            {activeRoleState.error && <p role="alert" className="text-xs text-red-300">{activeRoleState.error}</p>}
-          </div>
+          <ShellJourneyPlanner
+            snap={sheetSnap}
+            serviceType={serviceType}
+            onServiceTypeChange={setServiceType}
+            originPoint={originLocation}
+            driverCount={professionalDrivers.filter(driver=>!driver.is_self).length}
+            driversLoaded={!professionalLoading && professionalMunicipality.trim().length>1 &&
+              rideOption==="EXCLUSIVE" && intent==="REQUEST"}
+            gender={gender}
+          />
         </InteractiveBottomSheet>
         {selectingOrigin && (
           <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm text-white shadow-xl backdrop-blur-xl sm:inset-x-5">
