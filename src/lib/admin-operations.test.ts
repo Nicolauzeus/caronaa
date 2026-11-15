@@ -53,7 +53,7 @@ function compatibleData(): OperationData & {
         routine_date: null,
         routine_override: false,
         routine_suppressed: false,
-      },
+      } as never,
     ],
     offers: [
       {
@@ -92,7 +92,7 @@ function compatibleData(): OperationData & {
         routine_date: null,
         routine_override: false,
         routine_suppressed: false,
-      },
+      } as never,
     ],
   };
 }
