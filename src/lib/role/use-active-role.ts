@@ -102,16 +102,17 @@ export function useActiveRole() {
       (supabase as any).rpc("is_driver_ready",{p_user_id:userId}),
     ]);
     if(profileError)throw new Error("Não foi possível consultar os campos do veículo no banco.");
-    if(readyError)throw new Error("RPC is_driver_ready indisponível ou assinatura incompatível.");
+    // Preserve the persisted vehicle fields even when readiness RPC is absent.
+    // This allows the modal to request ONLY the missing fields, safely.
     const row=profile as ProfileVehicle|null;
     profileRef.current=row;
     const vehicleType=parseVehicleType(row?.vehicle_type);
     setState(prev=>({
       ...prev,vehicleStatus:getVehicleStatus(row),
       activeRole:parseActiveRole(roleProfile?.active_role??roleProfile,prev.activeRole),
-      isDriverEligible:readyFromRpc(ready),
+      isDriverEligible:!readyError&&readyFromRpc(ready),
       vehicleType,vehicleSeats:normalizeVehicleSeats(vehicleType,row?.vehicle_seats),
-      loading:false,error:null,
+      loading:false,error:readyError?"RPC is_driver_ready indisponível ou assinatura incompatível.":null,
     }));
   },[]);
 
