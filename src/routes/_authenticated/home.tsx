@@ -126,6 +126,14 @@ function Home() {
   },[]);
   const [serviceType, setServiceType] = useState<ServiceType>("FLASH");
   const [driverTripsRefreshKey,setDriverTripsRefreshKey]=useState(0);
+  // A route belongs to exactly one role/service draft. Never leave a stale
+  // passenger or scheduled line behind the Flash driver's active cockpit.
+  useEffect(()=>{
+    setShellRoute(null);
+    setShellSelectedDestination(false);
+    setShellDestinationLocation(undefined);
+    setSelectedOnRouteMatch(null);
+  },[activeRoleState.activeRole,serviceType]);
   useEffect(()=>{
     const expand=()=>setSheetSnap("half");
     document.addEventListener("caronaa-shell-expand",expand);
