@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
@@ -58,7 +58,6 @@ export function QuickRideDriverQueue({
         (ride:DriverQueueRide)=>!rejected.current.has(ride.id),
       ));
       setError("");
-      const activeRide=requests.find(r=>r.role==="DRIVER" && r.status==="IN_PROGRESS");
     }catch{
       if(version===refreshVersion.current)
         setError("Conexão temporariamente indisponível. Os chamados serão atualizados.");
@@ -74,6 +73,28 @@ export function QuickRideDriverQueue({
   },[]);
 
 
+  useEffect(()=>{
+    if(!active?.id || active.status!=="IN_PROGRESS"){
+      setDropoffDeadline(null);setDropoffResponse(null);return;
+    }
+    let alive=true;
+    const load=async()=>{
+      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:active.id});
+      if(!alive||error)return;
+      const entry=Array.isArray(data)?data[0]:null;
+      setDropoffDeadline(entry?.deadline_at??null);
+      setDropoffResponse(entry?.passenger_response??null);
+      if(entry?.deadline_at && !entry?.resolved_at && !entry?.passenger_response
+        && Date.parse(entry.deadline_at)<=Date.now()){
+        const {data:finished,error:finalError}=await (supabase as any).rpc(
+          "quick_ride_finalize_after_timeout",{p_id:active.id});
+        if(!finalError && finished===true && alive)void refresh();
+      }
+    };
+    void load();
+    const timer=window.setInterval(load,5000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[active?.id,active?.status,refresh]);
   const action=async(rideId:string,next:"ACCEPT"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED")=>{
     if(requestLock.current)return;
     requestLock.current=true;
