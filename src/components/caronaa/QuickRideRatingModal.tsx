@@ -46,8 +46,8 @@ export function QuickRideRatingModal({
     setError("");
     try {
       const detail = [selected.join(", "), comment.trim()].filter(Boolean).join(" — ").slice(0, 1000);
-      const { error: rpcError } = await (supabase as any).rpc("quick_ride_rate", {
-        p_id: rideId, p_score: score, p_comment: detail,
+      const { error: rpcError } = await (supabase as any).rpc("rate_quick_ride", {
+        p_ride_id: rideId, p_score: score, p_comment: detail,
       });
       if (rpcError) throw rpcError;
       close();
