@@ -609,6 +609,29 @@ export type Database = {
           },
         ]
       }
+      caronaa_quick_queue_events: {
+        Row: {
+          changed_at: string
+          municipality: string
+        }
+        Insert: {
+          changed_at?: string
+          municipality: string
+        }
+        Update: {
+          changed_at?: string
+          municipality?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_quick_queue_events_municipality_fkey"
+            columns: ["municipality"]
+            isOneToOne: true
+            referencedRelation: "caronaa_service_municipalities"
+            referencedColumns: ["municipality"]
+          },
+        ]
+      }
       caronaa_quick_quote_rate_limits: {
         Row: {
           attempts: number
@@ -696,6 +719,48 @@ export type Database = {
           municipality?: string
           pricing_region?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_unified_pricing_configs: {
+        Row: {
+          active: boolean
+          created_at: string
+          exclusive_base: string
+          exclusive_multiplier: number
+          id: string
+          minimum_fare: number
+          municipality: string | null
+          on_route_rate_per_km: number
+          pricing_region: string
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          exclusive_base?: string
+          exclusive_multiplier?: number
+          id?: string
+          minimum_fare?: number
+          municipality?: string | null
+          on_route_rate_per_km?: number
+          pricing_region?: string
+          updated_at?: string
+          vehicle_type: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          exclusive_base?: string
+          exclusive_multiplier?: number
+          id?: string
+          minimum_fare?: number
+          municipality?: string | null
+          on_route_rate_per_km?: number
+          pricing_region?: string
+          updated_at?: string
+          vehicle_type?: string
         }
         Relationships: []
       }
@@ -1179,6 +1244,190 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      feedbacks_mvp: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number
+          ride_id: string | null
+          role: string
+          suggestion: string
+          tags: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: number
+          ride_id?: string | null
+          role: string
+          suggestion: string
+          tags?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number
+          ride_id?: string | null
+          role?: string
+          suggestion?: string
+          tags?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      flash_driver_presence: {
+        Row: {
+          available_seats: number
+          current_municipality: string | null
+          destination_label: string | null
+          destination_lat: number | null
+          destination_lng: number | null
+          destination_municipality: string | null
+          dispatch_mode: string
+          is_online: boolean
+          last_accuracy_m: number | null
+          last_gps_at: string | null
+          last_lat: number | null
+          last_lng: number | null
+          route_geom: unknown
+          route_polyline: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_seats?: number
+          current_municipality?: string | null
+          destination_label?: string | null
+          destination_lat?: number | null
+          destination_lng?: number | null
+          destination_municipality?: string | null
+          dispatch_mode?: string
+          is_online?: boolean
+          last_accuracy_m?: number | null
+          last_gps_at?: string | null
+          last_lat?: number | null
+          last_lng?: number | null
+          route_geom?: unknown
+          route_polyline?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_seats?: number
+          current_municipality?: string | null
+          destination_label?: string | null
+          destination_lat?: number | null
+          destination_lng?: number | null
+          destination_municipality?: string | null
+          dispatch_mode?: string
+          is_online?: boolean
+          last_accuracy_m?: number | null
+          last_gps_at?: string | null
+          last_lat?: number | null
+          last_lng?: number | null
+          route_geom?: unknown
+          route_polyline?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flash_order_driver_skips: {
+        Row: {
+          driver_id: string
+          ride_id: string
+          skipped_at: string
+        }
+        Insert: {
+          driver_id: string
+          ride_id: string
+          skipped_at?: string
+        }
+        Update: {
+          driver_id?: string
+          ride_id?: string
+          skipped_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_order_driver_skips_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flash_waitlist: {
+        Row: {
+          atendido: boolean
+          atendido_em: string | null
+          booking_mode: string
+          criado_em: string
+          destination_municipality: string | null
+          destino: string | null
+          destino_lat: number | null
+          destino_lng: number | null
+          id: string
+          origem: string | null
+          origem_lat: number | null
+          origem_lng: number | null
+          origin_municipality: string | null
+          service_mode: string | null
+          updated_at: string | null
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          atendido?: boolean
+          atendido_em?: string | null
+          booking_mode?: string
+          criado_em?: string
+          destination_municipality?: string | null
+          destino?: string | null
+          destino_lat?: number | null
+          destino_lng?: number | null
+          id?: string
+          origem?: string | null
+          origem_lat?: number | null
+          origem_lng?: number | null
+          origin_municipality?: string | null
+          service_mode?: string | null
+          updated_at?: string | null
+          user_id: string
+          vehicle_type?: string
+        }
+        Update: {
+          atendido?: boolean
+          atendido_em?: string | null
+          booking_mode?: string
+          criado_em?: string
+          destination_municipality?: string | null
+          destino?: string | null
+          destino_lat?: number | null
+          destino_lng?: number | null
+          id?: string
+          origem?: string | null
+          origem_lat?: number | null
+          origem_lng?: number | null
+          origin_municipality?: string | null
+          service_mode?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_waitlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_funnel_events: {
         Row: {
@@ -2419,63 +2668,114 @@ export type Database = {
       professional_quick_rides: {
         Row: {
           accepted_at: string | null
+          arrived_at: string | null
           completed_at: string | null
           destination_label: string
           destination_lat: number
           destination_lng: number
+          driver_earnings_cents: number | null
           driver_id: string | null
+          driver_rating: number | null
+          driver_review: string | null
+          estimated_fare_cents: number | null
           expires_at: string
           id: string
+          in_trip_at: string | null
+          meeting_point_label: string | null
+          meeting_point_lat: number | null
+          meeting_point_lng: number | null
           municipality: string
           origin_label: string
           origin_lat: number
           origin_lng: number
           passenger_id: string
+          passenger_rating: number | null
+          passenger_review: string | null
+          payment_code: string | null
+          payment_status: string | null
           pickup_confirmed_at: string | null
           requested_at: string
+          seats_requested: number | null
+          service_mode: string | null
+          start_pin: string | null
           status: string
           updated_at: string
           vehicle_type: string
+          walk_distance_m: number | null
         }
         Insert: {
           accepted_at?: string | null
+          arrived_at?: string | null
           completed_at?: string | null
           destination_label: string
           destination_lat: number
           destination_lng: number
+          driver_earnings_cents?: number | null
           driver_id?: string | null
+          driver_rating?: number | null
+          driver_review?: string | null
+          estimated_fare_cents?: number | null
           expires_at?: string
           id?: string
+          in_trip_at?: string | null
+          meeting_point_label?: string | null
+          meeting_point_lat?: number | null
+          meeting_point_lng?: number | null
           municipality: string
           origin_label: string
           origin_lat: number
           origin_lng: number
           passenger_id: string
+          passenger_rating?: number | null
+          passenger_review?: string | null
+          payment_code?: string | null
+          payment_status?: string | null
           pickup_confirmed_at?: string | null
           requested_at?: string
+          seats_requested?: number | null
+          service_mode?: string | null
+          start_pin?: string | null
           status?: string
           updated_at?: string
           vehicle_type: string
+          walk_distance_m?: number | null
         }
         Update: {
           accepted_at?: string | null
+          arrived_at?: string | null
           completed_at?: string | null
           destination_label?: string
           destination_lat?: number
           destination_lng?: number
+          driver_earnings_cents?: number | null
           driver_id?: string | null
+          driver_rating?: number | null
+          driver_review?: string | null
+          estimated_fare_cents?: number | null
           expires_at?: string
           id?: string
+          in_trip_at?: string | null
+          meeting_point_label?: string | null
+          meeting_point_lat?: number | null
+          meeting_point_lng?: number | null
           municipality?: string
           origin_label?: string
           origin_lat?: number
           origin_lng?: number
           passenger_id?: string
+          passenger_rating?: number | null
+          passenger_review?: string | null
+          payment_code?: string | null
+          payment_status?: string | null
           pickup_confirmed_at?: string | null
           requested_at?: string
+          seats_requested?: number | null
+          service_mode?: string | null
+          start_pin?: string | null
           status?: string
           updated_at?: string
           vehicle_type?: string
+          walk_distance_m?: number | null
         }
         Relationships: [
           {
@@ -2539,51 +2839,224 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_role: string | null
           avatar_url: string | null
           city: string | null
           created_at: string
           full_name: string
           gender: string | null
           id: string
+          is_driver_eligible: boolean | null
           ride_opportunity_alerts_enabled: boolean
           travel_preferences: Json
           travel_preferences_consented_at: string | null
           updated_at: string
           vehicle_brand: string | null
+          vehicle_color: string | null
           vehicle_description: string | null
+          vehicle_model: string | null
           vehicle_plate: string | null
+          vehicle_seats: number | null
+          vehicle_type: string | null
         }
         Insert: {
+          active_role?: string | null
           avatar_url?: string | null
           city?: string | null
           created_at?: string
           full_name?: string
           gender?: string | null
           id: string
+          is_driver_eligible?: boolean | null
           ride_opportunity_alerts_enabled?: boolean
           travel_preferences?: Json
           travel_preferences_consented_at?: string | null
           updated_at?: string
           vehicle_brand?: string | null
+          vehicle_color?: string | null
           vehicle_description?: string | null
+          vehicle_model?: string | null
           vehicle_plate?: string | null
+          vehicle_seats?: number | null
+          vehicle_type?: string | null
         }
         Update: {
+          active_role?: string | null
           avatar_url?: string | null
           city?: string | null
           created_at?: string
           full_name?: string
           gender?: string | null
           id?: string
+          is_driver_eligible?: boolean | null
           ride_opportunity_alerts_enabled?: boolean
           travel_preferences?: Json
           travel_preferences_consented_at?: string | null
           updated_at?: string
           vehicle_brand?: string | null
+          vehicle_color?: string | null
           vehicle_description?: string | null
+          vehicle_model?: string | null
           vehicle_plate?: string | null
+          vehicle_seats?: number | null
+          vehicle_type?: string | null
         }
         Relationships: []
+      }
+      quick_ride_boarding_secrets: {
+        Row: {
+          attempts: number
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          pin_hash: string
+          reissue_count: number
+          ride_id: string
+          salt: string
+        }
+        Insert: {
+          attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          pin_hash: string
+          reissue_count?: number
+          ride_id: string
+          salt?: string
+        }
+        Update: {
+          attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          pin_hash?: string
+          reissue_count?: number
+          ride_id?: string
+          salt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_boarding_secrets_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_dropoff_reviews: {
+        Row: {
+          deadline_at: string
+          passenger_response: string | null
+          requested_at: string
+          resolved_at: string | null
+          ride_id: string
+          updated_at: string
+        }
+        Insert: {
+          deadline_at: string
+          passenger_response?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          ride_id: string
+          updated_at?: string
+        }
+        Update: {
+          deadline_at?: string
+          passenger_response?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          ride_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_dropoff_reviews_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_pix_declarations: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          driver_acknowledged_at: string | null
+          expires_at: string
+          passenger_declared_at: string | null
+          reissue_count: number
+          ride_id: string
+          salt: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          driver_acknowledged_at?: string | null
+          expires_at: string
+          passenger_declared_at?: string | null
+          reissue_count?: number
+          ride_id: string
+          salt: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          driver_acknowledged_at?: string | null
+          expires_at?: string
+          passenger_declared_at?: string | null
+          reissue_count?: number
+          ride_id?: string
+          salt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_pix_declarations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_ratings: {
+        Row: {
+          comment: string
+          created_at: string
+          rated_user_id: string
+          reviewer_user_id: string
+          ride_id: string
+          score: number
+        }
+        Insert: {
+          comment?: string
+          created_at?: string
+          rated_user_id: string
+          reviewer_user_id: string
+          ride_id: string
+          score: number
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          rated_user_id?: string
+          reviewer_user_id?: string
+          ride_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_ratings_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       research_answers: {
         Row: {
@@ -3288,15 +3761,19 @@ export type Database = {
           accepts_quoted_fares: boolean
           allow_detours: boolean
           available_seats: number
+          booking_mode: string | null
+          corridor_radius_m: number
           created_at: string
           departure_time: string
           destination: string
           destination_lat: number | null
           destination_lng: number | null
           idempotency_key: string | null
+          is_full_vehicle: boolean | null
           meeting_lat: number | null
           meeting_lng: number | null
           meeting_point: string | null
+          meeting_points_poi: Json | null
           notes: string | null
           offer_id: string
           origin: string
@@ -3307,6 +3784,7 @@ export type Database = {
           ride_date: string
           route_distance_km: number | null
           route_duration_minutes: number | null
+          route_geom: unknown
           route_path: Json | null
           route_quote_id: string | null
           routine_date: string | null
@@ -3314,6 +3792,7 @@ export type Database = {
           routine_override: boolean
           routine_suppressed: boolean
           seats_remaining: number
+          service_tier: string | null
           status: string
           time_tolerance_minutes: number
           total_price: number
@@ -3327,15 +3806,19 @@ export type Database = {
           accepts_quoted_fares?: boolean
           allow_detours?: boolean
           available_seats: number
+          booking_mode?: string | null
+          corridor_radius_m?: number
           created_at?: string
           departure_time: string
           destination: string
           destination_lat?: number | null
           destination_lng?: number | null
           idempotency_key?: string | null
+          is_full_vehicle?: boolean | null
           meeting_lat?: number | null
           meeting_lng?: number | null
           meeting_point?: string | null
+          meeting_points_poi?: Json | null
           notes?: string | null
           offer_id?: string
           origin: string
@@ -3346,6 +3829,7 @@ export type Database = {
           ride_date: string
           route_distance_km?: number | null
           route_duration_minutes?: number | null
+          route_geom?: unknown
           route_path?: Json | null
           route_quote_id?: string | null
           routine_date?: string | null
@@ -3353,6 +3837,7 @@ export type Database = {
           routine_override?: boolean
           routine_suppressed?: boolean
           seats_remaining: number
+          service_tier?: string | null
           status?: string
           time_tolerance_minutes?: number
           total_price?: number
@@ -3366,15 +3851,19 @@ export type Database = {
           accepts_quoted_fares?: boolean
           allow_detours?: boolean
           available_seats?: number
+          booking_mode?: string | null
+          corridor_radius_m?: number
           created_at?: string
           departure_time?: string
           destination?: string
           destination_lat?: number | null
           destination_lng?: number | null
           idempotency_key?: string | null
+          is_full_vehicle?: boolean | null
           meeting_lat?: number | null
           meeting_lng?: number | null
           meeting_point?: string | null
+          meeting_points_poi?: Json | null
           notes?: string | null
           offer_id?: string
           origin?: string
@@ -3385,6 +3874,7 @@ export type Database = {
           ride_date?: string
           route_distance_km?: number | null
           route_duration_minutes?: number | null
+          route_geom?: unknown
           route_path?: Json | null
           route_quote_id?: string | null
           routine_date?: string | null
@@ -3392,6 +3882,7 @@ export type Database = {
           routine_override?: boolean
           routine_suppressed?: boolean
           seats_remaining?: number
+          service_tier?: string | null
           status?: string
           time_tolerance_minutes?: number
           total_price?: number
@@ -3576,20 +4067,26 @@ export type Database = {
       }
       ride_requests: {
         Row: {
+          booking_mode: string | null
           created_at: string
           departure_time: string
           destination: string
+          destination_label: string | null
           destination_lat: number | null
           destination_lng: number | null
+          dropoff_label: string | null
           idempotency_key: string | null
+          is_full_vehicle: boolean | null
           notes: string | null
           origin: string
+          origin_label: string | null
           origin_lat: number | null
           origin_lng: number | null
           original_requested_at: string | null
           passenger_count: number
           passenger_group_total: number | null
           passenger_price: number | null
+          pickup_label: string | null
           pickup_lat: number | null
           pickup_lng: number | null
           pickup_point: string | null
@@ -3598,11 +4095,16 @@ export type Database = {
           requested_vehicle_type: string | null
           ride_date: string
           route_distance_km: number | null
+          route_points: Json | null
           route_quote_id: string | null
           routine_date: string | null
           routine_id: string | null
           routine_override: boolean
           routine_suppressed: boolean
+          scheduled_at: string | null
+          seats_reserved: number | null
+          service_mode: string | null
+          service_tier: string | null
           status: string
           target_offer_id: string | null
           tariff_reference: string | null
@@ -3610,23 +4112,30 @@ export type Database = {
           travel_preferences: Json | null
           updated_at: string
           user_id: string
+          vehicle_type: string | null
           women_only: boolean
         }
         Insert: {
+          booking_mode?: string | null
           created_at?: string
           departure_time: string
           destination: string
+          destination_label?: string | null
           destination_lat?: number | null
           destination_lng?: number | null
+          dropoff_label?: string | null
           idempotency_key?: string | null
+          is_full_vehicle?: boolean | null
           notes?: string | null
           origin: string
+          origin_label?: string | null
           origin_lat?: number | null
           origin_lng?: number | null
           original_requested_at?: string | null
           passenger_count: number
           passenger_group_total?: number | null
           passenger_price?: number | null
+          pickup_label?: string | null
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_point?: string | null
@@ -3635,11 +4144,16 @@ export type Database = {
           requested_vehicle_type?: string | null
           ride_date: string
           route_distance_km?: number | null
+          route_points?: Json | null
           route_quote_id?: string | null
           routine_date?: string | null
           routine_id?: string | null
           routine_override?: boolean
           routine_suppressed?: boolean
+          scheduled_at?: string | null
+          seats_reserved?: number | null
+          service_mode?: string | null
+          service_tier?: string | null
           status?: string
           target_offer_id?: string | null
           tariff_reference?: string | null
@@ -3647,23 +4161,30 @@ export type Database = {
           travel_preferences?: Json | null
           updated_at?: string
           user_id: string
+          vehicle_type?: string | null
           women_only?: boolean
         }
         Update: {
+          booking_mode?: string | null
           created_at?: string
           departure_time?: string
           destination?: string
+          destination_label?: string | null
           destination_lat?: number | null
           destination_lng?: number | null
+          dropoff_label?: string | null
           idempotency_key?: string | null
+          is_full_vehicle?: boolean | null
           notes?: string | null
           origin?: string
+          origin_label?: string | null
           origin_lat?: number | null
           origin_lng?: number | null
           original_requested_at?: string | null
           passenger_count?: number
           passenger_group_total?: number | null
           passenger_price?: number | null
+          pickup_label?: string | null
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_point?: string | null
@@ -3672,11 +4193,16 @@ export type Database = {
           requested_vehicle_type?: string | null
           ride_date?: string
           route_distance_km?: number | null
+          route_points?: Json | null
           route_quote_id?: string | null
           routine_date?: string | null
           routine_id?: string | null
           routine_override?: boolean
           routine_suppressed?: boolean
+          scheduled_at?: string | null
+          seats_reserved?: number | null
+          service_mode?: string | null
+          service_tier?: string | null
           status?: string
           target_offer_id?: string | null
           tariff_reference?: string | null
@@ -3684,6 +4210,7 @@ export type Database = {
           travel_preferences?: Json | null
           updated_at?: string
           user_id?: string
+          vehicle_type?: string | null
           women_only?: boolean
         }
         Relationships: [
@@ -3875,6 +4402,7 @@ export type Database = {
       rides: {
         Row: {
           boarded_at: string | null
+          booking_mode: string | null
           completed_at: string | null
           created_at: string
           driver_accepted_at: string | null
@@ -3892,15 +4420,19 @@ export type Database = {
           ride_id: string
           route_distance_km: number | null
           route_quote_id: string | null
+          service_tier: string | null
           status: string
           strict_pickup_arrived_at: string | null
           tariff_reference: string | null
           total_price: number
           transit_stage: string
+          unified_status: string | null
           updated_at: string
+          vehicle_type: string | null
         }
         Insert: {
           boarded_at?: string | null
+          booking_mode?: string | null
           completed_at?: string | null
           created_at?: string
           driver_accepted_at?: string | null
@@ -3918,15 +4450,19 @@ export type Database = {
           ride_id?: string
           route_distance_km?: number | null
           route_quote_id?: string | null
+          service_tier?: string | null
           status: string
           strict_pickup_arrived_at?: string | null
           tariff_reference?: string | null
           total_price?: number
           transit_stage?: string
+          unified_status?: string | null
           updated_at?: string
+          vehicle_type?: string | null
         }
         Update: {
           boarded_at?: string | null
+          booking_mode?: string | null
           completed_at?: string | null
           created_at?: string
           driver_accepted_at?: string | null
@@ -3944,12 +4480,15 @@ export type Database = {
           ride_id?: string
           route_distance_km?: number | null
           route_quote_id?: string | null
+          service_tier?: string | null
           status?: string
           strict_pickup_arrived_at?: string | null
           tariff_reference?: string | null
           total_price?: number
           transit_stage?: string
+          unified_status?: string | null
           updated_at?: string
+          vehicle_type?: string | null
         }
         Relationships: [
           {
@@ -4191,6 +4730,30 @@ export type Database = {
           trial_requested?: boolean | null
           updated_at?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      spatial_ref_sys: {
+        Row: {
+          auth_name: string | null
+          auth_srid: number | null
+          proj4text: string | null
+          srid: number
+          srtext: string | null
+        }
+        Insert: {
+          auth_name?: string | null
+          auth_srid?: number | null
+          proj4text?: string | null
+          srid: number
+          srtext?: string | null
+        }
+        Update: {
+          auth_name?: string | null
+          auth_srid?: number | null
+          proj4text?: string | null
+          srid?: number
+          srtext?: string | null
         }
         Relationships: []
       }
@@ -4545,6 +5108,48 @@ export type Database = {
       }
     }
     Views: {
+      geography_columns: {
+        Row: {
+          coord_dimension: number | null
+          f_geography_column: unknown
+          f_table_catalog: unknown
+          f_table_name: unknown
+          f_table_schema: unknown
+          srid: number | null
+          type: string | null
+        }
+        Relationships: []
+      }
+      geometry_columns: {
+        Row: {
+          coord_dimension: number | null
+          f_geometry_column: unknown
+          f_table_catalog: string | null
+          f_table_name: unknown
+          f_table_schema: unknown
+          srid: number | null
+          type: string | null
+        }
+        Insert: {
+          coord_dimension?: number | null
+          f_geometry_column?: unknown
+          f_table_catalog?: string | null
+          f_table_name?: unknown
+          f_table_schema?: unknown
+          srid?: number | null
+          type?: string | null
+        }
+        Update: {
+          coord_dimension?: number | null
+          f_geometry_column?: unknown
+          f_table_catalog?: string | null
+          f_table_name?: unknown
+          f_table_schema?: unknown
+          srid?: number | null
+          type?: string | null
+        }
+        Relationships: []
+      }
       public_price_catalog: {
         Row: {
           billing_type: string | null
@@ -4569,6 +5174,133 @@ export type Database = {
       }
     }
     Functions: {
+      _postgis_deprecate: {
+        Args: { newname: string; oldname: string; version: string }
+        Returns: undefined
+      }
+      _postgis_index_extent: {
+        Args: { col: string; tbl: unknown }
+        Returns: unknown
+      }
+      _postgis_pgsql_version: { Args: never; Returns: string }
+      _postgis_scripts_pgsql_version: { Args: never; Returns: string }
+      _postgis_selectivity: {
+        Args: { att_name: string; geom: unknown; mode?: string; tbl: unknown }
+        Returns: number
+      }
+      _postgis_stats: {
+        Args: { ""?: string; att_name: string; tbl: unknown }
+        Returns: string
+      }
+      _st_3dintersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_containsproperly: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_coveredby:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_covers:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_crosses: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_dwithin: {
+        Args: {
+          geog1: unknown
+          geog2: unknown
+          tolerance: number
+          use_spheroid?: boolean
+        }
+        Returns: boolean
+      }
+      _st_equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_intersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_linecrossingdirection: {
+        Args: { line1: unknown; line2: unknown }
+        Returns: number
+      }
+      _st_longestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      _st_maxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      _st_orderingequals: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_sortablehash: { Args: { geom: unknown }; Returns: number }
+      _st_touches: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_voronoi: {
+        Args: {
+          clip?: unknown
+          g1: unknown
+          return_polygons?: boolean
+          tolerance?: number
+        }
+        Returns: unknown
+      }
+      _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      addauth: { Args: { "": string }; Returns: boolean }
+      addgeometrycolumn:
+        | {
+            Args: {
+              catalog_name: string
+              column_name: string
+              new_dim: number
+              new_srid_in: number
+              new_type: string
+              schema_name: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              new_dim: number
+              new_srid: number
+              new_type: string
+              schema_name: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              new_dim: number
+              new_srid: number
+              new_type: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
       admin_caronaa_fee_statement_claims: { Args: never; Returns: Json }
       admin_caronaa_quick_commercial_overview: { Args: never; Returns: Json }
       admin_driver_fee_audit: { Args: { p_ride_id: string }; Returns: Json }
@@ -4673,6 +5405,10 @@ export type Database = {
         Args: { p_form_id: string }
         Returns: boolean
       }
+      cancel_scheduled_caronaa_request: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       capture_research_lead: {
         Args: {
           p_email: string
@@ -4714,6 +5450,14 @@ export type Database = {
           requested_at: string
           vehicle_type: string
         }[]
+      }
+      caronaa_quick_event_allowed: {
+        Args: { p_municipality: string }
+        Returns: boolean
+      }
+      caronaa_quick_event_allowed_passenger: {
+        Args: { p_municipality: string }
+        Returns: boolean
       }
       caronaa_quick_quote_rate_gate: { Args: never; Returns: boolean }
       caronaa_quick_region_status: {
@@ -4763,6 +5507,20 @@ export type Database = {
       }
       confirm_manual_ride_payment: {
         Args: { p_ride_id: string }
+        Returns: Json
+      }
+      confirm_on_route_match: {
+        Args: {
+          p_dropoff_label?: string
+          p_dropoff_lat: number
+          p_dropoff_lng: number
+          p_offer_id: string
+          p_passenger_count?: number
+          p_pickup_label?: string
+          p_pickup_lat: number
+          p_pickup_lng: number
+          p_price?: number
+        }
         Returns: Json
       }
       confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
@@ -4897,6 +5655,7 @@ export type Database = {
         Args: { p_confirm_code: string; p_form_id: string }
         Returns: boolean
       }
+      disablelongtransactions: { Args: never; Returns: string }
       discover_approximate_professional_drivers: {
         Args: { p_municipality: string }
         Returns: {
@@ -4931,17 +5690,185 @@ export type Database = {
         }
         Returns: number
       }
+      driver_accept_scheduled_request: {
+        Args: { p_offer_id: string; p_request_id: string }
+        Returns: Json
+      }
       driver_platform_access_allowed: {
         Args: { p_driver: string }
         Returns: boolean
       }
+      dropgeometrycolumn:
+        | {
+            Args: {
+              catalog_name: string
+              column_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | { Args: { column_name: string; table_name: string }; Returns: string }
+      dropgeometrytable:
+        | {
+            Args: {
+              catalog_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | { Args: { schema_name: string; table_name: string }; Returns: string }
+        | { Args: { table_name: string }; Returns: string }
       duplicate_research_form: { Args: { p_form_id: string }; Returns: string }
+      enablelongtransactions: { Args: never; Returns: string }
+      equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       evaluate_ride_candidate: {
         Args: { o: Database["public"]["Tables"]["ride_offers"]["Row"]; q: Json }
         Returns: Json
       }
       expire_ride_match_proposals: { Args: never; Returns: number }
+      find_on_route_matches: {
+        Args: {
+          p_departure_time: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_origin_lat: number
+          p_origin_lng: number
+          p_passenger_count?: number
+          p_ride_date: string
+          p_women_only?: boolean
+        }
+        Returns: {
+          departure_time: string
+          driver_avatar: string
+          driver_gender: string
+          driver_id: string
+          driver_name: string
+          dropoff_lat: number
+          dropoff_lng: number
+          dropoff_walk_m: number
+          offer_id: string
+          pickup_lat: number
+          pickup_lng: number
+          pickup_walk_m: number
+          proportional_price: number
+          ride_date: string
+          seats_remaining: number
+          total_price: number
+          travel_preferences: Json
+          vehicle_color: string
+          vehicle_model: string
+          vehicle_plate: string
+        }[]
+      }
       generate_ride_qr_token: { Args: { p_ride_id: string }; Returns: Json }
+      geometry: { Args: { "": string }; Returns: unknown }
+      geometry_above: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_below: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_cmp: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_contained_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_contains_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_distance_box: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_distance_centroid: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_eq: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_ge: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_gt: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_le: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_left: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_lt: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overabove: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overbelow: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overlaps_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overleft: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overright: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_right: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_same: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_same_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_within: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_acquisition_funnel_metrics: {
         Args: {
           p_campaign?: string
@@ -5030,6 +5957,53 @@ export type Database = {
           version_number: number
         }[]
       }
+      get_driver_scheduled_opportunities: {
+        Args: { p_offer_id?: string }
+        Returns: {
+          departure_time: string
+          destination: string
+          dropoff_walk_m: number
+          estimated_earnings: number
+          meeting_label: string
+          origin: string
+          passenger_avatar: string
+          passenger_count: number
+          passenger_gender: string
+          passenger_id: string
+          passenger_name: string
+          pickup_walk_m: number
+          request_id: string
+          ride_date: string
+        }[]
+      }
+      get_driver_scheduled_trips: { Args: never; Returns: Json }
+      get_flash_driver_radar_orders: {
+        Args: { p_max_distance_m?: number }
+        Returns: {
+          destination_label: string
+          destination_lat: number
+          destination_lng: number
+          distance_to_pickup_m: number
+          driver_earnings_cents: number
+          estimated_fare_cents: number
+          expires_in_seconds: number
+          meeting_point_label: string
+          meeting_point_lat: number
+          meeting_point_lng: number
+          municipality: string
+          origin_label: string
+          origin_lat: number
+          origin_lng: number
+          passenger_avatar: string
+          passenger_id: string
+          passenger_name: string
+          ride_id: string
+          seats_requested: number
+          service_mode: string
+          vehicle_type: string
+          walk_distance_m: number
+        }[]
+      }
       get_form_account_activation: { Args: never; Returns: Json }
       get_form_funnel_metrics: {
         Args: {
@@ -5111,6 +6085,7 @@ export type Database = {
       }
       get_my_ride_routines: { Args: never; Returns: Json }
       get_my_travel_preferences: { Args: never; Returns: Json }
+      get_my_unified_trips: { Args: never; Returns: Json }
       get_my_unifor_launch_state: { Args: never; Returns: Json }
       get_offer_preference_bonuses: {
         Args: { p_offer_ids: string[] }
@@ -5255,6 +6230,7 @@ export type Database = {
         }
         Returns: Json
       }
+      gettransactionid: { Args: never; Returns: unknown }
       grant_corporate_research_access: {
         Args: { p_form_id: string; p_reference: string; p_user_id: string }
         Returns: boolean
@@ -5283,6 +6259,7 @@ export type Database = {
       is_admin_or_team:
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
+      is_driver_ready: { Args: { p_user_id: string }; Returns: Json }
       is_point_compatible_with_route: {
         Args: {
           endpoint_lat: number
@@ -5318,6 +6295,7 @@ export type Database = {
           verified_at: string
         }[]
       }
+      longtransactionsenabled: { Args: never; Returns: boolean }
       mark_ride_notification_read: {
         Args: { p_notification_id: string }
         Returns: undefined
@@ -5360,6 +6338,46 @@ export type Database = {
         }
         Returns: boolean
       }
+      populate_geometry_columns:
+        | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
+        | { Args: { use_typmod?: boolean }; Returns: string }
+      postgis_constraint_dims: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: number
+      }
+      postgis_constraint_srid: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: number
+      }
+      postgis_constraint_type: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: string
+      }
+      postgis_extensions_upgrade: { Args: never; Returns: string }
+      postgis_full_version: { Args: never; Returns: string }
+      postgis_geos_version: { Args: never; Returns: string }
+      postgis_lib_build_date: { Args: never; Returns: string }
+      postgis_lib_revision: { Args: never; Returns: string }
+      postgis_lib_version: { Args: never; Returns: string }
+      postgis_libjson_version: { Args: never; Returns: string }
+      postgis_liblwgeom_version: { Args: never; Returns: string }
+      postgis_libprotobuf_version: { Args: never; Returns: string }
+      postgis_libxml_version: { Args: never; Returns: string }
+      postgis_proj_version: { Args: never; Returns: string }
+      postgis_scripts_build_date: { Args: never; Returns: string }
+      postgis_scripts_installed: { Args: never; Returns: string }
+      postgis_scripts_released: { Args: never; Returns: string }
+      postgis_svn_version: { Args: never; Returns: string }
+      postgis_type_name: {
+        Args: {
+          coord_dimension: number
+          geomname: string
+          use_new_name?: boolean
+        }
+        Returns: string
+      }
+      postgis_version: { Args: never; Returns: string }
+      postgis_wagyu_version: { Args: never; Returns: string }
       professional_access_missing: {
         Args: {
           p_car_category: string
@@ -5397,6 +6415,27 @@ export type Database = {
         Args: { p_form_id: string; p_schema: Json; p_version_id: string }
         Returns: boolean
       }
+      publish_scheduled_driver_offer: {
+        Args: {
+          p_allow_detours?: boolean
+          p_available_seats: number
+          p_booking_mode?: string
+          p_departure_time: string
+          p_destination: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_origin: string
+          p_origin_lat: number
+          p_origin_lng: number
+          p_ride_date: string
+          p_route_path?: Json
+          p_total_price: number
+          p_travel_preferences?: Json
+          p_vehicle_type?: string
+          p_women_only?: boolean
+        }
+        Returns: Json
+      }
       publish_sts_ride: {
         Args: { p_details: Json; p_kind: string; p_submission_id: string }
         Returns: string
@@ -5412,7 +6451,14 @@ export type Database = {
         Returns: boolean
       }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_complete_ride: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_confirm_payment_code: {
+        Args: { p_code: string; p_id: string }
+        Returns: boolean
+      }
       quick_ride_confirm_pickup: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_detect_arrival: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_driver_details: { Args: { p_id: string }; Returns: Json }
       quick_ride_driver_queue: {
         Args: { p_municipality: string }
         Returns: {
@@ -5424,7 +6470,29 @@ export type Database = {
           vehicle_type: string
         }[]
       }
+      quick_ride_dropoff_state: {
+        Args: { p_id: string }
+        Returns: {
+          deadline_at: string
+          passenger_response: string
+          resolved_at: string
+        }[]
+      }
+      quick_ride_finalize_after_timeout: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
+      quick_ride_issue_boarding_pin: { Args: { p_id: string }; Returns: string }
+      quick_ride_issue_payment_code: { Args: { p_id: string }; Returns: string }
       quick_ride_map_context: { Args: { p_id: string }; Returns: Json }
+      quick_ride_my_rating: {
+        Args: { p_id: string }
+        Returns: {
+          comment: string
+          created_at: string
+          score: number
+        }[]
+      }
       quick_ride_my_requests: {
         Args: never
         Returns: {
@@ -5439,6 +6507,17 @@ export type Database = {
           vehicle_type: string
         }[]
       }
+      quick_ride_payment_declaration_state: {
+        Args: { p_id: string }
+        Returns: {
+          driver_acknowledged_at: string
+          passenger_declared_at: string
+        }[]
+      }
+      quick_ride_rate: {
+        Args: { p_comment?: string; p_id: string; p_score: number }
+        Returns: boolean
+      }
       quick_ride_request: {
         Args: {
           p_destination_label: string
@@ -5452,8 +6531,26 @@ export type Database = {
         }
         Returns: string
       }
+      quick_ride_request_dropoff: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_respond_dropoff: {
+        Args: { p_id: string; p_response: string }
+        Returns: boolean
+      }
+      quick_ride_settlement_amount: { Args: { p_id: string }; Returns: Json }
+      quick_ride_start_with_code: {
+        Args: { p_code: string; p_id: string }
+        Returns: boolean
+      }
       quick_ride_transition: {
         Args: { p_id: string; p_status: string }
+        Returns: boolean
+      }
+      quick_ride_verify_boarding_pin: {
+        Args: { p_id: string; p_pin: string }
+        Returns: boolean
+      }
+      rate_quick_ride: {
+        Args: { p_comment?: string; p_ride_id: string; p_score: number }
         Returns: boolean
       }
       rate_ride: {
@@ -5465,6 +6562,17 @@ export type Database = {
         Returns: undefined
       }
       refresh_ride_routine_occurrences: { Args: never; Returns: undefined }
+      register_flash_waitlist: {
+        Args: {
+          p_destination_label?: string
+          p_destination_municipality: string
+          p_origin_label?: string
+          p_origin_municipality: string
+          p_service_mode: string
+          p_vehicle_type: string
+        }
+        Returns: Json
+      }
       register_research_interest: {
         Args: {
           p_consent: boolean
@@ -5539,6 +6647,10 @@ export type Database = {
         Returns: boolean
       }
       research_remap_condition: { Args: { c: Json; ids: Json }; Returns: Json }
+      respond_flash_order: {
+        Args: { p_accept: boolean; p_ride_id: string }
+        Returns: Json
+      }
       respond_to_ride_match: {
         Args: { p_response: string; p_ride_id: string }
         Returns: string
@@ -5583,6 +6695,28 @@ export type Database = {
       save_ride_routine: {
         Args: { p_definition: Json; p_routine_id?: string }
         Returns: string
+      }
+      schedule_caronaa_ride: {
+        Args: {
+          p_departure_time: string
+          p_destination: string
+          p_destination_label?: string
+          p_destination_lat: number
+          p_destination_lng: number
+          p_distance_km: number
+          p_origin: string
+          p_origin_label?: string
+          p_origin_lat: number
+          p_origin_lng: number
+          p_passenger_count: number
+          p_preferences?: Json
+          p_price_cents: number
+          p_ride_date: string
+          p_service_mode: string
+          p_vehicle_type: string
+          p_women_only: boolean
+        }
+        Returns: Json
       }
       search_available_ride_offers: {
         Args: {
@@ -5632,6 +6766,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_flash_driver_online: {
+        Args: {
+          p_available_seats?: number
+          p_destination_label?: string
+          p_destination_lat?: number
+          p_destination_lng?: number
+          p_destination_municipality?: string
+          p_dispatch_mode?: string
+          p_is_online: boolean
+          p_route_geojson?: Json
+          p_route_polyline?: string
+        }
+        Returns: Json
+      }
       set_professional_presence: {
         Args: { p_available: boolean; p_municipality?: string }
         Returns: undefined
@@ -5647,6 +6795,602 @@ export type Database = {
       set_ride_routine_active: {
         Args: { p_active: boolean; p_routine_id: string }
         Returns: undefined
+      }
+      snap_to_route: {
+        Args: {
+          p_corridor_radius_m?: number
+          p_lat: number
+          p_lng: number
+          p_route_geom: unknown
+        }
+        Returns: {
+          fraction: number
+          is_within_corridor: boolean
+          meeting_lat: number
+          meeting_lng: number
+          walk_distance_m: number
+        }[]
+      }
+      st_3dclosestpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3ddistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_3dintersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_3dlongestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3dmakebox: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3dmaxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_3dshortestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_addpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_angle:
+        | { Args: { line1: unknown; line2: unknown }; Returns: number }
+        | {
+            Args: { pt1: unknown; pt2: unknown; pt3: unknown; pt4?: unknown }
+            Returns: number
+          }
+      st_area:
+        | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
+        | { Args: { "": string }; Returns: number }
+      st_asencodedpolyline: {
+        Args: { geom: unknown; nprecision?: number }
+        Returns: string
+      }
+      st_asewkt: { Args: { "": string }; Returns: string }
+      st_asgeojson:
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom_column?: string
+              maxdecimaldigits?: number
+              pretty_bool?: boolean
+              r: Record<string, unknown>
+            }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_asgml:
+        | {
+            Args: {
+              geog: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+        | {
+            Args: {
+              geog: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+              version: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+              version: number
+            }
+            Returns: string
+          }
+      st_askml:
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; nprefix?: string }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; nprefix?: string }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_aslatlontext: {
+        Args: { geom: unknown; tmpl?: string }
+        Returns: string
+      }
+      st_asmarc21: { Args: { format?: string; geom: unknown }; Returns: string }
+      st_asmvtgeom: {
+        Args: {
+          bounds: unknown
+          buffer?: number
+          clip_geom?: boolean
+          extent?: number
+          geom: unknown
+        }
+        Returns: unknown
+      }
+      st_assvg:
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; rel?: number }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; rel?: number }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_astext: { Args: { "": string }; Returns: string }
+      st_astwkb:
+        | {
+            Args: {
+              geom: unknown
+              prec?: number
+              prec_m?: number
+              prec_z?: number
+              with_boxes?: boolean
+              with_sizes?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom: unknown[]
+              ids: number[]
+              prec?: number
+              prec_m?: number
+              prec_z?: number
+              with_boxes?: boolean
+              with_sizes?: boolean
+            }
+            Returns: string
+          }
+      st_asx3d: {
+        Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+        Returns: string
+      }
+      st_azimuth:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: number }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+      st_boundingdiagonal: {
+        Args: { fits?: boolean; geom: unknown }
+        Returns: unknown
+      }
+      st_buffer:
+        | {
+            Args: { geom: unknown; options?: string; radius: number }
+            Returns: unknown
+          }
+        | {
+            Args: { geom: unknown; quadsegs: number; radius: number }
+            Returns: unknown
+          }
+      st_centroid: { Args: { "": string }; Returns: unknown }
+      st_clipbybox2d: {
+        Args: { box: unknown; geom: unknown }
+        Returns: unknown
+      }
+      st_closestpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_collect: { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_concavehull: {
+        Args: {
+          param_allow_holes?: boolean
+          param_geom: unknown
+          param_pctconvex: number
+        }
+        Returns: unknown
+      }
+      st_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_containsproperly: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_coorddim: { Args: { geometry: unknown }; Returns: number }
+      st_coveredby:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_covers:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_crosses: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_curvetoline: {
+        Args: { flags?: number; geom: unknown; tol?: number; toltype?: number }
+        Returns: unknown
+      }
+      st_delaunaytriangles: {
+        Args: { flags?: number; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_difference: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_disjoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_distance:
+        | {
+            Args: { geog1: unknown; geog2: unknown; use_spheroid?: boolean }
+            Returns: number
+          }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+      st_distancesphere:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+        | {
+            Args: { geom1: unknown; geom2: unknown; radius: number }
+            Returns: number
+          }
+      st_distancespheroid: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_dwithin: {
+        Args: {
+          geog1: unknown
+          geog2: unknown
+          tolerance: number
+          use_spheroid?: boolean
+        }
+        Returns: boolean
+      }
+      st_equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_expand:
+        | { Args: { box: unknown; dx: number; dy: number }; Returns: unknown }
+        | {
+            Args: { box: unknown; dx: number; dy: number; dz?: number }
+            Returns: unknown
+          }
+        | {
+            Args: {
+              dm?: number
+              dx: number
+              dy: number
+              dz?: number
+              geom: unknown
+            }
+            Returns: unknown
+          }
+      st_force3d: { Args: { geom: unknown; zvalue?: number }; Returns: unknown }
+      st_force3dm: {
+        Args: { geom: unknown; mvalue?: number }
+        Returns: unknown
+      }
+      st_force3dz: {
+        Args: { geom: unknown; zvalue?: number }
+        Returns: unknown
+      }
+      st_force4d: {
+        Args: { geom: unknown; mvalue?: number; zvalue?: number }
+        Returns: unknown
+      }
+      st_generatepoints:
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
+        | {
+            Args: { area: unknown; npoints: number; seed: number }
+            Returns: unknown
+          }
+      st_geogfromtext: { Args: { "": string }; Returns: unknown }
+      st_geographyfromtext: { Args: { "": string }; Returns: unknown }
+      st_geohash:
+        | { Args: { geog: unknown; maxchars?: number }; Returns: string }
+        | { Args: { geom: unknown; maxchars?: number }; Returns: string }
+      st_geomcollfromtext: { Args: { "": string }; Returns: unknown }
+      st_geometricmedian: {
+        Args: {
+          fail_if_not_converged?: boolean
+          g: unknown
+          max_iter?: number
+          tolerance?: number
+        }
+        Returns: unknown
+      }
+      st_geometryfromtext: { Args: { "": string }; Returns: unknown }
+      st_geomfromewkt: { Args: { "": string }; Returns: unknown }
+      st_geomfromgeojson:
+        | { Args: { "": Json }; Returns: unknown }
+        | { Args: { "": Json }; Returns: unknown }
+        | { Args: { "": string }; Returns: unknown }
+      st_geomfromgml: { Args: { "": string }; Returns: unknown }
+      st_geomfromkml: { Args: { "": string }; Returns: unknown }
+      st_geomfrommarc21: { Args: { marc21xml: string }; Returns: unknown }
+      st_geomfromtext: { Args: { "": string }; Returns: unknown }
+      st_gmltosql: { Args: { "": string }; Returns: unknown }
+      st_hasarc: { Args: { geometry: unknown }; Returns: boolean }
+      st_hausdorffdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_hexagon: {
+        Args: { cell_i: number; cell_j: number; origin?: unknown; size: number }
+        Returns: unknown
+      }
+      st_hexagongrid: {
+        Args: { bounds: unknown; size: number }
+        Returns: Record<string, unknown>[]
+      }
+      st_interpolatepoint: {
+        Args: { line: unknown; point: unknown }
+        Returns: number
+      }
+      st_intersection: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_intersects:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_isvaliddetail: {
+        Args: { flags?: number; geom: unknown }
+        Returns: Database["public"]["CompositeTypes"]["valid_detail"]
+        SetofOptions: {
+          from: "*"
+          to: "valid_detail"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      st_length:
+        | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
+        | { Args: { "": string }; Returns: number }
+      st_letters: { Args: { font?: Json; letters: string }; Returns: unknown }
+      st_linecrossingdirection: {
+        Args: { line1: unknown; line2: unknown }
+        Returns: number
+      }
+      st_linefromencodedpolyline: {
+        Args: { nprecision?: number; txtin: string }
+        Returns: unknown
+      }
+      st_linefromtext: { Args: { "": string }; Returns: unknown }
+      st_linelocatepoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_linetocurve: { Args: { geometry: unknown }; Returns: unknown }
+      st_locatealong: {
+        Args: { geometry: unknown; leftrightoffset?: number; measure: number }
+        Returns: unknown
+      }
+      st_locatebetween: {
+        Args: {
+          frommeasure: number
+          geometry: unknown
+          leftrightoffset?: number
+          tomeasure: number
+        }
+        Returns: unknown
+      }
+      st_locatebetweenelevations: {
+        Args: { fromelevation: number; geometry: unknown; toelevation: number }
+        Returns: unknown
+      }
+      st_longestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makebox2d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makeline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makevalid: {
+        Args: { geom: unknown; params: string }
+        Returns: unknown
+      }
+      st_maxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_minimumboundingcircle: {
+        Args: { inputgeom: unknown; segs_per_quarter?: number }
+        Returns: unknown
+      }
+      st_mlinefromtext: { Args: { "": string }; Returns: unknown }
+      st_mpointfromtext: { Args: { "": string }; Returns: unknown }
+      st_mpolyfromtext: { Args: { "": string }; Returns: unknown }
+      st_multilinestringfromtext: { Args: { "": string }; Returns: unknown }
+      st_multipointfromtext: { Args: { "": string }; Returns: unknown }
+      st_multipolygonfromtext: { Args: { "": string }; Returns: unknown }
+      st_node: { Args: { g: unknown }; Returns: unknown }
+      st_normalize: { Args: { geom: unknown }; Returns: unknown }
+      st_offsetcurve: {
+        Args: { distance: number; line: unknown; params?: string }
+        Returns: unknown
+      }
+      st_orderingequals: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_perimeter: {
+        Args: { geog: unknown; use_spheroid?: boolean }
+        Returns: number
+      }
+      st_pointfromtext: { Args: { "": string }; Returns: unknown }
+      st_pointm: {
+        Args: {
+          mcoordinate: number
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+        }
+        Returns: unknown
+      }
+      st_pointz: {
+        Args: {
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+          zcoordinate: number
+        }
+        Returns: unknown
+      }
+      st_pointzm: {
+        Args: {
+          mcoordinate: number
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+          zcoordinate: number
+        }
+        Returns: unknown
+      }
+      st_polyfromtext: { Args: { "": string }; Returns: unknown }
+      st_polygonfromtext: { Args: { "": string }; Returns: unknown }
+      st_project: {
+        Args: { azimuth: number; distance: number; geog: unknown }
+        Returns: unknown
+      }
+      st_quantizecoordinates: {
+        Args: {
+          g: unknown
+          prec_m?: number
+          prec_x: number
+          prec_y?: number
+          prec_z?: number
+        }
+        Returns: unknown
+      }
+      st_reduceprecision: {
+        Args: { geom: unknown; gridsize: number }
+        Returns: unknown
+      }
+      st_relate: { Args: { geom1: unknown; geom2: unknown }; Returns: string }
+      st_removerepeatedpoints: {
+        Args: { geom: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_segmentize: {
+        Args: { geog: unknown; max_segment_length: number }
+        Returns: unknown
+      }
+      st_setsrid:
+        | { Args: { geog: unknown; srid: number }; Returns: unknown }
+        | { Args: { geom: unknown; srid: number }; Returns: unknown }
+      st_sharedpaths: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_shortestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_simplifypolygonhull: {
+        Args: { geom: unknown; is_outer?: boolean; vertex_fraction: number }
+        Returns: unknown
+      }
+      st_split: { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_square: {
+        Args: { cell_i: number; cell_j: number; origin?: unknown; size: number }
+        Returns: unknown
+      }
+      st_squaregrid: {
+        Args: { bounds: unknown; size: number }
+        Returns: Record<string, unknown>[]
+      }
+      st_srid:
+        | { Args: { geog: unknown }; Returns: number }
+        | { Args: { geom: unknown }; Returns: number }
+      st_subdivide: {
+        Args: { geom: unknown; gridsize?: number; maxvertices?: number }
+        Returns: unknown[]
+      }
+      st_swapordinates: {
+        Args: { geom: unknown; ords: unknown }
+        Returns: unknown
+      }
+      st_symdifference: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_symmetricdifference: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_tileenvelope: {
+        Args: {
+          bounds?: unknown
+          margin?: number
+          x: number
+          y: number
+          zoom: number
+        }
+        Returns: unknown
+      }
+      st_touches: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_transform:
+        | {
+            Args: { from_proj: string; geom: unknown; to_proj: string }
+            Returns: unknown
+          }
+        | {
+            Args: { from_proj: string; geom: unknown; to_srid: number }
+            Returns: unknown
+          }
+        | { Args: { geom: unknown; to_proj: string }; Returns: unknown }
+      st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
+      st_union:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+        | {
+            Args: { geom1: unknown; geom2: unknown; gridsize: number }
+            Returns: unknown
+          }
+      st_voronoilines: {
+        Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_voronoipolygons: {
+        Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_wkbtosql: { Args: { wkb: string }; Returns: unknown }
+      st_wkttosql: { Args: { "": string }; Returns: unknown }
+      st_wrapx: {
+        Args: { geom: unknown; move: number; wrap: number }
+        Returns: unknown
       }
       submit_configured_research_answer: {
         Args: {
@@ -5668,6 +7412,16 @@ export type Database = {
         }
         Returns: string
       }
+      submit_mvp_feedback: {
+        Args: {
+          p_rating: number
+          p_ride_id: string
+          p_role: string
+          p_suggestion?: string
+          p_tags?: string[]
+        }
+        Returns: Json
+      }
       submit_professional_access_request: {
         Args: {
           p_car_category: string
@@ -5687,6 +7441,7 @@ export type Database = {
         }
         Returns: string
       }
+      switch_user_active_role: { Args: { target_role: string }; Returns: Json }
       sync_my_ride_opportunity_alerts: { Args: never; Returns: Json }
       sync_user_verifications: {
         Args: { _user_id: string }
@@ -5717,6 +7472,16 @@ export type Database = {
         Args: { p_preferred_offer_id?: string; p_request_id: string }
         Returns: string
       }
+      unlockrows: { Args: { "": string }; Returns: number }
+      update_flash_driver_heartbeat_gps: {
+        Args: {
+          p_accuracy_m?: number
+          p_lat: number
+          p_lng: number
+          p_municipality?: string
+        }
+        Returns: Json
+      }
       update_ride_location: {
         Args: {
           p_accuracy_m: number
@@ -5733,6 +7498,16 @@ export type Database = {
       }
       update_ride_transit_stage: {
         Args: { p_ride_id: string; p_stage: string }
+        Returns: string
+      }
+      updategeometrysrid: {
+        Args: {
+          catalogn_name: string
+          column_name: string
+          new_srid_in: number
+          schema_name: string
+          table_name: string
+        }
         Returns: string
       }
       upsert_unifor_prelaunch_intent: {
@@ -5795,7 +7570,15 @@ export type Database = {
       user_verification_type: "UNIFOR" | "STS_2026" | "CARONAA_TEST"
     }
     CompositeTypes: {
-      [_ in never]: never
+      geometry_dump: {
+        path: number[] | null
+        geom: unknown
+      }
+      valid_detail: {
+        valid: boolean | null
+        reason: string | null
+        location: unknown
+      }
     }
   }
 }

@@ -1218,7 +1218,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOferecerRoute: AuthenticatedOferecerRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedViagemRapidaRoute: AuthenticatedViagemRapidaRoute,
-  AuthenticatedViagensProfissionaisRoute: AuthenticatedViagensProfissionaisRoute,
+  AuthenticatedViagensProfissionaisRoute:
+    AuthenticatedViagensProfissionaisRoute,
   AuthenticatedMinhaCaronaOfferIdRoute: AuthenticatedMinhaCaronaOfferIdRoute,
   AuthenticatedViagemRideIdRoute: AuthenticatedViagemRideIdRoute,
   AuthenticatedPerfilViagemRideIdUserIdRoute:
