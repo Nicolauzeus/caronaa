@@ -96,6 +96,7 @@ function Home() {
   const activeRoleState = useActiveRole();
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>("peek");
   const [shellRoute,setShellRoute]=useState<ShellRoute|null>(null);
+  const [shellDestinationLocation,setShellDestinationLocation]=useState<FormLocationDetails>();
   const [shellRouteOrigin,setShellRouteOrigin]=useState<{lat:number;lng:number}|null>(null);
   const [shellSelectedDestination,setShellSelectedDestination]=useState(false);
   const [shellOriginRevision,setShellOriginRevision]=useState(0);
@@ -564,7 +565,7 @@ function Home() {
             origin={shellSelectedDestination&&shellRouteOrigin?shellRouteOrigin:point ?? currentFare?.originPoint}
             selectingOrigin={selectingOrigin}
             onPickOrigin={chooseOriginOnMap}
-            destination={destinationLocation ?? currentFare?.destinationPoint}
+            destination={shellSelectedDestination ? shellDestinationLocation : destinationLocation ?? currentFare?.destinationPoint}
             originIsCurrent={originSource === "CURRENT_LOCATION"}
             originAccuracyM={location.originAccuracyM}
             following={originSource === "CURRENT_LOCATION" && isTrustedGpsFix(location.position) && location.isFollowingUser}
@@ -603,9 +604,10 @@ function Home() {
             originPoint={originLocation}
             originMunicipality={resolvedAddress?.city ?? ""}
             gender={gender}
-            onDestinationChange={(label,details)=>{
-              setDestination(label);
-              setDestinationLocation(details);
+            onDestinationChange={(_label,details)=>{
+              // Keep the legacy F03-F06 forms untouched; the new Flash planner
+              // owns its destination and the single map route preview.
+              setShellDestinationLocation(details);
               setShellSelectedDestination(Boolean(details?.lat!=null && details?.lng!=null));
               setShellRoute(null);
               setConfirmedReviewKey(null);
