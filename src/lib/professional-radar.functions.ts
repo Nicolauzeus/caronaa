@@ -66,7 +66,6 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const admin = supabaseAdmin as any;
     const clearStaleLocation = async () => {
-      forgetVerifiedGpsCity(context.userId);
       const { error } = await admin.from("professional_driver_locations")
         .delete().eq("user_id", context.userId);
       if (error) return reject("LOCATION_CLEAR_FAILED", "Não foi possível suspender um sinal GPS antigo.", {
@@ -76,7 +75,6 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
 
     // Recent Google-verified municipality may be reused only inside a 300m
     // radius and 3-minute TTL. An HTTP 429 never fabricates a municipality.
-    const point={lat:data.lat,lng:data.lng};
     let city: string | null = null;
     if(city){
       log("municipality_cache_hit", undefined, {ageBoundSeconds:180});
@@ -88,7 +86,7 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
         if(!city){
           log("municipality_unknown","GPS_CITY_UNKNOWN");
           // A definitive OUTSIDE city requires actual address components.
-          if(geo?.city){
+          if(!geo || geo.city){
             await clearStaleLocation();
             return {published:false,reason:"OUTSIDE_APPROVED_ZONE",municipality:null,traceId};
           }
@@ -161,7 +159,6 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       // errors; the DB itself continues to enforce all authorization checks.
       return reject(code, "O banco recusou publicar a localização. Consulte o diagnóstico F07 e o log do servidor.");
     }
-    rememberVerifiedGpsCity(context.userId,point,city);
     log("db_publish_success", undefined, { city });
     return { published: true, municipality: city, traceId };
   });
