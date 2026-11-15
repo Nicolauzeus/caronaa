@@ -34,7 +34,7 @@ import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 
 export const Route = createFileRoute("/_authenticated/home")({
-  validateSearch: z.object({ intent: z.enum(["offer"]).optional() }),
+  validateSearch: z.object({ intent: z.enum(["offer"]).optional(), trips: z.enum(["open"]).optional() }),
   // Parent route already verifies login and applies institution waiting gates.
   // Resolve role before any passenger/driver dashboard renders.
   beforeLoad: async () => {
@@ -74,6 +74,7 @@ export const Route = createFileRoute("/_authenticated/home")({
 
 
 function Home() {
+  const routeSearch=Route.useSearch();
   useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const activeRoleState=useActiveRole();
   const gender=useProfileGender();
@@ -86,6 +87,7 @@ function Home() {
   },[]);
   const [serviceType,setServiceType]=useState<ServiceType>("FLASH");
   const [tripsPanelOpen,setTripsPanelOpen]=useState(false);
+  useEffect(()=>{if(routeSearch.trips==="open"){setTripsPanelOpen(true);setSheetSnap("full");}},[routeSearch.trips]);
   const [tripsRefreshKey,setTripsRefreshKey]=useState(0);
   const [driverTripsRefreshKey,setDriverTripsRefreshKey]=useState(0);
   const lastPlanningSnap=useRef<SheetSnap>("peek");
