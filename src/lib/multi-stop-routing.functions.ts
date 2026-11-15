@@ -239,10 +239,12 @@ export const getDriverOfferRoutePlan = createServerFn({ method: "GET" })
       };
     }
 
+    const { googleActionFetch } = await import("./google-request.server");
+    const googleRequest = googleActionFetch(context.userId, "quote", "getDriverOfferRoutePlan");
     return buildSuggestedRoutePlan({
       originalRoute,
       candidates,
-      route: (points) => getDrivingRoute(points),
+      route: (points) => getDrivingRoute(points, googleRequest),
     });
   });
 

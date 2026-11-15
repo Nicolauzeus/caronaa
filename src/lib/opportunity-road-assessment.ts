@@ -90,10 +90,12 @@ export async function assessOpportunityRoadRoute(
   }
   if (stops.length > 14) throw new Error("Há paradas demais para avaliar esta oportunidade.");
   try {
+    const { googleActionFetch } = await import("./google-request.server");
+    const googleRequest = googleActionFetch(userId, "quote", "assessOpportunityRoadRoute");
     const original =
       route.routePath && route.durationMinutes && route.distanceKm
         ? { routePath: route.routePath, durationMinutes: route.durationMinutes }
-        : await getDrivingRoute([route.origin, route.destination]);
+        : await getDrivingRoute([route.origin, route.destination], googleRequest);
     const ordered = stops
       .map((stop) => ({
         ...stop,
@@ -105,8 +107,8 @@ export async function assessOpportunityRoadRoute(
           (a.kind === b.kind ? a.id.localeCompare(b.id) : a.kind === "pickup" ? -1 : 1),
       );
     const [individual, combined] = await Promise.all([
-      getDrivingRoute([route.origin, route.pickup, route.dropoff, route.destination]),
-      getDrivingRoute([route.origin, ...ordered.map((stop) => stop.point), route.destination]),
+      getDrivingRoute([route.origin, route.pickup, route.dropoff, route.destination], googleRequest),
+      getDrivingRoute([route.origin, ...ordered.map((stop) => stop.point), route.destination], googleRequest),
     ]);
     const individualAdded = Math.max(0, individual.durationMinutes - original.durationMinutes);
     const combinedAdded = Math.max(0, combined.durationMinutes - original.durationMinutes);

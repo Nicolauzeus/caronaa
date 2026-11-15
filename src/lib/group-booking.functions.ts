@@ -22,10 +22,12 @@ const request = z.object({
 export const previewGroupBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => request.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    const { googleActionFetch } = await import("./google-request.server");
+    const googleRequest = googleActionFetch(context.userId, "quote", "previewGroupBooking");
     const distances = await Promise.all(data.passengers.map(async (passenger) => ({
       destination: passenger.destination,
-      roadDistanceKm: await getDrivingDistanceKm(data.pickup, passenger.dropoff),
+      roadDistanceKm: await getDrivingDistanceKm(data.pickup, passenger.dropoff, googleRequest),
     })));
     return quoteGroupBooking(distances);
   });

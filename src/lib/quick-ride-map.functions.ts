@@ -40,12 +40,14 @@ export const getQuickRideApproach = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const ride = await readContext(context.supabase, data.rideId);
     if (!["ACCEPTED","ARRIVED"].includes(ride.status) || !ride.driver) return null;
+    const driver = ride.driver;
     // One route per participant/ride/minute, not per GPS pulse or map movement.
     return sessionRequest(
       "quick-eta:" + context.userId + ":" + ride.id,
       async () => {
         try {
-          return await getDrivingRoute([ride.driver!, ride.origin]);
+          const { googleActionFetch } = await import("./google-request.server");
+          return await getDrivingRoute([driver, ride.origin], googleActionFetch(context.userId, "quote", "getQuickRideApproach"));
         } catch {
           return null;
         }

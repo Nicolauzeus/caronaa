@@ -141,12 +141,14 @@ export const suggestStrictPickup = createServerFn({ method: "POST" })
         ":" +
         JSON.stringify([fixed.passenger, fixed.route, fixed.strict, fixed.highway]),
       async () => {
-        const references = await nearbyPickupReferences(projection);
+        const { googleActionFetch } = await import("./google-request.server");
+        const googleRequest = googleActionFetch(context.userId, "quote", "suggestStrictPickup");
+        const references = await nearbyPickupReferences(projection, googleRequest);
         const pickup = chooseStrictPickup(projection, fixed.route, references);
         let walk = null;
         if (metersBetween(fixed.passenger, pickup.point) > 10) {
           try {
-            walk = await getWalkingRoute([fixed.passenger, pickup.point]);
+            walk = await getWalkingRoute([fixed.passenger, pickup.point], googleRequest);
           } catch {
             /* No invented walking path on provider errors. */
           }

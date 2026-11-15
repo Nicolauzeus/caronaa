@@ -67,6 +67,35 @@ export async function authenticatedGoogleRequest(input: Input, injected?: Google
   throw new Error("Google Maps indisponível.");
 }
 
+/** One verified server action may contain bounded route legs/Places lookups.
+ * Identity is supplied only by authenticated middleware, never RPC input.
+ * A shared promise prevents concurrent legs from consuming multiple counters.
+ */
+export function googleActionFetch(userId: string, operation: GoogleOperation, caller: string, injected?: GoogleRequestDependencies): typeof fetch {
+  let dependencies: Promise<GoogleRequestDependencies> | undefined;
+  let permission: Promise<boolean> | undefined;
+  let calls = 0;
+  return async (resource, options) => {
+    if (!userId) throw new Error("Sessão necessária.");
+    if (++calls > 16) throw new Error("Há consultas demais nesta ação.");
+    const url = resource instanceof Request ? resource.url : String(resource);
+    const headers = new Headers(options?.headers);
+    const key = headers.get("X-Goog-Api-Key") ?? "";
+    const body = options?.body;
+    if (body !== undefined && body !== null && typeof body !== "string") throw new Error("Consulta Google inválida.");
+    dependencies ??= injected ? Promise.resolve(injected) : runtimeDependencies();
+    const deps = await dependencies;
+    return authenticatedGoogleRequest({
+      url, key, userId, operation, caller,
+      fieldMask: headers.get("X-Goog-FieldMask") ?? undefined,
+      ...(typeof body === "string" ? { body: JSON.parse(body) } : {}),
+    }, { ...deps, consume: () => {
+      permission ??= deps.consume(userId, operation);
+      return permission;
+    } });
+  };
+}
+
 async function runtimeDependencies(): Promise<GoogleRequestDependencies> {
   // Called only after an authenticated handler has supplied its verified identity.
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

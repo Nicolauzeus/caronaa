@@ -73,6 +73,8 @@ export const getDriverProposalDetour = createServerFn({ method: "POST" })
     if (inFlight.has(fingerprint)) return inFlight.get(fingerprint)!;
 
     const calculation = (async () => {
+      const { googleActionFetch } = await import("./google-request.server");
+      const googleRequest = googleActionFetch(context.userId, "quote", "getDriverProposalDetour");
       const savedPath = Array.isArray(offer.route_path) ? offer.route_path : null;
       const parsedPath = savedPath?.map((v: any) => point(v?.lat, v?.lng));
       const canReuseSaved = parsedPath && parsedPath.length >= 2 && parsedPath.every(Boolean) &&
@@ -80,7 +82,7 @@ export const getDriverProposalDetour = createServerFn({ method: "POST" })
         typeof offer.route_distance_km === "number" && offer.route_distance_km > 0;
       const original = canReuseSaved
         ? { routePath: parsedPath as RoadPoint[], durationMinutes: offer.route_duration_minutes as number, distanceKm: offer.route_distance_km as number }
-        : await getDrivingRoute([o, d]);
+        : await getDrivingRoute([o, d], googleRequest);
       const otherIds = activeRides
         .filter(x => x.ride_id !== data.rideId)
         .map(x => x.request_id);
@@ -107,8 +109,8 @@ export const getDriverProposalDetour = createServerFn({ method: "POST" })
       })).sort((a,b) => a.progress-b.progress ||
         (a.kind === b.kind ? a.id.localeCompare(b.id) : a.kind === "pickup" ? -1 : 1));
       const [individual, combined] = await Promise.all([
-        getDrivingRoute([o,p,q,d]),
-        getDrivingRoute([o,...sorted.map(x=>x.point),d]),
+        getDrivingRoute([o,p,q,d], googleRequest),
+        getDrivingRoute([o,...sorted.map(x=>x.point),d], googleRequest),
       ]);
       const computed = calculateDriverDetour(
         original.durationMinutes, original.distanceKm,

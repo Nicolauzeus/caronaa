@@ -38,7 +38,12 @@ export async function getLocationDetailsService(
 
 export async function geocodeAddressService(
   address: string,
+  request?: typeof fetch,
 ): Promise<GeocodingResult | null> {
+  if (request) {
+    const { CompositeGeocodingProvider } = await import("./geocoding-adapter");
+    return new CompositeGeocodingProvider(new GooglePlacesProvider(request)).geocode(address);
+  }
   return getGeocodingProvider().geocode(address);
 }
 
