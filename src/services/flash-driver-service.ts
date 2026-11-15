@@ -143,10 +143,14 @@ export async function getMyActiveFlashRide():Promise<FlashDriverRide|null>{
       originLabel:string(r.origin_label),destinationLabel:string(r.destination_label),
       municipality:string(r.municipality),
       vehicleType:r.vehicle_type==="MOTO"?"MOTO":"CAR",
+      ...(r.mode==="ON_ROUTE"||r.mode==="EXCLUSIVE"?{mode:r.mode}:{}),
     };
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
-export type FlashPassengerDetails={name:string;photo:string|null;whatsapp:string|null;seatsRemaining:number|null};
+export type FlashPassengerDetails={
+  name:string;photo:string|null;whatsapp:string|null;seatsRemaining:number|null;
+  rideMode:"ON_ROUTE"|"EXCLUSIVE"|null;
+};
 export async function getFlashPassengerDetails(rideId:string):Promise<FlashPassengerDetails|null>{
   if(!rideId)return null;
   try{
@@ -159,6 +163,8 @@ export async function getFlashPassengerDetails(rideId:string):Promise<FlashPasse
       name:string(row.name),photo:string(row.photo)||null,
       whatsapp:string(row.whatsapp)||null,
       seatsRemaining:Number.isInteger(seatsRemaining)&&seatsRemaining>=0?seatsRemaining:null,
+      rideMode:row.ride_mode==="ON_ROUTE"||row.booking_mode==="ON_ROUTE"?"ON_ROUTE":
+        row.ride_mode==="EXCLUSIVE"||row.booking_mode==="EXCLUSIVE"?"EXCLUSIVE":null,
     };
   }catch{return null;}
 }
