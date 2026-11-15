@@ -1873,6 +1873,54 @@ export type Database = {
         }
         Relationships: []
       }
+      google_request_rate_buckets: {
+        Row: {
+          operation: string
+          request_count: number
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          operation: string
+          request_count: number
+          user_id: string
+          window_started_at: string
+        }
+        Update: {
+          operation?: string
+          request_count?: number
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
+      google_response_cache: {
+        Row: {
+          cache_kind: string
+          created_at: string
+          expires_at: string
+          payload: Json
+          request_hash: string
+          user_id: string
+        }
+        Insert: {
+          cache_kind: string
+          created_at?: string
+          expires_at: string
+          payload: Json
+          request_hash: string
+          user_id: string
+        }
+        Update: {
+          cache_kind?: string
+          created_at?: string
+          expires_at?: string
+          payload?: Json
+          request_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       manual_ride_payment_confirmations: {
         Row: {
           created_at: string
@@ -5634,6 +5682,10 @@ export type Database = {
         Returns: Json
       }
       confirm_ride_by_qr: { Args: { p_token: string }; Returns: Json }
+      consume_google_request_limit: {
+        Args: { p_operation: string; p_user_id: string }
+        Returns: boolean
+      }
       create_configured_research_form: {
         Args: { p_metadata: Json; p_schema: Json; p_settings: Json }
         Returns: string
@@ -6561,6 +6613,7 @@ export type Database = {
         Returns: boolean
       }
       purge_google_cost_tables: { Args: never; Returns: undefined }
+      purge_google_wrapper_tables: { Args: never; Returns: undefined }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
       quick_ride_complete_ride: { Args: { p_id: string }; Returns: boolean }
       quick_ride_confirm_payment_code: {
