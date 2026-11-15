@@ -91,9 +91,15 @@ export function useActiveRole() {
           return;
         }
 
-        const [profileResult, accessResult] = await Promise.all([
+        const [profileResult, colorResult, accessResult] = await Promise.all([
           (supabase as any).from("profiles")
             .select("vehicle_brand,vehicle_description,vehicle_plate")
+            .eq("id", userId)
+            .maybeSingle(),
+          // vehicle_color is not present in the current generated profile schema.
+          // Probe it independently so older databases remain compatible.
+          (supabase as any).from("profiles")
+            .select("vehicle_color")
             .eq("id", userId)
             .maybeSingle(),
           (supabase as any).rpc("get_my_professional_access"),
@@ -102,7 +108,10 @@ export function useActiveRole() {
         if (accessResult.error) throw accessResult.error;
         if (!alive) return;
 
-        const vehicleStatus = readVehicleStatus(profileResult.data as ProfileVehicle | null);
+        const vehicleStatus = readVehicleStatus({
+          ...(profileResult.data ?? {}),
+          vehicle_color: colorResult.error ? null : colorResult.data?.vehicle_color,
+        } as ProfileVehicle);
         setState(current => ({
           ...current,
           vehicleStatus,
