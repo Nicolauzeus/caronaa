@@ -25,13 +25,11 @@ export async function reverseGeocodeRadarMunicipality(
   url.searchParams.set("latlng",lat+","+lng);
   url.searchParams.set("language","pt-BR");
   url.searchParams.set("result_type","administrative_area_level_2|locality");
+  url.searchParams.set("key",key);
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),8000);
   try{
-    const res=await fetch(url,{
-      headers:{"X-Goog-Api-Key":key},
-      signal:controller.signal,
-    });
+    const res=await fetch(url,{signal:controller.signal});
     if(res.status===429)throw new Error("GOOGLE_QUOTA_LIMITED");
     if(!res.ok)throw new Error("GOOGLE_GEOCODING_HTTP_ERROR");
     const data=await res.json() as GeocodeResponse;
