@@ -291,8 +291,10 @@ function Home() {
                 poiName:selectedOnRouteMatch.pickupMeeting.poiName},
             }:null}
             routeBottomInset={shellSelectedDestination?
-              Math.round((typeof window==="undefined"?800:window.innerHeight)*
-                (sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24:undefined}
+              (typeof window!=="undefined"&&window.innerWidth>=768 ? 72 :
+                Math.round((typeof window==="undefined"?800:window.innerHeight)*
+                  (sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24):undefined}
+            routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
             origin={mapOrigin}
             destination={currentDestination}
             originIsCurrent={originSource==="CURRENT_LOCATION"}
