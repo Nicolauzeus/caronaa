@@ -29,7 +29,8 @@ export function getVehicleStatus(profile:ProfileVehicle|null):VehicleStatus {
   const hasBrand=hasText(profile?.vehicle_brand);
   const hasModel=hasText(profile?.vehicle_description);
   const hasColor=hasText(profile?.vehicle_color);
-  const hasPlate=isValidBrazilianPlate(profile?.vehicle_plate);
+  const hasPlate=isValidBrazilianPlate(profile?.vehicle_plate) &&
+    /^[A-Z]{3}[0-9](?:[0-9]|[A-J])[0-9]{2}$/.test(normalizePlate(profile?.vehicle_plate));
   return {hasBrand,hasModel,hasColor,hasPlate,
     isComplete:hasBrand&&hasModel&&hasColor&&hasPlate};
 }
@@ -190,6 +191,10 @@ export function useActiveRole() {
       const type=parseVehicleType(persisted.vehicle_type);
       const eligible=readyFromRpc(ready);
       const completed=getVehicleStatus(persisted);
+      // Vehicle persistence succeeded even if eligibility/switch fails later.
+      setState(prev=>({...prev,vehicleStatus:completed,vehicleType:type,
+        vehicleSeats:normalizeVehicleSeats(type,persisted.vehicle_seats),
+        isDriverEligible:eligible}));
       // Switch only after the server confirms readiness and all four
       // required fields were saved successfully.
       let activated=false;
