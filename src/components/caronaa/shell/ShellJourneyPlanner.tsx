@@ -1,292 +1,390 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Search, Clock3, MapPin, Users, Music2, MessageCircle, ShieldCheck, Zap } from "lucide-react";
+import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search, Zap } from "lucide-react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
-import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
+import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
+import { TravelPreferenceFields } from "@/components/caronaa/TravelPreferences";
+import { emptyTravelPreferences, type TravelPreferences } from "@/lib/travel-preferences";
+import { loadTravelPreferences } from "@/lib/travel-preferences-service";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { quoteUnifiedFare, type UnifiedFareResult, type UnifiedFareMode } from "@/lib/pricing/unified-fare-engine";
+import { formatBrl } from "@/lib/ride-cost";
 import { supabase } from "@/integrations/supabase/client";
-import type { FormLocationDetails } from "@/lib/location/types";
+import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
 import type { SheetSnap } from "./InteractiveBottomSheet";
+import type { FormLocationDetails } from "@/lib/location/types";
+import type { ProfileGender } from "@/lib/use-profile-gender";
 
-type VehicleType="CAR"|"MOTO";
-type Props={
-  snap:SheetSnap;
-  serviceType:ServiceType;
-  onServiceTypeChange:(type:ServiceType)=>void;
-  originPoint?:{lat?:number;lng?:number}|null;
-  originMunicipality:string;
-  gender:string|null;
-  onDestinationChange?:(label:string,details?:FormLocationDetails)=>void;
+export type ShellRoute = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
+type Point = {lat:number;lng:number};
+type Vehicle = "CAR"|"MOTO";
+type SearchPhase = "REVIEW"|"SEARCHING"|"TIMEOUT"|"MATCHED"|"WAITLISTED";
+type MatchedDriver = {
+  name:string;photo:string|null;vehicle:string|null;plate:string|null;
+  color?:string|null;rating?:number|null;etaMinutes?:number|null;
+  meetingLabel?:string|null;walkDistanceMeters?:number|null;
 };
-const formatPrice=(amount:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(amount);
-const validPoint=(p:Props["originPoint"]):p is {lat:number;lng:number} =>
-  Boolean(p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
-    Math.abs(p.lat!)<=90 && Math.abs(p.lng!)<=180);
-export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
-  originPoint,originMunicipality,gender,onDestinationChange}:Props){
+type Props = {
+  snap:SheetSnap;
+  onSnapChange?:(snap:SheetSnap)=>void;
+  serviceType:ServiceType;
+  onServiceTypeChange:(service:ServiceType)=>void;
+  originPoint?:{lat?:number;lng?:number}|null;
+  originLabel?:string;
+  originMunicipality:string;
+  originRevision?:number;
+  gender:ProfileGender;
+  onDestinationChange?:(label:string,details?:FormLocationDetails)=>void;
+  onRouteChange?:(route:ShellRoute|null,origin:Point|null)=>void;
+  onAdjustOrigin?:()=>void;
+};
+const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
+  !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
+    Math.abs(p.lat!)<=90 && Math.abs(p.lng!)<=180;
+const selectedButton=(chosen:boolean)=>"min-h-11 rounded-xl border p-3 text-sm font-bold transition-colors "+
+  (chosen?"border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]":"border-white/20 bg-white/5 text-white");
+const localDateTime=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+
+export function ShellJourneyPlanner({
+  snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
+  originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,
+}:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
-  const [mode,setMode]=useState<UnifiedFareMode>("ON_ROUTE");
-  const [vehicle,setVehicle]=useState<VehicleType>("CAR");
+  const [vehicle,setVehicle]=useState<Vehicle>("CAR");
+  const [mode,setMode]=useState<UnifiedFareMode>("EXCLUSIVE");
   const [seats,setSeats]=useState(1);
-  const [quote,setQuote]=useState<UnifiedFareResult|null>(null);
-  const [quoting,setQuoting]=useState(false);
-  const [quoteError,setQuoteError]=useState("");
-  const [music,setMusic]=useState("SEM_PREFERENCIA");
-  const [conversation,setConversation]=useState("SEM_PREFERENCIA");
-  const [scheduledAt,setScheduledAt]=useState("");
+  const [entireCar,setEntireCar]=useState(false);
+  const [route,setRoute]=useState<ShellRoute|null>(null);
+  const [prices,setPrices]=useState<{ON_ROUTE:UnifiedFareResult;EXCLUSIVE:UnifiedFareResult}|null>(null);
+  const [routeBusy,setRouteBusy]=useState(false);
+  const [routeError,setRouteError]=useState("");
+  const [preferences,setPreferences]=useState<TravelPreferences>({...emptyTravelPreferences});
   const [womenOnly,setWomenOnly]=useState(false);
-  const [flashStartedAt,setFlashStartedAt]=useState<number|null>(null);
-  const [remaining,setRemaining]=useState(60);
+  const [scheduledAt,setScheduledAt]=useState("");
+  const [phase,setPhase]=useState<SearchPhase>("REVIEW");
+  const [startedAt,setStartedAt]=useState<number|null>(null);
+  const [secondsLeft,setSecondsLeft]=useState(60);
   const [waitlistBusy,setWaitlistBusy]=useState(false);
-  const [radarCount,setRadarCount]=useState(0);
-  const [radarState,setRadarState]=useState<"unknown"|"loading"|"ready"|"error">("unknown");
-  const [waitlistStatus,setWaitlistStatus]=useState("");
-  const routePreview=useServerFn(getMapDrivingRoute);
-  useEffect(()=>{
-    const municipality=originMunicipality.trim();
-    if(serviceType!=="FLASH" || municipality.length<2){
-      setRadarState("unknown");
-      setRadarCount(0);
-      return;
-    }
-    let mounted=true;
-    setRadarState("loading");
-    void (supabase as any).rpc("discover_caronaa_quick_drivers",{
-      p_municipality:municipality,p_vehicle:vehicle,
-    }).then(({data,error}:{data:unknown;error:unknown})=>{
-      if(!mounted)return;
-      if(error){setRadarState("error");setRadarCount(0);return;}
-      const drivers=Array.isArray(data)?data:[];
-      setRadarCount(drivers.filter(driver=>!driver.is_self && !driver.simulated).length);
-      setRadarState("ready");
-    }).catch(()=>{if(mounted){setRadarState("error");setRadarCount(0);}});
-    return()=>{mounted=false;};
-  },[originMunicipality,vehicle,serviceType]);
+  const [feedback,setFeedback]=useState("");
+  const [matched,setMatched]=useState<MatchedDriver|null>(null);
+  const routeReader=useServerFn(getMapDrivingRoute);
+  const routeCache=useRef(new Map<string,Promise<ShellRoute>>());
+  const frozenOrigin=useRef<Point|null>(null);
+  const selectedKey=useRef("");
+  const searchSession=useRef(0);
+  const onRouteRef=useRef(onRouteChange);
+  onRouteRef.current=onRouteChange;
 
   useEffect(()=>{
-    if(flashStartedAt===null)return;
-    const update=()=>setRemaining(Math.max(0,60-Math.floor((Date.now()-flashStartedAt)/1000)));
-    update();
-    const interval=window.setInterval(update,1000);
-    return ()=>window.clearInterval(interval);
-  },[flashStartedAt]);
-
-  useEffect(()=>{
-    setQuote(null);
-    setQuoteError("");
-    if(!validPoint(originPoint) || !validPoint(destinationPoint))return;
     let active=true;
-    const timer=window.setTimeout(async()=>{
-      setQuoting(true);
-      try{
-        // Google Routes returns road distance; never replace it with straight-line distance.
-        const route=await routePreview({data:{points:[
-          {lat:originPoint.lat,lng:originPoint.lng},
-          {lat:destinationPoint.lat!,lng:destinationPoint.lng!},
-        ]}});
-        if(!Number.isFinite(route.distanceKm)||route.distanceKm<=0)
-          throw new Error("ROAD_DISTANCE_UNAVAILABLE");
-        const result=await quoteUnifiedFare({distanceKm:route.distanceKm,
-          mode,vehicleType:vehicle,seats:vehicle==="MOTO"?1:seats});
-        if(active)setQuote(result);
-      }catch{
-        if(active)setQuoteError("Não foi possível calcular a rota agora. Confira origem e destino.");
-      }finally{if(active)setQuoting(false);}
-    },350);
-    return ()=>{active=false;window.clearTimeout(timer);};
-  },[originPoint?.lat,originPoint?.lng,destinationPoint?.lat,destinationPoint?.lng,
-    mode,vehicle,seats,routePreview]);
+    void loadTravelPreferences().then(value=>{if(active)setPreferences(value);}).catch(()=>undefined);
+    return()=>{active=false;routeCache.current.clear();};
+  },[]);
+  useEffect(()=>{if(gender!=="FEMININO")setWomenOnly(false);},[gender]);
+
+  // One Google Routes call per selected origin/destination pair. Changing cards,
+  // seats, preferences, sheet height or the live GPS pulse never reroutes.
+  useEffect(()=>{
+    if(!valid(destinationPoint)){setRoute(null);setPrices(null);onRouteRef.current?.(null,null);return;}
+    if(!frozenOrigin.current && valid(originPoint)) frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
+    const from=frozenOrigin.current;
+    if(!from){setRoute(null);onRouteRef.current?.(null,null);return;}
+    const to:Point={lat:destinationPoint.lat!,lng:destinationPoint.lng!};
+    const key=[from.lat,from.lng,to.lat,to.lng].map(n=>n.toFixed(6)).join(":");
+    selectedKey.current=key;
+    let alive=true;
+    setRouteBusy(true);setRouteError("");setRoute(null);setPrices(null);
+    onRouteRef.current?.(null,null);
+    let pending=routeCache.current.get(key);
+    if(!pending){
+      pending=routeReader({data:{points:[from,to]}}).then(result=>{
+        if(!Number.isFinite(result.distanceKm)||result.distanceKm<=0||
+          !Array.isArray(result.routePath)||result.routePath.length<2)
+          throw new Error("ROAD_ROUTE_UNAVAILABLE");
+        return {routePath:result.routePath,distanceKm:result.distanceKm,durationMinutes:result.durationMinutes};
+      });
+      routeCache.current.set(key,pending);
+      void pending.catch(()=>{routeCache.current.delete(key);});
+    }
+    void pending.then(result=>{
+      if(!alive||selectedKey.current!==key)return;
+      setRoute(result);
+      onRouteRef.current?.(result,from);
+    }).catch(()=>{
+      if(alive){setRouteError("Não foi possível traçar a rota. Tente escolher o destino novamente.");}
+    }).finally(()=>{if(alive)setRouteBusy(false);});
+    return()=>{alive=false;};
+  },[destinationPoint?.lat,destinationPoint?.lng,originRevision,routeReader]);
 
   useEffect(()=>{
-    if(vehicle==="MOTO")setSeats(1);
-  },[vehicle]);
+    if(!route){setPrices(null);return;}
+    let active=true;
+    const onRouteSeats=vehicle==="MOTO"?1:entireCar?3:seats;
+    void Promise.all([
+      quoteUnifiedFare({distanceKm:route.distanceKm,mode:"ON_ROUTE",vehicleType:vehicle,seats:onRouteSeats}),
+      quoteUnifiedFare({distanceKm:route.distanceKm,mode:"EXCLUSIVE",vehicleType:vehicle}),
+    ]).then(([ON_ROUTE,EXCLUSIVE])=>{
+      if(active)setPrices({ON_ROUTE,EXCLUSIVE});
+    }).catch(()=>{if(active){setPrices(null);setRouteError("Não foi possível calcular a estimativa.");}});
+    return()=>{active=false;};
+  },[route,vehicle,seats,entireCar]);
 
-  const startFlash=()=>{
-    setWaitlistStatus("");
-    if(!validPoint(originPoint)||!validPoint(destinationPoint)){
-      setWaitlistStatus("Escolha um destino válido e permita localizar a origem.");
-      return;
-    }
-    if(radarState!=="ready"){
-      setWaitlistStatus(radarState==="error"
-        ?"Radar temporariamente indisponível. Tente novamente mais tarde."
-        :"Ainda estamos verificando a disponibilidade de motoristas e o município pelo GPS.");
-      return;
-    }
-    if(radarCount>0){
-      setWaitlistStatus("Há motoristas no radar. A solicitação de corrida ainda depende da confirmação operacional.");
-      return;
-    }
-    setFlashStartedAt(Date.now());
-    setRemaining(60);
+  // The countdown is UI-only until the booking/dispatch RPC is integrated.
+  // Never report a fabricated acceptance, payment or notification.
+  useEffect(()=>{
+    if(phase!=="SEARCHING"||startedAt===null)return;
+    const tick=()=>{
+      const remaining=Math.max(0,60-Math.floor((Date.now()-startedAt)/1000));
+      setSecondsLeft(remaining);
+      if(remaining===0)setPhase("TIMEOUT");
+    };
+    tick();
+    const timer=window.setInterval(tick,1000);
+    return()=>window.clearInterval(timer);
+  },[phase,startedAt]);
+
+  useEffect(()=>{
+    if(phase!=="SEARCHING")return;
+    let alive=true;
+    const session=++searchSession.current;
+    const check=async()=>{
+      // Only a genuinely authorized, already-created ride may become MATCHED.
+      // This shell does not manufacture a ride or bypass dispatch constraints.
+      try{
+        const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
+        if(error||!Array.isArray(data)||!alive||session!==searchSession.current)return;
+        const relevant=data.find((ride:any)=>ride.role==="PASSENGER"&&
+          ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(ride.status)&&
+          ride.destination_label===destination && ride.requested_at &&
+          Date.parse(ride.requested_at)>=((startedAt??0)-5000));
+        if(!relevant?.id)return;
+        const {data:details,error:detailsError}=await (supabase as any).rpc(
+          "quick_ride_driver_details",{p_id:relevant.id});
+        if(!alive||detailsError||!details?.name)return;
+        const driver:MatchedDriver={
+          name:details.name,photo:details.photo??null,vehicle:details.vehicle??null,
+          plate:details.plate??null,color:details.color??null,
+          rating:Number.isFinite(details.rating)?details.rating:null,
+        };
+        setMatched(driver);setPhase("MATCHED");
+      }catch{/* No driver is claimed without authorized server data. */}
+    };
+    void check();
+    const timer=window.setInterval(()=>{if(!document.hidden)void check();},15000);
+    return()=>{alive=false;window.clearInterval(timer);};
+  },[phase,destination,startedAt]);
+
+  const pickDestination=useCallback((label:string,details?:FormLocationDetails)=>{
+    setDestination(label);
+    setDestinationPoint(details);
+    onDestinationChange?.(label,details);
+    setPhase("REVIEW");setMatched(null);setFeedback("");setStartedAt(null);
+    setRoute(null);setPrices(null);
+    frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
+    if(details && valid(details))onSnapChange?.("half");
+  },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange]);
+
+  const changeVehicle=(value:Vehicle)=>{
+    setVehicle(value);
+    if(value==="MOTO"){setSeats(1);setEntireCar(false);}
   };
-  const joinWaitlist=async()=>{
-    if(waitlistBusy||!destination.trim()||!validPoint(destinationPoint)||
-      originMunicipality.trim().length<2)return;
-    setWaitlistBusy(true);
-    setWaitlistStatus("");
+  const start=()=>{
+    if(!valid(originPoint)||!valid(destinationPoint)||!route||!prices){
+      setFeedback("Confirme a origem e o destino para continuar.");return;
+    }
+    setFeedback("");
+    setSecondsLeft(60);setStartedAt(Date.now());setPhase("SEARCHING");
+  };
+  const cancel=()=>{
+    searchSession.current+=1;
+    setPhase("REVIEW");setStartedAt(null);setMatched(null);setFeedback("");
+  };
+  const schedule=()=>{
+    cancel();
+    onServiceTypeChange("AGENDADA");
+    onSnapChange?.("full");
+    setFeedback("Escolha o horário para agendar.");
+  };
+  const waitlist=async()=>{
+    if(waitlistBusy || !valid(destinationPoint) || !originMunicipality.trim())return;
+    setWaitlistBusy(true);setFeedback("");
     try{
-      const {data:auth,error:authError}=await supabase.auth.getUser();
-      if(authError||!auth.user)throw new Error("AUTH");
-      const {error}=await (supabase as any).from("flash_waitlist").upsert({
-        user_id:auth.user.id,
-        vehicle_type:vehicle,
-        service_mode:mode,
-        // Store only municipality-level interest, not home addresses or GPS.
-        origin_municipality:originMunicipality.trim(),
-        destination_municipality:destinationPoint?.city ?? null,
-        updated_at:new Date().toISOString(),
-      },{onConflict:"user_id,origin_municipality,vehicle_type,service_mode"});
+      const onRouteSeats=vehicle==="MOTO"?1:entireCar?3:seats;
+      const {error}=await (supabase as any).rpc("register_flash_waitlist",{
+        p_origin_municipality:originMunicipality.trim(),
+        p_destination_municipality:destinationPoint.city??null,
+        p_vehicle_type:vehicle,p_service_mode:mode,
+        p_seats:mode==="EXCLUSIVE"?(vehicle==="CAR"?3:1):onRouteSeats,
+        p_reserved_entire_vehicle:mode==="EXCLUSIVE"||entireCar,
+      });
       if(error)throw error;
-      setWaitlistStatus("Você entrou na lista de espera. Avisaremos quando houver disponibilidade.");
-      setFlashStartedAt(null);
+      setPhase("WAITLISTED");
+      setFeedback("Você está na lista de espera! Avisaremos pelo WhatsApp assim que houver motoristas disponíveis na sua rota.");
     }catch{
-      setWaitlistStatus("Não foi possível registrar na lista de espera. Verifique a tabela e tente novamente.");
+      setFeedback("Não conseguimos confirmar sua inscrição. Tente novamente.");
     }finally{setWaitlistBusy(false);}
   };
-  const scheduleSoon=()=>{
-    onServiceTypeChange("AGENDADA");
-    setFlashStartedAt(null);
-    setWaitlistStatus("Modo agendado selecionado. Informe o horário quando o agendamento estiver disponível.");
-  };
 
-  return <div className={snap==="peek"?"space-y-1":"space-y-4 pb-3"} style={{fontFamily:"Manrope, sans-serif"}}>
-    <div className={snap==="peek"?"space-y-1":"space-y-2"}>
-      <h2 className={snap==="peek"?"sr-only":"font-[family-name:var(--font-display)] text-lg font-bold text-white"}>
-        Para onde vamos?
-      </h2>
-      {snap==="peek"?<button type="button" onClick={()=>{
-        document.dispatchEvent(new CustomEvent("caronaa-shell-expand"));
-      }} className="flex min-h-9 w-full items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-3 text-left text-sm">
-        <Search size={18} className="text-[#FFBB00]"/>
-        <span className="truncate text-white/75">{destination||"Para onde vamos?"}</span>
-      </button>:
-      <LocationAutocomplete id="shell-destination" label="Destino" value={destination}
-        selectedLocation={destinationPoint} variant="glass" placeholder="Para onde vamos?"
-        onChange={(label,location)=>{
-          setDestination(label);setDestinationPoint(location);onDestinationChange?.(label,location);
-        }}/> }
-      <ServiceTypeDock compact={snap==="peek"} value={serviceType} onChange={type=>{
-        onServiceTypeChange(type);
-        setFlashStartedAt(null);
-        setWaitlistStatus("");
-      }}/>
-    </div>
-
-    {snap!=="peek"&&<>
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-bold">Modalidade</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {([{id:"ON_ROUTE",title:"Na Rota"},{id:"EXCLUSIVE",title:"Exclusiva"}] as const).map(opt=>
-            <button key={opt.id} type="button" aria-pressed={mode===opt.id}
-              onClick={()=>setMode(opt.id)}
-              className={`min-h-12 rounded-xl border px-3 text-sm font-bold ${mode===opt.id?"border-[#FFBB00] bg-[#FFBB00] text-[#121212]":"border-white/20 bg-white/10 text-white"}`}>
-              {opt.title}
-            </button>)}
-        </div>
-      </fieldset>
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-bold">Veículo</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(["CAR","MOTO"] as const).map(item=>
-            <button key={item} type="button" aria-pressed={vehicle===item}
-              onClick={()=>setVehicle(item)}
-              className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${vehicle===item?"border-[#FFBB00] text-[#FFBB00]":"border-white/20 text-white"}`}>
-              {item==="CAR"?"Carro":"Moto"}
-            </button>)}
-        </div>
-      </fieldset>
-      {mode==="ON_ROUTE"&&<label className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-white/15 px-3 text-sm font-semibold">
-        <span className="inline-flex items-center gap-2"><Users size={17}/> Vagas</span>
-        <select aria-label="Quantidade de vagas" value={vehicle==="MOTO"?1:seats}
-          disabled={vehicle==="MOTO"} onChange={e=>setSeats(Number(e.target.value))}
-          className="rounded-lg border border-white/20 bg-[#121212] px-3 py-2 text-white">
-          {Array.from({length:vehicle==="MOTO"?1:3},(_,i)=>i+1)
-            .map(n=><option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>}
-      <div role="status" aria-live="polite"
-        className="rounded-2xl border border-[#FFBB00]/30 bg-white/5 p-3 text-sm">
-        <p className="font-semibold text-white">Prévia de tarifa</p>
-        {quoting?<p className="mt-1 text-white/70">Calculando distância rodoviária...</p>:
-          quote?<><p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-[#FFBB00]">
-            {formatPrice(quote.totalFare)}
-          </p><p className="text-xs text-white/60">
-            {quote.distanceKm.toFixed(1)} km pela via · {quote.configSource==="FALLBACK"?"estimativa com tarifa padrão":"configuração do banco"}.
-            Valor final depende da confirmação no servidor.
-          </p></>:
-          <p className="mt-1 text-white/65">{quoteError||"Defina origem e destino no mapa para estimar o valor."}</p>}
+  const selectedPrice=prices?.[mode]??null;
+  const optionCard=(kind:UnifiedFareMode)=>(
+    <div key={kind} className={"rounded-2xl border p-3 "+(mode===kind?
+      "border-[#FFBB00] bg-[#FFBB00]/10":"border-white/20 bg-white/5")}>
+      <button type="button" aria-pressed={mode===kind}
+        onClick={()=>setMode(kind)} className="flex min-h-10 w-full items-center justify-between gap-2 text-left">
+        <span className="font-[family-name:var(--font-display)] font-bold">
+          {kind==="EXCLUSIVE"?"Exclusiva":"Na Rota"}
+        </span>
+        <span className="font-[family-name:var(--font-display)] font-extrabold text-[#FFBB00]">
+          {prices?formatBrl(prices[kind].totalFare):"—"}
+        </span>
+      </button>
+      <p className="my-2 text-xs leading-relaxed text-white/75">
+        {kind==="EXCLUSIVE"?"Porta a porta, só você e quem estiver com você.":
+          "Mais barato. Você embarca num ponto de encontro dentro do trajeto do motorista."}
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {(["CAR","MOTO"] as const).map(value=><button key={value} type="button"
+          onClick={()=>{setMode(kind);changeVehicle(value);}}
+          aria-pressed={mode===kind&&vehicle===value}
+          className={selectedButton(mode===kind&&vehicle===value)}>
+          {value==="CAR"?<CarFront size={17} className="mx-auto mb-1"/>:<Bike size={17} className="mx-auto mb-1"/>}
+          {value==="CAR"?"Carro":"Moto"}
+        </button>)}
       </div>
-
-      {serviceType==="FLASH"&&<div className="space-y-2">
-        {flashStartedAt===null?<button type="button" onClick={startFlash}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-          <Zap size={18}/> Ver disponibilidade Flash
-        </button>:
-          <div className="space-y-3 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-            <p className="font-semibold">O app está em fase inicial e estamos avisando nossos motoristas.</p>
-            {remaining>0?<p role="timer" className="font-[family-name:var(--font-display)] text-xl font-bold text-[#FFBB00]">
-              {remaining}s
-            </p>:<div className="space-y-2">
-              <p>Não encontramos um motorista disponível neste período.</p>
-              <button type="button" disabled={waitlistBusy} onClick={()=>void joinWaitlist()}
-                className="min-h-11 w-full rounded-xl bg-[#FFBB00] px-3 font-bold text-[#121212]">
-                {waitlistBusy?"Registrando...":"Entrar na lista de espera"}
-              </button>
-              <button type="button" onClick={scheduleSoon}
-                className="min-h-11 w-full rounded-xl border border-white/30 px-3 font-semibold text-white">
-                Agendar para daqui a pouco
-              </button>
-            </div>}
-          </div>}
-      </div>}
-      {serviceType==="AGENDADA"&&<div className="space-y-2 rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/80">
-        <label className="block font-semibold">
-          <span className="flex items-center gap-2"><Clock3 size={18} className="text-[#FFBB00]"/> Quando deseja sair?</span>
-          <input type="datetime-local" aria-label="Horário da viagem agendada"
-            value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)}
-            min={new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)}
-            className="mt-2 min-h-11 w-full rounded-xl border border-white/25 bg-[#121212] px-3 text-white [color-scheme:dark]"/>
+      {kind==="ON_ROUTE"&&mode==="ON_ROUTE"&&<div className="mt-3 space-y-2">
+        <label className="flex items-center justify-between gap-3 text-sm">
+          <span>Vagas</span>
+          <select aria-label="Quantidade de vagas" value={vehicle==="MOTO"?1:entireCar?3:seats}
+            disabled={vehicle==="MOTO"||entireCar}
+            onChange={event=>setSeats(Number(event.target.value))}
+            className="min-h-11 rounded-lg border border-white/25 bg-[#121212] px-4 text-white">
+            {Array.from({length:vehicle==="MOTO"?1:3},(_,i)=>i+1)
+              .map(value=><option value={value} key={value}>{value}</option>)}
+          </select>
         </label>
-        <p className="text-xs text-white/65">
-          Horário selecionado: {scheduledAt?new Date(scheduledAt).toLocaleString("pt-BR"):"a definir"}.
-          A confirmação do agendamento estará disponível quando o fluxo operacional for conectado.
-        </p>
+        {vehicle==="CAR"&&<label className="flex min-h-11 items-center justify-between gap-2 text-xs">
+          Reservar veículo inteiro (3 vagas)
+          <input type="checkbox" checked={entireCar} onChange={e=>setEntireCar(e.target.checked)}
+            className="size-5 accent-[#FFBB00]"/>
+        </label>}
       </div>}
-      {waitlistStatus&&<p role="status" className="text-xs text-[#FFBB00]">{waitlistStatus}</p>}
-    </>}
+    </div>
+  );
 
-    {snap==="full"&&<div className="space-y-3 border-t border-white/15 pt-4">
-      <h3 className="font-[family-name:var(--font-display)] text-base font-bold">Preferências e embarque</h3>
-      <label className="flex items-center gap-2 text-sm"><Music2 size={17} className="text-[#FFBB00]"/>
-        Música <select value={music} onChange={e=>setMusic(e.target.value)}
-          className="ml-auto max-w-[55%] rounded-lg border border-white/20 bg-[#121212] p-2 text-white">
-          <option value="SEM_PREFERENCIA">Sem preferência</option>
-          <option value="COM_MUSICA">Com música</option>
-          <option value="SEM_MUSICA">Sem música</option>
-        </select>
-      </label>
-      <label className="flex items-center gap-2 text-sm"><MessageCircle size={17} className="text-[#FFBB00]"/>
-        Conversa <select value={conversation} onChange={e=>setConversation(e.target.value)}
-          className="ml-auto max-w-[55%] rounded-lg border border-white/20 bg-[#121212] p-2 text-white">
-          <option value="SEM_PREFERENCIA">Sem preferência</option>
-          <option value="CONVERSAR">Gosto de conversar</option>
-          <option value="SILENCIO">Prefiro silêncio</option>
-        </select>
-      </label>
-      {gender==="FEMININO"&&<label className="flex min-h-12 items-center justify-between gap-3 text-sm">
-        <span className="inline-flex items-center gap-2"><ShieldCheck size={17} className="text-[#FFBB00]"/> Carona Mulher</span>
-        <input type="checkbox" checked={womenOnly} onChange={e=>setWomenOnly(e.target.checked)}
-          className="size-5 accent-[#FFBB00]"/>
-      </label>}
-      <div className="rounded-xl border border-white/15 p-3 text-sm text-white/70">
-        <p className="flex items-center gap-2 font-semibold text-white"><MapPin size={17} className="text-[#FFBB00]"/> Embarque</p>
-        <p className="mt-1">Origem: {validPoint(originPoint)?"Localização atual selecionada":"Aguardando localização válida"}</p>
-        <p>Destino: {destination||"Selecione um destino"}</p>
-        <p className="mt-2 text-xs">Preferências visuais ainda não são enviadas para a solicitação de corrida.</p>
+  return <div className={snap==="peek"?"space-y-1":"space-y-4 pb-4"}
+    style={{fontFamily:"Manrope, sans-serif"}}>
+    {snap==="peek"&&<>
+      <button type="button" onClick={()=>onSnapChange?.("half")}
+        className="flex min-h-9 w-full items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 text-sm">
+        <Search size={18} className="text-[#FFBB00]"/>
+        <span className="truncate">{destination||"Para onde vamos?"}</span>
+      </button>
+      <button type="button" className="block w-full truncate text-left text-[11px] text-white/80"
+        onClick={onAdjustOrigin}>Origem: {originLabel||"GPS atual"} · Ajustar no mapa</button>
+      <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
+    </>}
+    {snap==="half"&&<>
+      <LocationAutocomplete id="shell-destination" label="Para onde vamos?"
+        value={destination} selectedLocation={destinationPoint}
+        variant="glass" placeholder="Busque seu destino"
+        onChange={pickDestination}/>
+      <button type="button" onClick={onAdjustOrigin}
+        className="flex min-h-10 items-center gap-2 text-xs text-[#FFBB00]">
+        <MapPin size={16}/> Origem: {originLabel||"GPS atual"} · Ajustar no mapa
+      </button>
+      <ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
+      {optionCard("EXCLUSIVE")}
+      {optionCard("ON_ROUTE")}
+      <div aria-live="polite" className="text-xs text-white/75">
+        {routeBusy?"Calculando rota pelas ruas...":
+          routeError||(!route?"Selecione um destino válido para calcular a rota.":
+          route.distanceKm.toFixed(1)+" km pelas ruas · estimativa, sem cobrança")}
       </div>
-    </div>}
+      <button type="button" disabled={!route||!selectedPrice||routeBusy}
+        onClick={()=>onSnapChange?.("full")}
+        className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-50">
+        Revisar e Continuar
+      </button>
+    </>}
+    {snap==="full"&&<>
+      <button type="button" onClick={()=>{cancel();onSnapChange?.("half");}}
+        className="flex min-h-11 items-center gap-2 text-sm font-bold">
+        <ArrowLeft size={18} className="text-[#FFBB00]"/> Voltar às modalidades
+      </button>
+      <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">Confirme seu Caronaa Flash</h2>
+      <section aria-label="Resumo da corrida" className="space-y-2 rounded-2xl border border-[#FFBB00]/35 bg-white/5 p-4 text-sm">
+        <p><strong>Embarque:</strong> {originLabel||"Sua localização atual"}</p>
+        <p><strong>Destino:</strong> {destination||"Não selecionado"}</p>
+        <p><strong>Modalidade:</strong> {mode==="EXCLUSIVE"?
+          "Exclusiva ("+(vehicle==="CAR"?"Carro":"Moto")+")":
+          "Na Rota ("+(vehicle==="MOTO"?1:entireCar?3:seats)+" vagas)"} </p>
+        <p className="font-[family-name:var(--font-display)] text-2xl font-black text-[#FFBB00]">
+          {selectedPrice?formatBrl(selectedPrice.totalFare):"Calculando..."}
+        </p>
+        <p className="text-xs text-white/70">Tarifa estimada, sujeita à confirmação operacional.</p>
+        <p><strong>Pagamento:</strong> Pix ou dinheiro direto ao motorista</p>
+        <p className="text-xs text-white/70">O app não retém valores nesta etapa.</p>
+      </section>
+      <div className="rounded-2xl border border-white/15 bg-white/5 p-3
+        [&_select]:bg-[#121212] [&_select]:text-white [&_label]:text-white">
+        <TravelPreferenceFields kind="request" value={preferences} onChange={setPreferences}/>
+      </div>
+      {gender==="FEMININO"&&<WomenOnlyToggle kind="request" gender={gender}
+        checked={womenOnly} onChange={setWomenOnly}/>}
+      {serviceType==="AGENDADA"&&<label className="block text-sm">
+        <span className="flex items-center gap-2"><Clock3 size={16} className="text-[#FFBB00]"/> Horário desejado</span>
+        <input type="datetime-local" aria-label="Horário da viagem agendada" value={scheduledAt}
+          onChange={e=>setScheduledAt(e.target.value)} min={localDateTime()}
+          className="mt-2 min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] p-3 [color-scheme:dark]"/>
+        <small className="block py-2 text-white/65">O agendamento ainda precisa ser confirmado pelo serviço operacional.</small>
+      </label>}
+      {serviceType==="FLASH"&&phase==="REVIEW"&&<>
+        <button type="button" disabled={!selectedPrice||!route}
+          onClick={start} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-40">
+          Pedir Caronaa Flash
+        </button>
+        <p className="text-xs text-white/65">
+          A busca nesta casca é uma prévia. Nenhum pedido é enviado ou cobrado até conectar o despacho autorizado.
+        </p>
+      </>}
+      {phase==="SEARCHING"&&<section className="space-y-3 rounded-2xl border border-[#FFBB00]/40 p-4">
+        <p className="text-sm font-semibold">O app está em fase inicial e estamos avisando nossos motoristas da sua região.</p>
+        <p className="text-xs text-white/70">Prévia de busca: notificações não foram disparadas.</p>
+        <p role="timer" className="font-[family-name:var(--font-display)] text-3xl font-bold text-[#FFBB00]">
+          {secondsLeft}s
+        </p>
+        <button type="button" onClick={cancel}
+          className="min-h-12 w-full rounded-xl border border-white/30 font-semibold">Cancelar busca</button>
+      </section>}
+      {phase==="TIMEOUT"&&<section className="space-y-3 rounded-2xl border border-[#FFBB00]/35 p-4">
+        <p className="text-sm font-bold">Nenhum motorista confirmou neste período.</p>
+        <button type="button" onClick={schedule}
+          className="min-h-12 w-full rounded-xl border border-white/30 font-bold">Agendar para daqui a pouco</button>
+        <button type="button" disabled={waitlistBusy} onClick={()=>void waitlist()}
+          className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
+          {waitlistBusy?"Registrando...":"Entrar na lista de espera"}
+        </button>
+        <button type="button" onClick={cancel} className="min-h-11 w-full text-sm text-white/70">Voltar ao resumo</button>
+      </section>}
+      {phase==="WAITLISTED"&&<p role="status" className="rounded-xl border border-[#FFBB00]/30 p-4 text-sm text-[#FFBB00]">{feedback}</p>}
+      {phase==="MATCHED"&&matched&&<section className="space-y-3 rounded-xl border border-[#FFBB00]/50 p-3">
+        <h3 className="font-bold text-[#FFBB00]">Motorista confirmou</h3>
+        <div className="flex items-center gap-3">
+          {matched.photo&&<img src={matched.photo} alt="Foto do motorista" className="size-14 rounded-full object-cover"/>}
+          <div className="text-sm">
+            <p className="font-bold">{matched.name}</p>
+            {matched.rating!=null&&<p>★ {matched.rating.toFixed(1)}</p>}
+            <p>{[matched.vehicle,matched.color,matched.plate].filter(Boolean).join(" · ")}</p>
+            {matched.etaMinutes!=null&&<p>Chegada estimada: {matched.etaMinutes} min</p>}
+          </div>
+        </div>
+        {mode==="ON_ROUTE"&&<p className="text-xs text-white/80">
+          Ponto de embarque: {matched.meetingLabel||"Aguardando confirmação do motorista"}.
+          {matched.walkDistanceMeters!=null?" Caminhada: "+matched.walkDistanceMeters+" m.":" Distância a pé indisponível."}
+        </p>}
+      </section>}
+      {feedback&&phase!=="WAITLISTED"&&<p role="status" className="text-xs text-[#FFBB00]">{feedback}</p>}
+    </>}
   </div>;
 }
