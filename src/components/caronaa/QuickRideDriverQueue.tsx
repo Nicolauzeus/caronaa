@@ -3,8 +3,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
-import { QuickRidePixCard } from "./QuickRidePixCard";
-import { QuickRideRating } from "./QuickRideRating";
+import { QuickRideDriverSettlement } from "./QuickRideDriverSettlement";
+import { QuickRideOperationalMap } from "./QuickRideOperationalMap";
+import { QuickRideRatingModal } from "./QuickRideRatingModal";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -29,6 +30,7 @@ export function QuickRideDriverQueue({
   const [boardingPin,setBoardingPin]=useState("");
   const [dropoffDeadline,setDropoffDeadline]=useState<string|null>(null);
   const [dropoffResponse,setDropoffResponse]=useState<string|null>(null);
+  const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
   const requestLock=useRef(false);
   const rejected=useRef(new Set<string>());
   const refreshVersion=useRef(0);
@@ -113,10 +115,10 @@ export function QuickRideDriverQueue({
     setError("");
     try {
       const accept=next==="ACCEPT";
-      const rpc=next==="IN_PROGRESS"?"quick_ride_verify_boarding_pin":
-        next==="COMPLETED"?"quick_ride_request_dropoff":
+      const rpc=next==="IN_PROGRESS"?"quick_ride_start_with_code":
+        next==="COMPLETED"?"quick_ride_complete_ride":
         accept?"quick_ride_accept":"quick_ride_transition";
-      const args=next==="IN_PROGRESS"?{p_id:rideId,p_pin:boardingPin}:
+      const args=next==="IN_PROGRESS"?{p_id:rideId,p_code:boardingPin}:
         next==="COMPLETED"?{p_id:rideId}:
         accept?{p_id:rideId}:{p_id:rideId,p_status:next};
       const {data,error:rpcError}=await (supabase as any).rpc(rpc,args);
@@ -169,26 +171,27 @@ export function QuickRideDriverQueue({
           <p className="font-semibold text-[#FFBB00]">Sua corrida em andamento</p>
           <p className="text-sm">{active.origin_label} → {active.destination_label}</p>
           <p className="text-xs text-white/70">Status: {active.status}</p>
+          <QuickRideOperationalMap rideId={active.id} status={active.status} municipality={municipality} role="DRIVER"/>
           {active.status==="ACCEPTED"&&<button type="button" disabled={busy}
             onClick={()=>void action(active.id,"ARRIVED")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Confirmar chegada por GPS</button>}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Cheguei no local</button>}
           {active.status==="ARRIVED"&&<>
-            <label htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Peça ao passageiro o código secreto de seis dígitos.</label>
+            <label htmlFor="quick-ride-driver-pin" className="block text-xs text-white/70">Peça ao passageiro o código secreto de quatro dígitos.</label>
             <input id="quick-ride-driver-pin" type="text" inputMode="numeric" autoComplete="off"
-              maxLength={6} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\\D/g,"").slice(0,6))}
+              maxLength={4} value={boardingPin} onChange={event=>setBoardingPin(event.target.value.replace(/\\D/g,"").slice(0,6))}
               placeholder="Código de embarque" className="min-h-12 w-full rounded-xl border border-white/30 bg-white/10 px-3 text-white" />
             <button type="button" disabled={busy}
-              onClick={()=>void action(active.id,"IN_PROGRESS")} disabled={busy||boardingPin.length!==6}
-              className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Iniciar viagem</button>
+              onClick={()=>void action(active.id,"IN_PROGRESS")} disabled={busy||boardingPin.length!==4}
+              className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Validar código e iniciar viagem</button>
           </>}
           {active.status==="IN_PROGRESS"&&<>
             {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado. Aguarde atendimento da plataforma.</p>:
              dropoffDeadline?<p role="status" className="text-sm text-white/80">Finalização solicitada. Aguardando confirmação do passageiro (janela de 30 segundos).</p>:
              <button type="button" disabled={busy} onClick={()=>void action(active.id,"COMPLETED")}
-               className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Solicitar finalização</button>}
+               className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">Concluir Corrida</button>}
           </>}
         </article>}
-        {!active&&lastCompleted&&<><QuickRideRating rideId={lastCompleted} subject="passageiro"/><QuickRidePixCard rideId={lastCompleted}/></>}
+        {!active&&lastCompleted&&<><QuickRideDriverSettlement rideId={lastCompleted}/>{ratingDismissed!==lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro" onClose={()=>setRatingDismissed(lastCompleted)}/>}</>}
         {queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
