@@ -50,7 +50,7 @@ export function PassengerAccountDashboard({
       </button>
     </section>
     <div className="grid gap-3 sm:grid-cols-2">
-      <Link to="/home" className="flex min-h-20 items-center gap-3 rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4">
+      <Link to="/home" search={{trips:"open"}} className="flex min-h-20 items-center gap-3 rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4">
         <Route className="size-6 shrink-0 text-[#FFBB00]"/><span className="flex-1"><strong className="block font-[Sora]">Minhas viagens</strong><small className="text-xs text-white/70">Corridas e histórico no início</small></span><ChevronRight size={18}/>
       </Link>
       {section("personal","Dados pessoais","Nome, cidade e contato",IdCard,<div className="space-y-4">
