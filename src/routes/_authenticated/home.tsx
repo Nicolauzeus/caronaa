@@ -605,11 +605,12 @@ function Home() {
           initialSeats={activeRoleState.vehicleSeats}
           onSave={activeRoleState.saveVehicle}/>
         <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
-          title="Casca Única CARONAA">
-          {!tripsPanelOpen&&<button type="button" onClick={showTrips}
-            className="mb-1 min-h-8 w-full text-right text-xs font-semibold text-[#FFBB00]">
-            Minhas Viagens
-          </button>}
+          title="Casca Única CARONAA"
+          headerAction={!tripsPanelOpen?
+            <button type="button" onClick={showTrips}
+              className="min-h-8 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">
+              Minhas Viagens
+            </button>:undefined}>
           {tripsPanelOpen&&<UnifiedMyTripsPanel
             onClose={closeTrips}
             refreshKey={tripsRefreshKey}
