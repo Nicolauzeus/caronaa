@@ -80,6 +80,7 @@ export function QuickRideHomePanel({
       window.localStorage.setItem(`caronaa-completed-dismissed:${completedRide.id}`,"1");
       window.localStorage.setItem(`caronaa-rating-dismissed:${completedRide.id}`,"1");
     }catch{ /* fallback to in-memory dismissal */ }
+    console.info("[CARONAA][F07][POST_TRIP] COMPLETED_RIDE_DISMISSED", { rideIdPrefix: completedRide.id.slice(0, 8) });
     setCompletedHidden(completedRide.id);
     setRatingDismissed(completedRide.id);
     setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
