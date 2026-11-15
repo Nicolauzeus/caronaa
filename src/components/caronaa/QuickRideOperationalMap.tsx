@@ -11,10 +11,11 @@ type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
 
 export function QuickRideOperationalMap({
-  rideId, status, role,
+  rideId, status, role, immersive=false,
 }: {
   rideId:string;
   municipality?:string;
+  immersive?:boolean;
   status:string;
   role:"DRIVER"|"PASSENGER";
 }) {
@@ -76,6 +77,27 @@ export function QuickRideOperationalMap({
     return()=>{active=false;};
   },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,readRoute]);
 
+  const rideMap = origin&&destination&&<GoogleMapSurface
+      points={[
+        {lat:origin.lat,lng:origin.lng,title:"Embarque",label:"P",color:"#2563eb"},
+        ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",label:"D",color:"#FFBB00"}]:[]),
+        ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,title:"Motorista",label:"M",color:"#121212"}]:[]),
+      ]}
+      lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
+        ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
+      fitMode="once" fitKey={rideId+":"+(statusNow==="IN_PROGRESS"?"destination":statusNow==="ARRIVED"?"meeting":"pickup")}
+      smoothTracking ariaLabel="Mapa Google com deslocamento da corrida"
+      className={immersive?"h-full w-full":"h-64 w-full rounded-2xl"} />;
+  if(immersive) return <section aria-label="Mapa operacional da Corrida Rápida"
+    className="relative h-full w-full overflow-hidden bg-[#121212]">
+    <div className="absolute inset-0">{rideMap}</div>
+    <div className="pointer-events-none absolute left-3 right-3 top-20 z-10 max-w-sm space-y-1 rounded-2xl border border-[#FFBB00]/50 bg-[#121212]/90 p-3 text-sm text-white shadow-xl">
+      <p className="font-bold text-[#FFBB00]">{statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
+      {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
+      {approach&&statusNow!=="IN_PROGRESS"&&<p>{approach.distanceKm.toFixed(1)} km · {Math.max(1,Math.round(approach.durationMinutes))} min para embarque</p>}
+      {error&&<p role="alert" className="text-red-300">{error}</p>}
+    </div>
+  </section>;
   return <section className="space-y-3 rounded-2xl border border-[#FFBB00]/30 bg-[#121212] p-3 text-white"
     aria-label="Navegação da Corrida Rápida">
     {statusNow==="ACCEPTED"&&<p className="font-bold text-[#FFBB00]">
@@ -92,17 +114,8 @@ export function QuickRideOperationalMap({
         <p className="text-xs text-white/70">{details.vehicle||details.vehicleType} {details.plate?" · "+details.plate:""}</p>
       </div>
     </div>}
-    {origin&&destination&&<GoogleMapSurface
-      points={[
-        {lat:origin.lat,lng:origin.lng,title:"Embarque",label:"P",color:"#2563eb"},
-        ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",label:"D",color:"#FFBB00"}]:[]),
-        ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,title:"Motorista",label:"M",color:"#121212"}]:[]),
-      ]}
-      lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
-        ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
-      fitMode="once" fitKey={rideId+":"+(statusNow==="IN_PROGRESS"?"destination":statusNow==="ARRIVED"?"meeting":"pickup")}
-      smoothTracking ariaLabel="Mapa Google com deslocamento da corrida"
-      className="h-64 w-full rounded-2xl" />}
+    {rideMap}
+
     {["ACCEPTED","ARRIVED"].includes(statusNow)&&approach&&<p className="text-sm">
       Distância até o embarque: {approach.distanceKm.toFixed(1)} km · aproximadamente {Math.max(1,Math.round(approach.durationMinutes))} min
     </p>}
