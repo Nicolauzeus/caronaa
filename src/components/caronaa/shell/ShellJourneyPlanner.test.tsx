@@ -4,9 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShellJourneyPlanner } from "./ShellJourneyPlanner";
 import type { SheetSnap } from "./InteractiveBottomSheet";
 
-const api=vi.hoisted(()=>({route:vi.fn(),quote:vi.fn(),rpc:vi.fn(),preferences:vi.fn()}));
+const api=vi.hoisted(()=>({route:vi.fn(),quote:vi.fn(),rpc:vi.fn(),preferences:vi.fn(),approach:vi.fn(),refresh:null as null|(()=>Promise<void>)}));
 vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
 vi.mock("@/lib/map-routing.functions",()=>({getMapDrivingRoute:api.route}));
+vi.mock("@/lib/quick-ride-map.functions",()=>({getQuickRideApproach:api.approach}));
+vi.mock("@/lib/quick-rides/use-quick-ride-realtime",()=>({
+  useQuickRideRealtime:(_municipality:string,refresh:()=>Promise<void>,enabled:boolean)=>{
+    api.refresh=enabled?refresh:null;
+  },
+}));
 vi.mock("@/lib/pricing/unified-fare-engine",()=>({quoteUnifiedFare:api.quote}));
 vi.mock("@/lib/travel-preferences-service",()=>({loadTravelPreferences:api.preferences}));
 vi.mock("@/components/caronaa/TravelPreferences",()=>({
@@ -33,6 +39,8 @@ const testRoute={distanceKm:11,durationMinutes:18,
 
 beforeEach(()=>{
   vi.clearAllMocks();
+  api.refresh=null;
+  api.approach.mockResolvedValue({distanceKm:1,durationMinutes:4,routePath:[]});
   api.rpc.mockResolvedValue({data:true,error:null});
   api.route.mockResolvedValue(testRoute);
   api.preferences.mockResolvedValue({conversation:"any",music:"any",smoking:"any",pets:"any",luggage:0});
