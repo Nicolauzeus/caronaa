@@ -69,9 +69,12 @@ export function ShellJourneyPlanner({
   const [feedback,setFeedback]=useState("");
   const [matched,setMatched]=useState<MatchedDriver|null>(null);
   const routeReader=useServerFn(getMapDrivingRoute);
+  const routeReaderRef=useRef(routeReader);
+  routeReaderRef.current=routeReader;
   const routeCache=useRef(new Map<string,Promise<ShellRoute>>());
   const frozenOrigin=useRef<Point|null>(null);
   const selectedKey=useRef("");
+  const lastOriginRevision=useRef(originRevision);
   const searchSession=useRef(0);
   const onRouteRef=useRef(onRouteChange);
   onRouteRef.current=onRouteChange;
@@ -87,7 +90,9 @@ export function ShellJourneyPlanner({
   // seats, preferences, sheet height or the live GPS pulse never reroutes.
   useEffect(()=>{
     if(!valid(destinationPoint)){setRoute(null);setPrices(null);onRouteRef.current?.(null,null);return;}
-    if(!frozenOrigin.current && valid(originPoint)) frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
+    if(valid(originPoint) && (originRevision!==lastOriginRevision.current || !frozenOrigin.current))
+      frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
+    lastOriginRevision.current=originRevision;
     const from=frozenOrigin.current;
     if(!from){setRoute(null);onRouteRef.current?.(null,null);return;}
     const to:Point={lat:destinationPoint.lat!,lng:destinationPoint.lng!};
@@ -98,7 +103,7 @@ export function ShellJourneyPlanner({
     onRouteRef.current?.(null,null);
     let pending=routeCache.current.get(key);
     if(!pending){
-      pending=routeReader({data:{points:[from,to]}}).then(result=>{
+      pending=routeReaderRef.current({data:{points:[from,to]}}).then(result=>{
         if(!Number.isFinite(result.distanceKm)||result.distanceKm<=0||
           !Array.isArray(result.routePath)||result.routePath.length<2)
           throw new Error("ROAD_ROUTE_UNAVAILABLE");
@@ -115,7 +120,7 @@ export function ShellJourneyPlanner({
       if(alive){setRouteError("Não foi possível traçar a rota. Tente escolher o destino novamente.");}
     }).finally(()=>{if(alive)setRouteBusy(false);});
     return()=>{alive=false;};
-  },[destinationPoint?.lat,destinationPoint?.lng,originRevision,routeReader]);
+  },[destinationPoint?.lat,destinationPoint?.lng,originRevision]);
 
   useEffect(()=>{
     if(!route){setPrices(null);return;}
