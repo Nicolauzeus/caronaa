@@ -430,7 +430,7 @@ export function AppShell({
       <main
         className={
           mapLayout
-            ? `relative h-[calc(100dvh-9rem-env(safe-area-inset-bottom))] min-h-0 w-full md:h-[calc(100dvh-4rem)] ${professionalOnly ? "lg:ml-48 lg:w-[calc(100%-12rem)]" : ""}`
+            ? `relative h-[calc(100dvh_-_9rem_-_env(safe-area-inset-bottom))] min-h-0 w-full md:h-[calc(100dvh-4rem)] ${professionalOnly ? "lg:ml-48 lg:w-[calc(100%_-_12rem)]" : ""}`
             : publicPage
             ? "flex-1"
             : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
