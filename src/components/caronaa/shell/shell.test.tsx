@@ -9,8 +9,8 @@ describe("CARONAA shell stage 2", () => {
   it("renders the service dock with accessible independent UI choices", () => {
     const onChange = vi.fn();
     render(<ServiceTypeDock value="FLASH" onChange={onChange}/>);
-    expect(screen.getByRole("button", {name:/flash/i}).getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(screen.getByRole("button", {name:/agendada/i}));
+    expect(screen.getByRole("button", {name:/agora/i}).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", {name:/agendar/i}));
     expect(onChange).toHaveBeenCalledWith("AGENDADA");
   });
 
