@@ -126,8 +126,9 @@ export function useActiveRole() {
     if(target==="MOTORISTA"){
       const missingFields=getMissingVehicleFields(state.vehicleStatus);
       if(missingFields.length)return {needsVehicleModal:true,missingFields};
-      // Server RPC remains authoritative; eligibility is never granted by the UI.
-      if(!state.isDriverEligible)throw new Error("O servidor ainda não confirmou a elegibilidade do motorista.");
+      // Let the user review/save vehicle details if the readiness RPC has
+      // not authorized the role. Never activate the role from client state alone.
+      if(!state.isDriverEligible)return {needsVehicleModal:true,missingFields:[]};
     }
     const previous=state.activeRole;
     if(target==="PASSAGEIRO")setState(prev=>({...prev,activeRole:target,error:null,busy:true}));
@@ -189,13 +190,13 @@ export function useActiveRole() {
       // Switch only after the server confirms readiness and all four
       // required fields were saved successfully.
       let activated=false;
-      if(eligible && completed.isComplete){
-        const {error:roleError}=await (supabase as any).rpc("switch_user_active_role",{
-          p_target_role:"MOTORISTA",
-        });
-        if(roleError)throw new Error("Veículo salvo; a troca de papel não foi autorizada.");
-        activated=true;
-      }
+      if(!eligible || !completed.isComplete)
+        throw new Error("O servidor ainda não confirmou a aptidão do motorista.");
+      const {error:roleError}=await (supabase as any).rpc("switch_user_active_role",{
+        p_target_role:"MOTORISTA",
+      });
+      if(roleError)throw new Error("Veículo salvo; a troca de papel não foi autorizada.");
+      activated=true;
       setState(prev=>({...prev,vehicleStatus:completed,
         vehicleType:type,vehicleSeats:normalizeVehicleSeats(type,persisted.vehicle_seats),
         isDriverEligible:eligible,activeRole:activated?"MOTORISTA":prev.activeRole,
