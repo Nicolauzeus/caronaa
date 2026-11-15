@@ -184,9 +184,22 @@ export function useActiveRole() {
       if(readyError)throw new Error("Veículo salvo, mas não foi possível validar a elegibilidade.");
       const persisted=data as ProfileVehicle;
       const type=parseVehicleType(persisted.vehicle_type);
-      setState(prev=>({...prev,vehicleStatus:getVehicleStatus(persisted),
+      const eligible=readyFromRpc(ready);
+      const completed=getVehicleStatus(persisted);
+      // Switch only after the server confirms readiness and all four
+      // required fields were saved successfully.
+      let activated=false;
+      if(eligible && completed.isComplete){
+        const {error:roleError}=await (supabase as any).rpc("switch_user_active_role",{
+          p_target_role:"MOTORISTA",
+        });
+        if(roleError)throw new Error("Veículo salvo; a troca de papel não foi autorizada.");
+        activated=true;
+      }
+      setState(prev=>({...prev,vehicleStatus:completed,
         vehicleType:type,vehicleSeats:normalizeVehicleSeats(type,persisted.vehicle_seats),
-        isDriverEligible:readyFromRpc(ready),busy:false,error:null}));
+        isDriverEligible:eligible,activeRole:activated?"MOTORISTA":prev.activeRole,
+        busy:false,error:null}));
     }catch{
       setState(prev=>({...prev,busy:false,
         error:"Não foi possível salvar ou validar o veículo. Confira as colunas e a RPC no Supabase."}));
