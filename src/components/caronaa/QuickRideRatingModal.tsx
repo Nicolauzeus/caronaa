@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 const compliments = ["Pontual", "Direção segura", "Educado", "Veículo limpo"] as const;
 
 export function QuickRideRatingModal({
-  rideId, subject, onClose,
+  rideId, subject, onClose, forceOpen=false,
 }: {
   rideId: string;
   subject: "motorista" | "passageiro";
   onClose?: () => void;
+  forceOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -29,7 +30,7 @@ export function QuickRideRatingModal({
     setComment("");
     setLoading(true);
     // Never mount a fullscreen backdrop while checking an existing rating.
-    try { if (window.localStorage.getItem(`caronaa-rating-dismissed:${rideId}`) === "1") { setLoading(false); return; } } catch { /* storage may be unavailable */ }
+    try { if (!forceOpen && window.localStorage.getItem(`caronaa-rating-dismissed:${rideId}`) === "1") { setLoading(false); return; } } catch { /* storage may be unavailable */ }
     void (supabase as any).rpc("quick_ride_my_rating", { p_id: rideId })
       .then(({ data, error: rpcError }: { data: any; error: any }) => {
         if (!alive) return;
@@ -40,7 +41,7 @@ export function QuickRideRatingModal({
       .catch(() => { if (alive) { setError("Não foi possível consultar a avaliação."); setOpen(false); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [rideId]);
+  }, [rideId,forceOpen]);
 
   const close = () => {
     try { window.localStorage.setItem(`caronaa-rating-dismissed:${rideId}`, "1"); } catch { /* storage may be unavailable */ }
@@ -56,11 +57,14 @@ export function QuickRideRatingModal({
       const { data, error: rpcError } = await (supabase as any).rpc("quick_ride_rate", {
         p_id: rideId, p_score: score, p_comment: detail,
       });
-      if (rpcError || data !== true) throw rpcError ?? new Error("Evaluation not confirmed");
+      if (rpcError || data !== true) throw rpcError ?? new Error("RPC_RETURN_NOT_TRUE");
       setSuccess(true);
       window.setTimeout(close, 850);
-    } catch {
-      setError("Não foi possível registrar a avaliação. Tente novamente.");
+    } catch (failure) {
+      const code = typeof failure === "object" && failure !== null && "code" in failure
+        ? String((failure as {code?:unknown}).code).replace(/[^A-Z0-9_]/gi,"").slice(0,24)
+        : failure instanceof Error && failure.message === "RPC_RETURN_NOT_TRUE" ? "RPC_RETURN_NOT_TRUE" : "NETWORK_OR_UNKNOWN";
+      setError(`Não foi possível enviar a avaliação (ref.: ${code}). Tente novamente.`);
     } finally {
       setBusy(false);
     }
@@ -103,6 +107,7 @@ export function QuickRideRatingModal({
               className="mt-2 min-h-24 w-full rounded-xl border border-white/25 bg-white/10 p-3 text-white"/>
           </label>
           {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+          {score<1&&<p className="text-xs text-white/70">Escolha de 1 a 5 estrelas antes de enviar.</p>}
           <button type="submit" disabled={busy || score < 1}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
             {busy ? "Enviando..." : "Enviar avaliação"}
