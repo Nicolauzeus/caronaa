@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search } from "lucide-react";
+import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search, UserRound } from "lucide-react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { TravelPreferenceFields } from "@/components/caronaa/TravelPreferences";
 import { emptyTravelPreferences, type TravelPreferences } from "@/lib/travel-preferences";
 import { loadTravelPreferences } from "@/lib/travel-preferences-service";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
+import { getQuickRideApproach } from "@/lib/quick-ride-map.functions";
 import { quoteUnifiedFare, type UnifiedFareResult, type UnifiedFareMode } from "@/lib/pricing/unified-fare-engine";
 import { formatBrl } from "@/lib/ride-cost";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +72,9 @@ export function ShellJourneyPlanner({
   const [feedback,setFeedback]=useState("");
   const [matched,setMatched]=useState<MatchedDriver|null>(null);
   const routeReader=useServerFn(getMapDrivingRoute);
+  const approachReader=useServerFn(getQuickRideApproach);
+  const approachRef=useRef(approachReader);
+  approachRef.current=approachReader;
   const routeReaderRef=useRef(routeReader);
   routeReaderRef.current=routeReader;
   const routeCache=useRef(new Map<string,Promise<ShellRoute>>());
@@ -169,10 +173,17 @@ export function ShellJourneyPlanner({
         const {data:details,error:detailsError}=await (supabase as any).rpc(
           "quick_ride_driver_details",{p_id:relevant.id});
         if(!alive||detailsError||!details?.name)return;
+        const approach=await approachRef.current({data:{rideId:relevant.id}}).catch(()=>null);
+        if(!alive || session!==searchSession.current)return;
         const driver:MatchedDriver={
           name:details.name,photo:details.photo??null,vehicle:details.vehicle??null,
           plate:details.plate??null,color:details.color??null,
           rating:Number.isFinite(details.rating)?details.rating:null,
+          etaMinutes:approach && Number.isFinite(approach.durationMinutes)
+            ?Math.max(1,Math.ceil(approach.durationMinutes)):null,
+          meetingLabel:typeof details.meetingLabel==="string"?details.meetingLabel:null,
+          walkDistanceMeters:Number.isFinite(details.walkDistanceMeters)
+            ?Math.round(details.walkDistanceMeters):null,
         };
         setMatched(driver);setPhase("MATCHED");
       }catch{/* No driver is claimed without authorized server data. */}
@@ -380,11 +391,16 @@ export function ShellJourneyPlanner({
       {phase==="MATCHED"&&matched&&<section className="space-y-3 rounded-xl border border-[#FFBB00]/50 p-3">
         <h3 className="font-bold text-[#FFBB00]">Motorista confirmou</h3>
         <div className="flex items-center gap-3">
-          {matched.photo&&<img src={matched.photo} alt="Foto do motorista" className="size-14 rounded-full object-cover"/>}
+          {matched.photo?<img src={matched.photo} alt="Foto do motorista" className="size-14 rounded-full object-cover"/>:
+            <span aria-label="Motorista sem foto" className="flex size-14 items-center justify-center rounded-full bg-white/10">
+              <UserRound size={25}/>
+            </span>}
           <div className="text-sm">
             <p className="font-bold">{matched.name}</p>
             {matched.rating!=null&&<p>★ {matched.rating.toFixed(1)}</p>}
             <p>{[matched.vehicle,matched.color,matched.plate].filter(Boolean).join(" · ")}</p>
+            {!matched.color&&<p className="text-xs text-white/65">Cor não informada</p>}
+            {matched.rating==null&&<p className="text-xs text-white/65">Avaliação indisponível</p>}
             {matched.etaMinutes!=null&&<p>Chegada estimada: {matched.etaMinutes} min</p>}
           </div>
         </div>
