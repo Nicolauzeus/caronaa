@@ -34,6 +34,7 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
   const [quoteError,setQuoteError]=useState("");
   const [music,setMusic]=useState("SEM_PREFERENCIA");
   const [conversation,setConversation]=useState("SEM_PREFERENCIA");
+  const [scheduledAt,setScheduledAt]=useState("");
   const [womenOnly,setWomenOnly]=useState(false);
   const [flashStartedAt,setFlashStartedAt]=useState<number|null>(null);
   const [remaining,setRemaining]=useState(60);
@@ -238,9 +239,18 @@ export function ShellJourneyPlanner({snap,serviceType,onServiceTypeChange,
             </div>}
           </div>}
       </div>}
-      {serviceType==="AGENDADA"&&<div className="flex items-start gap-2 rounded-xl border border-white/15 bg-white/5 p-3 text-xs text-white/75">
-        <Clock3 size={18} className="shrink-0 text-[#FFBB00]"/>
-        Agendada selecionada. O formulário de horário será integrado na próxima etapa.
+      {serviceType==="AGENDADA"&&<div className="space-y-2 rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/80">
+        <label className="block font-semibold">
+          <span className="flex items-center gap-2"><Clock3 size={18} className="text-[#FFBB00]"/> Quando deseja sair?</span>
+          <input type="datetime-local" aria-label="Horário da viagem agendada"
+            value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)}
+            min={new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)}
+            className="mt-2 min-h-11 w-full rounded-xl border border-white/25 bg-[#121212] px-3 text-white [color-scheme:dark]"/>
+        </label>
+        <p className="text-xs text-white/65">
+          Horário selecionado: {scheduledAt?new Date(scheduledAt).toLocaleString("pt-BR"):"a definir"}.
+          A confirmação do agendamento estará disponível quando o fluxo operacional for conectado.
+        </p>
       </div>}
       {waitlistStatus&&<p role="status" className="text-xs text-[#FFBB00]">{waitlistStatus}</p>}
     </>}
