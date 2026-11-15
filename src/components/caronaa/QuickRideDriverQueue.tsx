@@ -256,12 +256,22 @@ export function QuickRideDriverQueue({
           </p>
           {typeof ride.fare_cents==="number"&&
             <p className="text-xs">Preço do passageiro: {formatBrl(ride.fare_cents/100)}</p>}
-          <button type="button" disabled={busy||!!active||
-            typeof ride.driver_receives_cents!=="number"}
-            onClick={()=>void action(ride.id,"ACCEPT")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-60">
-            {busy?"Processando…":"Aceitar corrida"}
-          </button>
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2">
+            <button type="button" disabled={busy} aria-label="Dispensar esta solicitação"
+              onClick={()=>{
+                rejected.current.add(ride.id);
+                setQueue(items=>items.filter(item=>item.id!==ride.id));
+              }}
+              className="min-h-12 rounded-xl border border-white/30 bg-white/5 px-2 text-sm font-bold text-white disabled:opacity-60">
+              Dispensar
+            </button>
+            <button type="button" disabled={busy||!!active||
+              typeof ride.driver_receives_cents!=="number"}
+              onClick={()=>void action(ride.id,"ACCEPT")}
+              className="min-h-12 rounded-xl bg-[#FFBB00] px-2 text-sm font-bold text-[#121212] disabled:opacity-60">
+              {busy?"Processando…":"Aceitar corrida"}
+            </button>
+          </div>
         </article>)}
       </>
     )}
