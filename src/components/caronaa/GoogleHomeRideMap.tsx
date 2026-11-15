@@ -17,6 +17,8 @@ type Point = { lat?: number; lng?: number };
 type Props = {
   pickupPreview?: StrictPickupPreview | null;
   immersive?: boolean;
+  routeManagedExternally?:boolean;
+  plannedRoute?:{routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
   origin?: Point;
@@ -42,6 +44,8 @@ export const googleMapsBrowserKey = resolveGoogleMapsBrowserKey(
 export function GoogleHomeRideMap({
   immersive = false,
   pickupPreview = null,
+  routeManagedExternally = false,
+  plannedRoute = null,
   userPosition,
   professionalDrivers = [],
   origin,
@@ -262,7 +266,21 @@ export function GoogleHomeRideMap({
     routePolyline.current = null;
     setRouteMetrics(null);
     setRouteError(false);
-    if (pickupPreview || fromLat == null || fromLng == null || toLat == null || toLng == null)
+    if (pickupPreview) return;
+    if (routeManagedExternally) {
+      if (!plannedRoute?.routePath?.length) return;
+      const G=(window as any).google.maps;
+      routePolyline.current=new G.Polyline({
+        map:map.current,path:plannedRoute.routePath,
+        strokeColor:"#FFBB00",strokeWeight:6,strokeOpacity:0.95,
+      });
+      const bounds=new G.LatLngBounds();
+      plannedRoute.routePath.forEach(point=>bounds.extend(point));
+      map.current.fitBounds(bounds,{top:70,right:48,bottom:160,left:48});
+      setRouteMetrics({km:plannedRoute.distanceKm,minutes:plannedRoute.durationMinutes});
+      return;
+    }
+    if (fromLat == null || fromLng == null || toLat == null || toLng == null)
       return;
     const abort = new AbortController();
     const googleMap = map.current;
@@ -309,7 +327,8 @@ export function GoogleHomeRideMap({
       routePolyline.current?.setMap(null);
       routePolyline.current = null;
     };
-  }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview]);
+  }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview,
+    routeManagedExternally,plannedRoute]);
 
   useEffect(() => {
     if (!ready || !map.current || failed) return;
