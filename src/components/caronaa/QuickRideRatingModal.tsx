@@ -3,6 +3,18 @@ import { Star, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const compliments = ["Pontual", "Direção segura", "Educado", "Veículo limpo"] as const;
+const logRating = (stage: string, details?: Record<string, string | number | boolean>) => {
+  if (details) console.info("[CARONAA][F07][RATING]", stage, details);
+  else console.info("[CARONAA][F07][RATING]", stage);
+};
+const ratingErrorCodes = new Set(["23505","23514","42501","22023","PGRST202","PGRST116","PGRST301","401","403","429","500","503"]);
+const safeRatingCode = (failure: unknown): string => {
+  const raw = failure && typeof failure === "object" && "code" in failure
+    ? String((failure as {code?: unknown}).code)
+    : failure instanceof Error && failure.message === "RPC_RETURN_NOT_TRUE"
+      ? "RPC_RETURN_NOT_TRUE" : "NETWORK_OR_UNKNOWN";
+  return ratingErrorCodes.has(raw) || raw === "RPC_RETURN_NOT_TRUE" ? raw : "OTHER";
+};
 
 export function QuickRideRatingModal({
   rideId, subject, onClose, forceOpen=false,
@@ -29,14 +41,17 @@ export function QuickRideRatingModal({
     setSelected([]);
     setComment("");
     setLoading(true);
+    logRating("RATING_CHECK_STARTED",{ rideIdPrefix: rideId.slice(0, 8) });
     // Never mount a fullscreen backdrop while checking an existing rating.
-    try { if (!forceOpen && window.localStorage.getItem(`caronaa-rating-dismissed:${rideId}`) === "1") { setLoading(false); return; } } catch { /* storage may be unavailable */ }
+    try { if (!forceOpen && window.localStorage.getItem(`caronaa-rating-dismissed:${rideId}`) === "1") { logRating("RATING_DISMISSED_STORAGE"); setLoading(false); return; } } catch { /* storage may be unavailable */ }
     void (supabase as any).rpc("quick_ride_my_rating", { p_id: rideId })
       .then(({ data, error: rpcError }: { data: any; error: any }) => {
         if (!alive) return;
         if (rpcError) throw rpcError;
         // Never prompt twice for the same trip after it was rated.
-        setOpen(!(Array.isArray(data) && data.length > 0));
+        const alreadyRated = Array.isArray(data) && data.length > 0;
+        if (alreadyRated) logRating("RATING_ALREADY_SUBMITTED");
+        setOpen(!alreadyRated);
       })
       .catch(() => { if (alive) { setError("Não foi possível consultar a avaliação."); setOpen(false); } })
       .finally(() => { if (alive) setLoading(false); });
@@ -54,16 +69,17 @@ export function QuickRideRatingModal({
     setError("");
     try {
       const detail = [selected.join(", "), comment.trim()].filter(Boolean).join(" — ").slice(0, 1000);
+      logRating("RATING_SUBMIT_STARTED",{score,hasComment:Boolean(detail)});
       const { data, error: rpcError } = await (supabase as any).rpc("quick_ride_rate", {
         p_id: rideId, p_score: score, p_comment: detail,
       });
       if (rpcError || data !== true) throw rpcError ?? new Error("RPC_RETURN_NOT_TRUE");
+      logRating("RATING_SUBMIT_SUCCESS");
       setSuccess(true);
       window.setTimeout(close, 850);
     } catch (failure) {
-      const code = typeof failure === "object" && failure !== null && "code" in failure
-        ? String((failure as {code?:unknown}).code).replace(/[^A-Z0-9_]/gi,"").slice(0,24)
-        : failure instanceof Error && failure.message === "RPC_RETURN_NOT_TRUE" ? "RPC_RETURN_NOT_TRUE" : "NETWORK_OR_UNKNOWN";
+      const code = safeRatingCode(failure);
+      logRating("RATING_SUBMIT_FAILED",{code});
       setError(`Não foi possível enviar a avaliação (ref.: ${code}). Tente novamente.`);
     } finally {
       setBusy(false);
