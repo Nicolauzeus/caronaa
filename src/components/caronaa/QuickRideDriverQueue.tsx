@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRideDriverSettlement } from "./QuickRideDriverSettlement";
-import { QuickRideOperationalMap } from "./QuickRideOperationalMap";
 import { QuickRideRatingModal } from "./QuickRideRatingModal";
 
 type DriverQueueRide={
@@ -12,16 +11,17 @@ type DriverQueueRide={
   destination_label:string;driver_receives_cents:number|null;
   fare_cents:number|null;distance_km?:number|null;
 };
-type ActiveDriverRide={
+export type ActiveDriverRide={
   id:string;role:string;status:string;vehicle_type:string;
   origin_label:string;destination_label:string;
 };
 
 export function QuickRideDriverQueue({
-  municipality,online,gpsReady,onActiveChange,
+  municipality,online,gpsReady,onActiveChange,onActiveRideChange,
 }:{
   municipality:string;online:boolean;gpsReady:boolean;
   onActiveChange?:(hasActive:boolean)=>void;
+  onActiveRideChange?:(ride:ActiveDriverRide|null)=>void;
 }) {
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
@@ -48,6 +48,7 @@ export function QuickRideDriverQueue({
     onActiveChange?.(Boolean(active));
   },[active?.id,active?.status,onActiveChange]);
   useEffect(()=>()=>onActiveChange?.(false),[onActiveChange]);
+  useEffect(()=>{ onActiveRideChange?.(active); },[active?.id,active?.status,onActiveRideChange]);
   const requestLock=useRef(false);
   const rejected=useRef(new Set<string>());
   const refreshVersion=useRef(0);
@@ -204,8 +205,7 @@ export function QuickRideDriverQueue({
           <p className="font-semibold text-[#FFBB00]">Sua corrida em andamento</p>
           <p className="text-sm">{active.origin_label} → {active.destination_label}</p>
           <p className="text-xs text-white/70">Status: {active.status}</p>
-          <QuickRideOperationalMap rideId={active.id} status={active.status} municipality={municipality} role="DRIVER"
-            vehicleType={active.vehicle_type==="MOTO"?"MOTO":"CAR"}/>
+
           {active.status==="ACCEPTED"&&<p className="text-xs text-white/70">
             A chegada exige GPS válido a até 75 m do ponto de embarque. Aproximar-se na rota não garante confirmação até o servidor validar a posição.
           </p>}
@@ -237,13 +237,13 @@ export function QuickRideDriverQueue({
             Liberar tela para novos chamados
           </button>
         </div>}
-        {queue.length===0&&<p role="status" className="text-sm text-white/70">
+        {!active&&queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
-        {queue.map(ride=><article key={ride.id}
-          className="min-w-0 space-y-2 rounded-xl border border-white/20 bg-white/5 p-3">
-          <p className="font-semibold">{ride.vehicle_type==="MOTO"?"Moto":"Carro"} · Corrida Rápida</p>
-          <p className="break-words text-sm">{ride.origin_label} → {ride.destination_label}</p>
+        {!active&&queue.map(ride=><article key={ride.id}
+          className="min-w-0 space-y-3 rounded-xl border border-white/20 bg-white/5 p-3">
+          <p className="font-semibold text-[#FFBB00]">⚡ Nova solicitação · {ride.vehicle_type==="MOTO"?"Mototáxi":"Carro"}</p>
+          <div className="space-y-2 rounded-xl bg-white/5 p-3 text-sm"><p className="break-words"><span className="font-semibold text-green-400">● Embarque</span> · {ride.origin_label}</p><p className="break-words"><span className="font-semibold text-red-400">● Destino</span> · {ride.destination_label}</p></div>
           <p className="text-xs text-white/65">
             {typeof ride.distance_km==="number"
               ?ride.distance_km.toFixed(1)+" km estimados"
