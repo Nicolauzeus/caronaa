@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ request: vi.fn(), claims: vi.fn(), action: vi.fn() }));
+const mocks = vi.hoisted(() => ({ request: vi.fn(), claims: vi.fn(), action: vi.fn(), anonymous: vi.fn() }));
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocks.request }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ auth: { getClaims: mocks.claims } }) }));
 vi.mock("./google-request.server", () => ({ googleActionFetch: mocks.action }));
+vi.mock("./google-public-request.server", () => ({ anonymousGoogleSearchFetch: mocks.anonymous }));
 import { optionalGoogleSearchFetch } from "./google-search-access.server";
 beforeEach(() => { vi.clearAllMocks(); });
 describe("public search optional authentication", () => {
   it("preserves anonymous research access without inventing an identity", async () => {
     mocks.request.mockReturnValue(new Request("https://caronaa.com"));
-    expect(await optionalGoogleSearchFetch("autocomplete", "research")).toBeUndefined();
+    const request = vi.fn(); mocks.anonymous.mockResolvedValue(request);
+    expect(await optionalGoogleSearchFetch("autocomplete", "research")).toBe(request);
+    expect(mocks.anonymous).toHaveBeenCalledWith("autocomplete", "research");
     expect(mocks.claims).not.toHaveBeenCalled();
     expect(mocks.action).not.toHaveBeenCalled();
   });
