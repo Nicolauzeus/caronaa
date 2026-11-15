@@ -95,6 +95,7 @@ function Home() {
   const [shellOriginRevision,setShellOriginRevision]=useState(0);
   const [driverFlashRide,setDriverFlashRide]=useState<FlashDriverRide|null>(null);
   const [passengerRide,setPassengerRide]=useState<{id:string;status:string;municipality:string}|null>(null);
+  const [passengerPhase,setPassengerPhase]=useState<string|null>(null);
   const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
   const [quickMunicipality,setQuickMunicipality]=useState("");
@@ -108,6 +109,7 @@ function Home() {
     if(pending){setTripsPanelOpen(false);setSheetSnap("full");}
   },[]);
   const onPassengerPhase=useCallback((status:string|null)=>{
+    setPassengerPhase(status);
     if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
       setTripsPanelOpen(false);setSheetSnap("full");
     }
@@ -216,6 +218,11 @@ function Home() {
   },[reverseGeocode]);
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
+    if(passengerPhase==="SEARCHING"){
+      toast.info("Cancele a solicitação Flash antes de alternar de papel.");
+      setSheetSnap("full");
+      return;
+    }
     const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
     if(!check.allowed){
       toast[check.reason==="ACTIVE_RIDE"?"info":"error"](
@@ -361,7 +368,14 @@ function Home() {
             />:
             <ShellJourneyPlanner
               snap={sheetSnap} onSnapChange={setSheetSnap}
-              serviceType={serviceType} onServiceTypeChange={setServiceType}
+              serviceType={serviceType} onServiceTypeChange={next=>{
+                if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase)){
+                  toast.info("Finalize ou cancele a corrida atual antes de mudar de modalidade.");
+                  setSheetSnap("full");
+                  return;
+                }
+                setServiceType(next);
+              }}
               originPoint={originLocation}
               originLabel={origin}
               originRevision={shellOriginRevision}
