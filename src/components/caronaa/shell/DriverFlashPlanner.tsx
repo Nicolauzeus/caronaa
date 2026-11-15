@@ -168,7 +168,8 @@ export function DriverFlashPlanner({
         destination:valid(destPoint)?{lat:destPoint.lat!,lng:destPoint.lng!,label:destination}:null,
         routePath:route?.routePath??null,
       };
-      await presence.goOnline(config);
+      const enabled=await presence.goOnline(config);
+      if(!enabled)return;
       // A server-acknowledged online state is the only source of truth for map overlay.
       // Hook state commits asynchronously; refresh on next render after confirmation.
       if(route&&from){lastOnRoute.current={route,from};setOnlineRoute(route);}
@@ -235,6 +236,10 @@ export function DriverFlashPlanner({
         "PIN inválido ou não autorizado. Confira com o passageiro.");
     }finally{setBusyRide(false);}
   };
+  useEffect(()=>{
+    if(presence.error?.includes("3 repasses pendentes"))
+      toast.warning(presence.error);
+  },[presence.error]);
   const canListen=presence.online&&presence.gpsConnected&&
     (!active||mode!=="EXCLUSIVE"&&mode!=="ALL"&&
       (passenger?.seatsRemaining??0)>0);
