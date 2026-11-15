@@ -19,6 +19,8 @@ type Props = {
   immersive?: boolean;
   routeManagedExternally?:boolean;
   routeBottomInset?:number;
+  routeLeftInset?:number;
+  routeLeftInset?:number;
   onRouteMeeting?: {origin:{lat:number;lng:number};pickup:{lat:number;lng:number;poiName:string}}|null;
   plannedRoute?:{routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
@@ -48,6 +50,7 @@ export function GoogleHomeRideMap({
   pickupPreview = null,
   routeManagedExternally = false,
   routeBottomInset = 160,
+  routeLeftInset = 48,
   onRouteMeeting = null,
   plannedRoute = null,
   userPosition,
@@ -312,7 +315,7 @@ export function GoogleHomeRideMap({
       });
       const bounds=new G.LatLngBounds();
       plannedRoute.routePath.forEach(point=>bounds.extend(point));
-      map.current.fitBounds(bounds,{top:70,right:48,bottom:Math.max(72,routeBottomInset),left:48});
+      map.current.fitBounds(bounds,{top:70,right:48,bottom:Math.max(72,routeBottomInset),left:Math.max(48,routeLeftInset)});
       setRouteMetrics({km:plannedRoute.distanceKm,minutes:plannedRoute.durationMinutes});
       return;
     }
@@ -364,7 +367,7 @@ export function GoogleHomeRideMap({
       routePolyline.current = null;
     };
   }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview,
-    routeManagedExternally,plannedRoute,routeBottomInset]);
+    routeManagedExternally,plannedRoute,routeBottomInset,routeLeftInset]);
 
   useEffect(() => {
     if (!ready || !map.current || failed) return;
