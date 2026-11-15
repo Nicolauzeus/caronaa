@@ -8,6 +8,7 @@ import { emptyTravelPreferences, type TravelPreferences } from "@/lib/travel-pre
 import { loadTravelPreferences } from "@/lib/travel-preferences-service";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { getQuickRideApproach } from "@/lib/quick-ride-map.functions";
+import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { quoteUnifiedFare, type UnifiedFareResult, type UnifiedFareMode } from "@/lib/pricing/unified-fare-engine";
 import { formatBrl } from "@/lib/ride-cost";
 import { supabase } from "@/integrations/supabase/client";
@@ -155,45 +156,42 @@ export function ShellJourneyPlanner({
     return()=>window.clearInterval(timer);
   },[phase,startedAt]);
 
-  useEffect(()=>{
+  // Subscribe to the existing read-only queue event. The hook rechecks the
+  // authorized ride RPC; it never trusts realtime event payloads for PII.
+  useEffect(()=>{searchSession.current+=1;},[phase]);
+  const checkMatched=useCallback(async()=>{
     if(phase!=="SEARCHING")return;
-    let alive=true;
-    const session=++searchSession.current;
-    const check=async()=>{
-      // Only a genuinely authorized, already-created ride may become MATCHED.
-      // This shell does not manufacture a ride or bypass dispatch constraints.
-      try{
-        const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
-        if(error||!Array.isArray(data)||!alive||session!==searchSession.current)return;
-        const relevant=data.find((ride:any)=>ride.role==="PASSENGER"&&
-          ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(ride.status)&&
-          ride.destination_label===destination && ride.requested_at &&
-          Date.parse(ride.requested_at)>=((startedAt??0)-5000));
-        if(!relevant?.id)return;
-        const {data:details,error:detailsError}=await (supabase as any).rpc(
-          "quick_ride_driver_details",{p_id:relevant.id});
-        if(!alive||detailsError||!details?.name)return;
-        const approach=await approachRef.current({data:{rideId:relevant.id}}).catch(()=>null);
-        if(!alive || session!==searchSession.current)return;
-        const driver:MatchedDriver={
-          name:details.name,photo:details.photo??null,vehicle:details.vehicle??null,
-          plate:details.plate??null,color:details.color??null,
-          rating:Number.isFinite(details.rating)?details.rating:null,
-          etaMinutes:approach && Number.isFinite(approach.durationMinutes)
-            ?Math.max(1,Math.ceil(approach.durationMinutes)):null,
-          meetingLabel:typeof details.meetingLabel==="string"?details.meetingLabel:null,
-          walkDistanceMeters:Number.isFinite(details.walkDistanceMeters)
-            ?Math.round(details.walkDistanceMeters):null,
-        };
-        setMatched(driver);setPhase("MATCHED");
-      }catch{/* No driver is claimed without authorized server data. */}
-    };
-    void check();
-    const timer=window.setInterval(()=>{if(!document.hidden)void check();},15000);
-    return()=>{alive=false;window.clearInterval(timer);};
+    const session=searchSession.current;
+    try{
+      const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
+      if(error||!Array.isArray(data)||session!==searchSession.current)return;
+      const relevant=data.find((ride:any)=>ride.role==="PASSENGER" &&
+        ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(ride.status) &&
+        ride.destination_label===destination && ride.requested_at &&
+        Date.parse(ride.requested_at)>=((startedAt??0)-5000));
+      if(!relevant?.id)return;
+      const {data:details,error:detailsError}=await (supabase as any).rpc(
+        "quick_ride_driver_details",{p_id:relevant.id});
+      if(session!==searchSession.current||detailsError||!details?.name)return;
+      const approach=await approachRef.current({data:{rideId:relevant.id}}).catch(()=>null);
+      if(session!==searchSession.current)return;
+      const driver:MatchedDriver={
+        name:details.name,photo:details.photo??null,vehicle:details.vehicle??null,
+        plate:details.plate??null,color:details.color??null,
+        rating:Number.isFinite(details.rating)?details.rating:null,
+        etaMinutes:approach && Number.isFinite(approach.durationMinutes)
+          ?Math.max(1,Math.ceil(approach.durationMinutes)):null,
+        meetingLabel:typeof details.meetingLabel==="string"?details.meetingLabel:null,
+        walkDistanceMeters:Number.isFinite(details.walkDistanceMeters)
+          ?Math.round(details.walkDistanceMeters):null,
+      };
+      setMatched(driver);setPhase("MATCHED");
+    }catch{/* No driver is claimed without authorized server data. */}
   },[phase,destination,startedAt]);
+  useQuickRideRealtime(originMunicipality,checkMatched,phase==="SEARCHING");
 
   const pickDestination=useCallback((label:string,details?:FormLocationDetails)=>{
+    searchSession.current+=1;
     setDestination(label);
     setDestinationPoint(details);
     onDestinationChange?.(label,details);
