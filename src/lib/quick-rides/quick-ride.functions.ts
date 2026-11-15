@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { reverseGeocodeService } from "@/lib/location/service";
+import { resolvePilotCivic as reverseGeocodeService } from "@/lib/location/pilot-area.server";
 import { getDrivingRoute } from "@/lib/road-routing";
 import { sessionRequest } from "@/lib/session-request-cache";
 import {
