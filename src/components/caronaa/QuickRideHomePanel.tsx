@@ -24,7 +24,7 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, shellMode=false, shellSnap="full", onOpenOperational,
+  onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, onFareChange, shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
@@ -35,6 +35,7 @@ export function QuickRideHomePanel({
   onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
   onRidePhaseChange?:(status:RideStatus|null)=>void;
   onDropoffPendingChange?:(pending:boolean)=>void;
+  onFareChange?:(value:QuickRideFarePreview|null)=>void;
   shellMode?:boolean;
   shellSnap?:"peek"|"half"|"full";
   onOpenOperational?:()=>void;
@@ -70,6 +71,7 @@ export function QuickRideHomePanel({
   const coveragePointKey=JSON.stringify([originLat,originLng,vehicle,gpsOriginIsImprecise]);
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
   const currentQuote=currentQuoteKey===fieldsKey?quote:null;
+  useEffect(()=>onFareChange?.(currentQuote),[currentQuote?.quoteId,onFareChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
   useEffect(()=>{onRidePhaseChange?.(liveRide?.status??null);},[liveRide?.id,liveRide?.status,onRidePhaseChange]);
@@ -294,13 +296,10 @@ export function QuickRideHomePanel({
       :coverage?.status==="UNKNOWN"
         ?"Não foi possível identificar o município do embarque."
         :"Informe um ponto de saída verificado para consultar a cobertura.";
-  if(shellMode && shellSnap!=="full") return liveRide ? <section aria-label="Corrida Rápida em andamento" className="mt-2 rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-2 text-white">
-    <button type="button" className="min-h-12 w-full text-left font-bold text-[#FFBB00]" onClick={onOpenOperational}>
-      {liveRide.status==="SEARCHING"?"Buscando motorista — acompanhar pedido":liveRide.status==="ACCEPTED"?"Motorista aceitou — acompanhar":"Acompanhar corrida atual"}
-    </button>
-  </section> : null;
   return (
-    <section aria-label="Corrida Rápida no mapa" className="min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white">
+    <section aria-label="Corrida Rápida no mapa" className={shellMode
+      ? "min-w-0 w-full space-y-3 text-white"
+      : "min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white"}>
       {liveRide?.status==="IN_PROGRESS"&&dropoff?.deadline_at&&!dropoff.resolved_at&&!dropoff.passenger_response&&<section role="alert" aria-label="Confirmação de desembarque pendente"
         className="space-y-3 rounded-2xl border-2 border-[#FFBB00] bg-[#FFBB00]/15 p-4">
         <h2 className="font-[Sora] text-lg font-black text-[#FFBB00]">Motorista solicitou o desembarque</h2>
@@ -332,6 +331,7 @@ export function QuickRideHomePanel({
           </button>
         ))}
       </div>}
+      {!shellMode&&<>
       <div className="min-w-0 rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
         <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
           <Users size={16} className="text-[#FFBB00]"/>
@@ -348,6 +348,7 @@ export function QuickRideHomePanel({
           Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.
         </p>
       </div>
+      </>}
       {!hasOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
         {gpsOriginIsImprecise?"GPS impreciso. Escolha sua saída manualmente para consultar a corrida.":"Escolha uma saída com coordenadas verificadas."}
       </p>}
@@ -400,16 +401,19 @@ export function QuickRideHomePanel({
         </div>
       ):(
         <>
-          {covered&&hasDestination&&!currentQuote&&!error&&(
+          {covered&&hasDestination&&!currentQuote&&!error&&!shellMode&&(
             <p role="status" className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs text-gray-200">
               {quoteLoading?"Calculando o preço da viagem…":"Preparando preço automaticamente para o destino selecionado…"}
             </p>
           )}
-          {covered&&!hasDestination&&(
+          {covered&&!hasDestination&&!shellMode&&(
             <p className="text-xs text-gray-300"><MapPin className="mr-1 inline" size={13}/>Escolha o destino para visualizar o preço automaticamente.</p>
           )}
           {currentQuote&&(
-            <div role="status" className="min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3">
+            <div role="status" className={shellMode
+              ? "space-y-2 rounded-xl border border-[#FFBB00]/25 bg-white/[0.04] p-3"
+              : "min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3"}>
+              {!shellMode&&<>
               <p className="text-xs text-gray-200">Preço até {destination} · {vehicle==="MOTO"?"Moto":"Carro"}</p>
               <div className="flex items-center gap-2 text-xs font-semibold text-white">
                 {vehicle==="MOTO"?<Bike size={16} className="text-[#FFBB00]"/>:<CarFront size={16} className="text-[#FFBB00]"/>}
@@ -428,15 +432,17 @@ export function QuickRideHomePanel({
                 O motorista recebe {formatBrl(currentQuote.driverReceivesCents/100)}.
               </p>
               <p className="text-[11px] text-gray-300">Fase piloto: sem débito automático. O pagamento e o repasse precisam ser homologados antes da operação comercial.</p>
+              </>}
+              {shellMode&&<p className="text-xs text-white/70">Pix ou dinheiro direto ao motorista · {currentQuote.distanceKm.toFixed(1)} km · aprox. {Math.round(currentQuote.durationMinutes)} min de viagem</p>}
               <button type="button"
                 disabled={busy||quoteLoading||driverLoading||Boolean(driverError)||driverCount<1||
                   Date.parse(currentQuote.expiresAt)<=Date.now()}
                 onClick={()=>void request()}
                 className="min-h-12 w-full rounded-xl bg-[#FFBB00] text-sm font-bold text-[#121212] disabled:opacity-40">
                 {busy?"Enviando pedido…":driverCount<1?"Aguardando motorista disponível":
-                  (shellMode?"Pedir Caronaa Flash — ":"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
+                  (shellMode?"Confirmar Caronaa Flash — ":"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
               </button>
-              <p className="text-[11px] text-gray-300">Ao confirmar, enviaremos o pedido aos motoristas online. O condutor só será definido quando aceitar; estar no radar não reserva um veículo.</p>
+              {!shellMode&&<p className="text-[11px] text-gray-300">O condutor será definido após o aceite.</p>}
               {Date.parse(currentQuote.expiresAt)<=Date.now()&&(
                 <button type="button" onClick={()=>{setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);}}
                   className="min-h-10 rounded-lg border border-white/30 px-3 text-xs font-semibold">
