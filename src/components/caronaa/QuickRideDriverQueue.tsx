@@ -33,11 +33,15 @@ export function QuickRideDriverQueue({
   const [boardingPin,setBoardingPin]=useState("");
   const [dropoffDeadline,setDropoffDeadline]=useState<string|null>(null);
   const [dropoffResponse,setDropoffResponse]=useState<string|null>(null);
+  const [dropoffNow,setDropoffNow]=useState(Date.now());
+  const [ratingOpen,setRatingOpen]=useState<string|null>(null);
   const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
   const [completedDismissed,setCompletedDismissed]=useState<string|null>(null);
   const lastCompletedVisible=lastCompleted!==null && completedDismissed!==lastCompleted &&
     (()=>{try{return window.localStorage.getItem("caronaa-driver-dismissed:"+lastCompleted)!=="1";}catch{return true}})();
   useEffect(()=>{onHasPendingChange?.(queue.length>0 || lastCompletedVisible);},[queue.length,lastCompletedVisible,onHasPendingChange]);
+  useEffect(()=>{if(!dropoffDeadline)return;const timer=window.setInterval(()=>setDropoffNow(Date.now()),1000);return()=>window.clearInterval(timer);},[dropoffDeadline]);
+  const remainingDropoffSeconds=dropoffDeadline?Math.max(0,Math.ceil((Date.parse(dropoffDeadline)-dropoffNow)/1000)):0;
   const releaseCompleted=()=>{
     if(!lastCompleted)return;
     try{
@@ -251,20 +255,29 @@ export function QuickRideDriverQueue({
           </>}
           {active.status==="IN_PROGRESS"&&<>
             {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado. Aguarde atendimento da plataforma.</p>:
-             dropoffDeadline?<p role="status" className="text-sm text-white/80">Finalização solicitada. Aguardando confirmação do passageiro (janela de 30 segundos).</p>:
+             dropoffDeadline?<p role="status" className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm text-white/90">
+               {remainingDropoffSeconds>0?`Aguardando confirmação do passageiro (${String(Math.floor(remainingDropoffSeconds/60)).padStart(2,"0")}:${String(remainingDropoffSeconds%60).padStart(2,"0")})`:
+                 "Prazo encerrado. Aguardando conclusão confirmada pelo servidor."}
+              </p>:
              <button type="button" disabled={busy} onClick={()=>void action(active.id,"COMPLETED")}
-               className="professional-cockpit__primary-action w-full">Concluir Corrida</button>}
+               className="professional-cockpit__primary-action w-full">Solicitar confirmação de desembarque</button>}
           </>}
         </article>}
-        {!active&&lastCompletedVisible&&lastCompleted&&<div className="space-y-3">
+        {!active&&lastCompletedVisible&&lastCompleted&&<section className="space-y-3" aria-label="Pós-corrida e pagamento">
+          <div role="status" className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
+            <h3 className="font-[Sora] font-bold">Desembarque confirmado · Corrida concluída</h3>
+            <p className="mt-1 text-xs text-white/75">Confira seu recebimento antes de liberar esta tela.</p>
+          </div>
           <QuickRideDriverSettlement rideId={lastCompleted}/>
-          {ratingDismissed!==lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro"
-            onClose={releaseCompleted}/>}
+          <button type="button" onClick={()=>setRatingOpen(lastCompleted)}
+            className="min-h-12 w-full rounded-xl border border-[#FFBB00]/40 text-sm font-bold text-[#FFBB00]">Avaliar viagem (opcional)</button>
+          {ratingOpen===lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro" forceOpen
+            onClose={()=>setRatingOpen(null)}/>}
           <button type="button" onClick={releaseCompleted}
             className="professional-cockpit__primary-action flex w-full items-center justify-center gap-2 px-4">
             <CheckCircle2 size={18} aria-hidden="true"/> Liberar tela para novos chamados
           </button>
-        </div>}
+        </section>}
         {!active&&queue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
