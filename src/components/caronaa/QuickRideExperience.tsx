@@ -13,6 +13,7 @@ import { LocationAutocomplete } from "@/components/formulario/LocationAutocomple
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { QuickRideRating } from "./QuickRideRating";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import type { FormLocationDetails } from "@/lib/location/types";
 
@@ -92,6 +93,8 @@ export function QuickRideExperience({
   const queueRequestVersion = useRef(0);
   const rejectedQueueIds = useRef(new Set<string>());
   const [busy, setBusy] = useState(false);
+  const [boardingCode,setBoardingCode]=useState("");
+  const [driverPin,setDriverPin]=useState("");
   const [error, setError] = useState("");
   const submitting = useRef(false);
   const routeRequest = useServerFn(getMapDrivingRoute);
@@ -327,14 +330,20 @@ export function QuickRideExperience({
     setError("");
     try {
       const { data, error: actionError } = await (supabase as any).rpc(
-        accept ? "quick_ride_accept" : "quick_ride_transition",
-        accept ? { p_id: id } : { p_id: id, p_status: status },
+        accept ? "quick_ride_accept" :
+          status==="IN_PROGRESS"?"quick_ride_verify_boarding_pin":
+          status==="COMPLETED"?"quick_ride_request_dropoff":"quick_ride_transition",
+        accept ? {p_id:id} :
+          status==="IN_PROGRESS"?{p_id:id,p_pin:driverPin}:
+          status==="COMPLETED"?{p_id:id}:{p_id:id,p_status:status},
       );
       if (actionError) {
         setError("Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
         await refreshQueue();
         return;
       }
+      if (!accept && data===false){setError("Código inválido ou solicitação não permitida.");return;}
+      if(status==="IN_PROGRESS")setDriverPin("");
       if (accept && data === false) {
         // SQL accepts are atomic. The losing client must not keep a stale
         // actionable card while another driver already owns the ride.
@@ -630,25 +639,21 @@ export function QuickRideExperience({
                 Cancelar
               </button>
             )}
-            {r.role === "PASSENGER" && r.status === "ARRIVED" && (
-              <button
-                disabled={busy}
-                className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
-                onClick={() =>
-                  void (async () => {
-                    setBusy(true);
-                    const { error } = await (supabase as any).rpc(
-                      "quick_ride_confirm_pickup",
-                      { p_id: r.id },
-                    );
-                    if (error) setError(error.message);
-                    await refresh();
-                    setBusy(false);
-                  })()
-                }
-              >
-                Confirmar embarque
-              </button>
+            {r.role==="PASSENGER" && ["ACCEPTED","ARRIVED"].includes(r.status) && (
+              <div className="space-y-2">
+                <p className="text-xs">Informe o código secreto apenas ao motorista, no embarque.</p>
+                {boardingCode ? <p role="status" className="text-2xl font-bold tracking-widest">{boardingCode}</p> :
+                  <button disabled={busy} className="rounded-lg border px-3 py-2 text-sm"
+                    onClick={()=>void (async()=>{
+                      setBusy(true);
+                      try{
+                        const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_issue_boarding_pin",{p_id:r.id});
+                        if(rpcError || typeof data!=="string")throw new Error("Código indisponível.");
+                        setBoardingCode(data);
+                      }catch{setError("Não foi possível gerar o código secreto.");}
+                      finally{setBusy(false);}
+                    })()}>Gerar código de embarque</button>}
+              </div>
             )}
             {r.role === "DRIVER" && r.status === "ACCEPTED" && (
               <button
@@ -659,25 +664,21 @@ export function QuickRideExperience({
                 Cheguei
               </button>
             )}
-            {r.role === "DRIVER" && r.status === "ARRIVED" && (
-              <button
-                disabled={busy}
-                className="rounded-lg border px-3 py-2 text-sm"
-                onClick={() => void action(r.id, "IN_PROGRESS")}
-              >
-                Iniciar
-              </button>
+            {r.role==="DRIVER" && r.status==="ARRIVED" && (
+              <div className="space-y-2">
+                <label htmlFor={"quick-pin-"+r.id} className="block text-xs">Digite o código do passageiro</label>
+                <input id={"quick-pin-"+r.id} inputMode="numeric" autoComplete="off" value={driverPin}
+                  onChange={e=>setDriverPin(e.target.value.replace(/\\D/g,"").slice(0,6))}
+                  maxLength={6} className="rounded-lg border bg-transparent px-3 py-2"/>
+                <button disabled={busy||driverPin.length!==6} onClick={()=>void action(r.id,"IN_PROGRESS")}
+                  className="rounded-lg border px-3 py-2 text-sm">Validar código e iniciar</button>
+              </div>
             )}
-            {r.role === "DRIVER" && r.status === "IN_PROGRESS" && (
-              <button
-                disabled={busy}
-                className="rounded-lg border px-3 py-2 text-sm"
-                onClick={() => void action(r.id, "COMPLETED")}
-              >
-                Finalizar
-              </button>
+            {r.role==="DRIVER" && r.status==="IN_PROGRESS" && (
+              <button disabled={busy} onClick={()=>void action(r.id,"COMPLETED")}
+                className="rounded-lg border px-3 py-2 text-sm">Solicitar finalização ao passageiro</button>
             )}
-            {r.status === "COMPLETED" && <QuickRidePixCard rideId={r.id} />}
+            {r.status==="COMPLETED" && <><QuickRideRating rideId={r.id} subject={r.role==="DRIVER"?"passageiro":"motorista"}/><QuickRidePixCard rideId={r.id}/></>}
           </article>
         ))}
       </section>
