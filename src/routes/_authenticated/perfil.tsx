@@ -464,7 +464,7 @@ function Perfil() {
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
-  async function saveProfile() {
+  async function saveProfile(passengerOnly=false) {
     try {
       setSaving(true);
 
@@ -484,11 +484,11 @@ function Perfil() {
       const normalizedName = fullName.trim();
       const normalizedCity = city.trim();
       const normalizedPlate = vehiclePlate.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      if (normalizedPlate && !/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(normalizedPlate)) {
+      if (!passengerOnly && normalizedPlate && !/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(normalizedPlate)) {
         toast.error("Informe uma placa válida, como ABC1234 ou ABC1D23.");
         return;
       }
-      if (vehicleBrand.trim().length > 60 || vehicleDescription.trim().length > 160) {
+      if (!passengerOnly && (vehicleBrand.trim().length > 60 || vehicleDescription.trim().length > 160)) {
         toast.error("Revise a marca e a descrição do veículo.");
         return;
       }
@@ -506,9 +506,11 @@ function Perfil() {
         .update({
           full_name: normalizedName,
           city: normalizedCity || null,
-          vehicle_brand: vehicleBrand.trim() || null,
-          vehicle_plate: normalizedPlate || null,
-          vehicle_description: vehicleDescription.trim() || null,
+          ...(passengerOnly ? {} : {
+            vehicle_brand: vehicleBrand.trim() || null,
+            vehicle_plate: normalizedPlate || null,
+            vehicle_description: vehicleDescription.trim() || null,
+          }),
           updated_at: updatedAt,
         })
         .eq("id", user.id)
@@ -531,14 +533,14 @@ function Perfil() {
             "Não foi possível salvar o gênero. Atualize o banco com a migration mais recente.",
           );
       }
-      const { error: vehicleError } = await supabase
-        .from("profiles")
-        .update({ vehicle_description: vehicleDescription.trim() || null })
-        .eq("id", user.id);
-      if (vehicleError) {
-        throw new Error(
-          "Não foi possível salvar o veículo padrão. A migration do perfil precisa estar aplicada.",
-        );
+      if (!passengerOnly) {
+        const { error: vehicleError } = await supabase
+          .from("profiles")
+          .update({ vehicle_description: vehicleDescription.trim() || null })
+          .eq("id", user.id);
+        if (vehicleError) {
+          throw new Error("Não foi possível salvar o veículo padrão.");
+        }
       }
       updatedProfile.gender = gender || null;
       updatedProfile.vehicle_description = vehicleDescription.trim() || null;
@@ -617,7 +619,7 @@ function Perfil() {
         fullName={fullName} initials={initials} photo={photo} city={city}
         verified={verifications.some(value=>value.status==="VERIFIED")}
         onPhoto={()=>setAvatarSheetOpen(true)}
-        onSave={()=>void saveProfile()} saving={saving}
+        onSave={()=>void saveProfile(true)} saving={saving}
         hasDriverProfile={isProfessionalProfile}
         personalFields={<div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome completo"/>
