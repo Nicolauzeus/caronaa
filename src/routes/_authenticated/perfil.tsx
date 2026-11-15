@@ -122,6 +122,9 @@ function Perfil() {
   const [vehicleDescription, setVehicleDescription] = useState("");
   const [vehicleBrand, setVehicleBrand] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
+  const [isMotoProfile, setIsMotoProfile] = useState(false);
+  const [motoRegistration, setMotoRegistration] = useState("");
+  const [motoWhatsapp, setMotoWhatsapp] = useState("");
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
@@ -168,6 +171,18 @@ function Perfil() {
         }
 
         const verificationRows = await getMyUserVerifications();
+        // Existing professional data defines the UI variant; it never grants access.
+        const [mototaxiRow, professionalAccess] = await Promise.all([
+          (supabase as any).from("professional_mototaxi_profiles")
+            .select("registration_number,whatsapp_e164")
+            .eq("user_id", user.id).maybeSingle(),
+          (supabase as any).rpc("get_my_professional_access"),
+        ]);
+        const motoRegistered = !mototaxiRow.error && Boolean(mototaxiRow.data);
+        setIsMotoProfile(motoRegistered ||
+          (!professionalAccess.error && professionalAccess.data?.request?.vehicle_type === "MOTO"));
+        setMotoRegistration(String(mototaxiRow.data?.registration_number ?? ""));
+        setMotoWhatsapp(String(mototaxiRow.data?.whatsapp_e164 ?? ""));
 
         if (cancelled) return;
 
@@ -585,11 +600,11 @@ function Perfil() {
   return (
     <AppShell prelaunchMode={launchLocked}>
       <PageHeading
-        eyebrow="SUA COMUNIDADE"
-        title="Meu perfil"
+        eyebrow={isMotoProfile ? "CARONAA MOTORISTA" : "SUA COMUNIDADE"}
+        title={isMotoProfile ? "Conta profissional" : "Meu perfil"}
         description={launchLocked
           ? "Seu espaço para personalizar o CARONAA antes do lançamento."
-          : "Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."}
+          : isMotoProfile ? "Seus dados de condutor, moto e recebimentos em um só lugar." : "Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."}
       />
       {launchLocked && (
         <section role="status" aria-label="Acesso ao perfil durante o pré-lançamento"
@@ -620,7 +635,14 @@ function Perfil() {
       </section>
       <NotificationPreferences />
       <ProfileTravelPreferences />
-      <DriverPixSettings />
+      {isMotoProfile ? (
+        <section aria-label="Chave Pix para Recebimento"
+          className="mb-6 rounded-2xl border border-[#FFBB00]/20 bg-[#121212]/95 p-4 text-white shadow-lg backdrop-blur-xl sm:p-5">
+          <h2 className="font-[Sora] text-lg font-extrabold text-[#FFBB00]">Chave Pix para Recebimento</h2>
+          <p className="mb-4 mt-1 text-xs text-white/65">Gerencie a chave usada para receber pagamentos.</p>
+          <DriverPixSettings />
+        </section>
+      ) : <DriverPixSettings />}
       <DriverPlatformFees />
       <div className="mb-3"><ProfessionalAuthorizationBadge /></div>
       <section aria-label="Radar do motorista" className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 shadow-soft">
@@ -643,7 +665,7 @@ function Perfil() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-soft">
+        <aside className={`h-fit rounded-2xl border p-5 shadow-soft ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white" : "border-border bg-card"}`}>
           <div className="text-center">
             <div className="relative mx-auto size-28">
               <button
@@ -736,10 +758,10 @@ function Perfil() {
         </aside>
 
         <section className="space-y-5">
-          <div className="rounded-xl border border-border bg-card p-4 shadow-soft md:p-5">
+          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white" : "border-border bg-card"}`}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="font-display text-lg font-extrabold">Dados pessoais</h3>
+                <h3 className="font-display text-lg font-extrabold">{isMotoProfile ? "Dados do Condutor" : "Dados pessoais"}</h3>
 
                 <p className="text-xs text-muted-foreground">
                   Informações reais associadas à sua conta CARONAA.
@@ -786,15 +808,15 @@ function Perfil() {
                 </select>
               </label>
 
-              <Field
-                label="Modelo e cor do veículo"
-                value={vehicleDescription}
-                onChange={setVehicleDescription}
-                placeholder="Ex.: Honda Fit prata"
-              />
-              <Field label="Marca do carro" value={vehicleBrand} onChange={setVehicleBrand} placeholder="Ex.: Honda" />
-              <Field label="Placa do carro" value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())} placeholder="ABC1D23" />
-
+              {isMotoProfile && (
+                <div className="md:col-span-2 rounded-xl border border-white/15 bg-white/5 p-3">
+                  <p className="text-xs font-bold text-white/65">WHATSAPP PROFISSIONAL</p>
+                  <p className="mt-1 text-sm text-white">{motoWhatsapp || "Não informado"}</p>
+                  <Link to="/cadastro-motorista" className="mt-1 inline-flex min-h-11 items-center text-xs font-bold text-[#FFBB00] underline">
+                    Consultar cadastro de mototaxista
+                  </Link>
+                </div>
+              )}
               <div className="md:col-span-2">
                 <Field label="E-mail" value={email} readOnly />
 
@@ -803,6 +825,30 @@ function Perfil() {
                   alterado por esta tela.
                 </p>
               </div>
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white" : "border-border bg-card"}`}>
+            <h3 className="font-[Sora] text-lg font-extrabold">{isMotoProfile ? "Dados da Moto" : "Dados do Veículo"}</h3>
+            <p className={`mt-1 text-xs ${isMotoProfile ? "text-white/65" : "text-muted-foreground"}`}>Informações exibidas ao identificar seu veículo.</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field
+                label={isMotoProfile ? "Modelo e Cor da Moto" : "Modelo e cor do veículo"}
+                value={vehicleDescription}
+                onChange={setVehicleDescription}
+                placeholder={isMotoProfile ? "Ex.: CG 160 Fan - Vermelha" : "Ex.: Honda Fit prata"}
+              />
+              <Field label={isMotoProfile ? "Marca da Moto" : "Marca do carro"}
+                value={vehicleBrand} onChange={setVehicleBrand}
+                placeholder={isMotoProfile ? "Ex.: Honda, Yamaha" : "Ex.: Honda"} />
+              <Field label={isMotoProfile ? "Placa da Moto" : "Placa do carro"}
+                value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())}
+                placeholder="ABC1D23" />
+              {isMotoProfile && <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                <p className="text-xs font-bold text-white/65">MATRÍCULA DE MOTOTAXISTA</p>
+                <p className="mt-2 text-sm font-semibold">{motoRegistration || "Não informada"}</p>
+                <p className="mt-1 text-xs text-white/55">Dados do cadastro profissional; consulte o suporte para atualizar.</p>
+              </div>}
             </div>
           </div>
 
@@ -844,7 +890,7 @@ function Perfil() {
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             {!launchLocked && (
               <Button variant="outline" asChild>
-                <Link to="/minhas-caronas">
+                <Link to={isMotoProfile ? "/viagens-profissionais" : "/minhas-caronas"}>
                   Ver viagens
                   <ArrowRight size={16} />
                 </Link>
