@@ -309,3 +309,20 @@
 @media (prefers-reduced-motion: reduce) {
   .professional-cockpit__right { transition: none; }
 }
+
+@media (max-width: 640px) {
+  .professional-cockpit__right[data-can-start="true"][data-expanded="false"] {
+    border-color: #ffbb00;
+  }
+  .professional-cockpit__right[data-can-start="true"][data-expanded="false"] .professional-cockpit__sheet-toggle {
+    border-radius: 20px;
+    background: #ffbb00;
+    color: #121212;
+    font-family: Sora, Manrope, sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+  }
+  .professional-cockpit__right[data-can-start="true"][data-expanded="false"] .professional-cockpit__sheet-handle {
+    background: rgba(18,18,18,.25);
+  }
+}
