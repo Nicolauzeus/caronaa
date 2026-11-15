@@ -442,8 +442,8 @@ export function AppShell({
       {/* Navegação inferior acessível para a área autenticada em celulares. */}
       {!publicPage && user && professionalOnly !== null && (
         <nav
-          aria-label="Navegação principal mobile"
-          className={`fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
+          aria-label={professionalOnly ? "Navegação profissional mobile" : "Navegação principal mobile"}
+          className={`fixed inset-x-0 bottom-0 z-40 isolate border-t pb-[max(8px,env(safe-area-inset-bottom))] shadow-lg backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
         >
           <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : professionalOnly ? "grid-cols-3" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
@@ -454,7 +454,7 @@ export function AppShell({
                   to={to}
                   search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   aria-current={selected ? "page" : undefined}
-                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  className={`flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
                     selected
                       ? professionalOnly ? "bg-[#FFBB00] text-[#121212]" : "bg-primary/15 text-foreground"
                       : professionalOnly ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"
