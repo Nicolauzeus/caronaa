@@ -4,7 +4,7 @@
  * A readable label + distinct pictogram avoids color-only identification.
  */
 export type TripMarkerKind =
-  | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "availableDriver";
+  | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "availableDriver" | "availableMoto";
 
 type MarkerDesign = {
   text: string;
@@ -13,10 +13,10 @@ type MarkerDesign = {
   border: string;
   iconBackground: string;
   iconForeground: string;
-  glyph: "person" | "car" | "flag" | "pin";
+  glyph: "person" | "car" | "moto" | "flag" | "pin";
 };
 
-const designs: Record<Exclude<TripMarkerKind, "availableDriver">, MarkerDesign> = {
+const designs: Record<Exclude<TripMarkerKind, "availableDriver" | "availableMoto">, MarkerDesign> = {
   you: {
     text: "Você", background: "#2563EB", foreground: "#FFFFFF",
     border: "#FFFFFF", iconBackground: "#FFFFFF", iconForeground: "#2563EB", glyph: "person",
@@ -48,18 +48,25 @@ function glyphPath(glyph: MarkerDesign["glyph"]): string {
     return '<circle cx="24" cy="17" r="4" /><path d="M15 31c0-6 3.5-9 9-9s9 3 9 9v1H15z" />';
   if (glyph === "car")
     return '<path d="M13 24l3-8h16l3 8v9H13z" /><path d="M16 24h16" stroke="#121212" stroke-width="1.7" fill="none" /><circle cx="18" cy="31" r="2" fill="#121212" /><circle cx="30" cy="31" r="2" fill="#121212" />';
+  if (glyph === "moto")
+    return '<circle cx="16" cy="27" r="4.5" fill="none" stroke="#FFBB00" stroke-width="2.2" />' +
+      '<circle cx="32" cy="27" r="4.5" fill="none" stroke="#FFBB00" stroke-width="2.2" />' +
+      '<path d="M16 27l5-8h6l3 5h4" fill="none" stroke="#FFBB00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />' +
+      '<path d="M21 19l4 8" stroke="#FFBB00" stroke-width="2" />' +
+      '<circle cx="28" cy="15" r="2" fill="#FFBB00" />' +
+      '<path d="M24 16h6" stroke="#FFBB00" stroke-width="2" stroke-linecap="round" />';
   if (glyph === "flag")
     return '<path d="M18 13v20h2V13zM20 14h13l-3 5 3 5H20z" />';
   return '<path d="M24 12c-6 0-10 4.1-10 9.5 0 6.5 10 13.5 10 13.5s10-7 10-13.5c0-5.4-4-9.5-10-9.5zm0 13a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" />';
 }
 
 export function tripMarkerSvg(kind: TripMarkerKind): string {
-  if (kind === "availableDriver") {
+  if (kind === "availableDriver" || kind === "availableMoto") {
     const design = designs.driver;
     return '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="54" viewBox="0 0 48 54" role="img">' +
       '<path d="M24 52L16 40h16z" fill="#FFBB00" stroke="#121212" stroke-width="2"/>' +
       '<circle cx="24" cy="23" r="20" fill="#121212" stroke="#FFBB00" stroke-width="3"/>' +
-      '<g fill="' + design.iconBackground + '">' + glyphPath("car") + '</g></svg>';
+      '<g fill="' + design.iconBackground + '">' + glyphPath(kind === "availableMoto" ? "moto" : "car") + '</g></svg>';
   }
   const d = designs[kind];
   return '<svg xmlns="http://www.w3.org/2000/svg" width="124" height="58" viewBox="0 0 124 58" role="img">' +
