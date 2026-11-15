@@ -128,8 +128,30 @@ function Home() {
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const [missingVehicleFields, setMissingVehicleFields] = useState<VehicleMissingField[]>([]);
   const handleShellRoleSwitch = async (target: ActiveRole) => {
-    const result = await activeRoleState.switchRole(target);
-    if (result.needsVehicleModal) {
+    // Never change roles while an operational F07 journey is underway.
+    if (operationalRide && !["CANCELLED","CANCELED","COMPLETED","FINISHED","REJECTED"].includes(operationalRide.status.toUpperCase())) {
+      toast.info("Não é possível alternar de papel durante uma corrida em andamento");
+      return;
+    }
+    // Read-only server-side check. Fail closed if the journey status cannot be verified.
+    const {data:rides,error:ridesError}=await (supabase as any).rpc("quick_ride_my_requests");
+    if(ridesError){
+      toast.error("Não foi possível verificar as corridas ativas. Tente novamente.");
+      return;
+    }
+    if(Array.isArray(rides)&&rides.some((ride:any)=>
+      ["REQUESTED","PENDING","ACCEPTED","ARRIVED","IN_PROGRESS","DRIVER_EN_ROUTE","MATCHED","CONFIRMED"].includes(
+        String(ride.status??"").toUpperCase()
+      ))) {
+      toast.info("Não é possível alternar de papel durante uma corrida em andamento");
+      return;
+    }
+    if(!Array.isArray(rides)){
+      toast.error("Não foi possível confirmar o estado das corridas.");
+      return;
+    }
+    const result=await activeRoleState.switchRole(target);
+    if(result.needsVehicleModal || (target==="MOTORISTA"&&!activeRoleState.isDriverEligible)){
       setMissingVehicleFields(result.missingFields);
       setVehicleModalOpen(true);
     }
