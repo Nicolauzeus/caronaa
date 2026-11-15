@@ -190,5 +190,24 @@ GRANT EXECUTE ON FUNCTION public.quick_ride_start_with_code(uuid,text),
  public.quick_ride_confirm_payment_code(uuid,text),
  public.quick_ride_payment_declaration_state(uuid),public.quick_ride_driver_details(uuid),
  public.quick_ride_settlement_amount(uuid) TO authenticated;
+-- Passenger receives municipal invalidation events only for own recent ride.
+-- The table contains municipality/timestamp, never private ride/GPS data.
+CREATE OR REPLACE FUNCTION public.caronaa_quick_event_allowed_passenger(p_municipality text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $fn$
+ SELECT auth.uid() IS NOT NULL AND EXISTS (
+  SELECT 1 FROM public.professional_quick_rides q
+  WHERE q.passenger_id=auth.uid() AND q.municipality=p_municipality
+    AND (q.status IN ('SEARCHING','ACCEPTED','ARRIVED','IN_PROGRESS')
+      OR (q.status='COMPLETED' AND q.completed_at>now()-interval '10 minutes'))
+ );
+$fn$;
+REVOKE ALL ON FUNCTION public.caronaa_quick_event_allowed_passenger(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.caronaa_quick_event_allowed_passenger(text) TO authenticated;
+DROP POLICY IF EXISTS quick_queue_events_ride_passenger_select ON public.caronaa_quick_queue_events;
+CREATE POLICY quick_queue_events_ride_passenger_select
+ON public.caronaa_quick_queue_events FOR SELECT TO authenticated
+USING(public.caronaa_quick_event_allowed_passenger(municipality));
+
 NOTIFY pgrst,'reload schema';
 COMMIT;
