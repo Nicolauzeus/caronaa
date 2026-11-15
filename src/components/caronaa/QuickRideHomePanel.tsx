@@ -74,7 +74,7 @@ export function QuickRideHomePanel({
   useEffect(()=>onFareChange?.(currentQuote),[currentQuote?.quoteId,onFareChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
-  useEffect(()=>{onRidePhaseChange?.(liveRide?.status??null);},[liveRide?.id,liveRide?.status,onRidePhaseChange]);
+
   useEffect(()=>{
     onOperationalRideChange?.(liveRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)
       ?{id:liveRide.id,status:liveRide.status,municipality:liveRide.municipality}:null);
@@ -82,6 +82,7 @@ export function QuickRideHomePanel({
   useEffect(()=>()=>onOperationalRideChange?.(null),[onOperationalRideChange]);
 
   const shownCompletedRide=completedRide?.id!==completedHidden?completedRide:null;
+  useEffect(()=>{onRidePhaseChange?.(liveRide?.status??(shownCompletedRide?"COMPLETED":null));},[liveRide?.id,liveRide?.status,shownCompletedRide?.id,onRidePhaseChange]);
   useEffect(()=>{
     if(!completedRide)return;
     try {
