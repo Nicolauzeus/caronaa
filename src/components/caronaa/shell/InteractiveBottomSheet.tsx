@@ -3,7 +3,13 @@ import { ChevronUp } from "lucide-react";
 
 export type SheetSnap = "peek" | "half" | "full";
 type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void;title?:string;headerAction?:ReactNode};
-const heights:Record<SheetSnap,string>={peek:"15dvh",half:"50dvh",full:"85dvh"};
+// A percentage fallback is understood by jsdom/older browsers; dynamic viewport
+// units remain the final CSS value in supported mobile browsers.
+const heights:Record<SheetSnap,{fallback:string;dynamic:string}>={
+  peek:{fallback:"15%",dynamic:"15dvh"},
+  half:{fallback:"50%",dynamic:"50dvh"},
+  full:{fallback:"85%",dynamic:"85dvh"},
+};
 const order:SheetSnap[]=["peek","half","full"];
 export function InteractiveBottomSheet({children,value,onChange,title="Planejar viagem",headerAction}:Props){
   const [internal,setInternal]=useState<SheetSnap>("peek");
@@ -13,7 +19,8 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
   const down=(event:PointerEvent<HTMLButtonElement>)=>{
     if(event.pointerType==="mouse" && event.button!==0)return;
     start.current={y:event.clientY,id:event.pointerId};
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if(typeof event.currentTarget.setPointerCapture==="function")
+      event.currentTarget.setPointerCapture(event.pointerId);
   };
   const up=(event:PointerEvent<HTMLButtonElement>)=>{
     if(start.current?.id!==event.pointerId)return;
@@ -25,13 +32,14 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
   };
   return <section aria-label={title}
     className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-[#FFBB00]/30 bg-[#121212]/95 text-white shadow-2xl backdrop-blur-xl transition-[height] duration-300 ease-out"
-    style={{height:heights[snap],fontFamily:"Manrope, sans-serif",paddingBottom:"env(safe-area-inset-bottom)"}}>
-    <button type="button" aria-label="Arrastar para expandir ou recolher painel"
+    style={{height:heights[snap].dynamic, minHeight:heights[snap].fallback,
+      fontFamily:"Manrope, sans-serif",paddingBottom:"env(safe-area-inset-bottom)"}}>
+    <button type="button" aria-label="Alça do painel: toque ou arraste para expandir ou recolher"
       aria-expanded={snap!=="peek"}
       onPointerDown={down} onPointerUp={up} onPointerCancel={()=>{start.current=null;}}
       onKeyDown={e=>{if(e.key==="ArrowUp"){e.preventDefault();change(order[Math.min(2,order.indexOf(snap)+1)]);}
         if(e.key==="ArrowDown"){e.preventDefault();change(order[Math.max(0,order.indexOf(snap)-1)]);}}}
-      className={"flex shrink-0 touch-none items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] "+(snap==="peek"?"min-h-5":"min-h-9")}>
+      className="flex min-h-[44px] shrink-0 touch-none items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
       <span className="h-1.5 w-12 rounded-full bg-[#FFBB00]/75"/>
       <ChevronUp size={15} className={snap==="full"?"rotate-180":""}/>
     </button>
