@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, MapPin, GraduationCap, CarFront, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import { loadVerifiedResearchSuggestions, type ResearchSuggestion } from "@/lib/onboarding/research-suggestions";
 import { trackOnboardingEvent } from "@/lib/onboarding/onboarding-events";
 import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommuteSuggestion";
@@ -48,6 +49,7 @@ function OnboardingPage() {
   const [hint,setHint] = useState<ResearchSuggestion|null>(null);
   useEffect(()=>{
     if(authLoading)return;
+    beginCaronaaPhase("onboarding-bootstrap");
     if(!user){void navigate({to:"/auth",search:{mode:"entrar",redirect:"/onboarding"}});return;}
     if(!user.email_confirmed_at){void navigate({to:"/auth",search:{mode:"entrar"}});return;}
     let active=true;
@@ -59,7 +61,7 @@ function OnboardingPage() {
       if(p?.status==="BASIC_COMPLETED"){void resolvePostOnboardingDestination().then(to=>navigate({to})).catch(()=>setLoadError(true));return;}
       setProgress(p);setRegion(p?.region_code??null);setAffiliation(p?.affiliation_type??null);setRole(p?.usage_role??null);
       setStep(p?.current_step==="AFFILIATION"?1:p?.current_step==="ROLE"?2:p?.current_step==="REVIEW"?3:0);
-    }).catch(()=>{if(active){setLoadError(true);toast.error("Não foi possível carregar seu perfil.");}}).finally(()=>{if(active)setLoading(false);});
+    }).catch(()=>{if(active){setLoadError(true);toast.error("Não foi possível carregar seu perfil.");}}).finally(()=>{endCaronaaPhase("onboarding-bootstrap");if(active)setLoading(false);});
     return ()=>{active=false;};
   },[authLoading,user?.id,user?.email_confirmed_at,navigate]);
   async function advance(){
@@ -70,6 +72,7 @@ function OnboardingPage() {
       else if(step===1&&affiliation){const p=await saveOnboarding({affiliation_type:affiliation,current_step:"ROLE"});setProgress(p);setStep(2);void trackOnboardingEvent("STEP", "AFFILIATION");}
       else if(step===2&&role){const p=await saveOnboarding({usage_role:role,current_step:"REVIEW"});setProgress(p);setStep(3);void trackOnboardingEvent("STEP", "ROLE");}
       else if(step===3&&progress){
+        beginCaronaaPhase("onboarding-completion");
         // Resolve access before completion to avoid masking launch gate failures.
         await getMyResearchLaunchState(); // Preserve launch-state error detection before committing.
         await completeOnboarding(progress);
@@ -77,12 +80,12 @@ function OnboardingPage() {
         await navigate({to:await resolvePostOnboardingDestination()});
       }
     }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível continuar.");}
-    finally{setBusy(false);}
+    finally{endCaronaaPhase("onboarding-completion");setBusy(false);}
   }
   if(authLoading||loading)return <main className="min-h-[100dvh] grid place-items-center bg-[#111111] text-white">Preparando seu cadastro…</main>;
   if(loadError)return <main className="grid min-h-[100dvh] place-items-center bg-[#111111] p-6 text-center text-white"><div><p>Não foi possível carregar seu perfil.</p><button type="button" onClick={()=>window.location.reload()} className="mt-4 rounded-xl bg-[#FFBB00] px-6 py-3 font-bold text-[#121212]">Tentar novamente</button></div></main>;
   const optionClass=(selected:boolean)=>"flex min-h-16 w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition backdrop-blur-2xl "+(selected?"border-[#FFBB00]/80 bg-[#FFBB00]/15 shadow-[0_0_20px_rgba(255,187,0,0.08)]":"border-white/15 bg-white/[0.06] hover:bg-white/[0.10]");
-  return <main className="relative min-h-[100dvh] overflow-x-hidden bg-[#111111] text-white">
+  return <main className="relative min-h-[100dvh] overflow-x-hidden bg-[#111111] text-white"><CaronaaPerformanceDiagnostic />
     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[-160px] mx-auto h-[380px] w-[380px] rounded-full bg-[#FFBB00]/[0.08] blur-[110px]"/>
     <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-[max(24px,env(safe-area-inset-top))]">
       <header className="flex items-center justify-between">
