@@ -419,15 +419,18 @@ export function ProfessionalAvailabilityPage() {
         {!ready ? "Verificando seu cadastro..." : fresh ? "● Online e transmitindo GPS" :
           enabled ? "● Disponível · aguardando GPS" : "○ Você está offline"}
       </p>
+      {fresh && <p role="status" className="rounded-lg border border-green-400/30 bg-green-500/10 px-3 py-2 text-xs font-semibold text-green-300">✓ Localização verificada · GPS publicado</p>}
+      {!authorized && ready && <p role="status" className="rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Aguardando autorização profissional. <Link to="/cadastro-motorista" className="font-bold underline">Consultar cadastro</Link></p>}
+      {blocked && ready && <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-200">Disponibilidade bloqueada por comissões. <Link to="/perfil" className="font-bold underline">Consultar conta</Link></p>}
       <p className="text-sm text-muted-foreground">
         {fresh ? "Sua localização está atualizada e os passageiros podem encontrar você." :
           enabled ? "Permita o GPS do navegador. Sem sinal recente, o radar não mostra sua posição." :
           "Ative a disponibilidade para receber pedidos na sua localização atual."}
       </p>
       <Button className="min-h-14 w-full text-base font-bold"
-        disabled={!ready||busy||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+        disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
         onClick={()=>void toggleOnline(!enabled)}>
-        {busy ? "Atualizando..." : enabled ? "Pausar disponibilidade" : "Ficar disponível e compartilhar GPS"}
+        {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "Pausar disponibilidade" : "Ficar disponível e compartilhar GPS"}
       </Button>
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
@@ -435,13 +438,9 @@ export function ProfessionalAvailabilityPage() {
       }} className="min-h-12 w-full rounded-xl border border-primary/40 p-3 font-semibold">
         Tentar compartilhar GPS novamente
       </button>}
-      {enabled && <button type="button" onClick={()=>{
-        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
-        void stop();
-      }} className="min-h-11 w-full rounded-xl border px-3 text-sm font-semibold">
-        Parar compartilhamento de GPS
-      </button>}
+
     </section>
+    {error && <p role="alert" className="professional-cockpit__card text-sm text-red-200">{error}</p>}
     {accuracyWarning && enabled && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">GPS com precisão reduzida (acima de 100 m). Aproxime-se de uma janela ou vá para um local com céu aberto. A sincronização continua ativa; confirme sua posição antes de aceitar corridas.</p>}
 
       </div>
@@ -457,6 +456,16 @@ export function ProfessionalAvailabilityPage() {
         <details className="professional-cockpit__card">
           <summary className="cursor-pointer text-sm font-semibold">Configurações e diagnóstico</summary>
           <div className="professional-cockpit__details mt-3 space-y-3">
+    <div className="space-y-2">
+      <h3 className="font-semibold text-white">Privacidade da localização</h3>
+      <p className="text-xs text-white/70">Você pode retirar seu consentimento de GPS a qualquer momento. Isso impede novos chamados enquanto estiver sem localização válida.</p>
+      {enabled && <button type="button" onClick={()=>{
+        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
+        void stop();
+      }} className="min-h-11 w-full rounded-xl border px-3 text-sm font-semibold">
+        Parar compartilhamento de GPS
+      </button>}
+    </div>
     <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>
