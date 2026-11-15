@@ -6560,6 +6560,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      purge_google_cost_tables: { Args: never; Returns: undefined }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
       quick_ride_complete_ride: { Args: { p_id: string }; Returns: boolean }
       quick_ride_confirm_payment_code: {
