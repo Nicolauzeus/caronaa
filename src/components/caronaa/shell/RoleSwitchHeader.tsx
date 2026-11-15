@@ -51,7 +51,7 @@ export function RoleSwitchHeader({ activeRole, disabled = false, onSwitch }: Pro
             <ArrowLeftRight className="text-[#FFBB00]" size={20}/> Trocar papel
           </DialogTitle>
           <DialogDescription className="text-white/70">
-            Deseja mudar para {pendingRole === "MOTORISTA" ? "Motorista" : "Passageiro"}?
+            Deseja alternar para o modo {pendingRole === "MOTORISTA" ? "Motorista" : "Passageiro"}?
             Essa opção altera apenas o papel ativo da sua conta.
           </DialogDescription>
         </DialogHeader>
