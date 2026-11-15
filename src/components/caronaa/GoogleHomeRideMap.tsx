@@ -18,6 +18,7 @@ type Props = {
   pickupPreview?: StrictPickupPreview | null;
   immersive?: boolean;
   routeManagedExternally?:boolean;
+  routeBottomInset?:number;
   plannedRoute?:{routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
@@ -45,6 +46,7 @@ export function GoogleHomeRideMap({
   immersive = false,
   pickupPreview = null,
   routeManagedExternally = false,
+  routeBottomInset = 160,
   plannedRoute = null,
   userPosition,
   professionalDrivers = [],
@@ -276,7 +278,7 @@ export function GoogleHomeRideMap({
       });
       const bounds=new G.LatLngBounds();
       plannedRoute.routePath.forEach(point=>bounds.extend(point));
-      map.current.fitBounds(bounds,{top:70,right:48,bottom:160,left:48});
+      map.current.fitBounds(bounds,{top:70,right:48,bottom:Math.max(72,routeBottomInset),left:48});
       setRouteMetrics({km:plannedRoute.distanceKm,minutes:plannedRoute.durationMinutes});
       return;
     }
@@ -328,7 +330,7 @@ export function GoogleHomeRideMap({
       routePolyline.current = null;
     };
   }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview,
-    routeManagedExternally,plannedRoute]);
+    routeManagedExternally,plannedRoute,routeBottomInset]);
 
   useEffect(() => {
     if (!ready || !map.current || failed) return;
