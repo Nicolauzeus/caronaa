@@ -87,9 +87,14 @@ export function AppShell({
         .eq("user_id", user.id).maybeSingle(),
       (supabase as any).from("user_onboarding_progress").select("usage_role,status")
         .eq("user_id", user.id).maybeSingle(),
-    ]).then(([professional, onboarding]) => {
+      (supabase as any).from("profiles").select("active_role")
+        .eq("id",user.id).maybeSingle(),
+    ]).then(([professional, onboarding, roleRow]) => {
       if (!live) return;
       if (professional.error || onboarding.error) { setProfessionalOnly(false); return; }
+      const persistedRole=roleRow.error?null:roleRow.data?.active_role;
+      if(persistedRole==="PASSAGEIRO"){setProfessionalOnly(false);return;}
+      if(persistedRole==="MOTORISTA"){setProfessionalOnly(true);return;}
       setProfessionalOnly(Boolean(professional.data) ||
         (onboarding.data?.usage_role === "MOTORISTA" &&
          onboarding.data?.status === "BASIC_COMPLETED"));
