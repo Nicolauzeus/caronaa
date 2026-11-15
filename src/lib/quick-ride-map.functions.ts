@@ -39,7 +39,7 @@ export const getQuickRideApproach = createServerFn({ method: "POST" })
   .validator((value: unknown) => input.parse(value))
   .handler(async ({ context, data }) => {
     const ride = await readContext(context.supabase, data.rideId);
-    if (ride.status !== "ACCEPTED" || !ride.driver) return null;
+    if (!["ACCEPTED","ARRIVED"].includes(ride.status) || !ride.driver) return null;
     // One route per participant/ride/minute, not per GPS pulse or map movement.
     return sessionRequest(
       "quick-eta:" + context.userId + ":" + ride.id,
