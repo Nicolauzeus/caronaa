@@ -15,6 +15,7 @@ import {
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { ProfessionalAccountDashboard } from "@/components/caronaa/ProfessionalAccountDashboard";
+import { PassengerAccountDashboard } from "@/components/caronaa/PassengerAccountDashboard";
 import {
   NotificationControls,
   NotificationPreferences,
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/perfil")({
       { property: "og:title", content: "Meu perfil — CARONAA" },
       {
         property: "og:description",
-        content: "Gerencie seus dados de condutor e sua conta no CARONAA.",
+        content: "Gerencie seus dados, suas viagens e sua segurança no CARONAA.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -124,6 +125,7 @@ function Perfil() {
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [isMotoProfile, setIsMotoProfile] = useState(false);
   const [isProfessionalProfile, setIsProfessionalProfile] = useState(false);
+  const [activeProfileRole,setActiveProfileRole]=useState<"PASSAGEIRO"|"MOTORISTA"|null>(null);
   const [professionalAuthorized, setProfessionalAuthorized] = useState(false);
   const [motoRegistration, setMotoRegistration] = useState("");
   const [motoWhatsapp, setMotoWhatsapp] = useState("");
@@ -174,13 +176,14 @@ function Perfil() {
 
         const verificationRows = await getMyUserVerifications();
         // Existing professional data defines the UI variant; it never grants access.
-        const [mototaxiRow, professionalAccess, onboarding] = await Promise.all([
+        const [mototaxiRow, professionalAccess, onboarding, roleRow] = await Promise.all([
           (supabase as any).from("professional_mototaxi_profiles")
             .select("registration_number,whatsapp_e164")
             .eq("user_id", user.id).maybeSingle(),
           (supabase as any).rpc("get_my_professional_access"),
           (supabase as any).from("user_onboarding_progress")
             .select("usage_role").eq("user_id",user.id).maybeSingle(),
+          (supabase as any).from("profiles").select("active_role").eq("id",user.id).maybeSingle(),
         ]);
         if (cancelled) return;
         const access = !professionalAccess.error ? professionalAccess.data : null;
@@ -191,6 +194,7 @@ function Perfil() {
           onboarding.data?.usage_role === "MOTORISTA"
         );
         setProfessionalAuthorized(access?.authorized === true);
+        setActiveProfileRole(roleRow?.active_role==="MOTORISTA"||roleRow?.active_role==="PASSAGEIRO"?roleRow.active_role:null);
         setMotoRegistration(String(mototaxiRow.data?.registration_number ?? ""));
         setMotoWhatsapp(String(mototaxiRow.data?.whatsapp_e164 ?? ""));
 
@@ -596,6 +600,7 @@ function Perfil() {
   }
 
   const createdYear = new Date(profile.created_at).getFullYear();
+  const showProfessionalDashboard=activeProfileRole==="MOTORISTA"||(activeProfileRole===null&&isProfessionalProfile);
 
   const initials =
     fullName
@@ -607,321 +612,36 @@ function Perfil() {
 
   return (
     <AppShell prelaunchMode={launchLocked}>
-      {!isProfessionalProfile && (
-      <PageHeading
-        eyebrow={isMotoProfile ? "CARONAA MOTORISTA" : "SUA COMUNIDADE"}
-        title={isMotoProfile ? "Conta profissional" : "Meu perfil"}
-        description={launchLocked
-          ? "Seu espaço para personalizar o CARONAA antes do lançamento."
-          : isMotoProfile ? "Seus dados de condutor, moto e recebimentos em um só lugar." : "Mantenha seus dados reais e seus vínculos visíveis para conexões mais seguras."}
-      />
-      )}
-      {!isProfessionalProfile && (<>
-      {launchLocked && (
-        <section role="status" aria-label="Acesso ao perfil durante o pré-lançamento"
-          className="mb-5 flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-extrabold text-foreground">Seu perfil já está liberado</p>
-            <p className="text-xs leading-5 text-muted-foreground">
-              Adicione sua foto, cidade e veículo. Sua campanha ainda não permite pedir ou oferecer caronas.
-            </p>
-          </div>
-          <Button asChild variant="outline" className="min-h-11 w-full shrink-0 border-primary/30 sm:w-auto">
-            <Link to="/aguardando">Voltar à contagem regressiva</Link>
-          </Button>
-        </section>
-      )}
+      {!showProfessionalDashboard && <PassengerAccountDashboard
+        fullName={fullName} initials={initials} photo={photo} city={city}
+        verified={verifications.some(value=>value.status==="VERIFIED")}
+        onPhoto={()=>setAvatarSheetOpen(true)}
+        onSave={()=>void saveProfile()} saving={saving}
+        hasDriverProfile={isProfessionalProfile}
+        personalFields={<div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome completo"/>
+          <LocationAutocomplete id="passageiro-perfil-cidade" label="Cidade" value={city}
+            onChange={(value,details)=>setCity(details?.city||value)} placeholder="Ex.: Fortaleza" variant="simple"/>
+          <label className="block text-xs font-bold text-white/80">GÊNERO
+            <select value={gender} onChange={event=>setGender(event.target.value as "FEMININO"|"MASCULINO"|"")}
+              className="mt-1.5 h-11 w-full rounded-lg border border-white/30 bg-[#1C1C1C] px-3 text-sm text-white">
+              <option value="">Prefiro não informar agora</option>
+              <option value="FEMININO">Feminino</option>
+              <option value="MASCULINO">Masculino</option>
+            </select>
+          </label>
+          <Field label="E-mail" value={email} readOnly/>
+        </div>}
+        securityContent={<div className="space-y-3">
+          <p className="text-xs leading-relaxed text-white/70">Os selos mostram vínculos identificados pelo CARONAA; não substituem a verificação completa de identidade.</p>
+          {verifications.length>0?<VerificationBadges verifications={verifications}/>:
+            <p className="text-sm text-white/65">Nenhum vínculo confirmado.</p>}
+          <ResearchParticipationCard/>
+        </div>}
+        notificationContent={<NotificationPreferences/>}
+      />}
 
-      <section
-        className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-soft"
-        aria-label="Notificações de carona"
-      >
-        <div>
-          <h2 className="text-sm font-semibold">Combinações e notificações</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Acompanhe novos matches e atualizações das suas viagens.
-          </p>
-        </div>
-        <NotificationControls />
-      </section>
-      <NotificationPreferences />
-      {isMotoProfile ? (
-        <section aria-label="Chave Pix para Recebimento"
-          className="mb-6 rounded-2xl border border-[#FFBB00]/20 bg-[#121212]/95 p-4 text-white dark shadow-lg backdrop-blur-xl sm:p-5">
-          <h2 className="font-[Sora] text-lg font-extrabold text-[#FFBB00]">Chave Pix para Recebimento</h2>
-          <p className="mb-4 mt-1 text-xs text-white/65">Gerencie a chave usada para receber pagamentos.</p>
-          <DriverPixSettings />
-        </section>
-      ) : <DriverPixSettings />}
-      <DriverPlatformFees />
-      <div className="mb-3"><ProfessionalAuthorizationBadge /></div>
-      <section aria-label="Radar do motorista" className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 shadow-soft">
-        <h2 className="text-base font-extrabold">Radar do motorista</h2>
-        <Link to="/cadastro-motorista" className="mt-2 inline-block text-sm font-bold text-primary underline">
-          Cadastro simplificado de mototaxista / acompanhar solicitação
-        </Link>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Motoristas aprovados iniciam disponíveis por padrão; para aparecer no mapa é necessário autorizar o GPS uma vez.
-          Você pode ficar offline a qualquer momento. A administração precisa liberar o município.
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Depois da autorização, o GPS continua enquanto você navega pelo CARONAA com a aba visível.
-          Com o celular bloqueado ou o app em segundo plano, sua posição deixa de ser atualizada
-          e o radar interrompe a exibição quando o sinal expira.
-        </p>
-        <Button asChild className="mt-3 min-h-12 w-full sm:w-auto">
-          <Link to="/disponibilidade-profissional">Gerenciar radar e localização <ArrowRight className="ml-2 size-4" /></Link>
-        </Button>
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className={`h-fit rounded-2xl border p-5 shadow-soft ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white dark" : "border-border bg-card"}`}>
-          <div className="text-center">
-            <div className="relative mx-auto size-28">
-              <button
-                type="button"
-                onClick={() => setAvatarSheetOpen(true)}
-                className="group relative block size-28 rounded-full focus:outline-none focus:ring-4 focus:ring-primary/20"
-                aria-label="Abrir opções de foto de perfil"
-              >
-                {photo ? (
-                  <img
-                    src={photo}
-                    alt="Foto de perfil"
-                    width={112}
-                    height={112}
-                    className="size-28 rounded-full object-cover ring-4 ring-secondary transition-opacity group-hover:opacity-90"
-                    style={{
-                      transform: `scale(${photoOpen ? zoom : 1})`,
-                    }}
-                  />
-                ) : (
-                  <div className="flex size-28 items-center justify-center rounded-full bg-secondary font-display text-3xl font-extrabold text-primary ring-4 ring-secondary transition-opacity group-hover:opacity-90">
-                    {initials}
-                  </div>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAvatarSheetOpen(true)}
-                className="absolute bottom-0 right-0 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft transition-transform hover:scale-105 active:scale-95"
-                aria-label="Alterar foto de perfil"
-              >
-                <Camera size={17} />
-              </button>
-
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={selectPhoto}
-                className="sr-only"
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                capture="user"
-                onChange={selectPhoto}
-                className="sr-only"
-              />
-            </div>
-
-            <h2 className="mt-4 font-display text-xl font-extrabold">
-              {fullName || "Usuário CARONAA"}
-            </h2>
-
-            {city ? (
-              <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-                <MapPin size={14} />
-                {city}
-              </p>
-            ) : null}
-
-            <div className="mt-4 flex justify-center">
-              {verifications.length > 0 ? (
-                <VerificationBadges verifications={verifications} />
-              ) : (
-                <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                  Sem vínculo verificado
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 border-t border-border pt-4 text-center">
-            <div>
-              <p className="font-display text-xl font-extrabold">{verifications.length}</p>
-
-              <p className="text-[11px] text-muted-foreground">Verificações</p>
-            </div>
-
-            <div>
-              <p className="font-display text-xl font-extrabold">
-                {Number.isFinite(createdYear) ? createdYear : "—"}
-              </p>
-
-              <p className="text-[11px] text-muted-foreground">Desde</p>
-            </div>
-          </div>
-        </aside>
-
-        <section className="space-y-5">
-          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white dark" : "border-border bg-card"}`}>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-display text-lg font-extrabold">{isMotoProfile ? "Dados do Condutor" : "Dados pessoais"}</h3>
-
-                <p className="text-xs text-muted-foreground">
-                  Informações reais associadas à sua conta CARONAA.
-                </p>
-              </div>
-
-              <CheckCircle2 size={19} className="text-primary" />
-            </div>
-
-            {!gender && (
-              <div className="mb-4 flex gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
-                <CircleAlert className="mt-0.5 shrink-0 text-primary" size={18} />
-                <p>
-                  <strong>Defina seu gênero.</strong> Essa informação permite respeitar filtros de
-                  segurança em caronas exclusivas para mulheres ou homens.
-                </p>
-              </div>
-            )}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Nome" value={fullName} onChange={setFullName} placeholder="Seu nome" />
-
-              <LocationAutocomplete
-                id="perfil-cidade"
-                label="Cidade"
-                value={city}
-                onChange={(val, details) => setCity(details?.city || val)}
-                placeholder="Ex.: Fortaleza"
-                variant="simple"
-              />
-
-              <label className="block text-xs font-bold text-muted-foreground">
-                GÊNERO
-                <select
-                  value={gender}
-                  onChange={(event) =>
-                    setGender(event.target.value as "FEMININO" | "MASCULINO" | "")
-                  }
-                  className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground"
-                >
-                  <option value="">Prefiro não informar agora</option>
-                  <option value="FEMININO">Feminino</option>
-                  <option value="MASCULINO">Masculino</option>
-                </select>
-              </label>
-
-              {isMotoProfile && (
-                <div className="md:col-span-2 rounded-xl border border-white/15 bg-white/5 p-3">
-                  <p className="text-xs font-bold text-white/65">WHATSAPP PROFISSIONAL</p>
-                  <p className="mt-1 text-sm text-white">{motoWhatsapp || "Não informado"}</p>
-                  <Link to="/cadastro-motorista" className="mt-1 inline-flex min-h-11 items-center text-xs font-bold text-[#FFBB00] underline">
-                    Consultar cadastro de mototaxista
-                  </Link>
-                </div>
-              )}
-              <div className="md:col-span-2">
-                <Field label="E-mail" value={email} readOnly />
-
-                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Mail size={13} />O e-mail vem da sua conta de autenticação e não pode ser
-                  alterado por esta tela.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`rounded-2xl border p-4 shadow-soft md:p-5 ${isMotoProfile ? "border-[#FFBB00]/20 bg-[#121212] text-white dark" : "border-border bg-card"}`}>
-            <h3 className="font-[Sora] text-lg font-extrabold">{isMotoProfile ? "Dados da Moto" : "Dados do Veículo"}</h3>
-            <p className={`mt-1 text-xs ${isMotoProfile ? "text-white/65" : "text-muted-foreground"}`}>Informações exibidas ao identificar seu veículo.</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <Field
-                label={isMotoProfile ? "Modelo e Cor da Moto" : "Modelo e cor do veículo"}
-                value={vehicleDescription}
-                onChange={setVehicleDescription}
-                placeholder={isMotoProfile ? "Ex.: CG 160 Fan - Vermelha" : "Ex.: Honda Fit prata"}
-              />
-              <Field label={isMotoProfile ? "Marca da Moto" : "Marca do carro"}
-                value={vehicleBrand} onChange={setVehicleBrand}
-                placeholder={isMotoProfile ? "Ex.: Honda, Yamaha" : "Ex.: Honda"} />
-              <Field label={isMotoProfile ? "Placa da Moto" : "Placa do carro"}
-                value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())}
-                placeholder="ABC1D23" />
-              {isMotoProfile && <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                <p className="text-xs font-bold text-white/65">MATRÍCULA DE MOTOTAXISTA</p>
-                <p className="mt-2 text-sm font-semibold">{motoRegistration || "Não informada"}</p>
-                <p className="mt-1 text-xs text-white/55">Dados do cadastro profissional; consulte o suporte para atualizar.</p>
-              </div>}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-4 shadow-soft md:p-5">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <ShieldCheck size={20} />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <h3 className="font-display text-lg font-extrabold">Vínculos verificados</h3>
-
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Os selos mostram vínculos identificados pelo CARONAA. Eles não representam
-                  verificação completa de identidade.
-                </p>
-
-                <div className="mt-4">
-                  {verifications.length > 0 ? (
-                    <VerificationBadges verifications={verifications} />
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
-                      <p className="text-sm font-semibold">Nenhum vínculo verificado ainda</p>
-
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Contas com e-mail institucional confirmado da UNIFOR recebem o selo UNIFOR.
-                        Participantes identificados pelo formulário do Siará Tech Summit 2026
-                        recebem o selo STS 2026.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <ResearchParticipationCard />
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            {!launchLocked && (
-              <Button variant="outline" asChild>
-                <Link to={isMotoProfile ? "/viagens-profissionais" : "/minhas-caronas"}>
-                  Ver viagens
-                  <ArrowRight size={16} />
-                </Link>
-              </Button>
-            )}
-
-            <Button onClick={saveProfile} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar alterações"}
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck size={14} />
-            Seus dados são usados para sua conta e para melhorar a confiança nas conexões.
-          </div>
-        </section>
-      </div>
-
-      </>)}
-
-      {isProfessionalProfile && (
+      {showProfessionalDashboard && (
         <>
           <ProfessionalAccountDashboard
             name={fullName || "Motorista CARONAA"}
