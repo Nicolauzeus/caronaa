@@ -56,7 +56,7 @@ export function ProfessionalAccountDashboard(props: DriverAccountProps) {
   const VehicleIcon = isMoto ? Bike : CarFront;
 
   return (
-    <div className="driver-account">
+    <div className="driver-account dark">
       <header className="driver-account__heading">
         <p>CARONAA MOTORISTA</p>
         <h1>Meu Perfil</h1>
