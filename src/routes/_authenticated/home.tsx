@@ -95,6 +95,7 @@ function Home() {
   const [shellOriginRevision,setShellOriginRevision]=useState(0);
   const [driverFlashRide,setDriverFlashRide]=useState<FlashDriverRide|null>(null);
   const [passengerRide,setPassengerRide]=useState<{id:string;status:string;municipality:string}|null>(null);
+  const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
   const [quickMunicipality,setQuickMunicipality]=useState("");
   const [quickDriverCount,setQuickDriverCount]=useState(0);
@@ -102,6 +103,10 @@ function Home() {
   const [quickDriverError,setQuickDriverError]=useState("");
   const onQuickCoverage=useCallback((value:QuickRideCoverage|null)=>setQuickMunicipality(value?.radar&&value.municipality?value.municipality:""),[]);
   const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>setPassengerRide(ride),[]);
+  const onUrgentDropoff=useCallback((pending:boolean)=>{
+    setUrgentDropoff(pending);
+    if(pending){setTripsPanelOpen(false);setSheetSnap("full");}
+  },[]);
   const onPassengerPhase=useCallback((status:string|null)=>{
     if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
       setTripsPanelOpen(false);setSheetSnap("full");
@@ -305,7 +310,7 @@ function Home() {
             :"Não foi possível verificar suas corridas.");
           await activeRoleState.saveVehicle(vehicle);
         }}/>
-      <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
+      <InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)}
         title="Casca Única CARONAA"
         headerAction={!tripsPanelOpen?
           <button type="button" onClick={showTrips}
@@ -378,6 +383,7 @@ function Home() {
                   onCoverage={onQuickCoverage}
                   onOperationalRideChange={onPassengerRide}
                   onRidePhaseChange={onPassengerPhase}
+                  onDropoffPendingChange={onUrgentDropoff}
                   onOpenOperational={()=>setSheetSnap("full")}
                   shellMode shellSnap={sheetSnap}
                 />
