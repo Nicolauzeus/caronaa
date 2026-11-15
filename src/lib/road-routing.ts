@@ -1,5 +1,25 @@
 import { getGoogleServerKey } from "./location/google-server-key";
 export type RoadPoint = { lat: number; lng: number };
+/**
+ * Encode a road polyline as a GeoJSON LineString (WGS84: [longitude, latitude]).
+ * This formats geometry only; database PostGIS conversion/persistence is handled
+ * by an authenticated server RPC, never by this client-side helper.
+ */
+export function formatGeoJsonLineString(points: RoadPoint[]): {
+  type: "LineString";
+  coordinates: [number, number][];
+} {
+  if (!Array.isArray(points) || points.length < 2 || points.length > 30000 ||
+    points.some((point) => !point ||
+      !Number.isFinite(point.lat) || Math.abs(point.lat) > 90 ||
+      !Number.isFinite(point.lng) || Math.abs(point.lng) > 180)) {
+    throw new Error("Geometria rodoviária inválida.");
+  }
+  return {
+    type: "LineString",
+    coordinates: points.map(({lat,lng}) => [lng,lat]),
+  };
+}
 export type DrivingRoute = {
   distanceKm: number;
   durationMinutes: number;
