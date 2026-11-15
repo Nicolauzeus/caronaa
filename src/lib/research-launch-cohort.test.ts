@@ -33,11 +33,11 @@ describe("Institutional cohort access regression",()=>{
    expect(shell).toContain("professionalOnly ? \"grid-cols-3\" : \"grid-cols-4\"");
    expect(drawer).toContain("prelaunchMode ?");
  });
- it("allows profile photos, preferences and account personalization during the wait",()=>{
+ it("allows profile photos and account personalization during the wait",()=>{
    expect(waiting).toContain('to="/perfil"');
    expect(profile).toContain('from: "/_authenticated"');
    expect(profile).toContain('<AppShell prelaunchMode={launchLocked}>');
-   expect(profile).toContain("<ProfileTravelPreferences />");
+   expect(profile).not.toContain("<ProfileTravelPreferences />");
    expect(profile).toContain('to="/aguardando"');
    expect(profile).toContain("!launchLocked &&");
  });

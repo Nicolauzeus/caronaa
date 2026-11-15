@@ -28,8 +28,6 @@ import { AppShell } from "@/components/caronaa/AppShell";
 import { Button } from "@/components/ui/button";
 import { createRideOffer } from "@/lib/ride-matching.functions";
 import { toast } from "sonner";
-import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
-import type { TravelPreferences } from "@/lib/travel-preferences";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { RouteMap } from "@/components/caronaa/RouteMap";
 import { OfferFarePreview, type OfferQuote } from "@/components/caronaa/OfferFarePreview";
@@ -160,7 +158,6 @@ function Oferecer() {
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
   const previousPassengerMode = useRef<PassengerRideOption | undefined>(undefined);
-  const [preferences, setPreferences] = useState<TravelPreferences>();
   const [quote, setQuote] = useState<OfferQuote | null>(null);
   const [profilePlate, setProfilePlate] = useState("");
   const [vehicleFromProfile, setVehicleFromProfile] = useState(false);
@@ -423,7 +420,6 @@ function Oferecer() {
             timeToleranceMinutes: form.timeTolerance,
             passengerGenderPreference:
               gender === "FEMININO" ? form.passengerGenderPreference : "ANY",
-            preferences,
             idempotencyKey,
             vehicleDescription: form.vehicle,
             notes: form.notes,
@@ -956,12 +952,9 @@ function Oferecer() {
                   />
                   <details className="rounded-2xl border border-white/10 bg-white/5 px-4 py-1">
                     <summary className="cursor-pointer py-2 text-sm font-semibold text-gray-200">
-                      Preferências e observações (opcional)
+                      Observações (opcional)
                     </summary>
                     <div className="mt-3 space-y-4 pb-3">
-                      <div className="text-white [&_button]:border-white/15 [&_label]:text-gray-200">
-                        <JourneyPreferences kind="offer" onChange={setPreferences} />
-                      </div>
                       <label className="block text-sm font-semibold text-gray-200">
                         Observações (opcional)
                         <textarea

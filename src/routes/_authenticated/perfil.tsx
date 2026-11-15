@@ -21,7 +21,6 @@ import {
 import { DriverPixSettings } from "@/components/caronaa/DriverPix";
 import { DriverPlatformFees } from "@/components/caronaa/DriverPlatformFees";
 import { ProfessionalAuthorizationBadge } from "@/components/caronaa/ProfessionalAuthorizationBadge";
-import { ProfileTravelPreferences } from "@/components/caronaa/TravelPreferences";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { VerificationBadges } from "@/components/caronaa/VerificationBadges";
 import { ResearchParticipationCard } from "@/components/caronaa/ResearchParticipationCard";
@@ -634,7 +633,6 @@ function Perfil() {
         <NotificationControls />
       </section>
       <NotificationPreferences />
-      <ProfileTravelPreferences />
       {isMotoProfile ? (
         <section aria-label="Chave Pix para Recebimento"
           className="mb-6 rounded-2xl border border-[#FFBB00]/20 bg-[#121212]/95 p-4 text-white dark shadow-lg backdrop-blur-xl sm:p-5">

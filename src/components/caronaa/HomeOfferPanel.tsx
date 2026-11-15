@@ -7,13 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { createRideOffer } from "@/lib/ride-matching.functions";
 import { OfferFarePreview, type OfferQuote } from "./OfferFarePreview";
 import { RoutePolicySelector } from "./RoutePolicySelector";
-import { JourneyPreferences } from "./TravelPreferences";
 import { TimeToleranceSelector, type TimeToleranceMinutes } from "./TimeToleranceSelector";
 import { WomenOnlyToggle } from "./WomenOnlyToggle";
 import { RideRoutineForm } from "./RideRoutineForm";
 import { useProfileGender } from "@/lib/use-profile-gender";
 import type { FormLocationDetails } from "@/lib/location/types";
-import type { TravelPreferences } from "@/lib/travel-preferences";
 import type { RideIntentDraft } from "@/lib/ride-intent-draft";
 import { formatBrl } from "@/lib/ride-cost";
 
@@ -73,7 +71,6 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
   const [departureMode, setDepartureMode] = useState<"now" | "schedule">(initialDraft?.departureMode ?? "schedule");
   const [driverAllowed, setDriverAllowed] = useState<boolean | null>(null);
   const [quote, setQuote] = useState<OfferQuote | null>(null);
-  const [preferences, setPreferences] = useState<TravelPreferences>();
   const [womenOnly, setWomenOnly] = useState(initialDraft?.womenOnly ?? false);
   const [step, setStep] = useState<Step>("DETAILS");
   const [busy, setBusy] = useState(false);
@@ -141,7 +138,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
         availableSeats:vehicleType==="MOTO" ? 1 : seats,
         vehicleType,vehicleDescription:vehicle.trim(),
         passengerGenderPreference:gender==="FEMININO"&&womenOnly?"FEMININO":"ANY",
-        allowDetours,preferences,notes:notes.trim(),idempotencyKey,
+        allowDetours,notes:notes.trim(),idempotencyKey,
       }});
       setOfferId(result.offerId);setStep("SUCCESS");onPublished();
       toast.success("Sua oferta de carona foi publicada.");
@@ -150,7 +147,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
     } finally { publishingRef.current = false;setBusy(false); }
   }, [allowDetours,busy,canContinue,currentQuote,date,departureMode,destination,
     destinationLocation?.lat,destinationLocation?.lng,driverAllowed,gender,idempotencyKey,
-    notes,onPublished,origin,originLocation?.lat,originLocation?.lng,preferences,publishOffer,
+    notes,onPublished,origin,originLocation?.lat,originLocation?.lng,publishOffer,
     scheduleMode,seats,step,time,tolerance,vehicle,vehicleType,womenOnly]);
 
   useImperativeHandle(ref, () => ({ next }), [next]);
@@ -277,8 +274,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
                 <WomenOnlyToggle gender={gender} kind="offer" checked={womenOnly}
                   onChange={setWomenOnly}/>
                 <details>
-                  <summary className="min-h-10 cursor-pointer text-sm font-semibold">Preferências e observações (opcional)</summary>
-                  <JourneyPreferences kind="offer" onChange={setPreferences}/>
+                  <summary className="min-h-10 cursor-pointer text-sm font-semibold">Observações (opcional)</summary>
                   <label className="block text-sm font-semibold">Observações
                     <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,500))}
                       rows={2} placeholder="Informações para os passageiros"

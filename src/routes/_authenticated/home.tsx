@@ -26,8 +26,6 @@ import { AppShell } from "@/components/caronaa/AppShell";
 import { FavoriteCommuteSuggestion } from "@/components/onboarding/FavoriteCommuteSuggestion";
 import { Button } from "@/components/ui/button";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
-import { JourneyPreferences } from "@/components/caronaa/TravelPreferences";
-import type { TravelPreferences } from "@/lib/travel-preferences";
 import { getActiveHomeJourneys } from "@/lib/home.functions";
 import { createRideRequest } from "@/lib/ride-matching.functions";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -230,7 +228,6 @@ function Home() {
   );
   const [busy, setBusy] = useState(false);
   const requestSubmitting = useRef(false);
-  const [preferences, setPreferences] = useState<TravelPreferences>();
   const refresh = useCallback(() => {
     void loadJourneys()
       .then(setJourneys)
@@ -396,7 +393,6 @@ function Home() {
     timeTolerance,
     rideOption,
     gender === "FEMININO" && womenOnly,
-    preferences,
   ]);
   const reviewed = confirmedReviewKey === reviewKey;
   const focusOriginOnExpand = useRef(false);
@@ -468,7 +464,6 @@ function Home() {
           departureTime: time,
           passengerCount: rideOption === "MOTO" ? 1 : Number(count),
           timeToleranceMinutes: timeTolerance,
-          preferences,
           vehicleType: rideOption === "MOTO" ? "MOTO" : "CAR",
           womenOnly: gender === "FEMININO" && womenOnly,
         },
@@ -841,12 +836,6 @@ function Home() {
                       checked={womenOnly}
                       onChange={setWomenOnly}
                     />
-                    <details className="rounded-2xl border border-white/10 p-3">
-                      <summary className="cursor-pointer text-sm font-semibold">
-                        Preferências (opcional)
-                      </summary>
-                      <JourneyPreferences kind="request" onChange={setPreferences} />
-                    </details>
                     {reviewed && currentFare && (
                       <div
                         role="status"
