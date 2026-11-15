@@ -2,7 +2,9 @@
   --caronaa-yellow: #FFBB00;
   max-width: 1210px;
   margin-inline: auto;
-  padding-bottom: 28px;
+  padding: clamp(14px, 2.1vw, 26px);
+  border-radius: 25px;
+  background: #121212;
   color: #FFFFFF;
   font-family: Manrope, sans-serif;
 }
