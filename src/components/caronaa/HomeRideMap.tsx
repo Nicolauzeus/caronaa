@@ -11,6 +11,7 @@ export type ApproximateProfessionalDriver = {
   seen_at: string;
   is_self?: boolean;
   simulated?: boolean;
+  vehicle_type?: "CAR" | "MOTO";
 };
 type Props = {
   pickupPreview?: StrictPickupPreview | null;
