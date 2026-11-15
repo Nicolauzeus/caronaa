@@ -41,7 +41,6 @@ const professionalNav = [
 const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
   { to: "/home" as const, label: "Oferecer", icon: CarFront },
-  { to: "/minhas-caronas" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
 
