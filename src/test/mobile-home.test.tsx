@@ -53,13 +53,26 @@ vi.mock("@/lib/home.functions", () => ({
 }));
 vi.mock("@/lib/ride-matching.functions", () => ({ createRideRequest: api.request }));
 vi.mock("@/lib/ride-pricing.functions", () => ({ previewRequestFare: api.quote }));
-vi.mock("@tanstack/react-start", () => ({
-  useServerFn: (fn: unknown) => fn,
-  createMiddleware: () => {
-    const chain: any = { server: () => chain, client: () => chain, middleware: () => chain };
-    return chain;
-  },
-}));
+vi.mock("@tanstack/react-start", () => {
+  // Server functions are imported transitively by map components.
+  // Keep this component test isolated from actual server middleware creation.
+  const middleware: any = {};
+  middleware.server = () => middleware;
+  middleware.client = () => middleware;
+  middleware.middleware = () => middleware;
+
+  const serverFn: any = {};
+  serverFn.middleware = () => serverFn;
+  serverFn.inputValidator = () => serverFn;
+  serverFn.validator = () => serverFn;
+  serverFn.handler = () => vi.fn();
+
+  return {
+    useServerFn: (fn: unknown) => fn,
+    createMiddleware: () => middleware,
+    createServerFn: () => serverFn,
+  };
+});
 vi.mock("@/lib/quick-rides/f07-radar-diagnostic.functions", () => ({
   getF07TestSelfRadar: api.selfRadar,
 }));
