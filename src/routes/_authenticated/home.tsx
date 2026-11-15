@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
-import type { QuickRideCoverage } from "@/lib/quick-rides/quick-ride.functions";
+import type { QuickRideCoverage, QuickRideFarePreview } from "@/lib/quick-rides/quick-ride.functions";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -81,6 +81,9 @@ function Home() {
   const reverseGeocode=useServerFn(reverseGeocodeServerFn);
 
   const [sheetSnap,setSheetSnap]=useState<SheetSnap>("peek");
+  useEffect(()=>{
+    if(typeof window!=="undefined"&&window.matchMedia("(min-width: 768px)").matches)setSheetSnap("half");
+  },[]);
   const [serviceType,setServiceType]=useState<ServiceType>("FLASH");
   const [tripsPanelOpen,setTripsPanelOpen]=useState(false);
   const [tripsRefreshKey,setTripsRefreshKey]=useState(0);
@@ -98,6 +101,7 @@ function Home() {
   const [passengerPhase,setPassengerPhase]=useState<string|null>(null);
   const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
+  const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
   const [quickMunicipality,setQuickMunicipality]=useState("");
   const [quickDriverCount,setQuickDriverCount]=useState(0);
   const [quickDriverLoading,setQuickDriverLoading]=useState(false);
@@ -383,6 +387,7 @@ function Home() {
               gender={gender}
               onFlashVehicleChange={setQuickVehicle}
               flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
+              flashFare={flashFare}
               flashOperationalPanel={
                 <QuickRideHomePanel
                   origin={origin||"Minha localização atual"}
@@ -399,6 +404,7 @@ function Home() {
                   onOperationalRideChange={onPassengerRide}
                   onRidePhaseChange={onPassengerPhase}
                   onDropoffPendingChange={onUrgentDropoff}
+                  onFareChange={setFlashFare}
                   onOpenOperational={()=>setSheetSnap("full")}
                   shellMode shellSnap={sheetSnap}
                 />
