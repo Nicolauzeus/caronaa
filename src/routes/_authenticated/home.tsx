@@ -1,4 +1,9 @@
 import { StrictPickupPanel } from "@/components/caronaa/StrictPickupPanel";
+import { RoleSwitchHeader } from "@/components/caronaa/shell/RoleSwitchHeader";
+import { QuickVehicleModal } from "@/components/caronaa/shell/QuickVehicleModal";
+import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/shell/InteractiveBottomSheet";
+import { ServiceTypeDock, type ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
+import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { RideIntentSwitch, type RideIntent } from "@/components/caronaa/RideIntentSwitch";
 import { HomeOfferPanel, type HomeOfferPanelHandle, type HomeOfferPanelStatus } from "@/components/caronaa/HomeOfferPanel";
 import { consumeRideIntentDraft, type RideIntentDraft } from "@/lib/ride-intent-draft";
@@ -86,6 +91,20 @@ function Home() {
   useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const navigate = useNavigate();
   const search = Route.useSearch();
+  // Stage 2: visual shell only. No new dispatch, fare, or booking handlers.
+  const activeRoleState = useActiveRole();
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>("half");
+  const [serviceType, setServiceType] = useState<ServiceType>("FLASH");
+  const [shellDestination, setShellDestination] = useState("");
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+  const [missingVehicleFields, setMissingVehicleFields] = useState<VehicleMissingField[]>([]);
+  const handleShellRoleSwitch = async (target: ActiveRole) => {
+    const result = await activeRoleState.switchRole(target);
+    if (result.needsVehicleModal) {
+      setMissingVehicleFields(result.missingFields);
+      setVehicleModalOpen(true);
+    }
+  };
   const [intent, setIntent] = useState<RideIntent>(search.intent === "offer" ? "OFFER" : "REQUEST");
   useEffect(() => { setIntent(search.intent === "offer" ? "OFFER" : "REQUEST"); }, [search.intent]);
   const loadJourneys = useServerFn(getActiveHomeJourneys);
@@ -538,6 +557,37 @@ function Home() {
             onRecenter={location.locate}
           />}
         </div>
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
+          <RoleSwitchHeader
+            activeRole={activeRoleState.activeRole}
+            disabled={activeRoleState.loading}
+            onSwitch={handleShellRoleSwitch}
+          />
+        </div>
+        <QuickVehicleModal open={vehicleModalOpen} onOpenChange={setVehicleModalOpen}
+          missingFields={missingVehicleFields}/>
+        <InteractiveBottomSheet value={sheetSnap} onChange={setSheetSnap}
+          title="Casca Única CARONAA">
+          <div className="space-y-4">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-white">
+              {activeRoleState.activeRole === "MOTORISTA" ? "Seu próximo trajeto" : "Para onde vamos?"}
+            </h2>
+            <label className="block">
+              <span className="sr-only">Para onde vamos?</span>
+              <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-4 focus-within:border-[#FFBB00]">
+                <Search size={20} className="shrink-0 text-[#FFBB00]"/>
+                <input value={shellDestination} onChange={event=>setShellDestination(event.target.value)}
+                  aria-label="Para onde vamos?" placeholder="Para onde vamos?"
+                  className="min-w-0 flex-1 bg-transparent py-3 text-sm text-white placeholder:text-white/65 focus:outline-none"/>
+              </div>
+            </label>
+            <ServiceTypeDock value={serviceType} onChange={setServiceType}/>
+            <p className="text-xs text-white/60">
+              Selecione o papel e o tipo de serviço. Cotação e solicitação de corrida não fazem parte desta etapa.
+            </p>
+            {activeRoleState.error && <p role="alert" className="text-xs text-red-300">{activeRoleState.error}</p>}
+          </div>
+        </InteractiveBottomSheet>
         {selectingOrigin && (
           <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm text-white shadow-xl backdrop-blur-xl sm:inset-x-5">
             <p><strong className="text-[#FFBB00]">Definir saída:</strong> toque no local correto do mapa. Esse ponto será sua origem escolhida.</p>
@@ -548,6 +598,8 @@ function Home() {
         )}
         <section
           aria-labelledby="journey-title"
+          hidden
+          aria-hidden="true"
           className={`absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#121212]/95 shadow-2xl backdrop-blur-2xl transition-[height] sm:bottom-4 sm:rounded-3xl ${operationalRide ? "h-[min(44dvh,28rem)] min-h-0" : panelOpen ? "h-[min(84dvh,calc(100%_-_5rem))] min-h-0" : "h-auto max-h-[min(44dvh,20rem)]"}`}
         >
           <button
