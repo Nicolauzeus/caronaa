@@ -16,6 +16,7 @@ import type { ProfileGender } from "@/lib/use-profile-gender";
 import { confirmOnRouteBooking, searchOnRouteMatches, OnRouteServiceError } from "@/services/on-route-service";
 import type { OnRouteMatch } from "@/types/ride";
 import { toast } from "sonner";
+import type { QuickRideFarePreview } from "@/lib/quick-rides/quick-ride.functions";
 
 export type ShellRoute = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
 type Point = {lat:number;lng:number};
@@ -38,6 +39,7 @@ type Props = {
   flashOperationalPanel?:ReactNode;
   onFlashVehicleChange?:(vehicle:Vehicle)=>void;
   flashRideActive?:boolean;
+  flashFare?:QuickRideFarePreview|null;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
   !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
@@ -61,7 +63,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
-  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,
+  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -275,6 +277,99 @@ export function ShellJourneyPlanner({
       }
     }finally{setBookingBusy(false);}
   };
+  // Search only after the passenger explicitly selects Na Rota. The results
+  // come from actual offers; never present an estimated match as available.
+  useEffect(()=>{
+    if(serviceType!=="FLASH"||mode!=="ON_ROUTE"||!route||!valid(destinationPoint)||!frozenOrigin.current)return;
+    void searchAvailableOnRoute();
+  },[serviceType,mode,route?.distanceKm,destinationPoint?.lat,destinationPoint?.lng,onRouteVehicle,seats,entireCar]);
+
+  const flashChoices=(
+    <section aria-label="Escolha sua carona" className="space-y-2">
+      <p className="font-[Sora] text-base font-extrabold text-white">Escolha sua viagem</p>
+      <div role="radiogroup" aria-label="Opções de viagem" className="space-y-2">
+        {(["MOTO","CAR"] as const).map(type=>{
+          const checked=mode==="EXCLUSIVE"&&exclusiveVehicle===type;
+          const price=flashFare?.vehicleType===type&&Date.parse(flashFare.expiresAt)>Date.now()
+            ?formatBrl(flashFare.customerPaysCents/100):null;
+          return <button type="button" key={type} role="radio" aria-checked={checked}
+            disabled={flashRideActive}
+            onClick={()=>{if(flashRideActive)return;setMode("EXCLUSIVE");changeVehicle(type,"EXCLUSIVE");}}
+            className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors motion-reduce:transition-none ${checked?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20 bg-white/[0.06]"} disabled:opacity-60`}>
+            {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:
+              <CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
+            <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">Flash {type==="MOTO"?"Moto":"Carro"}</strong>
+              <small className="block text-xs text-white/65">{type==="MOTO"?"Direto ao destino":"Viagem exclusiva"}</small></span>
+            <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">{price||"Ver preço"}
+              {price&&<small className="block text-[10px] font-normal text-white/65">Preço oficial</small>}
+            </span>
+            <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${checked?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>
+          </button>;
+        })}
+        <button type="button" role="radio" aria-checked={mode==="ON_ROUTE"}
+          disabled={flashRideActive}
+          onClick={()=>setMode("ON_ROUTE")}
+          className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors motion-reduce:transition-none ${mode==="ON_ROUTE"?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20 bg-white/[0.06]"} disabled:opacity-60`}>
+          <MapPin size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
+          <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">Carona Na Rota</strong>
+            <small className="block text-xs text-white/65">Ponto de encontro próximo</small></span>
+          <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">
+            {onRouteMatches.length>0?"Ver ofertas":onRouteBusy?"Buscando...":onRouteDiagnostic==="NO_ON_ROUTE_MATCHES"?"Sem ofertas":"Consultar"}
+          </span>
+          <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${mode==="ON_ROUTE"?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>
+        </button>
+      </div>
+    </section>
+  );
+  const flashOnRoute=mode==="ON_ROUTE"&&(
+    <section aria-label="Caronas Na Rota" className="space-y-3 rounded-2xl border border-white/15 bg-white/[0.035] p-3">
+      <details className="text-xs text-white/80">
+        <summary className="min-h-10 cursor-pointer font-bold text-[#FFBB00]">Ajustar vagas e tipo de veículo</summary>
+        <div className="mt-2 space-y-3">
+          <div className="flex gap-2">{(["CAR","MOTO"] as const).map(type=>
+            <button type="button" key={type} onClick={()=>changeVehicle(type,"ON_ROUTE")}
+              className={selectedButton(onRouteVehicle===type)+" flex-1"} aria-pressed={onRouteVehicle===type}>{type==="MOTO"?"Moto":"Carro"}</button>
+          )}</div>
+          <label className="flex items-center justify-between">Vagas
+            <select aria-label="Quantidade de vagas" value={onRouteVehicle==="MOTO"?1:entireCar?3:seats}
+              disabled={onRouteVehicle==="MOTO"||entireCar} onChange={event=>setSeats(Number(event.target.value))}
+              className="min-h-12 rounded-lg border border-white/20 bg-[#121212] px-3">
+              {Array.from({length:onRouteVehicle==="MOTO"?1:3},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          {onRouteVehicle==="CAR"&&<label className="flex min-h-10 items-center gap-3">
+            <input type="checkbox" checked={entireCar} onChange={event=>setEntireCar(event.target.checked)} className="size-5 accent-[#FFBB00]"/> Reservar veículo inteiro
+          </label>}
+        </div>
+      </details>
+      <button type="button" onClick={()=>void searchAvailableOnRoute()}
+        disabled={onRouteBusy||!route||!valid(destinationPoint)}
+        className="min-h-12 w-full rounded-xl border border-[#FFBB00]/45 px-3 font-semibold text-[#FFBB00] disabled:opacity-50">
+        {onRouteBusy?"Buscando ofertas reais...":"Atualizar ofertas"}
+      </button>
+      {onRouteDiagnostic==="NO_ON_ROUTE_MATCHES"&&<p role="status" className="text-sm text-white/70">Nenhuma carona compatível agora.</p>}
+      {onRouteDiagnostic==="ON_ROUTE_SERVICE_UNAVAILABLE"&&<p role="alert" className="text-sm text-white/70">Não foi possível consultar as caronas. Tente novamente.</p>}
+      {onRouteMatches.map(match=><article key={match.offerId} className={`space-y-2 rounded-xl border p-3 ${selectedMatch?.offerId===match.offerId?"border-[#FFBB00] bg-[#FFBB00]/10":"border-white/20"}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0"><p className="font-bold">{match.driverName}</p>
+            <p className="text-xs text-white/75">{match.pickupMeeting.poiName}</p>
+            <p className="mt-1 text-xs text-[#FFBB00]">{Math.round(match.pickupMeeting.walkMeters)} m de caminhada até o embarque</p>
+          </div>
+          <strong className="shrink-0 font-[Sora] text-[#FFBB00]">{formatBrl(match.estimatedPrice)} <small className="block text-right text-[10px] text-white/60">Estimativa</small></strong>
+        </div>
+        <button type="button" onClick={()=>selectOnRoute(match)} aria-pressed={selectedMatch?.offerId===match.offerId}
+          className="min-h-12 w-full rounded-xl border border-white/25 px-3 text-sm font-bold text-white">
+          {selectedMatch?.offerId===match.offerId?"Ponto selecionado no mapa":"Escolher ponto de encontro"}
+        </button>
+      </article>)}
+      {selectedMatch&&<button type="button" onClick={()=>void confirmSelectedOnRoute()}
+        disabled={bookingBusy||onRouteConfirmedId!==null}
+        className="min-h-14 w-full rounded-2xl bg-[#FFBB00] px-4 font-[Sora] text-sm font-black text-[#121212] disabled:opacity-50">
+        {bookingBusy?"Confirmando...":"Confirmar carona "+formatBrl(selectedMatch.estimatedPrice)}
+      </button>}
+    </section>
+  );
+
   const selectedPrice=prices?.[mode]??null;
   const optionCard=(kind:UnifiedFareMode)=>(
     <div key={kind} className={"rounded-2xl border p-3 "+(mode===kind?
@@ -364,58 +459,20 @@ export function ShellJourneyPlanner({
           Escolha uma data e hora válidas, pelo menos 30 minutos no futuro.
         </p>}
       </label>}
-      {optionCard("EXCLUSIVE")}
-      {optionCard("ON_ROUTE")}
-      {mode==="ON_ROUTE"&&<section aria-label="Resultados Na Rota" className="space-y-3 rounded-2xl border border-white/20 bg-white/5 p-3">
-        <button type="button"
-          disabled={!route||!valid(destinationPoint)||!frozenOrigin.current||onRouteBusy}
-          onClick={()=>void searchAvailableOnRoute()}
-          className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-bold text-[#121212] disabled:opacity-50">
-          {onRouteBusy?"Procurando caronas...":"Buscar caronas Na Rota"}
-        </button>
-        {onRouteDiagnostic==="NO_ON_ROUTE_MATCHES"&&
-          <p role="status" className="text-sm text-white/75">Ainda não há caronas nesse trajeto.</p>}
-        {onRouteDiagnostic==="ON_ROUTE_SERVICE_UNAVAILABLE"&&
-          <p role="alert" className="text-sm text-white/75">Busca indisponível agora. Tente novamente.</p>}
-        {onRouteMatches.map(match=><article key={match.offerId}
-          className={"space-y-2 rounded-xl border p-3 "+(selectedMatch?.offerId===match.offerId?
-            "border-[#FFBB00]":"border-white/20")}>
-          <span className="inline-flex rounded-full bg-[#FFBB00] px-2 py-1 text-xs font-bold text-[#121212]">
-            Ponto de Encontro no Trajeto
-          </span>
-          <p className="text-sm font-semibold">{match.driverName}</p>
-          <p className="text-xs text-white/75">{match.pickupMeeting.poiName}</p>
-          <p className="text-sm font-bold text-[#FFBB00]">
-            🚶 {Math.round(match.pickupMeeting.walkMeters)} m a pé até o ponto de encontro
-          </p>
-          <p className="text-xs text-white/70">
-            {match.seatsRemaining} vaga(s) disponíveis · {formatBrl(match.estimatedPrice)} estimados
-          </p>
-          <button type="button" onClick={()=>selectOnRoute(match)}
-            aria-pressed={selectedMatch?.offerId===match.offerId}
-            className="min-h-11 w-full rounded-lg border border-[#FFBB00]/60 px-3 text-sm font-bold text-[#FFBB00]">
-            {selectedMatch?.offerId===match.offerId?"Selecionada no mapa":"Ver ponto no mapa"}
-          </button>
-        </article>)}
-        {selectedMatch&&<button type="button" disabled={bookingBusy||onRouteConfirmedId!==null}
-          onClick={()=>void confirmSelectedOnRoute()}
-          className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-          {bookingBusy?"Confirmando...":"Confirmar Carona"}
-        </button>}
-      </section>}
-      <div aria-live="polite" className="text-xs text-white/75">
-        {routeBusy?"Calculando rota pelas ruas...":
-          routeError||(!route?"Selecione um destino válido para calcular a rota.":
-          route.distanceKm.toFixed(1)+" km pelas ruas · estimativa, sem cobrança")}
-      </div>
-      <button type="button"
-        disabled={!route||!selectedPrice||routeBusy||(serviceType==="AGENDADA"&&!scheduleValid)}
-        onClick={()=>onSnapChange?.("full")}
-        className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-50">
-        {serviceType==="AGENDADA"?"Revisar Agendamento":"Revisar e Continuar"}
-      </button>
+      {serviceType==="FLASH"?<>
+        {flashChoices}
+        {flashOnRoute}
+        {mode==="EXCLUSIVE"&&flashOperationalPanel}
+      </>:<>
+        {optionCard("EXCLUSIVE")}
+        {optionCard("ON_ROUTE")}
+        {routeError&&<p role="alert" className="text-xs text-[#FFBB00]">{routeError}</p>}
+        <button type="button" disabled={!route||!selectedPrice||routeBusy||!scheduleValid}
+          onClick={()=>onSnapChange?.("full")}
+          className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-50">Revisar Agendamento</button>
+      </>}
     </>}
-    {snap==="full"&&<>
+    {snap==="full"&&serviceType==="AGENDADA"&&<>
       {onRouteConfirmedId&&<section role="status" className="space-y-1 rounded-xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 p-3">
         <p className="font-bold text-[#FFBB00]">Carona Na Rota confirmada.</p>
         <p className="text-sm">Embarque em: {selectedMatch?.pickupMeeting.poiName||"ponto confirmado"}</p>
@@ -462,6 +519,14 @@ export function ShellJourneyPlanner({
       {serviceType==="FLASH"&&mode==="ON_ROUTE"&&!onRouteConfirmedId&&
         <p className="text-xs text-white/70">Para viajar Na Rota, volte às modalidades e confirme uma oferta existente. Nenhuma busca simulada será iniciada.</p>}
     </>}
-    {serviceType==="FLASH"&&mode==="EXCLUSIVE"&&flashOperationalPanel}
+    {snap==="full"&&serviceType==="FLASH"&&<>
+      {onRouteConfirmedId&&<section role="status" className="rounded-2xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 p-4">
+        <p className="font-[Sora] font-extrabold text-[#FFBB00]">Carona Na Rota confirmada</p>
+        <p className="mt-1 text-sm">Encontro em {selectedMatch?.pickupMeeting.poiName||"ponto confirmado"}.</p>
+      </section>}
+      {!flashRideActive&&flashChoices}
+      {!flashRideActive&&flashOnRoute}
+      {mode==="EXCLUSIVE"&&flashOperationalPanel}
+    </>}
   </div>;
 }
