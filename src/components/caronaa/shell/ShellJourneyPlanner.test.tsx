@@ -158,4 +158,50 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(api.rpc).toHaveBeenCalledWith("quick_ride_driver_details",{p_id:"accepted-ride"});
   });
 
+  it("Agendada validates 30-minute minimum, reuses route and confirms only after RPC",async()=>{
+    api.rpc.mockImplementation(async(name:string)=>name==="schedule_caronaa_ride"
+      ?{data:"scheduled-test-uuid",error:null}:{data:[],error:null});
+    render(<Harness/>);
+    fireEvent.click(screen.getByRole("button",{name:"Agendada"}));
+    fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    const field=screen.getByLabelText("Data e hora do agendamento") as HTMLInputElement;
+    const near=new Date(Date.now()+10*60000);
+    const local=(date:Date)=>[
+      date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0"),
+    ].join("-")+"T"+String(date.getHours()).padStart(2,"0")+":"+String(date.getMinutes()).padStart(2,"0");
+    fireEvent.change(field,{target:{value:local(near)}});
+    expect(screen.getByRole("button",{name:"Revisar Agendamento"})).toBeDisabled();
+    fireEvent.change(field,{target:{value:local(new Date(Date.now()+60*60000))}});
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Revisar Agendamento"})).not.toBeDisabled(),{timeout:3000});
+    expect(api.route).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button",{name:"Revisar Agendamento"}));
+    expect(screen.getByText(/Pix ou dinheiro direto ao motorista/)).toBeTruthy();
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Agendar Caronaa"}));});
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("schedule_caronaa_ride",expect.objectContaining({
+      p_service_mode:"EXCLUSIVE",p_vehicle_type:"CAR",p_reserved_entire_vehicle:true,
+    })));
+    expect(screen.getByText("Carona agendada! Seus dados foram salvos.")).toBeTruthy();
+    expect(screen.getByText("Aguardando motorista")).toBeTruthy();
+    expect(api.route).toHaveBeenCalledTimes(1);
+  });
+
+  it("Agendada never pretends success when scheduling RPC is absent",async()=>{
+    api.rpc.mockImplementation(async(name:string)=>name==="schedule_caronaa_ride"
+      ?{data:null,error:{code:"PGRST202"}}:{data:[],error:null});
+    render(<Harness/>);
+    fireEvent.click(screen.getByRole("button",{name:"Agendada"}));
+    fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    const later=new Date(Date.now()+90*60000);
+    const local=[later.getFullYear(),String(later.getMonth()+1).padStart(2,"0"),String(later.getDate()).padStart(2,"0")].join("-")+"T"+
+      String(later.getHours()).padStart(2,"0")+":"+String(later.getMinutes()).padStart(2,"0");
+    fireEvent.change(screen.getByLabelText("Data e hora do agendamento"),{target:{value:local}});
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Revisar Agendamento"})).not.toBeDisabled(),{timeout:3000});
+    fireEvent.click(screen.getByRole("button",{name:"Revisar Agendamento"}));
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Agendar Caronaa"}));});
+    expect(screen.queryByText("Carona agendada! Seus dados foram salvos.")).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+  });
+
 });
