@@ -28,6 +28,7 @@ export function ProfessionalAvailabilityPage() {
   const [ready,setReady]=useState(false);
   const [busy,setBusy]=useState(false);
   const [enabled,setEnabled]=useState(false);
+  const [activeQuickRide,setActiveQuickRide]=useState(false);
   const [authorized,setAuthorized]=useState(false);
   const [blocked,setBlocked]=useState(false);
   const [pilotEnabled,setPilotEnabled]=useState(false);
@@ -386,7 +387,7 @@ export function ProfessionalAvailabilityPage() {
       </button>}
     </section>
     {accuracyWarning && enabled && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">GPS com precisão reduzida (acima de 100 m). Aproxime-se de uma janela ou vá para um local com céu aberto. A sincronização continua ativa; confirme sua posição antes de aceitar corridas.</p>}
-    <section aria-label="Mapa do motorista" className="space-y-3 rounded-2xl border p-3 sm:p-4">
+    {!activeQuickRide&&<section aria-label="Mapa do motorista" className="space-y-3 rounded-2xl border p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${fresh ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
@@ -415,8 +416,9 @@ export function ProfessionalAvailabilityPage() {
           mapFix?.simulated ? "A posição simulada é apenas para homologação e não recebe pedidos reais." :
           "Nenhuma posição válida publicada. O município do cadastro não substitui o GPS."}
       </p>
-    </section>
+    </section>}
     <QuickRideDriverQueue
+      onActiveChange={setActiveQuickRide}
       municipality={municipality}
       online={enabled && authorized && !blocked}
       gpsReady={fresh}
