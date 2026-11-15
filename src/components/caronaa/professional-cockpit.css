@@ -28,7 +28,6 @@
   box-shadow: 0 8px 25px rgba(0,0,0,.28);
   backdrop-filter: blur(16px);
 }
-.professional-cockpit__card p, .professional-cockpit__details p { color: #f2f2f2; }
 .professional-cockpit__card button, .professional-cockpit__right button { min-height: 44px; }
 .professional-cockpit__card button[class*="bg-primary"] { background: var(--driver-yellow); color: #121212; }
 .professional-cockpit__card a { color: var(--driver-yellow); }
