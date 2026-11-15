@@ -91,10 +91,12 @@ export function useActiveRole() {
     }
     const userId=auth.user.id;
     userRef.current=userId;
-    const [{data:profile,error:profileError},{data:ready,error:readyError}]=await Promise.all([
+    const [{data:profile,error:profileError},{data:roleProfile},{data:ready,error:readyError}]=await Promise.all([
       (supabase as any).from("profiles")
         .select("vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_type,vehicle_seats")
         .eq("id",userId).maybeSingle(),
+      // Optional: active_role may not exist in older versions of profiles.
+      (supabase as any).from("profiles").select("active_role").eq("id",userId).maybeSingle(),
       // This RPC is expected to validate the authenticated user on the server.
       (supabase as any).rpc("is_driver_ready",{p_user_id:userId}),
     ]);
@@ -105,6 +107,7 @@ export function useActiveRole() {
     const vehicleType=parseVehicleType(row?.vehicle_type);
     setState(prev=>({
       ...prev,vehicleStatus:getVehicleStatus(row),
+      activeRole:parseActiveRole(roleProfile?.active_role??roleProfile,prev.activeRole),
       isDriverEligible:readyFromRpc(ready),
       vehicleType,vehicleSeats:normalizeVehicleSeats(vehicleType,row?.vehicle_seats),
       loading:false,error:null,
