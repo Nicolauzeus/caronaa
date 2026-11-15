@@ -18,11 +18,12 @@ export type ActiveDriverRide={
 };
 
 export function QuickRideDriverQueue({
-  municipality,online,gpsReady,onActiveChange,onActiveRideChange,
+  municipality,online,gpsReady,onActiveChange,onActiveRideChange,onHasPendingChange,
 }:{
   municipality:string;online:boolean;gpsReady:boolean;
   onActiveChange?:(hasActive:boolean)=>void;
   onActiveRideChange?:(ride:ActiveDriverRide|null)=>void;
+  onHasPendingChange?:(value:boolean)=>void;
 }) {
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
@@ -36,6 +37,7 @@ export function QuickRideDriverQueue({
   const [completedDismissed,setCompletedDismissed]=useState<string|null>(null);
   const lastCompletedVisible=lastCompleted!==null && completedDismissed!==lastCompleted &&
     (()=>{try{return window.localStorage.getItem("caronaa-driver-dismissed:"+lastCompleted)!=="1";}catch{return true}})();
+  useEffect(()=>{onHasPendingChange?.(queue.length>0 || lastCompletedVisible);},[queue.length,lastCompletedVisible,onHasPendingChange]);
   const releaseCompleted=()=>{
     if(!lastCompleted)return;
     try{
