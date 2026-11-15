@@ -16,6 +16,8 @@ export type ApproximateProfessionalDriver = {
 type Props = {
   pickupPreview?: StrictPickupPreview | null;
   immersive?: boolean;
+  routeManagedExternally?: boolean;
+  plannedRoute?: {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number}|null;
   userPosition: UserPosition | null;
   professionalDrivers?: ApproximateProfessionalDriver[];
   origin?: Point;
