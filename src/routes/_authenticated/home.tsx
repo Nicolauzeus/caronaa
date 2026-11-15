@@ -583,6 +583,11 @@ function Home() {
             originPoint={originLocation}
             originMunicipality={resolvedAddress?.city ?? ""}
             gender={gender}
+            onDestinationChange={(label,details)=>{
+              setDestination(label);
+              setDestinationLocation(details);
+              setConfirmedReviewKey(null);
+            }}
           />
         </InteractiveBottomSheet>
         {selectingOrigin && (
