@@ -51,9 +51,11 @@ export function ShellJourneyPlanner({
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
-  const [vehicle,setVehicle]=useState<Vehicle>("CAR");
+  const [exclusiveVehicle,setExclusiveVehicle]=useState<Vehicle>("CAR");
+  const [onRouteVehicle,setOnRouteVehicle]=useState<Vehicle>("CAR");
   const [mode,setMode]=useState<UnifiedFareMode>("EXCLUSIVE");
   const [seats,setSeats]=useState(1);
+  const vehicle=mode==="EXCLUSIVE"?exclusiveVehicle:onRouteVehicle;
   const [entireCar,setEntireCar]=useState(false);
   const [route,setRoute]=useState<ShellRoute|null>(null);
   const [prices,setPrices]=useState<{ON_ROUTE:UnifiedFareResult;EXCLUSIVE:UnifiedFareResult}|null>(null);
@@ -125,15 +127,15 @@ export function ShellJourneyPlanner({
   useEffect(()=>{
     if(!route){setPrices(null);return;}
     let active=true;
-    const onRouteSeats=vehicle==="MOTO"?1:entireCar?3:seats;
+    const onRouteSeats=onRouteVehicle==="MOTO"?1:entireCar?3:seats;
     void Promise.all([
-      quoteUnifiedFare({distanceKm:route.distanceKm,mode:"ON_ROUTE",vehicleType:vehicle,seats:onRouteSeats}),
-      quoteUnifiedFare({distanceKm:route.distanceKm,mode:"EXCLUSIVE",vehicleType:vehicle}),
+      quoteUnifiedFare({distanceKm:route.distanceKm,mode:"ON_ROUTE",vehicleType:onRouteVehicle,seats:onRouteSeats}),
+      quoteUnifiedFare({distanceKm:route.distanceKm,mode:"EXCLUSIVE",vehicleType:exclusiveVehicle}),
     ]).then(([ON_ROUTE,EXCLUSIVE])=>{
       if(active)setPrices({ON_ROUTE,EXCLUSIVE});
     }).catch(()=>{if(active){setPrices(null);setRouteError("Não foi possível calcular a estimativa.");}});
     return()=>{active=false;};
-  },[route,vehicle,seats,entireCar]);
+  },[route,onRouteVehicle,exclusiveVehicle,seats,entireCar]);
 
   // The countdown is UI-only until the booking/dispatch RPC is integrated.
   // Never report a fabricated acceptance, payment or notification.
@@ -190,8 +192,9 @@ export function ShellJourneyPlanner({
     if(details && valid(details))onSnapChange?.("half");
   },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange]);
 
-  const changeVehicle=(value:Vehicle)=>{
-    setVehicle(value);
+  const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
+    if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);return;}
+    setOnRouteVehicle(value);
     if(value==="MOTO"){setSeats(1);setEntireCar(false);}
   };
   const start=()=>{
@@ -215,7 +218,7 @@ export function ShellJourneyPlanner({
     if(waitlistBusy || !valid(destinationPoint) || !originMunicipality.trim())return;
     setWaitlistBusy(true);setFeedback("");
     try{
-      const onRouteSeats=vehicle==="MOTO"?1:entireCar?3:seats;
+      const onRouteSeats=onRouteVehicle==="MOTO"?1:entireCar?3:seats;
       const {error}=await (supabase as any).rpc("register_flash_waitlist",{
         p_origin_municipality:originMunicipality.trim(),
         p_destination_municipality:destinationPoint.city??null,
@@ -250,9 +253,9 @@ export function ShellJourneyPlanner({
       </p>
       <div className="grid grid-cols-2 gap-2">
         {(["CAR","MOTO"] as const).map(value=><button key={value} type="button"
-          onClick={()=>{setMode(kind);changeVehicle(value);}}
-          aria-pressed={mode===kind&&vehicle===value}
-          className={selectedButton(mode===kind&&vehicle===value)}>
+          onClick={()=>{setMode(kind);changeVehicle(value,kind);}}
+          aria-pressed={(kind==="EXCLUSIVE"?exclusiveVehicle:onRouteVehicle)===value}
+          className={selectedButton((kind==="EXCLUSIVE"?exclusiveVehicle:onRouteVehicle)===value)}>
           {value==="CAR"?<CarFront size={17} className="mx-auto mb-1"/>:<Bike size={17} className="mx-auto mb-1"/>}
           {value==="CAR"?"Carro":"Moto"}
         </button>)}
@@ -260,20 +263,20 @@ export function ShellJourneyPlanner({
       {kind==="ON_ROUTE"&&mode==="ON_ROUTE"&&<div className="mt-3 space-y-2">
         <label className="flex items-center justify-between gap-3 text-sm">
           <span>Vagas</span>
-          <select aria-label="Quantidade de vagas" value={vehicle==="MOTO"?1:entireCar?3:seats}
-            disabled={vehicle==="MOTO"||entireCar}
+          <select aria-label="Quantidade de vagas" value={onRouteVehicle==="MOTO"?1:entireCar?3:seats}
+            disabled={onRouteVehicle==="MOTO"||entireCar}
             onChange={event=>setSeats(Number(event.target.value))}
             className="min-h-11 rounded-lg border border-white/25 bg-[#121212] px-4 text-white">
-            {Array.from({length:vehicle==="MOTO"?1:3},(_,i)=>i+1)
+            {Array.from({length:onRouteVehicle==="MOTO"?1:3},(_,i)=>i+1)
               .map(value=><option value={value} key={value}>{value}</option>)}
           </select>
         </label>
-        {vehicle==="CAR"&&<label className="flex min-h-11 items-center justify-between gap-2 text-xs">
+        {onRouteVehicle==="CAR"&&<label className="flex min-h-11 items-center justify-between gap-2 text-xs">
           Reservar veículo inteiro (3 vagas)
           <input type="checkbox" checked={entireCar} onChange={e=>setEntireCar(e.target.checked)}
             className="size-5 accent-[#FFBB00]"/>
         </label>}
-        {vehicle==="CAR"&&entireCar&&<p className="text-xs text-white/70">O bloqueio das outras vagas só vale após o servidor confirmar a reserva.</p>}
+        {onRouteVehicle==="CAR"&&entireCar&&<p className="text-xs text-white/70">O bloqueio das outras vagas só vale após o servidor confirmar a reserva.</p>}
       </div>}
     </div>
   );
@@ -324,7 +327,7 @@ export function ShellJourneyPlanner({
         <p><strong>Destino:</strong> {destination||"Não selecionado"}</p>
         <p><strong>Modalidade:</strong> {mode==="EXCLUSIVE"?
           "Exclusiva ("+(vehicle==="CAR"?"Carro":"Moto")+")":
-          "Na Rota ("+(vehicle==="MOTO"?1:entireCar?3:seats)+" vagas)"} </p>
+          "Na Rota ("+(onRouteVehicle==="MOTO"?1:entireCar?3:seats)+" vagas)"} </p>
         <p className="font-[family-name:var(--font-display)] text-2xl font-black text-[#FFBB00]">
           {selectedPrice?formatBrl(selectedPrice.totalFare):"Calculando..."}
         </p>
