@@ -181,14 +181,15 @@ export function GoogleHomeRideMap({
       add(pickupPreview.passenger, "Origem do passageiro", "passenger");
       add(pickupPreview.pickup.point, pickupPreview.pickup.label, "meeting");
     }
-    professionalDrivers.forEach((driver) =>
+    professionalDrivers.forEach((driver) => {
+      const isMoto = driver.vehicle_type === "MOTO";
       add(driver, driver.simulated
-        ? "MINHA SIMULAÇÃO DE HOMOLOGAÇÃO · centro municipal fictício · sem viagens"
+        ? "MINHA SIMULAÇÃO DE HOMOLOGAÇÃO · posição fictícia · sem viagens"
         : driver.is_self
           ? "MEU VEÍCULO · GPS real aproximado · visualização de teste"
-          : "Motorista disponível no radar · posição aproximada · ainda não atribuído",
-        "availableDriver"),
-    );
+          : (isMoto ? "Mototaxista" : "Motorista") + " disponível no radar · posição aproximada · ainda não atribuído",
+        isMoto ? "availableMoto" : "availableDriver");
+    });
     circle.current?.setMap(null);
     circle.current = null;
     circle.current = null;
