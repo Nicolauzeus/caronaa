@@ -10,7 +10,26 @@ const api = vi.hoisted(() => ({
   rpc: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
+vi.mock("@tanstack/react-start", () => {
+  const chain = {
+    server: vi.fn(() => chain),
+    client: vi.fn(() => chain),
+    middleware: vi.fn(() => chain),
+  };
+  return {
+    useServerFn: (fn: unknown) => fn,
+    createMiddleware: vi.fn(() => chain),
+  };
+});
+vi.mock("./QuickRideOperationalMap",()=>({
+  QuickRideOperationalMap:()=>null,
+}));
+vi.mock("./QuickRideRatingModal",()=>({
+  QuickRideRatingModal:()=>null,
+}));
+vi.mock("@/lib/quick-rides/use-quick-ride-realtime",()=>({
+  useQuickRideRealtime:()=>undefined,
+}));
 vi.mock("@/lib/quick-rides/quick-ride.functions", () => ({
   getQuickRideCoverage: api.coverage,
   getQuickRideFarePreview: api.preview,
@@ -42,6 +61,7 @@ const enabled = {
   radar:true,dispatch:true,
 };
 beforeEach(()=>{
+  window.localStorage.clear();
   vi.clearAllMocks();
   api.coverage.mockResolvedValue(enabled);
   api.rpc.mockResolvedValue({data:[],error:null});
@@ -162,15 +182,41 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     expect(api.preview).not.toHaveBeenCalled();
   });
 
-  it("mostra o QR Pix de uma corrida concluída, sem recotar preço",async()=>{
-    api.rpc.mockResolvedValue({data:[{
-      id:"0f066ee8-bb89-47e2-85cf-20121e1b021f",
-      role:"PASSENGER",status:"COMPLETED",vehicle_type:"MOTO",
-      municipality:"Redenção",
-    }],error:null});
+  it("permite nova cotação e persiste a liberação da corrida concluída", async()=>{
+    const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";
+    api.rpc.mockImplementation(async (name:string)=>{
+      if(name==="quick_ride_my_requests")return {data:[{
+        id:completed,role:"PASSENGER",status:"COMPLETED",
+        vehicle_type:"MOTO",municipality:"Redenção",
+      }],error:null};
+      return {data:[],error:null};
+    });
     render(<QuickRideHomePanel {...basic}/>);
-    expect(await screen.findByText("QR Pix pronto: 0f066ee8-bb89-47e2-85cf-20121e1b021f")).toBeInTheDocument();
-    expect(api.preview).not.toHaveBeenCalled();
+    expect(await screen.findByText("QR Pix pronto: "+completed)).toBeInTheDocument();
+    expect(screen.getByRole("button",{name:/Concluir e fazer nova corrida/i})).toBeInTheDocument();
+    // A historical COMPLETED must not block a fresh quoted trip.
+    await waitFor(()=>expect(api.preview).toHaveBeenCalled(),{timeout:3500});
+    fireEvent.click(screen.getByRole("button",{name:/Concluir e fazer nova corrida/i}));
+    expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBe("1");
+    expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
+    expect(await screen.findByRole("button",{name:/Confirmar corrida por/})).toBeEnabled();
+    fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));
+    await waitFor(()=>expect(api.submit).toHaveBeenCalled());
+  });
+
+  it("mantém dispensada a corrida concluída após remontar o painel",async()=>{
+    const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";
+    window.localStorage.setItem("caronaa-completed-dismissed:"+completed,"1");
+    api.rpc.mockImplementation(async (name:string)=>
+      name==="quick_ride_my_requests"
+        ?{data:[{id:completed,role:"PASSENGER",status:"COMPLETED",
+                 vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
+        :{data:[],error:null});
+    render(<QuickRideHomePanel {...basic}/>);
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_my_requests"));
+    await waitFor(()=>expect(api.preview).toHaveBeenCalled(),{timeout:3500});
+    expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
+    expect(await screen.findByRole("button",{name:/Confirmar corrida por/})).toBeEnabled();
   });
 
 });
