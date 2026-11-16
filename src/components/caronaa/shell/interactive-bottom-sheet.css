@@ -7,16 +7,18 @@
     height: calc(100% - 86px) !important;
     min-height: 0 !important;
     border-radius: 24px;
-    border: 1px solid rgba(255,187,0,.22);
-    box-shadow: 0 20px 52px rgba(0,0,0,.28);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    box-shadow: var(--journey-panel-shadow);
     transition: none;
   }
   .caronaa-journey-sheet__handle { display:none; }
-  .caronaa-journey-sheet__content { padding: 18px 18px 24px !important; }
+  .caronaa-journey-sheet__content { padding: 12px 18px 0 !important; }
 }
 @media (max-width: 767px) {
-  .caronaa-journey-sheet { border-color: rgba(255,187,0,.24); }
+  .caronaa-journey-sheet { border-color: color-mix(in srgb, var(--primary) 24%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
   .caronaa-journey-sheet { transition: none !important; }
 }
+
+.caronaa-journey-sheet__content:has(.flex.h-full) { overflow: hidden; padding-bottom: 0; }

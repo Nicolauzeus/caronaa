@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Bike, CarFront, Clock3, MapPin, Search, UserRound } from "lucide-react";
@@ -40,10 +41,12 @@ type Props = {
   onFlashVehicleChange?:(vehicle:Vehicle)=>void;
   flashRideActive?:boolean;
   flashFare?:QuickRideFarePreview|null;
+  flashFares?:Partial<Record<Vehicle,QuickRideFarePreview>>;
+  onFlashActionContainer?:(element:HTMLElement|null)=>void;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
   !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
-    Math.abs(p.lat!)<=90 && Math.abs(p.lng!)<=180;
+    typeof p.lat==="number" && typeof p.lng==="number" && Math.abs(p.lat)<=90 && Math.abs(p.lng)<=180;
 const selectedButton=(chosen:boolean)=>"min-h-11 rounded-xl border p-3 text-sm font-bold transition-colors "+
   (chosen?"border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]":"border-white/20 bg-white/5 text-white");
 const localDateTime=(offsetMs=0)=>new Date(Date.now()+offsetMs-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -63,7 +66,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
-  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,
+  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},onFlashActionContainer,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -116,7 +119,7 @@ export function ShellJourneyPlanner({
     lastOriginRevision.current=originRevision;
     const from=frozenOrigin.current;
     if(!from){setRoute(null);onRouteRef.current?.(null,null);return;}
-    const to:Point={lat:destinationPoint.lat!,lng:destinationPoint.lng!};
+    const to:Point={lat:destinationPoint.lat,lng:destinationPoint.lng};
     const key=[from.lat,from.lng,to.lat,to.lng].map(n=>n.toFixed(6)).join(":");
     selectedKey.current=key;
     let alive=true;
@@ -141,7 +144,7 @@ export function ShellJourneyPlanner({
       if(alive){setRouteError("Não foi possível traçar a rota. Tente escolher o destino novamente.");}
     }).finally(()=>{if(alive)setRouteBusy(false);});
     return()=>{alive=false;};
-  },[destinationPoint?.lat,destinationPoint?.lng,originRevision]);
+  },[destinationPoint?.lat,destinationPoint?.lng,originRevision,originPoint?.lat,originPoint?.lng]);
 
   useEffect(()=>{
     if(!route){setPrices(null);return;}
@@ -232,7 +235,7 @@ export function ShellJourneyPlanner({
     const from=frozenOrigin.current;
     const result=await searchOnRouteMatches({
       originLat:from.lat,originLng:from.lng,
-      destLat:destinationPoint.lat!,destLng:destinationPoint.lng!,
+      destLat:destinationPoint.lat,destLng:destinationPoint.lng,
       seats:onRouteVehicle==="MOTO"?1:entireCar?3:seats,
       targetTime:serviceType==="AGENDADA"&&validScheduleDate(scheduledAt)
         ?new Date(scheduledAt):undefined,
@@ -290,21 +293,21 @@ export function ShellJourneyPlanner({
       <div role="radiogroup" aria-label="Opções de viagem" className="space-y-2">
         {(["MOTO","CAR"] as const).map(type=>{
           const checked=mode==="EXCLUSIVE"&&exclusiveVehicle===type;
-          const price=flashFare?.vehicleType===type&&Date.parse(flashFare.expiresAt)>Date.now()
-            ?formatBrl(flashFare.customerPaysCents/100):null;
-          return <button type="button" key={type} role="radio" aria-checked={checked}
+          const fare=flashFares[type]??(flashFare?.vehicleType===type?flashFare:null);
+          const price=fare&&Date.parse(fare.expiresAt)>Date.now()?formatBrl(fare.customerPaysCents/100):null;
+          return <Button variant="ghost" type="button" key={type} role="radio" aria-checked={checked}
             disabled={flashRideActive}
             onClick={()=>{if(flashRideActive)return;setMode("EXCLUSIVE");changeVehicle(type,"EXCLUSIVE");}}
-            className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors motion-reduce:transition-none ${checked?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20 bg-white/[0.06]"} disabled:opacity-60`}>
+            className={`grid h-auto min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-lg border px-3 py-3 text-left motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
             {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:
               <CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
             <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto":"Flash Carro"}</strong>
               <small className="block text-xs text-white/65">{type==="MOTO"?"Direto ao destino":"Viagem exclusiva"}</small></span>
-            <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">{price||"Ver preço"}
+            <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">{price||(valid(destinationPoint)?"Consultando…":"—")}
               {price&&<small className="block text-[10px] font-normal text-white/65">Preço oficial</small>}
             </span>
             <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${checked?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>
-          </button>;
+          </Button>;
         })}
         <button type="button" role="radio" aria-checked={mode==="ON_ROUTE"}
           disabled={flashRideActive}
@@ -418,8 +421,17 @@ export function ShellJourneyPlanner({
     </div>
   );
 
-  return <div className={snap==="peek"?"space-y-1":"space-y-4 pb-4"}
-    style={{fontFamily:"Manrope, sans-serif"}}>
+  const fixedFlash=serviceType==="FLASH"&&snap!=="peek";
+  const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
+    <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint}
+      variant="glass" placeholder="Busque seu destino" onChange={pickDestination}/>
+    <Button variant="ghost" type="button" onClick={onAdjustOrigin}
+      className="h-auto min-h-11 w-full justify-start whitespace-normal px-1 text-left text-xs text-primary">
+      <MapPin size={16}/><span className="min-w-0 break-words">Origem: {originLabel||"Escolher saída"}</span>
+    </Button>
+    <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
+  </div>;
+  return <div className={fixedFlash?"flex h-full min-h-0 flex-col font-sans":snap==="peek"?"space-y-1":"space-y-4 pb-4"}>
     {snap==="peek"&&<>
       <div className="flex min-w-0 gap-1">
         <button type="button" onClick={()=>onSnapChange?.("half")}
@@ -435,7 +447,7 @@ export function ShellJourneyPlanner({
       </div>
       <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
     </>}
-    {snap==="half"&&<>
+    {snap==="half"&&serviceType!=="FLASH"&&<>
       <LocationAutocomplete id="shell-destination" label="Para onde vamos?"
         value={destination} selectedLocation={destinationPoint}
         variant="glass" placeholder="Busque seu destino"
@@ -515,14 +527,17 @@ export function ShellJourneyPlanner({
         {scheduleError&&<p role="alert" className="text-sm text-[#FFBB00]">{scheduleError}</p>}
       </>}
     </>}
-    {snap==="full"&&serviceType==="FLASH"&&<>
-      {onRouteConfirmedId&&<section role="status" className="rounded-2xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 p-4">
-        <p className="font-[Sora] font-extrabold text-[#FFBB00]">Carona Na Rota confirmada</p>
-        <p className="mt-1 text-sm">Encontro em {selectedMatch?.pickupMeeting.poiName||"ponto confirmado"}.</p>
-      </section>}
-      {!flashRideActive&&flashChoices}
-      {!flashRideActive&&flashOnRoute}
-      {mode==="EXCLUSIVE"&&flashOperationalPanel}
+    {fixedFlash&&<>
+      {!flashRideActive&&itinerary}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-3">
+        {onRouteConfirmedId&&<p role="status" className="text-primary">Carona Na Rota confirmada · {selectedMatch?.pickupMeeting.poiName}</p>}
+        {!flashRideActive&&flashChoices}
+        {!flashRideActive&&flashOnRoute}
+        <div className={mode==="EXCLUSIVE"?"":"hidden"}>{flashOperationalPanel}</div>
+      </div>
+      {mode==="EXCLUSIVE"&&!flashRideActive&&<div ref={onFlashActionContainer}
+        className="shrink-0 border-t border-caronaa-white/15 bg-secondary py-3"/>}
     </>}
+    {snap==="peek"&&serviceType==="FLASH"&&<div className="hidden">{flashOperationalPanel}</div>}
   </div>;
 }
