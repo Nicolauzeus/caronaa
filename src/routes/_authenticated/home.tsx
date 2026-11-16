@@ -21,6 +21,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
+import type { ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
+import { mapQuickRadarDrivers } from "@/lib/quick-rides/quick-radar-markers";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
 import type { QuickRideCoverage, QuickRideFarePreview } from "@/lib/quick-rides/quick-ride.functions";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
@@ -114,6 +116,7 @@ function Home() {
   const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
   const [quickMunicipality,setQuickMunicipality]=useState("");
   const [quickDriverCount,setQuickDriverCount]=useState(0);
+  const [quickDrivers,setQuickDrivers]=useState<ApproximateProfessionalDriver[]>([]);
   const [quickDriverLoading,setQuickDriverLoading]=useState(false);
   const [quickDriverError,setQuickDriverError]=useState("");
   const onQuickCoverage=useCallback((value:QuickRideCoverage|null)=>setQuickMunicipality(value?.radar&&value.municipality?value.municipality:""),[]);
@@ -258,7 +261,7 @@ function Home() {
   };
 
   useEffect(()=>{
-    if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){setQuickDriverCount(0);setQuickDriverError("");setQuickDriverLoading(false);return;}
+    if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;}
     let alive=true;
     const refresh=async()=>{
       if(alive)setQuickDriverLoading(true);
@@ -266,9 +269,11 @@ function Home() {
         const {data,error}=await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_municipality:quickMunicipality,p_vehicle:quickVehicle});
         if(!alive)return;
         if(error)throw error;
-        setQuickDriverCount((Array.isArray(data)?data:[]).filter((item:any)=>!item.is_self).length);
+        const approvedDrivers=mapQuickRadarDrivers(data,quickVehicle);
+        setQuickDrivers(approvedDrivers);
+        setQuickDriverCount(approvedDrivers.length);
         setQuickDriverError("");
-      }catch{if(alive){setQuickDriverCount(0);setQuickDriverError("Radar indisponível. Tente novamente.");}}
+      }catch{if(alive){setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("Radar indisponível. Tente novamente.");}}
       finally{if(alive)setQuickDriverLoading(false);}
     };
     void refresh();
@@ -294,6 +299,7 @@ function Home() {
             role="DRIVER" vehicleType={driverFlashRide.vehicleType} immersive/>:
           <HomeRideMap
             immersive
+            professionalDrivers={quickDrivers}
             userPosition={location.position}
             plannedRoute={shellSelectedDestination?shellRoute:null}
             routeManagedExternally={shellSelectedDestination}
