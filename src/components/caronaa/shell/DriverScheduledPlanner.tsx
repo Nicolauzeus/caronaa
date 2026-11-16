@@ -5,11 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { quoteUnifiedFare } from "@/lib/pricing/unified-fare-engine";
-import { emptyTravelPreferences, type TravelPreferences } from "@/lib/travel-preferences";
-import { loadTravelPreferences } from "@/lib/travel-preferences-service";
 import { formatBrl } from "@/lib/ride-cost";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
-import { TravelPreferenceFields } from "@/components/caronaa/TravelPreferences";
 import { DriverPlatformFees } from "@/components/caronaa/DriverPlatformFees";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
@@ -68,9 +65,7 @@ export function DriverScheduledPlanner({
   const [scheduledAt,setScheduledAt]=useState("");
   const [seats,setSeats]=useState(vehicleType==="MOTO"?1:Math.max(1,Math.min(3,maxSeats)));
   const [bookingMode,setBookingMode]=useState<DriverBookingMode>("ALL");
-  const [preferences,setPreferences]=useState<TravelPreferences>({...emptyTravelPreferences});
   const [womenOnly,setWomenOnly]=useState(false);
-  const [airConditioning,setAirConditioning]=useState(false);
   const [route,setRoute]=useState<ShellRoute|null>(null);
   const [price,setPrice]=useState<number|null>(null);
   const [routeBusy,setRouteBusy]=useState(false);
@@ -95,10 +90,10 @@ export function DriverScheduledPlanner({
   const callbackRef=useRef(onRouteChange);callbackRef.current=onRouteChange;
   const loadOpportunityRef=useRef<()=>Promise<void>>(async()=>{});
 
-  useEffect(()=>{let mounted=true;void loadTravelPreferences().then(x=>{if(mounted)setPreferences(x);}).catch(()=>undefined);
-    return()=>{mounted=false;routeCache.current.clear();};
+  useEffect(()=>{
+    return()=>{routeCache.current.clear();};
   },[]);
-  useEffect(()=>{if(vehicleType==="MOTO"){setSeats(1);setAirConditioning(false);}else setSeats(s=>Math.min(3,Math.max(1,s)));},[vehicleType]);
+  useEffect(()=>{if(vehicleType==="MOTO"){setSeats(1);}else setSeats(s=>Math.min(3,Math.max(1,s)));},[vehicleType]);
   useEffect(()=>{if(gender!=="FEMININO")setWomenOnly(false);},[gender]);
 
   useEffect(()=>{
@@ -202,8 +197,7 @@ export function DriverScheduledPlanner({
         origin:fixedOriginLabel.current||"Origem confirmada",destination,
         departureAt:new Date(scheduledAt).toISOString(),routePath:route.routePath,
         bookingMode,vehicleType,seats:vehicleType==="MOTO"?1:seats,
-        suggestedFarePerSeat:price,preferences,womenOnly:gender==="FEMININO"&&womenOnly,
-        airConditioning:vehicleType==="CAR"&&airConditioning,
+        suggestedFarePerSeat:price,womenOnly:gender==="FEMININO"&&womenOnly,
       });
       setPublishedId(id);setSeatsLeft(seats);
       toast.success("Carona agendada publicada.");
@@ -288,16 +282,10 @@ export function DriverScheduledPlanner({
                 "border-[#FFBB00] bg-[#FFBB00] text-[#121212]":"border-white/25 bg-white/5")}>{label}</button>)}
           </div>
         </fieldset>
-        <TravelPreferenceFields kind="offer" value={preferences} onChange={setPreferences}/>
-        {vehicleType==="CAR"&&<label className="flex min-h-11 items-center justify-between gap-2 text-sm">
-          Ar-condicionado disponível
-          <input type="checkbox" checked={airConditioning} onChange={e=>setAirConditioning(e.target.checked)}
-            className="size-5 accent-[#FFBB00]"/>
-        </label>}
         {gender==="FEMININO"&&<WomenOnlyToggle kind="offer" gender={gender}
           checked={womenOnly} onChange={setWomenOnly}/>}
         <p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-          Valor sugerido por vaga: <strong className="text-[#FFBB00]">{price!==null?formatBrl(price):"Calculando..."}</strong>
+          Valor sugerido por vaga: <strong className="text-[#FFBB00]">{price!==null?formatBrl(price):routeBusy?"Calculando...":routeError?"Indisponível":"Escolha o destino"}</strong>
         </p>
         <p className="text-xs text-white/70">{routeBusy?"Calculando rota...":routeError|| (route?
           route.distanceKm.toFixed(1)+" km pelas ruas · sem recálculo ao editar horário ou vagas":

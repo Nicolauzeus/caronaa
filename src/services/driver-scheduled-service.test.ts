@@ -23,8 +23,18 @@ describe("driver scheduled RPC contracts",()=>{
     expect(await publishScheduledDriverOffer(draft)).toBe("offer-1");
     expect(mocks.rpc).toHaveBeenCalledWith("publish_scheduled_driver_offer",expect.objectContaining({
       p_route_path:{type:"LineString",coordinates:[[-38.53,-3.73],[-38.51,-3.75]]},
-      p_booking_mode:"ALL",p_available_seats:3,p_air_conditioning:true,
+      p_booking_mode:"ALL",p_available_seats:3,p_total_price:6,
+      p_ride_date:"2030-11-16",p_departure_time:"10:00:00",
+      p_origin_lat:-3.73,p_destination_lng:-38.51,p_women_only:false,
     }));
+    const args=mocks.rpc.mock.calls[0][1];
+    expect(args).not.toHaveProperty("p_departure_at");
+    expect(args).not.toHaveProperty("p_preferences");
+  });
+  it("sends women-only offer flag to the server gender check",async()=>{
+    mocks.rpc.mockResolvedValue({data:{offer_id:"offer-2"},error:null});
+    await publishScheduledDriverOffer({...draft,womenOnly:true});
+    expect(mocks.rpc.mock.calls[0][1]).toMatchObject({p_women_only:true});
   });
   it("rejects motorcycle with more than one passenger",async()=>{
     await expect(publishScheduledDriverOffer({...draft,vehicleType:"MOTO",seats:2})).rejects.toMatchObject({

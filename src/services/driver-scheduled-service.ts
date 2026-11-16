@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { formatGeoJsonLineString, type RoadPoint } from "@/lib/road-routing";
+import { type RoadPoint } from "@/lib/road-routing";
 import type { TravelPreferences } from "@/lib/travel-preferences";
 
 export type DriverBookingMode="ALL"|"ON_ROUTE"|"EXCLUSIVE";
@@ -8,9 +8,9 @@ export type ScheduledDriverOfferDraft={
   origin:string;destination:string;departureAt:string;
   routePath:RoadPoint[];bookingMode:DriverBookingMode;
   vehicleType:DriverVehicleType;seats:number;
-  suggestedFarePerSeat:number;preferences:TravelPreferences;
+  suggestedFarePerSeat:number;preferences?:TravelPreferences;
   womenOnly:boolean;
-  airConditioning:boolean;
+  airConditioning?:boolean;
 };
 export type DriverOpportunity={
   requestId:string;passengerName:string;passengerAvatarUrl?:string;
@@ -51,20 +51,24 @@ export async function publishScheduledDriverOffer(draft:ScheduledDriverOfferDraf
     !seatsValid(draft.vehicleType,draft.seats)||
     !Number.isFinite(draft.suggestedFarePerSeat)||draft.suggestedFarePerSeat<0)
     throw new DriverScheduledError("INVALID_INPUT");
-  const geoJson=formatGeoJsonLineString(draft.routePath);
+  const first=draft.routePath[0],last=draft.routePath[draft.routePath.length-1];
+  if(!first||!last)throw new DriverScheduledError("INVALID_INPUT");
+  // Matches the live database signature. Schedule uses America/Fortaleza (fixed UTC-3).
+  const local=new Date(Date.parse(draft.departureAt)-3*60*60*1000).toISOString();
   try{
     const {data,error}=await (supabase as any).rpc("publish_scheduled_driver_offer",{
       p_origin:draft.origin.trim(),
       p_destination:draft.destination.trim(),
-      p_departure_at:draft.departureAt,
-      p_route_path:geoJson,
+      p_origin_lat:first.lat,p_origin_lng:first.lng,
+      p_destination_lat:last.lat,p_destination_lng:last.lng,
+      p_ride_date:local.slice(0,10),
+      p_departure_time:local.slice(11,19),
+      p_available_seats:draft.seats,
+      p_total_price:draft.suggestedFarePerSeat,
       p_booking_mode:draft.bookingMode,
       p_vehicle_type:draft.vehicleType,
-      p_available_seats:draft.seats,
-      p_suggested_fare_per_seat:draft.suggestedFarePerSeat,
-      p_preferences:draft.preferences,
+      p_route_path:{type:"LineString",coordinates:draft.routePath.map(p=>[p.lng,p.lat])},
       p_women_only:draft.womenOnly,
-      p_air_conditioning:draft.airConditioning,
     });
     if(error)throw new DriverScheduledError(rpcCode(error));
     const row=object(data);
