@@ -57,8 +57,10 @@ export function loadGoogleMaps(browserKey: string): Promise<void> {
     script.src =
       "https://maps.googleapis.com/maps/api/js?key=" +
       encodeURIComponent(browserKey) +
-      "&v=weekly&language=pt-BR&region=BR&callback=" +
-      callback;
+      "&loading=async&v=weekly&language=pt-BR&region=BR&callback=" +
+      callback +
+      "&channel=" +
+      encodeURIComponent(import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID'] || "caronaa");
     script.async = true;
     script.onerror = () => finish(new Error("Google Maps load failed"));
     document.head.appendChild(script);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveGoogleMapsBrowserKey } from "./google-maps-key";
 describe("ordered public Google browser key", () => {
-  it("tries both server variables before the two public Vite bindings", () => {
+  it("uses only the dedicated browser bindings, never a private server key", () => {
     const server = {
       GOOGLE_MAPS_BROWSER_API_KEY: " browser ",
       GOOGLE_MAPS_API_KEY: "server",
@@ -16,14 +16,15 @@ describe("ordered public Google browser key", () => {
         { ...server, GOOGLE_MAPS_BROWSER_API_KEY: " " },
         vite,
       ),
-    ).toBe("server");
+    ).toBe("vite-browser");
     expect(resolveGoogleMapsBrowserKey({}, vite)).toBe("vite-browser");
     expect(
       resolveGoogleMapsBrowserKey(
         {},
         { ...vite, VITE_GOOGLE_MAPS_BROWSER_API_KEY: "" },
       ),
-    ).toBe("vite");
+    ).toBe("");
+    expect(resolveGoogleMapsBrowserKey({ GOOGLE_MAPS_API_KEY: "private-test" })).toBe("");
     expect(resolveGoogleMapsBrowserKey()).toBe("");
   });
 });
