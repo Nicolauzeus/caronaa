@@ -2,16 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
-import { Bike, CarFront, Clock3, MapPin, ShieldCheck, Users } from "lucide-react";
+import { Bike, CarFront, Clock3, Loader2, MapPin, ShieldCheck, Users } from "lucide-react";
 import type { FormLocationDetails } from "@/lib/location/types";
+import { validPoint } from "@/lib/location/use-user-location";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getQuickRideCoverage,
-  getQuickRideFarePreview,
-  registerQuickRideRegionInterest,
-  submitQuotedQuickRide,
-  type QuickRideCoverage,
-  type QuickRideFarePreview,
+  getQuickRideCoverage, getQuickRideFarePreview, registerQuickRideRegionInterest,
+  submitQuotedQuickRide, type QuickRideCoverage, type QuickRideFarePreview,
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
@@ -22,13 +19,11 @@ import { toast } from "sonner";
 type QuickVehicle = "CAR" | "MOTO";
 function friendlyQuickQuoteError(cause:unknown):string{
   const message=cause instanceof Error?cause.message:"";
-  if(/demorou|tempo limite|timeout/i.test(message))
-    return "A rota demorou para responder. Toque para tentar novamente.";
   if(/limite de cotações|muitas consultas/i.test(message))
     return "Muitas consultas em pouco tempo. Aguarde um minuto e tente novamente.";
   if(/não habilitada|fora da cobertura|ainda não|tarifa|intermunicipal/i.test(message))
     return "Esta modalidade ainda não está disponível neste trajeto.";
-  return "Não conseguimos calcular o preço deste trajeto agora. Tente novamente.";
+  return "Não foi possível calcular o preço agora.";
 }
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
 type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
@@ -36,14 +31,19 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  pickupNeedsConfirmation=false, onConfirmPickup, actionContainer, onFaresChange, onFarePendingChange, onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, onFareChange, shellMode=false, shellSnap="full", onOpenOperational,
+  locating=false, pickupNeedsConfirmation=false, onConfirmPickup, actionContainer,
+  onFaresChange, onFarePendingChange, onCoverage, onOperationalRideChange,
+  onRidePhaseChange, onDropoffPendingChange, onFareChange,
+  shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
   vehicle:QuickVehicle;onVehicleChange:(value:QuickVehicle)=>void;
   driverCount:number;driverLoading?:boolean;driverError?:string;
   gpsOriginIsImprecise?:boolean;
+  locating?:boolean;
   pickupNeedsConfirmation?:boolean;
+  /** Open the parent's explicit pickup dialog; this never creates a ride. */
   onConfirmPickup?:()=>void;
   actionContainer?:HTMLElement|null;
   onFaresChange?:(value:Partial<Record<QuickVehicle,QuickRideFarePreview>>)=>void;
@@ -53,9 +53,7 @@ export function QuickRideHomePanel({
   onRidePhaseChange?:(status:RideStatus|null)=>void;
   onDropoffPendingChange?:(pending:boolean)=>void;
   onFareChange?:(value:QuickRideFarePreview|null)=>void;
-  shellMode?:boolean;
-  shellSnap?:"peek"|"half"|"full";
-  onOpenOperational?:()=>void;
+  shellMode?:boolean;shellSnap?:"peek"|"half"|"full";onOpenOperational?:()=>void;
 }) {
   const availabilityFn=useServerFn(getQuickRideCoverage);
   const previewFn=useServerFn(getQuickRideFarePreview);
@@ -63,6 +61,7 @@ export function QuickRideHomePanel({
   const interestFn=useServerFn(registerQuickRideRegionInterest);
   const [coverage,setCoverage]=useState<QuickRideCoverage|null>(null);
   const [coverageLoading,setCoverageLoading]=useState(false);
+  const [coverageRefresh,setCoverageRefresh]=useState(0);
   const [quote,setQuote]=useState<QuickRideFarePreview|null>(null);
   const [quoteErrors,setQuoteErrors]=useState<Partial<Record<QuickVehicle,string>>>({});
   const [fares,setFares]=useState<Partial<Record<QuickVehicle,QuickRideFarePreview>>>({});
@@ -82,18 +81,24 @@ export function QuickRideHomePanel({
   const [timeoutCompletedId,setTimeoutCompletedId]=useState<string|null>(null);
   const [completedHidden,setCompletedHidden]=useState<string|null>(null);
   const mounted=useRef(true);
+  const submissionInFlight=useRef(false);
+  const retryInFlight=useRef(false);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
   const destinationLat=destinationPoint?.lat, destinationLng=destinationPoint?.lng;
-  const hasOrigin=Number.isFinite(originLat)&&Number.isFinite(originLng)&&!gpsOriginIsImprecise;
-  const hasDestination=Number.isFinite(destinationLat)&&Number.isFinite(destinationLng);
-  // The quote follows the selected itinerary, not every radar refresh.
+  const hasOriginCoordinates=validPoint(originPoint);
+  const hasOrigin=hasOriginCoordinates&&!gpsOriginIsImprecise;
+  const waitingForOrigin=locating&&!hasOriginCoordinates;
+  const hasDestination=validPoint(destinationPoint);
   const fieldsKey=JSON.stringify([origin,originLat,originLng,destination,destinationLat,destinationLng,shellMode?null:vehicle]);
   const coveragePointKey=JSON.stringify([originLat,originLng,shellMode?null:vehicle,gpsOriginIsImprecise]);
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
   const currentQuote=currentQuoteKey===fieldsKey?(shellMode?fares[vehicle]??null:quote):null;
   useEffect(()=>{onFaresChange?.(currentQuoteKey===fieldsKey?fares:{});},[fares,currentQuoteKey,fieldsKey,onFaresChange]);
   useEffect(()=>onFareChange?.(currentQuote),[currentQuote,onFareChange]);
-  useEffect(()=>{onFarePendingChange?.(coverageLoading||quoteLoading||Boolean(hasOrigin&&hasDestination&&!error&&coverageResolvedKey!==coveragePointKey));},[coverageLoading,quoteLoading,hasOrigin,hasDestination,error,coverageResolvedKey,coveragePointKey,onFarePendingChange]);
+  useEffect(()=>{
+    onFarePendingChange?.(waitingForOrigin||coverageLoading||quoteLoading||
+      Boolean(hasOrigin&&hasDestination&&!error&&coverageResolvedKey!==coveragePointKey));
+  },[waitingForOrigin,coverageLoading,quoteLoading,hasOrigin,hasDestination,error,coverageResolvedKey,coveragePointKey,onFarePendingChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
 
@@ -102,41 +107,33 @@ export function QuickRideHomePanel({
       ?{id:liveRide.id,status:liveRide.status,municipality:liveRide.municipality}:null);
   },[liveRide?.id,liveRide?.status,liveRide?.municipality,onOperationalRideChange]);
   useEffect(()=>()=>onOperationalRideChange?.(null),[onOperationalRideChange]);
-
   const shownCompletedRide=completedRide?.id!==completedHidden?completedRide:null;
   useEffect(()=>{onRidePhaseChange?.(liveRide?.status??(shownCompletedRide?"COMPLETED":null));},[liveRide?.id,liveRide?.status,shownCompletedRide?.id,onRidePhaseChange]);
   useEffect(()=>{
     if(!completedRide)return;
-    try {
-      if(window.localStorage.getItem(`caronaa-completed-dismissed:${completedRide.id}`)==="1")
-        setCompletedHidden(completedRide.id);
-    }catch{ /* fallback to in-memory dismissal */ }
+    try{
+      if(window.localStorage.getItem(`caronaa-completed-dismissed:${completedRide.id}`)==="1")setCompletedHidden(completedRide.id);
+    }catch{ /* in-memory dismissal remains available */ }
   },[completedRide?.id]);
   function releaseCompletedRide(){
     if(!completedRide)return;
-    try {
+    try{
       window.localStorage.setItem(`caronaa-completed-dismissed:${completedRide.id}`,"1");
       window.localStorage.setItem(`caronaa-rating-dismissed:${completedRide.id}`,"1");
-    }catch{ /* fallback to in-memory dismissal */ }
-    console.info("[CARONAA][F07][POST_TRIP] COMPLETED_RIDE_DISMISSED", { rideIdPrefix: completedRide.id.slice(0, 8) });
-    setCompletedHidden(completedRide.id);
-    setRatingDismissed(completedRide.id);
+    }catch{ /* in-memory dismissal remains available */ }
+    console.info("[CARONAA][F07][POST_TRIP] COMPLETED_RIDE_DISMISSED",{rideIdPrefix:completedRide.id.slice(0,8)});
+    setCompletedHidden(completedRide.id);setRatingDismissed(completedRide.id);
     setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
   }
+  useEffect(()=>{if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))setBoardingCode("");},[liveRide?.id,liveRide?.status]);
   useEffect(()=>{
-    if(!liveRide || !["ACCEPTED","ARRIVED"].includes(liveRide.status)){
-      setBoardingCode("");
-    }
-  },[liveRide?.id,liveRide?.status]);
-  useEffect(()=>{
-    if(!liveRide || liveRide.status!=="IN_PROGRESS"){setDropoff(null);return;}
+    if(!liveRide||liveRide.status!=="IN_PROGRESS"){setDropoff(null);return;}
     let cancelled=false;
     const load=async()=>{
       const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:liveRide.id});
       if(!cancelled&&!error)setDropoff(Array.isArray(data)?data[0]??null:null);
     };
-    void load();
-    const timer=window.setInterval(load,5000);
+    void load();const timer=window.setInterval(load,5000);
     return()=>{cancelled=true;window.clearInterval(timer);};
   },[liveRide?.id,liveRide?.status]);
   useEffect(()=>{
@@ -145,9 +142,8 @@ export function QuickRideHomePanel({
     return()=>window.clearInterval(timer);
   },[dropoff?.deadline_at]);
   useEffect(()=>{
-    if(!liveRide || liveRide.status!=="IN_PROGRESS" || !dropoff?.deadline_at
-      || dropoff.passenger_response || dropoff.resolved_at
-      || Date.parse(dropoff.deadline_at)>nowMs)return;
+    if(!liveRide||liveRide.status!=="IN_PROGRESS"||!dropoff?.deadline_at||
+      dropoff.passenger_response||dropoff.resolved_at||Date.parse(dropoff.deadline_at)>nowMs)return;
     let alive=true;
     void (supabase as any).rpc("quick_ride_finalize_after_timeout",{p_id:liveRide.id})
       .then(async({data,error:rpcError}:{data:any;error:any})=>{
@@ -157,13 +153,11 @@ export function QuickRideHomePanel({
       });
     return()=>{alive=false;};
   },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
-  const remainingDropoffSeconds=dropoff?.deadline_at?
-    Math.max(0,Math.ceil((Date.parse(dropoff.deadline_at)-nowMs)/1000)):0;
-  const dropoffIsPending=liveRide?.status==="IN_PROGRESS"&&Boolean(dropoff?.deadline_at)&&
-    !dropoff?.resolved_at&&!dropoff?.passenger_response;
+  const remainingDropoffSeconds=dropoff?.deadline_at?Math.max(0,Math.ceil((Date.parse(dropoff.deadline_at)-nowMs)/1000)):0;
+  const dropoffIsPending=liveRide?.status==="IN_PROGRESS"&&Boolean(dropoff?.deadline_at)&&!dropoff?.resolved_at&&!dropoff?.passenger_response;
   useEffect(()=>{onDropoffPendingChange?.(Boolean(dropoffIsPending));},[dropoffIsPending,onDropoffPendingChange]);
   async function issueBoardingCode(){
-    if(!liveRide || busy)return;
+    if(!liveRide||busy)return;
     setBusy(true);setError("");
     try{
       const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_issue_boarding_pin",{p_id:liveRide.id});
@@ -174,27 +168,22 @@ export function QuickRideHomePanel({
   }
   const notifiedArrival=useRef<string|null>(null);
   useEffect(()=>{
-    if(!liveRide || liveRide.status!=="ARRIVED")return;
-    if(notifiedArrival.current===liveRide.id)return;
+    if(!liveRide||liveRide.status!=="ARRIVED"||notifiedArrival.current===liveRide.id)return;
     notifiedArrival.current=liveRide.id;
     toast.success("Seu motorista chegou! Informe o código de embarque.");
     if(!boardingCode)void issueBoardingCode();
-    // Audio alerts may be blocked by browser autoplay rules.
     try{
       const AudioContextType=window.AudioContext;
       if(AudioContextType){
         const ctx=new AudioContextType();
         if(ctx.state==="running"){
-          const oscillator=ctx.createOscillator();
-          const gain=ctx.createGain();
-          oscillator.type="sine"; oscillator.frequency.value=880;
-          gain.gain.value=0.035;
-          oscillator.connect(gain);gain.connect(ctx.destination);
-          oscillator.start();oscillator.stop(ctx.currentTime+0.15);
+          const oscillator=ctx.createOscillator();const gain=ctx.createGain();
+          oscillator.type="sine";oscillator.frequency.value=880;gain.gain.value=0.035;
+          oscillator.connect(gain);gain.connect(ctx.destination);oscillator.start();oscillator.stop(ctx.currentTime+0.15);
           oscillator.onended=()=>{void ctx.close();};
         }else void ctx.close();
       }
-    }catch{ /* Visual alert remains accessible without sound. */ }
+    }catch{ /* visual alert remains available */ }
   },[liveRide?.id,liveRide?.status]);
   async function respondDropoff(response:"CONFIRMED"|"CONTESTED"){
     if(!liveRide||busy||remainingDropoffSeconds===0)return;
@@ -209,21 +198,16 @@ export function QuickRideHomePanel({
     finally{setBusy(false);}
   }
   useEffect(()=>{if(shellMode){const selected=coverages[vehicle]??null;setCoverage(selected);onCoverage?.(selected);}},[shellMode,coverages,vehicle,onCoverage]);
-  // A coverage result only applies to the coordinates and vehicle that produced it.
   const covered=coverage?.status==="ENABLED"&&coverageResolvedKey===coveragePointKey;
-
-  useEffect(()=>{
-    mounted.current=true;
-    return ()=>{mounted.current=false;};
-  },[]);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
     setQuote(null);setFares({});setQuoteErrors({});setCurrentQuoteKey("");setInterestSent(false);setError("");
+    retryInFlight.current=false;
   },[fieldsKey]);
   useEffect(()=>{
     setCoverage(null);setCoverages({});setCoverageResolvedKey("");onCoverage?.(null);setCoverageLoading(false);
     if(!hasOrigin||originLat==null||originLng==null)return;
-    let active=true;
-    setCoverageLoading(true);
+    let active=true;setCoverageLoading(true);
     const timer=window.setTimeout(()=>{
       void Promise.all((shellMode?(["CAR","MOTO"] as const):[vehicle]).map(async type=>{
         const value=await availabilityFn({data:{lat:originLat,lng:originLng,vehicleType:type}});
@@ -231,35 +215,38 @@ export function QuickRideHomePanel({
       })).then(entries=>{if(active){
         const values=Object.fromEntries(entries);setCoverages(values);
         setCoverage(values[vehicle]);setCoverageResolvedKey(coveragePointKey);onCoverage?.(values[vehicle]);
-      }})
-        .catch(()=>{if(active){setError("Não foi possível verificar a cobertura agora.");}})
-        .finally(()=>{if(active)setCoverageLoading(false);});
+      }}).catch(()=>{if(active)setError("Não foi possível verificar a cobertura agora.");})
+        .finally(()=>{if(active){setCoverageLoading(false);retryInFlight.current=false;}});
     },450);
-    return ()=>{active=false;window.clearTimeout(timer);};
-  // Only rerun when the selected origin/vehicle changes, not on live GPS pulses.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[coveragePointKey]);
+    return()=>{active=false;window.clearTimeout(timer);};
+    // Stable coordinates, not watchPosition pulses, own the request lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[coveragePointKey,coverageRefresh]);
   const refreshQuickRides=useCallback(async()=>{
     const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
     if(mounted.current&&!error)setRides(Array.isArray(data)?data:[]);
   },[]);
   useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
   useQuickRideRealtime(liveRide?.municipality??coverage?.municipality??"",refreshQuickRides,true);
-  // No separate "Calcular preço" step: selecting a valid destination
-  // automatically requests the immutable server quote. Debounce limits
-  // repeated Google Routes calls while the user edits the address.
+
   useEffect(()=>{
-    if(!(shellMode?Object.values(coverages).some(value=>value.status==="ENABLED")&&coverageResolvedKey===coveragePointKey:covered)||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
-       origin.trim().length<3||destination.trim().length<3||liveRide||
-       originLat==null||originLng==null||destinationLat==null||destinationLng==null){
-      setQuoteLoading(false);
-      return;
+    if(!(shellMode?Object.values(coverages).some(value=>value.status==="ENABLED")&&coverageResolvedKey===coveragePointKey:covered)||
+      !hasOrigin||!hasDestination||origin.trim().length<3||destination.trim().length<3||liveRide||
+      originLat==null||originLng==null||destinationLat==null||destinationLng==null){
+      setQuoteLoading(false);retryInFlight.current=false;return;
     }
+    const eligible:QuickVehicle[]=shellMode?(["CAR","MOTO"] as const).filter(type=>coverages[type]?.status==="ENABLED"):[vehicle];
+    // Retry only missing/expired quotations. Keep a valid quote for the other vehicle.
+    const types=eligible.filter(type=>{
+      const existing=currentQuoteKey===fieldsKey?(shellMode?fares[type]:quote):null;
+      return !existing||Date.parse(existing.expiresAt)<=Date.now();
+    });
+    if(types.length===0){setQuoteLoading(false);retryInFlight.current=false;return;}
     let active=true;
+    setQuoteLoading(true);setError("");
+    setQuoteErrors(previous=>{const next={...previous};for(const type of types)delete next[type];return next;});
     const timer=window.setTimeout(()=>{
       if(!active)return;
-      setQuoteLoading(true);setError("");
-      const types=shellMode?(["CAR","MOTO"] as const).filter(type=>coverages[type]?.status==="ENABLED"):[vehicle];
       void Promise.allSettled(types.map(async type=>{
         const result=await previewFn({data:{
           origin:{lat:originLat,lng:originLng},destination:{lat:destinationLat,lng:destinationLng},
@@ -267,55 +254,53 @@ export function QuickRideHomePanel({
         }});
         if(active){setFares(previous=>({...previous,[type]:result}));setQuote(result);setCurrentQuoteKey(fieldsKey);}
         return result;
-      }))
-        .then(results=>{
-          if(!active)return;
-          const failures:Partial<Record<QuickVehicle,string>>={};
-          results.forEach((result,index)=>{
-            if(result.status==="rejected")failures[types[index]]=friendlyQuickQuoteError(result.reason);
-          });
-          setQuoteErrors(failures);
-          if(results.length>0&&results.every(result=>result.status==="rejected"))
-            setError("Não foi possível consultar os preços deste trajeto. Tente novamente.");
-        })
-        .catch(()=>{if(active)setError("Falha temporária ao consultar preços. Tente novamente.");})
-        .finally(()=>{if(active)setQuoteLoading(false);});
+      })).then(results=>{
+        if(!active)return;
+        const failures:Partial<Record<QuickVehicle,string>>={};
+        results.forEach((result,index)=>{if(result.status==="rejected")failures[types[index]]=friendlyQuickQuoteError(result.reason);});
+        setQuoteErrors(previous=>({...previous,...failures}));
+      }).catch(()=>{if(active)setError("Não foi possível calcular o preço agora.");})
+        .finally(()=>{if(active){setQuoteLoading(false);retryInFlight.current=false;}});
     },350);
-    return ()=>{active=false;window.clearTimeout(timer);};
-    // fieldsKey captures the labels, coordinates and vehicle; covered is
-    // associated with the same origin/vehicle. Ignore stale responses.
+    return()=>{active=false;window.clearTimeout(timer);};
+    // Keep completed quotes out of the dependencies: responses must not restart
+    // the effect or send repeated requests while the other vehicle is pending.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[fieldsKey,coverageResolvedKey,coverages,liveRide?.id,quoteRefresh]);
-  async function request() {
-    if(busy||pickupNeedsConfirmation||!covered||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
-       !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
-    setBusy(true);setError("");
+
+  function retryPrice(){
+    if(quoteLoading||coverageLoading||busy||retryInFlight.current||!hasOrigin||!hasDestination||liveRide)return;
+    retryInFlight.current=true;setError("");
+    if(coverageResolvedKey!==coveragePointKey){setCoverageLoading(true);setCoverageRefresh(v=>v+1);}
+    else{setQuoteLoading(true);setQuoteRefresh(v=>v+1);}
+  }
+  async function request(){
+    if(waitingForOrigin||busy||submissionInFlight.current)return;
+    if(!hasOrigin){onConfirmPickup?.();return;}
+    if(!covered||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
+      !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
+    // Approximate coordinates may calculate a preview, but never dispatch
+    // until a separate explicit action confirms the selected pickup.
+    if(pickupNeedsConfirmation){onConfirmPickup?.();return;}
+    submissionInFlight.current=true;setBusy(true);setError("");
     try{
       const submitted=await submitFn({data:{quoteId:currentQuote.quoteId}});
-      // The acknowledgement contains the actual authorized ride ID. If the
-      // read replica is briefly behind, preserve the real SEARCHING state
-      // until Realtime or a later refresh returns that same request.
-      const acknowledged:ExistingQuickRide={
-        id:submitted.rideId,role:"PASSENGER",status:"SEARCHING",
-        municipality:coverage?.municipality??"",vehicle_type:vehicle,
-      };
+      const acknowledged:ExistingQuickRide={id:submitted.rideId,role:"PASSENGER",status:"SEARCHING",
+        municipality:coverage?.municipality??"",vehicle_type:vehicle};
       const {data,error:reloadError}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current){
         const fromServer:ExistingQuickRide[]=!reloadError&&Array.isArray(data)?data:[];
-        setRides(fromServer.some(r=>r.id===submitted.rideId)
-          ?fromServer:[acknowledged,...fromServer]);
+        setRides(fromServer.some(r=>r.id===submitted.rideId)?fromServer:[acknowledged,...fromServer]);
         setQuote(null);setCurrentQuoteKey("");
       }
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Pedido indisponível.");}
-    finally{if(mounted.current)setBusy(false);}
+    finally{submissionInFlight.current=false;if(mounted.current)setBusy(false);}
   }
   async function registerInterest(){
     if(!coverage?.municipality||busy)return;
     setBusy(true);setError("");
-    try{
-      await interestFn({data:{municipality:coverage.municipality,vehicleType:vehicle}});
-      if(mounted.current)setInterestSent(true);
-    }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível registrar o interesse.");}
+    try{await interestFn({data:{municipality:coverage.municipality,vehicleType:vehicle}});if(mounted.current)setInterestSent(true);}
+    catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível registrar o interesse.");}
     finally{if(mounted.current)setBusy(false);}
   }
   async function rideAction(action:"CANCELLED"){
@@ -329,198 +314,126 @@ export function QuickRideHomePanel({
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível atualizar.");}
     finally{if(mounted.current)setBusy(false);}
   }
-  const inactiveText=coverage?.status==="OUTSIDE"
-    ?"Ainda não atendemos embarques nesse município."
-    :coverage?.status==="WAITLIST"
-      ?(coverage?.radar===true
-         ?"Radar de motoristas em homologação nesta zona. Corridas pagas aguardam tarifa e autorização operacional."
-         :"Este município está no nosso plano de expansão, mas a Corrida Rápida ainda não foi habilitada.")
-      :coverage?.status==="UNKNOWN"
-        ?"Não foi possível identificar o município do embarque."
-        :"Informe um ponto de saída verificado para consultar a cobertura.";
-  const requestControls=<div className="space-y-2">
-    {pickupNeedsConfirmation&&<div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-      <p className="min-w-0 text-xs text-caronaa-white/75">Localização aproximada. Confirme seu embarque.</p>
-      <Button variant="ghost" onClick={onConfirmPickup} className="min-h-11 shrink-0 text-primary">Confirmar local</Button>
-    </div>}
-    <Button type="button" disabled={busy||pickupNeedsConfirmation||!covered||quoteLoading||driverLoading||Boolean(driverError)||driverCount<1||!currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now()}
-      onClick={()=>void request()} className="min-h-12 h-auto w-full whitespace-normal px-3 py-3 font-bold">
-      {busy?"Enviando pedido…":!hasDestination?"Escolha seu destino":!currentQuote?(quoteLoading||coverageLoading?"Consultando preços…":"Preço indisponível"):driverCount<1?"Aguardando motorista disponível":
+  const inactiveText=coverage?.status==="OUTSIDE"?"Ainda não atendemos embarques nesse município.":
+    coverage?.status==="WAITLIST"?(coverage?.radar===true
+      ?"Radar de motoristas em homologação nesta zona. Corridas pagas aguardam tarifa e autorização operacional."
+      :"Este município está no nosso plano de expansão, mas a Corrida Rápida ainda não foi habilitada."):
+    coverage?.status==="UNKNOWN"?"Não foi possível identificar o município do embarque.":"Informe um ponto de saída verificado para consultar a cobertura.";
+  const canOpenOrigin=!waitingForOrigin&&!hasOrigin&&Boolean(onConfirmPickup);
+  const requestDisabled=busy||waitingForOrigin||(!canOpenOrigin&&(!hasOrigin||!covered||quoteLoading||driverLoading||
+    Boolean(driverError)||driverCount<1||!currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now()));
+  const priceFailure=!currentQuote?quoteErrors[vehicle]:undefined;
+  const requestControls=<div className="space-y-2" aria-live="polite">
+    <Button type="button" disabled={requestDisabled} onClick={()=>void request()}
+      className="min-h-12 h-auto w-full whitespace-normal px-3 py-3 font-bold">
+      {waitingForOrigin&&<Loader2 size={18} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none"/>}
+      {busy?"Enviando pedido…":waitingForOrigin?"Obtendo sua localização…":!hasOrigin?"Definir ponto de embarque":
+        !hasDestination?"Escolha seu destino":!currentQuote?(quoteLoading||coverageLoading?"Consultando preços…":"Preço indisponível"):
+        driverCount<1?"Aguardando motorista disponível":
         (shellMode?`Confirmar Flash ${vehicle==="MOTO"?"Moto":"Carro"} — `:"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
     </Button>
-    {!currentQuote&&quoteErrors[vehicle]&&<p role="status" className="text-sm text-white/80">{quoteErrors[vehicle]}</p>}
-    {currentQuote&&Date.parse(currentQuote.expiresAt)<=Date.now()&&<Button variant="ghost" onClick={()=>{setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);}}>Atualizar preço expirado</Button>}
+    {priceFailure&&!quoteLoading&&<div role="alert" className="space-y-2">
+      <p className="text-sm text-white/80">{priceFailure}</p>
+      <Button type="button" variant="outline" disabled={busy||coverageLoading} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40 text-[#FFBB00]">Tentar novamente</Button>
+    </div>}
+    {currentQuote&&Date.parse(currentQuote.expiresAt)<=Date.now()&&<Button type="button" variant="ghost" disabled={quoteLoading||busy}
+      onClick={retryPrice} className="min-h-12">Atualizar preço expirado</Button>}
   </div>;
   return (
-    <section aria-label="Corrida Rápida no mapa" className={shellMode
-      ? "min-w-0 w-full space-y-3 text-white"
-      : "min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white"}>
+    <section aria-label="Corrida Rápida no mapa" className={shellMode?"min-w-0 w-full space-y-3 text-white":
+      "min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white"}>
       {liveRide?.status==="IN_PROGRESS"&&dropoff?.deadline_at&&!dropoff.resolved_at&&!dropoff.passenger_response&&<section role="alert" aria-label="Confirmação de desembarque pendente"
         className="space-y-3 rounded-2xl border-2 border-[#FFBB00] bg-[#FFBB00]/15 p-4">
         <h2 className="font-[Sora] text-lg font-black text-[#FFBB00]">Motorista solicitou o desembarque</h2>
         <p className="text-sm leading-relaxed text-white">Você já desembarcou no destino combinado?</p>
-        <p role="timer" className="font-[Sora] text-2xl font-extrabold tabular-nums text-[#FFBB00]">
-          Aguardando resposta · {String(Math.floor(remainingDropoffSeconds/60)).padStart(2,"0")}:{String(remainingDropoffSeconds%60).padStart(2,"0")}
-        </p>
+        <p role="timer" className="font-[Sora] text-2xl font-extrabold tabular-nums text-[#FFBB00]">Aguardando resposta · {String(Math.floor(remainingDropoffSeconds/60)).padStart(2,"0")}:{String(remainingDropoffSeconds%60).padStart(2,"0")}</p>
         {remainingDropoffSeconds>0?<div className="grid gap-2">
-          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-extrabold text-[#121212] disabled:opacity-50">Confirmar desembarque no destino</button>
-          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")}
-            className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda não desembarquei / Contestar</button>
+          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-extrabold text-[#121212] disabled:opacity-50">Confirmar desembarque no destino</button>
+          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")} className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda não desembarquei / Contestar</button>
         </div>:<p role="status" className="text-sm text-white/90">Prazo encerrado. Aguardando confirmação do servidor.</p>}
       </section>}
       {!shellMode&&<div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p>
-          <p className="text-xs text-gray-300">Mesmo mapa, embarque no local escolhido, sem troca de página.</p>
-        </div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p><p className="text-xs text-gray-300">Mesmo mapa, embarque no local escolhido, sem troca de página.</p></div>
         <ShieldCheck size={20} className="shrink-0 text-[#FFBB00]" aria-label="Motoristas autorizados pela plataforma"/>
       </div>}
       {!shellMode&&<div className="grid grid-cols-2 gap-2" aria-label="Escolher tipo de corrida rápida">
-        {(["CAR","MOTO"] as const).map(mode=>(
-          <button key={mode} type="button" aria-pressed={vehicle===mode} onClick={()=>onVehicleChange(mode)}
-            className={"flex min-h-12 items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-colors "+
-              (vehicle===mode?"border-[#FFBB00] bg-[#FFBB00] text-[#121212]":"border-white/20 bg-white/5 text-white")}>
-            {mode==="CAR"?<CarFront size={18}/>:<Bike size={18}/>}
-            {mode==="CAR"?"Carro":"Moto"}
-          </button>
-        ))}
+        {(["CAR","MOTO"] as const).map(mode=><button key={mode} type="button" aria-pressed={vehicle===mode} onClick={()=>onVehicleChange(mode)}
+          className={"flex min-h-12 items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-colors "+(vehicle===mode?"border-[#FFBB00] bg-[#FFBB00] text-[#121212]":"border-white/20 bg-white/5 text-white")}>
+          {mode==="CAR"?<CarFront size={18}/>:<Bike size={18}/>}{mode==="CAR"?"Carro":"Moto"}
+        </button>)}
       </div>}
-      {!shellMode&&<>
-      <div className="min-w-0 rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
-          <Users size={16} className="text-[#FFBB00]"/>
-          <span>Profissionais disponíveis na região</span>
-        </div>
-        <p role="status" className="mt-1 text-gray-300">
-          {driverLoading?"Consultando o radar…":
-            driverError?driverError:
-            coverage?.radar===false?"Radar ainda indisponível nesse município.":
-            driverCount===0?"Nenhum profissional autorizado e online no momento.":
-            driverCount===1?"1 profissional autorizado e online.":" "+driverCount+" profissionais autorizados e online."}
-        </p>
-        <p className="mt-1 text-[11px] text-gray-400">
-          Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.
-        </p>
-      </div>
-      </>}
-      {shellMode&&!liveRide&&!shownCompletedRide&&(actionContainer?createPortal(requestControls,actionContainer):requestControls)}
-      {!hasOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
-        {gpsOriginIsImprecise?"GPS impreciso. Escolha sua saída manualmente para consultar a corrida.":"Escolha uma saída com coordenadas verificadas."}
+      {!shellMode&&<div className="min-w-0 rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold"><Users size={16} className="text-[#FFBB00]"/><span>Profissionais disponíveis na região</span></div>
+        <p role="status" className="mt-1 text-gray-300">{driverLoading?"Consultando o radar…":driverError?driverError:
+          coverage?.radar===false?"Radar ainda indisponível nesse município.":driverCount===0?"Nenhum profissional autorizado e online no momento.":
+          driverCount===1?"1 profissional autorizado e online.":" "+driverCount+" profissionais autorizados e online."}</p>
+        <p className="mt-1 text-[11px] text-gray-400">Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.</p>
+      </div>}
+      {!liveRide&&!shownCompletedRide&&(shellMode
+        ?(actionContainer?createPortal(requestControls,actionContainer):requestControls)
+        :!currentQuote?requestControls:null)}
+      {!hasOrigin&&!waitingForOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
+        {gpsOriginIsImprecise?"GPS impreciso. Defina o ponto de embarque no mapa ou pelo endereço.":"Defina seu ponto de embarque para consultar os preços."}
       </p>}
       {hasOrigin&&coverageLoading&&<p role="status" className="text-xs text-gray-300">Verificando cobertura a partir do embarque…</p>}
-      {hasOrigin&&!coverageLoading&&!covered&&(
-        <div className="min-w-0 break-words rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
-          <p className="font-semibold">{coverage?.municipality??"Região não identificada"}</p>
-          <p className="mt-1 text-gray-300">{shellMode?"Corrida não disponível neste local. Escolha uma origem ou modalidade atendida.":inactiveText}</p>
-          {coverage?.municipality&&(
-            <button type="button" disabled={busy||interestSent} onClick={()=>void registerInterest()}
-              className="mt-2 min-h-11 rounded-xl border border-[#FFBB00]/40 px-3 font-bold text-[#FFBB00] disabled:opacity-60">
-              {interestSent?"Interesse registrado":"Avise-me quando chegar aqui"}
-            </button>
-          )}
-          {!shellMode&&<p className="mt-2 text-gray-400">Você pode escolher outra saída numa região habilitada. A região do seu cadastro não limita os pedidos.</p>}
+      {hasOrigin&&!coverageLoading&&coverageResolvedKey===coveragePointKey&&!covered&&<div className="min-w-0 break-words rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
+        <p className="font-semibold">{coverage?.municipality??"Região não identificada"}</p>
+        <p className="mt-1 text-gray-300">{shellMode?"Corrida não disponível neste local. Escolha uma origem ou modalidade atendida.":inactiveText}</p>
+        {coverage?.municipality&&<button type="button" disabled={busy||interestSent} onClick={()=>void registerInterest()}
+          className="mt-2 min-h-12 rounded-xl border border-[#FFBB00]/40 px-3 font-bold text-[#FFBB00] disabled:opacity-60">{interestSent?"Interesse registrado":"Avise-me quando chegar aqui"}</button>}
+        {!shellMode&&<p className="mt-2 text-gray-400">Você pode escolher outra saída numa região habilitada. A região do seu cadastro não limita os pedidos.</p>}
+      </div>}
+      {liveRide?<div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
+        <p className="font-semibold">Sua Corrida Rápida</p>
+        <p role="status" className="mt-1 text-gray-300">{liveRide.status==="SEARCHING"?"Procurando um profissional autorizado…":liveRide.status==="ACCEPTED"?"Motorista a caminho.":liveRide.status==="ARRIVED"?"Seu motorista chegou!":"Viagem em andamento."}</p>
+        <div className="flex min-w-0 flex-wrap gap-2">
+          {liveRide.status==="ARRIVED"&&<div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
+            <p className="text-xs text-gray-300">Informe este código ao motorista para iniciar a corrida.</p>
+            {boardingCode?<p role="status" className="text-center text-3xl font-bold tracking-widest text-[#FFBB00]">{boardingCode}</p>:
+              <button type="button" disabled={busy} onClick={()=>void issueBoardingCode()} className="min-h-12 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Gerar código secreto</button>}
+          </div>}
+          {liveRide.status==="IN_PROGRESS"&&dropoff?.passenger_response&&<p role="status" className="w-full rounded-xl border border-white/20 p-3 text-sm text-white/85">
+            {dropoff.passenger_response==="CONTESTED"?"Contestação registrada. Aguarde orientação da plataforma.":"Desembarque confirmado. Aguardando conclusão registrada pelo servidor."}
+          </p>}
+          {["SEARCHING","ACCEPTED","ARRIVED"].includes(liveRide.status)&&<button type="button" disabled={busy} onClick={()=>void rideAction("CANCELLED")}
+            className="min-h-12 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">Cancelar pedido</button>}
         </div>
-      )}
-      {liveRide?(
-        <div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
-          <p className="font-semibold">Sua Corrida Rápida</p>
-          <p role="status" className="mt-1 text-gray-300">
-            {liveRide.status==="SEARCHING"?"Procurando um profissional autorizado…":
-              liveRide.status==="ACCEPTED"?"Motorista a caminho.":
-              liveRide.status==="ARRIVED"?"Seu motorista chegou!":
-              "Viagem em andamento."}
-          </p>
-          <div className="flex min-w-0 flex-wrap gap-2">
-          {liveRide.status==="ARRIVED"&&(
-            <div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
-              <p className="text-xs text-gray-300">Informe este código ao motorista para iniciar a corrida.</p>
-              {boardingCode?
-                <p role="status" className="text-center text-3xl font-bold tracking-widest text-[#FFBB00]">{boardingCode}</p>:
-                <button type="button" disabled={busy} onClick={()=>void issueBoardingCode()}
-                  className="min-h-11 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-                  Gerar código secreto
-                </button>}
+      </div>:<>
+        {covered&&hasDestination&&!currentQuote&&!error&&!priceFailure&&<p role="status" className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs text-gray-200">
+          {quoteLoading?"Calculando o preço da viagem…":"Preparando preço automaticamente para o destino selecionado…"}
+        </p>}
+        {covered&&!hasDestination&&!shellMode&&<p className="text-xs text-gray-300"><MapPin className="mr-1 inline" size={13}/>Escolha o destino para visualizar o preço automaticamente.</p>}
+        {currentQuote&&<div role="status" className={shellMode?"space-y-2 py-2":"min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3"}>
+          {!shellMode&&<>
+            <p className="text-xs text-gray-200">Preço até {destination} · {vehicle==="MOTO"?"Moto":"Carro"}</p>
+            <div className="flex items-center gap-2 text-xs font-semibold text-white">
+              {vehicle==="MOTO"?<Bike size={16} className="text-[#FFBB00]"/>:<CarFront size={16} className="text-[#FFBB00]"/>}
+              <span>{driverLoading?"Buscando motoristas online…":driverError?"Não foi possível verificar motoristas online.":driverCount===0?"Sem motorista online para esta modalidade.":driverCount===1?"1 motorista online para receber seu pedido.":driverCount+" motoristas online para receber seu pedido."}</span>
             </div>
-          )}
-          {liveRide.status==="IN_PROGRESS"&&dropoff?.passenger_response&&
-            <p role="status" className="w-full rounded-xl border border-white/20 p-3 text-sm text-white/85">
-              {dropoff.passenger_response==="CONTESTED"?"Contestação registrada. Aguarde orientação da plataforma.":"Desembarque confirmado. Aguardando conclusão registrada pelo servidor."}
-            </p>}
-          {["SEARCHING","ACCEPTED","ARRIVED"].includes(liveRide.status)&&(
-            <button type="button" disabled={busy} onClick={()=>void rideAction("CANCELLED")}
-              className="min-h-11 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">
-              Cancelar pedido
-            </button>
-          )}
-          </div>
-        </div>
-      ):(
-        <>
-          {covered&&hasDestination&&!currentQuote&&!error&&(
-            <p role="status" className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs text-gray-200">
-              {quoteLoading?"Calculando o preço da viagem…":"Preparando preço automaticamente para o destino selecionado…"}
-            </p>
-          )}
-          {covered&&!hasDestination&&!shellMode&&(
-            <p className="text-xs text-gray-300"><MapPin className="mr-1 inline" size={13}/>Escolha o destino para visualizar o preço automaticamente.</p>
-          )}
-          {currentQuote&&(
-            <div role="status" className={shellMode
-              ? "space-y-2 py-2"
-              : "min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3"}>
-              {!shellMode&&<>
-              <p className="text-xs text-gray-200">Preço até {destination} · {vehicle==="MOTO"?"Moto":"Carro"}</p>
-              <div className="flex items-center gap-2 text-xs font-semibold text-white">
-                {vehicle==="MOTO"?<Bike size={16} className="text-[#FFBB00]"/>:<CarFront size={16} className="text-[#FFBB00]"/>}
-                <span>{driverLoading?"Buscando motoristas online…":
-                  driverError?"Não foi possível verificar motoristas online.":
-                  driverCount===0?"Sem motorista online para esta modalidade.":
-                  driverCount===1?"1 motorista online para receber seu pedido.":
-                  driverCount+" motoristas online para receber seu pedido."}</span>
-              </div>
-              <p className="break-words text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
-              <p className="flex items-center gap-1 text-xs text-gray-200">
-                <Clock3 size={13}/>{currentQuote.distanceKm.toFixed(1)} km • aprox. {Math.round(currentQuote.durationMinutes)} min
-              </p>
-              <p className="text-xs text-gray-300">
-                Comissão de {currentQuote.commissionBps/100}% ({currentQuote.commissionSource==="OFFICIAL_ACTIVITY"?"atividade oficial":"política regional"}).
-                O motorista recebe {formatBrl(currentQuote.driverReceivesCents/100)}.
-              </p>
-              <p className="text-[11px] text-gray-300">Fase piloto: sem débito automático. O pagamento e o repasse precisam ser homologados antes da operação comercial.</p>
-              </>}
-              {shellMode&&<p className="text-xs text-white/70">Pix ou dinheiro direto ao motorista · {currentQuote.distanceKm.toFixed(1)} km · aprox. {Math.round(currentQuote.durationMinutes)} min de viagem</p>}
-              {!shellMode&&requestControls}
-            </div>
-          )}
-        </>
-      )}
+            <p className="break-words text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
+            <p className="flex items-center gap-1 text-xs text-gray-200"><Clock3 size={13}/>{currentQuote.distanceKm.toFixed(1)} km • aprox. {Math.round(currentQuote.durationMinutes)} min</p>
+            <p className="text-xs text-gray-300">Comissão de {currentQuote.commissionBps/100}% ({currentQuote.commissionSource==="OFFICIAL_ACTIVITY"?"atividade oficial":"política regional"}). O motorista recebe {formatBrl(currentQuote.driverReceivesCents/100)}.</p>
+            <p className="text-[11px] text-gray-300">Fase piloto: sem débito automático. O pagamento e o repasse precisam ser homologados antes da operação comercial.</p>
+          </>}
+          {shellMode&&<p className="text-xs text-white/70">Pix ou dinheiro direto ao motorista · {currentQuote.distanceKm.toFixed(1)} km · aprox. {Math.round(currentQuote.durationMinutes)} min de viagem</p>}
+          {!shellMode&&requestControls}
+        </div>}
+      </>}
       {!liveRide&&completedRide&&shownCompletedRide&&<div className="space-y-3">
         <section role="status" className="space-y-2 rounded-2xl border border-emerald-400/35 bg-emerald-400/10 p-4">
-          <h2 className="font-[Sora] text-lg font-bold text-white">
-            {timeoutCompletedId===completedRide.id?"Corrida concluída após o prazo de confirmação":"Desembarque confirmado · Corrida concluída"}
-          </h2>
+          <h2 className="font-[Sora] text-lg font-bold text-white">{timeoutCompletedId===completedRide.id?"Corrida concluída após o prazo de confirmação":"Desembarque confirmado · Corrida concluída"}</h2>
           <p className="text-xs text-white/80">Resumo financeiro e meio de pagamento abaixo. Você pode avaliar depois.</p>
           {typeof completedRide.distance_km==="number"&&<p className="text-sm">Distância: {completedRide.distance_km.toFixed(1)} km</p>}
           {typeof completedRide.duration_minutes==="number"&&<p className="text-sm">Tempo estimado: {Math.round(completedRide.duration_minutes)} min</p>}
           {typeof completedRide.fare_cents==="number"&&<p className="font-[Sora] text-xl font-black text-[#FFBB00]">Valor contratado: {formatBrl(completedRide.fare_cents/100)}</p>}
         </section>
         <QuickRidePixCard rideId={completedRide.id}/>
-        <button type="button" onClick={()=>setRatingOpen(completedRide.id)}
-          className="min-h-12 w-full rounded-xl border border-[#FFBB00]/40 px-4 text-sm font-semibold text-[#FFBB00]">Avaliar viagem (opcional)</button>
-        <button type="button" onClick={releaseCompletedRide}
-          className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Nova corrida</button>
-        {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen
-          onClose={()=>setRatingOpen(null)}/>}
+        <button type="button" onClick={()=>setRatingOpen(completedRide.id)} className="min-h-12 w-full rounded-xl border border-[#FFBB00]/40 px-4 text-sm font-semibold text-[#FFBB00]">Avaliar viagem (opcional)</button>
+        <button type="button" onClick={releaseCompletedRide} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Nova corrida</button>
+        {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen onClose={()=>setRatingOpen(null)}/>}
       </div>}
-      {error&&!(shellMode&&!currentQuote&&quoteErrors[vehicle])&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
-      {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
-        <button type="button" disabled={quoteLoading||busy}
-          onClick={()=>{setError("");setQuoteRefresh(value=>value+1);}}
-          className="min-h-10 rounded-xl border border-white/30 px-3 text-xs font-semibold disabled:opacity-50">
-          Tentar obter preço novamente
-        </button>
-      )}
+      {error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
+      {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={quoteLoading||coverageLoading||busy} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">Tentar novamente</Button>}
     </section>
   );
 }
