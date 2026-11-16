@@ -182,10 +182,29 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     const key="quick-fare-route:"+context.userId+":"+data.origin.lat.toFixed(5)+":"+
       data.origin.lng.toFixed(5)+":"+data.destination.lat.toFixed(5)+":"+
       data.destination.lng.toFixed(5);
-    const road=await sessionRequest(key,async()=>{
-      const {googleActionFetch}=await import("@/lib/google-request.server");
-      return getDrivingRoute([data.origin,data.destination],googleActionFetch(context.userId,"quote","getQuickRideFarePreview"));
-    },60_000);
+    let road:Awaited<ReturnType<typeof getDrivingRoute>>;
+    try {
+      road=await sessionRequest(key,async()=>{
+        const {googleActionFetch}=await import("@/lib/google-request.server");
+        return getDrivingRoute([data.origin,data.destination],googleActionFetch(context.userId,"quote","getQuickRideFarePreview"));
+      },60_000);
+    } catch(cause) {
+      // Never log raw Google exceptions: they can contain request URLs,
+      // exact route coordinates and credentials. Preserve the safe error class.
+      const message=cause instanceof Error?cause.message:"";
+      const category=/demorou|tempo limite|timeout/i.test(message)?"TIMEOUT"
+        :/chave|API Google|403|recusou/i.test(message)?"GOOGLE_PERMISSION"
+        :/geometria|etapas incompletas|rotas/i.test(message)?"ROUTE_UNAVAILABLE"
+        :"NETWORK_ERROR";
+      console.warn("[CARONAA][F07][QUOTE_ROUTE]", {
+        category,region:coverage.region,vehicleType:data.vehicleType,
+      });
+      throw new Error(category==="TIMEOUT"
+        ?"A rota demorou para responder. Tente atualizar o preço."
+        :category==="GOOGLE_PERMISSION"
+          ?"O serviço de rotas está temporariamente indisponível. Tente novamente mais tarde."
+          :"Não foi possível calcular este trajeto agora. Verifique origem e destino e tente novamente.");
+    }
     const q=quoteProposedCaronaaFare({
       distanceKm:road.distanceKm,
       durationMinutes:road.durationMinutes,
