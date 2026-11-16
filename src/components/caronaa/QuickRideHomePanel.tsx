@@ -80,7 +80,7 @@ export function QuickRideHomePanel({
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
   const currentQuote=currentQuoteKey===fieldsKey?(shellMode?fares[vehicle]??null:quote):null;
   useEffect(()=>{onFaresChange?.(currentQuoteKey===fieldsKey?fares:{});},[fares,currentQuoteKey,fieldsKey,onFaresChange]);
-  useEffect(()=>onFareChange?.(currentQuote),[currentQuote?.quoteId,onFareChange]);
+  useEffect(()=>onFareChange?.(currentQuote),[currentQuote,onFareChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
 
@@ -444,7 +444,7 @@ export function QuickRideHomePanel({
           )}
           {currentQuote&&(
             <div role="status" className={shellMode
-              ? "space-y-2 rounded-xl border border-[#FFBB00]/25 bg-white/[0.04] p-3"
+              ? "space-y-2 py-2"
               : "min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3"}>
               {!shellMode&&<>
               <p className="text-xs text-gray-200">Preço até {destination} · {vehicle==="MOTO"?"Moto":"Carro"}</p>
