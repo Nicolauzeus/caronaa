@@ -13,7 +13,7 @@ describe("Google request policy", () => {
   it("sets details to 20/min", () => expect(GOOGLE_REQUEST_LIMITS.details).toBe(20));
   it("sets searchText TTL to 30 days", () => expect(GOOGLE_CACHE_TTL_MS.places_search_text).toBe(2592000000));
   it("sets route TTL to 10 minutes", () => expect(GOOGLE_CACHE_TTL_MS.route_quote).toBe(600000));
-  it("sets timeout to 5 seconds", () => expect(GOOGLE_TIMEOUT_MS).toBe(5000));
+  it("uses a 12-second timeout for authenticated Google requests", () => expect(GOOGLE_TIMEOUT_MS).toBe(12000));
   it("checks the database gate before sending a paid request", async () => {
     const d = dependencies(); vi.mocked(d.consume).mockResolvedValue(false);
     await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow("Aguarde um minuto");
