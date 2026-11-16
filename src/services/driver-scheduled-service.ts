@@ -6,6 +6,7 @@ export type DriverBookingMode="ALL"|"ON_ROUTE"|"EXCLUSIVE";
 export type DriverVehicleType="CAR"|"MOTO";
 export type ScheduledDriverOfferDraft={
   origin:string;destination:string;departureAt:string;
+  quoteId:string;originPoint:RoadPoint;destinationPoint:RoadPoint;
   routePath:RoadPoint[];bookingMode:DriverBookingMode;
   vehicleType:DriverVehicleType;seats:number;
   suggestedFarePerSeat:number;preferences?:TravelPreferences;
@@ -26,8 +27,10 @@ export type DriverScheduledTrip={
   seatsRemaining:number;vehicleType:DriverVehicleType;
   passengers:ScheduledDriverPassenger[];
 };
+export type DriverScheduledErrorCode = "DEBT_PENDING"|"ALREADY_MATCHED"|"UNAVAILABLE"|
+  "INVALID_INPUT"|"QUOTE_EXPIRED"|"INVALID_SCHEDULE"|"VEHICLE_REQUIRED"|"FORBIDDEN"|"ALREADY_PUBLISHED";
 export class DriverScheduledError extends Error {
-  constructor(public readonly code:"DEBT_PENDING"|"ALREADY_MATCHED"|"UNAVAILABLE"|"INVALID_INPUT"){
+  constructor(public readonly code:DriverScheduledErrorCode){
     super(code);this.name="DriverScheduledError";
   }
 }
@@ -36,42 +39,61 @@ const object=(data:unknown):Record<string,unknown>|null=>
 const string=(value:unknown):string=>typeof value==="string"?value.trim():"";
 const number=(value:unknown):number=>typeof value==="number"?value:typeof value==="string"&&value.trim()?Number(value):NaN;
 const seatsValid=(type:DriverVehicleType,seats:number)=>Number.isInteger(seats)&&seats>=1&&seats<=(type==="MOTO"?1:3);
-function rpcCode(error:any):"DEBT_PENDING"|"ALREADY_MATCHED"|"UNAVAILABLE" {
+const pointValid=(point:RoadPoint|undefined):point is RoadPoint=>Boolean(point&&
+  Number.isFinite(point.lat)&&Math.abs(point.lat)<=90&&Number.isFinite(point.lng)&&Math.abs(point.lng)<=180);
+function rpcCode(error:any):DriverScheduledErrorCode {
   const source=String(error?.message??"")+" "+String(error?.code??"");
-  if(/42501|PLATFORM_FEE_PENDING|DEBT_PENDING/i.test(source))return "DEBT_PENDING";
+  if(/PLATFORM_FEE_PENDING|DEBT_PENDING/i.test(source))return "DEBT_PENDING";
   if(/ALREADY_MATCHED|ALREADY_ACCEPTED|REQUEST_ALREADY_ASSIGNED|OVERBOOKING_PREVENTED/i.test(source))return "ALREADY_MATCHED";
+  if(/QUOTE_ALREADY_USED/i.test(source))return "ALREADY_PUBLISHED";
+  if(/QUOTE_EXPIRED|QUOTE_REQUIRED|QUOTE_INVALID/i.test(source))return "QUOTE_EXPIRED";
+  if(/INVALID_SCHEDULE/i.test(source))return "INVALID_SCHEDULE";
+  if(/VEHICLE_REQUIRED/i.test(source))return "VEHICLE_REQUIRED";
+  if(/42501|WOMEN_ONLY_NOT_ALLOWED|AUTHENTICATION_REQUIRED|FORBIDDEN/i.test(source))return "FORBIDDEN";
+  if(/INVALID_INPUT|QUOTE_MISMATCH/i.test(source))return "INVALID_INPUT";
   return "UNAVAILABLE";
 }
-export async function publishScheduledDriverOffer(draft:ScheduledDriverOfferDraft):Promise<string>{
+export async function publishScheduledDriverOffer(
+  draft:ScheduledDriverOfferDraft,
+  options:{retry?:boolean}={},
+):Promise<string>{
+  // A lost response can be recovered with the original quote after time has
+  // advanced. The database still checks the schedule before any new INSERT.
+  if(!Number.isFinite(Date.parse(draft.departureAt))||
+    (!options.retry&&Date.parse(draft.departureAt)<Date.now()+30*60*1000))
+    throw new DriverScheduledError("INVALID_SCHEDULE");
   if(!draft.origin.trim()||!draft.destination.trim()||
-    !Number.isFinite(Date.parse(draft.departureAt))||
-    Date.parse(draft.departureAt)<Date.now()+30*60*1000 ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(draft.quoteId)||
+    !pointValid(draft.originPoint)||!pointValid(draft.destinationPoint)||
+    !Array.isArray(draft.routePath)||draft.routePath.length<2||!draft.routePath.every(pointValid)||
     !["ALL","ON_ROUTE","EXCLUSIVE"].includes(draft.bookingMode)||
     !["CAR","MOTO"].includes(draft.vehicleType)||
     !seatsValid(draft.vehicleType,draft.seats)||
     !Number.isFinite(draft.suggestedFarePerSeat)||draft.suggestedFarePerSeat<0)
     throw new DriverScheduledError("INVALID_INPUT");
-  const first=draft.routePath[0],last=draft.routePath[draft.routePath.length-1];
-  if(!first||!last)throw new DriverScheduledError("INVALID_INPUT");
   // Matches the live database signature. Schedule uses America/Fortaleza (fixed UTC-3).
   const local=new Date(Date.parse(draft.departureAt)-3*60*60*1000).toISOString();
   try{
-    const {data,error}=await (supabase as any).rpc("publish_scheduled_driver_offer",{
+    const {data,error}=await supabase.rpc("publish_scheduled_driver_offer",{
       p_origin:draft.origin.trim(),
       p_destination:draft.destination.trim(),
-      p_origin_lat:first.lat,p_origin_lng:first.lng,
-      p_destination_lat:last.lat,p_destination_lng:last.lng,
+      // Selected points match the trusted quote; the road polyline may be snapped.
+      p_origin_lat:draft.originPoint.lat,p_origin_lng:draft.originPoint.lng,
+      p_destination_lat:draft.destinationPoint.lat,p_destination_lng:draft.destinationPoint.lng,
       p_ride_date:local.slice(0,10),
       p_departure_time:local.slice(11,19),
       p_available_seats:draft.seats,
       p_total_price:draft.suggestedFarePerSeat,
       p_booking_mode:draft.bookingMode,
       p_vehicle_type:draft.vehicleType,
-      p_route_path:{type:"LineString",coordinates:draft.routePath.map(p=>[p.lng,p.lat])},
+      p_route_path:draft.routePath,
+      p_quote_id:draft.quoteId,
+      p_travel_preferences:draft.preferences,
       p_women_only:draft.womenOnly,
     });
     if(error)throw new DriverScheduledError(rpcCode(error));
     const row=object(data);
+    if(row?.success===false)throw new DriverScheduledError(rpcCode(row));
     const id=typeof data==="string"?data.trim():string(row?.offer_id??row?.id);
     if(!id)throw new DriverScheduledError("UNAVAILABLE");
     return id;
@@ -86,15 +108,15 @@ function parseOpportunity(value:unknown):DriverOpportunity|null {
   const requestId=string(row.request_id);
   const passengerName=string(row.passenger_name);
   const passengers=number(row.passengers??row.passenger_count);
-  const potentialEarnings=number(row.potential_earnings);
-  const meetingDistanceMeters=number(row.meeting_distance_meters);
+  const potentialEarnings=number(row.potential_earnings??row.estimated_earnings);
+  const meetingDistanceMeters=number(row.meeting_distance_meters??row.pickup_walk_m);
   if(!requestId||!passengerName||!Number.isInteger(passengers)||passengers<1||passengers>3||
     !Number.isFinite(potentialEarnings)||potentialEarnings<0||
     !Number.isFinite(meetingDistanceMeters)||meetingDistanceMeters<0)return null;
   const rating=number(row.rating??row.average_rating);
-  const avatar=string(row.passenger_avatar_url);
+  const avatar=string(row.passenger_avatar_url??row.passenger_avatar);
   return {requestId,passengerName,passengers,potentialEarnings,
-    meetingDistanceMeters,meetingName:string(row.meeting_name)||"Ponto ao longo do trajeto",
+    meetingDistanceMeters,meetingName:string(row.meeting_name??row.meeting_label)||"Ponto ao longo do trajeto",
     ...(Number.isFinite(rating)&&rating>=0&&rating<=5?{rating}:{}),
     ...(avatar?{passengerAvatarUrl:avatar}:{}),
   };
@@ -121,7 +143,8 @@ export async function acceptDriverScheduledRequest(offerId:string,requestId:stri
     if(error)throw new DriverScheduledError(rpcCode(error));
     const row=object(data);
     const remaining=number(row?.seats_remaining);
-    if(!row || (row.accepted!==true&&row.status!=="CONFIRMED")||
+    if(!row || row.accepted===false||row.success===false||
+      (row.accepted!==true&&row.success!==true&&row.status!=="CONFIRMED")||
       !Number.isInteger(remaining)||remaining<0)throw new DriverScheduledError("UNAVAILABLE");
     return {seatsRemaining:remaining};
   }catch(error){

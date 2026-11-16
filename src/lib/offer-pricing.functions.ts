@@ -4,23 +4,32 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { calculatePassengerFare, PASSENGER_TARIFF } from "./ride-cost";
 import { getDrivingRoute } from "./road-routing";
 
+const pointInput = z.object({
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
+});
+
+export const offerRouteInput = z.object({
+  origin: z.string().trim().min(1).max(160),
+  destination: z.string().trim().min(1).max(160),
+  originPoint: pointInput.optional(),
+  destinationPoint: pointInput.optional(),
+});
+
 export const quoteOfferRoute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z
-      .object({
-        origin: z.string().trim().min(1).max(160),
-        destination: z.string().trim().min(1).max(160),
-      })
-      .parse(input),
-  )
+  .inputValidator((input: unknown) => offerRouteInput.parse(input))
   .handler(async ({ context, data }) => {
     const { googleActionFetch } = await import("./google-request.server");
     const request = googleActionFetch(context.userId, "quote", "quoteOfferRoute");
     const { geocodeAddressService } = await import("./location/service");
     const [origin, destination] = await Promise.all([
-      geocodeAddressService(data.origin, request),
-      geocodeAddressService(data.destination, request),
+      data.originPoint
+        ? { ...data.originPoint, isApproximate: false }
+        : geocodeAddressService(data.origin, request),
+      data.destinationPoint
+        ? { ...data.destinationPoint, isApproximate: false }
+        : geocodeAddressService(data.destination, request),
     ]);
     if (
       !origin ||
@@ -51,7 +60,7 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
         insert: (row: Record<string, unknown>) => {
           select: (columns: string) => {
             single: () => Promise<{
-              data: { quote_id: string } | null;
+              data: { quote_id: string; expires_at: string } | null;
               error: { message: string } | null;
             }>;
           };
@@ -74,11 +83,15 @@ export const quoteOfferRoute = createServerFn({ method: "POST" })
         passenger_price: pricePerPassenger,
         tariff_reference: PASSENGER_TARIFF.reference,
       })
-      .select("quote_id")
+      .select("quote_id, expires_at")
       .single();
-    if (error || !quote) throw new Error("Não foi possível salvar o preço. Tente novamente.");
+    if (error || !quote || !Number.isFinite(Date.parse(quote.expires_at)))
+      throw new Error("Não foi possível salvar o preço. Tente novamente.");
     return {
       quoteId: quote.quote_id,
+      expiresAt: quote.expires_at,
+      originPoint: { lat: origin.lat, lng: origin.lng },
+      destinationPoint: { lat: destination.lat, lng: destination.lng },
       distanceKm,
       durationMinutes: route.durationMinutes,
       pricePerPassenger,

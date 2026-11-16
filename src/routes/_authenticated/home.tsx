@@ -144,26 +144,30 @@ function Home(){
     return()=>document.removeEventListener("caronaa-shell-expand",expand);
   },[]);
   const passengerPreview=activeRoleState.activeRole==="PASSAGEIRO"&&serviceType==="FLASH";
-  const usableOriginFix=passengerPreview?canPreviewPassengerPickup(location.addressPosition):isTrustedGpsFix(location.addressPosition);
+  const scheduledDriverPreview=activeRoleState.activeRole==="MOTORISTA"&&serviceType==="AGENDADA";
+  // Traditional rides can preview a real approximate fix, then ask the user
+  // to confirm the departure point. Professional Flash keeps its strict GPS.
+  const originPreview=passengerPreview||scheduledDriverPreview;
+  const usableOriginFix=originPreview?canPreviewPassengerPickup(location.addressPosition):isTrustedGpsFix(location.addressPosition);
 
   useEffect(()=>{
     if(originSource!=="CURRENT_LOCATION"||originWasManuallySelected.current)return;
-    if(passengerPreview&&awaitingNewOriginVersion.current!==null){
+    if(originPreview&&awaitingNewOriginVersion.current!==null){
       if(location.recenterVersion===awaitingNewOriginVersion.current)return;
       awaitingNewOriginVersion.current=null;
     }
-    const fix=passengerPreview
+    const fix=originPreview
       ?passengerOriginFix.current??(canPreviewPassengerPickup(location.addressPosition)?location.addressPosition:null)
       :isTrustedGpsFix(location.addressPosition)?location.addressPosition:null;
     if(!fix){setOriginLocation(undefined);setAppliedOriginAccuracy(null);if(location.failure)setOrigin("");return;}
-    if(passengerPreview&&!passengerOriginFix.current)passengerOriginFix.current={...fix};
+    if(originPreview&&!passengerOriginFix.current)passengerOriginFix.current={...fix};
     const {lat,lng,accuracy}=fix;
     const addressIsNear=resolvedAddress?.lat!=null&&resolvedAddress.lng!=null&&
       Math.abs(resolvedAddress.lat-lat)<0.0003&&Math.abs(resolvedAddress.lng-lng)<0.0003;
     const label=addressIsNear?resolvedAddress?.formattedAddress||"Minha localização atual":"Minha localização atual";
     setOrigin(label);setAppliedOriginAccuracy(accuracy);
     setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:!isTrustedGpsFix(fix)});
-  },[originSource,location.addressPosition,location.failure,location.recenterVersion,resolvedAddress,passengerPreview,usableOriginFix]);
+  },[originSource,location.addressPosition,location.failure,location.recenterVersion,resolvedAddress,originPreview,usableOriginFix]);
 
   useEffect(()=>{
     const fix=location.addressPosition;
@@ -186,14 +190,14 @@ function Home(){
     const fallback="Ponto selecionado no mapa";
     setOrigin(fallback);setOriginLocation({rawText:fallback,formattedAddress:fallback,lat:point.lat,lng:point.lng});
     setShellRouteOrigin(point);setShellRoute(null);setResolvedAddress(null);setSelectingOrigin(false);
-    setShellOriginRevision(value=>value+1);setSheetSnap(passengerDestinationLabel?"full":"half");
+    setShellOriginRevision(value=>value+1);setSheetSnap(scheduledDriverPreview?"half":passengerDestinationLabel?"full":"half");
     void reverseGeocode({data:point}).then(details=>{
       if(request!==originLookupSequence.current||!details)return;
       const label=details.formattedAddress||fallback;
       setOrigin(label);setResolvedAddress(details);
       setOriginLocation({...details,rawText:label,formattedAddress:label,lat:point.lat,lng:point.lng});
     }).catch(()=>undefined);
-  },[reverseGeocode,passengerDestinationLabel]);
+  },[reverseGeocode,passengerDestinationLabel,scheduledDriverPreview]);
 
   const plannedPickup=shellSelectedDestination&&validPoint(shellRouteOrigin)?shellRouteOrigin:originLocation;
   const pickupKey=validPoint(plannedPickup)?JSON.stringify([plannedPickup.lat,plannedPickup.lng]):"";
@@ -207,7 +211,7 @@ function Home(){
   }:undefined;
   const previewablePickup=originSource==="MANUAL_ORIGIN"||
     (validPoint(plannedPickup)&&quotedAccuracy!==null&&canPreviewPassengerPickup({...plannedPickup,accuracy:quotedAccuracy}));
-  const pickupNeedsConfirmation=passengerPreview&&originSource==="CURRENT_LOCATION"&&validPoint(plannedPickup)&&
+  const pickupNeedsConfirmation=originPreview&&originSource==="CURRENT_LOCATION"&&validPoint(plannedPickup)&&
     (quotedAccuracy===null||needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy}))&&confirmedPickupKey!==pickupKey;
   const locatingPickup=originSource==="CURRENT_LOCATION"&&location.locating&&!validPoint(quotedOrigin);
   const openPickupDialog=()=>{setPickupCandidate(quotedOrigin??null);setPickupDialogOpen(true);};
@@ -216,7 +220,7 @@ function Home(){
     const candidateKey=JSON.stringify([pickupCandidate.lat,pickupCandidate.lng]);
     if(candidateKey!==pickupKey){
       setPickupCandidate(quotedOrigin??null);
-      toast.info("O ponto de embarque mudou. Confira o local novamente.");return;
+      toast.info(scheduledDriverPreview?"O ponto de saída mudou. Confira o local novamente.":"O ponto de embarque mudou. Confira o local novamente.");return;
     }
     // Closing the dialog is not consent. This action never submits a ride.
     ++originLookupSequence.current;originWasManuallySelected.current=true;
@@ -281,7 +285,7 @@ function Home(){
       <div className="absolute inset-0">
         {shouldShowPassengerMap&&passengerRide?<QuickRideOperationalMap rideId={passengerRide.id} status={passengerRide.status} role="PASSENGER" immersive/>:
           shouldShowOperationalMap&&driverFlashRide?<QuickRideOperationalMap rideId={driverFlashRide.id} status={driverFlashRide.status} role="DRIVER" vehicleType={driverFlashRide.vehicleType} immersive/>:
-          <HomeRideMap immersive passengerPreview={passengerPreview}
+          <HomeRideMap immersive passengerPreview={originPreview}
             professionalDrivers={quickDrivers} userPosition={location.position}
             plannedRoute={shellSelectedDestination?shellRoute:null} routeManagedExternally={shellSelectedDestination}
             onRouteMeeting={selectedOnRouteMatch&&shellRouteOrigin?{origin:shellRouteOrigin,pickup:{lat:selectedOnRouteMatch.pickupMeeting.lat,lng:selectedOnRouteMatch.pickupMeeting.lng,poiName:selectedOnRouteMatch.pickupMeeting.poiName}}:null}
@@ -289,15 +293,15 @@ function Home(){
               Math.round((typeof window==="undefined"?800:window.innerHeight)*(sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24):undefined}
             routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
             origin={mapOrigin} destination={currentDestination} originIsCurrent={originSource==="CURRENT_LOCATION"}
-            originAccuracyM={passengerPreview?(validPoint(plannedPickup)?quotedAccuracy??Number.POSITIVE_INFINITY:null):location.originAccuracyM}
-            following={originSource==="CURRENT_LOCATION"&&(passengerPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
+            originAccuracyM={originPreview?(validPoint(plannedPickup)?quotedAccuracy??Number.POSITIVE_INFINITY:null):location.originAccuracyM}
+            following={originSource==="CURRENT_LOCATION"&&(originPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
             recenterVersion={location.recenterVersion} locating={location.locating}
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
             onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>}
       </div>
-      <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
+      {!selectingOrigin&&<div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
         <RoleSwitchHeader activeRole={activeRoleState.activeRole} disabled={activeRoleState.loading||activeRoleState.busy} onSwitch={handleShellRoleSwitch}/>
-      </div>
+      </div>}
       <QuickVehicleModal open={vehicleModalOpen} onOpenChange={setVehicleModalOpen} missingFields={missingVehicleFields}
         initialType={activeRoleState.vehicleType} initialSeats={activeRoleState.vehicleSeats}
         onSave={async vehicle=>{
@@ -324,6 +328,7 @@ function Home(){
             snap={sheetSnap} onSnapChange={setSheetSnap} serviceType={serviceType} onServiceTypeChange={setServiceType}
             vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"} maxSeats={activeRoleState.vehicleSeats} gender={gender}
             originPoint={originLocation} originLabel={origin} originRevision={shellOriginRevision}
+            locating={locatingPickup} originNeedsConfirmation={pickupNeedsConfirmation} onConfirmOrigin={openPickupDialog}
             onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
             onRouteChange={handleShellRouteChange} onDestinationChange={handleDestinationChange}
             onPublished={()=>setDriverTripsRefreshKey(value=>value+1)} onOpenTrips={showTrips}/>:
@@ -357,12 +362,12 @@ function Home(){
       </InteractiveBottomSheet>
       <Dialog open={pickupDialogOpen} onOpenChange={open=>{setPickupDialogOpen(open);if(!open)setPickupCandidate(null);}}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogTitle>Onde você vai embarcar?</DialogTitle>
-          <DialogDescription>Confira o ponto mostrado no mapa. Fechar esta janela não confirma o embarque.</DialogDescription>
-          {validPoint(pickupCandidate)&&<section aria-label="Ponto de embarque a confirmar" className="space-y-3 rounded-xl border border-[#FFBB00]/40 p-4">
+          <DialogTitle>{scheduledDriverPreview?"De onde sua carona vai sair?":"Onde você vai embarcar?"}</DialogTitle>
+          <DialogDescription>{scheduledDriverPreview?"Confira o ponto mostrado no mapa. Fechar esta janela não confirma a saída.":"Confira o ponto mostrado no mapa. Fechar esta janela não confirma o embarque."}</DialogDescription>
+          {validPoint(pickupCandidate)&&<section aria-label={scheduledDriverPreview?"Ponto de saída a confirmar":"Ponto de embarque a confirmar"} className="space-y-3 rounded-xl border border-[#FFBB00]/40 p-4">
             <p className="font-semibold">{pickupCandidate.formattedAddress||pickupCandidate.rawText||"Ponto mostrado no mapa"}</p>
-            {pickupNeedsConfirmation&&<p className="text-sm text-muted-foreground">Sua localização é aproximada. Confirme se o marcador está no local onde você vai esperar o motorista.</p>}
-            <Button type="button" onClick={confirmPickup} className="min-h-12 h-auto w-full whitespace-normal bg-[#FFBB00] text-[#121212]">Confirmar este ponto de embarque</Button>
+            {pickupNeedsConfirmation&&<p className="text-sm text-muted-foreground">{scheduledDriverPreview?"Sua localização é aproximada. Confirme se o marcador está no local de saída da sua carona.":"Sua localização é aproximada. Confirme se o marcador está no local onde você vai esperar o motorista."}</p>}
+            <Button type="button" onClick={confirmPickup} className="min-h-12 h-auto w-full whitespace-normal bg-[#FFBB00] text-[#121212]">{scheduledDriverPreview?"Confirmar este ponto de saída":"Confirmar este ponto de embarque"}</Button>
           </section>}
           <LocationAutocomplete id="passenger-pickup" label="Buscar saída" variant="simple" value={origin}
             selectedLocation={originLocation} onChange={(_label,details)=>{

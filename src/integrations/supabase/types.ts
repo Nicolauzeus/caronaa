@@ -6645,6 +6645,7 @@ export type Database = {
           p_origin: string
           p_origin_lat: number
           p_origin_lng: number
+          p_quote_id?: string
           p_ride_date: string
           p_route_path?: Json
           p_total_price: number

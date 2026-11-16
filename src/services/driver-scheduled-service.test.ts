@@ -9,6 +9,9 @@ vi.mock("@/integrations/supabase/client",()=>({supabase:{rpc:mocks.rpc}}));
 const draft={
   origin:"Centro",destination:"Universidade",
   departureAt:"2030-11-16T13:00:00Z",
+  quoteId:"8b9f53e9-2728-4985-b866-d912fba5bd5e",
+  originPoint:{lat:-3.7301,lng:-38.5301},
+  destinationPoint:{lat:-3.7501,lng:-38.5101},
   routePath:[{lat:-3.73,lng:-38.53},{lat:-3.75,lng:-38.51}],
   bookingMode:"ALL" as const,vehicleType:"CAR" as const,
   seats:3,suggestedFarePerSeat:6,
@@ -18,14 +21,16 @@ const draft={
 };
 beforeEach(()=>vi.clearAllMocks());
 describe("driver scheduled RPC contracts",()=>{
-  it("publishes an existing road line as WGS84 GeoJSON with selected settings",async()=>{
+  it("publishes the trusted quote with selected endpoints, independently of road snapping",async()=>{
     mocks.rpc.mockResolvedValue({data:{offer_id:"offer-1"},error:null});
     expect(await publishScheduledDriverOffer(draft)).toBe("offer-1");
     expect(mocks.rpc).toHaveBeenCalledWith("publish_scheduled_driver_offer",expect.objectContaining({
-      p_route_path:{type:"LineString",coordinates:[[-38.53,-3.73],[-38.51,-3.75]]},
+      p_route_path:draft.routePath,
+      p_quote_id:draft.quoteId,
       p_booking_mode:"ALL",p_available_seats:3,p_total_price:6,
       p_ride_date:"2030-11-16",p_departure_time:"10:00:00",
-      p_origin_lat:-3.73,p_destination_lng:-38.51,p_women_only:false,
+      p_origin_lat:-3.7301,p_destination_lng:-38.5101,p_women_only:false,
+      p_travel_preferences:draft.preferences,
     }));
     const args=mocks.rpc.mock.calls[0][1];
     expect(args).not.toHaveProperty("p_departure_at");
@@ -42,9 +47,65 @@ describe("driver scheduled RPC contracts",()=>{
     });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
-  it("maps platform debt 42501 to safe driver-facing diagnostic",async()=>{
-    mocks.rpc.mockResolvedValue({data:null,error:{code:"42501",message:"fee pending"}});
+  it("maps an explicit platform debt diagnostic without confusing permissions with debt",async()=>{
+    mocks.rpc.mockResolvedValue({data:null,error:{code:"42501",message:"PLATFORM_FEE_PENDING"}});
     await expect(publishScheduledDriverOffer(draft)).rejects.toMatchObject({code:"DEBT_PENDING"});
+    mocks.rpc.mockResolvedValue({data:null,error:{code:"42501",message:"permission denied"}});
+    await expect(publishScheduledDriverOffer(draft)).rejects.toMatchObject({code:"FORBIDDEN"});
+  });
+  it.each([
+    ["QUOTE_EXPIRED","QUOTE_EXPIRED"],
+    ["QUOTE_REQUIRED","QUOTE_EXPIRED"],
+    ["QUOTE_INVALID","QUOTE_EXPIRED"],
+    ["QUOTE_ALREADY_USED","ALREADY_PUBLISHED"],
+    ["INVALID_SCHEDULE","INVALID_SCHEDULE"],
+    ["VEHICLE_REQUIRED","VEHICLE_REQUIRED"],
+    ["WOMEN_ONLY_NOT_ALLOWED","FORBIDDEN"],
+    ["QUOTE_MISMATCH","INVALID_INPUT"],
+  ])("keeps actionable publication error %s",async(message,code)=>{
+    mocks.rpc.mockResolvedValue({data:null,error:{code:"P0001",message}});
+    await expect(publishScheduledDriverOffer(draft)).rejects.toMatchObject({code});
+  });
+  it("requires a saved quote and valid route points before attempting publication",async()=>{
+    for(const invalid of [
+      {...draft,quoteId:""},
+      {...draft,routePath:[]},
+      {...draft,routePath:[draft.originPoint]},
+      {...draft,originPoint:{lat:91,lng:-38.5}},
+      {...draft,routePath:[draft.originPoint,{lat:NaN,lng:-38.5}]},
+    ]){
+      await expect(publishScheduledDriverOffer(invalid)).rejects.toMatchObject({code:"INVALID_INPUT"});
+    }
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("keeps the same quote on a transport retry so the server can deduplicate",async()=>{
+    mocks.rpc.mockRejectedValueOnce(new Error("network disconnected"))
+      .mockResolvedValue({data:{offer_id:"offer-1"},error:null});
+    await expect(publishScheduledDriverOffer(draft)).rejects.toMatchObject({code:"UNAVAILABLE"});
+    await expect(publishScheduledDriverOffer(draft)).resolves.toBe("offer-1");
+    expect(mocks.rpc.mock.calls[0][1]).toEqual(mocks.rpc.mock.calls[1][1]);
+  });
+  it("does not report success for an explicitly rejected response",async()=>{
+    mocks.rpc.mockResolvedValue({data:{success:false,offer_id:"offer-1",message:"QUOTE_EXPIRED"},error:null});
+    await expect(publishScheduledDriverOffer(draft)).rejects.toMatchObject({code:"QUOTE_EXPIRED"});
+  });
+  it("uses the Fortaleza calendar day when UTC is already the following day",async()=>{
+    mocks.rpc.mockResolvedValue({data:"offer-1",error:null});
+    await publishScheduledDriverOffer({...draft,departureAt:"2030-11-17T01:10:00Z"});
+    expect(mocks.rpc.mock.calls[0][1]).toMatchObject({p_ride_date:"2030-11-16",p_departure_time:"22:10:00"});
+  });
+  it("asks for a new departure time when the selected time is no longer valid",async()=>{
+    await expect(publishScheduledDriverOffer({...draft,departureAt:new Date().toISOString()}))
+      .rejects.toMatchObject({code:"INVALID_SCHEDULE"});
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("lets the server recover a previously committed retry after the local schedule window",async()=>{
+    const attempt={...draft,departureAt:new Date(Date.now()-60000).toISOString()};
+    mocks.rpc.mockResolvedValueOnce({data:{offer_id:"original-offer"},error:null});
+    await expect(publishScheduledDriverOffer(attempt,{retry:true})).resolves.toBe("original-offer");
+    expect(mocks.rpc.mock.calls[0][1]).toMatchObject({p_quote_id:draft.quoteId});
+    mocks.rpc.mockResolvedValueOnce({data:null,error:{code:"22023",message:"INVALID_SCHEDULE"}});
+    await expect(publishScheduledDriverOffer(attempt,{retry:true})).rejects.toMatchObject({code:"INVALID_SCHEDULE"});
   });
   it("loads authorized opportunities with no raw realtime payload",async()=>{
     mocks.rpc.mockResolvedValue({data:[{
@@ -64,6 +125,24 @@ describe("driver scheduled RPC contracts",()=>{
     expect(mocks.rpc).toHaveBeenCalledWith("driver_accept_scheduled_request",{
       p_offer_id:"offer-1",p_request_id:"req-1",
     });
+  });
+  it("reads the deployed opportunity field names without inventing earnings or distance",async()=>{
+    mocks.rpc.mockResolvedValue({data:[{
+      request_id:"req-1",passenger_name:"Passageira confirmada",passenger_count:1,
+      passenger_avatar:"https://example.com/avatar.png",estimated_earnings:6,
+      pickup_walk_m:75,meeting_label:"Parada combinada",
+    }],error:null});
+    await expect(getDriverScheduledOpportunities("offer-1")).resolves.toEqual([{
+      requestId:"req-1",passengerName:"Passageira confirmada",passengers:1,
+      passengerAvatarUrl:"https://example.com/avatar.png",potentialEarnings:6,
+      meetingDistanceMeters:75,meetingName:"Parada combinada",
+    }]);
+  });
+  it("recognizes the deployed atomic acceptance success without accepting failed bodies",async()=>{
+    mocks.rpc.mockResolvedValueOnce({data:{success:true,match_id:"match-1",request_id:"req-1",seats_remaining:1},error:null})
+      .mockResolvedValueOnce({data:{success:false,status:"CONFIRMED",seats_remaining:1},error:null});
+    await expect(acceptDriverScheduledRequest("offer-1","req-1")).resolves.toEqual({seatsRemaining:1});
+    await expect(acceptDriverScheduledRequest("offer-1","req-1")).rejects.toMatchObject({code:"UNAVAILABLE"});
   });
   it("handles already matched requests without false success",async()=>{
     mocks.rpc.mockResolvedValue({data:null,error:{code:"P0001",message:"ALREADY_MATCHED"}});

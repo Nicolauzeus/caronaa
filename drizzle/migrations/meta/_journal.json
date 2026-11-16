@@ -918,6 +918,20 @@
       "when": 1794824133123,
       "tag": "0158_f02_carona_tradicional_role_switch_liberado",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1794827631011,
+      "tag": "0159_f03_scheduled_offer_trusted_quote",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1794828028685,
+      "tag": "0160_f03_scheduled_offer_readback",
+      "breakpoints": true
     }
   ]
 }
