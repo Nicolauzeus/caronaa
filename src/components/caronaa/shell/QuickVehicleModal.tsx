@@ -50,7 +50,7 @@ export function QuickVehicleModal({
       await onSave(draft);
       onOpenChange(false);
     }catch{
-      setError("Não foi possível ativar Motorista. Confira os dados ou a configuração de elegibilidade no Supabase.");
+      setError("Não foi possível salvar os dados do veículo. Confira as informações e tente novamente.");
     }finally{
       setBusy(false);
     }
@@ -63,7 +63,7 @@ export function QuickVehicleModal({
           {missingFields.length?"Complete seu veículo":"Confirme os dados do veículo"}
         </DialogTitle>
         <DialogDescription className="text-white/70">
-          Informe os dados do veículo. Sem CNH, fotos ou aprovação manual nesta etapa. A ativação depende da validação do servidor.
+          Informe os dados do seu veículo para oferecer caronas compartilhadas.
         </DialogDescription>
       </DialogHeader>
       <form className="max-h-[75dvh] space-y-3 overflow-y-auto" onSubmit={event=>void submit(event)}>

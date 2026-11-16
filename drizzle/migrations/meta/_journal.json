@@ -911,6 +911,13 @@
       "when": 1794802921664,
       "tag": "0129_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1794824133123,
+      "tag": "0158_f02_carona_tradicional_role_switch_liberado",
+      "breakpoints": true
     }
   ]
 }
