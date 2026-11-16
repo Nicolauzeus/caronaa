@@ -15,6 +15,8 @@ export type ApproximateProfessionalDriver = {
 };
 type Props = {
   pickupPreview?: StrictPickupPreview | null;
+  /** Visual passenger preview only; never relax professional GPS publication. */
+  passengerPreview?: boolean;
   immersive?: boolean;
   routeManagedExternally?: boolean;
   routeBottomInset?:number;
