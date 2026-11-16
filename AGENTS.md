@@ -11,7 +11,6 @@
 
 <!-- LOVABLE:END -->
 
-- Quote passenger Flash categories in parallel through the existing authorized server APIs, keyed by itinerary rather than selected vehicle; approximate passenger GPS is preview-only until explicitly confirmed, never a professional GPS permission bypass.
 - Keep CARONAA sample users and rides in `src/mockData.ts`, accessed through small mock services; this keeps the visual MVP replaceable by real data later.
 - Keep the shared app header and navigation in a reusable shell, while every content page owns its TanStack route and metadata; this preserves direct links and responsive navigation.
 - Keep the public formulario parent as an Outlet-only layout and scope its legacy registration redirect to its index; parent guards also run for public survey deep links.

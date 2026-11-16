@@ -1,0 +1,3 @@
+- Quote passenger Flash categories through the existing authorized APIs in parallel and key them by itinerary, not selected vehicle; this avoids repeated quotes on category switches.
+- Approximate passenger GPS only previews fares until explicit pickup confirmation; this never bypasses professional GPS or server eligibility.
+- Keep map layouts within the available viewport after the header and mobile navigation; this prevents sheet actions being covered.

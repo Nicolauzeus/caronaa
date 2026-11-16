@@ -380,7 +380,7 @@ function Home() {
               originPoint={originLocation}
               originLabel={origin}
               originRevision={shellOriginRevision}
-              onAdjustOrigin={()=>setPickupDialogOpen(true)}
+              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
               onRouteChange={handleShellRouteChange}
               onDestinationChange={handleDestinationChange}
               onPublished={()=>setDriverTripsRefreshKey(value=>value+1)}
@@ -431,7 +431,7 @@ function Home() {
                   shellMode shellSnap={sheetSnap}
                 />
               }
-              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
+              onAdjustOrigin={()=>setPickupDialogOpen(true)}
               onRouteChange={handleShellRouteChange}
               onOnRouteMatchSelected={setSelectedOnRouteMatch}
               onDestinationChange={handleDestinationChange}
