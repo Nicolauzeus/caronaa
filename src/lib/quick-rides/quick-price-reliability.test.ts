@@ -69,7 +69,7 @@ describe("quote coordination, without changing server authorization",()=>{
   });
   it("keys exact coordinates, not asynchronously resolved labels",()=>{
     const origin={lat:0,lng:0,label:"GPS"};const destination={lat:1,lng:1};
-    expect(quickQuoteItineraryKey(origin,destination,"MOTO")).toBe(quickQuoteItineraryKey({...origin,label:"Street name"},destination,"MOTO"));
+    expect(quickQuoteItineraryKey(origin,destination,"MOTO")).toBe(quickQuoteItineraryKey({...origin,label:"Street name"} as typeof origin,destination,"MOTO"));
     expect(quickQuoteItineraryKey(origin,destination,"CAR")).not.toBe(quickQuoteItineraryKey({...origin,lat:0.000001},destination,"CAR"));
   });
   it("reuses a valid quote after remount and separates categories",async()=>{
