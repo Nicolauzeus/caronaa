@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickRideHomePanel } from "./QuickRideHomePanel";
 const api=vi.hoisted(()=>({coverage:vi.fn(),preview:vi.fn(),submit:vi.fn(),interest:vi.fn(),rpc:vi.fn()}));
+vi.mock("@/lib/auth-context",()=>({useAuth:()=>({user:null,loading:false})}));
 vi.mock("@tanstack/react-start",()=>{
   const chain={server:vi.fn(()=>chain),client:vi.fn(()=>chain),middleware:vi.fn(()=>chain)};
   return {useServerFn:(fn:unknown)=>fn,createMiddleware:vi.fn(()=>chain)};
