@@ -1,4 +1,5 @@
-- [ ] Google credential setup: remove public REST fallback, check existing tests and replace keys securely; deployed Google behavior needs verification on an authorized origin.
+- [x] Google credential setup: replaced both keys securely, removed public REST fallback and added async map loading/channel. 56 focused tests passed; automatic build OK. No database or product-rule changes.
+- [ ] Google deployed validation: publish updated keys, then validate maps, Places and Routes on the authorized CARONAA domain; live Google checks are unavailable in the agent sandbox.
 - [x] F07/Google: Audited policies/view grants, migration ordering and historical self-radar regression; complete proposed SQL presented for approval, with no database mutations.
 - [ ] F07: Separate trip tracking from new-dispatch coverage checks without weakening public discovery; resolve README coverage conflict before implementation.
 - [x] Google item 7 integration: Authenticated routes/Places use one action budget across bounded legs; anonymous searches/map previews use approved 0127, 2,000 attempts/day (Fortaleza), private session hash/cookie and atomic counters. Grants/RLS readback verified, 125 tests passed, automatic build OK. Cache persistence remains disabled; live Google behavior, real DB concurrency and automated cleanup remain unverified/pending. Do not implement items 4–6 or 8.
