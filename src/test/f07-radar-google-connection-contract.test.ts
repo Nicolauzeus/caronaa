@@ -20,7 +20,7 @@ describe("CARONAA F07 Google Routes and public radar integration",()=>{
   it("uses bounded timeout and safe server diagnostics without raw exception logs",()=>{
     expect(google).toContain("GOOGLE_TIMEOUT_MS");
     expect(google).toContain('console.error("[CARONAA][GOOGLE_REQUEST]"');
-    expect(google).not.toContain("Falha na requisição:", cause");
+    expect(google).not.toContain("Falha na requisição:");
     expect(google).not.toMatch(/console\.(?:error|warn)\([^\n]*cause\)/);
     expect(quick).toContain("getDrivingRoute([data.origin,data.destination]");
     expect(quick).toContain("[CARONAA][F07][QUOTE_ROUTE]");
