@@ -29,7 +29,7 @@ import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperation
 import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { useProfileGender } from "@/lib/use-profile-gender";
-import { useUserLocation } from "@/lib/location/use-user-location";
+import { useUserLocation, validPoint, type UserPosition } from "@/lib/location/use-user-location";
 import { canPreviewPassengerPickup, needsPassengerPickupConfirmation } from "@/lib/location/passenger-pickup";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
@@ -40,64 +40,46 @@ import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 
 export const Route = createFileRoute("/_authenticated/home")({
-  validateSearch: z.object({ intent: z.enum(["offer"]).optional(), trips: z.enum(["open"]).optional() }),
-  // Parent route already verifies login and applies institution waiting gates.
-  // Resolve role before any passenger/driver dashboard renders.
-  beforeLoad: async () => {
+  validateSearch: z.object({intent:z.enum(["offer"]).optional(),trips:z.enum(["open"]).optional()}),
+  beforeLoad:async()=>{
     beginCaronaaPhase("home-before-load");
-    try {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return;
-    if (getAdminAppPreview(data.user.id)) return;
-    const destination = await getMyAdminEntry();
-    if (destination) throw redirect({ to: destination as "/admin", replace: true });
-    const progress = await readOnboarding();
-    if (progress?.status !== "BASIC_COMPLETED") {
-      throw redirect({ to: "/onboarding", replace: true });
-    }
-    const next = await resolvePostOnboardingDestination();
-    if (next !== "/home") throw redirect({ to: next, replace: true });
-    } finally {endCaronaaPhase("home-before-load");beginCaronaaPhase("home-first-render");}
+    try{
+      const {data,error}=await supabase.auth.getUser();
+      if(error||!data.user)return;
+      if(getAdminAppPreview(data.user.id))return;
+      const destination=await getMyAdminEntry();
+      if(destination)throw redirect({to:destination as "/admin",replace:true});
+      const progress=await readOnboarding();
+      if(progress?.status!=="BASIC_COMPLETED")throw redirect({to:"/onboarding",replace:true});
+      const next=await resolvePostOnboardingDestination();
+      if(next!=="/home")throw redirect({to:next,replace:true});
+    }finally{endCaronaaPhase("home-before-load");beginCaronaaPhase("home-first-render");}
   },
-  head: () => ({
-    meta: [
-      { title: "Início — CARONAA" },
-      {
-        name: "description",
-        content: "Peça ou ofereça uma carona pelo seu trajeto.",
-      },
-      { property: "og:title", content: "Início — CARONAA" },
-      {
-        property: "og:description",
-        content: "Peça ou ofereça uma carona pelo seu trajeto.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: Home,
+  head:()=>({meta:[
+    {title:"Início — CARONAA"},
+    {name:"description",content:"Peça ou ofereça uma carona pelo seu trajeto."},
+    {property:"og:title",content:"Início — CARONAA"},
+    {property:"og:description",content:"Peça ou ofereça uma carona pelo seu trajeto."},
+    {property:"og:type",content:"website"},{name:"twitter:card",content:"summary"},
+  ]}),
+  component:Home,
 });
 
-
-function Home() {
+function Home(){
   const routeSearch=Route.useSearch();
   useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const activeRoleState=useActiveRole();
   const gender=useProfileGender();
   const location=useUserLocation({autoLocate:true});
   const reverseGeocode=useServerFn(reverseGeocodeServerFn);
-
   const [sheetSnap,setSheetSnap]=useState<SheetSnap>("peek");
-  useEffect(()=>{
-    if(typeof window!=="undefined"&&window.matchMedia("(min-width: 768px)").matches)setSheetSnap("half");
-  },[]);
+  useEffect(()=>{if(typeof window!=="undefined"&&window.matchMedia("(min-width: 768px)").matches)setSheetSnap("half");},[]);
   const [serviceType,setServiceType]=useState<ServiceType>("FLASH");
   const [tripsPanelOpen,setTripsPanelOpen]=useState(false);
   useEffect(()=>{if(routeSearch.trips==="open"){setTripsPanelOpen(true);setSheetSnap("full");}},[routeSearch.trips]);
   const [tripsRefreshKey,setTripsRefreshKey]=useState(0);
   const [driverTripsRefreshKey,setDriverTripsRefreshKey]=useState(0);
   const lastPlanningSnap=useRef<SheetSnap>("peek");
-
   const [shellRoute,setShellRoute]=useState<ShellRoute|null>(null);
   const [shellRouteOrigin,setShellRouteOrigin]=useState<{lat:number;lng:number}|null>(null);
   const [shellDestinationLocation,setShellDestinationLocation]=useState<FormLocationDetails>();
@@ -121,153 +103,158 @@ function Home() {
   const [quickDriverError,setQuickDriverError]=useState("");
   const onQuickCoverage=useCallback((value:QuickRideCoverage|null)=>setQuickMunicipality(value?.radar&&value.municipality?value.municipality:""),[]);
   const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>setPassengerRide(ride),[]);
-  const onUrgentDropoff=useCallback((pending:boolean)=>{
-    setUrgentDropoff(pending);
-    if(pending){setTripsPanelOpen(false);setSheetSnap("full");}
-  },[]);
+  const onUrgentDropoff=useCallback((pending:boolean)=>{setUrgentDropoff(pending);if(pending){setTripsPanelOpen(false);setSheetSnap("full");}},[]);
   const onPassengerPhase=useCallback((status:string|null)=>{
     setPassengerPhase(status);
-    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(status)){
-      setTripsPanelOpen(false);setSheetSnap("full");
-    }
+    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(status)){setTripsPanelOpen(false);setSheetSnap("full");}
   },[]);
-
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
   const [selectingOrigin,setSelectingOrigin]=useState(false);
   const [pickupDialogOpen,setPickupDialogOpen]=useState(false);
+  const [pickupCandidate,setPickupCandidate]=useState<FormLocationDetails|null>(null);
   const [origin,setOrigin]=useState("");
   const [originLocation,setOriginLocation]=useState<FormLocationDetails>();
+  const [appliedOriginAccuracy,setAppliedOriginAccuracy]=useState<number|null>(null);
   const [resolvedAddress,setResolvedAddress]=useState<FormLocationDetails|null>(null);
   const [originSource,setOriginSource]=useState<"CURRENT_LOCATION"|"MANUAL_ORIGIN">("CURRENT_LOCATION");
   const originWasManuallySelected=useRef(false);
   const originLookupSequence=useRef(0);
   const lastGpsLookup=useRef<{lat:number;lng:number;at:number}|null>(null);
+  // Preserve the real fix used for pricing while live GPS continues on the map.
+  const passengerOriginFix=useRef<UserPosition|null>(null);
+  const awaitingNewOriginVersion=useRef<number|null>(null);
 
-  const showTrips=()=>{
-    lastPlanningSnap.current=sheetSnap;
-    setSheetSnap("full");
-    setTripsPanelOpen(true);
-  };
-  const closeTrips=()=>{
-    setTripsPanelOpen(false);
-    setSheetSnap(lastPlanningSnap.current);
-  };
-  const handleShellRouteChange=useCallback((route:ShellRoute|null,from:{lat:number;lng:number}|null)=>{
-    setShellRoute(route);
-    setShellRouteOrigin(from);
-  },[]);
+  const showTrips=()=>{lastPlanningSnap.current=sheetSnap;setSheetSnap("full");setTripsPanelOpen(true);};
+  const closeTrips=()=>{setTripsPanelOpen(false);setSheetSnap(lastPlanningSnap.current);};
+  const handleShellRouteChange=useCallback((route:ShellRoute|null,from:{lat:number;lng:number}|null)=>{setShellRoute(route);setShellRouteOrigin(from);},[]);
   const [passengerDestinationLabel,setPassengerDestinationLabel]=useState("");
   const handleDestinationChange=useCallback((_label:string,details?:FormLocationDetails)=>{
-    setPassengerDestinationLabel(_label);
-    setSelectedOnRouteMatch(null);
-    setShellDestinationLocation(details);
-    setShellSelectedDestination(details?.lat!=null&&details?.lng!=null);
-    setShellRoute(null);
+    setPassengerDestinationLabel(_label);setSelectedOnRouteMatch(null);setShellDestinationLocation(details);
+    setShellSelectedDestination(validPoint(details));setShellRoute(null);
   },[]);
-
   useEffect(()=>{
-    // Avoid carrying stale passenger/scheduled geometry across role changes.
-    setShellRoute(null);
-    setShellRouteOrigin(null);
-    setShellSelectedDestination(false);
-    setShellDestinationLocation(undefined);
-    setSelectedOnRouteMatch(null);
+    setShellRoute(null);setShellRouteOrigin(null);setShellSelectedDestination(false);
+    setShellDestinationLocation(undefined);setSelectedOnRouteMatch(null);
+    passengerOriginFix.current=null;awaitingNewOriginVersion.current=null;
+    setConfirmedPickupKey("");setPickupCandidate(null);setPickupDialogOpen(false);
   },[activeRoleState.activeRole,serviceType]);
   useEffect(()=>{
-    const expand=()=>setSheetSnap("half");
-    document.addEventListener("caronaa-shell-expand",expand);
+    const expand=()=>setSheetSnap("half");document.addEventListener("caronaa-shell-expand",expand);
     return()=>document.removeEventListener("caronaa-shell-expand",expand);
   },[]);
   const passengerPreview=activeRoleState.activeRole==="PASSAGEIRO"&&serviceType==="FLASH";
   const usableOriginFix=passengerPreview?canPreviewPassengerPickup(location.addressPosition):isTrustedGpsFix(location.addressPosition);
-  const pickupKey=JSON.stringify([location.addressPosition?.lat,location.addressPosition?.lng]);
-  const pickupNeedsConfirmation=passengerPreview&&originSource==="CURRENT_LOCATION"&&needsPassengerPickupConfirmation(location.addressPosition)&&confirmedPickupKey!==pickupKey;
-  // GPS fixes update the map position, but a manually chosen pickup must
-  // never drift to the next GPS reading.
+
   useEffect(()=>{
     if(originSource!=="CURRENT_LOCATION"||originWasManuallySelected.current)return;
-    if(!location.addressPosition||!usableOriginFix){
-      setOriginLocation(undefined);
-      if(location.failure)setOrigin("");
-      return;
+    if(passengerPreview&&awaitingNewOriginVersion.current!==null){
+      // Explicitly requesting a new pickup must not reuse the old hook value
+      // while getCurrentPosition is still pending or permission was denied.
+      if(location.recenterVersion===awaitingNewOriginVersion.current)return;
+      awaitingNewOriginVersion.current=null;
     }
-    const {lat,lng,accuracy}=location.addressPosition;
+    const fix=passengerPreview
+      ?passengerOriginFix.current??(canPreviewPassengerPickup(location.addressPosition)?location.addressPosition:null)
+      :isTrustedGpsFix(location.addressPosition)?location.addressPosition:null;
+    if(!fix){setOriginLocation(undefined);setAppliedOriginAccuracy(null);if(location.failure)setOrigin("");return;}
+    if(passengerPreview&&!passengerOriginFix.current)passengerOriginFix.current={...fix};
+    const {lat,lng,accuracy}=fix;
     const addressIsNear=resolvedAddress?.lat!=null&&resolvedAddress.lng!=null&&
       Math.abs(resolvedAddress.lat-lat)<0.0003&&Math.abs(resolvedAddress.lng-lng)<0.0003;
     const label=addressIsNear?resolvedAddress?.formattedAddress||"Minha localização atual":"Minha localização atual";
-    setOrigin(label);
-    setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:accuracy>100});
-  },[originSource,location.addressPosition,location.failure,resolvedAddress,usableOriginFix]);
+    setOrigin(label);setAppliedOriginAccuracy(accuracy);
+    setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:!isTrustedGpsFix(fix)});
+  },[originSource,location.addressPosition,location.failure,location.recenterVersion,resolvedAddress,passengerPreview,usableOriginFix]);
 
-  // Preserve the existing throttled reverse lookup for the operational city;
-  // never trigger it from every GPS watchPosition sample.
   useEffect(()=>{
     const fix=location.addressPosition;
     if(originSource!=="CURRENT_LOCATION"||!fix||!isTrustedGpsFix(fix)||location.locating)return;
     const previous=lastGpsLookup.current;
-    const distance=previous?111195*Math.hypot(fix.lat-previous.lat,
-      (fix.lng-previous.lng)*Math.cos(fix.lat*Math.PI/180)):Infinity;
+    const distance=previous?111195*Math.hypot(fix.lat-previous.lat,(fix.lng-previous.lng)*Math.cos(fix.lat*Math.PI/180)):Infinity;
     if(previous&&distance<75&&Date.now()-previous.at<120000)return;
     lastGpsLookup.current={lat:fix.lat,lng:fix.lng,at:Date.now()};
     const version=++originLookupSequence.current;
-    void sessionRequest("home-reverse:"+fix.lat.toFixed(3)+":"+fix.lng.toFixed(3),
-      ()=>reverseGeocode({data:{lat:fix.lat,lng:fix.lng}}),120000)
+    void sessionRequest("home-reverse:"+fix.lat.toFixed(3)+":"+fix.lng.toFixed(3),()=>reverseGeocode({data:{lat:fix.lat,lng:fix.lng}}),120000)
       .then(value=>{if(version===originLookupSequence.current)setResolvedAddress(value);})
       .catch(()=>{if(version===originLookupSequence.current)lastGpsLookup.current=null;});
   },[location.addressPosition,location.locating,originSource,reverseGeocode]);
 
   const chooseOriginOnMap=useCallback((point:{lat:number;lng:number})=>{
+    if(!validPoint(point))return;
     const request=++originLookupSequence.current;
-    originWasManuallySelected.current=true;
-    setOriginSource("MANUAL_ORIGIN");
+    originWasManuallySelected.current=true;passengerOriginFix.current=null;awaitingNewOriginVersion.current=null;
+    setOriginSource("MANUAL_ORIGIN");setAppliedOriginAccuracy(null);setConfirmedPickupKey("");
     const fallback="Ponto selecionado no mapa";
-    setOrigin(fallback);
-    setOriginLocation({rawText:fallback,formattedAddress:fallback,lat:point.lat,lng:point.lng});
-    setResolvedAddress(null);
-    setSelectingOrigin(false);
-    setShellOriginRevision(value=>value+1);
-    setSheetSnap(passengerDestinationLabel?"full":"half");
-    // Explicit tap: request an address only once; preserve exact clicked point.
-    void reverseGeocode({data:point})
-      .then(details=>{
-        if(request!==originLookupSequence.current||!details)return;
-        const label=details.formattedAddress||fallback;
-        setOrigin(label);
-        setResolvedAddress(details);
-        setOriginLocation({...details,rawText:label,formattedAddress:label,lat:point.lat,lng:point.lng});
-      }).catch(()=>undefined);
+    setOrigin(fallback);setOriginLocation({rawText:fallback,formattedAddress:fallback,lat:point.lat,lng:point.lng});
+    setShellRouteOrigin(point);setShellRoute(null);setResolvedAddress(null);setSelectingOrigin(false);
+    setShellOriginRevision(value=>value+1);setSheetSnap(passengerDestinationLabel?"full":"half");
+    void reverseGeocode({data:point}).then(details=>{
+      if(request!==originLookupSequence.current||!details)return;
+      const label=details.formattedAddress||fallback;
+      setOrigin(label);setResolvedAddress(details);
+      setOriginLocation({...details,rawText:label,formattedAddress:label,lat:point.lat,lng:point.lng});
+    }).catch(()=>undefined);
   },[reverseGeocode,passengerDestinationLabel]);
+
+  const plannedPickup=shellSelectedDestination&&validPoint(shellRouteOrigin)?shellRouteOrigin:originLocation;
+  const pickupKey=validPoint(plannedPickup)?JSON.stringify([plannedPickup.lat,plannedPickup.lng]):"";
+  const pickupMatchesApplied=validPoint(plannedPickup)&&validPoint(originLocation)&&
+    plannedPickup.lat===originLocation.lat&&plannedPickup.lng===originLocation.lng;
+  const quotedAccuracy=pickupMatchesApplied?appliedOriginAccuracy:300;
+  const quotedOrigin:FormLocationDetails|undefined=validPoint(plannedPickup)?{
+    ...originLocation,rawText:originLocation?.rawText||origin||"Minha localização atual",
+    lat:plannedPickup.lat,lng:plannedPickup.lng,
+  }:undefined;
+  const previewablePickup=originSource==="MANUAL_ORIGIN"||
+    (validPoint(plannedPickup)&&quotedAccuracy!==null&&canPreviewPassengerPickup({...plannedPickup,accuracy:quotedAccuracy}));
+  const pickupNeedsConfirmation=passengerPreview&&originSource==="CURRENT_LOCATION"&&validPoint(plannedPickup)&&
+    needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy??300})&&confirmedPickupKey!==pickupKey;
+  const locatingPickup=originSource==="CURRENT_LOCATION"&&location.locating&&!validPoint(quotedOrigin);
+  const openPickupDialog=()=>{setPickupCandidate(quotedOrigin??null);setPickupDialogOpen(true);};
+  const confirmPickup=()=>{
+    if(!validPoint(pickupCandidate))return;
+    const candidateKey=JSON.stringify([pickupCandidate.lat,pickupCandidate.lng]);
+    if(candidateKey!==pickupKey){
+      setPickupCandidate(quotedOrigin??null);
+      toast.info("O ponto de embarque mudou. Confira o local novamente.");return;
+    }
+    // This is the only approval of an approximate automatic pickup. Closing
+    // the dialog is not consent, and this action never submits a ride.
+    ++originLookupSequence.current;originWasManuallySelected.current=true;
+    setOriginSource("MANUAL_ORIGIN");setConfirmedPickupKey(candidateKey);
+    setOriginLocation({...pickupCandidate,isApproximate:false});setAppliedOriginAccuracy(null);
+    setShellRouteOrigin({lat:pickupCandidate.lat,lng:pickupCandidate.lng});
+    setPickupDialogOpen(false);setPickupCandidate(null);
+  };
+  const requestNewPickupLocation=()=>{
+    ++originLookupSequence.current;lastGpsLookup.current=null;originWasManuallySelected.current=false;
+    passengerOriginFix.current=null;awaitingNewOriginVersion.current=location.recenterVersion;
+    setOriginSource("CURRENT_LOCATION");setOrigin("");setOriginLocation(undefined);setResolvedAddress(null);
+    setAppliedOriginAccuracy(null);setShellRoute(null);setShellRouteOrigin(null);setConfirmedPickupKey("");
+    setShellOriginRevision(value=>value+1);setPickupCandidate(null);setPickupDialogOpen(false);
+    location.locate();
+  };
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
     if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
-      toast.info("Cancele a solicitação Flash antes de alternar de papel.");
-      setSheetSnap("full");
-      return;
+      toast.info("Cancele a solicitação Flash antes de alternar de papel.");setSheetSnap("full");return;
     }
     const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
-    if(!check.allowed){
-      toast[check.reason==="ACTIVE_RIDE"?"info":"error"](
-        check.reason==="ACTIVE_RIDE"
-          ?"Não é possível alternar de papel durante uma corrida em andamento"
-          :"Não foi possível verificar suas corridas. Tente novamente.");
-      return;
-    }
+    if(!check.allowed){toast[check.reason==="ACTIVE_RIDE"?"info":"error"](check.reason==="ACTIVE_RIDE"
+      ?"Não é possível alternar de papel durante uma corrida em andamento":"Não foi possível verificar suas corridas. Tente novamente.");return;}
     const result=await activeRoleState.switchRole(target);
-    if(result.needsVehicleModal){
-      setMissingVehicleFields(result.missingFields);
-      setVehicleModalOpen(true);
-    }
+    if(result.needsVehicleModal){setMissingVehicleFields(result.missingFields);setVehicleModalOpen(true);}
   };
 
-  // F07 radar: proximity to the passenger pickup decides discovery; the
-  // accepted-region gate (quickMunicipality from server coverage) still applies.
-  const radarPickup=(originLocation?.lat!=null&&originLocation?.lng!=null)
-    ?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
+  // Preserve the existing proximity radar, server authorization and GPS TTL.
+  const radarPickup=validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
   const radarLat=radarPickup?Math.round(radarPickup.lat*1000)/1000:null;
   const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
   useEffect(()=>{
-    if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;}
+    if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){
+      setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;
+    }
     let alive=true;
     const refresh=async()=>{
       if(alive)setQuickDriverLoading(true);
@@ -275,21 +262,16 @@ function Home() {
         const {data,error}=radarLat!=null&&radarLng!=null
           ?await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_lat:radarLat,p_lng:radarLng,p_vehicle:quickVehicle,p_radius_km:QUICK_RADAR_RADIUS_KM})
           :await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_municipality:quickMunicipality,p_vehicle:quickVehicle});
-        if(!alive)return;
-        if(error)throw error;
+        if(!alive)return;if(error)throw error;
         const approvedDrivers=mapQuickRadarDrivers(data,quickVehicle);
-        setQuickDrivers(approvedDrivers);
-        setQuickDriverCount(approvedDrivers.length);
-        setQuickDriverError("");
+        setQuickDrivers(approvedDrivers);setQuickDriverCount(approvedDrivers.length);setQuickDriverError("");
       }catch{if(alive){setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("Radar indisponível. Tente novamente.");}}
       finally{if(alive)setQuickDriverLoading(false);}
     };
-    void refresh();
-    const timer=window.setInterval(refresh,15000);
+    void refresh();const timer=window.setInterval(refresh,15000);
     return()=>{alive=false;window.clearInterval(timer);};
   },[activeRoleState.activeRole,serviceType,quickMunicipality,quickVehicle,radarLat,radarLng]);
-  const mapOrigin=shellSelectedDestination&&shellRouteOrigin
-    ?shellRouteOrigin:originLocation??location.position??undefined;
+  const mapOrigin=validPoint(plannedPickup)?plannedPickup:location.position??undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;
   const driverRole=activeRoleState.activeRole==="MOTORISTA";
   const shouldShowOperationalMap=driverRole&&serviceType==="FLASH"&&driverFlashRide!=null;
@@ -299,182 +281,104 @@ function Home() {
     <CaronaaPerformanceDiagnostic/>
     <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
       <div className="absolute inset-0">
-        {shouldShowPassengerMap&&passengerRide?
-          <QuickRideOperationalMap rideId={passengerRide.id} status={passengerRide.status} role="PASSENGER" immersive/>:
-        shouldShowOperationalMap&&driverFlashRide?
-          <QuickRideOperationalMap
-            rideId={driverFlashRide.id} status={driverFlashRide.status}
-            role="DRIVER" vehicleType={driverFlashRide.vehicleType} immersive/>:
-          <HomeRideMap
-            immersive
-            professionalDrivers={quickDrivers}
-            userPosition={location.position}
-            plannedRoute={shellSelectedDestination?shellRoute:null}
-            routeManagedExternally={shellSelectedDestination}
-            onRouteMeeting={selectedOnRouteMatch&&shellRouteOrigin?{
-              origin:shellRouteOrigin,
-              pickup:{lat:selectedOnRouteMatch.pickupMeeting.lat,
-                lng:selectedOnRouteMatch.pickupMeeting.lng,
-                poiName:selectedOnRouteMatch.pickupMeeting.poiName},
-            }:null}
-            routeBottomInset={shellSelectedDestination?
-              (typeof window!=="undefined"&&window.innerWidth>=768 ? 72 :
-                Math.round((typeof window==="undefined"?800:window.innerHeight)*
-                  (sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24):undefined}
+        {shouldShowPassengerMap&&passengerRide?<QuickRideOperationalMap rideId={passengerRide.id} status={passengerRide.status} role="PASSENGER" immersive/>:
+          shouldShowOperationalMap&&driverFlashRide?<QuickRideOperationalMap rideId={driverFlashRide.id} status={driverFlashRide.status} role="DRIVER" vehicleType={driverFlashRide.vehicleType} immersive/>:
+          <HomeRideMap immersive passengerPreview={passengerPreview}
+            professionalDrivers={quickDrivers} userPosition={location.position}
+            plannedRoute={shellSelectedDestination?shellRoute:null} routeManagedExternally={shellSelectedDestination}
+            onRouteMeeting={selectedOnRouteMatch&&shellRouteOrigin?{origin:shellRouteOrigin,pickup:{lat:selectedOnRouteMatch.pickupMeeting.lat,lng:selectedOnRouteMatch.pickupMeeting.lng,poiName:selectedOnRouteMatch.pickupMeeting.poiName}}:null}
+            routeBottomInset={shellSelectedDestination?(typeof window!=="undefined"&&window.innerWidth>=768?72:
+              Math.round((typeof window==="undefined"?800:window.innerHeight)*(sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24):undefined}
             routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
-            origin={mapOrigin}
-            destination={currentDestination}
-            originIsCurrent={originSource==="CURRENT_LOCATION"}
-            originAccuracyM={location.originAccuracyM}
-            following={originSource==="CURRENT_LOCATION"&&
-              isTrustedGpsFix(location.position)&&location.isFollowingUser}
-            recenterVersion={location.recenterVersion}
-            locating={location.locating}
-            selectingOrigin={selectingOrigin}
-            onPickOrigin={chooseOriginOnMap}
-            onDrag={()=>location.setFollowing(false)}
-            onRecenter={location.locate}
-          />}
+            origin={mapOrigin} destination={currentDestination} originIsCurrent={originSource==="CURRENT_LOCATION"}
+            originAccuracyM={passengerPreview?quotedAccuracy:location.originAccuracyM}
+            following={originSource==="CURRENT_LOCATION"&&(passengerPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
+            recenterVersion={location.recenterVersion} locating={location.locating}
+            selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
+            onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>
       </div>
       <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
-        <RoleSwitchHeader activeRole={activeRoleState.activeRole}
-          disabled={activeRoleState.loading||activeRoleState.busy}
-          onSwitch={handleShellRoleSwitch}/>
+        <RoleSwitchHeader activeRole={activeRoleState.activeRole} disabled={activeRoleState.loading||activeRoleState.busy} onSwitch={handleShellRoleSwitch}/>
       </div>
-      <QuickVehicleModal open={vehicleModalOpen} onOpenChange={setVehicleModalOpen}
-        missingFields={missingVehicleFields}
-        initialType={activeRoleState.vehicleType}
-        initialSeats={activeRoleState.vehicleSeats}
+      <QuickVehicleModal open={vehicleModalOpen} onOpenChange={setVehicleModalOpen} missingFields={missingVehicleFields}
+        initialType={activeRoleState.vehicleType} initialSeats={activeRoleState.vehicleSeats}
         onSave={async vehicle=>{
           const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
-          if(!check.allowed)throw new Error(check.reason==="ACTIVE_RIDE"
-            ?"Não é possível alternar durante uma corrida."
-            :"Não foi possível verificar suas corridas.");
+          if(!check.allowed)throw new Error(check.reason==="ACTIVE_RIDE"?"Não é possível alternar durante uma corrida.":"Não foi possível verificar suas corridas.");
           await activeRoleState.saveVehicle(vehicle);
         }}/>
-      <InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)}
-        title="Casca Única CARONAA"
-        headerAction={!tripsPanelOpen?
-          <button type="button" onClick={showTrips}
-            className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">
-            {driverRole?"Agendados":"Minhas Viagens"}
-          </button>:undefined}>
-        {tripsPanelOpen&&driverRole&&
-          <DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
-        {tripsPanelOpen&&!driverRole&&
-          <UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey}
-            onShowOnMap={(trip:UnifiedTrip)=>{
-              if(trip.operationalRideId!==passengerRide?.id){
-                toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");
-                return;
-              }
-              closeTrips();
-              setSheetSnap("peek");
-            }}/>}
+      <InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title="Casca Única CARONAA"
+        headerAction={!tripsPanelOpen?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">{driverRole?"Agendados":"Minhas Viagens"}</button>:undefined}>
+        {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
+        {tripsPanelOpen&&!driverRole&&<UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey} onShowOnMap={(trip:UnifiedTrip)=>{
+          if(trip.operationalRideId!==passengerRide?.id){toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");return;}
+          closeTrips();setSheetSnap("peek");
+        }}/>}
         <div className={tripsPanelOpen?"hidden":"h-full min-h-0"}>
-          {driverRole&&serviceType==="FLASH"?
-            <DriverFlashPlanner
-              snap={sheetSnap} onSnapChange={setSheetSnap}
-              serviceType={serviceType} onServiceTypeChange={setServiceType}
-              vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"}
-              municipality={resolvedAddress?.city??""}
-              originPoint={(originLocation?.lat!=null&&originLocation?.lng!=null?{lat:originLocation.lat,lng:originLocation.lng}:location.position) ?? null}
-              originLabel={origin||"Localização atual (GPS)"}
-              originRevision={shellOriginRevision}
-              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("half");}}
-              onRouteChange={handleShellRouteChange}
-              onActiveRideChange={setDriverFlashRide}
-              onDestinationChange={handleDestinationChange}
-            />:driverRole?
-            <DriverScheduledPlanner
-              snap={sheetSnap} onSnapChange={setSheetSnap}
-              serviceType={serviceType} onServiceTypeChange={setServiceType}
-              vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"}
-              maxSeats={activeRoleState.vehicleSeats}
-              gender={gender}
-              originPoint={originLocation}
-              originLabel={origin}
-              originRevision={shellOriginRevision}
-              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
-              onRouteChange={handleShellRouteChange}
-              onDestinationChange={handleDestinationChange}
-              onPublished={()=>setDriverTripsRefreshKey(value=>value+1)}
-              onOpenTrips={showTrips}
-            />:
-            <ShellJourneyPlanner
-              snap={sheetSnap} onSnapChange={setSheetSnap}
-              serviceType={serviceType} onServiceTypeChange={next=>{
-                if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
-                  toast.info("Finalize ou cancele a corrida atual antes de mudar de modalidade.");
-                  setSheetSnap("full");
-                  return;
-                }
-                setServiceType(next);
-              }}
-              originPoint={originLocation}
-              originLabel={origin}
-              originRevision={shellOriginRevision}
-              originMunicipality={resolvedAddress?.city??""}
-              gender={gender}
-              onFlashVehicleChange={setQuickVehicle}
-              flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
-              flashFare={flashFare}
-              flashFares={flashFares}
-              flashFarePending={flashFarePending}
-              onFlashActionContainer={setFlashActionContainer}
-              flashOperationalPanel={
-                <QuickRideHomePanel
-                  origin={origin||"Minha localização atual"}
-                  destination={passengerDestinationLabel}
-                  originPoint={shellRouteOrigin ? ({...originLocation,rawText:originLocation?.rawText??origin,lat:shellRouteOrigin.lat,lng:shellRouteOrigin.lng} as typeof originLocation) : originLocation}
-                  destinationPoint={shellDestinationLocation}
-                  vehicle={quickVehicle}
-                  onVehicleChange={setQuickVehicle}
-                  driverCount={quickDriverCount}
-                  driverLoading={quickDriverLoading}
-                  driverError={quickDriverError}
-                  gpsOriginIsImprecise={Boolean(location.addressPosition&&!usableOriginFix)&&originSource==="CURRENT_LOCATION"}
-                  pickupNeedsConfirmation={pickupNeedsConfirmation}
-                  onConfirmPickup={()=>setConfirmedPickupKey(pickupKey)}
-                  actionContainer={flashActionContainer}
-                  onFaresChange={setFlashFares}
-                  onFarePendingChange={setFlashFarePending}
-                  onCoverage={onQuickCoverage}
-                  onOperationalRideChange={onPassengerRide}
-                  onRidePhaseChange={onPassengerPhase}
-                  onDropoffPendingChange={onUrgentDropoff}
-                  onFareChange={setFlashFare}
-                  onOpenOperational={()=>setSheetSnap("full")}
-                  shellMode shellSnap={sheetSnap}
-                />
-              }
-              onAdjustOrigin={()=>setPickupDialogOpen(true)}
-              onRouteChange={handleShellRouteChange}
-              onOnRouteMatchSelected={setSelectedOnRouteMatch}
-              onDestinationChange={handleDestinationChange}
-              onScheduled={()=>setTripsRefreshKey(value=>value+1)}
-            />}
+          {driverRole&&serviceType==="FLASH"?<DriverFlashPlanner
+            snap={sheetSnap} onSnapChange={setSheetSnap} serviceType={serviceType} onServiceTypeChange={setServiceType}
+            vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"} municipality={resolvedAddress?.city??""}
+            originPoint={(validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position)??null}
+            originLabel={origin||"Localização atual (GPS)"} originRevision={shellOriginRevision}
+            onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("half");}}
+            onRouteChange={handleShellRouteChange} onActiveRideChange={setDriverFlashRide} onDestinationChange={handleDestinationChange}/>:
+          driverRole?<DriverScheduledPlanner
+            snap={sheetSnap} onSnapChange={setSheetSnap} serviceType={serviceType} onServiceTypeChange={setServiceType}
+            vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"} maxSeats={activeRoleState.vehicleSeats} gender={gender}
+            originPoint={originLocation} originLabel={origin} originRevision={shellOriginRevision}
+            onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
+            onRouteChange={handleShellRouteChange} onDestinationChange={handleDestinationChange}
+            onPublished={()=>setDriverTripsRefreshKey(value=>value+1)} onOpenTrips={showTrips}/>:
+          <ShellJourneyPlanner snap={sheetSnap} onSnapChange={setSheetSnap}
+            serviceType={serviceType} onServiceTypeChange={next=>{
+              if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
+                toast.info("Finalize ou cancele a corrida atual antes de mudar de modalidade.");setSheetSnap("full");return;
+              }setServiceType(next);
+            }}
+            originPoint={originLocation} originLabel={origin} locating={locatingPickup}
+            originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
+            onFlashVehicleChange={setQuickVehicle}
+            flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
+            flashFare={flashFare} flashFares={flashFares} flashFarePending={flashFarePending}
+            onFlashActionContainer={setFlashActionContainer}
+            flashOperationalPanel={<QuickRideHomePanel
+              origin={origin||"Minha localização atual"} destination={passengerDestinationLabel}
+              originPoint={quotedOrigin} destinationPoint={shellDestinationLocation}
+              locating={locatingPickup} vehicle={quickVehicle} onVehicleChange={setQuickVehicle}
+              driverCount={quickDriverCount} driverLoading={quickDriverLoading} driverError={quickDriverError}
+              gpsOriginIsImprecise={originSource==="CURRENT_LOCATION"&&!previewablePickup}
+              pickupNeedsConfirmation={pickupNeedsConfirmation} onConfirmPickup={openPickupDialog}
+              actionContainer={flashActionContainer} onFaresChange={setFlashFares} onFarePendingChange={setFlashFarePending}
+              onCoverage={onQuickCoverage} onOperationalRideChange={onPassengerRide} onRidePhaseChange={onPassengerPhase}
+              onDropoffPendingChange={onUrgentDropoff} onFareChange={setFlashFare}
+              onOpenOperational={()=>setSheetSnap("full")} shellMode shellSnap={sheetSnap}/>}
+            onAdjustOrigin={openPickupDialog} onRouteChange={handleShellRouteChange}
+            onOnRouteMatchSelected={setSelectedOnRouteMatch} onDestinationChange={handleDestinationChange}
+            onScheduled={()=>setTripsRefreshKey(value=>value+1)}/>}
         </div>
       </InteractiveBottomSheet>
-      <Dialog open={pickupDialogOpen} onOpenChange={setPickupDialogOpen}>
+      <Dialog open={pickupDialogOpen} onOpenChange={open=>{setPickupDialogOpen(open);if(!open)setPickupCandidate(null);}}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogTitle>Onde você vai embarcar?</DialogTitle>
-          <DialogDescription>Confirme seu ponto de saída.</DialogDescription>
+          <DialogDescription>Confira o ponto mostrado no mapa. Fechar esta janela não confirma o embarque.</DialogDescription>
+          {validPoint(pickupCandidate)&&<section aria-label="Ponto de embarque a confirmar" className="space-y-3 rounded-xl border border-[#FFBB00]/40 p-4">
+            <p className="font-semibold">{pickupCandidate.formattedAddress||pickupCandidate.rawText||"Ponto mostrado no mapa"}</p>
+            {pickupNeedsConfirmation&&<p className="text-sm text-muted-foreground">Sua localização é aproximada. Confirme se o marcador está no local onde você vai esperar o motorista.</p>}
+            <Button type="button" onClick={confirmPickup} className="min-h-12 h-auto w-full whitespace-normal bg-[#FFBB00] text-[#121212]">Confirmar este ponto de embarque</Button>
+          </section>}
           <LocationAutocomplete id="passenger-pickup" label="Buscar saída" variant="simple" value={origin}
             selectedLocation={originLocation} onChange={(_label,details)=>{
-              if(details?.lat==null||details.lng==null)return;
-              chooseOriginOnMap({lat:details.lat,lng:details.lng});setPickupDialogOpen(false);
+              if(!validPoint(details))return;
+              chooseOriginOnMap({lat:details.lat,lng:details.lng});setPickupDialogOpen(false);setPickupCandidate(null);
             }}/>
-          <Button variant="outline" onClick={()=>{setPickupDialogOpen(false);setSelectingOrigin(true);setSheetSnap("peek");}}>Escolher no mapa</Button>
-          <Button variant="ghost" onClick={()=>{originWasManuallySelected.current=false;setOriginSource("CURRENT_LOCATION");setConfirmedPickupKey("");location.locate();setPickupDialogOpen(false);}}>Usar localização atual</Button>
+          <Button type="button" variant="outline" className="min-h-12" onClick={()=>{setPickupDialogOpen(false);setPickupCandidate(null);setSelectingOrigin(true);setSheetSnap("peek");}}>Escolher no mapa</Button>
+          <Button type="button" variant="ghost" className="min-h-12" onClick={requestNewPickupLocation}>Usar localização atual</Button>
         </DialogContent>
       </Dialog>
-      {selectingOrigin&&
-        <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm shadow-xl backdrop-blur-xl sm:inset-x-5">
-          <p><strong className="text-[#FFBB00]">Definir saída:</strong> toque no ponto correto do mapa.</p>
-          <button type="button" onClick={()=>setSelectingOrigin(false)}
-            className="min-h-11 shrink-0 rounded-lg border border-white/30 px-3 font-semibold">Cancelar</button>
-        </div>}
+      {selectingOrigin&&<div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm shadow-xl backdrop-blur-xl sm:inset-x-5">
+        <p><strong className="text-[#FFBB00]">Definir saída:</strong> toque no ponto correto do mapa.</p>
+        <button type="button" onClick={()=>setSelectingOrigin(false)} className="min-h-12 shrink-0 rounded-lg border border-white/30 px-3 font-semibold">Cancelar</button>
+      </div>}
     </div>
   </AppShell>;
 }
