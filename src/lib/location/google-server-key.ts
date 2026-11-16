@@ -13,13 +13,11 @@ export function getGoogleServerKey(): string | null {
     env.VITE_GOOGLE_MAPS_BROWSER_API_KEY,
     vite.VITE_GOOGLE_MAPS_BROWSER_API_KEY,
   ]
-    .filter(Boolean)
-    .map((value) => value!.trim());
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim());
   const candidates = [
     env.GOOGLE_MAPS_API_KEY,
     env.GOOGLE_PLACES_API_KEY,
-    env.VITE_GOOGLE_MAPS_API_KEY,
-    vite.VITE_GOOGLE_MAPS_API_KEY,
   ];
   return (
     candidates

@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 describe("Google server keys", () => {
-  it("uses maps, places, Vite order and ignores blank or known browser-only keys", () => {
+  it("uses private maps then private places, never public Vite or browser keys", () => {
     expect(isLocationServiceConfigured()).toBe(false);
     expect(getMissingLocationConfig()).toEqual(["GOOGLE_MAPS_API_KEY"]);
     expect(getLocationProviderName()).toBe("Google Places (New)");
@@ -73,7 +73,7 @@ describe("Google server keys", () => {
     vi.stubEnv("GOOGLE_MAPS_BROWSER_API_KEY", "maps");
     expect(getGoogleServerKey()).toBe("places");
     vi.stubEnv("GOOGLE_PLACES_API_KEY", "");
-    expect(getGoogleServerKey()).toBe("vite");
+    expect(getGoogleServerKey()).toBeNull();
     vi.stubEnv("VITE_GOOGLE_MAPS_BROWSER_API_KEY", "vite");
     expect(getGoogleServerKey()).toBeNull();
   });
