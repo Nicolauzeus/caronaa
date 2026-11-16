@@ -1,4 +1,7 @@
 import { RoleSwitchHeader } from "@/components/caronaa/shell/RoleSwitchHeader";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { QuickVehicleModal } from "@/components/caronaa/shell/QuickVehicleModal";
 import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/shell/InteractiveBottomSheet";
 import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
@@ -128,6 +131,7 @@ function Home() {
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
   const [selectingOrigin,setSelectingOrigin]=useState(false);
+  const [pickupDialogOpen,setPickupDialogOpen]=useState(false);
   const [origin,setOrigin]=useState("");
   const [originLocation,setOriginLocation]=useState<FormLocationDetails>();
   const [resolvedAddress,setResolvedAddress]=useState<FormLocationDetails|null>(null);
@@ -376,7 +380,7 @@ function Home() {
               originPoint={originLocation}
               originLabel={origin}
               originRevision={shellOriginRevision}
-              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
+              onAdjustOrigin={()=>setPickupDialogOpen(true)}
               onRouteChange={handleShellRouteChange}
               onDestinationChange={handleDestinationChange}
               onPublished={()=>setDriverTripsRefreshKey(value=>value+1)}
@@ -435,6 +439,19 @@ function Home() {
             />}
         </div>
       </InteractiveBottomSheet>
+      <Dialog open={pickupDialogOpen} onOpenChange={setPickupDialogOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto">
+          <DialogTitle>Onde você vai embarcar?</DialogTitle>
+          <DialogDescription>Confirme seu ponto de saída.</DialogDescription>
+          <LocationAutocomplete id="passenger-pickup" label="Buscar saída" variant="simple" value={origin}
+            selectedLocation={originLocation} onChange={(_label,details)=>{
+              if(details?.lat==null||details.lng==null)return;
+              chooseOriginOnMap({lat:details.lat,lng:details.lng});setPickupDialogOpen(false);
+            }}/>
+          <Button variant="outline" onClick={()=>{setPickupDialogOpen(false);setSelectingOrigin(true);setSheetSnap("peek");}}>Escolher no mapa</Button>
+          <Button variant="ghost" onClick={()=>{originWasManuallySelected.current=false;setOriginSource("CURRENT_LOCATION");setConfirmedPickupKey("");location.locate();setPickupDialogOpen(false);}}>Usar localização atual</Button>
+        </DialogContent>
+      </Dialog>
       {selectingOrigin&&
         <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm shadow-xl backdrop-blur-xl sm:inset-x-5">
           <p><strong className="text-[#FFBB00]">Definir saída:</strong> toque no ponto correto do mapa.</p>
