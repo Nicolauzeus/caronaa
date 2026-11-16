@@ -9,7 +9,7 @@ type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void
 // units remain the final CSS value in supported mobile browsers.
 const heights:Record<SheetSnap,{fallback:string;dynamic:string}>={
   peek:{fallback:"132px",dynamic:"0px"},
-  half:{fallback:"68%",dynamic:"0px"},
+  half:{fallback:"78%",dynamic:"0px"},
   full:{fallback:"92%",dynamic:"0px"},
 };
 const order:SheetSnap[]=["peek","half","full"];

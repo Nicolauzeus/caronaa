@@ -356,7 +356,7 @@ function Home() {
               closeTrips();
               setSheetSnap("peek");
             }}/>}
-        <div style={{display:tripsPanelOpen?"none":undefined}}>
+        <div className={tripsPanelOpen?"hidden":"h-full min-h-0"}>
           {driverRole&&serviceType==="FLASH"?
             <DriverFlashPlanner
               snap={sheetSnap} onSnapChange={setSheetSnap}

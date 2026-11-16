@@ -426,7 +426,7 @@ export function ShellJourneyPlanner({
     <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint}
       variant="glass" placeholder="Busque seu destino" onChange={pickDestination}/>
     <Button variant="ghost" type="button" onClick={onAdjustOrigin}
-      className="h-auto min-h-11 w-full justify-start whitespace-normal px-1 text-left text-xs text-primary">
+      className="h-auto min-h-11 w-full justify-start whitespace-normal px-1 text-left text-xs text-primary hover:bg-caronaa-white/10 hover:text-primary">
       <MapPin size={16}/><span className="min-w-0 break-words">Origem: {originLabel||"Escolher saída"}</span>
     </Button>
     <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
