@@ -62,7 +62,7 @@ describe("Google request policy", () => {
   });
   it("never retries a timeout", async () => {
     const d = dependencies(); vi.mocked(d.fetch).mockRejectedValue(new DOMException("timeout", "TimeoutError"));
-    await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow("indisponível"); expect(d.fetch).toHaveBeenCalledTimes(1);
+    await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow("demorou"); expect(d.fetch).toHaveBeenCalledTimes(1);
   });
   it("does not await a stalled log", async () => {
     const d = dependencies(); d.log = vi.fn(() => new Promise(() => undefined));
