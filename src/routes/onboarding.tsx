@@ -20,7 +20,7 @@ export const Route = createFileRoute("/onboarding")({ ssr: false, component: Onb
 const regions: { value: RegionCode; label: string; detail: string }[] = [
   {value:"FORTALEZA",label:"Fortaleza e região metropolitana",detail:"Comunidade UNIFOR"},
   {value:"MACICO_BATURITE",label:"Maciço de Baturité",detail:"Comunidade UNILAB"},
-  {value:"OTHER",label:"Outra região",detail:"Acompanhe futuras expansões"},
+  {value:"OTHER",label:"Outra região",detail:"Outras cidades e estados"},
 ];
 const affiliations: {value:Affiliation;label:string}[] = [
   {value:"ESTUDANTE",label:"Estudante"},

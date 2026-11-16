@@ -22,6 +22,8 @@ O CARONAA é uma plataforma de mobilidade **mobile-first** que reúne, numa úni
 
 A região é uma configuração de disponibilidade do serviço, **não** uma restrição automática da origem/destino de todas as viagens. Não presumir lançamento, cobertura integral ou autorização de operação em municípios que ainda não tenham sido habilitados.
 
+**Cadastro e acesso sem bloqueio geográfico (decisão de 16/11/2026):** pessoas dentro e fora do Ceará podem criar conta e entrar no aplicativo. Cadastro por e-mail, login com Google e retorno de autenticação não exigem GPS nem confirmação de estado. A opção **Outra região** permanece disponível no onboarding. Autenticação, confirmação de e-mail, conclusão do perfil e regras de campanhas vinculadas continuam seguindo seus fluxos existentes; a cobertura e a autorização operacional da Flash/F07 são verificadas separadamente para cada serviço.
+
 ## 2. Regras de produto inegociáveis para o MVP
 
 1. **Não solicitar, exigir, armazenar como requisito novo ou bloquear acesso por CPF.** CPF está **fora do escopo do cadastro neste momento**. Não adicionar novamente o campo em formulários, onboarding, perfil, APIs ou validações novas sem decisão explícita.
