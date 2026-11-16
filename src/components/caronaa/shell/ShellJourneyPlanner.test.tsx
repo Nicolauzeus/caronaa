@@ -122,8 +122,7 @@ describe("CARONAA Flash passenger shell",()=>{
         policyVersion:"pilot"}}/>);
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     await screen.findByRole("radio",{name:/Flash Carro/});
-    expect(screen.getByText(/R\\$\\s*14,50/)).toBeTruthy();
-    expect(screen.getAllByText("Ver preço").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/R\$\s*14,50/)).toBeTruthy();
   });
   it("delegates Flash CTA to the real operational panel, not an isolated timer",async()=>{
     render(<Harness/>);

@@ -120,7 +120,7 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className={mapLayout?"flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground":"min-h-screen flex flex-col bg-background text-foreground"}>
       {/* The availability screen owns the first GPS watcher. On navigation away,
           this shared watcher mounts and resumes the same explicit consent,
           without running two GPS transmitters/rate-gate calls in parallel. */}
@@ -434,7 +434,7 @@ export function AppShell({
       <main
         className={
           mapLayout
-            ? `relative h-[calc(100dvh_-_9rem_-_env(safe-area-inset-bottom))] min-h-0 w-full md:h-[calc(100dvh_-_4rem)] ${professionalOnly ? "lg:ml-48 lg:w-[calc(100%_-_12rem)]" : ""}`
+            ? `relative min-h-0 w-full flex-1 mb-[calc(80px_+_env(safe-area-inset-bottom))] md:mb-0 ${professionalOnly ? "lg:ml-48 lg:w-[calc(100%_-_12rem)]" : ""}`
             : publicPage
             ? "flex-1"
             : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"

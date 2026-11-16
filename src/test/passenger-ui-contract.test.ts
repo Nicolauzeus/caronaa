@@ -24,8 +24,7 @@ describe("CARONAA passenger mobile-first UX contract",()=>{
     expect(planner).toContain("Flash Moto");
     expect(planner).toContain("Flash Carro");
     expect(planner).toContain("Carona Na Rota");
-    expect(planner).toContain("flashFare.customerPaysCents/100");
-    expect(planner).toContain("Ver preço");
+    expect(planner).toContain("fare.customerPaysCents/100");
     expect(planner).not.toContain("Revisar e Continuar");
     expect(quick).toContain('await submitFn({data:{quoteId:currentQuote.quoteId}})');
     expect(quick).toContain("onFareChange");

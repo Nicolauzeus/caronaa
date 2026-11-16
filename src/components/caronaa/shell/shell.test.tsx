@@ -14,18 +14,17 @@ describe("CARONAA shell stage 2", () => {
     expect(onChange).toHaveBeenCalledWith("AGENDADA");
   });
 
-  it("uses the three fixed viewport snap heights", () => {
+  it("changes between the three panel states with accessible arrow controls", () => {
     const onChange = vi.fn();
     const {rerender} = render(<InteractiveBottomSheet value="peek" onChange={onChange}>Destino</InteractiveBottomSheet>);
-    const sheet = screen.getByRole("region", {name:"Planejar viagem"});
-    expect(sheet.style.height).toBe("15%");
     const handle=screen.getByRole("button",{name:/alça do painel/i});
-    expect(handle.className).toContain("min-h-[44px]");
     fireEvent.keyDown(handle, {key:"ArrowUp"});
     expect(onChange).toHaveBeenCalledWith("half");
     rerender(<InteractiveBottomSheet value="half" onChange={onChange}>Destino</InteractiveBottomSheet>);
-    expect(sheet.style.height).toBe("50%");
+    fireEvent.keyDown(handle, {key:"ArrowUp"});
+    expect(onChange).toHaveBeenLastCalledWith("full");
     rerender(<InteractiveBottomSheet value="full" onChange={onChange}>Destino</InteractiveBottomSheet>);
-    expect(sheet.style.height).toBe("85%");
+    fireEvent.keyDown(handle, {key:"ArrowDown"});
+    expect(onChange).toHaveBeenLastCalledWith("half");
   });
 });

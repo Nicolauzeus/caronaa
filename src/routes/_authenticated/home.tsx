@@ -1,4 +1,7 @@
 import { RoleSwitchHeader } from "@/components/caronaa/shell/RoleSwitchHeader";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { QuickVehicleModal } from "@/components/caronaa/shell/QuickVehicleModal";
 import { InteractiveBottomSheet, type SheetSnap } from "@/components/caronaa/shell/InteractiveBottomSheet";
 import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
@@ -25,6 +28,7 @@ import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from
 import type { FormLocationDetails } from "@/lib/location/types";
 import { useProfileGender } from "@/lib/use-profile-gender";
 import { useUserLocation } from "@/lib/location/use-user-location";
+import { canPreviewPassengerPickup, needsPassengerPickupConfirmation } from "@/lib/location/passenger-pickup";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { sessionRequest } from "@/lib/session-request-cache";
@@ -103,6 +107,10 @@ function Home() {
   const [passengerPhase,setPassengerPhase]=useState<string|null>(null);
   const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
+  const [flashFares,setFlashFares]=useState<Partial<Record<"CAR"|"MOTO",QuickRideFarePreview>>>({});
+  const [flashFarePending,setFlashFarePending]=useState(false);
+  const [flashActionContainer,setFlashActionContainer]=useState<HTMLElement|null>(null);
+  const [confirmedPickupKey,setConfirmedPickupKey]=useState("");
   const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
   const [quickMunicipality,setQuickMunicipality]=useState("");
   const [quickDriverCount,setQuickDriverCount]=useState(0);
@@ -124,6 +132,7 @@ function Home() {
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
   const [selectingOrigin,setSelectingOrigin]=useState(false);
+  const [pickupDialogOpen,setPickupDialogOpen]=useState(false);
   const [origin,setOrigin]=useState("");
   const [originLocation,setOriginLocation]=useState<FormLocationDetails>();
   const [resolvedAddress,setResolvedAddress]=useState<FormLocationDetails|null>(null);
@@ -167,11 +176,15 @@ function Home() {
     document.addEventListener("caronaa-shell-expand",expand);
     return()=>document.removeEventListener("caronaa-shell-expand",expand);
   },[]);
+  const passengerPreview=activeRoleState.activeRole==="PASSAGEIRO"&&serviceType==="FLASH";
+  const usableOriginFix=passengerPreview?canPreviewPassengerPickup(location.addressPosition):isTrustedGpsFix(location.addressPosition);
+  const pickupKey=JSON.stringify([location.addressPosition?.lat,location.addressPosition?.lng]);
+  const pickupNeedsConfirmation=passengerPreview&&originSource==="CURRENT_LOCATION"&&needsPassengerPickupConfirmation(location.addressPosition)&&confirmedPickupKey!==pickupKey;
   // GPS fixes update the map position, but a manually chosen pickup must
   // never drift to the next GPS reading.
   useEffect(()=>{
     if(originSource!=="CURRENT_LOCATION"||originWasManuallySelected.current)return;
-    if(!location.addressPosition||!isTrustedGpsFix(location.addressPosition)){
+    if(!location.addressPosition||!usableOriginFix){
       setOriginLocation(undefined);
       if(location.failure)setOrigin("");
       return;
@@ -182,7 +195,7 @@ function Home() {
     const label=addressIsNear?resolvedAddress?.formattedAddress||"Minha localização atual":"Minha localização atual";
     setOrigin(label);
     setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:accuracy>100});
-  },[originSource,location.addressPosition,location.failure,resolvedAddress]);
+  },[originSource,location.addressPosition,location.failure,resolvedAddress,usableOriginFix]);
 
   // Preserve the existing throttled reverse lookup for the operational city;
   // never trigger it from every GPS watchPosition sample.
@@ -211,7 +224,7 @@ function Home() {
     setResolvedAddress(null);
     setSelectingOrigin(false);
     setShellOriginRevision(value=>value+1);
-    setSheetSnap("half");
+    setSheetSnap(passengerDestinationLabel?"full":"half");
     // Explicit tap: request an address only once; preserve exact clicked point.
     void reverseGeocode({data:point})
       .then(details=>{
@@ -221,7 +234,7 @@ function Home() {
         setResolvedAddress(details);
         setOriginLocation({...details,rawText:label,formattedAddress:label,lat:point.lat,lng:point.lng});
       }).catch(()=>undefined);
-  },[reverseGeocode]);
+  },[reverseGeocode,passengerDestinationLabel]);
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
     if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
@@ -344,7 +357,7 @@ function Home() {
               closeTrips();
               setSheetSnap("peek");
             }}/>}
-        <div style={{display:tripsPanelOpen?"none":undefined}}>
+        <div className={tripsPanelOpen?"hidden":"h-full min-h-0"}>
           {driverRole&&serviceType==="FLASH"?
             <DriverFlashPlanner
               snap={sheetSnap} onSnapChange={setSheetSnap}
@@ -392,6 +405,9 @@ function Home() {
               onFlashVehicleChange={setQuickVehicle}
               flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
               flashFare={flashFare}
+              flashFares={flashFares}
+              flashFarePending={flashFarePending}
+              onFlashActionContainer={setFlashActionContainer}
               flashOperationalPanel={
                 <QuickRideHomePanel
                   origin={origin||"Minha localização atual"}
@@ -403,7 +419,12 @@ function Home() {
                   driverCount={quickDriverCount}
                   driverLoading={quickDriverLoading}
                   driverError={quickDriverError}
-                  gpsOriginIsImprecise={Boolean(location.addressPosition&&!isTrustedGpsFix(location.addressPosition))&&originSource==="CURRENT_LOCATION"}
+                  gpsOriginIsImprecise={Boolean(location.addressPosition&&!usableOriginFix)&&originSource==="CURRENT_LOCATION"}
+                  pickupNeedsConfirmation={pickupNeedsConfirmation}
+                  onConfirmPickup={()=>setConfirmedPickupKey(pickupKey)}
+                  actionContainer={flashActionContainer}
+                  onFaresChange={setFlashFares}
+                  onFarePendingChange={setFlashFarePending}
                   onCoverage={onQuickCoverage}
                   onOperationalRideChange={onPassengerRide}
                   onRidePhaseChange={onPassengerPhase}
@@ -413,7 +434,7 @@ function Home() {
                   shellMode shellSnap={sheetSnap}
                 />
               }
-              onAdjustOrigin={()=>{setSelectingOrigin(true);setSheetSnap("peek");}}
+              onAdjustOrigin={()=>setPickupDialogOpen(true)}
               onRouteChange={handleShellRouteChange}
               onOnRouteMatchSelected={setSelectedOnRouteMatch}
               onDestinationChange={handleDestinationChange}
@@ -421,6 +442,19 @@ function Home() {
             />}
         </div>
       </InteractiveBottomSheet>
+      <Dialog open={pickupDialogOpen} onOpenChange={setPickupDialogOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto">
+          <DialogTitle>Onde você vai embarcar?</DialogTitle>
+          <DialogDescription>Confirme seu ponto de saída.</DialogDescription>
+          <LocationAutocomplete id="passenger-pickup" label="Buscar saída" variant="simple" value={origin}
+            selectedLocation={originLocation} onChange={(_label,details)=>{
+              if(details?.lat==null||details.lng==null)return;
+              chooseOriginOnMap({lat:details.lat,lng:details.lng});setPickupDialogOpen(false);
+            }}/>
+          <Button variant="outline" onClick={()=>{setPickupDialogOpen(false);setSelectingOrigin(true);setSheetSnap("peek");}}>Escolher no mapa</Button>
+          <Button variant="ghost" onClick={()=>{originWasManuallySelected.current=false;setOriginSource("CURRENT_LOCATION");setConfirmedPickupKey("");location.locate();setPickupDialogOpen(false);}}>Usar localização atual</Button>
+        </DialogContent>
+      </Dialog>
       {selectingOrigin&&
         <div role="status" className="absolute inset-x-3 top-3 z-30 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 p-3 text-sm shadow-xl backdrop-blur-xl sm:inset-x-5">
           <p><strong className="text-[#FFBB00]">Definir saída:</strong> toque no ponto correto do mapa.</p>
