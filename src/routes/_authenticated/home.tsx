@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { HomeRideMap } from "@/components/caronaa/HomeRideMap";
 import type { ApproximateProfessionalDriver } from "@/components/caronaa/HomeRideMap";
-import { mapQuickRadarDrivers } from "@/lib/quick-rides/quick-radar-markers";
+import { mapQuickRadarDrivers, QUICK_RADAR_RADIUS_KM } from "@/lib/quick-rides/quick-radar-markers";
 import { QuickRideHomePanel } from "@/components/caronaa/QuickRideHomePanel";
 import type { QuickRideCoverage, QuickRideFarePreview } from "@/lib/quick-rides/quick-ride.functions";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
@@ -260,13 +260,21 @@ function Home() {
     }
   };
 
+  // F07 radar: proximity to the passenger pickup decides discovery; the
+  // accepted-region gate (quickMunicipality from server coverage) still applies.
+  const radarPickup=(originLocation?.lat!=null&&originLocation?.lng!=null)
+    ?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
+  const radarLat=radarPickup?Math.round(radarPickup.lat*1000)/1000:null;
+  const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
   useEffect(()=>{
     if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;}
     let alive=true;
     const refresh=async()=>{
       if(alive)setQuickDriverLoading(true);
       try{
-        const {data,error}=await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_municipality:quickMunicipality,p_vehicle:quickVehicle});
+        const {data,error}=radarLat!=null&&radarLng!=null
+          ?await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_lat:radarLat,p_lng:radarLng,p_vehicle:quickVehicle,p_radius_km:QUICK_RADAR_RADIUS_KM})
+          :await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_municipality:quickMunicipality,p_vehicle:quickVehicle});
         if(!alive)return;
         if(error)throw error;
         const approvedDrivers=mapQuickRadarDrivers(data,quickVehicle);
@@ -279,7 +287,7 @@ function Home() {
     void refresh();
     const timer=window.setInterval(refresh,15000);
     return()=>{alive=false;window.clearInterval(timer);};
-  },[activeRoleState.activeRole,serviceType,quickMunicipality,quickVehicle]);
+  },[activeRoleState.activeRole,serviceType,quickMunicipality,quickVehicle,radarLat,radarLng]);
   const mapOrigin=shellSelectedDestination&&shellRouteOrigin
     ?shellRouteOrigin:originLocation??location.position??undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;

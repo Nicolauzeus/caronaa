@@ -5867,15 +5867,31 @@ export type Database = {
           seen_at: string
         }[]
       }
-      discover_caronaa_quick_drivers: {
-        Args: { p_municipality: string; p_vehicle: string }
-        Returns: {
-          driver_key: string
-          lat: number
-          lng: number
-          seen_at: string
-        }[]
-      }
+      discover_caronaa_quick_drivers:
+        | {
+            Args: {
+              p_lat: number
+              p_lng: number
+              p_radius_km?: number
+              p_vehicle: string
+            }
+            Returns: {
+              distance_km: number
+              driver_key: string
+              lat: number
+              lng: number
+              seen_at: string
+            }[]
+          }
+        | {
+            Args: { p_municipality: string; p_vehicle: string }
+            Returns: {
+              driver_key: string
+              lat: number
+              lng: number
+              seen_at: string
+            }[]
+          }
       discover_ride_opportunities: { Args: { p_search?: Json }; Returns: Json }
       distance_km: {
         Args: { lat_a: number; lat_b: number; lng_a: number; lng_b: number }
