@@ -9,6 +9,7 @@ const markers=readFileSync("src/lib/quick-rides/quick-radar-markers.ts","utf8");
 describe("CARONAA F07 Google Routes and public radar integration",()=>{
   it("passes authorized, approximate positions through the passenger map",()=>{
     expect(home).toContain('rpc("discover_caronaa_quick_drivers"');
+    expect(home).toContain("p_radius_km:QUICK_RADAR_RADIUS_KM");
     expect(home).toContain('const approvedDrivers=mapQuickRadarDrivers(data,quickVehicle)');
     expect(home).toContain('professionalDrivers={quickDrivers}');
     expect(home).toContain('setQuickDrivers([])');

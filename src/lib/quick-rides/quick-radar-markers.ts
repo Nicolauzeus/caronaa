@@ -2,6 +2,9 @@ import type { ApproximateProfessionalDriver } from "@/components/caronaa/HomeRid
 
 type VehicleType = "CAR" | "MOTO";
 
+/** Discovery radius around the passenger pickup (server clamps to 1–30 km). */
+export const QUICK_RADAR_RADIUS_KM = 15;
+
 /**
  * Render only authorized, approximate positions returned by the existing
  * discover_caronaa_quick_drivers RPC. Do NOT geocode, interpolate or synthesize
