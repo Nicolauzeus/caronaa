@@ -293,7 +293,7 @@ function Home(){
             following={originSource==="CURRENT_LOCATION"&&(passengerPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
             recenterVersion={location.recenterVersion} locating={location.locating}
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
-            onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>
+            onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>}
       </div>
       <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
         <RoleSwitchHeader activeRole={activeRoleState.activeRole} disabled={activeRoleState.loading||activeRoleState.busy} onSwitch={handleShellRoleSwitch}/>
