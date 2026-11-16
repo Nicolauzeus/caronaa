@@ -25,6 +25,7 @@ import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from
 import type { FormLocationDetails } from "@/lib/location/types";
 import { useProfileGender } from "@/lib/use-profile-gender";
 import { useUserLocation } from "@/lib/location/use-user-location";
+import { canPreviewPassengerPickup, needsPassengerPickupConfirmation } from "@/lib/location/passenger-pickup";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { sessionRequest } from "@/lib/session-request-cache";
@@ -103,6 +104,9 @@ function Home() {
   const [passengerPhase,setPassengerPhase]=useState<string|null>(null);
   const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
+  const [flashFares,setFlashFares]=useState<Partial<Record<"CAR"|"MOTO",QuickRideFarePreview>>>({});
+  const [flashActionContainer,setFlashActionContainer]=useState<HTMLElement|null>(null);
+  const [confirmedPickupKey,setConfirmedPickupKey]=useState("");
   const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
   const [quickMunicipality,setQuickMunicipality]=useState("");
   const [quickDriverCount,setQuickDriverCount]=useState(0);
@@ -167,11 +171,15 @@ function Home() {
     document.addEventListener("caronaa-shell-expand",expand);
     return()=>document.removeEventListener("caronaa-shell-expand",expand);
   },[]);
+  const passengerPreview=activeRoleState.activeRole==="PASSAGEIRO"&&serviceType==="FLASH";
+  const usableOriginFix=passengerPreview?canPreviewPassengerPickup(location.addressPosition):isTrustedGpsFix(location.addressPosition);
+  const pickupKey=JSON.stringify([location.addressPosition?.lat,location.addressPosition?.lng]);
+  const pickupNeedsConfirmation=passengerPreview&&originSource==="CURRENT_LOCATION"&&needsPassengerPickupConfirmation(location.addressPosition)&&confirmedPickupKey!==pickupKey;
   // GPS fixes update the map position, but a manually chosen pickup must
   // never drift to the next GPS reading.
   useEffect(()=>{
     if(originSource!=="CURRENT_LOCATION"||originWasManuallySelected.current)return;
-    if(!location.addressPosition||!isTrustedGpsFix(location.addressPosition)){
+    if(!location.addressPosition||!usableOriginFix){
       setOriginLocation(undefined);
       if(location.failure)setOrigin("");
       return;
@@ -182,7 +190,7 @@ function Home() {
     const label=addressIsNear?resolvedAddress?.formattedAddress||"Minha localização atual":"Minha localização atual";
     setOrigin(label);
     setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:accuracy>100});
-  },[originSource,location.addressPosition,location.failure,resolvedAddress]);
+  },[originSource,location.addressPosition,location.failure,resolvedAddress,usableOriginFix]);
 
   // Preserve the existing throttled reverse lookup for the operational city;
   // never trigger it from every GPS watchPosition sample.
@@ -392,6 +400,8 @@ function Home() {
               onFlashVehicleChange={setQuickVehicle}
               flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
               flashFare={flashFare}
+              flashFares={flashFares}
+              onFlashActionContainer={setFlashActionContainer}
               flashOperationalPanel={
                 <QuickRideHomePanel
                   origin={origin||"Minha localização atual"}
@@ -403,7 +413,11 @@ function Home() {
                   driverCount={quickDriverCount}
                   driverLoading={quickDriverLoading}
                   driverError={quickDriverError}
-                  gpsOriginIsImprecise={Boolean(location.addressPosition&&!isTrustedGpsFix(location.addressPosition))&&originSource==="CURRENT_LOCATION"}
+                  gpsOriginIsImprecise={Boolean(location.addressPosition&&!usableOriginFix)&&originSource==="CURRENT_LOCATION"}
+                  pickupNeedsConfirmation={pickupNeedsConfirmation}
+                  onConfirmPickup={()=>setConfirmedPickupKey(pickupKey)}
+                  actionContainer={flashActionContainer}
+                  onFaresChange={setFlashFares}
                   onCoverage={onQuickCoverage}
                   onOperationalRideChange={onPassengerRide}
                   onRidePhaseChange={onPassengerPhase}

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { Bike, CarFront, Clock3, MapPin, ShieldCheck, Users } from "lucide-react";
 import type { FormLocationDetails } from "@/lib/location/types";
@@ -24,13 +26,17 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, onFareChange, shellMode=false, shellSnap="full", onOpenOperational,
+  pickupNeedsConfirmation=false, onConfirmPickup, actionContainer, onFaresChange, onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, onFareChange, shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
   vehicle:QuickVehicle;onVehicleChange:(value:QuickVehicle)=>void;
   driverCount:number;driverLoading?:boolean;driverError?:string;
   gpsOriginIsImprecise?:boolean;
+  pickupNeedsConfirmation?:boolean;
+  onConfirmPickup?:()=>void;
+  actionContainer?:HTMLElement|null;
+  onFaresChange?:(value:Partial<Record<QuickVehicle,QuickRideFarePreview>>)=>void;
   onCoverage?:(coverage:QuickRideCoverage|null)=>void;
   onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
   onRidePhaseChange?:(status:RideStatus|null)=>void;
@@ -47,6 +53,8 @@ export function QuickRideHomePanel({
   const [coverage,setCoverage]=useState<QuickRideCoverage|null>(null);
   const [coverageLoading,setCoverageLoading]=useState(false);
   const [quote,setQuote]=useState<QuickRideFarePreview|null>(null);
+  const [fares,setFares]=useState<Partial<Record<QuickVehicle,QuickRideFarePreview>>>({});
+  const [coverages,setCoverages]=useState<Partial<Record<QuickVehicle,QuickRideCoverage>>>({});
   const [busy,setBusy]=useState(false);
   const [quoteLoading,setQuoteLoading]=useState(false);
   const [quoteRefresh,setQuoteRefresh]=useState(0);
@@ -67,10 +75,11 @@ export function QuickRideHomePanel({
   const hasOrigin=Number.isFinite(originLat)&&Number.isFinite(originLng)&&!gpsOriginIsImprecise;
   const hasDestination=Number.isFinite(destinationLat)&&Number.isFinite(destinationLng);
   // The quote follows the selected itinerary, not every radar refresh.
-  const fieldsKey=JSON.stringify([origin,originLat,originLng,destination,destinationLat,destinationLng,vehicle]);
-  const coveragePointKey=JSON.stringify([originLat,originLng,vehicle,gpsOriginIsImprecise]);
+  const fieldsKey=JSON.stringify([origin,originLat,originLng,destination,destinationLat,destinationLng,shellMode?null:vehicle]);
+  const coveragePointKey=JSON.stringify([originLat,originLng,shellMode?null:vehicle,gpsOriginIsImprecise]);
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
-  const currentQuote=currentQuoteKey===fieldsKey?quote:null;
+  const currentQuote=currentQuoteKey===fieldsKey?(shellMode?fares[vehicle]??null:quote):null;
+  useEffect(()=>{onFaresChange?.(currentQuoteKey===fieldsKey?fares:{});},[fares,currentQuoteKey,fieldsKey,onFaresChange]);
   useEffect(()=>onFareChange?.(currentQuote),[currentQuote?.quoteId,onFareChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
@@ -186,6 +195,7 @@ export function QuickRideHomePanel({
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível responder.");}
     finally{setBusy(false);}
   }
+  useEffect(()=>{if(shellMode){const selected=coverages[vehicle]??null;setCoverage(selected);onCoverage?.(selected);}},[shellMode,coverages,vehicle,onCoverage]);
   // A coverage result only applies to the coordinates and vehicle that produced it.
   const covered=coverage?.status==="ENABLED"&&coverageResolvedKey===coveragePointKey;
 
@@ -194,23 +204,28 @@ export function QuickRideHomePanel({
     return ()=>{mounted.current=false;};
   },[]);
   useEffect(()=>{
-    setQuote(null);setCurrentQuoteKey("");setInterestSent(false);setError("");
+    setQuote(null);setFares({});setCurrentQuoteKey("");setInterestSent(false);setError("");
   },[fieldsKey]);
   useEffect(()=>{
-    setCoverage(null);setCoverageResolvedKey("");onCoverage?.(null);setCoverageLoading(false);
+    setCoverage(null);setCoverages({});setCoverageResolvedKey("");onCoverage?.(null);setCoverageLoading(false);
     if(!hasOrigin||originLat==null||originLng==null)return;
     let active=true;
     setCoverageLoading(true);
     const timer=window.setTimeout(()=>{
-      void availabilityFn({data:{lat:originLat,lng:originLng,vehicleType:vehicle}})
-        .then(value=>{if(active){setCoverage(value);setCoverageResolvedKey(coveragePointKey);onCoverage?.(value);}})
+      void Promise.all((shellMode?(["CAR","MOTO"] as const):[vehicle]).map(async type=>{
+        const value=await availabilityFn({data:{lat:originLat,lng:originLng,vehicleType:type}});
+        return [type,value] as const;
+      })).then(entries=>{if(active){
+        const values=Object.fromEntries(entries);setCoverages(values);
+        setCoverage(values[vehicle]);setCoverageResolvedKey(coveragePointKey);onCoverage?.(values[vehicle]);
+      }})
         .catch(()=>{if(active){setError("Não foi possível verificar a cobertura agora.");}})
         .finally(()=>{if(active)setCoverageLoading(false);});
     },450);
     return ()=>{active=false;window.clearTimeout(timer);};
   // Only rerun when the selected origin/vehicle changes, not on live GPS pulses.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[originLat,originLng,vehicle,gpsOriginIsImprecise]);
+  },[coveragePointKey]);
   const refreshQuickRides=useCallback(async()=>{
     const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
     if(mounted.current&&!error)setRides(Array.isArray(data)?data:[]);
@@ -221,7 +236,7 @@ export function QuickRideHomePanel({
   // automatically requests the immutable server quote. Debounce limits
   // repeated Google Routes calls while the user edits the address.
   useEffect(()=>{
-    if(!covered||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
+    if(!(shellMode?Object.values(coverages).some(value=>value.status==="ENABLED")&&coverageResolvedKey===coveragePointKey:covered)||!hasOrigin||!hasDestination||!originPoint||!destinationPoint||
        origin.trim().length<3||destination.trim().length<3||liveRide||
        originLat==null||originLng==null||destinationLat==null||destinationLng==null){
       setQuoteLoading(false);
@@ -231,22 +246,26 @@ export function QuickRideHomePanel({
     const timer=window.setTimeout(()=>{
       if(!active)return;
       setQuoteLoading(true);setError("");
-      void previewFn({data:{
-        origin:{lat:originLat,lng:originLng},
-        destination:{lat:destinationLat,lng:destinationLng},
-        originLabel:origin,destinationLabel:destination,vehicleType:vehicle,
-      }})
-        .then(result=>{if(active){setQuote(result);setCurrentQuoteKey(fieldsKey);}})
+      const types=shellMode?(["CAR","MOTO"] as const).filter(type=>coverages[type]?.status==="ENABLED"):[vehicle];
+      void Promise.allSettled(types.map(async type=>{
+        const result=await previewFn({data:{
+          origin:{lat:originLat,lng:originLng},destination:{lat:destinationLat,lng:destinationLng},
+          originLabel:origin,destinationLabel:destination,vehicleType:type,
+        }});
+        if(active){setFares(previous=>({...previous,[type]:result}));setQuote(result);setCurrentQuoteKey(fieldsKey);}
+        return result;
+      }))
+        .then(results=>{if(active&&results.every(result=>result.status==="rejected"))setError("Cotação indisponível. Tente novamente.");})
         .catch(cause=>{if(active)setError(cause instanceof Error?cause.message:"Cotação indisponível.");})
         .finally(()=>{if(active)setQuoteLoading(false);});
-    },800);
+    },350);
     return ()=>{active=false;window.clearTimeout(timer);};
     // fieldsKey captures the labels, coordinates and vehicle; covered is
     // associated with the same origin/vehicle. Ignore stale responses.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fieldsKey,covered,liveRide?.id,quoteRefresh]);
+  },[fieldsKey,coverageResolvedKey,coverages,liveRide?.id,quoteRefresh]);
   async function request() {
-    if(busy||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
+    if(busy||pickupNeedsConfirmation||!covered||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
        !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
     setBusy(true);setError("");
     try{
@@ -297,6 +316,18 @@ export function QuickRideHomePanel({
       :coverage?.status==="UNKNOWN"
         ?"Não foi possível identificar o município do embarque."
         :"Informe um ponto de saída verificado para consultar a cobertura.";
+  const requestControls=<div className="space-y-2">
+    {pickupNeedsConfirmation&&<div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+      <p className="min-w-0 text-xs text-caronaa-white/75">Localização aproximada. Confirme seu embarque.</p>
+      <Button variant="ghost" onClick={onConfirmPickup} className="min-h-11 shrink-0 text-primary">Confirmar local</Button>
+    </div>}
+    <Button type="button" disabled={busy||pickupNeedsConfirmation||!covered||quoteLoading||driverLoading||Boolean(driverError)||driverCount<1||!currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now()}
+      onClick={()=>void request()} className="min-h-12 h-auto w-full whitespace-normal px-3 py-3 font-bold">
+      {busy?"Enviando pedido…":!hasDestination?"Escolha seu destino":!currentQuote?(quoteLoading||coverageLoading?"Consultando preços…":"Preço indisponível"):driverCount<1?"Aguardando motorista disponível":
+        (shellMode?`Confirmar Flash ${vehicle==="MOTO"?"Moto":"Carro"} — `:"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
+    </Button>
+    {currentQuote&&Date.parse(currentQuote.expiresAt)<=Date.now()&&<Button variant="ghost" onClick={()=>{setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);}}>Atualizar preço expirado</Button>}
+  </div>;
   return (
     <section aria-label="Corrida Rápida no mapa" className={shellMode
       ? "min-w-0 w-full space-y-3 text-white"
@@ -350,6 +381,7 @@ export function QuickRideHomePanel({
         </p>
       </div>
       </>}
+      {shellMode&&!liveRide&&!shownCompletedRide&&(actionContainer?createPortal(requestControls,actionContainer):requestControls)}
       {!hasOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
         {gpsOriginIsImprecise?"GPS impreciso. Escolha sua saída manualmente para consultar a corrida.":"Escolha uma saída com coordenadas verificadas."}
       </p>}
@@ -435,21 +467,7 @@ export function QuickRideHomePanel({
               <p className="text-[11px] text-gray-300">Fase piloto: sem débito automático. O pagamento e o repasse precisam ser homologados antes da operação comercial.</p>
               </>}
               {shellMode&&<p className="text-xs text-white/70">Pix ou dinheiro direto ao motorista · {currentQuote.distanceKm.toFixed(1)} km · aprox. {Math.round(currentQuote.durationMinutes)} min de viagem</p>}
-              <button type="button"
-                disabled={busy||quoteLoading||driverLoading||Boolean(driverError)||driverCount<1||
-                  Date.parse(currentQuote.expiresAt)<=Date.now()}
-                onClick={()=>void request()}
-                className="min-h-12 w-full rounded-xl bg-[#FFBB00] text-sm font-bold text-[#121212] disabled:opacity-40">
-                {busy?"Enviando pedido…":driverCount<1?"Aguardando motorista disponível":
-                  (shellMode?"Confirmar Caronaa Flash — ":"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
-              </button>
-              {!shellMode&&<p className="text-[11px] text-gray-300">O condutor será definido após o aceite.</p>}
-              {Date.parse(currentQuote.expiresAt)<=Date.now()&&(
-                <button type="button" onClick={()=>{setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);}}
-                  className="min-h-10 rounded-lg border border-white/30 px-3 text-xs font-semibold">
-                  Atualizar preço expirado
-                </button>
-              )}
+              {!shellMode&&requestControls}
             </div>
           )}
         </>
