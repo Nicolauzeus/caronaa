@@ -471,18 +471,14 @@ export function ShellJourneyPlanner({
           Escolha uma data e hora válidas, pelo menos 30 minutos no futuro.
         </p>}
       </label>}
-      {serviceType==="FLASH"?<>
-        {flashChoices}
-        {flashOnRoute}
-        {mode==="EXCLUSIVE"&&flashOperationalPanel}
-      </>:<>
+      <>
         {optionCard("EXCLUSIVE")}
         {optionCard("ON_ROUTE")}
         {routeError&&<p role="alert" className="text-xs text-[#FFBB00]">{routeError}</p>}
         <button type="button" disabled={!route||!selectedPrice||routeBusy||!scheduleValid}
           onClick={()=>onSnapChange?.("full")}
           className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-50">Revisar Agendamento</button>
-      </>}
+      </>
     </>}
     {snap==="full"&&serviceType==="AGENDADA"&&<>
       {onRouteConfirmedId&&<section role="status" className="space-y-1 rounded-xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 p-3">

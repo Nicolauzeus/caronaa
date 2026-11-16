@@ -225,7 +225,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
 
   it("exibe SEARCHING apenas depois da criação real retornar o ID autorizado",async()=>{
     render(<QuickRideHomePanel {...basic} shellMode shellSnap="full"/>);
-    const button=await screen.findByRole("button",{name:/Confirmar Caronaa Flash/i},{timeout:3500});
+    const button=await screen.findByRole("button",{name:/Confirmar Flash Moto/i},{timeout:3500});
     expect(api.submit).not.toHaveBeenCalled();
     fireEvent.click(button);
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({
