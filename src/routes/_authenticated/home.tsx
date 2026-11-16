@@ -223,7 +223,7 @@ function Home() {
     setResolvedAddress(null);
     setSelectingOrigin(false);
     setShellOriginRevision(value=>value+1);
-    setSheetSnap("half");
+    setSheetSnap(passengerDestinationLabel?"full":"half");
     // Explicit tap: request an address only once; preserve exact clicked point.
     void reverseGeocode({data:point})
       .then(details=>{
@@ -233,7 +233,7 @@ function Home() {
         setResolvedAddress(details);
         setOriginLocation({...details,rawText:label,formattedAddress:label,lat:point.lat,lng:point.lng});
       }).catch(()=>undefined);
-  },[reverseGeocode]);
+  },[reverseGeocode,passengerDestinationLabel]);
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
     if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){

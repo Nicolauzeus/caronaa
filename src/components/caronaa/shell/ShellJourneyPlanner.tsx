@@ -171,8 +171,8 @@ export function ShellJourneyPlanner({
     onDestinationChange?.(label,details);
     setRoute(null);setPrices(null);
     frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
-    if(details && valid(details))onSnapChange?.("half");
-  },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange,onOnRouteMatchSelected]);
+    if(details && valid(details))onSnapChange?.(serviceType==="FLASH"?"full":"half");
+  },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange,onOnRouteMatchSelected,serviceType]);
 
   // Invalidate previously selected offers whenever the requested seats,
   // vehicle, departure time or origin changes. This never invokes Google APIs.
