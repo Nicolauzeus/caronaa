@@ -162,8 +162,10 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(screen.getByText(/Pix ou dinheiro direto ao motorista/)).toBeTruthy();
     await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Agendar Caronaa"}));});
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("schedule_caronaa_ride",expect.objectContaining({
-      p_service_mode:"EXCLUSIVE",p_vehicle_type:"CAR",p_reserved_entire_vehicle:true,
+      p_service_mode:"EXCLUSIVE",p_vehicle_type:"CAR",p_passenger_count:3,p_women_only:false,
     })));
+    const sent=api.rpc.mock.calls.find((c:any[])=>c[0]==="schedule_caronaa_ride")![1];
+    expect(sent).not.toHaveProperty("p_departure_at");expect(sent.p_price_cents).toBeGreaterThan(0);
     expect(screen.getByText("Carona agendada! Seus dados foram salvos.")).toBeTruthy();
     expect(screen.getByText("Aguardando motorista")).toBeTruthy();
     expect(api.route).toHaveBeenCalledTimes(1);
