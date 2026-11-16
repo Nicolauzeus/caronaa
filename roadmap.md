@@ -1,3 +1,4 @@
+- [ ] F07 passenger mobile: automatic parallel Car/Moto quotes, approximate pickup preview with explicit confirmation, fixed itinerary/action and responsive sheet; preserve server eligibility and fares, run regression and signed-in checks.
 - [x] Google credential setup: replaced both keys securely, removed public REST fallback and added async map loading/channel. 56 focused tests passed; automatic build OK. No database or product-rule changes.
 - [ ] Google deployed validation: publish updated keys, then validate maps, Places and Routes on the authorized CARONAA domain; live Google checks are unavailable in the agent sandbox.
 - [x] F07/Google: Audited policies/view grants, migration ordering and historical self-radar regression; complete proposed SQL presented for approval, with no database mutations.
