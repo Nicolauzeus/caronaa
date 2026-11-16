@@ -149,8 +149,6 @@ function Home(){
   useEffect(()=>{
     if(originSource!=="CURRENT_LOCATION"||originWasManuallySelected.current)return;
     if(passengerPreview&&awaitingNewOriginVersion.current!==null){
-      // Explicitly requesting a new pickup must not reuse the old hook value
-      // while getCurrentPosition is still pending or permission was denied.
       if(location.recenterVersion===awaitingNewOriginVersion.current)return;
       awaitingNewOriginVersion.current=null;
     }
@@ -201,7 +199,8 @@ function Home(){
   const pickupKey=validPoint(plannedPickup)?JSON.stringify([plannedPickup.lat,plannedPickup.lng]):"";
   const pickupMatchesApplied=validPoint(plannedPickup)&&validPoint(originLocation)&&
     plannedPickup.lat===originLocation.lat&&plannedPickup.lng===originLocation.lng;
-  const quotedAccuracy=pickupMatchesApplied?appliedOriginAccuracy:300;
+  // Unknown accuracy is not converted into an invented acceptable GPS value.
+  const quotedAccuracy=pickupMatchesApplied?appliedOriginAccuracy:null;
   const quotedOrigin:FormLocationDetails|undefined=validPoint(plannedPickup)?{
     ...originLocation,rawText:originLocation?.rawText||origin||"Minha localização atual",
     lat:plannedPickup.lat,lng:plannedPickup.lng,
@@ -209,7 +208,7 @@ function Home(){
   const previewablePickup=originSource==="MANUAL_ORIGIN"||
     (validPoint(plannedPickup)&&quotedAccuracy!==null&&canPreviewPassengerPickup({...plannedPickup,accuracy:quotedAccuracy}));
   const pickupNeedsConfirmation=passengerPreview&&originSource==="CURRENT_LOCATION"&&validPoint(plannedPickup)&&
-    needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy??300})&&confirmedPickupKey!==pickupKey;
+    (quotedAccuracy===null||needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy}))&&confirmedPickupKey!==pickupKey;
   const locatingPickup=originSource==="CURRENT_LOCATION"&&location.locating&&!validPoint(quotedOrigin);
   const openPickupDialog=()=>{setPickupCandidate(quotedOrigin??null);setPickupDialogOpen(true);};
   const confirmPickup=()=>{
@@ -219,8 +218,7 @@ function Home(){
       setPickupCandidate(quotedOrigin??null);
       toast.info("O ponto de embarque mudou. Confira o local novamente.");return;
     }
-    // This is the only approval of an approximate automatic pickup. Closing
-    // the dialog is not consent, and this action never submits a ride.
+    // Closing the dialog is not consent. This action never submits a ride.
     ++originLookupSequence.current;originWasManuallySelected.current=true;
     setOriginSource("MANUAL_ORIGIN");setConfirmedPickupKey(candidateKey);
     setOriginLocation({...pickupCandidate,isApproximate:false});setAppliedOriginAccuracy(null);
@@ -247,7 +245,6 @@ function Home(){
     if(result.needsVehicleModal){setMissingVehicleFields(result.missingFields);setVehicleModalOpen(true);}
   };
 
-  // Preserve the existing proximity radar, server authorization and GPS TTL.
   const radarPickup=validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
   const radarLat=radarPickup?Math.round(radarPickup.lat*1000)/1000:null;
   const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
@@ -271,7 +268,8 @@ function Home(){
     void refresh();const timer=window.setInterval(refresh,15000);
     return()=>{alive=false;window.clearInterval(timer);};
   },[activeRoleState.activeRole,serviceType,quickMunicipality,quickVehicle,radarLat,radarLng]);
-  const mapOrigin=validPoint(plannedPickup)?plannedPickup:location.position??undefined;
+  // Live GPS is rendered separately by the map; it is never a fallback pickup.
+  const mapOrigin=validPoint(plannedPickup)?plannedPickup:undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;
   const driverRole=activeRoleState.activeRole==="MOTORISTA";
   const shouldShowOperationalMap=driverRole&&serviceType==="FLASH"&&driverFlashRide!=null;
@@ -291,7 +289,7 @@ function Home(){
               Math.round((typeof window==="undefined"?800:window.innerHeight)*(sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24):undefined}
             routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
             origin={mapOrigin} destination={currentDestination} originIsCurrent={originSource==="CURRENT_LOCATION"}
-            originAccuracyM={passengerPreview?quotedAccuracy:location.originAccuracyM}
+            originAccuracyM={passengerPreview?(validPoint(plannedPickup)?quotedAccuracy??Number.POSITIVE_INFINITY:null):location.originAccuracyM}
             following={originSource==="CURRENT_LOCATION"&&(passengerPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
             recenterVersion={location.recenterVersion} locating={location.locating}
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
