@@ -5,6 +5,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { Bike, CarFront, Clock3, Loader2, MapPin, ShieldCheck, Users } from "lucide-react";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { validPoint } from "@/lib/location/use-user-location";
+import { useAuth } from "@/lib/auth-context";
+import { quickQuoteCoordinator, quickQuoteItineraryKey, isQuickQuoteRateLimit } from "@/lib/quick-rides/quick-quote-coordinator";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getQuickRideCoverage, getQuickRideFarePreview, registerQuickRideRegionInterest,
@@ -19,8 +21,8 @@ import { toast } from "sonner";
 type QuickVehicle = "CAR" | "MOTO";
 function friendlyQuickQuoteError(cause:unknown):string{
   const message=cause instanceof Error?cause.message:"";
-  if(/limite de cotações|muitas consultas/i.test(message))
-    return "Muitas consultas em pouco tempo. Aguarde um minuto e tente novamente.";
+  if(isQuickQuoteRateLimit(cause))
+    return "O limite temporário de consultas foi atingido. Seus preços já calculados foram preservados.";
   if(/não habilitada|fora da cobertura|ainda não|tarifa|intermunicipal/i.test(message))
     return "Esta modalidade ainda não está disponível neste trajeto.";
   return "Não foi possível calcular o preço agora.";
@@ -55,6 +57,8 @@ export function QuickRideHomePanel({
   onFareChange?:(value:QuickRideFarePreview|null)=>void;
   shellMode?:boolean;shellSnap?:"peek"|"half"|"full";onOpenOperational?:()=>void;
 }) {
+  const {user}=useAuth();
+  const quoteAccount=user?.id??null;
   const availabilityFn=useServerFn(getQuickRideCoverage);
   const previewFn=useServerFn(getQuickRideFarePreview);
   const submitFn=useServerFn(submitQuotedQuickRide);
@@ -69,6 +73,7 @@ export function QuickRideHomePanel({
   const [busy,setBusy]=useState(false);
   const [quoteLoading,setQuoteLoading]=useState(false);
   const [quoteRefresh,setQuoteRefresh]=useState(0);
+  const [cooldownSeconds,setCooldownSeconds]=useState(0);
   const [coverageResolvedKey,setCoverageResolvedKey]=useState("");
   const [error,setError]=useState("");
   const [interestSent,setInterestSent]=useState(false);
@@ -89,10 +94,22 @@ export function QuickRideHomePanel({
   const hasOrigin=hasOriginCoordinates&&!gpsOriginIsImprecise;
   const waitingForOrigin=locating&&!hasOriginCoordinates;
   const hasDestination=validPoint(destinationPoint);
-  const fieldsKey=JSON.stringify([origin,originLat,originLng,destination,destinationLat,destinationLng,shellMode?null:vehicle]);
-  const coveragePointKey=JSON.stringify([originLat,originLng,shellMode?null:vehicle,gpsOriginIsImprecise]);
+  const hasQuoteLabels=origin.trim().length>=3&&destination.trim().length>=3;
+  // A delayed reverse-geocode label must not spend two more quote allowances.
+  // Exact coordinates, the account and modality define the request lifecycle.
+  const fieldsKey=JSON.stringify([quoteAccount,quickQuoteItineraryKey(originPoint,destinationPoint,shellMode?null:vehicle)]);
+  const coveragePointKey=JSON.stringify([quoteAccount,originLat,originLng,shellMode?null:vehicle,gpsOriginIsImprecise]);
   const [currentQuoteKey,setCurrentQuoteKey]=useState("");
   const currentQuote=currentQuoteKey===fieldsKey?(shellMode?fares[vehicle]??null:quote):null;
+  useEffect(()=>{
+    quickQuoteCoordinator.setAccount(quoteAccount);
+    setCooldownSeconds(Math.ceil(quickQuoteCoordinator.remainingMs()/1000));
+  },[quoteAccount]);
+  useEffect(()=>{
+    if(cooldownSeconds<=0)return;
+    const timer=window.setInterval(()=>setCooldownSeconds(Math.ceil(quickQuoteCoordinator.remainingMs()/1000)),1000);
+    return()=>window.clearInterval(timer);
+  },[cooldownSeconds>0]);
   useEffect(()=>{onFaresChange?.(currentQuoteKey===fieldsKey?fares:{});},[fares,currentQuoteKey,fieldsKey,onFaresChange]);
   useEffect(()=>onFareChange?.(currentQuote),[currentQuote,onFareChange]);
   useEffect(()=>{
@@ -123,6 +140,7 @@ export function QuickRideHomePanel({
     }catch{ /* in-memory dismissal remains available */ }
     console.info("[CARONAA][F07][POST_TRIP] COMPLETED_RIDE_DISMISSED",{rideIdPrefix:completedRide.id.slice(0,8)});
     setCompletedHidden(completedRide.id);setRatingDismissed(completedRide.id);
+    quickQuoteCoordinator.forget();
     setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
   }
   useEffect(()=>{if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))setBoardingCode("");},[liveRide?.id,liveRide?.status]);
@@ -231,7 +249,7 @@ export function QuickRideHomePanel({
 
   useEffect(()=>{
     if(!(shellMode?Object.values(coverages).some(value=>value.status==="ENABLED")&&coverageResolvedKey===coveragePointKey:covered)||
-      !hasOrigin||!hasDestination||origin.trim().length<3||destination.trim().length<3||liveRide||
+      !hasOrigin||!hasDestination||!hasQuoteLabels||liveRide||
       originLat==null||originLng==null||destinationLat==null||destinationLng==null){
       setQuoteLoading(false);retryInFlight.current=false;return;
     }
@@ -248,10 +266,11 @@ export function QuickRideHomePanel({
     const timer=window.setTimeout(()=>{
       if(!active)return;
       void Promise.allSettled(types.map(async type=>{
-        const result=await previewFn({data:{
+        const key=quickQuoteItineraryKey(originPoint,destinationPoint,type);
+        const result=await quickQuoteCoordinator.run(quoteAccount,key,()=>previewFn({data:{
           origin:{lat:originLat,lng:originLng},destination:{lat:destinationLat,lng:destinationLng},
           originLabel:origin,destinationLabel:destination,vehicleType:type,
-        }});
+        }}));
         if(active){setFares(previous=>({...previous,[type]:result}));setQuote(result);setCurrentQuoteKey(fieldsKey);}
         return result;
       })).then(results=>{
@@ -259,16 +278,19 @@ export function QuickRideHomePanel({
         const failures:Partial<Record<QuickVehicle,string>>={};
         results.forEach((result,index)=>{if(result.status==="rejected")failures[types[index]]=friendlyQuickQuoteError(result.reason);});
         setQuoteErrors(previous=>({...previous,...failures}));
+        setCooldownSeconds(Math.ceil(quickQuoteCoordinator.remainingMs()/1000));
       }).catch(()=>{if(active)setError("Não foi possível calcular o preço agora.");})
         .finally(()=>{if(active){setQuoteLoading(false);retryInFlight.current=false;}});
     },350);
     return()=>{active=false;window.clearTimeout(timer);};
-    // Keep completed quotes out of the dependencies: responses must not restart
-    // the effect or send repeated requests while the other vehicle is pending.
+    // Address labels update display only; exact coordinates govern re-quoting.
+    // Completed quote state never restarts this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[fieldsKey,coverageResolvedKey,coverages,liveRide?.id,quoteRefresh]);
+  },[fieldsKey,hasQuoteLabels,coverageResolvedKey,coverages,liveRide?.id,quoteRefresh]);
 
   function retryPrice(){
+    const remaining=Math.ceil(quickQuoteCoordinator.remainingMs()/1000);
+    if(remaining>0){setCooldownSeconds(remaining);return;}
     if(quoteLoading||coverageLoading||busy||retryInFlight.current||!hasOrigin||!hasDestination||liveRide)return;
     retryInFlight.current=true;setError("");
     if(coverageResolvedKey!==coveragePointKey){setCoverageLoading(true);setCoverageRefresh(v=>v+1);}
@@ -285,6 +307,7 @@ export function QuickRideHomePanel({
     submissionInFlight.current=true;setBusy(true);setError("");
     try{
       const submitted=await submitFn({data:{quoteId:currentQuote.quoteId}});
+      quickQuoteCoordinator.forget();
       const acknowledged:ExistingQuickRide={id:submitted.rideId,role:"PASSENGER",status:"SEARCHING",
         municipality:coverage?.municipality??"",vehicle_type:vehicle};
       const {data,error:reloadError}=await (supabase as any).rpc("quick_ride_my_requests");
@@ -293,7 +316,10 @@ export function QuickRideHomePanel({
         setRides(fromServer.some(r=>r.id===submitted.rideId)?fromServer:[acknowledged,...fromServer]);
         setQuote(null);setCurrentQuoteKey("");
       }
-    }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Pedido indisponível.");}
+    }catch(cause){
+      quickQuoteCoordinator.forget(currentQuote.quoteId);
+      if(mounted.current)setError(cause instanceof Error?cause.message:"Pedido indisponível.");
+    }
     finally{submissionInFlight.current=false;if(mounted.current)setBusy(false);}
   }
   async function registerInterest(){
@@ -323,6 +349,8 @@ export function QuickRideHomePanel({
   const requestDisabled=busy||waitingForOrigin||(!canOpenOrigin&&(!hasOrigin||!covered||quoteLoading||driverLoading||
     Boolean(driverError)||driverCount<1||!currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now()));
   const priceFailure=!currentQuote?quoteErrors[vehicle]:undefined;
+  const retryDisabled=busy||quoteLoading||coverageLoading||cooldownSeconds>0;
+  const retryLabel=cooldownSeconds>0?`Tentar novamente em ${cooldownSeconds}s`:"Tentar novamente";
   const requestControls=<div className="space-y-2" aria-live="polite">
     <Button type="button" disabled={requestDisabled} onClick={()=>void request()}
       className="min-h-12 h-auto w-full whitespace-normal px-3 py-3 font-bold">
@@ -334,10 +362,10 @@ export function QuickRideHomePanel({
     </Button>
     {priceFailure&&!quoteLoading&&<div role="alert" className="space-y-2">
       <p className="text-sm text-white/80">{priceFailure}</p>
-      <Button type="button" variant="outline" disabled={busy||coverageLoading} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40 text-[#FFBB00]">Tentar novamente</Button>
+      <Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40 text-[#FFBB00]">{retryLabel}</Button>
     </div>}
-    {currentQuote&&Date.parse(currentQuote.expiresAt)<=Date.now()&&<Button type="button" variant="ghost" disabled={quoteLoading||busy}
-      onClick={retryPrice} className="min-h-12">Atualizar preço expirado</Button>}
+    {currentQuote&&Date.parse(currentQuote.expiresAt)<=Date.now()&&<Button type="button" variant="ghost" disabled={retryDisabled}
+      onClick={retryPrice} className="min-h-12">{cooldownSeconds>0?retryLabel:"Atualizar preço expirado"}</Button>}
   </div>;
   return (
     <section aria-label="Corrida Rápida no mapa" className={shellMode?"min-w-0 w-full space-y-3 text-white":
@@ -433,7 +461,7 @@ export function QuickRideHomePanel({
         {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen onClose={()=>setRatingOpen(null)}/>}
       </div>}
       {error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
-      {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={quoteLoading||coverageLoading||busy} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">Tentar novamente</Button>}
+      {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">{retryLabel}</Button>}
     </section>
   );
 }
