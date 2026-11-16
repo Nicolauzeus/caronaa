@@ -46,8 +46,18 @@ export async function authenticatedGoogleRequest(input: Input, injected?: Google
         signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
       });
     } catch (cause) {
-      record(false, cause instanceof Error && ["TimeoutError", "AbortError"].includes(cause.name) ? "TIMEOUT" : "NETWORK_ERROR");
-      throw new Error("Google Maps indisponível. Tente novamente em instantes.");
+      const code = cause instanceof Error && ["TimeoutError", "AbortError"].includes(cause.name)
+        ? "TIMEOUT" : "NETWORK_ERROR";
+      record(false, code);
+      // Report only bounded, non-sensitive diagnostics: raw fetch errors can
+      // contain endpoint URLs, coordinates or confidential request metadata.
+      console.error("[CARONAA][GOOGLE_REQUEST]", {
+        service, operation: input.operation, caller: input.caller,
+        code, attempt: attempt + 1,
+      });
+      throw new Error(code === "TIMEOUT"
+        ? "O cálculo de rota demorou mais que o esperado. Tente novamente."
+        : "Google Maps indisponível. Tente novamente em instantes.");
     }
     record(response.ok, response.ok ? null : `HTTP_${response.status}`);
     if (shouldRetryGoogle(response.status, attempt)) {
@@ -55,11 +65,26 @@ export async function authenticatedGoogleRequest(input: Input, injected?: Google
       continue;
     }
     if (response.status === 403) {
-      const error = await response.clone().json().catch(() => null) as { error?: { details?: Array<{ reason?: string }> } } | null;
-      const reason = error?.error?.details?.find(detail => detail.reason)?.reason;
-      if (reason === "API_KEY_HTTP_REFERRER_BLOCKED") throw new Error("A chave Google do servidor tem restrição de websites. Configure Nenhuma ou IP no Google Cloud.");
-      if (reason === "API_KEY_SERVICE_BLOCKED") throw new Error("A chave Google do servidor não permite esta API. Habilite-a nas restrições da chave no Google Cloud.");
-      throw new Error("Google recusou a consulta. Confira as APIs e as restrições da chave do servidor.");
+      type ForbiddenBody = { error?: {
+        status?: string;
+        details?: Array<{ reason?: string; metadata?: { reason?: string } }>;
+      } };
+      const payload = await response.clone().json().catch(() => null) as ForbiddenBody | null;
+      const rawReason = payload?.error?.details?.find(detail => detail.reason || detail.metadata?.reason);
+      const reason = rawReason?.reason ?? rawReason?.metadata?.reason ?? "";
+      const category = reason === "API_KEY_HTTP_REFERRER_BLOCKED" ? "REFERRER_RESTRICTED"
+        : reason === "API_KEY_SERVICE_BLOCKED" ? "API_RESTRICTED"
+        : reason === "SERVICE_DISABLED" || reason === "API_DISABLED" ? "SERVICE_DISABLED"
+        : "GOOGLE_FORBIDDEN";
+      console.error("[CARONAA][GOOGLE_REQUEST]", {
+        service, operation: input.operation, caller: input.caller,
+        code: category, httpStatus: 403,
+      });
+      if (category === "REFERRER_RESTRICTED")
+        throw new Error("A chave Google do servidor está restrita a websites. Configure uma chave de servidor apropriada no Google Cloud.");
+      if (category === "API_RESTRICTED" || category === "SERVICE_DISABLED")
+        throw new Error("A API Google necessária para a rota não está habilitada ou autorizada na chave de servidor.");
+      throw new Error("Google recusou a consulta. Verifique a chave de servidor e a ativação da API.");
     }
     if (!response.ok) throw new Error(`Google Maps indisponível (HTTP ${response.status}).`);
     return response;
