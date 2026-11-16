@@ -1,8 +1,11 @@
 -- F02/F03: choosing a shared-ride role is an authenticated profile preference.
 -- It does not grant professional approval, presence, dispatch or radar access.
 -- Also keep this migration in drizzle/migrations, the configured project runner.
+-- Supabase previews can start before the primary Drizzle schema is installed.
+-- Do not create a partial profiles table; the Drizzle mirror adds the column
+-- after that baseline exists, and the RPC reports an unavailable schema below.
 
-ALTER TABLE public.profiles
+ALTER TABLE IF EXISTS public.profiles
   ADD COLUMN IF NOT EXISTS active_role text DEFAULT 'PASSAGEIRO'
   CHECK (active_role IN ('PASSAGEIRO', 'MOTORISTA'));
 
@@ -36,6 +39,10 @@ BEGIN
 
   IF v_role IS NULL OR v_role NOT IN ('PASSAGEIRO', 'MOTORISTA') THEN
     RETURN jsonb_build_object('success', false, 'error', 'INVALID_ROLE');
+  END IF;
+
+  IF to_regclass('public.profiles') IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'PROFILE_SCHEMA_UNAVAILABLE');
   END IF;
 
   -- Keep the existing owner-only profiles RLS effective. Never set
