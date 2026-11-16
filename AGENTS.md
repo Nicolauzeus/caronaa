@@ -64,3 +64,4 @@ Required workflow:
 
 End each development report with: **module, current status, changes/files, tests/results, pending risks, README alignment**. These requirements apply equally to code generated directly or through Lovable, Codex, ChatGPT or collaborators. Existing rules above remain in effect.
 
+- F07 passenger radar discovers drivers by distance to the pickup point (radius RPC overload, server-clamped), still gated by accepted region, approval, fees, 90s GPS freshness and self-exclusion; the municipality overload remains only as fallback when no pickup coordinates exist.
