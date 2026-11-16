@@ -11,6 +11,7 @@ import {
 } from "@/lib/pricing/caronaa-fare-engine";
 import { insideApprovedActivityRadius, resolveCorridorMunicipality } from "./corridor-coverage";
 import { quickRideSubmissionError } from "./quick-ride-errors";
+import { quickQuoteGateError } from "./quick-quote-rate-error";
 
 const point = z.object({
   lat: z.number().finite().min(-90).max(90),
@@ -105,8 +106,8 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
   .handler(async ({context,data})=>{
     const {data:rateAllowed,error:rateError}=await (context.supabase as any)
       .rpc("caronaa_quick_quote_rate_gate");
-    if(rateError||rateAllowed!==true)
-      throw new Error("Limite de cotações atingido ou serviço indisponível. Tente novamente em um minuto.");
+    const gateFailure=quickQuoteGateError(rateError,rateAllowed);
+    if(gateFailure)throw gateFailure;
     const coverage=await resolveCoverage(context.supabase,{
       ...data.origin,vehicleType:data.vehicleType,
     });
@@ -276,7 +277,7 @@ async function verifyLegacyQuickRideDestination(quoteId:string,passengerId:strin
     return false;
   const lat=Number(quote.destination_lat),lng=Number(quote.destination_lng);
   if(!Number.isFinite(lat)||!Number.isFinite(lng))
-    throw new Error("Destino não verificado. Selecione o destino novamente.");
+    throw new Error("Destino não verificado. Selecione novamente o destino da corrida.");
   const resolved=await sessionRequest(
     "legacy-quick-destination:"+quoteId,
     ()=>reverseGeocodeService(lat,lng),30_000,
