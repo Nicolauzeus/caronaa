@@ -23,6 +23,7 @@ beforeEach(() => {
   vi.mocked(loadGoogleMaps).mockResolvedValue();
   vi.mocked(getMapDrivingRoute).mockResolvedValue({
     routePath:[{lat:-3.73,lng:-38.52},{lat:-3.79,lng:-38.48}],distanceKm:11,durationMinutes:20,
+    legs:[{distanceKm:11,durationMinutes:20}],
   });
   vi.stubGlobal("matchMedia",vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
   vi.stubGlobal("google", {maps: {
