@@ -113,13 +113,18 @@ export function ShellJourneyPlanner({
   // One Google route per selected pair. GPS display updates do not change the
   // contracted origin; the explicit retry only evicts this pair's cache entry.
   useEffect(()=>{
+    if(originRevision!==lastOriginRevision.current){
+      // An explicit new-location request invalidates the old point even while
+      // the replacement GPS fix is still absent. Do not silently reuse it.
+      frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
+      lastOriginRevision.current=originRevision;
+    }else if(!frozenOrigin.current&&valid(originPoint)){
+      frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
+    }
     if(!valid(destinationPoint)){
       selectedKey.current="";setRoute(null);setPrices(null);setRouteBusy(false);
       onRouteRef.current?.(null,null);return;
     }
-    if(valid(originPoint)&&(originRevision!==lastOriginRevision.current||!frozenOrigin.current))
-      frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
-    lastOriginRevision.current=originRevision;
     const from=frozenOrigin.current;
     if(!from){setRoute(null);setPrices(null);setRouteBusy(false);onRouteRef.current?.(null,null);return;}
     const to:Point={lat:destinationPoint.lat,lng:destinationPoint.lng};
@@ -128,7 +133,6 @@ export function ShellJourneyPlanner({
     let alive=true;
     setRouteBusy(true);setRouteError("");setRoute(null);setPrices(null);
     // Publish the SAME origin immediately, even if route rendering is delayed.
-    // The independent official fare request must not switch to another GPS fix.
     onRouteRef.current?.(null,from);
     let pending=routeCache.current.get(key);
     if(!pending){
