@@ -298,7 +298,7 @@ export function ShellJourneyPlanner({
           return <Button variant="ghost" type="button" key={type} role="radio" aria-checked={checked}
             disabled={flashRideActive}
             onClick={()=>{if(flashRideActive)return;setMode("EXCLUSIVE");changeVehicle(type,"EXCLUSIVE");}}
-            className={`grid h-auto min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-lg border px-3 py-3 text-left motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
+            className={`grid h-auto min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-lg border px-3 py-3 text-left text-secondary-foreground hover:bg-caronaa-white/10 hover:text-secondary-foreground motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
             {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:
               <CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
             <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto":"Flash Carro"}</strong>
