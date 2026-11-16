@@ -26,7 +26,7 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  pickupNeedsConfirmation=false, onConfirmPickup, actionContainer, onFaresChange, onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, onFareChange, shellMode=false, shellSnap="full", onOpenOperational,
+  pickupNeedsConfirmation=false, onConfirmPickup, actionContainer, onFaresChange, onFarePendingChange, onCoverage, onOperationalRideChange, onRidePhaseChange, onDropoffPendingChange, onFareChange, shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
@@ -37,6 +37,7 @@ export function QuickRideHomePanel({
   onConfirmPickup?:()=>void;
   actionContainer?:HTMLElement|null;
   onFaresChange?:(value:Partial<Record<QuickVehicle,QuickRideFarePreview>>)=>void;
+  onFarePendingChange?:(pending:boolean)=>void;
   onCoverage?:(coverage:QuickRideCoverage|null)=>void;
   onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
   onRidePhaseChange?:(status:RideStatus|null)=>void;
@@ -81,6 +82,7 @@ export function QuickRideHomePanel({
   const currentQuote=currentQuoteKey===fieldsKey?(shellMode?fares[vehicle]??null:quote):null;
   useEffect(()=>{onFaresChange?.(currentQuoteKey===fieldsKey?fares:{});},[fares,currentQuoteKey,fieldsKey,onFaresChange]);
   useEffect(()=>onFareChange?.(currentQuote),[currentQuote,onFareChange]);
+  useEffect(()=>{onFarePendingChange?.(coverageLoading||quoteLoading||Boolean(hasOrigin&&hasDestination&&!error&&coverageResolvedKey!==coveragePointKey));},[coverageLoading,quoteLoading,hasOrigin,hasDestination,error,coverageResolvedKey,coveragePointKey,onFarePendingChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
 

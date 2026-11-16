@@ -42,6 +42,7 @@ type Props = {
   flashRideActive?:boolean;
   flashFare?:QuickRideFarePreview|null;
   flashFares?:Partial<Record<Vehicle,QuickRideFarePreview>>;
+  flashFarePending?:boolean;
   onFlashActionContainer?:(element:HTMLElement|null)=>void;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
@@ -66,7 +67,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
-  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},onFlashActionContainer,
+  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},flashFarePending=false,onFlashActionContainer,
 }:Props){
   const [destination,setDestination]=useState("");
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
@@ -303,7 +304,7 @@ export function ShellJourneyPlanner({
               <CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
             <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto":"Flash Carro"}</strong>
               <small className="block text-xs text-white/65">{type==="MOTO"?"Direto ao destino":"Viagem exclusiva"}</small></span>
-            <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">{price||(valid(destinationPoint)?"Consultando…":"—")}
+            <span className="text-right font-[Sora] text-sm font-extrabold text-primary">{price||(valid(destinationPoint)?flashFarePending?"Consultando…":"Indisponível":"—")}
               {price&&<small className="block text-[10px] font-normal text-white/65">Preço oficial</small>}
             </span>
             <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${checked?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>

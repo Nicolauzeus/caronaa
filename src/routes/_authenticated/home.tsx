@@ -108,6 +108,7 @@ function Home() {
   const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
   const [flashFares,setFlashFares]=useState<Partial<Record<"CAR"|"MOTO",QuickRideFarePreview>>>({});
+  const [flashFarePending,setFlashFarePending]=useState(false);
   const [flashActionContainer,setFlashActionContainer]=useState<HTMLElement|null>(null);
   const [confirmedPickupKey,setConfirmedPickupKey]=useState("");
   const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
@@ -405,6 +406,7 @@ function Home() {
               flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
               flashFare={flashFare}
               flashFares={flashFares}
+              flashFarePending={flashFarePending}
               onFlashActionContainer={setFlashActionContainer}
               flashOperationalPanel={
                 <QuickRideHomePanel
@@ -422,6 +424,7 @@ function Home() {
                   onConfirmPickup={()=>setConfirmedPickupKey(pickupKey)}
                   actionContainer={flashActionContainer}
                   onFaresChange={setFlashFares}
+                  onFarePendingChange={setFlashFarePending}
                   onCoverage={onQuickCoverage}
                   onOperationalRideChange={onPassengerRide}
                   onRidePhaseChange={onPassengerPhase}
