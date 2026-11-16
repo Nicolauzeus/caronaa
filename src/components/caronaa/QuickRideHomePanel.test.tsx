@@ -81,6 +81,45 @@ beforeEach(()=>{
 afterEach(()=>cleanup());
 
 describe("Corrida Rápida dentro do mapa inicial",()=>{
+  it("consulta Carro e Moto automaticamente e reutiliza as cotações ao trocar veículo",async()=>{
+    api.preview.mockImplementation(async({data}:{data:{vehicleType:string}})=>({
+      quoteId:data.vehicleType,vehicleType:data.vehicleType,expiresAt:"2099-01-01T00:00:00Z",
+      customerPaysCents:data.vehicleType==="CAR"?1450:750,
+      distanceKm:4.3,durationMinutes:13.1,
+    }));
+    const changed=vi.fn();
+    const {rerender}=render(<QuickRideHomePanel {...basic} shellMode onFaresChange={changed}/>);
+    await waitFor(()=>expect(changed).toHaveBeenCalledWith(expect.objectContaining({
+      CAR:expect.objectContaining({customerPaysCents:1450}),
+      MOTO:expect.objectContaining({customerPaysCents:750}),
+    })),{timeout:3500});
+    expect(api.preview).toHaveBeenCalledTimes(2);
+    rerender(<QuickRideHomePanel {...basic} shellMode vehicle="CAR" onFaresChange={changed}/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Confirmar Flash Carro/}));
+    await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({data:{quoteId:"CAR"}}));
+    expect(api.preview).toHaveBeenCalledTimes(2);
+  });
+  it("exibe a cotação mas bloqueia pedido até confirmar o embarque aproximado",async()=>{
+    const confirm=vi.fn();
+    const {rerender}=render(<QuickRideHomePanel {...basic} pickupNeedsConfirmation onConfirmPickup={confirm}/>);
+    const request=await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500});
+    expect(request).toBeDisabled();
+    fireEvent.click(request);
+    expect(api.submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"Confirmar local"}));
+    expect(confirm).toHaveBeenCalledOnce();
+    rerender(<QuickRideHomePanel {...basic} pickupNeedsConfirmation={false}/>);
+    expect(screen.getByRole("button",{name:/Confirmar corrida por/})).toBeEnabled();
+  });
+  it("falha de uma categoria não descarta a cotação válida da outra",async()=>{
+    api.preview.mockImplementation(async({data}:{data:{vehicleType:string}})=>{
+      if(data.vehicleType==="CAR")throw new Error("unavailable");
+      return {quoteId:"moto",vehicleType:"MOTO",expiresAt:"2099-01-01T00:00:00Z",customerPaysCents:750,distanceKm:4.3,durationMinutes:13.1};
+    });
+    render(<QuickRideHomePanel {...basic} shellMode/>);
+    expect(await screen.findByRole("button",{name:/Confirmar Flash Moto/},{timeout:3500})).toBeEnabled();
+    expect(api.submit).not.toHaveBeenCalled();
+  });
   it("não consulta o radar ou cotação sem saída confiável",()=>{
     render(<QuickRideHomePanel {...basic} originPoint={undefined} driverCount={0}/>);
     expect(screen.getByText(/Escolha uma saída com coordenadas verificadas/i)).toBeInTheDocument();
