@@ -33,6 +33,33 @@ describe("Google request policy", () => {
     const d = dependencies(); vi.mocked(d.fetch).mockResolvedValue(new Response("{}", { status }));
     await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow(); expect(d.fetch).toHaveBeenCalledTimes(1);
   });
+  it("classifies Google 403 referrer restrictions without leaking the key", async () => {
+    const d = dependencies();
+    vi.mocked(d.fetch).mockResolvedValue(new Response(JSON.stringify({
+      error: { details: [{ reason: "API_KEY_HTTP_REFERRER_BLOCKED" }] },
+    }), { status: 403, headers: { "content-type": "application/json" } }));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow("restrita a websites");
+      expect(spy).toHaveBeenCalledWith("[CARONAA][GOOGLE_REQUEST]", expect.objectContaining({
+        code: "REFERRER_RESTRICTED", httpStatus: 403,
+      }));
+      expect(JSON.stringify(spy.mock.calls)).not.toContain("test-only");
+    } finally { spy.mockRestore(); }
+  });
+  it("reports network failures with bounded diagnostics, not raw exception text", async () => {
+    const d = dependencies();
+    vi.mocked(d.fetch).mockRejectedValue(new TypeError("sensitive-host?apikey=private-data"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow("indisponível");
+      expect(spy).toHaveBeenCalledWith("[CARONAA][GOOGLE_REQUEST]", expect.objectContaining({
+        code: "NETWORK_ERROR", attempt: 1,
+      }));
+      expect(JSON.stringify(spy.mock.calls)).not.toContain("private-data");
+      expect(d.log).toHaveBeenCalledWith(expect.objectContaining({ error_code: "NETWORK_ERROR" }));
+    } finally { spy.mockRestore(); }
+  });
   it("never retries a timeout", async () => {
     const d = dependencies(); vi.mocked(d.fetch).mockRejectedValue(new DOMException("timeout", "TimeoutError"));
     await expect(authenticatedGoogleRequest(input, d)).rejects.toThrow("indisponível"); expect(d.fetch).toHaveBeenCalledTimes(1);
