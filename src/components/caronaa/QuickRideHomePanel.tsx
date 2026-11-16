@@ -20,6 +20,16 @@ import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime"
 import { toast } from "sonner";
 
 type QuickVehicle = "CAR" | "MOTO";
+function friendlyQuickQuoteError(cause:unknown):string{
+  const message=cause instanceof Error?cause.message:"";
+  if(/demorou|tempo limite|timeout/i.test(message))
+    return "A rota demorou para responder. Toque para tentar novamente.";
+  if(/limite de cotações|muitas consultas/i.test(message))
+    return "Muitas consultas em pouco tempo. Aguarde um minuto e tente novamente.";
+  if(/não habilitada|fora da cobertura|ainda não|tarifa|intermunicipal/i.test(message))
+    return "Esta modalidade ainda não está disponível neste trajeto.";
+  return "Não conseguimos calcular o preço deste trajeto agora. Tente novamente.";
+}
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
 type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
 
@@ -54,6 +64,7 @@ export function QuickRideHomePanel({
   const [coverage,setCoverage]=useState<QuickRideCoverage|null>(null);
   const [coverageLoading,setCoverageLoading]=useState(false);
   const [quote,setQuote]=useState<QuickRideFarePreview|null>(null);
+  const [quoteErrors,setQuoteErrors]=useState<Partial<Record<QuickVehicle,string>>>({});
   const [fares,setFares]=useState<Partial<Record<QuickVehicle,QuickRideFarePreview>>>({});
   const [coverages,setCoverages]=useState<Partial<Record<QuickVehicle,QuickRideCoverage>>>({});
   const [busy,setBusy]=useState(false);
@@ -206,7 +217,7 @@ export function QuickRideHomePanel({
     return ()=>{mounted.current=false;};
   },[]);
   useEffect(()=>{
-    setQuote(null);setFares({});setCurrentQuoteKey("");setInterestSent(false);setError("");
+    setQuote(null);setFares({});setQuoteErrors({});setCurrentQuoteKey("");setInterestSent(false);setError("");
   },[fieldsKey]);
   useEffect(()=>{
     setCoverage(null);setCoverages({});setCoverageResolvedKey("");onCoverage?.(null);setCoverageLoading(false);
@@ -257,8 +268,17 @@ export function QuickRideHomePanel({
         if(active){setFares(previous=>({...previous,[type]:result}));setQuote(result);setCurrentQuoteKey(fieldsKey);}
         return result;
       }))
-        .then(results=>{if(active&&results.every(result=>result.status==="rejected"))setError("Cotação indisponível. Tente novamente.");})
-        .catch(cause=>{if(active)setError(cause instanceof Error?cause.message:"Cotação indisponível.");})
+        .then(results=>{
+          if(!active)return;
+          const failures:Partial<Record<QuickVehicle,string>>={};
+          results.forEach((result,index)=>{
+            if(result.status==="rejected")failures[types[index]]=friendlyQuickQuoteError(result.reason);
+          });
+          setQuoteErrors(failures);
+          if(results.length>0&&results.every(result=>result.status==="rejected"))
+            setError("Não foi possível consultar os preços deste trajeto. Tente novamente.");
+        })
+        .catch(()=>{if(active)setError("Falha temporária ao consultar preços. Tente novamente.");})
         .finally(()=>{if(active)setQuoteLoading(false);});
     },350);
     return ()=>{active=false;window.clearTimeout(timer);};
@@ -328,6 +348,7 @@ export function QuickRideHomePanel({
       {busy?"Enviando pedido…":!hasDestination?"Escolha seu destino":!currentQuote?(quoteLoading||coverageLoading?"Consultando preços…":"Preço indisponível"):driverCount<1?"Aguardando motorista disponível":
         (shellMode?`Confirmar Flash ${vehicle==="MOTO"?"Moto":"Carro"} — `:"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
     </Button>
+    {!currentQuote&&quoteErrors[vehicle]&&<p role="status" className="text-sm text-white/80">{quoteErrors[vehicle]}</p>}
     {currentQuote&&Date.parse(currentQuote.expiresAt)<=Date.now()&&<Button variant="ghost" onClick={()=>{setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);}}>Atualizar preço expirado</Button>}
   </div>;
   return (
@@ -492,7 +513,7 @@ export function QuickRideHomePanel({
         {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen
           onClose={()=>setRatingOpen(null)}/>}
       </div>}
-      {error&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível concluir a solicitação agora. Verifique sua conexão e tente novamente.":error}</p>}
+      {error&&!(shellMode&&!currentQuote&&quoteErrors[vehicle])&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
       {error&&covered&&hasDestination&&!currentQuote&&!liveRide&&(
         <button type="button" disabled={quoteLoading||busy}
           onClick={()=>{setError("");setQuoteRefresh(value=>value+1);}}
