@@ -61,6 +61,7 @@ export const validScheduleDate=(localValue:string,now=Date.now()):boolean=>{
 };
 const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{dateStyle:"full",timeStyle:"short"}).format(new Date(localValue));
 
+const fortalezaLocal=(value:string)=>new Date(Date.parse(value)-3*60*60*1000).toISOString();
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,locating=false,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
@@ -190,11 +191,16 @@ export function ShellJourneyPlanner({
     try{
       const reservedSeats=vehicle==="MOTO"?1:mode==="EXCLUSIVE"?3:entireCar?3:seats;
       const {data,error}=await (supabase as any).rpc("schedule_caronaa_ride",{
+        // Matches the live signature; America/Fortaleza is fixed UTC-3.
         p_origin:originLabel?.trim()||"Origem confirmada",p_destination:destination.trim(),
-        p_departure_at:new Date(scheduledAt).toISOString(),p_service_mode:mode,p_vehicle_type:vehicle,
-        p_seats:reservedSeats,p_reserved_entire_vehicle:mode==="EXCLUSIVE"||entireCar,
-        p_travel_preferences:preferences,p_women_only:gender==="FEMININO"&&womenOnly,
-        p_estimated_fare:prices[mode].totalFare,
+        p_origin_lat:originPoint.lat,p_origin_lng:originPoint.lng,
+        p_destination_lat:destinationPoint.lat,p_destination_lng:destinationPoint.lng,
+        p_ride_date:fortalezaLocal(scheduledAt).slice(0,10),p_departure_time:fortalezaLocal(scheduledAt).slice(11,19),
+        p_service_mode:mode,p_vehicle_type:vehicle,p_passenger_count:reservedSeats,
+        p_women_only:gender==="FEMININO"&&womenOnly,
+        p_price_cents:Math.round(prices[mode].totalFare*100),p_distance_km:route.distanceKm,
+        p_preferences:preferences,
+        p_origin_label:originLabel?.trim()||"Origem confirmada",p_destination_label:destination.trim(),
       });
       if(error||!data)throw new Error("SCHEDULE_NOT_CONFIRMED");
       const id=typeof data==="string"?data:typeof data==="object"&&data!==null?(data.request_id??data.id):null;
