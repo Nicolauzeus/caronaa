@@ -170,8 +170,13 @@ function Home(){
   },[originSource,location.addressPosition,location.failure,location.recenterVersion,resolvedAddress,originPreview,usableOriginFix]);
 
   useEffect(()=>{
-    const fix=location.addressPosition;
-    if(originSource!=="CURRENT_LOCATION"||!fix||!isTrustedGpsFix(fix)||location.locating)return;
+    // The same approximate GPS fix used for pickup preview must also be
+    // eligible for its human-readable address (without confirming pickup).
+    const fix=originPreview
+      ? passengerOriginFix.current??location.addressPosition
+      : location.addressPosition;
+    const usableFix=originPreview?canPreviewPassengerPickup(fix):isTrustedGpsFix(fix);
+    if(originSource!=="CURRENT_LOCATION"||!fix||!usableFix||location.locating)return;
     const previous=lastGpsLookup.current;
     const distance=previous?111195*Math.hypot(fix.lat-previous.lat,(fix.lng-previous.lng)*Math.cos(fix.lat*Math.PI/180)):Infinity;
     if(previous&&distance<75&&Date.now()-previous.at<120000)return;
@@ -180,7 +185,7 @@ function Home(){
     void sessionRequest("home-reverse:"+fix.lat.toFixed(3)+":"+fix.lng.toFixed(3),()=>reverseGeocode({data:{lat:fix.lat,lng:fix.lng}}),120000)
       .then(value=>{if(version===originLookupSequence.current)setResolvedAddress(value);})
       .catch(()=>{if(version===originLookupSequence.current)lastGpsLookup.current=null;});
-  },[location.addressPosition,location.locating,originSource,reverseGeocode]);
+  },[location.addressPosition,location.locating,originSource,originPreview,reverseGeocode]);
 
   const chooseOriginOnMap=useCallback((point:{lat:number;lng:number})=>{
     if(!validPoint(point))return;
