@@ -11,7 +11,7 @@ import { claimPendingParticipations, readPendingParticipations, getMyResearchPar
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import {
-  readOnboarding, saveOnboarding, completeOnboarding, ensureBasicPassengerOnboarding, institutionForRegion,
+  readOnboarding, saveOnboarding, completeOnboarding, institutionForRegion,
   type Progress, type RegionCode, type Affiliation, type UsageRole,
 } from "@/lib/onboarding/progressive-onboarding";
 
@@ -31,7 +31,7 @@ const affiliations: {value:Affiliation;label:string}[] = [
 const roles: {value:UsageRole;label:string;description:string}[] = [
   {value:"PASSAGEIRO",label:"Passageiro",description:"Quero encontrar caronas"},
   {value:"MOTORISTA",label:"Motorista",description:"Quero oferecer caronas sem responder pesquisas"},
-  {value:"AMBOS",label:"Ambos",description:"Quero encontrar e oferecer (pesquisa de passageiro)"},
+  {value:"AMBOS",label:"Ambos",description:"Quero encontrar e oferecer caronas"},
 ];
 
 function OnboardingPage() {
@@ -56,7 +56,7 @@ function OnboardingPage() {
     if(readPendingParticipations().length) void claimPendingParticipations().then(()=>getMyResearchParticipationBadges()).then(badges=>{if(active)setResearchCount(badges.length);}).catch(()=>undefined);
     else void getMyResearchParticipationBadges().then(badges=>{if(active)setResearchCount(badges.length);}).catch(()=>undefined);
     void loadVerifiedResearchSuggestions().then(v=>{if(active)setHint(v);}).catch(()=>undefined);
-    ensureBasicPassengerOnboarding().then(p=>{
+    readOnboarding().then(p=>{
       if(!active)return;
       if(p?.status==="BASIC_COMPLETED"){void resolvePostOnboardingDestination().then(to=>navigate({to})).catch(()=>setLoadError(true));return;}
       setProgress(p);setRegion(p?.region_code??null);setAffiliation(p?.affiliation_type??null);setRole(p?.usage_role??null);
