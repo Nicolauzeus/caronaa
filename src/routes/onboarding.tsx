@@ -58,7 +58,7 @@ function OnboardingPage() {
     void loadVerifiedResearchSuggestions().then(v=>{if(active)setHint(v);}).catch(()=>undefined);
     readOnboarding().then(p=>{
       if(!active)return;
-      if(p?.status==="BASIC_COMPLETED"){void resolvePostOnboardingDestination().then(to=>navigate({to})).catch(()=>setLoadError(true));return;}
+      if(p?.status==="BASIC_COMPLETED"){void resolvePostOnboardingDestination().then(to=>{if(active)void navigate({to,replace:true});}).catch(()=>{if(active)setLoadError(true);});return;}
       setProgress(p);setRegion(p?.region_code??null);setAffiliation(p?.affiliation_type??null);setRole(p?.usage_role??null);
       setStep(p?.current_step==="AFFILIATION"?1:p?.current_step==="ROLE"?2:p?.current_step==="REVIEW"?3:0);
     }).catch(()=>{if(active){setLoadError(true);toast.error("Não foi possível carregar seu perfil.");}}).finally(()=>{endCaronaaPhase("onboarding-bootstrap");if(active)setLoading(false);});
@@ -77,7 +77,7 @@ function OnboardingPage() {
         await getMyResearchLaunchState(); // Preserve launch-state error detection before committing.
         await completeOnboarding(progress);
         void trackOnboardingEvent("COMPLETED", "DONE");
-        await navigate({to:await resolvePostOnboardingDestination()});
+        await navigate({to:await resolvePostOnboardingDestination(),replace:true});
       }
     }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível continuar.");}
     finally{endCaronaaPhase("onboarding-completion");setBusy(false);}
