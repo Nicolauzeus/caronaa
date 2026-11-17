@@ -2,7 +2,6 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
-import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import { claimPendingParticipations,readPendingParticipations } from "@/lib/formulario/research-participation";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -66,10 +65,6 @@ export const Route = createFileRoute("/_authenticated")({
     // gates. These pilot exceptions do NOT grant access to passenger Home.
     if (onboarding?.status !== "BASIC_COMPLETED") {
       throw redirect({ to: "/onboarding", replace: true });
-    }
-    const destination = await resolvePostOnboardingDestination();
-    if (destination === "/formulario" && !approvedProfessional) {
-      throw redirect({ to: "/formulario", replace: true });
     }
     const launch = await getMyResearchLaunchState();
     // New campaign participants may personalize their account before launch.
