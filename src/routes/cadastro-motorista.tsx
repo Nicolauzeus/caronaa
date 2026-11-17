@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/caronaa/BrandElements";
-import { generateProfessionalPassword, passwordGuidance, registrationPasswordError, professionalAuthErrorMessage } from "@/lib/professional-auth";
+import { generateProfessionalPassword, passwordGuidance, registrationPasswordError, professionalAuthErrorMessage, professionalAuthErrorCode } from "@/lib/professional-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -40,6 +40,7 @@ function SimpleMotorcycleRegistration() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [authErrorCode, setAuthErrorCode] = useState<string | null>(null);
   const [resetMode, setResetMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const strength = passwordGuidance(password);
@@ -90,6 +91,7 @@ function SimpleMotorcycleRegistration() {
       return;
     }
     setFeedback("");
+    setAuthErrorCode(null);
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -111,6 +113,7 @@ function SimpleMotorcycleRegistration() {
       }
       setPassword(""); setConfirm("");
     } catch (error) {
+      setAuthErrorCode(professionalAuthErrorCode(error));
       setFeedback(professionalAuthErrorMessage(error));
     } finally { setBusy(false); }
   }
@@ -120,6 +123,7 @@ function SimpleMotorcycleRegistration() {
     setPassword("");
     setConfirm("");
     setFeedback("");
+    setAuthErrorCode(null);
     setResetMode(false);
     setShowPassword(false);
     setShowConfirm(false);
@@ -254,7 +258,7 @@ function SimpleMotorcycleRegistration() {
               </div>
               {confirm && <p aria-live="polite" className={"mt-1 text-xs " + (confirm !== password ? "text-red-300" : "text-white/65")}>{confirm === password ? "As senhas coincidem." : "As senhas não coincidem."}</p>}
             </div>}
-            {feedback && <p role={feedback.includes("não") || feedback.includes("incorret") || feedback.includes("Muitas") ? "alert" : "status"} className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">{feedback}</p>}
+            {feedback && <div role="alert" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm"><p>{feedback}</p>{authErrorCode && <p className="mt-2 text-xs text-white/65">Referência técnica: {authErrorCode}</p>}</div>}
             <button disabled={busy} aria-busy={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy && <LoaderCircle size={18} className="animate-spin" />}{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
             <Link to="/auth" className="block min-h-10 pt-2 text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
           </form>
