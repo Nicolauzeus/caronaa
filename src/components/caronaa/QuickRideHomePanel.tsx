@@ -118,6 +118,14 @@ export function QuickRideHomePanel({
   },[waitingForOrigin,coverageLoading,quoteLoading,hasOrigin,hasDestination,error,coverageResolvedKey,coveragePointKey,onFarePendingChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  const lastNotifiedCompleted=useRef<string|null>(null);
+  useEffect(()=>{
+    if(!completedRide||lastNotifiedCompleted.current===completedRide.id)return;
+    lastNotifiedCompleted.current=completedRide.id;
+    // In-app notice; the post-ride card remains the actionable payment surface.
+    toast.info("Corrida concluída. Confira o QR Pix e realize o pagamento ao motorista.",{duration:10000});
+  },[completedRide?.id]);
+
 
   useEffect(()=>{
     onOperationalRideChange?.(liveRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)
