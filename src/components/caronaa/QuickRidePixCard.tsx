@@ -104,7 +104,7 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
       </p> : <>
         <button type="button" disabled={submitting} onClick={()=>void confirmDeclaration()} className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-4 font-bold text-[#FFBB00]">
           {submitting?"Registrando...":"Já fiz o Pix — declarar pagamento"}
-        </button>}
+        </button>
       </>}
       <textarea readOnly aria-label="Código Pix copia e cola" value={pix.payload}
         className="w-full break-all rounded-lg border bg-background p-2 text-xs" rows={2}/>
