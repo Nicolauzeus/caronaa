@@ -26,7 +26,7 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
    row.automaticConfirmation!==false||!Number.isSafeInteger(row.amountCents)||row.amountCents<450)
    throw new Error("Contrato Pix inválido; consulte o suporte.");
   setPix(row);
-  if(!mine.error&&typeof mine.data==="string")setKey(mine.data);
+  if(!mine.error&&typeof mine.data==="string")setKey(previous=>previous.trim()?previous:mine.data);
   if(!state.error){
    const detail=Array.isArray(state.data)?state.data[0]:null;
    setDeclared(Boolean(detail?.passenger_declared_at));
