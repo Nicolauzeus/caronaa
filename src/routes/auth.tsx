@@ -87,7 +87,7 @@ function AuthPage() {
         const saved = await readOnboarding();
         const next = saved?.status === "BASIC_COMPLETED"
           ? await resolvePostOnboardingDestination() : "/onboarding";
-        if (active) await navigate({ to: next === "/home" ? destination : next, replace: true });
+        if (active) await navigate({ to: next === "/home" && destination !== "/onboarding" ? destination : next, replace: true });
       } catch (error) {
         // Fail closed: do not send a user to Home if the research check fails.
         if (active) toast.error(error instanceof Error ? error.message : "Não foi possível verificar seu acesso.");
@@ -129,7 +129,7 @@ function AuthPage() {
       const saved = await readOnboarding();
       const next = saved?.status === "BASIC_COMPLETED"
         ? await resolvePostOnboardingDestination() : "/onboarding";
-      await navigate({ to: next === "/home" ? destination : next, replace: true });
+      await navigate({ to: next === "/home" && destination !== "/onboarding" ? destination : next, replace: true });
     } catch (error) {
       const message = authErrorMessage(error);
       setSubmitError(message);
