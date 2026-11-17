@@ -3,6 +3,7 @@ import {
   generateProfessionalPassword,
   passwordGuidance,
   professionalAuthErrorMessage,
+  professionalAuthErrorCode,
   registrationPasswordError,
 } from "./professional-auth";
 
@@ -29,7 +30,12 @@ describe("cadastro profissional: senhas", () => {
   });
 
   it("não expõe detalhes técnicos de falhas de login ao usuário", () => {
-    expect(professionalAuthErrorMessage(new Error("Invalid login credentials"))).toBe("E-mail ou senha incorretos.");
+    expect(professionalAuthErrorMessage(new Error("Invalid login credentials"))).toMatch(/E-mail ou senha incorretos/);
     expect(professionalAuthErrorMessage(new Error("unknown secret code"))).not.toContain("secret");
+    expect(professionalAuthErrorMessage({status:400,code:"weak_password",message:"Password is weak"})).toMatch(/segurança/);
+    expect(professionalAuthErrorMessage({status:400,code:"email_exists"})).toMatch(/já possui uma conta/);
+    expect(professionalAuthErrorMessage({status:400,code:"unexpected_failure"})).toMatch(/logs de Auth/);
+    expect(professionalAuthErrorCode({status:400,code:"email_exists"})).toBe("email_exists");
+    expect(professionalAuthErrorCode({status:400})).toBe("HTTP_400");
   });
 });
