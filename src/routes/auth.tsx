@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { ensureBasicPassengerOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
@@ -82,13 +82,8 @@ function AuthPage() {
     let active = true;
     void (async () => {
       try {
-        let next: string = "/onboarding";
-        if (mode !== "cadastro" && destination !== "/onboarding") {
-          const saved = await readOnboarding();
-          if (saved?.status === "BASIC_COMPLETED") {
-            next = await resolvePostOnboardingDestination();
-          }
-        }
+        await ensureBasicPassengerOnboarding();
+        const next = await resolvePostOnboardingDestination();
         if (active) await navigate({ to: next === "/home" ? destination : next, replace: true });
       } catch (error) {
         // Fail closed: do not send a user to Home if the research check fails.
@@ -107,7 +102,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth?mode=cadastro&redirect=%2Fonboarding`,
+            emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fhome`,
             data: {
               full_name: "",
             },
@@ -123,15 +118,9 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      if (mode === "cadastro") {
-        await navigate({ to: "/onboarding" });
-      } else {
-        const saved = await readOnboarding();
-        const next = saved?.status === "BASIC_COMPLETED"
-          ? await resolvePostOnboardingDestination()
-          : "/onboarding";
-        await navigate({ to: next === "/home" ? destination : next, replace: true });
-      }
+      await ensureBasicPassengerOnboarding();
+      const next = await resolvePostOnboardingDestination();
+      await navigate({ to: next === "/home" ? destination : next, replace: true });
     } catch (error) {
       toast.error(authErrorMessage(error));
     } finally {
