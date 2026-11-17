@@ -642,6 +642,7 @@ function Perfil() {
           <ResearchParticipationCard/>
         </div>}
         notificationContent={<NotificationPreferences/>}
+        pixContent={isProfessionalProfile ? <DriverPixSettings /> : undefined}
       />
       <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp"
         onChange={selectPhoto} className="sr-only" />
