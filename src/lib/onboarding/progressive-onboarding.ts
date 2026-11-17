@@ -77,37 +77,3 @@ export async function completeOnboarding(progress: Progress): Promise<void> {
   if (error || !data) throw new Error("Não foi possível concluir seu perfil.");
 }
 
-/**
- * Minimal passenger activation. Research surveys and the former four-step
- * onboarding are optional. Preserve any selections already stored for a user.
- * This row is account setup only; it is NOT professional driver approval.
- */
-export async function ensureBasicPassengerOnboarding(): Promise<Progress> {
-  const userId = await authenticatedUserId();
-  const { data: existing, error: readError } = await table()
-    .select("*").eq("user_id", userId).maybeSingle();
-  if (readError) throw new Error("Não foi possível verificar seu cadastro.");
-  if (existing?.status === "BASIC_COMPLETED") return existing as Progress;
-
-  const region: RegionCode = existing?.region_code ?? "OTHER";
-  const affiliation: Affiliation = existing?.affiliation_type ?? "COMUNIDADE";
-  const role: UsageRole = existing?.usage_role ?? "PASSAGEIRO";
-  const institution = institutionForRegion(region);
-  const now = new Date().toISOString();
-  const next = {
-    ...existing,
-    user_id: userId,
-    region_code: region,
-    affiliation_type: affiliation,
-    usage_role: role,
-    institution_code: institution,
-    status: "BASIC_COMPLETED",
-    current_step: "DONE",
-    completed_at: existing?.completed_at ?? now,
-    updated_at: now,
-  };
-  const { data, error } = await table().upsert(next, { onConflict: "user_id" })
-    .select("*").single();
-  if (error || !data) throw new Error("Não foi possível ativar sua conta. Tente novamente.");
-  return data as Progress;
-}
