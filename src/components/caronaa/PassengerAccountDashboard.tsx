@@ -1,20 +1,20 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bell, Camera, ChevronRight, IdCard, MapPin, Route, ShieldCheck } from "lucide-react";
+import { Bell, Camera, ChevronRight, IdCard, MapPin, Route, ShieldCheck, Wallet } from "lucide-react";
 import { DriverWhatsAppSupport } from "./DriverWhatsAppSupport";
 
-type SectionKey = "personal" | "security" | "notifications";
+type SectionKey = "personal" | "security" | "notifications" | "pix";
 type Props = {
   fullName:string; initials:string; photo:string|null; city:string;
   verified:boolean; onPhoto:()=>void; onSave:()=>void; saving:boolean;
-  personalFields:ReactNode; securityContent:ReactNode; notificationContent:ReactNode;
+  personalFields:ReactNode; securityContent:ReactNode; notificationContent:ReactNode; pixContent?:ReactNode;
   hasDriverProfile:boolean;
 };
 export function PassengerAccountDashboard({
   fullName,initials,photo,city,verified,onPhoto,onSave,saving,
-  personalFields,securityContent,notificationContent,hasDriverProfile,
+  personalFields,securityContent,notificationContent,pixContent,hasDriverProfile,
 }:Props){
-  const [expanded,setExpanded]=useState<SectionKey|null>(null);
+  const [expanded,setExpanded]=useState<SectionKey|null>(()=>typeof window!=="undefined"&&window.location.hash==="#pix-do-motorista"?"pix":null);
   const show=(key:SectionKey)=>setExpanded(previous=>previous===key?null:key);
   const section=(key:SectionKey,title:string,subtitle:string,Icon:typeof Bell,content:ReactNode)=>(
     <section key={key} className="self-start rounded-2xl border border-white/15 bg-white/[0.055] p-4 sm:p-5">
@@ -59,6 +59,7 @@ export function PassengerAccountDashboard({
       </div>)}
       {section("security","Segurança e verificações","Vínculos confirmados",ShieldCheck,securityContent)}
       {section("notifications","Notificações","Som e avisos",Bell,notificationContent)}
+      {hasDriverProfile&&pixContent&&<div id="pix-do-motorista">{section("pix","Chave Pix do motorista","Cadastrar ou atualizar recebimentos",Wallet,pixContent)}</div>}
     </div>
     <DriverWhatsAppSupport/>
     {hasDriverProfile&&<Link to="/cadastro-motorista" className="flex min-h-12 items-center gap-2 rounded-xl border border-white/15 p-3 text-xs text-white/65">Consultar cadastro profissional <ChevronRight className="ml-auto size-4"/></Link>}
