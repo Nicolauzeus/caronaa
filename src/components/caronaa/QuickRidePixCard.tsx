@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { buildPixPayload } from "@/lib/pix";
 import { formatBrl } from "@/lib/ride-cost";
-import { getF07PilotState } from "@/lib/quick-rides/f07-pilot.functions";
 
 type CompletedQuickPix = {
   available: boolean;
@@ -18,17 +16,13 @@ type CompletedQuickPix = {
 };
 
 export function QuickRidePixCard({ rideId }: { rideId: string }) {
-  const pilotFn=useServerFn(getF07PilotState);
-  const pilotRef=useRef(pilotFn);
-  pilotRef.current=pilotFn;
-  const [pilotEnabled,setPilotEnabled]=useState(false);
   const [pix, setPix] = useState<{payload:string;image:string;data:CompletedQuickPix}|null>(null);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
-  const [confirming,setConfirming]=useState(false);
-  const [code,setCode]=useState("");
   const [submitting,setSubmitting]=useState(false);
   const [declared,setDeclared]=useState(false);
+  const [driverConfirmed,setDriverConfirmed]=useState(false);
+  const [refreshKey,setRefreshKey]=useState(0);
 
   useEffect(()=>{
     let alive=true;
@@ -36,14 +30,11 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     void (supabase as any).rpc("quick_ride_payment_declaration_state",{p_id:rideId})
       .then(({data,error:rpcError}:{data:any;error:any})=>{
         if(!alive || rpcError)return;
-        if((Array.isArray(data)?data[0]:null)?.passenger_declared_at)setDeclared(true);
+        const state=Array.isArray(data)?data[0]:null;
+        setDeclared(Boolean(state?.passenger_declared_at));
+        setDriverConfirmed(Boolean(state?.driver_acknowledged_at));
       }).catch(()=>undefined);
     void (async()=>{
-      // Only the separate homologation environment may show a pilot Pix.
-      // Public production never invokes an RPC that was not deployed there.
-      const mode=await pilotRef.current();
-      if(!mode.enabled)return;
-      if(alive)setPilotEnabled(true);
       const {data,error:rpcError}=await (supabase as any).rpc(
         "get_completed_quick_ride_pix",{p_ride_id:rideId},
       );
@@ -65,7 +56,7 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     })().catch(e=>{if(alive)setError(e instanceof Error?e.message:"Falha ao gerar o Pix.");})
       .finally(()=>{if(alive)setLoading(false);});
     return()=>{alive=false;};
-  },[rideId]);
+  },[rideId,refreshKey]);
 
   const copy=async()=>{
     if(!pix)return;
@@ -73,28 +64,27 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     catch {setError("Não foi possível copiar. Selecione o código e copie manualmente.");}
   };
 
+  useEffect(()=>{
+    const refresh=()=>{if(!document.hidden)setRefreshKey(v=>v+1);};
+    const timer=window.setInterval(refresh,15000);
+    document.addEventListener("visibilitychange",refresh);
+    return()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",refresh);};
+  },[]);
   async function confirmDeclaration(){
-    if(submitting || !/^[0-9]{4}$/.test(code))return;
+    if(submitting||!pix)return;
     setSubmitting(true);setError("");
     try{
-      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_confirm_payment_code",{p_id:rideId,p_code:code});
-      if(rpcError || data!==true)throw new Error("Código inválido, expirado ou já utilizado.");
-      setDeclared(true);setConfirming(false);setCode("");
-    }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível confirmar.");}
+      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_declare_manual_pix",{p_id:rideId});
+      if(rpcError||data!==true)throw new Error(rpcError?.message||"Declaração já registrada ou indisponível.");
+      setDeclared(true);
+    }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível declarar o pagamento.");}
     finally{setSubmitting(false);}
   }
-  if(!pilotEnabled)return <section aria-label="Situação do pagamento da Corrida Rápida"
-    className="rounded-xl border border-white/20 bg-[#121212] p-4 text-sm text-white">
-    <p className="font-bold text-[#FFBB00]">Pagamento da corrida</p>
-    <p className="mt-2 text-xs leading-relaxed text-white/75">
-      {loading?"Verificando se o Pix desta corrida está disponível...":
-        "O QR Pix automático não está habilitado nesta modalidade. Consulte o meio de pagamento combinado; não faça transferências sem confirmar os dados do destinatário."}
-    </p>
-  </section>;
   return <section aria-label="QR Pix da Corrida Rápida concluída"
     className="min-w-0 space-y-2 rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
     <p className="font-bold">Pix da Corrida Rápida concluída</p>
     {loading&&<p role="status">Consultando valor contratado...</p>}
+    {error&&<button type="button" onClick={()=>setRefreshKey(v=>v+1)} className="min-h-10 rounded-lg border border-[#FFBB00] px-3 text-[#FFBB00]">Tentar novamente</button>}
     {error&&<p role="alert" className="break-words text-destructive">{error}</p>}
     {pix&&<>
       <p className="text-xs text-white/70">Valor total da corrida</p>
@@ -110,21 +100,11 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
         <p className="mt-1">Regularize o valor da corrida. Pendências financeiras poderão restringir novas viagens quando houver política de bloqueio válida.</p>
       </div>
       {declared ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 p-3">
-        Pagamento declarado, mas ainda não verificado pelo banco.
+        {driverConfirmed?"Motorista também confirmou recebimento (declarações registradas; sem confirmação bancária).":"Você declarou pagamento. Aguardando o motorista confirmar o recebimento."}
       </p> : <>
-        <button type="button" onClick={()=>setConfirming(true)} className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-4 font-bold text-[#FFBB00]">
-          Pagamento realizado
-        </button>
-        {confirming&&<div className="space-y-2 rounded-xl border border-white/20 p-3">
-          <label htmlFor="quick-payment-code" className="block text-xs">Digite o código de 4 dígitos fornecido pelo motorista</label>
-          <input id="quick-payment-code" type="text" inputMode="numeric" autoComplete="off"
-            maxLength={4} value={code} onChange={event=>setCode(event.target.value.replace(/\D/g,"").slice(0,4))}
-            className="min-h-12 w-full rounded-xl border border-white/30 bg-white/10 p-3 text-xl text-white"/>
-          <button type="button" disabled={submitting||code.length!==4} onClick={()=>void confirmDeclaration()}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-            {submitting?"Validando...":"Confirmar código"}
-          </button>
-        </div>}
+        <button type="button" disabled={submitting} onClick={()=>void confirmDeclaration()} className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-4 font-bold text-[#FFBB00]">
+          {submitting?"Registrando...":"Já fiz o Pix — declarar pagamento"}
+        </button>}
       </>}
       <textarea readOnly aria-label="Código Pix copia e cola" value={pix.payload}
         className="w-full break-all rounded-lg border bg-background p-2 text-xs" rows={2}/>
