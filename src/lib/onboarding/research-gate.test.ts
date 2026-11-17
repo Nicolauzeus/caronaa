@@ -30,6 +30,12 @@ describe("optional research after basic registration", () => {
     api.professionalAccess.mockRejectedValue(new Error("professional service unavailable"));
   });
 
+  it("requires all four onboarding steps before Home", async () => {
+    api.onboarding.mockResolvedValue({status:"IN_PROGRESS",usage_role:"PASSAGEIRO"});
+    expect(await resolvePostOnboardingDestination()).toBe("/onboarding");
+    expect(api.launch).not.toHaveBeenCalled();
+  });
+
   it("allows a new passenger to enter without survey responses or professional approval", async () => {
     expect(await resolvePostOnboardingDestination()).toBe("/home");
     expect(api.participations).not.toHaveBeenCalled();
