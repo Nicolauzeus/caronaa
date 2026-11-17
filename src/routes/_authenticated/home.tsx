@@ -187,6 +187,20 @@ function Home(){
       .catch(()=>{if(version===originLookupSequence.current)lastGpsLookup.current=null;});
   },[location.addressPosition,location.locating,originSource,originPreview,reverseGeocode]);
 
+  // If the reverse lookup finishes while the pickup dialog is open,
+  // refresh only the label, never the point the passenger is confirming.
+  useEffect(()=>{
+    if(!resolvedAddress?.formattedAddress)return;
+    setPickupCandidate(previous=>{
+      if(!validPoint(previous)||!validPoint(resolvedAddress))return previous;
+      if(Math.abs(previous.lat-resolvedAddress.lat)>0.0003||
+         Math.abs(previous.lng-resolvedAddress.lng)>0.0003)return previous;
+      if(previous.formattedAddress===resolvedAddress.formattedAddress)return previous;
+      return {...previous,formattedAddress:resolvedAddress.formattedAddress,
+        rawText:resolvedAddress.formattedAddress};
+    });
+  },[resolvedAddress]);
+
   const chooseOriginOnMap=useCallback((point:{lat:number;lng:number})=>{
     if(!validPoint(point))return;
     const request=++originLookupSequence.current;
