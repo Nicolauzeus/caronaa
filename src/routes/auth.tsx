@@ -71,6 +71,7 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const destination =
     search.redirect?.startsWith("/") && !search.redirect.startsWith("//")
@@ -95,6 +96,7 @@ function AuthPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    setSubmitError("");
     setBusy(true);
     try {
       if (mode === "cadastro") {
@@ -122,7 +124,9 @@ function AuthPage() {
       const next = await resolvePostOnboardingDestination();
       await navigate({ to: next === "/home" ? destination : next, replace: true });
     } catch (error) {
-      toast.error(authErrorMessage(error));
+      const message = authErrorMessage(error);
+      setSubmitError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -246,7 +250,7 @@ function AuthPage() {
           type="button"
           role="tab"
           aria-selected={mode === "entrar"}
-          onClick={() => setMode("entrar")}
+          onClick={() => { setSubmitError(""); setMode("entrar"); }}
           className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
             mode === "entrar"
               ? "bg-card text-foreground shadow-sm"
@@ -260,7 +264,7 @@ function AuthPage() {
             type="button"
             role="tab"
             aria-selected={effectiveMode === "cadastro"}
-            onClick={() => setMode("cadastro")}
+            onClick={() => { setSubmitError(""); setMode("cadastro"); }}
             className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
               effectiveMode === "cadastro"
                 ? "bg-card text-foreground shadow-sm"
@@ -278,6 +282,7 @@ function AuthPage() {
 
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
+        {submitError && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</p>}
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">
             E-mail
