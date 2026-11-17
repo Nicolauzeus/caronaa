@@ -196,8 +196,8 @@ function Home(){
       if(Math.abs(previous.lat-resolvedAddress.lat)>0.0003||
          Math.abs(previous.lng-resolvedAddress.lng)>0.0003)return previous;
       if(previous.formattedAddress===resolvedAddress.formattedAddress)return previous;
-      return {...previous,formattedAddress:resolvedAddress.formattedAddress,
-        rawText:resolvedAddress.formattedAddress};
+      const label=resolvedAddress.formattedAddress??previous.rawText;return {...previous,formattedAddress:label,
+        rawText:label};
     });
   },[resolvedAddress]);
 
