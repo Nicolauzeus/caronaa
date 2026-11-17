@@ -11,7 +11,7 @@ import { claimPendingParticipations, readPendingParticipations, getMyResearchPar
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import {
-  readOnboarding, saveOnboarding, completeOnboarding, institutionForRegion,
+  readOnboarding, saveOnboarding, completeOnboarding, ensureBasicPassengerOnboarding, institutionForRegion,
   type Progress, type RegionCode, type Affiliation, type UsageRole,
 } from "@/lib/onboarding/progressive-onboarding";
 
@@ -56,7 +56,7 @@ function OnboardingPage() {
     if(readPendingParticipations().length) void claimPendingParticipations().then(()=>getMyResearchParticipationBadges()).then(badges=>{if(active)setResearchCount(badges.length);}).catch(()=>undefined);
     else void getMyResearchParticipationBadges().then(badges=>{if(active)setResearchCount(badges.length);}).catch(()=>undefined);
     void loadVerifiedResearchSuggestions().then(v=>{if(active)setHint(v);}).catch(()=>undefined);
-    readOnboarding().then(p=>{
+    ensureBasicPassengerOnboarding().then(p=>{
       if(!active)return;
       if(p?.status==="BASIC_COMPLETED"){void resolvePostOnboardingDestination().then(to=>navigate({to})).catch(()=>setLoadError(true));return;}
       setProgress(p);setRegion(p?.region_code??null);setAffiliation(p?.affiliation_type??null);setRole(p?.usage_role??null);
