@@ -27,12 +27,12 @@ export function decideResearchDestination(input: {
 }
 
 export async function resolvePostOnboardingDestination():
-  Promise<"/formulario" | "/aguardando" | "/home" | "/disponibilidade-profissional"> {
+  Promise<"/onboarding" | "/aguardando" | "/home"> {
   // Survey participation is voluntary, not an access requirement.
   // A verified session with basic onboarding may use normal passenger rides
   // and request Flash rides. Professional dispatch remains separately gated.
   const onboarding = await readOnboarding();
-  if (onboarding?.status !== "BASIC_COMPLETED") return "/home";
+  if (onboarding?.status !== "BASIC_COMPLETED") return "/onboarding";
   const launch = await getMyResearchLaunchState();
   return launch.locked ? "/aguardando" : "/home";
 }
