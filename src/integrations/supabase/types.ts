@@ -3127,8 +3127,53 @@ export type Database = {
           },
         ]
       }
+      quick_ride_dispute_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          id: string
+          new_ride_status: string
+          occurred_at: string
+          previous_ride_status: string
+          reason: string
+          ride_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          id?: string
+          new_ride_status: string
+          occurred_at?: string
+          previous_ride_status: string
+          reason: string
+          ride_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          id?: string
+          new_ride_status?: string
+          occurred_at?: string
+          previous_ride_status?: string
+          reason?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_dispute_audit_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_ride_dropoff_reviews: {
         Row: {
+          admin_decision: string | null
+          admin_reason: string | null
+          admin_resolved_at: string | null
+          admin_resolved_by: string | null
           deadline_at: string
           passenger_response: string | null
           requested_at: string
@@ -3137,6 +3182,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_decision?: string | null
+          admin_reason?: string | null
+          admin_resolved_at?: string | null
+          admin_resolved_by?: string | null
           deadline_at: string
           passenger_response?: string | null
           requested_at?: string
@@ -3145,6 +3194,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_decision?: string | null
+          admin_reason?: string | null
+          admin_resolved_at?: string | null
+          admin_resolved_by?: string | null
           deadline_at?: string
           passenger_response?: string | null
           requested_at?: string
@@ -3157,6 +3210,38 @@ export type Database = {
             foreignKeyName: "quick_ride_dropoff_reviews_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_payment_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_type: string
+          id: string
+          ride_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          ride_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_payment_events_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
             referencedRelation: "professional_quick_rides"
             referencedColumns: ["id"]
           },
@@ -5511,7 +5596,12 @@ export type Database = {
       }
       admin_platform_fee_claims: { Args: never; Returns: Json }
       admin_professional_access_queue: { Args: never; Returns: Json }
+      admin_quick_ride_disputes: { Args: never; Returns: Json }
       admin_quick_ride_overview: { Args: never; Returns: Json }
+      admin_resolve_quick_ride_dispute: {
+        Args: { p_decision: string; p_reason: string; p_ride_id: string }
+        Returns: boolean
+      }
       admin_review_professional_access: {
         Args: { p_decision: string; p_reason: string; p_request_id: string }
         Returns: undefined
@@ -6673,12 +6763,20 @@ export type Database = {
       purge_google_public_request_budgets: { Args: never; Returns: undefined }
       purge_google_wrapper_tables: { Args: never; Returns: undefined }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_acknowledge_manual_pix: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
       quick_ride_complete_ride: { Args: { p_id: string }; Returns: boolean }
       quick_ride_confirm_payment_code: {
         Args: { p_code: string; p_id: string }
         Returns: boolean
       }
       quick_ride_confirm_pickup: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_declare_manual_pix: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
       quick_ride_detect_arrival: { Args: { p_id: string }; Returns: boolean }
       quick_ride_driver_details: { Args: { p_id: string }; Returns: Json }
       quick_ride_driver_queue: {
