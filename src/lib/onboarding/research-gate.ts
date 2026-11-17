@@ -26,54 +26,16 @@ export function decideResearchDestination(input: {
   // A pending professional candidate must have a path to finish the driver
   // process, without unlocking the passenger home or professional dispatch.
   if (input.hasProfessionalRequest) return "/disponibilidade-profissional";
-  return "/formulario";
+  return "/home";
 }
 
 export async function resolvePostOnboardingDestination():
   Promise<"/formulario" | "/aguardando" | "/home" | "/disponibilidade-profissional"> {
-  // Read the verified account's persisted onboarding role, not a querystring
-  // or mutable auth metadata. This does NOT grant access to paid driver RPCs.
+  // Survey participation is voluntary, not an access requirement.
+  // A verified session with basic onboarding may use normal passenger rides
+  // and request Flash rides. Professional dispatch remains separately gated.
   const onboarding = await readOnboarding();
-  const isDriverOnly =
-    onboarding?.status === "BASIC_COMPLETED" &&
-    onboarding.usage_role === "MOTORISTA";
-
-  // Keep the existing launch gate authoritative. A survey participant linked
-  // to a pending institutional launch must still respect that cohort.
+  if (onboarding?.status !== "BASIC_COMPLETED") return "/home";
   const launch = await getMyResearchLaunchState();
-  if (launch.locked) return "/aguardando";
-
-  if (isDriverOnly) {
-    // Crucially, no survey/badge RPC is required for a driver-only account.
-    return "/home";
-  }
-
-  // An approved professional or a pending driver applicant also does not
-  // depend on research services. In particular, a research outage must not
-  // strand a verified driver at the survey screen.
-  const { data: access, error: accessError } =
-    await (supabase as any).rpc("get_my_professional_access");
-  const isApprovedProfessional = !accessError && access?.authorized === true;
-  const hasProfessionalRequest = !accessError &&
-    ["PENDING", "CHANGES_REQUESTED", "REJECTED"].includes(access?.request?.status);
-  if (isApprovedProfessional || hasProfessionalRequest) {
-    return decideResearchDestination({
-      locked: false,
-      hasParticipation: false,
-      isPilot: false,
-      isApprovedProfessional,
-      hasProfessionalRequest,
-    });
-  }
-
-  const [participations, verifications] = await Promise.all([
-    getMyResearchParticipationBadges(),
-    getMyUserVerifications(),
-  ]);
-  return decideResearchDestination({
-    locked: false,
-    hasParticipation: participations.length > 0,
-    isPilot: verifications.some(v => v.type === "CARONAA_TEST" && v.status === "VERIFIED"),
-    isDriverOnly: false,
-  });
+  return launch.locked ? "/aguardando" : "/home";
 }
