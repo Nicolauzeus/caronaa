@@ -37,7 +37,9 @@ export function ProfessionalAccountDashboard(props: DriverAccountProps) {
     vehicleBrand, vehicleDescription, vehiclePlate, registration, whatsapp,
     onEditPhoto, driverForm, vehicleForm, financeContent, settingsContent, onSave, saving,
   } = props;
-  const [expanded, setExpanded] = useState<PanelId | null>(null);
+  const [expanded, setExpanded] = useState<PanelId | null>(() =>
+    typeof window !== "undefined" && window.location.hash === "#pix-do-motorista" ? "finance" : null
+  );
   const driverCard = useRef<HTMLDivElement>(null);
 
   function openEditDriver() {
