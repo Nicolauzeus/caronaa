@@ -6,7 +6,7 @@ import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
  * declares the driver-only role. This exempts the SURVEY, not professional
  * approval, regional availability, payment restrictions or GPS consent.
  *
- * PASSAGEIRO and AMBOS retain the passenger research participation gate.
+ * PASSAGEIRO and AMBOS require completed basic onboarding, not research forms.
  * The launch waiting gate still takes precedence for linked campaign accounts.
  * A self-selected role is never evidence of professional authorization.
  */
