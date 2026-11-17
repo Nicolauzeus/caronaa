@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { ensureBasicPassengerOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
@@ -66,6 +66,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const effectiveMode = mode;
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -83,8 +84,9 @@ function AuthPage() {
     let active = true;
     void (async () => {
       try {
-        await ensureBasicPassengerOnboarding();
-        const next = await resolvePostOnboardingDestination();
+        const saved = await readOnboarding();
+        const next = saved?.status === "BASIC_COMPLETED"
+          ? await resolvePostOnboardingDestination() : "/onboarding";
         if (active) await navigate({ to: next === "/home" ? destination : next, replace: true });
       } catch (error) {
         // Fail closed: do not send a user to Home if the research check fails.
@@ -100,13 +102,17 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "cadastro") {
+        const name = fullName.trim().replace(/\s+/g, " ");
+        if (name.length < 3 || name.length > 120 || name.split(" ").length < 2) {
+          throw new Error("Informe seu nome e sobrenome.");
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fhome`,
+            emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fonboarding`,
             data: {
-              full_name: "",
+              full_name: name,
             },
           },
         });
@@ -120,8 +126,9 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      await ensureBasicPassengerOnboarding();
-      const next = await resolvePostOnboardingDestination();
+      const saved = await readOnboarding();
+      const next = saved?.status === "BASIC_COMPLETED"
+        ? await resolvePostOnboardingDestination() : "/onboarding";
       await navigate({ to: next === "/home" ? destination : next, replace: true });
     } catch (error) {
       const message = authErrorMessage(error);
@@ -283,6 +290,14 @@ function AuthPage() {
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-4">
         {submitError && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</p>}
+        {effectiveMode === "cadastro" && <div className="space-y-1.5">
+          <Label htmlFor="signup-full-name" className="text-xs font-semibold text-foreground">Nome completo</Label>
+          <Input id="signup-full-name" type="text" value={fullName}
+            onChange={event => setFullName(event.target.value)}
+            placeholder="Seu nome e sobrenome" autoComplete="name"
+            minLength={3} maxLength={120} required
+            className="h-12 rounded-xl border-border bg-auth-field text-sm font-medium" />
+        </div>}
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">
             E-mail
@@ -582,6 +597,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
 
 function authErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("nome e sobrenome")) return "Informe seu nome e sobrenome.";
   if (message.includes("invalid login credentials")) return "E-mail ou senha incorretos.";
   if (message.includes("email not confirmed")) return "Confirme seu e-mail antes de entrar.";
   if (message.includes("user already registered"))
