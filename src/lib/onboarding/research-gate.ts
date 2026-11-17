@@ -1,8 +1,5 @@
-import { getMyResearchParticipationBadges } from "@/lib/formulario/research-participation";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
-import { getMyUserVerifications } from "@/lib/user-verifications";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
-import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Research is not a prerequisite for accounts whose completed onboarding
