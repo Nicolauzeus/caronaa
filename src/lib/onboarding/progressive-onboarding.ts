@@ -65,15 +65,37 @@ export async function saveOnboarding(
   return data as Progress;
 }
 
+/**
+ * Finish exactly once. A retry after a successful save must not restart
+ * onboarding or report failure just because status is already completed.
+ */
 export async function completeOnboarding(progress: Progress): Promise<void> {
   const userId = await authenticatedUserId();
-  if (userId !== progress.user_id || !canComplete(progress)) throw new Error("Complete as etapas essenciais.");
-  const { data: latest, error: readError } = await table().select("*").eq("user_id", userId).single();
-  if (readError || !latest || !canComplete(latest as Progress)) throw new Error("Revise seu perfil antes de continuar.");
+  if (userId !== progress.user_id) throw new Error("Cadastro pertence a outra conta.");
+
+  const { data: latest, error: readError } = await table()
+    .select("*").eq("user_id", userId).single();
+  if (readError || !latest) throw new Error("Não foi possível verificar seu cadastro.");
+
+  // Durable server state wins over stale React state after refresh/retries.
+  if (latest.status === "BASIC_COMPLETED" && latest.current_step === "DONE") return;
+  if (!canComplete(latest as Progress)) throw new Error("Complete as etapas essenciais.");
+
+  const now = new Date().toISOString();
   const { data, error } = await table().update({
     status: "BASIC_COMPLETED", current_step: "DONE",
-    completed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  }).eq("user_id", userId).eq("status", "IN_PROGRESS").select("user_id").maybeSingle();
-  if (error || !data) throw new Error("Não foi possível concluir seu perfil.");
-}
+    completed_at: now, updated_at: now,
+  }).eq("user_id", userId).eq("status", "IN_PROGRESS")
+    .select("user_id").maybeSingle();
+  if (error) throw new Error("Não foi possível concluir seu perfil.");
 
+  if (!data) {
+    // A simultaneous request may have already committed the completion.
+    const { data: confirmed, error: verifyError } = await table()
+      .select("status,current_step").eq("user_id", userId).single();
+    if (verifyError || confirmed?.status !== "BASIC_COMPLETED" ||
+        confirmed?.current_step !== "DONE") {
+      throw new Error("Não foi possível confirmar a conclusão do cadastro.");
+    }
+  }
+}
