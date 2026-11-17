@@ -6,6 +6,7 @@ import { InsightChart } from "@/components/admin/InsightChart";
 import { statusTextClass } from "@/lib/admin/chart-utils";
 import { ProfessionalLiveMonitor } from "@/components/admin/ProfessionalLiveMonitor";
 import { QuickRideAdminPanel } from "@/components/admin/QuickRideAdminPanel";
+import { QuickRideDisputesAdmin } from "@/components/admin/QuickRideDisputesAdmin";
 import { ProfessionalAccessQueue } from "@/components/admin/ProfessionalAccessQueue";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -88,10 +89,11 @@ function MobilityOperationsCenter() {
   return (
     <main className="space-y-6">
       <Tabs defaultValue="requests" className="space-y-5">
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
           <TabsTrigger value="requests" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Solicitações{requestCount !== null ? ` (${requestCount})` : ""}</TabsTrigger>
           <TabsTrigger value="indicators" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Painel e indicadores</TabsTrigger>
           <TabsTrigger value="pilot" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Configuração do piloto</TabsTrigger>
+          <TabsTrigger value="disputes" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Contestações</TabsTrigger>
         </TabsList>
         <TabsContent value="requests" forceMount className="data-[state=inactive]:hidden">
           <ProfessionalAccessQueue onCountChange={setRequestCount} />
@@ -207,6 +209,9 @@ function MobilityOperationsCenter() {
       </section>
 
       <ProfessionalLiveMonitor />
+        </TabsContent>
+        <TabsContent value="disputes" className="space-y-6">
+          <QuickRideDisputesAdmin />
         </TabsContent>
         <TabsContent value="pilot" className="space-y-6">
       <QuickRideAdminPanel />
