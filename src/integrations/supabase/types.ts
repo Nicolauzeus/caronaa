@@ -7761,12 +7761,10 @@ export type Database = {
         }
         Returns: string
       }
-      switch_user_active_role:
-        | { Args: { target_role: string }; Returns: Json }
-        | {
-            Args: { p_target_role?: string; target_role?: string }
-            Returns: Json
-          }
+      switch_user_active_role: {
+        Args: { p_target_role?: string; target_role?: string }
+        Returns: Json
+      }
       sync_my_ride_opportunity_alerts: { Args: never; Returns: Json }
       sync_user_verifications: {
         Args: { _user_id: string }

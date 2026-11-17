@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
 import { CircleAlert, MapPin, Navigation, Radio, Signal, UserRound } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
@@ -236,6 +237,20 @@ export function DriverFlashPlanner({
         "PIN inválido ou não autorizado. Confira com o passageiro.");
     }finally{setBusyRide(false);}
   };
+  const [dropoffSent,setDropoffSent]=useState(false);
+  useEffect(()=>{if(active?.status!=="IN_PROGRESS")setDropoffSent(false);},[active?.id,active?.status]);
+  const requestDropoff=async()=>{
+    if(!active||busyRide)return;
+    setBusyRide(true);
+    try{
+      const {data,error}=await (supabase as any).rpc("quick_ride_complete_ride",{p_id:active.id});
+      if(error||data!==true)throw new Error("DROPOFF");
+      setDropoffSent(true);
+      toast.success("Desembarque enviado ao passageiro.");
+      await refresh();
+    }catch{toast.error("Não foi possível solicitar o desembarque. Tente novamente.");}
+    finally{setBusyRide(false);}
+  };
   useEffect(()=>{
     if(presence.error?.includes("3 repasses pendentes"))
       toast.warning(presence.error);
@@ -363,8 +378,13 @@ export function DriverFlashPlanner({
             Validar PIN e iniciar viagem
           </button>
         </>}
-        {active.status==="IN_PROGRESS"&&
-          <p className="text-xs text-white/70">Siga a rota até o destino. A finalização permanece no fluxo operacional autorizado.</p>}
+        {active.status==="IN_PROGRESS"&&<>
+          <p className="text-xs text-white/70">{dropoffSent?"Desembarque solicitado. Aguardando o passageiro confirmar.":"Siga a rota até o destino."}</p>
+          <button type="button" disabled={busyRide} onClick={()=>void requestDropoff()}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
+            {dropoffSent?"Reenviar pedido de desembarque":"Cheguei ao destino · Solicitar desembarque"}
+          </button>
+        </>}
       </section>}
       {canListen&&active?.status==="IN_PROGRESS"&&
         <p className="rounded-xl border border-[#FFBB00]/25 p-2 text-xs text-white/65">

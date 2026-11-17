@@ -341,7 +341,7 @@ function Home(){
             originPoint={originLocation} originLabel={origin} locating={locatingPickup}
             originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
             onFlashVehicleChange={setQuickVehicle}
-            flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
+            flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}
             flashFare={flashFare} flashFares={flashFares} flashFarePending={flashFarePending}
             onFlashActionContainer={setFlashActionContainer}
             flashOperationalPanel={<QuickRideHomePanel
