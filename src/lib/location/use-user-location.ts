@@ -63,6 +63,10 @@ export function useUserLocation({
     if (!mounted.current) return;
     setFollowing(true);
     setFailure(null);
+    // Avoid showing an old blue marker as if it were the live GPS after
+    // returning from background or explicitly re-centering.
+    setPosition(null);
+    setAddressPosition(null);
     if (window.isSecureContext === false || !navigator.geolocation) {
       setFailure(window.isSecureContext === false ? "INSECURE" : "UNSUPPORTED");
       setLocating(false);

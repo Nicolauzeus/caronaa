@@ -118,7 +118,7 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
     // municipality sent by the browser. Fail closed on upstream uncertainty.
     let city: string | null = getCachedMunicipality(context.userId, data.lat, data.lng);
     if (city) {
-      log("municipality_cache_hit", undefined, { ageBoundSeconds: 180 });
+      log("municipality_cache_hit", undefined, { ageBoundSeconds: 60 });
     } else {
       try {
         log("reverse_geocoding_started");
@@ -159,14 +159,21 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
     }
 
     log("db_publish_started", undefined, { city });
-    const { data: saved, error: savedError } =
-      await admin.rpc("publish_verified_professional_position", {
-        p_user_id: context.userId,
-        p_lat: data.lat,
-        p_lng: data.lng,
-        p_accuracy_m: data.accuracyM,
-        p_municipality: city,
+    const legacyArgs = {
+      p_user_id: context.userId,
+      p_lat: data.lat, p_lng: data.lng,
+      p_accuracy_m: data.accuracyM, p_municipality: city,
+    };
+    // New migration persists the device's actual sampling time. During the
+    // manual deployment window, preserve compatibility with the previous RPC.
+    let { data: saved, error: savedError } =
+      await admin.rpc("publish_verified_professional_position_v2", {
+        ...legacyArgs, p_sampled_at_ms: data.sampledAtMs ?? Date.now(),
       });
+    if (savedError?.code === "PGRST202") {
+      ({ data: saved, error: savedError } =
+        await admin.rpc("publish_verified_professional_position", legacyArgs));
+    }
     if (savedError || saved !== true) {
       // Extra checks ONLY after an SQL rejection. They distinguish a user
       // authorized by a high-level RPC from a missing raw DB approval row.

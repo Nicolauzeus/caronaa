@@ -171,8 +171,13 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
             const { data: state, error: stateError } = await (supabase as any)
               .from("professional_presence").select("is_available")
               .eq("user_id", userId).maybeSingle();
-            if (stateError || state?.is_available !== true || disposed) {
-              log("SYNC_HEARTBEAT_STOPPED",stateError?"PRESENCE_RPC_ERROR":"DRIVER_OFFLINE");
+            if (stateError || disposed) {
+              if (stateError) log("SYNC_HEARTBEAT_FAILED","PRESENCE_RPC_ERROR");
+              // Network errors are not a deliberate driver logout.
+              return;
+            }
+            if (state?.is_available !== true) {
+              log("SYNC_HEARTBEAT_STOPPED","DRIVER_OFFLINE");
               stop();
               return;
             }
@@ -182,7 +187,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
               });
             if (heartbeatError || disposed) {
               if(heartbeatError) log("SYNC_HEARTBEAT_FAILED",String(heartbeatError.code??"PRESENCE_RPC_ERROR"));
-              stop();
+              // Keep watching; last verified GPS expires naturally after TTL.
               return;
             }
             navigator.geolocation.getCurrentPosition(

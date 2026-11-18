@@ -495,7 +495,7 @@ BEGIN
             coalesce(r.meeting_point_lng,r.origin_lng),
             coalesce(r.meeting_point_lat,r.origin_lat)),4326)::geography,500))
     )
-  ORDER BY distance_to_pickup_m ASC LIMIT 5;
+  ORDER BY 21 ASC LIMIT 5;
 END
 $flash_orders$;
 REVOKE ALL ON FUNCTION public.get_flash_driver_radar_orders(integer)

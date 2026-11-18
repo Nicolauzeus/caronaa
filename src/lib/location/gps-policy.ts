@@ -7,8 +7,8 @@ export const GPS_POLICY = {
   driverSampleMaxAgeMs: 30_000,
   driverFutureClockToleranceMs: 5_000,
   driverDiscoveryTtlMs: 90_000,
-  driverCivicCacheTtlMs: 180_000,
-  driverCivicCacheRadiusM: 300,
+  driverCivicCacheTtlMs: 60_000,
+  driverCivicCacheRadiusM: 75,
 } as const;
 
 export function isFreshGpsTimestamp(
