@@ -41,7 +41,15 @@ function OnboardingPage() {
       await getMyResearchLaunchState();
       await completeOnboarding(saved);
       sessionStorage.removeItem("caronaa:oauth-role-preference");
-      await navigate({ to: afterUniversalOnboarding(await resolvePostOnboardingDestination(), professionalContinuation), replace: true });
+      const destination = await resolvePostOnboardingDestination();
+      if (destination === "/home" && selectedRole === "MOTORISTA") {
+        // Basic account completion is NOT driver readiness. The vehicle/photo
+        // step must persist before the MOTORISTA role can become active.
+        await navigate({ to: "/cadastro-veiculo",
+          search: { redirect: professionalContinuation }, replace: true });
+      } else {
+        await navigate({ to: afterUniversalOnboarding(destination, professionalContinuation), replace: true });
+      }
     } catch (cause) {
       const text = cause instanceof Error ? cause.message : "Não foi possível concluir seu cadastro.";
       setError(text);
@@ -65,7 +73,17 @@ function OnboardingPage() {
     void readOnboarding().then(async progress => {
       if (!active) return;
       if (progress?.status === "BASIC_COMPLETED") {
-        await navigate({ to: afterUniversalOnboarding(await resolvePostOnboardingDestination(), professionalContinuation), replace: true });
+        const destination = await resolvePostOnboardingDestination();
+        if (destination === "/home" && progress.usage_role === "MOTORISTA") {
+          const {data: profile, error: profileError} = await (await import("@/integrations/supabase/client")).supabase
+            .from("profiles").select("active_role").eq("id",user.id).maybeSingle();
+          if (profileError) throw profileError;
+          if (profile?.active_role !== "MOTORISTA") {
+            await navigate({ to: "/cadastro-veiculo", search: {redirect: professionalContinuation}, replace: true });
+            return;
+          }
+        }
+        await navigate({ to: afterUniversalOnboarding(destination, professionalContinuation), replace: true });
         return;
       }
       const metadataRole = user.user_metadata?.initial_usage_role;
