@@ -974,6 +974,13 @@
       "when": 1794968361057,
       "tag": "0138_verify_0202_driver_photo_protection",
       "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1794968362057,
+      "tag": "0203_driver_photo_active_role",
+      "breakpoints": true
     }
   ]
 }
