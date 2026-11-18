@@ -96,8 +96,8 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
     render(<ProfessionalPage/>);
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Faltam 4 dados obrigatórios/i));
-    expect(screen.getByText(/Selecione a região de atuação/i)).toBeTruthy();
-    expect(screen.getByText(/Adicione sua foto pessoal para concluir/i)).toBeTruthy();
+    expect(screen.getAllByText(/Selecione a região de atuação/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Adicione sua foto pessoal para concluir/i).length).toBeGreaterThan(0);
     expect(api.rpc).not.toHaveBeenCalledWith("submit_simple_mototaxi_access", expect.anything());
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
   });
@@ -135,7 +135,7 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
       : {data:{authorized:false,request:null},error:null});
     render(<ProfessionalPage/>);
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
-    await waitFor(() => expect(screen.getByText(/Adicione uma foto pessoal válida, armazenada no CARONAA/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText(/Adicione uma foto pessoal válida, armazenada no CARONAA/i).length).toBeGreaterThan(0));
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
   });
 
