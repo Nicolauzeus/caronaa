@@ -13,7 +13,7 @@ const authProvider = file("src/lib/auth-context.tsx");
 describe("Administrative first-entry navigation contract", () => {
   it("keeps the existing login and checks admin scope before showing the ordinary home", () => {
     expect(login).toContain('"/home"');
-    expect(home).toContain("beforeLoad:async({context})=>");
+    expect(home).toContain("beforeLoad:async({context,location})=>");
     expect(home).toContain("getMyAdminEntry()");
     expect(home).toContain("const user=context.user");
     expect(home).not.toContain("await readOnboarding()");
