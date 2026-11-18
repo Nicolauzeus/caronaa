@@ -14,7 +14,7 @@ import { DriverScheduledTripsPanel } from "@/components/caronaa/shell/DriverSche
 import type { OnRouteMatch } from "@/types/ride";
 import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { canSwitchCaronaaRole } from "@/lib/role/role-switch-guard";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -67,6 +67,8 @@ export const Route = createFileRoute("/_authenticated/home")({
 
 function Home(){
   const routeSearch=Route.useSearch();
+  const navigate=useNavigate();
+  const [offerIntentOpen,setOfferIntentOpen]=useState(false);
   useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const activeRoleState=useActiveRole();
   const gender=useProfileGender();
@@ -268,6 +270,25 @@ function Home(){
     if(result.needsVehicleModal){setMissingVehicleFields(result.missingFields);setVehicleModalOpen(true);}
   };
 
+  // A tap on "Oferecer" must lead to a real action, never just highlight a tab.
+  // Explicitly confirm switching account roles, preserving the existing guard and
+  // vehicle completion flow. No driver rights or professional access are granted.
+  useEffect(()=>{
+    if(routeSearch.intent!=="offer"){
+      setOfferIntentOpen(false);
+      return;
+    }
+    if(activeRoleState.loading)return;
+    if(activeRoleState.activeRole==="MOTORISTA"){
+      setOfferIntentOpen(false);
+      setTripsPanelOpen(false);
+      setServiceType("AGENDADA");
+      setSheetSnap("half");
+    }else{
+      setOfferIntentOpen(true);
+    }
+  },[routeSearch.intent,activeRoleState.activeRole,activeRoleState.loading]);
+
   const radarPickup=validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
   const radarLat=radarPickup?Math.round(radarPickup.lat*1000)/1000:null;
   const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
@@ -379,6 +400,37 @@ function Home(){
             onScheduled={()=>setTripsRefreshKey(value=>value+1)}/>}
         </div>
       </InteractiveBottomSheet>
+      <Dialog open={offerIntentOpen} onOpenChange={open=>{
+        setOfferIntentOpen(open);
+        if(!open&&activeRoleState.activeRole!=="MOTORISTA"){
+          void navigate({to:"/home",search:{},replace:true});
+        }
+      }}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-3xl border-[#FFBB00]/30 bg-background p-5 text-foreground">
+          <DialogTitle className="font-display text-xl font-extrabold">Oferecer uma carona</DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
+            Para publicar uma carona, entre no modo Motorista. Sua conta de passageiro continua disponível e você pode voltar quando quiser.
+          </DialogDescription>
+          <div className="grid gap-2 pt-2">
+            <Button type="button" className="min-h-12 rounded-xl bg-[#FFBB00] font-bold text-[#121212]"
+              disabled={activeRoleState.busy||activeRoleState.loading}
+              onClick={async()=>{
+                setOfferIntentOpen(false);
+                try{
+                  await handleShellRoleSwitch("MOTORISTA");
+                }catch{
+                  toast.error("Não foi possível ativar o modo motorista. Tente novamente.");
+                }
+              }}>
+              Continuar como motorista
+            </Button>
+            <Button type="button" variant="outline" className="min-h-12 rounded-xl"
+              onClick={()=>{setOfferIntentOpen(false);void navigate({to:"/home",search:{},replace:true});}}>
+              Continuar como passageiro
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={pickupDialogOpen} onOpenChange={open=>{setPickupDialogOpen(open);if(!open)setPickupCandidate(null);}}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogTitle>{scheduledDriverPreview?"De onde sua carona vai sair?":"Onde você vai embarcar?"}</DialogTitle>
