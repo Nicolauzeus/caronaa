@@ -53,12 +53,12 @@ describe("Página /auth Redesenhada", () => {
 
     // Headline exigida
     expect(
-      screen.getByRole("heading", { level: 1, name: /Seu caminho continua aqui\./i }),
+      screen.getByRole("heading", { level: 1, name: /Entre na sua conta/i }),
     ).toBeInTheDocument();
 
     // Contexto exigido
     expect(
-      screen.getByText(/Tenha seu perfil pronto para encontrar ou oferecer caronas\./i),
+      screen.getByText(/Acesse sua conta para continuar na CARONAA./i),
     ).toBeInTheDocument();
 
     // Opções nos seletores
