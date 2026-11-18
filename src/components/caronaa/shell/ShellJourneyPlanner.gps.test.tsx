@@ -50,6 +50,18 @@ describe("Passenger itinerary GPS and route recovery",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Definir ponto de embarque"}));
     expect(adjust).toHaveBeenCalledOnce();expect(api.route).not.toHaveBeenCalled();
   });
+  it("shows a concrete GPS error and lets the passenger retry or choose a pickup",()=>{
+    const retry=vi.fn(), adjust=vi.fn();
+    render(<ShellJourneyPlanner {...props} locating={false} originPoint={undefined}
+      gpsError="O GPS expirou antes de informar a posição."
+      onRetryGps={retry} onAdjustOrigin={adjust}/>);
+    expect(screen.getByText("O GPS expirou antes de informar a posição.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Tentar GPS novamente"}));
+    expect(retry).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button",{name:"Escolher embarque no mapa"}));
+    expect(adjust).toHaveBeenCalledOnce();
+    expect(api.route).not.toHaveBeenCalled();
+  });
   it("starts the route when GPS arrives after the destination was already selected",async()=>{
     const changed=vi.fn();
     const {rerender}=render(<ShellJourneyPlanner {...props} locating originPoint={undefined} onRouteChange={changed}/>);
