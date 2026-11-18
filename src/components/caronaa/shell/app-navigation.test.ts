@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { authenticatedNav, isAppNavSelected } from "./app-navigation";
 
 describe("CARONAA mobile-first navigation", () => {
-  it("preserves exactly four usable destinations, without advertising tabs", () => {
-    expect(authenticatedNav.map(item => item.label)).toEqual(["Início", "Oferecer", "Viagens", "Perfil"]);
-    expect(authenticatedNav.map(item => item.to)).toEqual(["/home", "/home", "/minhas-caronas", "/perfil"]);
+  it("keeps the shared destination dock free of role-switch shortcuts", () => {
+    expect(authenticatedNav.map(item => item.label)).toEqual(["Início", "Viagens", "Perfil"]);
+    expect(authenticatedNav.map(item => item.to)).toEqual(["/home", "/minhas-caronas", "/perfil"]);
   });
 
   it("activates only the home tab during regular map browsing", () => {
@@ -13,11 +13,12 @@ describe("CARONAA mobile-first navigation", () => {
     expect(selected.map(item => item.label)).toEqual(["Início"]);
   });
 
-  it("routes the offer intent exclusively to the offer tab", () => {
-    const selected = authenticatedNav.filter(item =>
-      isAppNavSelected("/home", "offer", item.to, item.label));
-    expect(selected.map(item => item.label)).toEqual(["Oferecer"]);
-    expect(isAppNavSelected("/oferecer", undefined, "/home", "Oferecer")).toBe(true);
+  it("keeps Home selected during the role-switch intent", () => {
+    for (const intent of ["offer", "request"]) {
+      const selected = authenticatedNav.filter(item =>
+        isAppNavSelected("/home", intent, item.to, item.label));
+      expect(selected.map(item => item.label)).toEqual(["Início"]);
+    }
   });
 
   it("highlights trips and profile without incorrectly selecting the map", () => {
