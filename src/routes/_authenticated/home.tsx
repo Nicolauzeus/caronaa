@@ -60,6 +60,17 @@ export const Route = createFileRoute("/_authenticated/home")({
       if (getAdminAppPreview(user.id)) return;
       const destination=await getMyAdminEntry();
       if (destination) throw redirect({to:destination as "/admin",replace:true});
+      // Deep links, login redirects and old /home bookmarks must also route
+      // a VERIFIED professional driver to the professional work cockpit.
+      // The role is read from the profile, and authorization is from an
+      // authenticated RPC: URL intent/auth metadata never grants F07 access.
+      const {data:roleRow,error:roleError}=await (supabase as any).from("profiles")
+        .select("active_role").eq("id",user.id).maybeSingle();
+      if(!roleError&&roleRow?.active_role==="MOTORISTA"){
+        const {data:access,error:accessError}=await (supabase as any).rpc("get_my_professional_access");
+        if(!accessError&&access?.authorized===true)
+          throw redirect({to:"/disponibilidade-profissional",replace:true});
+      }
     } finally {
       endCaronaaPhase("home-before-load");
       beginCaronaaPhase("home-first-render");
@@ -98,13 +109,13 @@ function Home(){
     if(activeRoleState.activeRole==="MOTORISTA"){
       setServiceType("AGENDADA");
       setDriverHomeOpen(true);
-      setSheetSnap("half");
+      setSheetSnap(routeSearch.trips==="open"?"full":"half");
     }else{
       setServiceType("FLASH");
       setDriverHomeOpen(false);
-      setSheetSnap("peek");
+      setSheetSnap(routeSearch.trips==="open"?"full":"peek");
     }
-  },[activeRoleState.loading,activeRoleState.activeRole]);
+  },[activeRoleState.loading,activeRoleState.activeRole,routeSearch.trips]);
   useEffect(()=>{
     const showDriverHome=()=>{setDriverHomeOpen(true);setServiceType("AGENDADA");setTripsPanelOpen(false);setSheetSnap("half");};
     window.addEventListener("caronaa:driver-home",showDriverHome);
