@@ -6,7 +6,14 @@ import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import { detailsSchema } from "@/lib/mototaxi-registration";
+import {
+  professionalFormCorrections,
+  professionalServerCorrections,
+  professionalFieldLabels,
+  professionalPhotoTypes,
+  type ProfessionalCorrections,
+  type ProfessionalField,
+} from "@/lib/mototaxi-registration";
 
 export const Route = createFileRoute("/cadastro-motorista")({
   ssr: false,
@@ -14,15 +21,13 @@ export const Route = createFileRoute("/cadastro-motorista")({
   head: () => ({ meta: [{ title: "Dados profissionais — CARONAA" }] }),
 });
 
-const photoTypes = ["image/jpeg", "image/png", "image/webp"];
-
 function ProfessionalMotorcycleRegistration() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [region, setRegion] = useState<"MACICO_BATURITE" | "FORTALEZA">("MACICO_BATURITE");
+  const [region, setRegion] = useState<"" | "MACICO_BATURITE" | "FORTALEZA">("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
@@ -32,6 +37,9 @@ function ProfessionalMotorcycleRegistration() {
   const [reviewRetry, setReviewRetry] = useState(0);
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [busy, setBusy] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [serverCorrections, setServerCorrections] = useState<ProfessionalCorrections>({});
+  const [submissionMessage, setSubmissionMessage] = useState("");
   const [onboardingState, setOnboardingState] = useState<"checking" | "ready" | "error">("checking");
   const [onboardingRetry, setOnboardingRetry] = useState(0);
 
@@ -73,7 +81,7 @@ function ProfessionalMotorcycleRegistration() {
         setFirstName(details.data.first_name ?? "");
         setLastName(details.data.last_name ?? "");
         setWhatsapp(details.data.whatsapp_e164 ?? "");
-        setRegion(details.data.region_code === "FORTALEZA" ? "FORTALEZA" : "MACICO_BATURITE");
+        setRegion(details.data.region_code === "FORTALEZA" ? "FORTALEZA" : details.data.region_code === "MACICO_BATURITE" ? "MACICO_BATURITE" : "");
         setRegistrationNumber(details.data.registration_number ?? "");
       } else {
         const fullName = String(profile.data?.full_name || user.user_metadata?.full_name || "").trim();
@@ -104,50 +112,109 @@ function ProfessionalMotorcycleRegistration() {
   }, [user?.id, user?.email_confirmed_at, onboardingState, reviewRetry]);
 
 
-  async function sendRequest(event: FormEvent) {
+
+  const localCorrections = professionalFormCorrections({
+    firstName, lastName, whatsapp, region, registrationNumber, photo, photoUrl,
+    userId: user?.id ?? "",
+  });
+  const corrections: ProfessionalCorrections = attempted
+    ? { ...localCorrections, ...serverCorrections } : {};
+  const missingFields = (Object.keys(professionalFieldLabels) as ProfessionalField[])
+    .filter(field => Boolean(corrections[field]));
+  const clearCorrection = (field: ProfessionalField) => {
+    setServerCorrections(previous => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+    setSubmissionMessage("");
+  };
+  const focusMissing = (fields: ProfessionalField[]) => {
+    if (!fields.length) return;
+    const focus = () => document.getElementById("prof-" + fields[0])?.focus();
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(focus);
+    } else {
+      focus();
+    }
+  };
+
+  async function confirmData(event: FormEvent) {
     event.preventDefault();
-    const parsed = detailsSchema.safeParse({ firstName, lastName, whatsapp, region, registrationNumber });
-    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "Confira o cadastro."); return; }
-    if (!user?.email_confirmed_at) { toast.error("Confirme seu e-mail para continuar."); return; }
-    if (!photo && !photoUrl) { toast.error("Adicione uma foto pessoal."); return; }
-    if (photo && (photo.size > 5 * 1024 * 1024 || !photoTypes.includes(photo.type))) {
-      toast.error("Use foto JPG, PNG ou WebP de até 5 MB."); return;
+    setAttempted(true);
+    setServerCorrections({});
+    setSubmissionMessage("");
+    if (Object.keys(localCorrections).length) {
+      focusMissing(Object.keys(localCorrections) as ProfessionalField[]);
+      return;
+    }
+    if (!user?.email_confirmed_at || reviewState !== "ready") {
+      setSubmissionMessage("Verifique sua sessão e tente novamente.");
+      return;
     }
     setBusy(true);
     try {
       if (photo) {
-        // The existing avatars bucket restricts uploads to the authenticated user's folder.
-        // A fixed filename is avoided so an old photograph does not remain cached.
-        const ext = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
-        const path = user.id + "/" + crypto.randomUUID() + "." + ext;
+        const extension = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
+        const path = user.id + "/" + crypto.randomUUID() + "." + extension;
         const { error: uploadError } = await supabase.storage.from("avatars").upload(path, photo, {
           upsert: false, contentType: photo.type,
         });
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          setServerCorrections({photo: "Não foi possível salvar sua foto. Escolha outra imagem e tente novamente."});
+          focusMissing(["photo"]);
+          return;
+        }
         const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(path);
         const { error: profileError } = await supabase.from("profiles")
           .update({ avatar_url: publicData.publicUrl, updated_at: new Date().toISOString() })
           .eq("id", user.id);
-        if (profileError) throw profileError;
+        if (profileError) {
+          setServerCorrections({photo: "Não foi possível confirmar a foto no seu perfil. Tente novamente."});
+          focusMissing(["photo"]);
+          return;
+        }
         setPhotoUrl(publicData.publicUrl);
         setPhoto(null);
       }
-      const { error } = await (supabase as any).rpc("submit_simple_mototaxi_access", {
-        p_first_name: parsed.data.firstName, p_last_name: parsed.data.lastName,
-        p_whatsapp: parsed.data.whatsapp, p_region: parsed.data.region,
-        p_registration_number: parsed.data.registrationNumber,
-      });
-      if (error) throw error;
-      const { data: refreshed, error: refreshError } = await (supabase as any).rpc("get_my_professional_access");
-      if (refreshError) throw refreshError;
-      setRequest(refreshed?.request ?? null);
-      setAuthorized(refreshed?.authorized === true);
-      toast.success("Cadastro salvo. Você já pode usar caronas comuns; o acesso profissional requer habilitação.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível enviar sua solicitação.");
-    } finally { setBusy(false); }
-  }
 
+      // Server validates profile completeness, stores the professional declarations,
+      // and creates/updates the existing manual review request. This is NOT an
+      // auto-approval and does not enable GPS sharing, dispatch or online presence.
+      const { error } = await (supabase as any).rpc("submit_simple_mototaxi_access", {
+        p_first_name: firstName.trim(),
+        p_last_name: lastName.trim(),
+        p_whatsapp: whatsapp,
+        p_region: region,
+        p_registration_number: registrationNumber.trim(),
+      });
+      if (error) {
+        const missing = professionalServerCorrections(error);
+        if (Object.keys(missing).length) {
+          setServerCorrections(missing);
+          focusMissing(Object.keys(missing) as ProfessionalField[]);
+          return;
+        }
+        setSubmissionMessage("O sistema não conseguiu confirmar os dados. Verifique-os e tente novamente.");
+        return;
+      }
+      const { data: refreshed, error: refreshError } =
+        await (supabase as any).rpc("get_my_professional_access");
+      if (refreshError || !refreshed || (!refreshed.authorized && !refreshed.request)) {
+        setSubmissionMessage("Os dados foram enviados, mas não conseguimos verificar sua situação. Tente novamente.");
+        return;
+      }
+      setRequest(refreshed.request ?? null);
+      setAuthorized(refreshed.authorized === true);
+      toast.success("Dados confirmados. Abrindo sua área de corridas.");
+      await navigate({to: "/disponibilidade-profissional", replace: true});
+    } catch {
+      setSubmissionMessage("Não foi possível concluir a confirmação. Verifique sua conexão e tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (authLoading || !user?.email_confirmed_at || onboardingState !== "ready") {
     return (
@@ -174,9 +241,9 @@ function ProfessionalMotorcycleRegistration() {
       <section className="w-full max-w-[460px] space-y-5 rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 shadow-xl sm:p-7">
         <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Complemento profissional</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">{authorized && reviewState === "ready" ? "Cadastro aprovado" : "Seus dados profissionais"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized && reviewState === "ready" ? "Seu acesso está liberado. Abra o cockpit para trabalhar." : "Sua conta universal já está criada. Complete apenas os dados da atividade e acompanhe a aprovação profissional."}</p>
+          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Dados do motorista</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{authorized || request?.status === "APPROVED" ? "Dados confirmados" : "Confirme seus dados"}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized || request?.status === "APPROVED" ? "Você pode consultar suas corridas." : "Confira os campos abaixo para continuar para as corridas."}</p>
         </div>
         {reviewState !== "ready" ? (
           <div className="space-y-4" role="status" aria-live="polite">
@@ -229,9 +296,9 @@ function ProfessionalMotorcycleRegistration() {
                 <p className="mt-1 break-words text-xs font-bold">{vehiclePlate || "Não informada"}</p>
               </div>
             </div>
-            {authorized && <Link to="/disponibilidade-profissional"
+            {<Link to="/disponibilidade-profissional"
               className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-4 text-center font-[Sora] text-sm font-black text-[#121212]">
-              IR PARA O COCKPIT DO MOTORISTA
+              IR PARA MINHAS CORRIDAS
             </Link>}
             <p className="text-center text-xs text-white/55">
               Precisa atualizar seus dados cadastrais? Fale com o suporte.
@@ -241,37 +308,56 @@ function ProfessionalMotorcycleRegistration() {
           </section>
         ) : (
           <>
-            {request?.status === "PENDING" && (
-              <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm">
-                <p className="font-bold text-white">Você já pode utilizar as caronas comuns</p>
-                <p className="mt-1 text-white/75">O cadastro profissional segue uma habilitação separada. Enquanto isso, você pode buscar e oferecer caronas compartilhadas na mesma conta.</p>
-                <Link to="/home" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-                  Abrir CARONAA
-                </Link>
-              </div>
-            )}
             {request && <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
               Solicitação: <strong>{request.status === "PENDING" ? "Em análise" : request.status === "APPROVED" ? "Aprovada" : request.status === "REJECTED" ? "Rejeitada" : "Correções solicitadas"}</strong>
               {request.review_reason && <p>Observação: {request.review_reason}</p>}
             </div>}
-            <form className="space-y-3" onSubmit={sendRequest}>
+            <form className="space-y-3" noValidate onSubmit={confirmData}>
+              {missingFields.length > 0 && (
+                <div role="alert" className="rounded-2xl border border-amber-400/55 bg-amber-400/10 p-3 text-sm">
+                  <p className="font-extrabold text-[#FFBB00]">Faltam {missingFields.length} {missingFields.length === 1 ? "dado obrigatório" : "dados obrigatórios"}:</p>
+                  <ul className="mt-1 list-inside list-disc space-y-1 text-white/85">
+                    {missingFields.map(field => <li key={field}>{professionalFieldLabels[field]} — {corrections[field]}</li>)}
+                  </ul>
+                </div>
+              )}
+              {submissionMessage && <p role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">{submissionMessage}</p>}
               <div className="grid gap-3 min-[390px]:grid-cols-2">
-                <label className="block text-sm">Primeiro nome<input required value={firstName} onChange={e => setFirstName(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" /></label>
-                <label className="block text-sm">Último sobrenome<input required value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
+                <label className="block text-sm" htmlFor="prof-firstName">Primeiro nome
+                    <input id="prof-firstName" aria-required="true" aria-invalid={Boolean(corrections.firstName)} aria-describedby={corrections.firstName ? "prof-firstName-error" : undefined} value={firstName} onChange={e => {setFirstName(e.target.value);clearCorrection("firstName");}} autoComplete="given-name" className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
+                    {corrections.firstName && <span id="prof-firstName-error" className="mt-1 block text-xs text-amber-300">{corrections.firstName}</span>}
+                  </label>
+                <label className="block text-sm" htmlFor="prof-lastName">Último sobrenome
+                    <input id="prof-lastName" aria-required="true" aria-invalid={Boolean(corrections.lastName)} aria-describedby={corrections.lastName ? "prof-lastName-error" : undefined} value={lastName} onChange={e => {setLastName(e.target.value);clearCorrection("lastName");}} autoComplete="family-name" className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
+                    {corrections.lastName && <span id="prof-lastName-error" className="mt-1 block text-xs text-amber-300">{corrections.lastName}</span>}
+                  </label>
               </div>
-              <p className="rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/70">Conta universal: <strong className="break-all text-white">{user.email}</strong></p>
-              <label className="block text-sm">WhatsApp com DDD<input type="tel" required inputMode="tel" value={whatsapp} placeholder="(85) 99999-9999" onChange={e => setWhatsapp(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
-              <label className="block text-sm">Região<select value={region} onChange={e => setRegion(e.target.value as typeof region)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3">
-                <option value="MACICO_BATURITE">Maciço de Baturité</option><option value="FORTALEZA">Fortaleza e região metropolitana</option>
-              </select></label>
-              <label className="block text-sm">Matrícula / registro de mototaxista<input required value={registrationNumber} onChange={e => setRegistrationNumber(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
-              <label className="block text-sm">Foto pessoal
-                {photoUrl && <img src={photoUrl} alt="Sua foto atual" className="my-2 size-20 rounded-full object-cover" />}
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setPhoto(e.target.files?.[0] ?? null)} className="mt-2 block w-full text-sm" />
+              
+              <label className="block text-sm" htmlFor="prof-whatsapp">WhatsApp com DDD
+                <input id="prof-whatsapp" type="tel" inputMode="tel" autoComplete="tel" aria-required="true" aria-invalid={Boolean(corrections.whatsapp)} aria-describedby={corrections.whatsapp ? "prof-whatsapp-error" : undefined} value={whatsapp} placeholder="(85) 99999-9999" onChange={e => {setWhatsapp(e.target.value);clearCorrection("whatsapp");}} className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
+                {corrections.whatsapp && <span id="prof-whatsapp-error" className="mt-1 block text-xs text-amber-300">{corrections.whatsapp}</span>}
+              </label>
+              <label className="block text-sm" htmlFor="prof-region">Região de atuação
+                <select id="prof-region" aria-required="true" aria-invalid={Boolean(corrections.region)} aria-describedby={corrections.region ? "prof-region-error" : undefined} value={region} onChange={e => {setRegion(e.target.value as typeof region);clearCorrection("region");}} className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]">
+                  <option value="">Selecione a região</option>
+                  <option value="MACICO_BATURITE">Maciço de Baturité</option>
+                  <option value="FORTALEZA">Fortaleza e região metropolitana</option>
+                </select>
+                {corrections.region && <span id="prof-region-error" className="mt-1 block text-xs text-amber-300">{corrections.region}</span>}
+              </label>
+              <label className="block text-sm" htmlFor="prof-registrationNumber">Matrícula / registro de mototaxista
+                <input id="prof-registrationNumber" aria-required="true" aria-invalid={Boolean(corrections.registrationNumber)} aria-describedby={corrections.registrationNumber ? "prof-registrationNumber-error" : undefined} value={registrationNumber} onChange={e => {setRegistrationNumber(e.target.value);clearCorrection("registrationNumber");}} className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
+                {corrections.registrationNumber && <span id="prof-registrationNumber-error" className="mt-1 block text-xs text-amber-300">{corrections.registrationNumber}</span>}
+              </label>
+              <label className="block text-sm" htmlFor="prof-photo">Foto pessoal
+                {photoUrl && <img src={photoUrl} alt="Foto atual do perfil" className="my-2 size-16 rounded-full object-cover" />}
+                <input id="prof-photo" type="file" accept={professionalPhotoTypes.join(",")} aria-required={!photoUrl && !photo} aria-invalid={Boolean(corrections.photo)} aria-describedby={corrections.photo ? "prof-photo-error" : undefined} onChange={e => {setPhoto(e.target.files?.[0] ?? null);clearCorrection("photo");}} className="mt-2 block min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-[#FFBB00] file:px-3 file:py-2 file:font-bold file:text-[#121212] focus-visible:outline focus-visible:border-[#FFBB00]" />
+                {photo && <span className="mt-1 block break-all text-xs text-white/70">Selecionada: {photo.name}</span>}
+                {corrections.photo && <span id="prof-photo-error" className="mt-1 block text-xs text-amber-300">{corrections.photo}</span>}
               </label>
               <p className="text-xs text-white/55">A matrícula é declaratória. A aprovação administrativa não substitui licenças ou exigências legais para operação.</p>
-              <button disabled={busy || request?.status === "PENDING" || (authorized && request?.status === "APPROVED")} className="min-h-12 w-full rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">
-                {busy ? "Enviando..." : request?.status === "PENDING" ? "Aguardando análise administrativa" : authorized ? "Acesso aprovado" : "Solicitar acesso ao radar"}
+              <button type="submit" disabled={busy} aria-busy={busy} className="min-h-14 w-full rounded-2xl bg-[#FFBB00] px-4 py-3 text-base font-extrabold text-[#121212] shadow-md transition-colors hover:bg-[#ffe35c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] disabled:opacity-60">
+                {busy ? "Confirmando dados..." : "Confirmar dados e ver corridas"}
               </button>
             </form>
             <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))} className="min-h-11 text-sm text-white/65 underline">Sair da conta</button>

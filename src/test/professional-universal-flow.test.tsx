@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -81,12 +81,62 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
       email_confirmed_at:"2026-11-17T18:00:00Z",
       user_metadata:{full_name:"Motorista Exemplo"}};
     render(<ProfessionalPage/>);
-    await screen.findByRole("heading",{name:"Seus dados profissionais"});
+    await screen.findByRole("heading",{name:"Confirme seus dados"});
     expect(screen.getByDisplayValue("Motorista")).toBeTruthy();
     expect(screen.getByDisplayValue("Exemplo")).toBeTruthy();
-    expect(screen.getByText(/Conta universal:/i)).toBeTruthy();
+    expect(screen.queryByText(/Conta universal:/i)).toBeNull();
     expect(screen.queryByLabelText(/senha/i)).toBeNull();
     expect(screen.queryByRole("button",{name:/Criar minha conta/i})).toBeNull();
     expect(api.rpc).toHaveBeenCalledWith("get_my_professional_access");
   });
+  it("prevents incomplete registration and lists exact missing requirements", async () => {
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    render(<ProfessionalPage/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Faltam 4 dados obrigatórios/i));
+    expect(screen.getAllByText(/Selecione a região de atuação/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Adicione sua foto pessoal para concluir/i).length).toBeGreaterThan(0);
+    expect(api.rpc).not.toHaveBeenCalledWith("submit_simple_mototaxi_access", expect.anything());
+    expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
+  });
+
+  it("confirms complete details and goes straight to the ride cockpit without granting professional approval", async () => {
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
+      ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
+      : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
+    api.rpc.mockImplementation(async (method:string) => method==="get_my_professional_access"
+      ? {data:{authorized:false,request:{status:"PENDING"}},error:null}
+      : {data:"request-1",error:null});
+    render(<ProfessionalPage/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true}));
+    expect(api.rpc).toHaveBeenCalledWith("submit_simple_mototaxi_access",{
+      p_first_name:"Motorista",p_last_name:"Exemplo",p_whatsapp:"+5585999999999",
+      p_region:"MACICO_BATURITE",p_registration_number:"AB123CD",
+    });
+    expect(screen.queryByText("Solicitar acesso ao radar")).toBeNull();
+    expect(screen.queryByText(/Conta universal:/i)).toBeNull();
+  });
+
+  it("shows server-side missing-photo feedback instead of entering the cockpit", async () => {
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
+      ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
+      : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
+    api.rpc.mockImplementation(async (method:string) => method==="submit_simple_mototaxi_access"
+      ? {data:null,error:{message:"Dados pendentes: PHOTO"}}
+      : {data:{authorized:false,request:null},error:null});
+    render(<ProfessionalPage/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
+    await waitFor(() => expect(screen.getAllByText(/Adicione uma foto pessoal válida, armazenada no CARONAA/i).length).toBeGreaterThan(0));
+    expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
+  });
+
 });

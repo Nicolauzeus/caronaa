@@ -9,6 +9,7 @@ import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAccessRequest";
+import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
@@ -36,6 +37,9 @@ export function ProfessionalAvailabilityPage() {
   const [sheetExpanded,setSheetExpanded]=useState(false);
   const [activeRide,setActiveRide]=useState<ActiveDriverRide|null>(null);
   const [authorized,setAuthorized]=useState(false);
+  const [simpleMototaxi,setSimpleMototaxi]=useState(false);
+  const [professionalReview,setProfessionalReview]=useState("");
+  const [professionalMissing,setProfessionalMissing]=useState<MissingCode[]>([]);
   const [blocked,setBlocked]=useState(false);
   const [pilotEnabled,setPilotEnabled]=useState(false);
   const [pilotVehicle,setPilotVehicle]=useState<Vehicle>("MOTO");
@@ -234,6 +238,13 @@ export function ProfessionalAvailabilityPage() {
         ? "":registeredCity;
       setUserId(user.id);
       setAuthorized(access.data?.authorized===true);
+      const simple = access.data?.request?.access_type === "MOTOTAXI_SIMPLE";
+      setSimpleMototaxi(simple);
+      setProfessionalReview(String(access.data?.request?.status ?? ""));
+      setProfessionalMissing(simple && Array.isArray(access.data?.profileMissing)
+        ? access.data.profileMissing.filter((code: unknown): code is MissingCode =>
+            typeof code === "string" && Object.prototype.hasOwnProperty.call(MISSING_LABELS, code))
+        : []);
       const registeredVehicle=access.data?.request?.vehicle_type;
       if(registeredVehicle==="CAR"||registeredVehicle==="MOTO")
         setPilotVehicle(registeredVehicle);
@@ -416,7 +427,7 @@ export function ProfessionalAvailabilityPage() {
         <div className="professional-cockpit__card professional-cockpit__heading space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#FFBB00]/80">CARONAA MOTORISTA</span>
-            <Link to="/cadastro-motorista" className="shrink-0 text-xs font-semibold text-[#FFBB00] hover:underline">← Cadastro</Link>
+            <Link to="/cadastro-motorista" className="shrink-0 text-xs font-semibold text-[#FFBB00] hover:underline">Editar dados</Link>
           </div>
           <h1 className="professional-cockpit__title text-white">Cockpit Operacional</h1>
           <p className="text-xs leading-relaxed text-white/65">Acompanhe chamados, viagens e disponibilidade.</p>
@@ -447,7 +458,30 @@ export function ProfessionalAvailabilityPage() {
           enabled ? "Disponibilidade ativada. Aguardando confirmação da localização." :
           "Ative sua disponibilidade quando estiver pronto para receber chamados."}
       </p>
-      {!authorized && ready && <p role="status" className="text-xs text-amber-200">Aguardando autorização profissional. <Link to="/cadastro-motorista" className="font-bold underline">Consultar cadastro</Link></p>}
+      {!authorized && ready && (
+        <div role="status" className="space-y-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
+          <p className="font-semibold">{professionalReview === "PENDING"
+            ? "Dados recebidos. Aguardando análise administrativa."
+            : professionalReview === "CHANGES_REQUESTED"
+              ? "O cadastro precisa de correções antes de receber corridas."
+              : professionalReview === "REJECTED"
+                ? "O cadastro não foi aprovado. Consulte o motivo na área profissional."
+                : "O atendimento profissional só é liberado após cadastro completo e autorização."}</p>
+          {simpleMototaxi && professionalMissing.length > 0 && (
+            <div role="alert">
+              <p className="text-xs font-bold">Dados que faltam:</p>
+              <ul className="ml-4 list-disc space-y-0.5 text-xs">
+                {professionalMissing.map(code => <li key={code}>{MISSING_LABELS[code]}</li>)}
+              </ul>
+            </div>
+          )}
+          {(simpleMototaxi && (professionalMissing.length > 0 || professionalReview === "CHANGES_REQUESTED" || professionalReview === "REJECTED")) && (
+            <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-bold underline">
+              Corrigir dados profissionais
+            </Link>
+          )}
+        </div>
+      )}
       {blocked && ready && <p role="alert" className="flex items-start gap-2 text-xs text-red-200">
         <ShieldAlert size={15} className="shrink-0" aria-hidden="true"/>
         <span>Disponibilidade bloqueada por comissões. <Link to="/perfil" className="font-bold underline">Consultar conta</Link></span>
