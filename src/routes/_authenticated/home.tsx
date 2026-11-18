@@ -31,7 +31,7 @@ import { useProfileGender } from "@/lib/use-profile-gender";
 import { useUserLocation, validPoint, type UserPosition } from "@/lib/location/use-user-location";
 import { canPreviewPassengerPickup, needsPassengerPickupConfirmation } from "@/lib/location/passenger-pickup";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
-import { reverseGeocodeServerFn } from "@/lib/location.functions";
+import { reverseGeocodeServerFn, reversePassengerPickupServerFn } from "@/lib/location.functions";
 import { sessionRequest } from "@/lib/session-request-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
@@ -75,6 +75,7 @@ function Home(){
   const gender=useProfileGender();
   const location=useUserLocation({autoLocate:true});
   const reverseGeocode=useServerFn(reverseGeocodeServerFn);
+  const reversePassengerPickup=useServerFn(reversePassengerPickupServerFn);
   const [sheetSnap,setSheetSnap]=useState<SheetSnap>("peek");
   useEffect(()=>{if(typeof window!=="undefined"&&window.matchMedia("(min-width: 768px)").matches)setSheetSnap("half");},[]);
   const [serviceType,setServiceType]=useState<ServiceType>("FLASH");
@@ -172,7 +173,7 @@ function Home(){
     const {lat,lng,accuracy}=fix;
     const addressIsNear=resolvedAddress?.lat!=null&&resolvedAddress.lng!=null&&
       Math.abs(resolvedAddress.lat-lat)<0.0003&&Math.abs(resolvedAddress.lng-lng)<0.0003;
-    const label=addressIsNear?resolvedAddress?.formattedAddress||"Minha localização atual":"Minha localização atual";
+    const label=addressIsNear?resolvedAddress?.formattedAddress||"Localização obtida pelo GPS":"Localização obtida pelo GPS";
     setOrigin(label);setAppliedOriginAccuracy(accuracy);
     setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:!isTrustedGpsFix(fix)});
   },[originSource,location.addressPosition,location.failure,location.recenterVersion,resolvedAddress,originPreview,usableOriginFix]);
@@ -190,10 +191,12 @@ function Home(){
     if(previous&&distance<75&&Date.now()-previous.at<120000)return;
     lastGpsLookup.current={lat:fix.lat,lng:fix.lng,at:Date.now()};
     const version=++originLookupSequence.current;
-    void sessionRequest("home-reverse:"+fix.lat.toFixed(3)+":"+fix.lng.toFixed(3),()=>reverseGeocode({data:{lat:fix.lat,lng:fix.lng}}),120000)
+    const lookup=passengerPreview?reversePassengerPickup:reverseGeocode;
+    void sessionRequest((passengerPreview?"passenger-address:":"home-reverse:")+fix.lat.toFixed(5)+":"+fix.lng.toFixed(5),
+      ()=>lookup({data:{lat:fix.lat,lng:fix.lng}}),120000)
       .then(value=>{if(version===originLookupSequence.current)setResolvedAddress(value);})
       .catch(()=>{if(version===originLookupSequence.current)lastGpsLookup.current=null;});
-  },[location.addressPosition,location.locating,originSource,originPreview,reverseGeocode]);
+  },[location.addressPosition,location.locating,originSource,originPreview,passengerPreview,reverseGeocode,reversePassengerPickup]);
 
   // If the reverse lookup finishes while the pickup dialog is open,
   // refresh only the label, never the point the passenger is confirming.
@@ -218,13 +221,13 @@ function Home(){
     setOrigin(fallback);setOriginLocation({rawText:fallback,formattedAddress:fallback,lat:point.lat,lng:point.lng});
     setShellRouteOrigin(point);setShellRoute(null);setResolvedAddress(null);setSelectingOrigin(false);
     setShellOriginRevision(value=>value+1);setSheetSnap(scheduledDriverPreview?"half":passengerDestinationLabel?"full":"half");
-    void reverseGeocode({data:point}).then(details=>{
+    void (passengerPreview?reversePassengerPickup:reverseGeocode)({data:point}).then(details=>{
       if(request!==originLookupSequence.current||!details)return;
       const label=details.formattedAddress||fallback;
       setOrigin(label);setResolvedAddress(details);
       setOriginLocation({...details,rawText:label,formattedAddress:label,lat:point.lat,lng:point.lng});
     }).catch(()=>undefined);
-  },[reverseGeocode,passengerDestinationLabel,scheduledDriverPreview]);
+  },[reverseGeocode,reversePassengerPickup,passengerPreview,passengerDestinationLabel,scheduledDriverPreview]);
 
   const plannedPickup=shellSelectedDestination&&validPoint(shellRouteOrigin)?shellRouteOrigin:originLocation;
   const pickupKey=validPoint(plannedPickup)?JSON.stringify([plannedPickup.lat,plannedPickup.lng]):"";
