@@ -53,7 +53,8 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
   if (!state) return <p className="rounded-xl border p-4 text-sm">{error || "Carregando autorização…"}</p>;
   const r = state.request;
   const simpleMototaxi = r?.access_type === "MOTOTAXI_SIMPLE";
-  const canSubmit = !simpleMototaxi && !state.authorized && (!r || editing || r.status === "CHANGES_REQUESTED" || r.status === "REJECTED" || r.status === "PENDING");
+  const heldByPriorDecision = r?.status === "REJECTED" || r?.status === "CHANGES_REQUESTED";
+  const canSubmit = !simpleMototaxi && !state.authorized && !heldByPriorDecision && (!r || editing || r.status === "PENDING");
   const profileMissing = missing.length ? missing : state.profileMissing;
   const maxSeats = maxSeatsFor(type, category || null);
 
@@ -64,19 +65,19 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
         ? <div className="space-y-2"><ProfessionalAuthorizationBadge /><p className="text-xs text-muted-foreground">Cadastro completo e habilitado na plataforma. Disponibilidade, localização e cobertura ainda são verificadas separadamente.</p></div>
         : r && <p className="text-sm">Situação: <strong>{STATUS_LABELS[r.status]}</strong>{r.status === "PENDING" && " — confirme os dados para concluir a habilitação."}</p>}
       {r?.review_reason && !state.authorized && <p className="rounded-lg border p-2 text-sm">Motivo: {r.review_reason}</p>}
+      {heldByPriorDecision && !state.authorized && (
+        <p role="alert" className="rounded-xl border border-amber-400/50 bg-amber-400/10 p-3 text-sm">
+          Existe uma restrição anterior neste cadastro. Para solicitar a revisão, entre em contato com o suporte CARONAA.
+        </p>
+      )}
       {profileMissing.length > 0 && !state.authorized && (
         <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">
           <p className="font-semibold">{simpleMototaxi ? "Dados que faltam para operar:" : "Complete os dados para trabalhar:"}</p>
           <ul className="ml-4 list-disc">{profileMissing.map((c) => <li key={c}>{MISSING_LABELS[c]}</li>)}</ul>
-          {simpleMototaxi
+          {simpleMototaxi && !heldByPriorDecision
             ? <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-semibold underline">Corrigir dados profissionais</Link>
-            : profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
+            : !heldByPriorDecision && profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
         </div>
-      )}
-      {simpleMototaxi && !state.authorized && profileMissing.length === 0 && (r?.status === "CHANGES_REQUESTED" || r?.status === "REJECTED") && (
-        <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-          Corrigir dados do motorista
-        </Link>
       )}
       {canSubmit && (
         <div className="space-y-2">
