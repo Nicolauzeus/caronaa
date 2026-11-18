@@ -172,7 +172,6 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  preload="intent"
                   search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                     selectedNav(to,label) ? "bg-secondary text-primary" : "text-muted-foreground"
@@ -391,7 +390,7 @@ export function AppShell({
           className="fixed bottom-0 left-0 top-16 z-30 hidden w-48 flex-col border-r border-white/10 bg-[#121212] px-3 py-6 text-white lg:flex">
           <nav className="space-y-2">
             {professionalNav.map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to} preload="intent" aria-current={selectedNav(to,label) ? "page" : undefined}
+              <Link key={to} to={to} aria-current={selectedNav(to,label) ? "page" : undefined}
                 className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${selectedNav(to,label) ? "bg-[#FFBB00] text-[#121212]" : "text-white/85 hover:bg-white/10"}`}>
                 <Icon size={19} aria-hidden="true" />
                 <span>{label}</span>
@@ -431,7 +430,6 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  preload="intent"
                   search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   aria-current={selected ? "page" : undefined}
                   className={`group relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
