@@ -50,7 +50,7 @@ function ProfessionalMotorcycleRegistration() {
     setOnboardingState("checking");
     void readOnboarding().then(progress => {
       if (!alive) return;
-      if (progress?.status !== "BASIC_COMPLETED" || progress.current_step !== "DONE") {
+      if (progress?.status !== "BASIC_COMPLETED") {
         void navigate({ to: "/onboarding", search: { redirect: "/cadastro-motorista" }, replace: true });
         return;
       }
