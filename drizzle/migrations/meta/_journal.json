@@ -995,6 +995,13 @@
       "when": 1794971700000,
       "tag": "0204_f02_f07_auto_enable_completed_professionals",
       "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1794971701000,
+      "tag": "0205_f07_nearby_radar_100m",
+      "breakpoints": true
     }
   ]
 }
