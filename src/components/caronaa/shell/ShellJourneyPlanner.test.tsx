@@ -148,15 +148,17 @@ describe("CARONAA Flash passenger shell",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     const moto=await screen.findByRole("radio",{name:/Flash Moto/});
     const car=screen.getByRole("radio",{name:/Flash Carro/});
-    expect(moto).toHaveTextContent("2 mototáxi(s) online");
-    expect(car).toHaveTextContent("3 carro(s) online");
+    expect(moto).toHaveTextContent("2 mototaxista(s) online");
+    expect(car).toHaveTextContent("3 motorista(s) online");
     expect(moto).toHaveTextContent(/R\$\s*10,00/);
     expect(car).toHaveTextContent(/R\$\s*18,00/);
     expect(moto).toHaveTextContent("8.4 km");
     expect(car).toHaveTextContent("8.4 km");
     fireEvent.click(moto);
-    expect(moto).toHaveAttribute("aria-checked","true");
-    expect(car).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s*10,00/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:/Voltar às opções/}));
+    expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
   });
 
   it("keeps both types visible while one radar service fails",async()=>{
@@ -164,7 +166,7 @@ describe("CARONAA Flash passenger shell",()=>{
       flashDriverCounts={{CAR:2,MOTO:0}}
       flashDriverErrors={{MOTO:"Falha de radar"}}/>);
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
-    expect(await screen.findByRole("radio",{name:/Flash Carro/})).toHaveTextContent("2 carro(s) online");
+    expect(await screen.findByRole("radio",{name:/Flash Carro/})).toHaveTextContent("2 motorista(s) online");
     expect(screen.getByRole("radio",{name:/Flash Moto/})).toHaveTextContent("Radar temporariamente indisponível");
   });
 
@@ -245,7 +247,7 @@ describe("CARONAA Flash passenger shell",()=>{
     render(<ShellJourneyPlanner {...props} snap="half" onOnRouteMatchSelected={selected}/>);
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole("radio",{name:/Carona Na Rota/}));
+    fireEvent.click(await screen.findByRole("radio",{name:/Carona Na Rota/}));
     await screen.findByText("Parada Unifor");
     expect(screen.getByText(/80 m de caminhada até o embarque/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:"Escolher ponto de encontro"}));
