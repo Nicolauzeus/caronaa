@@ -192,6 +192,10 @@ export function AppShell({
                   key={`${to}-${label}`}
                   to={to}
                   search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
+                  onClick={()=>{
+                    if(to==="/home" && homeSurface==="shared-driver" && typeof window!=="undefined")
+                      window.dispatchEvent(new Event("caronaa:driver-home"));
+                  }}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                     selectedNav(to,label) ? "bg-secondary text-primary" : "text-muted-foreground"
                   }`}
@@ -354,7 +358,11 @@ export function AppShell({
                       key={`${to}-${label}`}
                       to={to}
                       search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
-                      onClick={() => setMenuOpen(false)}
+                      onClick={()=>{
+                        setMenuOpen(false);
+                        if(to==="/home" && homeSurface==="shared-driver")
+                          window.dispatchEvent(new Event("caronaa:driver-home"));
+                      }}
                       className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold hover:bg-secondary"
                     >
                       <Icon size={18} />
