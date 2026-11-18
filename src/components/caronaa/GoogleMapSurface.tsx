@@ -89,6 +89,8 @@ export function GoogleMapSurface({
   const hasFollowFix = Boolean(followPoint && isValid(followPoint));
   const lastFollow = useRef<{lat:number;lng:number;at:number}|null>(null);
   const followInitialized = useRef(false);
+  const followPointRef = useRef(followPoint);
+  followPointRef.current = followPoint;
 
   useEffect(() => {
     let active = true;
@@ -332,11 +334,20 @@ export function GoogleMapSurface({
 
   useEffect(()=>{
     if(!followKey)return;
-    // Reactivate following automatically when switching pickup -> destination.
+    // An explicit "Acompanhar no mapa" press MUST recenter even if the GPS
+    // coordinates have not changed since the last frame. Do not rely on a
+    // redundant setFollowing(true) to trigger another React render.
     followInitialized.current=false;
     lastFollow.current=null;
     setFollowing(true);
-  },[followKey]);
+    const fix=followPointRef.current;
+    if(ready&&!failed&&map.current&&fix&&isValid(fix)){
+      map.current.panTo({lat:fix.lat,lng:fix.lng});
+      map.current.setZoom(Math.max(14,Math.min(19,followZoom)));
+      lastFollow.current={lat:fix.lat,lng:fix.lng,at:Date.now()};
+      followInitialized.current=true;
+    }
+  },[followKey,ready,failed,followZoom]);
   useEffect(()=>{
     if(!ready||failed||!map.current||!following||!followPoint||!isValid(followPoint))return;
     const now=Date.now();
