@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Clock3, Navigation2, Route } from "lucide-react";
+import { Clock3, Navigation2, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
-import { QuickRideDriverSettlement } from "./QuickRideDriverSettlement";
-import { QuickRideRatingModal } from "./QuickRideRatingModal";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -55,9 +53,6 @@ export function QuickRideDriverQueue({
   const [dropoffDeadline,setDropoffDeadline]=useState<string|null>(null);
   const [dropoffResponse,setDropoffResponse]=useState<string|null>(null);
   const [dropoffNow,setDropoffNow]=useState(Date.now());
-  const [ratingOpen,setRatingOpen]=useState<string|null>(null);
-  const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
-  const [completedDismissed,setCompletedDismissed]=useState<string|null>(null);
   const visibleQueue=queue.filter(ride=>Number.isFinite(Date.parse(ride.expires_at))&&
     Date.parse(ride.expires_at)>queueNow);
   useEffect(()=>{
@@ -65,21 +60,20 @@ export function QuickRideDriverQueue({
     const timer=window.setInterval(()=>setQueueNow(Date.now()),1000);
     return()=>window.clearInterval(timer);
   },[queue.length>0]);
-  const lastCompletedVisible=lastCompleted!==null && completedDismissed!==lastCompleted &&
-    (()=>{try{return window.localStorage.getItem("caronaa-driver-dismissed:"+lastCompleted)!=="1";}catch{return true}})();
-  useEffect(()=>{onHasPendingChange?.(visibleQueue.length>0 || lastCompletedVisible);},
-    [visibleQueue.length,lastCompletedVisible,onHasPendingChange]);
+  // Completed rides no longer hold the driver's cockpit or block new jobs.
+  // Payment and optional feedback are accessible through Minhas viagens.
+  useEffect(()=>{onHasPendingChange?.(visibleQueue.length>0);},
+    [visibleQueue.length,onHasPendingChange]);
   useEffect(()=>{if(!dropoffDeadline)return;const timer=window.setInterval(()=>setDropoffNow(Date.now()),1000);return()=>window.clearInterval(timer);},[dropoffDeadline]);
   const remainingDropoffSeconds=dropoffDeadline?Math.max(0,Math.ceil((Date.parse(dropoffDeadline)-dropoffNow)/1000)):0;
-  const releaseCompleted=()=>{
-    if(!lastCompleted)return;
-    try{
-      window.localStorage.setItem("caronaa-driver-dismissed:"+lastCompleted,"1");
-      window.localStorage.setItem("caronaa-rating-dismissed:"+lastCompleted,"1");
-    }catch{}
-    setCompletedDismissed(lastCompleted);
-    setRatingDismissed(lastCompleted);
-  };
+  const previouslyActiveRide=useRef<string|null>(null);
+  useEffect(()=>{
+    if(active){previouslyActiveRide.current=active.id;return;}
+    if(lastCompleted&&previouslyActiveRide.current===lastCompleted){
+      previouslyActiveRide.current=null;
+      toast.success("Corrida concluída. Consulte o recebimento em Minhas viagens.",{duration:7000});
+    }
+  },[active?.id,lastCompleted]);
   useEffect(()=>{
     onActiveChange?.(Boolean(active));
   },[active?.id,active?.status,onActiveChange]);
@@ -133,15 +127,23 @@ export function QuickRideDriverQueue({
   // Time-based expiry does not emit a database UPDATE or Realtime event.
   // Revalidate the queue periodically while the driver is eligible; only
   // current, server-validated offers may be accepted.
+  // Reconcile ACTIVE rides as well: Realtime events can be missed when
+  // switching apps or when iOS suspends Safari. Without this, the cockpit
+  // could remain IN_PROGRESS after the passenger confirmed dropoff.
   useEffect(()=>{
-    if(!online||!gpsReady||active)return;
+    if(!active&&(!online||!gpsReady))return;
     const timer=window.setInterval(()=>{
       if(!document.hidden)void refresh();
-    },15000);
+    },active?7000:15000);
     const onVisible=()=>{if(!document.hidden)void refresh();};
     document.addEventListener("visibilitychange",onVisible);
-    return()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);};
-  },[online,gpsReady,active?.id,refresh]);
+    window.addEventListener("focus",onVisible);
+    return()=>{
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",onVisible);
+      window.removeEventListener("focus",onVisible);
+    };
+  },[online,gpsReady,active?.id,active?.status,refresh]);
   const loadDropoff=useCallback(async(rideId:string)=>{
     const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:rideId});
     if(error)return;
@@ -313,21 +315,6 @@ export function QuickRideDriverQueue({
                className="professional-cockpit__primary-action w-full">Solicitar confirmação de desembarque</button>}
           </>}
         </article>}
-        {!active&&lastCompletedVisible&&lastCompleted&&<section className="space-y-3" aria-label="Pós-corrida e pagamento">
-          <div role="status" className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
-            <h3 className="font-[Sora] font-bold">Desembarque confirmado · Corrida concluída</h3>
-            <p className="mt-1 text-xs text-white/75">Confira seu recebimento antes de liberar esta tela.</p>
-          </div>
-          <QuickRideDriverSettlement rideId={lastCompleted}/>
-          <button type="button" onClick={()=>setRatingOpen(lastCompleted)}
-            className="min-h-12 w-full rounded-xl border border-[#FFBB00]/40 text-sm font-bold text-[#FFBB00]">Avaliar viagem (opcional)</button>
-          {ratingOpen===lastCompleted&&<QuickRideRatingModal rideId={lastCompleted} subject="passageiro" forceOpen
-            onClose={()=>setRatingOpen(null)}/>}
-          <button type="button" onClick={releaseCompleted}
-            className="professional-cockpit__primary-action flex w-full items-center justify-center gap-2 px-4">
-            <CheckCircle2 size={18} aria-hidden="true"/> Liberar tela para novos chamados
-          </button>
-        </section>}
         {!active&&visibleQueue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
