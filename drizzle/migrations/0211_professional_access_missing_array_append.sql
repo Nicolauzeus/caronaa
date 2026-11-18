@@ -108,7 +108,7 @@ BEGIN
   IF NOT (v_missing @> ARRAY['PHOTO','VEHICLE_MODEL','PLATE']::text[]) THEN
     RAISE EXCEPTION 'professional_access_missing regression failed: %',v_missing;
   END IF;
-END
+END;
 $verify$;
 NOTIFY pgrst,'reload schema';
 COMMIT;
