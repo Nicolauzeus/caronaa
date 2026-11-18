@@ -343,7 +343,7 @@ export function ShellJourneyPlanner({
       </div><ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
     </>}
     {snap==="half"&&serviceType!=="FLASH"&&<>
-      <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Busque seu destino" onChange={pickDestination}/>
+      <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou destino" autoFocus={focusDestination} onChange={pickDestination}/>
       {originControl}<ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
       {serviceType==="AGENDADA"&&<label className="block space-y-2 rounded-2xl border border-white/20 bg-white/5 p-3 text-sm">
         <span className="flex items-center gap-2 font-bold"><Clock3 size={18} className="text-[#FFBB00]"/> Data e hora da viagem</span>
