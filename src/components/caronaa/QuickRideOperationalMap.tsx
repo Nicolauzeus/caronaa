@@ -6,6 +6,7 @@ import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { GoogleMapSurface } from "./GoogleMapSurface";
 import {
   driverNavigationPhase, validNavigationPoint, needsDriverReroute,
+  estimateDriverRouteRemaining,
   type NavigationPhase,
 } from "@/lib/quick-rides/driver-navigation";
 
@@ -150,8 +151,12 @@ export function QuickRideOperationalMap({
   const navigationTarget=driverPhase==="PICKUP"?origin:
     driverPhase==="DROPOFF"?destination:null;
   const driverPhaseRef=useRef<NavigationPhase|null>(null);
+  const currentRideRef=useRef(rideId);
+  currentRideRef.current=rideId;
   driverPhaseRef.current=driverPhase;
   const currentDriverRoute=driverRoute?.rideId===rideId&&driverRoute.phase===driverPhase?driverRoute.result:null;
+  const remaining=driverPoint&&currentDriverRoute
+    ?estimateDriverRouteRemaining(driverPoint,currentDriverRoute):null;
   const mapsNavigationUrl=navigationTarget&&validNavigationPoint(navigationTarget)
     ?"https://www.google.com/maps/dir/?api=1&destination="+
       encodeURIComponent(navigationTarget.lat+","+navigationTarget.lng)+
@@ -218,11 +223,11 @@ export function QuickRideOperationalMap({
     void cachedTripRoute(requestKey,()=>readRouteRef.current({
       data:{points:[from,target]},
     })).then(result=>{
-      if(!mounted.current||driverPhaseRef.current!==driverPhase)return;
+      if(!mounted.current||currentRideRef.current!==rideId||driverPhaseRef.current!==driverPhase)return;
       setDriverRoute({rideId,phase:driverPhase,start:from,at:Date.now(),result});
       setError("");
     }).catch(()=>{
-      if(mounted.current&&driverPhaseRef.current===driverPhase)
+      if(mounted.current&&currentRideRef.current===rideId&&driverPhaseRef.current===driverPhase)
         setError("A rota do Google está indisponível. Você pode abrir a navegação no Google Maps.");
     });
   },[rideId,role,driverPhase,statusNow,driverPoint?.lat,driverPoint?.lng,
@@ -257,7 +262,7 @@ export function QuickRideOperationalMap({
           statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
       {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
       {driverPhase&&currentDriverRoute&&<p className="font-semibold">
-        {currentDriverRoute.distanceKm.toFixed(1)} km · cerca de {Math.max(1,Math.round(currentDriverRoute.durationMinutes))} min
+        {(remaining?.distanceKm??currentDriverRoute.distanceKm).toFixed(1)} km {remaining?"restantes (estimativa)":""} · cerca de {Math.max(1,Math.round(remaining?.durationMinutes??currentDriverRoute.durationMinutes))} min
       </p>}
       {driverPhase&&!currentDriverRoute&&!error&&<p className="text-xs text-white/75">Calculando rota rodoviária…</p>}
       {driverPhase&&!driverPoint&&<p role="status" className="text-xs text-amber-200">Sem GPS recente. Confira a permissão de localização.</p>}
