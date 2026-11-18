@@ -2,7 +2,7 @@
 export type VehicleType = "CAR" | "MOTO";
 export type CarCategory = "HATCH" | "SEDAN" | "SUV" | "MINIVAN" | "PICKUP";
 export type AccessStatus = "PENDING" | "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
-export type MissingCode = "PHOTO" | "FULL_NAME" | "VEHICLE_MODEL" | "PLATE" | "VEHICLE_TYPE" | "CAR_CATEGORY" | "SEATS" | "MUNICIPALITY" | "WHATSAPP" | "REGISTRATION" | "REGION";
+export type MissingCode = "PHOTO" | "FULL_NAME" | "VEHICLE_MODEL" | "VEHICLE_COLOR" | "PLATE" | "VEHICLE_TYPE" | "CAR_CATEGORY" | "SEATS" | "MUNICIPALITY" | "WHATSAPP" | "REGISTRATION" | "REGION";
 
 export const CAR_CATEGORIES: { value: CarCategory; label: string; maxSeats: number }[] = [
   { value: "HATCH", label: "Hatch", maxSeats: 4 },
@@ -16,6 +16,7 @@ export const MISSING_LABELS: Record<MissingCode, string> = {
   PHOTO: "Foto real no perfil",
   FULL_NAME: "Nome completo (nome e sobrenome)",
   VEHICLE_MODEL: "Nome/modelo do veículo",
+  VEHICLE_COLOR: "Cor do veículo",
   PLATE: "Placa brasileira válida (ABC1234 ou ABC1D23)",
   VEHICLE_TYPE: "Tipo de veículo (carro ou moto)",
   CAR_CATEGORY: "Categoria do carro",
@@ -51,14 +52,15 @@ export function maxSeatsFor(type: VehicleType | null, category: CarCategory | nu
 
 export type AccessInput = {
   avatarUrl?: string | null; fullName?: string | null; vehicleBrand?: string | null; vehicleDescription?: string | null;
-  vehiclePlate?: string | null; vehicleType?: VehicleType | null; carCategory?: CarCategory | null; seats?: number | null; municipality?: string | null;
+  vehicleColor?: string | null; vehiclePlate?: string | null; vehicleType?: VehicleType | null; carCategory?: CarCategory | null; seats?: number | null; municipality?: string | null;
 };
 
 export function professionalAccessMissing(i: AccessInput): MissingCode[] {
   const m: MissingCode[] = [];
   if (!/^https:\/\//.test(i.avatarUrl ?? "")) m.push("PHOTO");
   if (!/^\S{2,}(\s+\S+)+$/.test((i.fullName ?? "").trim())) m.push("FULL_NAME");
-  if (`${i.vehicleBrand ?? ""} ${i.vehicleDescription ?? ""}`.trim().length < 3) m.push("VEHICLE_MODEL");
+  if (!(i.vehicleBrand ?? "").trim() || !(i.vehicleDescription ?? "").trim()) m.push("VEHICLE_MODEL");
+  if (!(i.vehicleColor ?? "").trim()) m.push("VEHICLE_COLOR");
   if (!isValidBrazilianPlate(i.vehiclePlate)) m.push("PLATE");
   const type = i.vehicleType ?? null;
   if (type !== "CAR" && type !== "MOTO") m.push("VEHICLE_TYPE");
