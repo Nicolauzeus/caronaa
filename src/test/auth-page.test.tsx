@@ -61,9 +61,10 @@ describe("Página /auth Redesenhada", () => {
       screen.getByText(/Acesse sua conta para continuar na CARONAA./i),
     ).toBeInTheDocument();
 
-    // Opções nos seletores
-    expect(screen.getByRole("tab", { name: /Entrar na CARONAA/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Criar minha conta/i })).toBeInTheDocument();
+    // Apenas um caminho de cadastro e sem botões redundantes na tela de login.
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sou mototaxista — cadastro simplificado/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Criar conta$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continuar com Google/i })).toBeInTheDocument();
   });
 
@@ -78,8 +79,8 @@ describe("Página /auth Redesenhada", () => {
     expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
 
     // Alterna para cadastro
-    const signupTab = screen.getByRole("tab", { name: /Criar minha conta/i });
-    fireEvent.click(signupTab);
+    const createAccount = screen.getByRole("button", { name: /^Criar conta$/i });
+    fireEvent.click(createAccount);
 
     // Cadastro inicial: nome completo, e-mail e senha.
     expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
@@ -108,7 +109,7 @@ describe("Página /auth Redesenhada", () => {
     mockSearchState = { mode: "cadastro" };
     render(<AuthComponent />);
     expect(screen.getByLabelText(/Nome completo/i)).toBeRequired();
-    expect(screen.getByRole("tab", { name: /Criar minha conta/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Crie sua conta/i })).toBeInTheDocument();
   });
 
   it("preserva cadastro após conclusão do formulário", () => {
