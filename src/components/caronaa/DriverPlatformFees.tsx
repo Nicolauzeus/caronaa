@@ -223,8 +223,7 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
             <p className="text-xs text-muted-foreground">Saldo de comissões não quitadas</p>
             <p className="text-2xl font-extrabold tabular-nums">{brlCents(ledger.totalOutstandingCents)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {ledger.pendingTrips} {ledger.pendingTrips === 1 ? "viagem pendente" : "viagens pendentes"} ·
-              " · Seus pedidos e ofertas não são bloqueados por comissões pendentes."
+              {ledger.pendingTrips} {ledger.pendingTrips === 1 ? "viagem pendente" : "viagens pendentes"}. Comissões pendentes não impedem novas corridas.
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {brlCents(ledger.readyToInvoiceCents)} ainda sem fechamento Pix.
