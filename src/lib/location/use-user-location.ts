@@ -75,50 +75,88 @@ export function useUserLocation({
     setLocating(true);
     const current = generation.current;
     const alive = () => mounted.current && current === generation.current && !document.hidden;
+    let receivedFreshFix = false;
+    let watchStarted = false;
+    const diagnostic = (stage: string, code?: string, accuracy?: number) => {
+      const band = accuracy === undefined ? undefined : accuracy <= 80 ? "0-80m"
+        : accuracy <= 300 ? "81-300m" : accuracy <= 1000 ? "301-1000m" : ">1000m";
+      // Privacy: no lat/lng, address, user identifier or raw browser error.
+      console.info("[CARONAA][PASSENGER][GPS]", {
+        stage, ...(code ? { code } : {}), ...(band ? { accuracyBand: band } : {}),
+      });
+    };
     const fail = (error: GeolocationPositionError) => {
       if (!alive()) return;
-      setLocating(false);
-      setFailure(
-        error.code === 1
-          ? "PERMISSION_DENIED"
-          : error.code === 3
-            ? "TIMEOUT"
-            : "POSITION_UNAVAILABLE",
-      );
+      const code: LocationFailure = error.code === 1 ? "PERMISSION_DENIED"
+        : error.code === 3 ? "TIMEOUT" : "POSITION_UNAVAILABLE";
+      diagnostic("browser_error", code);
+      // Timeout/unavailable are transient; do not delete a valid sample.
+      if (!receivedFreshFix) { setFailure(code); setLocating(false); }
       if (error.code === 1) stop();
     };
     const update = (value: GeolocationPosition, initial = false) => {
       if (!alive()) return false;
-      if (!isFreshGpsTimestamp(value.timestamp, GPS_POLICY.driverSampleMaxAgeMs)) return false;
+      if (!isFreshGpsTimestamp(value.timestamp, GPS_POLICY.driverSampleMaxAgeMs)) {
+        diagnostic("sample_rejected", "STALE_SAMPLE");
+        return false;
+      }
       const point = {
-        lat: value.coords.latitude,
-        lng: value.coords.longitude,
+        lat: value.coords.latitude, lng: value.coords.longitude,
         accuracy: value.coords.accuracy,
       };
-      if (!validPoint(point) || !Number.isFinite(point.accuracy) || point.accuracy < 0)
+      if (!validPoint(point) || !Number.isFinite(point.accuracy) || point.accuracy < 0) {
+        diagnostic("sample_rejected", "INVALID_FIX");
         return false;
-      setPosition(point);
-      if (initial) {
-        setAddressPosition(point);
-      } else {
-        setAddressPosition((previous) => shouldImproveGpsOrigin(previous, point) ? point : previous);
       }
+      const isFirst = !receivedFreshFix;
+      receivedFreshFix = true;
+      setPosition(point);
+      if (initial || isFirst) setAddressPosition(point);
+      else setAddressPosition(previous => shouldImproveGpsOrigin(previous, point) ? point : previous);
       setFailure(null);
       setLocating(false);
-      return point;
+      // A first valid watch callback must unblock pending "use my location"
+      // even when getCurrentPosition timed out or returned a stale sample.
+      if (isFirst) {
+        diagnostic("first_fix", undefined, point.accuracy);
+        setRecenterVersion(version => version + 1);
+      }
+      return true;
     };
-    const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 };
-    navigator.geolocation.getCurrentPosition(
-      (value) => {
-        if (!alive()) return;
-        const point = update(value, true);
-        if (point) setRecenterVersion((value) => value + 1);
-        // A cached stale first fix must not stop a fresh GPS watch.
-        watch.current = navigator.geolocation.watchPosition((next) => { update(next); }, fail, options);
-      },
-      fail,
-      options,
-    );
+    const startWatch = () => {
+      if (!alive() || watchStarted) return;
+      watchStarted = true;
+      try {
+        watch.current = navigator.geolocation.watchPosition(
+          value => { update(value); }, fail,
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+        );
+        diagnostic("watch_started");
+      } catch {
+        diagnostic("watch_failed", "WATCH_UNAVAILABLE");
+        if (!receivedFreshFix) { setFailure("POSITION_UNAVAILABLE"); setLocating(false); }
+      }
+    };
+    try {
+      navigator.geolocation.getCurrentPosition(
+        value => {
+          if (!alive()) return;
+          update(value, true);
+          startWatch();
+        },
+        error => {
+          fail(error);
+          // The original implementation abandoned GPS after the first timeout.
+          if (error.code !== 1) startWatch();
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      );
+    } catch {
+      diagnostic("initial_request_failed", "POSITION_UNAVAILABLE");
+      setFailure("POSITION_UNAVAILABLE");
+      setLocating(false);
+      startWatch();
+    }
   }, [stop]);
   useEffect(() => {
     mounted.current = true;
