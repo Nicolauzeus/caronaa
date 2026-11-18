@@ -6,6 +6,9 @@ const driver=readFileSync("src/components/caronaa/QuickRideDriverQueue.tsx","utf
 const cockpit=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
 const passenger=readFileSync("src/components/caronaa/QuickRideHomePanel.tsx","utf8");
 const legacy=readFileSync("src/components/caronaa/QuickRideExperience.tsx","utf8");
+const driverHistory=readFileSync("src/routes/_authenticated/viagens-profissionais.tsx","utf8");
+const passengerHistory=readFileSync("src/components/caronaa/QuickRideTripHistory.tsx","utf8");
+const home=readFileSync("src/routes/_authenticated/home.tsx","utf8");
 
 describe("F07 atomic accept and bounded passenger waiting",()=>{
   it("does not write obsolete event columns, while preserving the safe trigger",()=>{
@@ -52,4 +55,16 @@ describe("F07 atomic accept and bounded passenger waiting",()=>{
     expect(passenger).toContain("Cancelar pedido");
     expect(legacy).toContain('activeRide.status==="SEARCHING"?5000:10000');
   });
+  it("returns both roles to their normal screens after completed rides",()=>{
+    expect(passenger).not.toContain("Nova corrida");
+    expect(driver).not.toContain("Liberar tela para novos chamados");
+    expect(passenger).toContain('onRidePhaseChange?.(liveRide?.status??null)');
+    expect(driver).toContain("active?7000:15000");
+    expect(home).toContain('else if(wasActive&&!status)');
+    expect(driver).toContain('onHasPendingChange?.(visibleQueue.length>0)');
+    expect(driverHistory).toContain("QuickRideDriverSettlement");
+    expect(driverHistory).toContain("Consultar cobrança e recebimento Pix");
+    expect(passengerHistory).toContain("QuickRidePixCard");
+  });
+
 });
