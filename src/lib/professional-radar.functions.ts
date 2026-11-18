@@ -151,7 +151,10 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       let code = savedError ? classifyF07RadarDbError(savedError) : "DB_WRITE_FALSE";
       if (code === "DB_DRIVER_NOT_APPROVED" &&
           !dbAuth.error && dbAuth.data?.approved === true) {
-        code = "DB_FINANCIAL_BLOCK";
+        // An authorization rejection with an approved row may indicate a
+        // stale schema or inconsistent GPS/presence. It is no longer a
+        // legitimate financial block: outstanding commissions never gate GPS.
+        code = "DB_WRITE_FALSE";
       }
       log("db_publish_rejected", code, {
         sqlState: String(savedError?.code ?? ""),
