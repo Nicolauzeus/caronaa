@@ -55,7 +55,16 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       const { latitude, longitude, accuracy } = position.coords;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
           !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 5000) {
-        void (supabase as any).rpc("professional_location_stop");
+        log("SYNC_INVALID_FIX", "GPS_INVALID_FIX");
+        return;
+      }
+      if (!Number.isFinite(position.timestamp) || Date.now()-position.timestamp>30000 ||
+          position.timestamp-Date.now()>5000) {
+        log("SYNC_STALE_FIX", "STALE_GPS");
+        return;
+      }
+      if (accuracy>150) {
+        log("SYNC_LOW_ACCURACY", "GPS_LOW_ACCURACY");
         return;
       }
       publishing = true;
@@ -64,7 +73,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       log("SYNC_PUBLISH_REQUEST",undefined,{ref});
       try {
         const result = await publisherRef.current({
-          data: { lat: latitude, lng: longitude, accuracyM: accuracy, traceId:ref },
+          data: { lat: latitude, lng: longitude, accuracyM: accuracy, sampledAtMs: position.timestamp, traceId:ref },
         });
         // Consent may have been revoked (or page hidden) while the server
         // was resolving Google coordinates. Delete any late publication.
@@ -79,7 +88,10 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         // stop publishing until the driver returns to an approved municipality.
         if (!result.published) {
           log("SYNC_NOT_PUBLISHED",result.reason,{ref:result.traceId??ref});
-          void (supabase as any).rpc("professional_location_stop");
+          // Temporary geocoding/GPS failures must not erase a still-fresh
+          // consented position; the server's TTL expires it automatically.
+          if (result.reason === "OUTSIDE_APPROVED_ZONE")
+            void (supabase as any).rpc("professional_location_stop");
         }else{
           log("SYNC_PUBLISHED",undefined,{ref:result.traceId??ref,city:result.municipality});
         }

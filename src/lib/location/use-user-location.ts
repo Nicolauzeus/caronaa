@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { distanceBetweenMeters } from "@/lib/quick-rides/corridor-coverage";
+import { GPS_POLICY, isFreshGpsTimestamp } from "./gps-policy";
 
 export type UserPosition = { lat: number; lng: number; accuracy: number };
 export type LocationFailure =
@@ -18,8 +20,12 @@ export function validPoint(
  * Do not continuously move a chosen pickup when the person walks or GPS jitters.
  */
 export function shouldImproveGpsOrigin(previous: UserPosition | null, next: UserPosition): boolean {
-  return !previous || (previous.accuracy > 80 &&
-    (next.accuracy <= 80 || next.accuracy <= previous.accuracy / 2));
+  if (!previous) return true;
+  if (previous.accuracy > GPS_POLICY.trustedPassengerAccuracyM &&
+      (next.accuracy <= GPS_POLICY.trustedPassengerAccuracyM || next.accuracy <= previous.accuracy / 2)) return true;
+  // Meaningful movement can improve a provisional pickup; GPS jitter cannot.
+  return next.accuracy <= Math.min(previous.accuracy, GPS_POLICY.trustedPassengerAccuracyM) &&
+    distanceBetweenMeters(previous, next) > Math.max(120, previous.accuracy + next.accuracy + 50);
 }
 
 export const locationFailureMessages: Record<LocationFailure, string> = {
@@ -79,6 +85,7 @@ export function useUserLocation({
     };
     const update = (value: GeolocationPosition, initial = false) => {
       if (!alive()) return false;
+      if (!isFreshGpsTimestamp(value.timestamp, GPS_POLICY.driverSampleMaxAgeMs)) return false;
       const point = {
         lat: value.coords.latitude,
         lng: value.coords.longitude,
@@ -100,10 +107,8 @@ export function useUserLocation({
     navigator.geolocation.getCurrentPosition(
       (value) => {
         const point = update(value, true);
-        if (!point) return;
-        // Follow the first fix; subsequent watches only revise a coarse fix
-        // when accuracy improves materially, not for ordinary movement.
-        setRecenterVersion((value) => value + 1);
+        if (point) setRecenterVersion((value) => value + 1);
+        // A cached stale first fix must not stop a fresh GPS watch.
         watch.current = navigator.geolocation.watchPosition((next) => { update(next); }, fail, options);
       },
       fail,

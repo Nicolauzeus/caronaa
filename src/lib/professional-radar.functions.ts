@@ -6,12 +6,32 @@
 import { createServerFn } from "@tanstack/react-start";
 import { professionalRadarPointSchema, municipalityFromProfessionalGps } from "@/lib/professional-radar-geo";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { resolvePilotCivic } from "@/lib/location/pilot-area.server";
+import { reverseGeocodeRadarMunicipality } from "@/lib/professional-radar-civic-geocode.server";
+import { distanceBetweenMeters } from "@/lib/quick-rides/corridor-coverage";
+import { GPS_POLICY, isFreshGpsTimestamp } from "@/lib/location/gps-policy";
 import { classifyF07RadarDbError, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
 
 export type ProfessionalRadarPublication =
   | { published: true; municipality: string; traceId?: string }
-  | { published: false; reason: "OUTSIDE_APPROVED_ZONE" | "LOCATION_UNKNOWN" | "GOOGLE_QUOTA_LIMITED"; municipality: string | null; traceId?: string };
+  | { published: false; reason: "OUTSIDE_APPROVED_ZONE" | "LOCATION_UNKNOWN" | "GOOGLE_QUOTA_LIMITED" | "GPS_LOW_ACCURACY" | "STALE_GPS" | "GPS_JUMP"; municipality: string | null; traceId?: string };
+
+// Short-lived, bounded server cache: Google verifies the civic municipality
+// once for a stable area, not on every 25-second browser GPS pulse.
+const civicCache = new Map<string, { city: string; lat: number; lng: number; at: number }>();
+function getCachedMunicipality(userId: string, lat: number, lng: number): string | null {
+  const cached = civicCache.get(userId);
+  if (!cached) return null;
+  if (Date.now() - cached.at > GPS_POLICY.driverCivicCacheTtlMs ||
+      distanceBetweenMeters(cached, { lat, lng }) > GPS_POLICY.driverCivicCacheRadiusM) {
+    civicCache.delete(userId);
+    return null;
+  }
+  return cached.city;
+}
+function rememberMunicipality(userId: string, city: string, lat: number, lng: number) {
+  if (civicCache.size >= 1000) civicCache.delete(civicCache.keys().next().value!);
+  civicCache.set(userId, { city, lat, lng, at: Date.now() });
+}
 
 export const publishVerifiedProfessionalPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -65,6 +85,27 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
     // resolved from the actual GPS coordinates, never from profile or client.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const admin = supabaseAdmin as any;
+    if (data.accuracyM > GPS_POLICY.driverMaxAccuracyM) {
+      log("quality_rejected", "GPS_LOW_ACCURACY");
+      return { published: false, reason: "GPS_LOW_ACCURACY", municipality: null, traceId };
+    }
+    if (data.sampledAtMs != null &&
+        !isFreshGpsTimestamp(data.sampledAtMs, GPS_POLICY.driverSampleMaxAgeMs)) {
+      log("stale_fix_rejected", "STALE_GPS");
+      return { published: false, reason: "STALE_GPS", municipality: null, traceId };
+    }
+    const { data: prior, error: priorError } = await admin.from("professional_driver_locations")
+      .select("lat,lng,accuracy_m,sampled_at").eq("user_id", context.userId).maybeSingle();
+    if (priorError) return reject("LOCATION_READ_FAILED", "Não foi possível validar a posição anterior.");
+    if (prior?.sampled_at && data.sampledAtMs != null) {
+      const elapsed = (Date.now() - Date.parse(String(prior.sampled_at))) / 1000;
+      if (elapsed > 0 && elapsed <= 90 &&
+          distanceBetweenMeters(prior, data) >
+            Math.max(300, elapsed * 65 + Number(prior.accuracy_m) + data.accuracyM)) {
+        log("jump_rejected", "GPS_JUMP");
+        return { published: false, reason: "GPS_JUMP", municipality: null, traceId };
+      }
+    }
     const clearStaleLocation = async () => {
       const { error } = await admin.from("professional_driver_locations")
         .delete().eq("user_id", context.userId);
@@ -73,37 +114,30 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       });
     };
 
-    // Recent Google-verified municipality may be reused only inside a 300m
-    // radius and 3-minute TTL. An HTTP 429 never fabricates a municipality.
-    let city: string | null = null;
-    if(city){
-      log("municipality_cache_hit", undefined, {ageBoundSeconds:180});
+    // Google civic address components, never centre-radius estimates or
+    // municipality sent by the browser. Fail closed on upstream uncertainty.
+    let city: string | null = getCachedMunicipality(context.userId, data.lat, data.lng);
+    if (city) {
+      log("municipality_cache_hit", undefined, { ageBoundSeconds: 180 });
     } else {
       try {
         log("reverse_geocoding_started");
-        const geo = await resolvePilotCivic(data.lat, data.lng);
+        const geo = await reverseGeocodeRadarMunicipality(data.lat, data.lng);
+        if (!geo) return { published: false, reason: "LOCATION_UNKNOWN", municipality: null, traceId };
         city = municipalityFromProfessionalGps(geo);
-        if(!city){
-          log("municipality_unknown","GPS_CITY_UNKNOWN");
-          // A definitive OUTSIDE city requires actual address components.
-          if(!geo || geo.city){
-            await clearStaleLocation();
-            return {published:false,reason:"OUTSIDE_APPROVED_ZONE",municipality:null,traceId};
-          }
-          // A POI lookup may return no result even in an approved area.
-          // Preserve the previous real fix only until the server's 90s TTL.
-          return {published:false,reason:"LOCATION_UNKNOWN",municipality:null,traceId};
+        if (!city) {
+          await clearStaleLocation();
+          return { published: false, reason: "OUTSIDE_APPROVED_ZONE", municipality: null, traceId };
         }
+        rememberMunicipality(context.userId, city, data.lat, data.lng);
       } catch (cause) {
         log("reverse_geocoding_failed",
-          cause instanceof Error && cause.message==="GOOGLE_QUOTA_LIMITED"
+          cause instanceof Error && cause.message === "GOOGLE_QUOTA_LIMITED"
             ? "GOOGLE_QUOTA_LIMITED" : "GOOGLE_REVERSE_FAILED");
-        // Temporary upstream failures are not revocations of GPS consent.
-        // Never replay an older coordinate as the current driver position.
-        return {published:false,
-          reason:cause instanceof Error && cause.message==="GOOGLE_QUOTA_LIMITED"
-            ?"GOOGLE_QUOTA_LIMITED":"LOCATION_UNKNOWN",
-          municipality:null,traceId};
+        return { published: false,
+          reason: cause instanceof Error && cause.message === "GOOGLE_QUOTA_LIMITED"
+            ? "GOOGLE_QUOTA_LIMITED" : "LOCATION_UNKNOWN",
+          municipality: null, traceId };
       }
     }
     log("municipality_resolved", undefined, { city });

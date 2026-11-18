@@ -29,7 +29,7 @@ describe("F07 corridor radar migration safety contracts", () => {
   });
 
   it("does not trust a profile region, client city or forged user ID for GPS publication", () => {
-    expect(server).toContain("resolvePilotCivic(data.lat, data.lng)");
+    expect(server).toContain("reverseGeocodeRadarMunicipality(data.lat, data.lng)");
     expect(server).toContain("municipalityFromProfessionalGps(geo)");
     expect(server).toContain("p_user_id: context.userId");
     expect(server).toContain("professional_radar_location_rate_gate");
