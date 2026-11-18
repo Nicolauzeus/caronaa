@@ -71,7 +71,8 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
-  const selectedNav = (to: string, label: string) => isAppNavSelected(pathname, activeIntent, to, label);
+  const tripsOpen = useRouterState({ select: (state) => (state.location.search as {trips?:string}).trips === "open" });
+  const selectedNav = (to: string, label: string) => isAppNavSelected(pathname, activeIntent, to, label, tripsOpen);
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const { data: professionalNavigation, isPending: professionalAccessPending } = useQuery({
@@ -191,9 +192,9 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
+                  search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
                   onClick={()=>{
-                    if(to==="/home" && homeSurface==="shared-driver" && typeof window!=="undefined")
+                    if(to==="/home" && label==="Painel" && homeSurface==="shared-driver" && typeof window!=="undefined")
                       window.dispatchEvent(new Event("caronaa:driver-home"));
                   }}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
@@ -357,10 +358,10 @@ export function AppShell({
                     <Link
                       key={`${to}-${label}`}
                       to={to}
-                      search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
+                      search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
                       onClick={()=>{
                         setMenuOpen(false);
-                        if(to==="/home" && homeSurface==="shared-driver")
+                        if(to==="/home" && label==="Painel" && homeSurface==="shared-driver")
                           window.dispatchEvent(new Event("caronaa:driver-home"));
                       }}
                       className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold hover:bg-secondary"
@@ -457,7 +458,7 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
+                  search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
                   aria-current={selected ? "page" : undefined}
                   className={`group relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
                     selected
