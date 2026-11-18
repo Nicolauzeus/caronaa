@@ -5,7 +5,7 @@ import { resolveCorridorMunicipality } from "@/lib/quick-rides/corridor-coverage
 export const professionalRadarPointSchema = z.object({
   lat: z.number().finite().min(-90).max(90),
   lng: z.number().finite().min(-180).max(180),
-  accuracyM: z.number().finite().min(0).max(5000),
+  accuracyM: z.number().finite().positive().max(150),
   // Browser-reported time of the real GPS fix, not the HTTP request time.
   sampledAtMs: z.number().int().positive(),
   // Correlation only. Never an account identifier or an authorization input.
