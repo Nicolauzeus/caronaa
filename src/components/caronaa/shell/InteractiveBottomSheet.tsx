@@ -8,7 +8,7 @@ type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void
 // A percentage fallback is understood by jsdom/older browsers; dynamic viewport
 // units remain the final CSS value in supported mobile browsers.
 const heights:Record<SheetSnap,{fallback:string;dynamic:string}>={
-  peek:{fallback:"180px",dynamic:"0px"},
+  peek:{fallback:"224px",dynamic:"0px"},
   half:{fallback:"68%",dynamic:"0px"},
   full:{fallback:"92%",dynamic:"0px"},
 };
@@ -33,7 +33,7 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
     change(order[Math.min(2,Math.max(0,index+(delta<0?1:-1)))]);
   };
   return <section aria-label={title}
-    className="caronaa-journey-sheet pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-[28px] border border-primary/20 bg-secondary/95 text-secondary-foreground shadow-[0_-12px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-[height] duration-300 ease-out motion-reduce:transition-none"
+    className="caronaa-journey-sheet pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-[28px] border border-primary/20 bg-secondary/95 text-secondary-foreground shadow-[0_-12px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-[height] duration-200 ease-out motion-reduce:transition-none"
     style={{height:heights[snap].fallback, minHeight:heights[snap].dynamic,
       maxHeight:"calc(100% - 70px)"}}>
     <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center border-b border-caronaa-white/10">
