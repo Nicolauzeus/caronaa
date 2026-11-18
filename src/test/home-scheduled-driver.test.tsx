@@ -138,7 +138,7 @@ describe("Home — origem da carona tradicional",()=>{
     expect(screen.getByText(/Definir saída:/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:"Escolher saída neste ponto"}));
     await waitFor(()=>expect(screen.getByRole("button",{name:"Revisar publicação"})).not.toBeDisabled());
-    expect(screen.getByRole("navigation",{name:"Papel ativo no CARONAA"})).toBeTruthy();
+    expect(screen.queryByRole("navigation",{name:"Papel ativo no CARONAA"})).toBeNull();
     expect(api.quote).toHaveBeenCalledTimes(1);
     expect(lastMap().origin).toEqual(expect.objectContaining({lat:-3.71,lng:-38.56}));
     setFix(10,-3.69);rerender(<Home/>);
