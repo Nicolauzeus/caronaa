@@ -839,3 +839,18 @@ a:active {
 @media (prefers-reduced-motion: reduce) {
   .caronaa-page-enter { animation: none !important; }
 }
+
+/* Avoid visible loading flashes on fast in-app navigations. */
+@keyframes caronaa-route-progress {
+  from { transform: scaleX(.08); }
+  to { transform: scaleX(.86); }
+}
+.caronaa-navigation-progress-bar {
+  animation: caronaa-route-progress 1.5s cubic-bezier(.12, .68, .17, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caronaa-navigation-progress-bar {
+    animation: none !important;
+    transform: scaleX(.6);
+  }
+}
