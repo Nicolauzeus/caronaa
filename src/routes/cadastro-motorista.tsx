@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/caronaa/BrandElements";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { getVehicleStatus } from "@/lib/role/use-active-role";
+import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAccessRequest";
+import { parseMissingError, MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
@@ -35,14 +37,23 @@ function ProfessionalMotorcycleRegistration() {
   const [request, setRequest] = useState<{ status: string; review_reason?: string | null } | null>(null);
   const [authorized, setAuthorized] = useState(false);
   const [reviewState, setReviewState] = useState<"loading" | "ready" | "error">("loading");
+  const [reviewError,setReviewError]=useState("");
   const [reviewRetry, setReviewRetry] = useState(0);
   const [vehiclePlate, setVehiclePlate] = useState("");
+  const [registeredVehicle,setRegisteredVehicle]=useState<"CAR"|"MOTO"|null>(null);
+  const [carSeats,setCarSeats]=useState(1);
+  const [carMunicipality,setCarMunicipality]=useState("");
+  const [vehicleCorrections,setVehicleCorrections]=useState<MissingCode[]>([]);
+  const [sessionExpired,setSessionExpired]=useState(false);
   const [busy, setBusy] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [serverCorrections, setServerCorrections] = useState<ProfessionalCorrections>({});
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [onboardingState, setOnboardingState] = useState<"checking" | "ready" | "error">("checking");
   const [onboardingRetry, setOnboardingRetry] = useState(0);
+  const onCarAuthorized=useCallback((value:boolean)=>{
+    if(value)void navigate({to:"/disponibilidade-profissional",replace:true});
+  },[navigate]);
 
   // A professional application is not a second sign-up.
   useEffect(() => {
@@ -72,26 +83,34 @@ function ProfessionalMotorcycleRegistration() {
     if (!user?.email_confirmed_at || onboardingState !== "ready") return;
     let active = true;
     setReviewState("loading");
+    setReviewError("");
     void Promise.all([
       (supabase as any).from("professional_mototaxi_profiles").select("first_name,last_name,whatsapp_e164,region_code,registration_number").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("avatar_url,vehicle_plate,full_name,vehicle_brand,vehicle_description,vehicle_color,vehicle_type,vehicle_seats").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("avatar_url,vehicle_plate,full_name,vehicle_brand,vehicle_description,vehicle_color,vehicle_type,vehicle_seats,city").eq("id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
     ]).then(([details, profile, access]) => {
       if (!active) return;
       if(profile.error || !profile.data){
+        const detail=String(profile.error?.message??"");
+        if(/refresh_token|jwt|token.*expired|invalid.*session/i.test(detail)){
+          setSessionExpired(true);
+          setReviewError("Sua sessão expirou. Entre novamente para verificar o cadastro.");
+        }else setReviewError("Não foi possível verificar os dados obrigatórios do veículo.");
         setReviewState("error");
-        toast.error("Não foi possível verificar os dados obrigatórios do veículo.");
         return;
       }
       // No one may finish professional registration by bypassing the
       // universal vehicle/photo completion. Applies to historical applicants.
       const validVehicle=getVehicleStatus(profile.data).isComplete;
       const hasPhoto=Boolean(profile.data.avatar_url?.trim());
-      if(!validVehicle || !hasPhoto){
+      if(!validVehicle || !hasPhoto || !["car","moto"].includes(String(profile.data.vehicle_type))){
         void navigate({to:"/cadastro-veiculo",
           search:{redirect:"/cadastro-motorista"},replace:true});
         return;
       }
+      setRegisteredVehicle(profile.data.vehicle_type==="moto"?"MOTO":"CAR");
+      setCarSeats(Number(profile.data.vehicle_seats)||1);
+      setCarMunicipality(typeof profile.data.city==="string"?profile.data.city:"");
       if (details.data) {
         setFirstName(details.data.first_name ?? "");
         setLastName(details.data.last_name ?? "");
@@ -104,9 +123,15 @@ function ProfessionalMotorcycleRegistration() {
         setFirstName(parts[0] ?? "");
         setLastName(parts.length > 1 ? parts[parts.length - 1] : "");
       }
-      if (access.error) {
+      if(access.error){
+        const code=String(access.error.code??"");
+        const detail=String(access.error.message??"");
+        if(code==="22P02")setReviewError("Erro interno 22P02 ao verificar cadastro. Aplicar a correção SQL 0211.");
+        else if(/refresh_token|jwt|token.*expired|invalid.*session/i.test(detail)||code==="PGRST301"){
+          setSessionExpired(true);
+          setReviewError("Sessão expirada. Entre novamente.");
+        }else setReviewError("Não foi possível confirmar a situação do seu acesso profissional.");
         setReviewState("error");
-        toast.error("Não foi possível confirmar a situação do seu acesso profissional.");
         return;
       }
       setPhotoUrl(profile.data?.avatar_url ?? "");
@@ -120,7 +145,7 @@ function ProfessionalMotorcycleRegistration() {
     }).catch(() => {
       if (active) {
         setReviewState("error");
-        toast.error("Falha ao consultar a situação do cadastro.");
+        setReviewError("Falha temporária ao consultar o cadastro.");
       }
     });
     return () => { active = false; };
@@ -159,7 +184,12 @@ function ProfessionalMotorcycleRegistration() {
     event.preventDefault();
     setAttempted(true);
     setServerCorrections({});
+    setVehicleCorrections([]);
     setSubmissionMessage("");
+    if(registeredVehicle!=="MOTO"){
+      setSubmissionMessage("O veículo registrado é um carro. Utilize a habilitação de carro, sem preencher novamente os dados de mototáxi.");
+      return;
+    }
     if (Object.keys(localCorrections).length) {
       focusMissing(Object.keys(localCorrections) as ProfessionalField[]);
       return;
@@ -170,6 +200,15 @@ function ProfessionalMotorcycleRegistration() {
     }
     setBusy(true);
     try {
+      // Refresh-token 400 is an authentication problem, not missing fields.
+      // Verify the session BEFORE performing image uploads or SQL writes.
+      const {data:authenticated,error:authError}=await supabase.auth.getUser();
+      if(authError || authenticated.user?.id!==user.id){
+        setSessionExpired(true);
+        setSubmissionMessage("A sessão expirou. Entre novamente para concluir com segurança; os dados já salvos permanecem no CARONAA.");
+        return;
+      }
+      setSessionExpired(false);
       if (photo) {
         const extension = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
         const path = user.id + "/" + crypto.randomUUID() + "." + extension;
@@ -204,13 +243,32 @@ function ProfessionalMotorcycleRegistration() {
         p_registration_number: registrationNumber.trim(),
       });
       if (error) {
-        const missing = professionalServerCorrections(error);
-        if (Object.keys(missing).length) {
+        const code=String(error.code??"");
+        const message=String(error.message??"");
+        const allMissing=parseMissingError(message);
+        const vehicleMissing=allMissing.filter(value=>
+          ["VEHICLE_MODEL","VEHICLE_COLOR","PLATE","VEHICLE_TYPE","SEATS"].includes(value));
+        if(vehicleMissing.length){
+          setVehicleCorrections(vehicleMissing);
+          setSubmissionMessage("O veículo cadastrado possui uma inconsistência. Corrija apenas os itens abaixo.");
+          return;
+        }
+        const missing=professionalServerCorrections(error);
+        if(Object.keys(missing).length){
           setServerCorrections(missing);
           focusMissing(Object.keys(missing) as ProfessionalField[]);
           return;
         }
-        setSubmissionMessage(String(error?.code ?? "") === "42501" ? "Seu cadastro possui uma restrição anterior. Procure o suporte CARONAA." : "Não foi possível habilitar seu cadastro. Verifique os dados e tente novamente.");
+        if(code==="22P02"){
+          setSubmissionMessage("Falha interna na validação de dados (22P02). A correção SQL 0211 precisa ser aplicada; os campos preenchidos não são necessariamente inválidos.");
+        }else if(/session|jwt|token|sessao|autentica/i.test(message)||code==="PGRST301"){
+          setSessionExpired(true);
+          setSubmissionMessage("A sessão expirou. Entre novamente para continuar.");
+        }else if(code==="42501"){
+          setSubmissionMessage("Existe uma restrição administrativa anterior. Consulte o suporte CARONAA.");
+        }else{
+          setSubmissionMessage("Não foi possível verificar a habilitação no servidor. Seus dados foram preservados. Código: "+(code||"INDEFINIDO"));
+        }
         return;
       }
       const { data: refreshed, error: refreshError } =
@@ -270,8 +328,11 @@ function ProfessionalMotorcycleRegistration() {
             ) : (
               <>
                 <p role="alert" className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4 text-sm">
-                  Não foi possível conferir seu cadastro. Para evitar alterações duplicadas, tente novamente.
+                  {reviewError||"Não foi possível conferir seu cadastro. Para evitar alterações duplicadas, tente novamente."}
                 </p>
+                {sessionExpired&&<Link to="/auth"
+                  search={{mode:"entrar",redirect:"/cadastro-motorista"}}
+                  className="inline-flex min-h-11 items-center text-[#FFBB00] underline">Entrar novamente</Link>}
                 <button type="button" onClick={() => setReviewRetry(value => value + 1)}
                   className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
                   Tentar novamente
@@ -319,6 +380,23 @@ function ProfessionalMotorcycleRegistration() {
             <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))}
               className="min-h-11 w-full text-sm text-white/65 underline">Sair da conta</button>
           </section>
+        ) : registeredVehicle==="CAR" ? (
+          <section className="space-y-4" aria-label="Habilitação do motorista de carro">
+            <div className="rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/5 p-4 text-sm text-white/85">
+              <h2 className="font-bold text-[#FFBB00]">Veículo já cadastrado: carro</h2>
+              <p className="mt-2">Nome, foto, marca, modelo, cor e placa já foram reaproveitados.
+                Para receber corridas de carro, confirme apenas a categoria e o município.</p>
+              <p className="mt-2 text-xs text-white/60">
+                Não é necessário informar matrícula de mototáxi nem enviar outra foto.</p>
+            </div>
+            <ProfessionalAccessRequest
+              initialVehicle={{type:"CAR",seats:carSeats,municipality:carMunicipality}}
+              onAuthorized={onCarAuthorized}/>
+            <Link to="/cadastro-veiculo" search={{redirect:"/cadastro-motorista"}}
+              className="inline-flex min-h-11 items-center font-semibold text-[#FFBB00] underline">
+              Meu veículo é moto — corrigir tipo de veículo
+            </Link>
+          </section>
         ) : (
           <>
             {request && <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
@@ -334,7 +412,19 @@ function ProfessionalMotorcycleRegistration() {
                   </ul>
                 </div>
               )}
-              {submissionMessage && <p role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">{submissionMessage}</p>}
+              {submissionMessage && <div role="alert" className="space-y-2 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
+                <p>{submissionMessage}</p>
+                {sessionExpired&&<Link to="/auth" search={{mode:"entrar",redirect:"/cadastro-motorista"}}
+                  className="inline-flex min-h-11 items-center font-semibold underline">Entrar novamente</Link>}
+              </div>}
+              {vehicleCorrections.length>0&&<div role="alert" className="rounded-xl border border-amber-400/40 p-3 text-sm">
+                <p className="font-semibold">Dados do veículo que precisam ser ajustados:</p>
+                <ul className="ml-5 list-disc">{vehicleCorrections.map(code=><li key={code}>{MISSING_LABELS[code]}</li>)}</ul>
+                <Link to="/cadastro-veiculo" search={{redirect:"/cadastro-motorista"}}
+                  className="inline-flex min-h-11 items-center font-semibold text-[#FFBB00] underline">
+                  Corrigir somente o veículo
+                </Link>
+              </div>}
               <div className="grid gap-3 min-[390px]:grid-cols-2">
                 <label className="block text-sm" htmlFor="prof-firstName">Primeiro nome
                     <input id="prof-firstName" aria-required="true" aria-invalid={Boolean(corrections.firstName)} aria-describedby={corrections.firstName ? "prof-firstName-error" : undefined} value={firstName} onChange={e => {setFirstName(e.target.value);clearCorrection("firstName");}} autoComplete="given-name" className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />

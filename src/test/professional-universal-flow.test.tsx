@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   readOnboarding: vi.fn(),
   rpc: vi.fn(),
   query: vi.fn(),
+  authCheck:vi.fn(),carAccess:vi.fn(),
   auth: {user:null,loading:false} as {
     user: null | { id:string; email:string; email_confirmed_at:string; user_metadata:Record<string,string> };
     loading:boolean;
@@ -22,6 +23,12 @@ vi.mock("@tanstack/react-router", async original => ({
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => api.auth }));
 vi.mock("@/lib/onboarding/progressive-onboarding", () => ({readOnboarding: api.readOnboarding}));
 vi.mock("@/components/caronaa/BrandElements", () => ({BrandLogo: () => <span>CARONAA</span>}));
+vi.mock("@/components/caronaa/ProfessionalAccessRequest",()=>({
+  ProfessionalAccessRequest:({initialVehicle}:any)=>{
+    api.carAccess(initialVehicle);
+    return <div aria-label="Habilitação de carro">Confirme os dados do carro</div>;
+  },
+}));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table:string) => ({
@@ -32,6 +39,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       }),
     }),
     rpc: api.rpc,
+    auth:{getUser:api.authCheck,signOut:vi.fn()},
   },
 }));
 vi.mock("sonner", () => ({toast: {success:vi.fn(),error:vi.fn()}}));
@@ -57,6 +65,7 @@ beforeEach(() => {
     error: null,
   }));
   api.rpc.mockResolvedValue({data:{authorized:false,request:null},error:null});
+  api.authCheck.mockImplementation(async()=>({data:{user:api.auth.user},error:null}));
 });
 afterEach(cleanup);
 
@@ -183,6 +192,38 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
     await waitFor(() => expect(screen.getByText(/habilitação não foi confirmada pelo servidor/i)).toBeTruthy());
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
+  });
+
+  it("uses saved car data and the existing avatar instead of mototaxi fields",async()=>{
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    api.query.mockImplementation(async (table:string)=>({
+      data:table==="profiles"?{...validDriverProfile,vehicle_type:"car",
+        vehicle_seats:3,city:"Fortaleza"}:null,error:null,
+    }));
+    render(<ProfessionalPage/>);
+    expect(await screen.findByText(/Veículo já cadastrado: carro/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Matrícula.*mototaxista/i)).toBeNull();
+    expect(screen.queryByLabelText(/WhatsApp com DDD/i)).toBeNull();
+    expect(api.carAccess).toHaveBeenCalledWith({type:"CAR",seats:3,municipality:"Fortaleza"});
+    expect(api.rpc).not.toHaveBeenCalledWith("submit_simple_mototaxi_access",expect.anything());
+  });
+
+  it("detects an expired session before uploading or posting mototaxi data",async()=>{
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    api.authCheck.mockResolvedValue({data:{user:null},error:{message:"refresh_token invalid"}});
+    api.query.mockImplementation(async (table:string)=>({data:table==="profiles"
+      ?validDriverProfile
+      :{first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",
+        region_code:"FORTALEZA",registration_number:"AB123CD"},error:null}));
+    render(<ProfessionalPage/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
+    expect(await screen.findByText(/A sessão expirou/i)).toBeTruthy();
+    expect(screen.getByRole("link",{name:"Entrar novamente"})).toBeInTheDocument();
+    expect(api.rpc).not.toHaveBeenCalledWith("submit_simple_mototaxi_access",expect.anything());
   });
 
 });
