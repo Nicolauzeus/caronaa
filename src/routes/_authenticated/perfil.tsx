@@ -900,7 +900,7 @@ function Perfil() {
             )}
             {(isProfessionalProfile || activeProfileRole === "MOTORISTA") && (
               <p className="text-xs text-white/65">A foto é obrigatória para motoristas. Você pode substituí-la a qualquer momento, mas não removê-la.</p>
-            )
+            )}
 
             <Button
               type="button"
