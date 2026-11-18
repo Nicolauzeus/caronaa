@@ -44,6 +44,10 @@ type Props = {
   flashFare?:QuickRideFarePreview|null;
   flashFares?:Partial<Record<Vehicle,QuickRideFarePreview>>;
   flashFarePending?:boolean;
+  flashDriverCounts?:Record<Vehicle,number>;
+  flashDriverErrors?:Partial<Record<Vehicle,string>>;
+  flashDriverLoading?:boolean;
+  flashDriverError?:string;
   onFlashActionContainer?:(element:HTMLElement|null)=>void;
 };
 const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
@@ -65,7 +69,8 @@ const fortalezaLocal=(value:string)=>new Date(Date.parse(value)-3*60*60*1000).to
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,locating=false,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
-  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},flashFarePending=false,onFlashActionContainer,
+  flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},flashFarePending=false,
+  flashDriverCounts={CAR:0,MOTO:0},flashDriverErrors={},flashDriverLoading=false,flashDriverError="",onFlashActionContainer,
 }:Props){
   const [destination,setDestination]=useState("");
   const [focusDestination,setFocusDestination]=useState(false);
@@ -250,24 +255,35 @@ export function ShellJourneyPlanner({
   },[serviceType,mode,route?.distanceKm,destinationPoint?.lat,destinationPoint?.lng,onRouteVehicle,seats,entireCar]);
 
   const flashChoices=<section aria-label="Escolha sua carona" className="space-y-2">
-    <p className="font-[Sora] text-base font-extrabold text-white">Escolha sua viagem</p>
+    <p className="font-[Sora] text-base font-extrabold text-white">Veículos disponíveis agora</p>
+    <p className="text-xs text-white/70">Confira as opções online e os preços calculados para o destino. Escolha a que preferir.</p>
     <div role="radiogroup" aria-label="Opções de viagem" className="space-y-2">
       {(["MOTO","CAR"] as const).map(type=>{
         const checked=mode==="EXCLUSIVE"&&exclusiveVehicle===type;
-        const fare=flashFares[type]??(flashFare?.vehicleType===type?flashFare:null);
+        const fare=flashFares[type]??null;
         const price=fare&&Date.parse(fare.expiresAt)>Date.now()?formatBrl(fare.customerPaysCents/100):null;
-        const pending=waitingForOrigin||(valid(originPoint)&&flashFarePending);
+        const pending=waitingForOrigin||(valid(originPoint)&&valid(destinationPoint)&&flashFarePending);
+        const onlineCount=flashDriverCounts[type];
+        const radarFailed=Boolean(flashDriverErrors[type]||flashDriverError);
+        const available=onlineCount>0&&!radarFailed;
         return <Button variant="ghost" type="button" key={type} role="radio" aria-checked={checked}
           disabled={flashRideActive} onClick={()=>{if(flashRideActive)return;setMode("EXCLUSIVE");changeVehicle(type,"EXCLUSIVE");}}
-          className={`grid h-auto min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-lg border px-3 py-3 text-left text-secondary-foreground hover:bg-caronaa-white/10 hover:text-secondary-foreground motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
+          className={`grid h-auto min-h-[76px] w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-xl border px-3 py-3 text-left text-secondary-foreground hover:bg-caronaa-white/10 hover:text-secondary-foreground motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
           {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:<CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
-          <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto":"Flash Carro"}</strong><small className="block text-xs text-white/65">{type==="MOTO"?"Direto ao destino":"Viagem exclusiva"}</small></span>
+          <span className="min-w-0 flex-1">
+            <strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Mototáxi":"Carro"}</strong>
+            <small className="block text-xs text-white/65">{type==="MOTO"?"Viagem de moto":"Viagem de carro"} · {fare?.distanceKm.toFixed(1)??"—"} km</small>
+            <small className={`mt-1 block text-xs ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
+              {flashDriverLoading?"Verificando online…":radarFailed?"Radar temporariamente indisponível":available
+                ?`${onlineCount} ${type==="MOTO"?"mototáxi(s)":"carro(s)"} online`:"Nenhum motorista online agora"}
+            </small>
+          </span>
           <span className="text-right font-[Sora] text-sm font-extrabold text-primary">
             {price?price:pending?<span role="status" aria-label={waitingForOrigin?"Aguardando localização":"Consultando preço"} className="inline-flex items-center gap-1.5">
               <Loader2 size={16} aria-hidden="true" className="animate-spin motion-reduce:animate-none"/>
               <span className="text-xs">{waitingForOrigin?"Localizando…":"Consultando…"}</span>
             </span>:!valid(originPoint)?"Defina a saída":valid(destinationPoint)?"Indisponível":"—"}
-            {price&&<small className="block text-[10px] font-normal text-white/65">Preço oficial</small>}
+            {price&&<small className="block text-[10px] font-normal text-white/65">Tarifa calculada</small>}
           </span>
           <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${checked?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>
         </Button>;
