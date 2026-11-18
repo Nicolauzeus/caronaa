@@ -463,9 +463,9 @@ export function ProfessionalAvailabilityPage() {
           <p className="font-semibold">{professionalReview === "PENDING"
             ? "Confirme seus dados para concluir a habilitação."
             : professionalReview === "CHANGES_REQUESTED"
-              ? "Corrija os dados indicados antes de receber corridas."
+              ? "O cadastro possui uma restrição anterior. Procure o suporte CARONAA."
               : professionalReview === "REJECTED"
-                ? "O cadastro não foi aprovado. Consulte o motivo na área profissional."
+                ? "O cadastro possui uma restrição anterior. Procure o suporte CARONAA."
                 : "Complete o cadastro profissional para receber corridas."}</p>
           {simpleMototaxi && professionalMissing.length > 0 && (
             <div role="alert">
@@ -475,7 +475,7 @@ export function ProfessionalAvailabilityPage() {
               </ul>
             </div>
           )}
-          {(simpleMototaxi && (professionalMissing.length > 0 || professionalReview === "CHANGES_REQUESTED" || professionalReview === "REJECTED")) && (
+          {(simpleMototaxi && professionalMissing.length > 0 && professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED") && (
             <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-bold underline">
               Corrigir dados profissionais
             </Link>
