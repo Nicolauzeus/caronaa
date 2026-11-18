@@ -533,9 +533,9 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
     { icon: ShieldCheck, text: "Viaje com segurança" },
   ];
   return (
-    <main className="relative grid h-[100dvh] min-h-0 overflow-hidden bg-background lg:h-auto lg:min-h-screen lg:overflow-visible lg:grid-cols-[1.14fr_.86fr]">
+    <main className="relative grid h-[100dvh] min-h-0 overflow-hidden bg-background lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:grid-cols-[1.14fr_.86fr]">
       {/* Coluna visual esquerda para desktop */}
-      <section className="relative hidden min-h-screen overflow-hidden px-10 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-12">
+      <section className="relative hidden h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-10 py-6 text-white lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-8">
         <img
           src={desktopBackground.url}
           alt="Cidade conectada pelos trajetos da CARONAA"
@@ -582,7 +582,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
       </section>
 
       {/* Coluna de formulário responsiva */}
-      <section className="relative flex h-full min-h-0 items-start justify-center overflow-x-hidden overflow-y-auto overscroll-contain bg-[#121212] px-4 py-3 sm:px-8 sm:py-5 md:px-10 lg:min-h-screen lg:items-center lg:overflow-hidden lg:bg-[#fbfaf6] lg:py-8 lg:dark:bg-background">
+      <section className="relative flex h-full min-h-0 items-start justify-center overflow-x-hidden overflow-y-auto overscroll-contain bg-[#121212] px-4 py-3 sm:px-8 sm:py-5 md:px-10 lg:h-full lg:min-h-0 lg:items-center lg:overflow-y-auto lg:bg-[#fbfaf6] lg:py-5 lg:dark:bg-background">
         <picture className="absolute inset-0 lg:hidden">
           <img src={mobileBackground.url} alt="" className="size-full object-cover" />
         </picture>
