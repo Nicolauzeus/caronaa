@@ -461,12 +461,12 @@ export function ProfessionalAvailabilityPage() {
       {!authorized && ready && (
         <div role="status" className="space-y-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
           <p className="font-semibold">{professionalReview === "PENDING"
-            ? "Dados recebidos. Aguardando análise administrativa."
+            ? "Confirme seus dados para concluir a habilitação."
             : professionalReview === "CHANGES_REQUESTED"
-              ? "O cadastro precisa de correções antes de receber corridas."
+              ? "O cadastro possui uma restrição anterior. Procure o suporte CARONAA."
               : professionalReview === "REJECTED"
-                ? "O cadastro não foi aprovado. Consulte o motivo na área profissional."
-                : "O atendimento profissional só é liberado após cadastro completo e autorização."}</p>
+                ? "O cadastro possui uma restrição anterior. Procure o suporte CARONAA."
+                : "Complete o cadastro profissional para receber corridas."}</p>
           {simpleMototaxi && professionalMissing.length > 0 && (
             <div role="alert">
               <p className="text-xs font-bold">Dados que faltam:</p>
@@ -475,7 +475,7 @@ export function ProfessionalAvailabilityPage() {
               </ul>
             </div>
           )}
-          {(simpleMototaxi && (professionalMissing.length > 0 || professionalReview === "CHANGES_REQUESTED" || professionalReview === "REJECTED")) && (
+          {(simpleMototaxi && professionalMissing.length > 0 && professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED") && (
             <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-bold underline">
               Corrigir dados profissionais
             </Link>
@@ -535,7 +535,7 @@ export function ProfessionalAvailabilityPage() {
             onClick={()=>void toggleOnline(!enabled)}>
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
-          {(!authorized || blocked) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">{blocked ? "Acesso bloqueado por repasses. Consulte Conta." : "Aguardando autorização profissional."}</p>}
+          {(!authorized || blocked) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">{blocked ? "Acesso bloqueado por repasses. Consulte Conta." : "Finalize os dados profissionais para receber corridas."}</p>}
         </div>
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}

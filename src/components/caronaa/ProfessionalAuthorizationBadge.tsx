@@ -3,7 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Displays an administrative authorization, not a documentary verification.
+ * Displays the server-issued platform authorization, not legal licensing.
  * A fresh server RPC is the authority; no local profile flag grants this seal.
  */
 export function ProfessionalAuthorizationBadge() {

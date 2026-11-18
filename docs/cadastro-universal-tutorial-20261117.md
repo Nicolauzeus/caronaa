@@ -52,3 +52,11 @@ Não há prova neste documento de migration aplicada ou dos testes executados. C
 - Na tela de corridas, solicitações pendentes ou com dados faltantes são indicadas; os controles de atendimento continuam sujeitos à autorização profissional do servidor, repasses, cobertura, GPS e consentimento.
 - A rota simplificada não exige um segundo envio manual de autorização. O fluxo padrão de cadastro de motorista não profissional não é alterado.
 - Testar também foto externa sem upload, arquivo maior que 5 MB, dados ausentes, retorno de erro RPC, pedido pendente e aprovado, refresh e navegador mobile.
+
+## Habilitação automática do motorista — decisão 18/11/2026
+- O usuário conclui o cadastro universal e confirma os dados profissionais na mesma conta; nenhum botão ou fila de solicitação manual é necessário.
+- O backend valida foto, nome, WhatsApp, região e matrícula para mototaxista; modalidade padrão de carro/moto também valida veículo conforme o schema existente.
+- A migration incremental 0204 grava a autorização e a trilha de auditoria em transação atômica, atualiza registros pendentes com dados completos e preserva bloqueios de rejeição ou suspensão.
+- `get_my_professional_access` deve retornar `authorized=true` antes de o usuário acessar a tela operacional. O botão de GPS/online exige consentimento explícito e as regiões, repasses e despacho continuam sendo checados.
+- A habilitação da plataforma não atesta licenças, habilitação profissional ou autorização municipal. Revisar requisitos legais e de segurança antes de prestar transporte remunerado ao público.
+- Validar a migration contra banco de homologação com rollback e executar os testes F02/F07, incluindo cadastro incompleto, rejeição e reenvio idempotente.

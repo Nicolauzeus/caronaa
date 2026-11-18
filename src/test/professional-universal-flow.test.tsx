@@ -102,16 +102,23 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
   });
 
-  it("confirms complete details and goes straight to the ride cockpit without granting professional approval", async () => {
+  it("confirms complete details and requires server authorization before entering the ride cockpit", async () => {
     api.auth.user={id:"driver-1",email:"teste@example.com",
       email_confirmed_at:"2026-11-17T18:00:00Z",
       user_metadata:{full_name:"Motorista Exemplo"}};
     api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
       ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
       : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
-    api.rpc.mockImplementation(async (method:string) => method==="get_my_professional_access"
-      ? {data:{authorized:false,request:{status:"PENDING"}},error:null}
-      : {data:"request-1",error:null});
+    let authorized = false;
+    api.rpc.mockImplementation(async (method:string) => {
+      if (method==="submit_simple_mototaxi_access") {
+        authorized = true; return {data:"request-1",error:null};
+      }
+      if (method==="get_my_professional_access") return {
+        data:{authorized,request:{status:authorized?"APPROVED":"PENDING"}},error:null,
+      };
+      return {data:null,error:null};
+    });
     render(<ProfessionalPage/>);
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
     await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true}));
@@ -136,6 +143,23 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
     render(<ProfessionalPage/>);
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
     await waitFor(() => expect(screen.getAllByText(/Adicione uma foto pessoal válida, armazenada no CARONAA/i).length).toBeGreaterThan(0));
+    expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
+  });
+
+  it("never enters the ride cockpit unless the second server authorization check is true", async () => {
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
+      ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
+      : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
+    api.rpc.mockImplementation(async (method:string) =>
+      method==="get_my_professional_access"
+        ? {data:{authorized:false,request:{status:"PENDING"}},error:null}
+        : {data:"request-1",error:null});
+    render(<ProfessionalPage/>);
+    fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
+    await waitFor(() => expect(screen.getByText(/habilitação não foi confirmada pelo servidor/i)).toBeTruthy());
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
   });
 

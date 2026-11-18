@@ -179,9 +179,8 @@ function ProfessionalMotorcycleRegistration() {
         setPhoto(null);
       }
 
-      // Server validates profile completeness, stores the professional declarations,
-      // and creates/updates the existing manual review request. This is NOT an
-      // auto-approval and does not enable GPS sharing, dispatch or online presence.
+      // The server checks completeness and enables the professional vehicle atomically.
+      // GPS and online presence still require explicit consent.
       const { error } = await (supabase as any).rpc("submit_simple_mototaxi_access", {
         p_first_name: firstName.trim(),
         p_last_name: lastName.trim(),
@@ -196,18 +195,18 @@ function ProfessionalMotorcycleRegistration() {
           focusMissing(Object.keys(missing) as ProfessionalField[]);
           return;
         }
-        setSubmissionMessage("O sistema não conseguiu confirmar os dados. Verifique-os e tente novamente.");
+        setSubmissionMessage(String(error?.code ?? "") === "42501" ? "Seu cadastro possui uma restrição anterior. Procure o suporte CARONAA." : "Não foi possível habilitar seu cadastro. Verifique os dados e tente novamente.");
         return;
       }
       const { data: refreshed, error: refreshError } =
         await (supabase as any).rpc("get_my_professional_access");
-      if (refreshError || !refreshed || (!refreshed.authorized && !refreshed.request)) {
-        setSubmissionMessage("Os dados foram enviados, mas não conseguimos verificar sua situação. Tente novamente.");
+      if (refreshError || !refreshed || refreshed.authorized !== true) {
+        setSubmissionMessage("Dados recebidos, mas a habilitação não foi confirmada pelo servidor. Tente novamente.");
         return;
       }
       setRequest(refreshed.request ?? null);
       setAuthorized(refreshed.authorized === true);
-      toast.success("Dados confirmados. Abrindo sua área de corridas.");
+      toast.success("Cadastro concluído! Ative sua disponibilidade para receber corridas.");
       await navigate({to: "/disponibilidade-profissional", replace: true});
     } catch {
       setSubmissionMessage("Não foi possível concluir a confirmação. Verifique sua conexão e tente novamente.");
@@ -224,7 +223,7 @@ function ProfessionalMotorcycleRegistration() {
           {onboardingState === "error" && user?.email_confirmed_at ? (
             <>
               <h1 className="font-display text-lg font-bold">Não foi possível conferir seu cadastro universal</h1>
-              <p role="alert" className="text-sm text-white/70">Aguarde a verificação antes de enviar uma solicitação profissional.</p>
+              <p role="alert" className="text-sm text-white/70">Confirme os dados da sua conta para continuar.</p>
               <button type="button" onClick={() => setOnboardingRetry(current => current + 1)}
                 className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
                 Tentar novamente
@@ -242,8 +241,8 @@ function ProfessionalMotorcycleRegistration() {
         <Link to={user ? "/home" : "/"} aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
           <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Dados do motorista</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">{authorized || request?.status === "APPROVED" ? "Dados confirmados" : "Confirme seus dados"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized || request?.status === "APPROVED" ? "Você pode consultar suas corridas." : "Confira os campos abaixo para continuar para as corridas."}</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{authorized ? "Cadastro concluído" : "Confirme seus dados"}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized ? "Seu cadastro está habilitado. Ative sua disponibilidade quando estiver pronto." : "Complete os dados obrigatórios para habilitar seu acesso sem esperar aprovação."}</p>
         </div>
         {reviewState !== "ready" ? (
           <div className="space-y-4" role="status" aria-live="polite">
@@ -251,12 +250,12 @@ function ProfessionalMotorcycleRegistration() {
               <div className="space-y-3">
                 <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10"/>
                 <div className="h-20 animate-pulse rounded-2xl bg-white/10"/>
-                <p className="text-sm text-white/70">Consultando sua aprovação profissional...</p>
+                <p className="text-sm text-white/70">Conferindo o cadastro profissional...</p>
               </div>
             ) : (
               <>
                 <p role="alert" className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4 text-sm">
-                  Não foi possível confirmar sua aprovação. Para evitar um novo pedido indevido, o formulário está temporariamente oculto.
+                  Não foi possível conferir seu cadastro. Para evitar alterações duplicadas, tente novamente.
                 </p>
                 <button type="button" onClick={() => setReviewRetry(value => value + 1)}
                   className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
@@ -265,7 +264,7 @@ function ProfessionalMotorcycleRegistration() {
               </>
             )}
           </div>
-        ) : authorized || request?.status === "APPROVED" ? (
+        ) : authorized ? (
           <section className="space-y-5 rounded-2xl border border-[#FFBB00]/25 bg-[#121212] p-4 sm:p-5" aria-label="Credencial profissional">
             <div className="flex justify-center">
               <span className="relative flex size-16 items-center justify-center rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/15">
@@ -275,11 +274,10 @@ function ProfessionalMotorcycleRegistration() {
             </div>
             <div className="space-y-2 text-center">
               <h2 className="font-[Sora] text-xl font-extrabold">
-                {authorized ? "Você é um Mototaxista Verificado CARONAA" : "Seu cadastro foi aprovado"}
+                Cadastro profissional habilitado
               </h2>
               <p className="text-xs leading-relaxed text-white/65">
-                {authorized ? "Acesso profissional autorizado pelo CARONAA." : "A liberação operacional ainda precisa ser confirmada."}
-                {" "}A aprovação administrativa não substitui a validação documental ou exigências legais.
+                O acesso está ativo no CARONAA. Ative sua disponibilidade numa região atendida para começar a receber corridas. A plataforma não substitui licenças legais.
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
@@ -296,10 +294,10 @@ function ProfessionalMotorcycleRegistration() {
                 <p className="mt-1 break-words text-xs font-bold">{vehiclePlate || "Não informada"}</p>
               </div>
             </div>
-            {<Link to="/disponibilidade-profissional"
+            <Link to="/disponibilidade-profissional"
               className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-4 text-center font-[Sora] text-sm font-black text-[#121212]">
               IR PARA MINHAS CORRIDAS
-            </Link>}
+            </Link>
             <p className="text-center text-xs text-white/55">
               Precisa atualizar seus dados cadastrais? Fale com o suporte.
             </p>
@@ -309,7 +307,7 @@ function ProfessionalMotorcycleRegistration() {
         ) : (
           <>
             {request && <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-              Solicitação: <strong>{request.status === "PENDING" ? "Em análise" : request.status === "APPROVED" ? "Aprovada" : request.status === "REJECTED" ? "Rejeitada" : "Correções solicitadas"}</strong>
+              Situação: <strong>{request.status === "PENDING" ? "Conclua a confirmação" : request.status === "APPROVED" ? "Sincronizando habilitação" : request.status === "REJECTED" ? "Cadastro bloqueado" : "Correções necessárias"}</strong>
               {request.review_reason && <p>Observação: {request.review_reason}</p>}
             </div>}
             <form className="space-y-3" noValidate onSubmit={confirmData}>

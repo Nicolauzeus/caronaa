@@ -25,10 +25,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Mototaxi confirmado na tela de corridas", () => {
-  it("shows pending approval without asking for a second professional application", async () => {
+  it("shows a pending legacy registration with no second application", async () => {
     render(<ProfessionalAccessRequest/>);
     await screen.findByText(/Situação dos dados profissionais/i);
-    expect(screen.getByText(/Em análise/i)).toBeTruthy();
+    expect(screen.getByText(/Confirmando cadastro/i)).toBeTruthy();
     expect(screen.queryByText(/Solicitar autorização/i)).toBeNull();
     expect(screen.queryByText(/Reenviar solicitação/i)).toBeNull();
     expect(api.rpc).toHaveBeenCalledTimes(1);
@@ -44,8 +44,8 @@ describe("Mototaxi confirmado na tela de corridas", () => {
     await screen.findByText(/Situação dos dados profissionais/i);
     expect(screen.getByText(/Foto real no perfil/i)).toBeTruthy();
     expect(screen.getByText(/WhatsApp com DDD/i)).toBeTruthy();
-    const link=screen.getByRole("link",{name:/Corrigir dados profissionais/i});
-    expect(link.getAttribute("href")).toBe("/cadastro-motorista");
+    expect(screen.getByText(/entre em contato com o suporte CARONAA/i)).toBeTruthy();
+    expect(screen.queryByRole("link",{name:/Corrigir dados profissionais/i})).toBeNull();
     expect(screen.queryByText(/Solicitar autorização/i)).toBeNull();
   });
 });

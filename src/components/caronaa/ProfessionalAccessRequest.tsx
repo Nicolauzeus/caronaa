@@ -53,30 +53,31 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
   if (!state) return <p className="rounded-xl border p-4 text-sm">{error || "Carregando autorização…"}</p>;
   const r = state.request;
   const simpleMototaxi = r?.access_type === "MOTOTAXI_SIMPLE";
-  const canSubmit = !simpleMototaxi && !state.authorized && (!r || editing || r.status === "CHANGES_REQUESTED" || r.status === "REJECTED");
+  const heldByPriorDecision = r?.status === "REJECTED" || r?.status === "CHANGES_REQUESTED";
+  const canSubmit = !simpleMototaxi && !state.authorized && !heldByPriorDecision && (!r || editing || r.status === "PENDING");
   const profileMissing = missing.length ? missing : state.profileMissing;
   const maxSeats = maxSeatsFor(type, category || null);
 
   return (
     <section className="space-y-3 rounded-xl border p-4" aria-label="Acesso ao radar profissional">
-      <h2 className="font-semibold">{simpleMototaxi ? "Situação dos dados profissionais" : "Acesso ao radar profissional"}</h2>
+      <h2 className="font-semibold">{simpleMototaxi ? "Situação dos dados profissionais" : "Habilitação profissional"}</h2>
       {state.authorized
-        ? <div className="space-y-2"><ProfessionalAuthorizationBadge /><p className="text-xs text-muted-foreground">Autorização administrativa para o radar piloto. Não representa verificação documental nem habilitação comercial.</p></div>
-        : r && <p className="text-sm">Situação: <strong>{STATUS_LABELS[r.status]}</strong>{r.status === "PENDING" && " — aguarde a análise do administrador."}</p>}
+        ? <div className="space-y-2"><ProfessionalAuthorizationBadge /><p className="text-xs text-muted-foreground">Cadastro completo e habilitado na plataforma. Disponibilidade, localização e cobertura ainda são verificadas separadamente.</p></div>
+        : r && <p className="text-sm">Situação: <strong>{STATUS_LABELS[r.status]}</strong>{r.status === "PENDING" && " — confirme os dados para concluir a habilitação."}</p>}
       {r?.review_reason && !state.authorized && <p className="rounded-lg border p-2 text-sm">Motivo: {r.review_reason}</p>}
+      {heldByPriorDecision && !state.authorized && (
+        <p role="alert" className="rounded-xl border border-amber-400/50 bg-amber-400/10 p-3 text-sm">
+          Existe uma restrição anterior neste cadastro. Para solicitar a revisão, entre em contato com o suporte CARONAA.
+        </p>
+      )}
       {profileMissing.length > 0 && !state.authorized && (
         <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">
-          <p className="font-semibold">{simpleMototaxi ? "Dados que faltam para operar:" : "Faltam dados para solicitar:"}</p>
+          <p className="font-semibold">{simpleMototaxi ? "Dados que faltam para operar:" : "Complete os dados para trabalhar:"}</p>
           <ul className="ml-4 list-disc">{profileMissing.map((c) => <li key={c}>{MISSING_LABELS[c]}</li>)}</ul>
-          {simpleMototaxi
+          {simpleMototaxi && !heldByPriorDecision
             ? <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-semibold underline">Corrigir dados profissionais</Link>
-            : profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
+            : !heldByPriorDecision && profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
         </div>
-      )}
-      {simpleMototaxi && !state.authorized && profileMissing.length === 0 && (r?.status === "CHANGES_REQUESTED" || r?.status === "REJECTED") && (
-        <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-          Corrigir dados do motorista
-        </Link>
       )}
       {canSubmit && (
         <div className="space-y-2">
@@ -99,9 +100,9 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
           <MunicipalitySelect value={city} onChange={setCity} disabled={busy} />
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <Button type="button" disabled={busy || !city} onClick={() => void submit()} className="min-h-12 w-full">
-            {busy ? "Enviando…" : r ? "Reenviar solicitação" : "Solicitar autorização"}
+            {busy ? "Validando dados…" : "Confirmar dados e habilitar corridas"}
           </Button>
-          <p className="text-xs text-muted-foreground">Foto, nome, veículo e placa vêm do seu perfil. Dados declaratórios, sem envio de documentos.</p>
+          <p className="text-xs text-muted-foreground">O sistema habilita sua conta após verificar os dados obrigatórios. O GPS só é compartilhado quando você ativar a disponibilidade.</p>
         </div>
       )}
     </section>
