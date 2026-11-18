@@ -453,7 +453,12 @@ function Home(){
             setSheetSnap("half");
           }
         }}/>
-      {!activeRoleState.loading&&<InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title={driverRole?"Painel do motorista CARONAA":"Planejar viagem CARONAA"}
+      {!activeRoleState.loading&&activeRoleState.roleLoadFailed&&
+        <div role="alert" className="absolute inset-x-3 bottom-4 z-30 space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#121212] p-4 text-sm text-white">
+          <p>Não foi possível identificar seu perfil ativo. Nenhuma atividade foi alterada.</p>
+          <button type="button" onClick={()=>void activeRoleState.refresh()} className="min-h-11 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Tentar novamente</button>
+        </div>}
+      {!activeRoleState.loading&&!activeRoleState.roleLoadFailed&&<InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title={driverRole?"Painel do motorista CARONAA":"Planejar viagem CARONAA"}
         headerAction={!tripsPanelOpen&&driverRole&&!driverHomeOpen?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
         {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
         {tripsPanelOpen&&!driverRole&&<UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey} onShowOnMap={(trip:UnifiedTrip)=>{
