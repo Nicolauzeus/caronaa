@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { VehicleDraft, VehicleMissingField, VehicleType } from "@/lib/role/use-active-role";
@@ -49,8 +50,8 @@ export function QuickVehicleModal({
     try{
       await onSave(draft);
       onOpenChange(false);
-    }catch{
-      setError("Não foi possível salvar os dados do veículo. Confira as informações e tente novamente.");
+    }catch(cause){
+      setError(cause instanceof Error ? cause.message : "Não foi possível salvar os dados do veículo.");
     }finally{
       setBusy(false);
     }
@@ -103,7 +104,11 @@ export function QuickVehicleModal({
               .map(seats=><option key={seats} value={seats}>{seats} {seats===1?"vaga":"vagas"}</option>)}
           </select>
         </label>
-        {error&&<p role="alert" className="text-sm text-red-300">{error}</p>}
+        {error&&<div role="alert" className="space-y-2 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">
+          <p>{error}</p>
+          {/foto|avatar|imagem/i.test(error)&&<Link to="/perfil" onClick={()=>onOpenChange(false)}
+            className="inline-flex min-h-11 items-center rounded-lg bg-[#FFBB00] px-3 text-sm font-bold text-[#121212]">Adicionar foto no Perfil</Link>}
+        </div>}
         <DialogFooter className="gap-2">
           <Button type="button" variant="outline" disabled={busy} onClick={()=>onOpenChange(false)}>
             Cancelar
