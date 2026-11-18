@@ -69,6 +69,7 @@ function Home(){
   const routeSearch=Route.useSearch();
   const navigate=useNavigate();
   const [offerIntentOpen,setOfferIntentOpen]=useState(false);
+  const offerVehicleSavedRef=useRef(false);
   useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const activeRoleState=useActiveRole();
   const gender=useProfileGender();
@@ -342,12 +343,23 @@ function Home(){
       {!selectingOrigin&&<div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
         <RoleSwitchHeader activeRole={activeRoleState.activeRole} disabled={activeRoleState.loading||activeRoleState.busy} onSwitch={handleShellRoleSwitch}/>
       </div>}
-      <QuickVehicleModal open={vehicleModalOpen} onOpenChange={setVehicleModalOpen} missingFields={missingVehicleFields}
+      <QuickVehicleModal open={vehicleModalOpen} onOpenChange={open=>{
+          setVehicleModalOpen(open);
+          if(!open&&routeSearch.intent==="offer"){
+            if(!offerVehicleSavedRef.current)void navigate({to:"/home",search:{},replace:true});
+            offerVehicleSavedRef.current=false;
+          }
+        }} missingFields={missingVehicleFields}
         initialType={activeRoleState.vehicleType} initialSeats={activeRoleState.vehicleSeats}
         onSave={async vehicle=>{
           const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
           if(!check.allowed)throw new Error(check.reason==="ACTIVE_RIDE"?"Não é possível alternar durante uma corrida.":"Não foi possível verificar suas corridas.");
           await activeRoleState.saveVehicle(vehicle);
+          if(routeSearch.intent==="offer"){
+            offerVehicleSavedRef.current=true;
+            setServiceType("AGENDADA");
+            setSheetSnap("half");
+          }
         }}/>
       <InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title="Casca Única CARONAA"
         headerAction={!tripsPanelOpen?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">{driverRole?"Agendados":"Minhas Viagens"}</button>:undefined}>
