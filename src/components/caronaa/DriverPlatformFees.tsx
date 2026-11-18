@@ -30,7 +30,7 @@ type Statement = {
 type Ledger = {
   driverAllowed: boolean;
   pendingTrips: number;
-  limit: number;
+  limit: number | null;
   totalOutstandingCents: number;
   readyToInvoiceCents: number;
   platformPixConfigured: boolean;
@@ -219,13 +219,12 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
 
       {ledger && (
         <>
-          <div role="status" className={"rounded-xl border p-3 " +
-            (ledger.driverAllowed ? "border-border bg-muted/40" : "border-destructive/50 bg-destructive/5")}>
+          <div role="status" className="rounded-xl border border-border bg-muted/40 p-3">
             <p className="text-xs text-muted-foreground">Saldo de comissões não quitadas</p>
             <p className="text-2xl font-extrabold tabular-nums">{brlCents(ledger.totalOutstandingCents)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {ledger.pendingTrips} {ledger.pendingTrips === 1 ? "viagem pendente" : "viagens pendentes"} ·
-              {ledger.driverAllowed ? " disponível para novas caronas." : " novas ofertas bloqueadas até a quitação verificada."}
+              " · Seus pedidos e ofertas não são bloqueados por comissões pendentes."
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {brlCents(ledger.readyToInvoiceCents)} ainda sem fechamento Pix.
