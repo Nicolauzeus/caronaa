@@ -22,3 +22,20 @@
 }
 
 .caronaa-journey-sheet__content:has(.flex.h-full) { overflow: hidden; padding-bottom: 0; }
+
+/* Comfortable touch/keyboard navigation with a safe sheet height on small phones. */
+@media (max-width: 767px) {
+  .caronaa-journey-sheet {
+    max-height: calc(100% - 20px) !important;
+    box-shadow: 0 -12px 40px rgba(0,0,0,.22);
+  }
+  .caronaa-journey-sheet__content {
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: 24px;
+  }
+  .caronaa-journey-sheet__handle:focus-visible {
+    outline: 2px solid #FFBB00;
+    outline-offset: -3px;
+  }
+}

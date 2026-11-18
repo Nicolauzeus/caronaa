@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
+import { QuickRideTripHistory } from "@/components/caronaa/QuickRideTripHistory";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/minhas-caronas")({
 
 function MinhasCaronas() {
   const loadMyRides = useServerFn(getMyRides);
-  const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas">(
+  const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas" | "flash">(
     "pedidos",
   );
   const [passengerRides, setPassengerRides] = useState<RideSummary[]>([]);
@@ -239,9 +240,9 @@ function MinhasCaronas() {
       <PageHeading
         eyebrow="SEUS TRAJETOS"
         title="Minhas viagens"
-        description="Acompanhe primeiro sua próxima carona e as solicitações que precisam de você."
+        description="Pedidos, corridas rápidas, reservas e histórico em um só lugar."
       />
-      {currentRide && (
+      {currentRide && tab !== "flash" && (
         <section
           aria-label="Sua carona atual"
           className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-soft"
@@ -322,7 +323,7 @@ function MinhasCaronas() {
         </div>
       </section>
       <div className="mt-7 border-b border-border">
-        <div className="flex flex-wrap gap-5">
+        <div role="group" aria-label="Categorias de viagens" className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1.5 sm:flex sm:flex-wrap sm:gap-2">
           <Tab active={tab === "pedidos"} onClick={() => setTab("pedidos")}>
             Meus pedidos ({passengerRides.length})
           </Tab>
@@ -335,14 +336,19 @@ function MinhasCaronas() {
           <Tab active={tab === "rotinas"} onClick={() => setTab("rotinas")}>
             Rotinas
           </Tab>
+          <Tab active={tab === "flash"} onClick={() => setTab("flash")}>
+            Corridas Rápidas
+          </Tab>
         </div>
       </div>
-      {tab !== "rotinas" && (
+      {tab !== "rotinas" && tab !== "flash" && (
         <RideOpportunities
           role={tab === "disponiveis" ? "driver" : "passenger"}
         />
       )}
-      {tab === "rotinas" ? (
+      {tab === "flash" ? (
+        <QuickRideTripHistory />
+      ) : tab === "rotinas" ? (
         <RideRoutineManager onChanged={() => refreshRides(false)} />
       ) : loading ? (
         <div className="mt-5 rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -454,8 +460,9 @@ function Tab({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
-      className={`border-b-2 px-1 pb-3 text-sm font-bold ${active ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+      className={`min-h-12 min-w-0 rounded-xl border px-2 py-2 text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] sm:px-4 sm:text-sm ${active ? "border-[#FFBB00] bg-[#FFBB00] text-[#121212]" : "border-transparent text-muted-foreground hover:bg-background hover:text-foreground"}`}
     >
       {children}
     </button>

@@ -1,8 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowUpRight,
-  CarFront,
-  House,
   CalendarClock,
   LogIn,
   LogOut,
@@ -26,6 +24,7 @@ import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
+import { authenticatedNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
 
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
@@ -36,12 +35,6 @@ const professionalNav = [
   { to: "/disponibilidade-profissional" as const, label: "Painel", icon: LayoutDashboard },
   { to: "/viagens-profissionais" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Conta", icon: UserRound },
-];
-
-const authenticatedNav = [
-  { to: "/home" as const, label: "Início", icon: House },
-  { to: "/home" as const, label: "Oferecer", icon: CarFront },
-  { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
 
 export function Brand({ light = false }: { light?: boolean }) {
@@ -71,10 +64,7 @@ export function AppShell({
   const [professionalOnly, setProfessionalOnly] = useState<boolean | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
-  const selectedNav = (to:string,label:string) => label==="Oferecer"
-    ? (pathname==="/home" && activeIntent==="offer") || pathname==="/oferecer"
-    : label==="Início" ? pathname==="/home" && activeIntent!=="offer"
-    : pathname===to || pathname.startsWith(`${to}/`);
+  const selectedNav = (to: string, label: string) => isAppNavSelected(pathname, activeIntent, to, label);
   const { user, loading } = useAuth();
   useEffect(() => {
     let live = true;
@@ -122,37 +112,15 @@ export function AppShell({
         pathname !== "/disponibilidade-profissional" &&
         <ProfessionalRadarSync userId={user.id} />}
       <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}>
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-8">
+        <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-3 px-3 sm:h-16 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
           <div className="min-w-0 shrink-0">
             <Brand />
           </div>
           {!publicPage && user && (
-            <Link to="/perfil" className="hidden min-w-0 items-center gap-3 sm:flex lg:hidden">
-              {typeof (user.user_metadata.avatar_url || user.user_metadata.picture) === "string" ? (
-                <img
-                  src={user.user_metadata.avatar_url || user.user_metadata.picture}
-                  alt=""
-                  className="size-10 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <UserRound size={20} />
-                </span>
-              )}
-              <span className="truncate text-base font-bold">
-                Olá,{" "}
-                {
-                  String(
-                    user.user_metadata.full_name ||
-                      user.user_metadata.name ||
-                      user.email?.split("@")[0] ||
-                      "você",
-                  ).split(" ")[0]
-                }
-                !
-              </span>
-            </Link>
+            <span className="ml-auto hidden min-w-0 truncate text-sm font-bold text-foreground min-[380px]:block lg:hidden" aria-label="Saudação">
+              Olá, {String(user.user_metadata.full_name || user.user_metadata.name || user.email?.split("@")[0] || "você").trim().split(/\s+/)[0]}!
+            </span>
           )}
 
           {/* Navegação DESKTOP para Páginas Públicas */}
@@ -441,9 +409,9 @@ export function AppShell({
       {!publicPage && user && professionalOnly !== null && (
         <nav
           aria-label={professionalOnly ? "Navegação profissional mobile" : "Navegação principal mobile"}
-          className={`fixed inset-x-0 bottom-0 z-40 isolate border-t pb-[max(8px,env(safe-area-inset-bottom))] shadow-lg backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
+          className={`fixed inset-x-0 bottom-0 z-40 isolate border-t pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.10)] backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-3 pt-2 ${prelaunchMode ? "grid-cols-2" : professionalOnly ? "grid-cols-3" : "grid-cols-4"}`}>
+          <div className={`mx-auto grid max-w-lg gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : professionalOnly ? "grid-cols-3" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
               const selected = selectedNav(to,label);
               return (
@@ -452,14 +420,15 @@ export function AppShell({
                   to={to}
                   search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   aria-current={selected ? "page" : undefined}
-                  className={`flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
+                  className={`group relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
                     selected
                       ? professionalOnly ? "bg-[#FFBB00] text-[#121212]" : "bg-primary/15 text-foreground"
                       : professionalOnly ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <Icon size={21} aria-hidden="true" className={selected && !professionalOnly ? "text-primary" : ""} />
-                  <span>{label}</span>
+                  {selected && <span aria-hidden="true" className="absolute top-0 h-[3px] w-9 rounded-b-full bg-[#FFBB00]" />}
+                  <Icon size={22} aria-hidden="true" className={selected && !professionalOnly ? "text-primary" : ""} />
+                  <span className="truncate">{label}</span>
                 </Link>
               );
             })}

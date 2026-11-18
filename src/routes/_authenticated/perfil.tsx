@@ -640,7 +640,7 @@ function Perfil() {
             onChange={(value,details)=>setCity(details?.city||value)} placeholder="Ex.: Fortaleza" variant="simple"/>
           <label className="block text-xs font-bold text-white/80">GÊNERO
             <select value={gender} onChange={event=>setGender(event.target.value as "FEMININO"|"MASCULINO"|"")}
-              className="mt-1.5 h-11 w-full rounded-lg border border-white/30 bg-[#1C1C1C] px-3 text-sm text-white">
+              className="mt-1.5 min-h-12 w-full rounded-xl border border-white/30 bg-[#1C1C1C] px-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] sm:text-sm">
               <option value="">Prefiro não informar agora</option>
               <option value="FEMININO">Feminino</option>
               <option value="MASCULINO">Masculino</option>
@@ -700,7 +700,7 @@ function Perfil() {
                   onChange={(event) =>
                     setGender(event.target.value as "FEMININO" | "MASCULINO" | "")
                   }
-                  className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground"
+                  className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-base font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] sm:text-sm"
                 >
                   <option value="">Prefiro não informar agora</option>
                   <option value="FEMININO">Feminino</option>
@@ -943,7 +943,7 @@ function Field({
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
-        className="mt-1.5 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15 read-only:cursor-not-allowed read-only:opacity-70"
+        className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-base font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 read-only:cursor-not-allowed read-only:opacity-70 sm:text-sm"
       />
     </label>
   );

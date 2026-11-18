@@ -68,6 +68,7 @@ export function ShellJourneyPlanner({
   flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},flashFarePending=false,onFlashActionContainer,
 }:Props){
   const [destination,setDestination]=useState("");
+  const [focusDestination,setFocusDestination]=useState(false);
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
   const [exclusiveVehicle,setExclusiveVehicle]=useState<Vehicle>("CAR");
   const [onRouteVehicle,setOnRouteVehicle]=useState<Vehicle>("CAR");
@@ -169,6 +170,7 @@ export function ShellJourneyPlanner({
     onRouteSearchRef.current+=1;setOnRouteMatches([]);setSelectedMatch(null);
     setOnRouteConfirmedId(null);setOnRouteDiagnostic("");onOnRouteMatchSelected?.(null);
     setDestination(label);setDestinationPoint(details);onDestinationChange?.(label,details);
+    if(details)setFocusDestination(false);
     setRoute(null);setPrices(null);
     frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
     if(details&&valid(details))onSnapChange?.(serviceType==="FLASH"?"full":"half");
@@ -320,23 +322,28 @@ export function ShellJourneyPlanner({
   </div>;
   const fixedFlash=serviceType==="FLASH"&&snap!=="peek";
   const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
-    <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Busque seu destino" onChange={pickDestination}/>
+    <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
     {originControl}
     <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
   </div>;
   return <div className={fixedFlash?"flex h-full min-h-0 flex-col font-sans":snap==="peek"?"space-y-1":"space-y-4 pb-4"}>
     {snap==="peek"&&<>
       <div className="flex min-w-0 gap-1">
-        <button type="button" onClick={()=>onSnapChange?.("half")} className="flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 text-sm">
-          <Search size={18} className="shrink-0 text-[#FFBB00]"/><span className="min-w-0 text-left"><span className="block truncate">{destination||"Para onde vamos?"}</span>{waitingForOrigin&&<small role="status" aria-live="polite" className="block text-[11px] text-[#FFBB00]">Localizando você…</small>}</span>
+        <button type="button" onClick={()=>{setFocusDestination(true);onSnapChange?.("half");}}
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/30 bg-white px-4 py-2 text-[#121212] shadow-sm transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] motion-reduce:transform-none">
+          <Search size={21} className="shrink-0 text-[#121212]" aria-hidden="true"/>
+          <span className="min-w-0 text-left">
+            <strong className="block truncate font-[Sora] text-sm font-extrabold">{destination||"Para onde vamos?"}</strong>
+            <small className="block truncate text-[11px] font-medium text-[#505050]" aria-live="polite">{waitingForOrigin?"Localizando você…":destination?"Toque para mudar o destino":"Digite seu destino"}</small>
+          </span>
         </button>
-        <button type="button" aria-label="Ajustar no mapa a origem" onClick={onAdjustOrigin} title={originText} className="flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#FFBB00]/40 text-[#FFBB00]">
+        <button type="button" aria-label="Ajustar no mapa a origem" onClick={onAdjustOrigin} title={originText} className="flex min-h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 text-[#FFBB00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00]">
           {waitingForOrigin?<Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden="true"/>:<MapPin size={18} aria-hidden="true"/>}
         </button>
       </div><ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
     </>}
     {snap==="half"&&serviceType!=="FLASH"&&<>
-      <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Busque seu destino" onChange={pickDestination}/>
+      <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou destino" autoFocus={focusDestination} onChange={pickDestination}/>
       {originControl}<ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
       {serviceType==="AGENDADA"&&<label className="block space-y-2 rounded-2xl border border-white/20 bg-white/5 p-3 text-sm">
         <span className="flex items-center gap-2 font-bold"><Clock3 size={18} className="text-[#FFBB00]"/> Data e hora da viagem</span>
