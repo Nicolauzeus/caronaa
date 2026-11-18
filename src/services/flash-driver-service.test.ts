@@ -32,10 +32,15 @@ describe("Flash driver RPC boundaries",()=>{
       .rejects.toMatchObject({code:"INVALID"});
     expect(api.rpc).not.toHaveBeenCalled();
   });
-  it("42501 blocks commission activation and never claims online",async()=>{
+  it("a 42501 authorization rejection is not a commission-block signal",async()=>{
     api.rpc.mockResolvedValue({data:null,error:{code:"42501",message:"pending fees"}});
     await expect(setFlashDriverOnline({online:true,mode:"EXCLUSIVE",seats:1,vehicleType:"CAR"}))
-      .rejects.toMatchObject({code:"COMMISSION_BLOCKED"});
+      .rejects.toMatchObject({code:"ACCESS_DENIED"});
+  });
+  it("identifies outdated SQL policy separately from driver debts",async()=>{
+    api.rpc.mockResolvedValue({data:null,error:{code:"42501",message:"COMMISSION_BLOCKED"}});
+    await expect(setFlashDriverOnline({online:true,mode:"EXCLUSIVE",seats:1,vehicleType:"CAR"}))
+      .rejects.toMatchObject({code:"MIGRATION_REQUIRED"});
   });
   it("heartbeat accepts only valid GPS and a positive server response",async()=>{
     await updateFlashDriverHeartbeatGPS(-3.731,-38.521,28);
