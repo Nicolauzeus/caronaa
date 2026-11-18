@@ -1,9 +1,11 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
-import { AppShell } from "@/components/caronaa/AppShell";
+import { AppShell, Brand } from "@/components/caronaa/AppShell";
+
+const mockAuth = vi.hoisted(() => ({ user: null as null | { id: string } }));
 
 // Mock @tanstack/react-router
 vi.mock("@tanstack/react-router", () => ({
@@ -45,7 +47,7 @@ vi.mock("@tanstack/react-router", () => ({
 // Mock useAuth
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
-    user: null,
+    user: mockAuth.user,
     loading: false,
     session: null,
   }),
@@ -70,6 +72,25 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 describe("Public Navigation & Institutional Footer", () => {
+  beforeEach(() => { mockAuth.user = null; });
+
+  describe("Logo CARONAA e sessão", () => {
+    it("leva visitantes à página pública e usuários autenticados à home", () => {
+      const guest = renderWithClient(<Brand />);
+      expect(screen.getByRole("link", { name: "CARONAA — página inicial" })).toHaveAttribute("href", "/");
+      guest.unmount();
+
+      mockAuth.user = { id: "authenticated-user" };
+      renderWithClient(<Brand />);
+      expect(screen.getByRole("link", { name: "CARONAA — página inicial" })).toHaveAttribute("href", "/home");
+    });
+
+    it("mantém o rodapé dentro da home quando existe sessão", () => {
+      mockAuth.user = { id: "authenticated-user" };
+      renderWithClient(<PublicFooter />);
+      expect(screen.getByRole("link", { name: "CARONAA — Início" })).toHaveAttribute("href", "/home");
+    });
+  });
   describe("PublicFooter", () => {
     it("renderiza a marca CARONAA e a frase de posicionamento", () => {
       renderWithClient(<PublicFooter />);
