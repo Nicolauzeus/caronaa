@@ -145,7 +145,7 @@ BEGIN
   END IF;
   v_rewritten:=regexp_replace(
     v_definition,
-    '''blocked''[[:space:]]*,[[:space:]]*count\\(\\*\\)[[:space:]]*>=[[:space:]]*3',
+    '''blocked''[[:space:]]*,[[:space:]]*count[(][*][)][[:space:]]*>=[[:space:]]*3',
     '''blocked'',false',
     'g'
   );
