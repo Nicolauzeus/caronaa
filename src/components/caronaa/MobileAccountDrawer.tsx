@@ -1,26 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  CarFront,
-  House,
-  UserRound,
-  Menu,
-  LogOut,
-  ShieldCheck,
-  Search,
-  LayoutDashboard,
-  KeyRound,
-  Camera,
-  HelpCircle,
-  Settings,
-  CheckCircle2,
+  Bell, CalendarClock, Camera, CarFront, CheckCircle2, ChevronRight,
+  HelpCircle, House, KeyRound, LayoutDashboard, LogOut, Menu,
+  Settings2, ShieldCheck, UserRound, Wallet,
 } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetDescription,
-  SheetTrigger,
+  Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -29,263 +15,161 @@ import { ThemeToggle } from "./ThemeToggle";
 import { NotificationControls } from "./NotificationControls";
 import { getMyUserVerifications } from "@/lib/user-verifications";
 
-export function MobileAccountDrawer({ signOut, prelaunchMode = false, professionalOnly = false }: { signOut: () => Promise<void>; prelaunchMode?: boolean; professionalOnly?: boolean }) {
+type Props = {
+  signOut: () => Promise<void>;
+  prelaunchMode?: boolean;
+  professionalOnly?: boolean;
+};
+
+const tileClass = "flex min-h-[86px] flex-col justify-center gap-2 rounded-2xl border border-border bg-background p-3 text-left text-foreground transition-colors hover:border-[#FFBB00]/50 hover:bg-primary/5 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] motion-reduce:transform-none";
+const rowClass = "flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00]";
+
+export function MobileAccountDrawer({ signOut, prelaunchMode = false, professionalOnly = false }: Props) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
-  const [hasVerification, setHasVerification] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
+    if (!open || !user) return;
     let alive = true;
     setAdmin(false);
-
-    if (open && user) {
-      void supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .then(({ data }) => {
-          if (alive) setAdmin(Boolean(data?.length));
-        });
-
-      void getMyUserVerifications()
-        .then((verifications) => {
-          if (alive) setHasVerification(verifications.length > 0);
-        })
-        .catch(() => {});
-    }
-
-    return () => {
-      alive = false;
-    };
+    setVerified(false);
+    void Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin"),
+      getMyUserVerifications().catch(() => []),
+    ]).then(([roles, verifications]) => {
+      if (!alive) return;
+      setAdmin(Boolean(roles.data?.length));
+      setVerified(verifications.some(item => item.status === "VERIFIED"));
+    }).catch(() => undefined);
+    return () => { alive = false; };
   }, [user?.id, open]);
 
-  const name = String(
-    user?.user_metadata.full_name ||
-      user?.user_metadata.name ||
-      user?.email?.split("@")[0] ||
-      "Minha conta",
-  );
-
-  const initials =
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "C";
-
+  const close = () => setOpen(false);
+  const name = String(user?.user_metadata.full_name ||
+    user?.user_metadata.name || user?.email?.split("@")[0] || "Minha conta");
+  const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "C";
   const avatar = user?.user_metadata.avatar_url || user?.user_metadata.picture;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-11 lg:hidden" aria-label="Abrir menu">
-          <Menu size={22} />
+        <Button variant="ghost" size="icon"
+          className="size-11 shrink-0 rounded-full hover:bg-primary/10 lg:hidden"
+          aria-label="Abrir menu da conta">
+          <Menu size={22} aria-hidden="true" />
         </Button>
       </SheetTrigger>
-      <SheetContent
-        side="left"
-        className="w-[85%] max-w-sm overflow-y-auto px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-10 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center"
-      >
-        {/* Header do Usuário com avatar e verificação */}
-        <div className="flex items-center gap-3 border-b border-border pb-5">
-          {typeof avatar === "string" && avatar ? (
-            <img src={avatar} alt="" className="size-14 shrink-0 rounded-full object-cover ring-2 ring-primary/20" />
-          ) : (
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-secondary font-display text-xl font-extrabold text-primary ring-2 ring-primary/20">
-              {initials}
-            </div>
-          )}
+      <SheetContent side="left"
+        className="w-[min(92vw,390px)] max-w-none overflow-y-auto overscroll-contain bg-background px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-12 shadow-2xl sm:px-5 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center">
+        <div className="mb-5 flex items-center gap-3 rounded-2xl bg-muted/60 p-3">
+          <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#FFBB00] bg-[#121212] font-display text-lg font-black text-[#FFBB00]">
+            {typeof avatar === "string" && avatar ? <img src={avatar} alt="" className="size-full object-cover" /> : initials}
+          </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <SheetTitle className="truncate text-left text-base font-extrabold text-foreground">
-                {name}
-              </SheetTitle>
-              {hasVerification && (
-                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-caronaa-primary-strong dark:text-caronaa-primary" title="Perfil verificado">
-                  <CheckCircle2 size={13} className="text-primary fill-primary/20" />
-                  Verificado
-                </span>
-              )}
-            </div>
-            <SheetDescription className="text-left text-xs text-muted-foreground">
-              {user?.email}
-            </SheetDescription>
-            <Link
-              to="/perfil"
-              onClick={() => setOpen(false)}
-              className="mt-1.5 inline-block text-xs font-bold text-primary underline underline-offset-2"
-            >
-              Editar perfil
-            </Link>
+            <SheetTitle className="truncate text-left font-display text-base font-extrabold">{name}</SheetTitle>
+            <SheetDescription className="mt-0.5 truncate text-left text-xs">{user?.email}</SheetDescription>
+            {verified && (
+              <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-foreground">
+                <CheckCircle2 size={13} className="text-[#FFBB00]" aria-hidden="true" /> Vínculo confirmado
+              </span>
+            )}
           </div>
+          <Link to="/perfil" onClick={close} aria-label="Editar perfil"
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]">
+            <ChevronRight size={20} aria-hidden="true" />
+          </Link>
         </div>
 
-        {professionalOnly && !prelaunchMode ? (
-          <nav aria-label="Menu do motorista" className="space-y-2 py-4">
-            <Link to="/disponibilidade-profissional" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl bg-primary/10 px-3 font-semibold">
-              <CarFront size={19} /> Minha disponibilidade
-            </Link>
-            <Link to="/viagens-profissionais" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
-              <House size={19} /> Viagens profissionais
-            </Link>
-            <Link to="/perfil" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
-              <UserRound size={19} /> Perfil, Pix e comissões
-            </Link>
-            <Link to="/como-funciona" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
-              <HelpCircle size={19} /> Ajuda
-            </Link>
-            {admin && <Link to="/admin" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold hover:bg-muted">
-              <LayoutDashboard size={19} /> Administração
-            </Link>}
-          </nav>
-        ) : prelaunchMode ? (
-          <nav aria-label="Acesso durante o pré-lançamento" className="space-y-2 border-t border-border py-4">
-            <p className="text-xs leading-5 text-muted-foreground">Enquanto sua campanha não começa, personalize seus dados e acompanhe a contagem regressiva.</p>
-            <Link to="/aguardando" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-muted">
-              <House size={19} /> Acompanhar lançamento
-            </Link>
-            <Link to="/perfil" onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center gap-3 rounded-xl bg-primary/10 px-3 text-sm font-semibold text-foreground">
-              <UserRound size={19} className="text-primary" /> Personalizar meu perfil
-            </Link>
-            <Link to="/perfil" search={{editPhoto:true}} onClick={() => setOpen(false)}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-muted">
-              <Camera size={17} /> Alterar foto
-            </Link>
-          </nav>
-        ) : (
+        {!prelaunchMode && !professionalOnly && (
           <>
-        {/* Grupo 1: Navegação principal */}
-        <nav aria-label="Menu principal" className="py-2.5">
-          <Link
-            to="/home"
-            onClick={() => setOpen(false)}
-            className="flex min-h-12 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-          >
-            <House size={19} className="text-muted-foreground" />
-            Início
-          </Link>
-
-
-          <Link
-            to="/buscar"
-            onClick={() => setOpen(false)}
-            className="flex min-h-12 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-          >
-            <Search size={19} className="text-muted-foreground" />
-            Buscar carona
-          </Link>
-        </nav>
-
-        <div className="border-t border-border my-1" />
-
-        {/* Grupo 2: Segurança & Perfil com subitens */}
-        <div className="py-2.5 space-y-1">
-          <div>
-            <Link
-              to="/seguranca"
-              onClick={() => setOpen(false)}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-            >
-              <ShieldCheck size={19} className="text-muted-foreground" />
-              Segurança
-            </Link>
-            <div className="pl-9 pr-2">
-              <Link
-                to="/seguranca"
-                search={{ action: "alterar-senha" }}
-                onClick={() => setOpen(false)}
-                className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              >
-                <KeyRound size={14} className="text-primary" />
-                Alterar senha
+            <h3 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Acesso rápido</h3>
+            <nav aria-label="Atalhos da conta" className="grid grid-cols-2 gap-2.5">
+              <Link to="/minhas-caronas" onClick={close} className={tileClass}>
+                <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Minhas viagens</span>
               </Link>
-            </div>
-          </div>
-
-          <div className="pt-1">
-            <Link
-              to="/perfil"
-              onClick={() => setOpen(false)}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-            >
-              <UserRound size={19} className="text-muted-foreground" />
-              Perfil
-            </Link>
-            <div className="pl-9 pr-2">
-              <Link
-                to="/perfil"
-                search={{ editPhoto: true }}
-                onClick={() => setOpen(false)}
-                className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              >
-                <Camera size={14} className="text-primary" />
-                Alterar foto
+              <Link to="/home" search={{ intent: "offer" }} onClick={close} className={tileClass}>
+                <CarFront size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Oferecer carona</span>
               </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-border my-1" />
-
-        {/* Grupo 3: Ajuda, Configurações, Admin e Sair */}
-        <div className="py-2.5 space-y-1">
-          <Link
-            to="/como-funciona"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-          >
-            <HelpCircle size={19} className="text-muted-foreground" />
-            Ajuda
-          </Link>
-
-          <Link
-            to="/perfil"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-          >
-            <Settings size={19} className="text-muted-foreground" />
-            Configurações
-          </Link>
-
-          {admin && (
-            <Link
-              to="/admin"
-              onClick={() => setOpen(false)}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
-            >
-              <LayoutDashboard size={19} className="text-muted-foreground" />
-              Administração
-            </Link>
-          )}
-        </div>
-
+              <Link to="/seguranca" onClick={close} className={tileClass}>
+                <ShieldCheck size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Segurança</span>
+              </Link>
+              <Link to="/como-funciona" onClick={close} className={tileClass}>
+                <HelpCircle size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Central de ajuda</span>
+              </Link>
+            </nav>
           </>
         )}
-        <div className="flex items-center gap-3 border-t border-border py-4">
-          <ThemeToggle />
-          <NotificationControls />
-        </div>
 
-        <Button
-          variant="ghost"
-          className="min-h-12 w-full justify-start gap-3 rounded-xl px-2.5 text-sm font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onClick={async () => {
-            setOpen(false);
-            await signOut();
-          }}
-        >
-          <LogOut size={19} />
-          Sair da conta
+        {professionalOnly && !prelaunchMode && (
+          <>
+            <h3 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Área do motorista</h3>
+            <nav aria-label="Atalhos do motorista" className="grid grid-cols-2 gap-2.5">
+              <Link to="/disponibilidade-profissional" onClick={close} className={tileClass}>
+                <CarFront size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Disponibilidade</span>
+              </Link>
+              <Link to="/viagens-profissionais" onClick={close} className={tileClass}>
+                <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Minhas viagens</span>
+              </Link>
+              <Link to="/perfil" hash="pix-do-motorista" onClick={close} className={tileClass}>
+                <Wallet size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Pix e ganhos</span>
+              </Link>
+              <Link to="/como-funciona" onClick={close} className={tileClass}>
+                <HelpCircle size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Ajuda</span>
+              </Link>
+            </nav>
+          </>
+        )}
+
+        {prelaunchMode && (
+          <nav aria-label="Acesso de pré-lançamento" className="space-y-2">
+            <p className="px-1 text-sm leading-6 text-muted-foreground">
+              Acompanhe o lançamento e mantenha seus dados atualizados.
+            </p>
+            <Link to="/aguardando" onClick={close} className={rowClass}><House size={19} /> Acompanhar lançamento</Link>
+            <Link to="/perfil" onClick={close} className={rowClass}><UserRound size={19} /> Meu perfil</Link>
+            <Link to="/perfil" search={{ editPhoto: true }} onClick={close} className={rowClass}><Camera size={19} /> Alterar foto</Link>
+          </nav>
+        )}
+
+        <div className="my-5 border-t border-border" />
+        <h3 className="mb-1 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Minha conta</h3>
+        <nav aria-label="Dados e configurações" className="space-y-0.5">
+          <Link to="/perfil" onClick={close} className={rowClass}><UserRound size={19} className="text-muted-foreground" /> Dados pessoais <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
+          <Link to="/seguranca" search={{ action: "alterar-senha" }} onClick={close} className={rowClass}><KeyRound size={19} className="text-muted-foreground" /> Alterar senha <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
+          <Link to="/perfil" onClick={close} className={rowClass}><Settings2 size={19} className="text-muted-foreground" /> Preferências <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
+          {!prelaunchMode && professionalOnly && (
+            <Link to="/cadastro-motorista" onClick={close} className={rowClass}><ShieldCheck size={19} className="text-muted-foreground" /> Meu cadastro profissional <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
+          )}
+          {admin && (
+            <Link to="/admin" onClick={close} className={rowClass}><LayoutDashboard size={19} className="text-muted-foreground" /> Administração <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
+          )}
+        </nav>
+
+        <div className="mt-5 rounded-2xl border border-border bg-muted/50 p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">Aparência e notificações</p>
+          <div className="flex min-h-12 items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-2 text-sm font-medium"><Settings2 size={17} aria-hidden="true" /> Tema</span>
+            <ThemeToggle />
+          </div>
+          <div className="flex min-h-12 items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-2 text-sm font-medium"><Bell size={17} aria-hidden="true" /> Alertas</span>
+            <NotificationControls />
+          </div>
+        </div>
+        <Button variant="ghost"
+          className="mt-4 min-h-12 w-full justify-start gap-3 rounded-xl px-3 text-sm font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={async () => { close(); await signOut(); }}>
+          <LogOut size={19} aria-hidden="true" /> Sair da conta
         </Button>
       </SheetContent>
     </Sheet>
