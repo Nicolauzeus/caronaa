@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { FirstRunTutorial } from "@/components/onboarding/FirstRunTutorial";
 import { claimPendingParticipations,readPendingParticipations } from "@/lib/formulario/research-participation";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -76,5 +77,5 @@ export const Route = createFileRoute("/_authenticated")({
     }
     return { user: data.user, launchLocked: launch.locked };
   },
-  component: () => <Outlet />,
+  component: () => <><Outlet /><FirstRunTutorial /></>,
 });
