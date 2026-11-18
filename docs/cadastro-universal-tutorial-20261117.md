@@ -44,3 +44,11 @@ Não há prova neste documento de migration aplicada ou dos testes executados. C
 - Com a conta universal concluída, a tela profissional recolhe só informações específicas para solicitação de aprovação; os nomes vêm da conta e o e-mail fica apenas informativo.
 - A autorização de mototaxista é administrativa e continua necessária para F07. A seleção `MOTORISTA` não concede direitos e não exige formulário F01.
 - Testes regressivos: `src/test/auth-regional-access.test.tsx`, `src/test/professional-universal-flow.test.tsx` e `src/lib/onboarding/universal-driver-entry.test.ts`. Execução real de testes/build depende de CI funcional ou terminal local.
+
+## Confirmação mobile-first e entrada em corridas — 18/11/2026
+- O formulário profissional não mostra mais o e-mail da conta em destaque nem o botão “Solicitar acesso ao radar”.
+- O botão **Confirmar dados e ver corridas** valida nome, sobrenome, WhatsApp, região, matrícula e foto; indica todas as pendências e concentra a correção no próprio formulário.
+- Ao confirmar, o backend persiste os dados e registra a solicitação de análise na mesma RPC já existente. Somente após resposta verificada a aplicação abre `/disponibilidade-profissional`.
+- Na tela de corridas, solicitações pendentes ou com dados faltantes são indicadas; os controles de atendimento continuam sujeitos à autorização profissional do servidor, repasses, cobertura, GPS e consentimento.
+- A rota simplificada não exige um segundo envio manual de autorização. O fluxo padrão de cadastro de motorista não profissional não é alterado.
+- Testar também foto externa sem upload, arquivo maior que 5 MB, dados ausentes, retorno de erro RPC, pedido pendente e aprovado, refresh e navegador mobile.
