@@ -358,7 +358,13 @@ function Home(){
     if(!check.allowed){toast[check.reason==="ACTIVE_RIDE"?"info":"error"](check.reason==="ACTIVE_RIDE"
       ?"Não é possível alternar de papel durante uma corrida em andamento":"Não foi possível verificar suas corridas. Tente novamente.");return;}
     const result=await activeRoleState.switchRole(target);
-    if(result.needsVehicleModal){setMissingVehicleFields(result.missingFields);setVehicleModalOpen(true);}
+    if(result.needsVehicleModal){
+      setMissingVehicleFields(result.missingFields);setVehicleModalOpen(true);
+    }else if(target==="MOTORISTA"){
+      // Changing to driver chooses the operational availability landing;
+      // successful role switch alone does NOT authorize a professional ride.
+      await navigate({to:"/disponibilidade-profissional",replace:true});
+    }
   };
 
   // Activity changes originate in the hamburger menu. Route intents are UX
@@ -372,7 +378,9 @@ function Home(){
         setOfferIntentOpen(false);
         setTripsPanelOpen(false);
         setServiceType("AGENDADA");
-        setDriverHomeOpen(true);
+        // "Oferecer carona agendada" is a secondary, explicit action.
+        // Open the actual scheduler instead of the old default dashboard.
+        setDriverHomeOpen(false);
         setSheetSnap("half");
       }else setOfferIntentOpen(true);
       return;
@@ -509,8 +517,9 @@ function Home(){
           await activeRoleState.saveVehicle(vehicle);
           if(routeSearch.intent==="offer"){
             offerVehicleSavedRef.current=true;
-            setServiceType("AGENDADA");
-            setSheetSnap("half");
+            // After first vehicle registration, open the operational driver
+            // cockpit; regular scheduled rides remain available in the menu.
+            await navigate({to:"/disponibilidade-profissional",replace:true});
           }
         }}/>
       {!activeRoleState.loading&&activeRoleState.roleLoadFailed&&
