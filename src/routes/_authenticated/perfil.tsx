@@ -389,6 +389,11 @@ function Perfil() {
   }
 
   async function removePhoto() {
+    // UI guard complements the database trigger; never clear a driver's photo.
+    if (isProfessionalProfile || activeProfileRole === "MOTORISTA") {
+      toast.error("A foto é obrigatória para motoristas. Você pode alterá-la, mas não removê-la.");
+      return;
+    }
     try {
       setUploadStatus("uploading");
 
@@ -879,7 +884,7 @@ function Perfil() {
               Escolher da galeria
             </Button>
 
-            {photo && (
+            {photo && !isProfessionalProfile && activeProfileRole !== "MOTORISTA" && (
               <Button
                 type="button"
                 variant="ghost"
@@ -893,6 +898,9 @@ function Perfil() {
                 Remover foto
               </Button>
             )}
+            {(isProfessionalProfile || activeProfileRole === "MOTORISTA") && (
+              <p className="text-xs text-white/65">A foto é obrigatória para motoristas. Você pode substituí-la a qualquer momento, mas não removê-la.</p>
+            )
 
             <Button
               type="button"

@@ -5275,6 +5275,8 @@ export type Database = {
           institution_code: string | null
           region_code: string | null
           status: string
+          tutorial_eligible: boolean
+          tutorial_seen_at: string | null
           updated_at: string
           usage_role: string | null
           user_id: string
@@ -5286,6 +5288,8 @@ export type Database = {
           institution_code?: string | null
           region_code?: string | null
           status?: string
+          tutorial_eligible?: boolean
+          tutorial_seen_at?: string | null
           updated_at?: string
           usage_role?: string | null
           user_id: string
@@ -5297,6 +5301,8 @@ export type Database = {
           institution_code?: string | null
           region_code?: string | null
           status?: string
+          tutorial_eligible?: boolean
+          tutorial_seen_at?: string | null
           updated_at?: string
           usage_role?: string | null
           user_id?: string
