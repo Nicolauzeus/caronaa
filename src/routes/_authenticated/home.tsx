@@ -12,7 +12,7 @@ import { DriverFlashPlanner } from "@/components/caronaa/shell/DriverFlashPlanne
 import type { FlashDriverRide } from "@/services/flash-driver-service";
 import { DriverScheduledTripsPanel } from "@/components/caronaa/shell/DriverScheduledTripsPanel";
 import type { OnRouteMatch } from "@/types/ride";
-import { useActiveRole, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
+import { useActiveRole, getVehicleStatus, type ActiveRole, type VehicleMissingField } from "@/lib/role/use-active-role";
 import { canSwitchCaronaaRole } from "@/lib/role/role-switch-guard";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -65,10 +65,27 @@ export const Route = createFileRoute("/_authenticated/home")({
       // The role is read from the profile, and authorization is from an
       // authenticated RPC: URL intent/auth metadata never grants F07 access.
       const {data:roleRow,error:roleError}=await (supabase as any).from("profiles")
-        .select("active_role").eq("id",user.id).maybeSingle();
+        .select("active_role,avatar_url,vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_type,vehicle_seats")
+        .eq("id",user.id).maybeSingle();
       // Explicit role switching in the drawer must remain possible, including
       // for authorized professionals who wish to offer an ordinary carona.
       const activityIntent=(location.search as {intent?:string}).intent;
+      if(roleError)throw new Error("Não foi possível identificar o perfil ativo.");
+      // A user who chose MOTORISTA during signup must not silently fall into
+      // passenger Home while their first driver registration remains incomplete.
+      // Existing passengers and intentional role changes are left alone.
+      if(roleRow?.active_role==="PASSAGEIRO"&&activityIntent!=="request"){
+        const vehicleComplete=getVehicleStatus(roleRow).isComplete;
+        const photoComplete=Boolean(roleRow.avatar_url?.trim());
+        if(!vehicleComplete||!photoComplete){
+          const {data:progress,error:onboardingError}=await (supabase as any)
+            .from("user_onboarding_progress").select("usage_role")
+            .eq("user_id",user.id).maybeSingle();
+          if(onboardingError)throw new Error("Não foi possível conferir seu cadastro inicial.");
+          if(progress?.usage_role==="MOTORISTA")
+            throw redirect({to:"/cadastro-veiculo",replace:true});
+        }
+      }
       if(!roleError&&roleRow?.active_role==="MOTORISTA"&&!activityIntent){
         const {data:access,error:accessError}=await (supabase as any).rpc("get_my_professional_access");
         if(!accessError&&access?.authorized===true)
