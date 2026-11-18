@@ -19,12 +19,13 @@ type Props = {
   signOut: () => Promise<void>;
   prelaunchMode?: boolean;
   professionalOnly?: boolean;
+  activeRole?: "PASSAGEIRO" | "MOTORISTA";
 };
 
 const tileClass = "flex min-h-[86px] flex-col justify-center gap-2 rounded-2xl border border-border bg-background p-3 text-left text-foreground transition-colors hover:border-[#FFBB00]/50 hover:bg-primary/5 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] motion-reduce:transform-none";
 const rowClass = "flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00]";
 
-export function MobileAccountDrawer({ signOut, prelaunchMode = false, professionalOnly = false }: Props) {
+export function MobileAccountDrawer({ signOut, prelaunchMode = false, professionalOnly = false, activeRole }: Props) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
@@ -56,7 +57,7 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon"
-          className="size-11 shrink-0 rounded-full hover:bg-primary/10 lg:hidden"
+          className="size-11 shrink-0 rounded-full hover:bg-primary/10"
           aria-label="Abrir menu da conta">
           <Menu size={22} aria-hidden="true" />
         </Button>
@@ -82,6 +83,33 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
           </Link>
         </div>
 
+        {!prelaunchMode && user && (
+          <section aria-label="Minha atividade" className="mb-5">
+            <h3 className="mb-2 px-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Minha atividade</h3>
+            <p className="mb-3 px-1 text-xs leading-relaxed text-muted-foreground">Use a mesma conta para pedir ou oferecer caronas comuns. Apenas um modo fica ativo por vez.</p>
+            <div className="grid gap-2">
+              {([
+                { role: "PASSAGEIRO" as const, title: "Pedir carona", description: "Encontrar viagens ou pedir uma corrida", intent: "request" as const, Icon: UserRound },
+                { role: "MOTORISTA" as const, title: "Oferecer carona", description: "Compartilhar um trajeto com passageiros", intent: "offer" as const, Icon: CarFront },
+              ]).map(item => {
+                const selected = activeRole === item.role;
+                return (
+                  <Link key={item.role} to="/home" search={{intent:item.intent}} onClick={close}
+                    aria-current={selected ? "true" : undefined}
+                    className={`flex min-h-[68px] items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${selected ? "border-[#FFBB00] bg-[#FFBB00]/10" : "border-border bg-background hover:border-[#FFBB00]/50"}`}>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#FFBB00]/15 text-[#B58400]"><item.Icon size={21}/></span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block text-sm font-extrabold">{item.title}</strong>
+                      <small className="block text-xs leading-4 text-muted-foreground">{item.description}</small>
+                    </span>
+                    {selected ? <CheckCircle2 size={20} className="shrink-0 text-[#C18B00]" aria-label="Ativo"/> : <span aria-hidden="true" className="size-5 shrink-0 rounded-full border-2 border-muted-foreground/50"/>}
+                  </Link>
+                );
+              })}
+            </div>
+            <p className="mt-2 px-1 text-xs text-muted-foreground">Oferecer carona comum não habilita corridas profissionais Flash.</p>
+          </section>
+        )}
         {!prelaunchMode && !professionalOnly && (
           <>
             <h3 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Acesso rápido</h3>
@@ -90,9 +118,9 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
                 <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
                 <span className="text-sm font-extrabold">Minhas viagens</span>
               </Link>
-              <Link to="/home" search={{ intent: "offer" }} onClick={close} className={tileClass}>
-                <CarFront size={23} className="text-[#C38D00]" aria-hidden="true" />
-                <span className="text-sm font-extrabold">Oferecer carona</span>
+              <Link to="/perfil" onClick={close} className={tileClass}>
+                <UserRound size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Meu perfil</span>
               </Link>
               <Link to="/seguranca" onClick={close} className={tileClass}>
                 <ShieldCheck size={23} className="text-[#C38D00]" aria-hidden="true" />
