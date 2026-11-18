@@ -192,28 +192,30 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     render(<QuickRideHomePanel {...basic} destination="" destinationPoint={undefined}/>);
     await screen.findByText(/Escolha o destino para visualizar o preço automaticamente/,{exact:false});expect(api.preview).not.toHaveBeenCalled();
   });
-  it("permite nova cotação e persiste liberação da corrida concluída",async()=>{
+  it("libera imediatamente a Home após corrida concluída, sem exigir Nova corrida",async()=>{
     const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";
-    api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"?{data:[{id:completed,role:"PASSENGER",status:"COMPLETED",vehicle_type:"MOTO",municipality:"Redenção"}],error:null}:{data:[],error:null});
+    api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"
+      ?{data:[{id:completed,role:"PASSENGER",status:"COMPLETED",vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
+      :{data:[],error:null});
     render(<QuickRideHomePanel {...basic}/>);
-    expect(await screen.findByText("QR Pix pronto: "+completed)).toBeInTheDocument();
-    await waitFor(()=>expect(api.preview).toHaveBeenCalled(),{timeout:3500});
-    fireEvent.click(screen.getByRole("button",{name:/Nova corrida/i}));
-    expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBe("1");
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_my_requests"));
+    const request=await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500});
+    await waitFor(()=>expect(request).toBeEnabled(),{timeout:3500});
+    expect(screen.queryByRole("button",{name:"Nova corrida"})).not.toBeInTheDocument();
     expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar corrida por/})).toBeEnabled(),{timeout:3500});
-    fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));await waitFor(()=>expect(api.submit).toHaveBeenCalled());
+    fireEvent.click(request);
+    await waitFor(()=>expect(api.submit).toHaveBeenCalledOnce());
   });
-  it("fecha avaliação sem remover Pix; apenas Nova corrida libera tela",async()=>{
-    const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";
-    api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"?{data:[{id:completed,role:"PASSENGER",status:"COMPLETED",vehicle_type:"MOTO",municipality:"Redenção"}],error:null}:{data:[],error:null});
-    render(<QuickRideHomePanel {...basic}/>);await screen.findByText("QR Pix pronto: "+completed);
-    fireEvent.click(screen.getByRole("button",{name:"Avaliar viagem (opcional)"}));fireEvent.click(screen.getByRole("button",{name:"Fechar avaliação de teste"}));
-    expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBeNull();
-    expect(screen.getByText("QR Pix pronto: "+completed)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button",{name:"Nova corrida"}));
-    expect(window.localStorage.getItem("caronaa-completed-dismissed:"+completed)).toBe("1");
-    expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
+  it("encerra visualmente uma busca quando seu prazo passou, mesmo se RPC ainda retornar SEARCHING",async()=>{
+    const expired=new Date(Date.now()-10000).toISOString();
+    api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"
+      ?{data:[{id:"expired-ride",role:"PASSENGER",status:"SEARCHING",expires_at:expired,
+        vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
+      :{data:[],error:null});
+    render(<QuickRideHomePanel {...basic}/>);
+    expect(await screen.findByText("Busca encerrada")).toBeInTheDocument();
+    expect(screen.queryByText(/Procurando um profissional autorizado/)).not.toBeInTheDocument();
+    expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
   });
   it("mostra SEARCHING somente após retorno de ID autorizado pelo servidor",async()=>{
     render(<QuickRideHomePanel {...basic} shellMode shellSnap="full"/>);
