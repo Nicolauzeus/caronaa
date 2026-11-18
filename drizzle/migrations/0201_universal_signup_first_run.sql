@@ -1,7 +1,6 @@
 -- CARONAA: onboarding universal sem região/vínculo obrigatórios.
 -- Aplicar em homologação e depois produção ANTES de habilitar o novo cadastro.
 -- Não altera verificação de e-mail, autorização profissional, campanhas ou RLS.
-BEGIN;
 ALTER TABLE public.user_onboarding_progress
   ADD COLUMN IF NOT EXISTS tutorial_eligible boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS tutorial_seen_at timestamptz;
@@ -22,4 +21,3 @@ COMMENT ON COLUMN public.user_onboarding_progress.tutorial_eligible
   IS 'Apenas novas conclusões do onboarding recebem tutorial de primeiro acesso.';
 COMMENT ON COLUMN public.user_onboarding_progress.tutorial_seen_at
   IS 'Marca o tutorial como visto/pulado; campo cosmético, sem efeito nos grants.';
-COMMIT;
