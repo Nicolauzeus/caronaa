@@ -5,6 +5,9 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
+  CarFront,
+  UserRound,
+  CheckCircle2,
   MapPinned,
   ShieldCheck,
   UsersRound,
@@ -66,6 +69,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const effectiveMode = mode;
+  const [signupRole, setSignupRole] = useState<"PASSAGEIRO" | "MOTORISTA" | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -102,6 +106,7 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "cadastro") {
+        if (!signupRole) throw new Error("Escolha como deseja começar.");
         const name = fullName.trim().replace(/\s+/g, " ");
         if (name.length < 3 || name.length > 120 || name.split(" ").length < 2) {
           throw new Error("Informe seu nome e sobrenome.");
@@ -113,6 +118,7 @@ function AuthPage() {
             emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fonboarding`,
             data: {
               full_name: name,
+              initial_usage_role: signupRole,
             },
           },
         });
@@ -144,6 +150,10 @@ function AuthPage() {
     try {
       const callback = new URL("/auth", window.location.origin);
       callback.searchParams.set("redirect", destination);
+      if (mode === "cadastro" && signupRole) {
+        // Untrusted UX preference only. Onboarding persists it for the authenticated user.
+        sessionStorage.setItem("caronaa:oauth-role-preference", signupRole);
+      }
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: callback.href,
       });
@@ -226,6 +236,35 @@ function AuthPage() {
     );
   }
 
+  if (mode === "cadastro" && !signupRole) {
+    return (
+      <AuthFrame>
+        <div className="mb-6 flex items-center justify-between">
+          <Link to="/" aria-label="Página inicial"><img src={logoAsset.url} alt="CARONAA" className="h-12 w-auto object-contain" /></Link>
+          <ThemeToggle />
+        </div>
+        <p className="text-xs font-bold uppercase tracking-wider text-caronaa-primary-strong">Cadastro · 1 de 2</p>
+        <h1 className="mt-2 font-display text-2xl font-extrabold text-foreground sm:text-3xl">Como quer usar a CARONAA?</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Escolha como deseja começar. Você poderá pedir e oferecer caronas depois, com a mesma conta.</p>
+        <div className="mt-6 grid gap-3">
+          <button type="button" onClick={() => setSignupRole("PASSAGEIRO")}
+            className="flex min-h-20 w-full items-center gap-4 rounded-2xl border border-border bg-auth-field px-4 text-left transition hover:border-caronaa-primary focus-visible:outline-2 focus-visible:outline-caronaa-primary">
+            <UserRound className="shrink-0 text-caronaa-primary-strong" size={26} />
+            <span className="flex-1"><strong className="block text-sm text-foreground">Sou passageiro</strong><span className="block text-xs text-muted-foreground">Quero encontrar e solicitar viagens.</span></span>
+            <ArrowRight className="text-muted-foreground" size={18} />
+          </button>
+          <button type="button" onClick={() => setSignupRole("MOTORISTA")}
+            className="flex min-h-20 w-full items-center gap-4 rounded-2xl border border-border bg-auth-field px-4 text-left transition hover:border-caronaa-primary focus-visible:outline-2 focus-visible:outline-caronaa-primary">
+            <CarFront className="shrink-0 text-caronaa-primary-strong" size={26} />
+            <span className="flex-1"><strong className="block text-sm text-foreground">Sou motorista</strong><span className="block text-xs text-muted-foreground">Quero oferecer caronas ou solicitar acesso profissional.</span></span>
+            <ArrowRight className="text-muted-foreground" size={18} />
+          </button>
+        </div>
+        <div className="mt-5 text-center text-sm text-muted-foreground">Já tem conta? <button type="button" onClick={() => setMode("entrar")} className="min-h-11 font-bold text-caronaa-primary-strong underline">Entrar</button></div>
+      </AuthFrame>
+    );
+  }
+
   return (
     <AuthFrame>
       {/* Header oficial da experiência CARONAA */}
@@ -239,14 +278,22 @@ function AuthPage() {
 
         <div className="pt-2">
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            {effectiveMode === "entrar" ? "Entre na sua conta" : "Crie sua conta"}
+            {effectiveMode === "entrar" ? "Entre na sua conta" : "Seus dados básicos"}
           </h1>
           <p className="text-sm font-medium text-muted-foreground mt-1">
-            {effectiveMode === "entrar" ? "Acesse sua conta para continuar na CARONAA." : "Comece com seus dados. Você poderá pedir ou oferecer viagens depois."}
+            {effectiveMode === "entrar" ? "Acesse sua conta para continuar na CARONAA." : "Preencha seus dados para criar sua conta."}
           </p>
         </div>
       </div>
 
+      {mode === "cadastro" && signupRole && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-caronaa-primary/30 bg-caronaa-primary/10 px-3 py-2 text-sm">
+          <span className="flex items-center gap-2 font-semibold text-foreground"><CheckCircle2 size={16} className="text-caronaa-primary-strong" />
+            {signupRole === "MOTORISTA" ? "Motorista" : "Passageiro"}
+          </span>
+          <button type="button" onClick={() => setSignupRole(null)} className="min-h-11 px-2 font-bold text-caronaa-primary-strong underline">Alterar</button>
+        </div>
+      )}
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-3 lg:space-y-4">
         {submitError && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</p>}
