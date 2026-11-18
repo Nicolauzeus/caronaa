@@ -272,48 +272,68 @@ export function ShellJourneyPlanner({
   },[serviceType,route?.distanceKm,destinationPoint?.lat,destinationPoint?.lng,
      onRouteVehicle,seats,entireCar,originRevision,flashRideActive]);
 
-  const flashChoices=<section aria-label="Escolha sua carona" className="space-y-2">
-    <p className="font-[Sora] text-base font-extrabold text-white">Veículos disponíveis agora</p>
-    <p className="text-xs text-white/70">Confira as opções online e os preços calculados para o destino. Escolha a que preferir.</p>
+  const flashChoices=<section aria-label="Escolha sua carona" className="space-y-3">
+    <div className="space-y-1">
+      <h2 className="font-[Sora] text-lg font-extrabold text-white">Opções disponíveis agora</h2>
+      <p className="text-xs leading-relaxed text-white/65">Confira preços, distância e motoristas online para seu destino.</p>
+    </div>
     <div role="radiogroup" aria-label="Opções de viagem" className="space-y-2">
       {(["MOTO","CAR"] as const).map(type=>{
-        const checked=mode==="EXCLUSIVE"&&exclusiveVehicle===type;
         const fare=flashFares[type]??null;
         const price=fare&&Date.parse(fare.expiresAt)>Date.now()?formatBrl(fare.customerPaysCents/100):null;
-        const pending=waitingForOrigin||(valid(originPoint)&&valid(destinationPoint)&&flashFarePending);
         const onlineCount=flashDriverCounts[type];
         const radarFailed=Boolean(flashDriverErrors[type]||flashDriverError);
         const available=onlineCount>0&&!radarFailed;
-        return <Button variant="ghost" type="button" key={type} role="radio" aria-checked={checked}
-          disabled={flashRideActive} onClick={()=>{if(flashRideActive)return;setMode("EXCLUSIVE");changeVehicle(type,"EXCLUSIVE");}}
-          className={`grid h-auto min-h-[76px] w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-xl border px-3 py-3 text-left text-secondary-foreground hover:bg-caronaa-white/10 hover:text-secondary-foreground motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
-          {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:<CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
+        const ready=available&&Boolean(price)&&!flashRideActive;
+        const checked=flashStep==="confirm"&&mode==="EXCLUSIVE"&&exclusiveVehicle===type;
+        return <button type="button" key={type} role="radio" aria-checked={checked}
+          disabled={!ready}
+          onClick={()=>{
+            if(!ready)return;
+            setMode("EXCLUSIVE");changeVehicle(type,"EXCLUSIVE");
+            setFlashStep("confirm");onSnapChange?.("full");
+          }}
+          className={`flex min-h-[94px] w-full items-center gap-2 rounded-2xl border px-2.5 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-[#FFBB00] motion-reduce:transition-none ${checked?"border-[#FFBB00] bg-[#FFBB00]/10":"border-white/20 bg-white/[0.05]"} disabled:opacity-60`}>
+          <span className="flex h-[68px] w-[88px] shrink-0 items-center justify-center">
+            <img src={type==="MOTO"?"/flash-moto.png":"/flash-carro.png"} alt="" aria-hidden="true"
+              loading="lazy" className="max-h-[68px] w-[88px] object-contain"
+              onError={e=>{e.currentTarget.style.display="none";}}/>
+          </span>
           <span className="min-w-0 flex-1">
-            <strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto · Mototáxi":"Flash Carro · Motorista"}</strong>
-            <small className="block text-xs text-white/65">{type==="MOTO"?"Viagem de moto":"Viagem de carro"} · {fare?.distanceKm.toFixed(1)??"—"} km</small>
-            <small className={`mt-1 block text-xs ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
-              {flashDriverLoading?"Verificando online…":radarFailed?"Radar temporariamente indisponível":available
-                ?`${onlineCount} ${type==="MOTO"?"mototáxi(s)":"carro(s)"} online`:"Nenhum motorista online agora"}
+            <strong className="block font-[Sora] text-sm font-extrabold text-white">{type==="MOTO"?"Flash Moto":"Flash Carro"}</strong>
+            <small className="block text-[11px] text-white/65">{type==="MOTO"?"Mototáxi profissional":"Motorista profissional"}</small>
+            <small className="mt-1 block text-[11px] text-white/55">{fare?.durationMinutes?Math.round(fare.durationMinutes)+" min · ":""}{fare?.distanceKm.toFixed(1)??"—"} km</small>
+            <small className={`mt-1 block text-[11px] ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
+              {flashDriverLoading?"Consultando motoristas…":radarFailed?"Radar temporariamente indisponível":available
+                ?`${onlineCount} ${type==="MOTO"?"mototaxista(s)":"motorista(s)"} online`:"Nenhum motorista online"}
             </small>
           </span>
-          <span className="text-right font-[Sora] text-sm font-extrabold text-primary">
-            {price?price:pending?<span role="status" aria-label={waitingForOrigin?"Aguardando localização":"Consultando preço"} className="inline-flex items-center gap-1.5">
-              <Loader2 size={16} aria-hidden="true" className="animate-spin motion-reduce:animate-none"/>
-              <span className="text-xs">{waitingForOrigin?"Localizando…":"Consultando…"}</span>
-            </span>:!valid(originPoint)?"Defina a saída":valid(destinationPoint)?"Indisponível":"—"}
-            {price&&<small className="block text-[10px] font-normal text-white/65">Tarifa calculada</small>}
+          <span className="shrink-0 text-right">
+            <strong className="block font-[Sora] text-sm font-extrabold text-[#FFBB00]">
+              {price??(flashFarePending?"Calculando…":"Indisponível")}
+            </strong>
+            {ready&&<small className="block text-[10px] text-white/45">Selecionar</small>}
           </span>
-          <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${checked?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>
-        </Button>;
+        </button>;
       })}
-      <button type="button" role="radio" aria-checked={mode==="ON_ROUTE"} disabled={flashRideActive} onClick={()=>setMode("ON_ROUTE")}
-        className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors motion-reduce:transition-none ${mode==="ON_ROUTE"?"border-[#FFBB00] bg-[#FFBB00]/15":"border-white/20 bg-white/[0.06]"} disabled:opacity-60`}>
-        <MapPin size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
-        <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-sm font-extrabold">Carona Na Rota</strong><small className="block text-xs text-white/65">Ponto de encontro próximo</small></span>
-        <span className="text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">{onRouteMatches.length>0?"Ver ofertas":onRouteBusy?"Buscando...":onRouteDiagnostic==="NO_ON_ROUTE_MATCHES"?"Sem ofertas":"Consultar"}</span>
-        <span aria-hidden="true" className={`size-5 shrink-0 rounded-full border-2 ${mode==="ON_ROUTE"?"border-[#FFBB00] bg-[#FFBB00] shadow-[inset_0_0_0_4px_#121212]":"border-white/45"}`}/>
-      </button>
+      {onRouteMatches.length>0&&<button type="button" role="radio" aria-checked={flashStep==="shared"}
+        disabled={flashRideActive} onClick={()=>{
+          setMode("ON_ROUTE");setFlashStep("shared");onSnapChange?.("full");
+        }}
+        className={`flex min-h-[88px] w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${flashStep==="shared"?"border-[#FFBB00] bg-[#FFBB00]/10":"border-white/20 bg-white/[0.05]"}`}>
+        <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#FFBB00]/10 text-[#FFBB00]"><UserRound size={25}/></span>
+        <span className="min-w-0 flex-1">
+          <strong className="block font-[Sora] text-sm font-extrabold">CARONAA <small className="rounded-md bg-emerald-600/20 px-1.5 py-0.5 text-[10px] text-emerald-300">Compartilhada</small></strong>
+          <small className="mt-1 block text-xs text-white/65">Carona Na Rota · trajeto compatível</small>
+          <small className="mt-1 block text-[11px] text-emerald-300">{onRouteMatches.length} oferta(s) disponível(is)</small>
+        </span>
+        <strong className="shrink-0 text-right font-[Sora] text-sm font-extrabold text-[#FFBB00]">
+          {formatBrl(Math.min(...onRouteMatches.map(match=>match.estimatedPrice)))}
+          <small className="block text-[10px] font-normal text-white/55">a partir de</small>
+        </strong>
+      </button>}
     </div>
+    {onRouteBusy&&<p role="status" className="text-xs text-white/55">Buscando caronas compartilhadas compatíveis…</p>}
   </section>;
   const flashOnRoute=mode==="ON_ROUTE"&&<section aria-label="Caronas Na Rota" className="space-y-3 rounded-2xl border border-white/15 bg-white/[0.035] p-3">
     <details className="text-xs text-white/80"><summary className="min-h-10 cursor-pointer font-bold text-[#FFBB00]">Ajustar vagas e tipo de veículo</summary>
