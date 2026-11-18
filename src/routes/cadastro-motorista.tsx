@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/caronaa/BrandElements";
-import { generateProfessionalPassword, passwordGuidance, registrationPasswordError, professionalAuthErrorMessage, professionalAuthErrorCode } from "@/lib/professional-auth";
+import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -10,19 +10,15 @@ import { detailsSchema } from "@/lib/mototaxi-registration";
 
 export const Route = createFileRoute("/cadastro-motorista")({
   ssr: false,
-  component: SimpleMotorcycleRegistration,
-  head: () => ({ meta: [{ title: "Cadastro de mototaxista — CARONAA" }] }),
+  component: ProfessionalMotorcycleRegistration,
+  head: () => ({ meta: [{ title: "Dados profissionais — CARONAA" }] }),
 });
 
 const photoTypes = ["image/jpeg", "image/png", "image/webp"];
 
-function SimpleMotorcycleRegistration() {
+function ProfessionalMotorcycleRegistration() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const [mode, setMode] = useState<"signup" | "login">("signup");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -35,23 +31,41 @@ function SimpleMotorcycleRegistration() {
   const [reviewState, setReviewState] = useState<"loading" | "ready" | "error">("loading");
   const [reviewRetry, setReviewRetry] = useState(0);
   const [vehiclePlate, setVehiclePlate] = useState("");
-  const [confirmationSent, setConfirmationSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const [authErrorCode, setAuthErrorCode] = useState<string | null>(null);
-  const [resetMode, setResetMode] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const strength = passwordGuidance(password);
+  const [onboardingState, setOnboardingState] = useState<"checking" | "ready" | "error">("checking");
+  const [onboardingRetry, setOnboardingRetry] = useState(0);
+
+  // A professional application is not a second sign-up.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user?.email_confirmed_at) {
+      void navigate({
+        to: "/auth",
+        search: { mode: user ? "entrar" : "cadastro", redirect: "/cadastro-motorista" },
+        replace: true,
+      });
+      return;
+    }
+    let alive = true;
+    setOnboardingState("checking");
+    void readOnboarding().then(progress => {
+      if (!alive) return;
+      if (progress?.status !== "BASIC_COMPLETED" || progress.current_step !== "DONE") {
+        void navigate({ to: "/onboarding", search: { redirect: "/cadastro-motorista" }, replace: true });
+        return;
+      }
+      setOnboardingState("ready");
+    }).catch(() => { if (alive) setOnboardingState("error"); });
+    return () => { alive = false; };
+  }, [authLoading, user?.id, user?.email_confirmed_at, navigate, onboardingRetry]);
 
   useEffect(() => {
-    if (!user?.email_confirmed_at) return;
+    if (!user?.email_confirmed_at || onboardingState !== "ready") return;
     let active = true;
     setReviewState("loading");
     void Promise.all([
       (supabase as any).from("professional_mototaxi_profiles").select("first_name,last_name,whatsapp_e164,region_code,registration_number").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("avatar_url,vehicle_plate").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("avatar_url,vehicle_plate,full_name").eq("id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
     ]).then(([details, profile, access]) => {
       if (!active) return;
@@ -61,6 +75,11 @@ function SimpleMotorcycleRegistration() {
         setWhatsapp(details.data.whatsapp_e164 ?? "");
         setRegion(details.data.region_code === "FORTALEZA" ? "FORTALEZA" : "MACICO_BATURITE");
         setRegistrationNumber(details.data.registration_number ?? "");
+      } else {
+        const fullName = String(profile.data?.full_name || user.user_metadata?.full_name || "").trim();
+        const parts = fullName.split(/\s+/).filter(Boolean);
+        setFirstName(parts[0] ?? "");
+        setLastName(parts.length > 1 ? parts[parts.length - 1] : "");
       }
       if (access.error) {
         setReviewState("error");
@@ -82,84 +101,8 @@ function SimpleMotorcycleRegistration() {
       }
     });
     return () => { active = false; };
-  }, [user?.id, user?.email_confirmed_at, reviewRetry]);
+  }, [user?.id, user?.email_confirmed_at, onboardingState, reviewRetry]);
 
-  async function authenticate(event: FormEvent) {
-    event.preventDefault();
-    if (mode === "signup" && registrationPasswordError(password, confirm)) {
-      setFeedback(registrationPasswordError(password, confirm) ?? "Confira sua senha.");
-      return;
-    }
-    setFeedback("");
-    setAuthErrorCode(null);
-    setBusy(true);
-    try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim().toLowerCase(), password,
-          options: { emailRedirectTo: window.location.origin + "/cadastro-motorista" },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          setConfirmationSent(true);
-          setPassword("");
-          setConfirm("");
-          toast.success("Confira o e-mail para confirmar sua conta.");
-          return;
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-        if (error) throw error;
-      }
-      setPassword(""); setConfirm("");
-    } catch (error) {
-      setAuthErrorCode(professionalAuthErrorCode(error));
-      setFeedback(professionalAuthErrorMessage(error));
-    } finally { setBusy(false); }
-  }
-
-  function changeMode(next: "signup" | "login") {
-    setMode(next);
-    setPassword("");
-    setConfirm("");
-    setFeedback("");
-    setAuthErrorCode(null);
-    setResetMode(false);
-    setShowPassword(false);
-    setShowConfirm(false);
-  }
-
-  function suggestPassword() {
-    try {
-      const generated = generateProfessionalPassword();
-      setPassword(generated);
-      setConfirm(generated);
-      setShowPassword(true);
-      setFeedback("Senha forte preenchida. Guarde-a em um gerenciador de senhas.");
-    } catch {
-      setFeedback("Não foi possível gerar uma senha. Escolha uma senha segura.");
-    }
-  }
-
-  async function resetPassword(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setFeedback("");
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: window.location.origin + "/reset-password",
-      });
-      if (error && /rate limit|too many requests/i.test(error.message)) {
-        setFeedback("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
-      } else {
-        setResetSent(true);
-      }
-    } catch {
-      setResetSent(true);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function sendRequest(event: FormEvent) {
     event.preventDefault();
@@ -205,64 +148,37 @@ function SimpleMotorcycleRegistration() {
     } finally { setBusy(false); }
   }
 
+
+  if (authLoading || !user?.email_confirmed_at || onboardingState !== "ready") {
+    return (
+      <main className="grid min-h-[100dvh] place-items-center bg-[#121212] px-4 text-white">
+        <section className="w-full max-w-sm space-y-4 rounded-3xl border border-white/15 bg-[#1b1b1b] p-6">
+          <BrandLogo size="lg" className="max-w-[185px]" />
+          {onboardingState === "error" && user?.email_confirmed_at ? (
+            <>
+              <h1 className="font-display text-lg font-bold">Não foi possível conferir seu cadastro universal</h1>
+              <p role="alert" className="text-sm text-white/70">Aguarde a verificação antes de enviar uma solicitação profissional.</p>
+              <button type="button" onClick={() => setOnboardingRetry(current => current + 1)}
+                className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
+                Tentar novamente
+              </button>
+            </>
+          ) : <p role="status" className="text-sm text-white/70">Abrindo seu cadastro universal…</p>}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-[100dvh] items-start justify-center bg-[#121212] px-3 py-5 text-white sm:items-center sm:px-5 sm:py-10">
       <section className="w-full max-w-[460px] space-y-5 rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 shadow-xl sm:p-7">
         <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Acesso profissional</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">{user?.email_confirmed_at ? authorized && reviewState === "ready" ? "Cadastro aprovado" : "Seu cadastro de mototaxista" : resetMode ? "Recuperar acesso" : confirmationSent ? "Confirme seu e-mail" : mode === "login" ? "Bem-vindo de volta" : "Quero ser mototaxista"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{user?.email_confirmed_at ? authorized && reviewState === "ready" ? "Seu acesso está liberado. Abra o cockpit para trabalhar." : "Revise seus dados profissionais e acompanhe sua solicitação." : resetMode ? "Enviaremos instruções para redefinir sua senha." : mode === "login" ? "Entre para continuar seu cadastro ou consultar sua aprovação." : "Crie sua conta para enviar seus dados profissionais e solicitar aprovação."}</p>
+          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Complemento profissional</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{authorized && reviewState === "ready" ? "Cadastro aprovado" : "Seus dados profissionais"}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized && reviewState === "ready" ? "Seu acesso está liberado. Abra o cockpit para trabalhar." : "Sua conta universal já está criada. Complete apenas os dados da atividade e acompanhe a aprovação profissional."}</p>
         </div>
-        {authLoading ? <p>Verificando sua conta...</p> : !user?.email_confirmed_at ? confirmationSent ? (
-          <div className="space-y-3" role="status">
-            <p>Enviamos um link de confirmação para {email}. Após confirmar, retorne a esta página para concluir seu cadastro.</p>
-            <button type="button" className="rounded-xl border border-white/30 p-3" onClick={() => { setConfirmationSent(false); setMode("login"); }}>Já confirmei — entrar</button>
-          </div>
-        ) : resetMode ? (
-          <form className="space-y-4" onSubmit={resetPassword}>
-            {resetSent ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">Se existir uma conta com este e-mail, enviaremos as instruções de recuperação.</p> : (
-              <>
-                <label className="block text-sm">E-mail
-                  <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={e => setEmail(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base focus-visible:border-[#FFBB00]" />
-                </label>
-                {feedback && <p role="alert" className="rounded-xl border border-red-400/40 p-3 text-sm text-red-200">{feedback}</p>}
-                <button disabled={busy} className="min-h-12 w-full rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy ? "Enviando..." : "Enviar instruções"}</button>
-              </>
-            )}
-            <button type="button" onClick={() => { setResetMode(false); setResetSent(false); setFeedback(""); }} className="min-h-11 w-full text-sm text-white/75 underline">Voltar ao login</button>
-          </form>
-        ) : (
-          <form className="space-y-4" onSubmit={authenticate}>
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Opções de acesso">
-              <button type="button" disabled={busy} aria-pressed={mode === "signup"} className={mode === "signup" ? "min-h-12 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212]" : "min-h-12 rounded-xl border border-white/20 p-3"} onClick={() => changeMode("signup")}>Criar conta</button>
-              <button type="button" disabled={busy} aria-pressed={mode === "login"} className={mode === "login" ? "min-h-12 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212]" : "min-h-12 rounded-xl border border-white/20 p-3"} onClick={() => changeMode("login")}>Já tenho conta</button>
-            </div>
-            <label className="block text-sm">E-mail (login)<input type="email" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" /></label>
-            <div>
-              <label htmlFor="professional-password" className="block text-sm">Senha</label>
-              <div className="relative">
-                <input id="professional-password" type={showPassword ? "text" : "password"} minLength={mode === "signup" ? 8 : 1} autoComplete={mode === "signup" ? "new-password" : "current-password"} required value={password} onChange={e => { setPassword(e.target.value); setFeedback(""); }} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 pr-14 text-base outline-none focus-visible:border-[#FFBB00]" />
-                <button type="button" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} aria-pressed={showPassword} onClick={() => setShowPassword(v => !v)} className="absolute inset-y-1 right-1 flex w-11 items-center justify-center rounded-lg text-white/70 focus-visible:ring-2 focus-visible:ring-[#FFBB00]">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-              </div>
-              {mode === "signup" ? <div className="mt-2 space-y-2">
-                <div className="flex gap-1" aria-hidden="true">{[1,2,3,4].map(n => <span key={n} className={"h-1 flex-1 rounded-full " + (strength.score >= n ? "bg-[#FFBB00]" : "bg-white/15")} />)}</div>
-                <div className="flex items-center justify-between gap-2 text-xs">{password && <span aria-live="polite" className="text-white/70">Força: {strength.label}</span>}<button type="button" onClick={suggestPassword} className="ml-auto inline-flex min-h-10 items-center gap-1.5 font-semibold text-[#FFBB00] underline"><KeyRound size={15} /> Sugerir senha forte</button></div>
-              </div> : <button type="button" onClick={() => { setResetMode(true); setFeedback(""); }} className="mt-1 min-h-10 text-sm font-semibold text-[#FFBB00] underline">Esqueci minha senha</button>}
-            </div>
-            {mode === "signup" && <div>
-              <label htmlFor="professional-confirm" className="block text-sm">Confirmar senha</label>
-              <div className="relative">
-                <input id="professional-confirm" type={showConfirm ? "text" : "password"} autoComplete="new-password" required value={confirm} aria-invalid={Boolean(confirm && confirm !== password)} onChange={e => { setConfirm(e.target.value); setFeedback(""); }} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 pr-14 text-base outline-none focus-visible:border-[#FFBB00]" />
-                <button type="button" aria-label={showConfirm ? "Ocultar confirmação" : "Mostrar confirmação"} aria-pressed={showConfirm} onClick={() => setShowConfirm(v => !v)} className="absolute inset-y-1 right-1 flex w-11 items-center justify-center rounded-lg text-white/70 focus-visible:ring-2 focus-visible:ring-[#FFBB00]">{showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-              </div>
-              {confirm && <p aria-live="polite" className={"mt-1 text-xs " + (confirm !== password ? "text-red-300" : "text-white/65")}>{confirm === password ? "As senhas coincidem." : "As senhas não coincidem."}</p>}
-            </div>}
-            {feedback && <div role="alert" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm"><p>{feedback}</p>{authErrorCode && <p className="mt-2 text-xs text-white/65">Referência técnica: {authErrorCode}</p>}</div>}
-            <button disabled={busy} aria-busy={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] p-3 font-bold text-[#121212] disabled:opacity-50">{busy && <LoaderCircle size={18} className="animate-spin" />}{busy ? "Aguarde..." : mode === "signup" ? "Criar minha conta" : "Entrar e continuar"}</button>
-            <Link to="/auth" className="block min-h-10 pt-2 text-center text-xs text-white/70 underline">Voltar ao login convencional</Link>
-          </form>
-        ) : reviewState !== "ready" ? (
+        {reviewState !== "ready" ? (
           <div className="space-y-4" role="status" aria-live="polite">
             {reviewState === "loading" ? (
               <div className="space-y-3">
@@ -343,7 +259,7 @@ function SimpleMotorcycleRegistration() {
                 <label className="block text-sm">Primeiro nome<input required value={firstName} onChange={e => setFirstName(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" /></label>
                 <label className="block text-sm">Último sobrenome<input required value={lastName} onChange={e => setLastName(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
               </div>
-              <label className="block text-sm">E-mail (login)<input disabled value={user.email ?? ""} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3 opacity-70" /></label>
+              <p className="rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white/70">Conta universal: <strong className="break-all text-white">{user.email}</strong></p>
               <label className="block text-sm">WhatsApp com DDD<input type="tel" required inputMode="tel" value={whatsapp} placeholder="(85) 99999-9999" onChange={e => setWhatsapp(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3" /></label>
               <label className="block text-sm">Região<select value={region} onChange={e => setRegion(e.target.value as typeof region)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#232323] p-3">
                 <option value="MACICO_BATURITE">Maciço de Baturité</option><option value="FORTALEZA">Fortaleza e região metropolitana</option>
