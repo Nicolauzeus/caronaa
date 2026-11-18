@@ -321,7 +321,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         >
           <div className="mb-6 flex items-center justify-between gap-3">
             {!collapsed && (
-              <Link to={scope.isGlobalAdmin ? "/admin" : getDepartmentHome(scope.departments[0]?.id ?? "technology")} className="inline-flex min-w-0 items-center gap-2">
+              <Link to="/home" preload={false} onClick={switchToApp} className="inline-flex min-w-0 items-center gap-2" aria-label="CARONAA — página inicial">
                 <img src={logoAsset.url} alt="CARONAA" className="h-auto w-28 object-contain" />
               </Link>
             )}
