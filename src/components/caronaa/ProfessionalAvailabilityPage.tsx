@@ -444,19 +444,24 @@ export function ProfessionalAvailabilityPage() {
         </span>
       </div>
       <div className="relative overflow-hidden rounded-xl border">
-        <GoogleMapSurface
-          points={mapFix ? [{id:"self-professional",lat:mapFix.lat,lng:mapFix.lng,
-            title: mapFix.simulated ? "Prévia simulada, não publicada" :
-              fresh ? "Sua posição publicada" : "Posição apenas neste navegador",
-            kind:"driver",label:"EU"}] : []}
+        {mapFix ? <GoogleMapSurface
+          points={[{id:"self-professional",lat:mapFix.lat,lng:mapFix.lng,
+            title:mapFix.simulated?"Prévia simulada, não publicada":
+              fresh?"Sua posição publicada":"Posição apenas neste navegador",
+            kind:"driver",label:"EU"}]}
           fitMode="once" smoothTracking
           showControls gestureHandling="greedy"
           fitKey="professional-home-position"
           className="h-full w-full"
           ariaLabel="Mapa da posição atual do motorista"
-        />
-        {!mapFix && <div role="status" className="professional-cockpit__map-status pointer-events-none absolute inset-x-3 bottom-3 rounded-lg border bg-background/95 p-3 text-center text-xs font-semibold shadow">
-          Aguardando localização real. Ative ou autorize o GPS para centralizar o mapa.
+        /> : <div role="status"
+          className="flex h-full min-h-[280px] w-full items-start justify-center bg-[#121212] px-6 pt-24 text-center text-sm text-white/80">
+          <p className="max-w-xs rounded-2xl border border-[#FFBB00]/30 bg-white/5 p-4">
+            Aguardando localização GPS real. Nenhum ponto foi confirmado.
+            {municipality&&<span className="mt-2 block text-xs text-white/60">
+              Município do cadastro: {municipality} · não confirmado por GPS
+            </span>}
+          </p>
         </div>}
       </div>
       <p className="text-xs text-muted-foreground">
