@@ -402,6 +402,12 @@ export function ProfessionalAvailabilityPage() {
     }finally{setBusy(false);}
   }
 
+  // Mobile keeps GPS feedback legible without exposing raw database errors.
+  const visibleGpsError=/^(GPS |Permissão GPS|Sinal GPS|Localização |O Google|Não foi possível publicar o GPS|Publicação temporariamente|SIMULAÇÃO de homologação)/.test(error)
+    ? error
+    : enabled
+      ? "Não foi possível confirmar sua posição no radar. Verifique a permissão de GPS e tente novamente."
+      : "Não foi possível atualizar sua disponibilidade. Tente novamente.";
   const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
   const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
   const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
@@ -532,7 +538,7 @@ export function ProfessionalAvailabilityPage() {
     </section>
     {error && <div role="alert" className="professional-cockpit__banner">
       <AlertTriangle size={15} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
-      <span className="text-white/90">{error}</span>
+      <span className="text-white/90">{visibleGpsError}</span>
     </div>}
     {accuracyWarning && enabled && <div role="status" className="professional-cockpit__banner">
       <AlertTriangle size={15} className="shrink-0 text-amber-300" aria-hidden="true"/>
