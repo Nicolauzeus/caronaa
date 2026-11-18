@@ -51,6 +51,10 @@ export function QuickRideDriverQueue({
   const [pendingReview,setPendingReview]=useState<ActiveDriverRide|null>(null);
   const [manualReviewOpen,setManualReviewOpen]=useState(false);
   const [manualReason,setManualReason]=useState("");
+  useEffect(()=>{
+    setManualReviewOpen(false);
+    setManualReason("");
+  },[active?.id]);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const [boardingPin,setBoardingPin]=useState("");
