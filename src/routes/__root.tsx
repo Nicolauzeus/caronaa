@@ -5,11 +5,12 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -198,6 +199,24 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function RouteNavigationProgress() {
+  const pending = useRouterState({ select: (state) => state.status === "pending" });
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!pending) { setVisible(false); return; }
+    // Fast transitions should not flash a loader.
+    const timer = window.setTimeout(() => setVisible(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
+  if (!visible || !pending) return null;
+  return (
+    <div role="progressbar" aria-label="Abrindo página" aria-valuemin={0} aria-valuemax={100}
+      className="caronaa-navigation-progress pointer-events-none fixed inset-x-0 top-0 z-[110] h-[3px] overflow-hidden bg-[#FFBB00]/20">
+      <div className="caronaa-navigation-progress-bar h-full origin-left bg-[#FFBB00]" />
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -229,6 +248,7 @@ function RootComponent() {
         <AuthProvider>
           <NotificationProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <RouteNavigationProgress />
           <Outlet />
           <PwaInstallNotice />
 
