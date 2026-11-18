@@ -79,8 +79,9 @@ BEGIN
   END IF;
 
   IF p_seats IS NULL OR p_seats<1 OR p_seats>7
-     OR p.vehicle_seats IS NULL OR p.vehicle_seats<>p_seats
-     OR (p_vehicle_type='MOTO' AND p_seats<>1)
+     OR p.vehicle_seats IS NULL
+     OR (p_vehicle_type='MOTO' AND (p_seats<>1 OR p.vehicle_seats<>1))
+     OR (p_vehicle_type='CAR' AND (p.vehicle_seats<1 OR p.vehicle_seats>3))
      OR (p_vehicle_type='CAR' AND p_car_category IN ('HATCH','SEDAN','PICKUP') AND p_seats>4)
      OR (p_vehicle_type='CAR' AND p_car_category='SUV' AND p_seats>6) THEN
     v:=v||'SEATS';
