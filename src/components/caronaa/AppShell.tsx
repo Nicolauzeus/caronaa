@@ -67,14 +67,14 @@ export function AppShell({
   const selectedNav = (to: string, label: string) => isAppNavSelected(pathname, activeIntent, to, label);
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
-  const { data: professionalAccess, isPending: professionalAccessPending } = useQuery({
+  const { data: professionalNavigation, isPending: professionalAccessPending } = useQuery({
     queryKey: ["caronaa", "professional-navigation", user?.id ?? "guest"],
     enabled: Boolean(user?.id) && !publicPage && !prelaunchMode,
     staleTime: 15_000,
     gcTime: 120_000,
     retry: false,
     queryFn: async () => {
-      if (!user?.id) return false;
+      if (!user?.id) return { professionalOnly: false, activeRole: null as "PASSAGEIRO" | "MOTORISTA" | null };
       // This only selects the navigation surface. F07 permissions are still
       // enforced by the database and authenticated route guards.
       const [access, roleRow] = await Promise.all([
@@ -82,13 +82,18 @@ export function AppShell({
         (supabase as any).from("profiles").select("active_role")
           .eq("id", user.id).maybeSingle(),
       ]);
-      if (access.error || roleRow.error) return false;
-      return access.data?.authorized === true &&
-        roleRow.data?.active_role === "MOTORISTA";
+      const activeRole = roleRow.error ? null :
+        roleRow.data?.active_role === "MOTORISTA" ? "MOTORISTA" as const :
+        roleRow.data?.active_role === "PASSAGEIRO" ? "PASSAGEIRO" as const : null;
+      return {
+        activeRole,
+        professionalOnly: !access.error && !roleRow.error &&
+          access.data?.authorized === true && activeRole === "MOTORISTA",
+      };
     },
   });
   const professionalOnly = !user || publicPage || prelaunchMode ? false
-    : professionalAccessPending ? null : professionalAccess === true;
+    : professionalAccessPending ? null : professionalNavigation?.professionalOnly === true;
   useEffect(() => {
     if (!user?.id || publicPage || prelaunchMode) return;
     const onRoleChanged = () => {
@@ -275,7 +280,7 @@ export function AppShell({
 
             {/* Botão de Menu para MOBILE */}
             {!publicPage ? (
-              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} professionalOnly={professionalOnly === true} />
+              <MobileAccountDrawer signOut={signOut} prelaunchMode={prelaunchMode} professionalOnly={professionalOnly === true} activeRole={professionalNavigation?.activeRole ?? undefined} />
             ) : (
               <Button
                 variant="ghost"
@@ -423,7 +428,7 @@ export function AppShell({
           aria-label={professionalOnly ? "Navegação profissional mobile" : "Navegação principal mobile"}
           className={`fixed inset-x-0 bottom-0 z-40 isolate border-t pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.10)] backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : professionalOnly ? "grid-cols-3" : "grid-cols-4"}`}>
+          <div className={`mx-auto grid max-w-lg gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : "grid-cols-3"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
               const selected = selectedNav(to,label);
               return (
