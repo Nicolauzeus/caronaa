@@ -24,7 +24,8 @@ import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
-import { authenticatedNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
+import { authenticatedNav, sharedDriverNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
+import { caronaaHomeTarget, resolveCaronaaHomeSurface, type CaronaaHomeSurface } from "@/lib/navigation/role-home";
 
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
@@ -37,10 +38,16 @@ const professionalNav = [
   { to: "/perfil" as const, label: "Conta", icon: UserRound },
 ];
 
-export function Brand({ light = false }: { light?: boolean }) {
+export function Brand({ light = false, homeSurface }: { light?: boolean; homeSurface?: CaronaaHomeSurface }) {
   const { user } = useAuth();
+  const target = caronaaHomeTarget(homeSurface ?? (user ? "passenger" : "guest"));
   return (
-    <Link to={user ? "/home" : "/"} className="inline-flex items-center" aria-label="CARONAA — página inicial">
+    <Link to={target.to} search={target.to === "/home" ? target.search : undefined}
+      onClick={() => {
+        if (homeSurface === "shared-driver" && typeof window !== "undefined")
+          window.dispatchEvent(new Event("caronaa:driver-home"));
+      }}
+      className="inline-flex items-center" aria-label="CARONAA — página inicial">
       <img
         src={logoAsset.url}
         alt="CARONAA"
@@ -104,7 +111,14 @@ export function AppShell({
     window.addEventListener("caronaa:role-changed", onRoleChanged);
     return () => window.removeEventListener("caronaa:role-changed", onRoleChanged);
   }, [queryClient, user?.id, publicPage, prelaunchMode]);
-  const navigation = prelaunchMode ? waitingNav : professionalOnly === true ? professionalNav : professionalOnly === null ? [] : authenticatedNav;
+  const homeSurface = resolveCaronaaHomeSurface({
+    authenticated: Boolean(user), activeRole: professionalNavigation?.activeRole,
+    professionalAuthorized: professionalOnly === true, prelaunchMode,
+  });
+  const navigation = prelaunchMode ? waitingNav :
+    professionalOnly === true ? professionalNav :
+    professionalAccessPending && user ? [] :
+    homeSurface === "shared-driver" ? sharedDriverNav : authenticatedNav;
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
   async function signOut() {
@@ -132,7 +146,7 @@ export function AppShell({
         <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-3 px-3 sm:h-16 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
           <div className="min-w-0 shrink-0">
-            <Brand />
+            <Brand homeSurface={homeSurface} />
           </div>
           {!publicPage && user && (
             <span className="ml-auto hidden min-w-0 truncate text-sm font-bold text-foreground min-[380px]:block lg:hidden" aria-label="Saudação">
@@ -177,7 +191,7 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
+                  search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                     selectedNav(to,label) ? "bg-secondary text-primary" : "text-muted-foreground"
                   }`}
@@ -339,7 +353,7 @@ export function AppShell({
                     <Link
                       key={`${to}-${label}`}
                       to={to}
-                      search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
+                      search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold hover:bg-secondary"
                     >
@@ -435,7 +449,7 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
+                  search={to==="/home" && homeSurface==="shared-driver" ? {intent:"offer"} : undefined}
                   aria-current={selected ? "page" : undefined}
                   className={`group relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
                     selected
