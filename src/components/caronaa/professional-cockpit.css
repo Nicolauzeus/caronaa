@@ -288,6 +288,11 @@
     font-weight: 750;
     cursor: pointer;
     pointer-events: auto;
+    touch-action: none; /* Swipe on the handle must not scroll the route */
+  }
+  .professional-cockpit__sheet-toggle:focus-visible {
+    outline: 3px solid #ffbb00;
+    outline-offset: -3px;
   }
   .professional-cockpit__sheet-handle {
     display: block;
