@@ -85,20 +85,17 @@ export function AppShell({
     retry: false,
     queryFn: async () => {
       if (!user?.id) return { professionalOnly: false, activeRole: null as "PASSAGEIRO" | "MOTORISTA" | null };
-      // This only selects the navigation surface. F07 permissions are still
-      // enforced by the database and authenticated route guards.
-      const [access, roleRow] = await Promise.all([
-        (supabase as any).rpc("get_my_professional_access"),
-        (supabase as any).from("profiles").select("active_role")
-          .eq("id", user.id).maybeSingle(),
-      ]);
+      // Navigation is based only on the active role. F07 authorization,
+      // outstanding fees and GPS consent are checked by the guarded cockpit
+      // and database, NEVER inferred from this menu state.
+      const roleRow = await (supabase as any).from("profiles")
+        .select("active_role").eq("id",user.id).maybeSingle();
       const activeRole = roleRow.error ? null :
         roleRow.data?.active_role === "MOTORISTA" ? "MOTORISTA" as const :
         roleRow.data?.active_role === "PASSAGEIRO" ? "PASSAGEIRO" as const : null;
       return {
         activeRole,
-        professionalOnly: !access.error && !roleRow.error &&
-          access.data?.authorized === true && activeRole === "MOTORISTA",
+        professionalOnly: !roleRow.error && activeRole === "MOTORISTA",
       };
     },
   });

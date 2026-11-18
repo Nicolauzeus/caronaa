@@ -60,10 +60,9 @@ export const Route = createFileRoute("/_authenticated/home")({
       if (getAdminAppPreview(user.id)) return;
       const destination=await getMyAdminEntry();
       if (destination) throw redirect({to:destination as "/admin",replace:true});
-      // Deep links, login redirects and old /home bookmarks must also route
-      // a VERIFIED professional driver to the professional work cockpit.
-      // The role is read from the profile, and authorization is from an
-      // authenticated RPC: URL intent/auth metadata never grants F07 access.
+      // Any registered driver opens availability first, whether F07-ready or
+      // still completing their professional data. This is navigation only:
+      // the guarded route and database still control dispatch and online GPS.
       const {data:roleRow,error:roleError}=await (supabase as any).from("profiles")
         .select("active_role,avatar_url,vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_type,vehicle_seats")
         .eq("id",user.id).maybeSingle();
@@ -86,10 +85,11 @@ export const Route = createFileRoute("/_authenticated/home")({
             throw redirect({to:"/cadastro-veiculo",replace:true});
         }
       }
-      if(!roleError&&roleRow?.active_role==="MOTORISTA"&&!activityIntent){
-        const {data:access,error:accessError}=await (supabase as any).rpc("get_my_professional_access");
-        if(!accessError&&access?.authorized===true)
-          throw redirect({to:"/disponibilidade-profissional",replace:true});
+      // Explicit scheduled carpool and trip-list navigation remains available
+      // without silently forcing drivers into the old shared-driver dashboard.
+      if(roleRow?.active_role==="MOTORISTA"&&!activityIntent&&
+         (location.search as {trips?:string}).trips!=="open"){
+        throw redirect({to:"/disponibilidade-profissional",replace:true});
       }
     } finally {
       endCaronaaPhase("home-before-load");
