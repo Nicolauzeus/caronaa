@@ -186,4 +186,45 @@ describe("F02 account access without a regional restriction", () => {
     expect(api.navigate).not.toHaveBeenCalled();
     expectNoGeographicGate();
   });
+  it("uses the universal signup for mototaxistas with no second credential form", async () => {
+    api.search = { mode: "cadastro", redirect: "/cadastro-motorista" };
+    render(<AuthPage />);
+    // A professional entry implies the initial motorist intention; it is not authorization.
+    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
+    expect(screen.getByText("Motorista")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Nome completo/i), { target: { value: "Motorista Teste" } });
+    enterCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Criar minha conta" }));
+    await waitFor(() => expect(api.signUp).toHaveBeenCalledWith(expect.objectContaining({
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fcadastro-motorista`,
+        data: { full_name: "Motorista Teste", initial_usage_role: "MOTORISTA" },
+      },
+    })));
+    expect(screen.getByRole("heading", { name: /Confirme seu e-mail/i })).toBeInTheDocument();
+    expect(api.navigate).not.toHaveBeenCalled();
+    expectNoGeographicGate();
+  });
+
+  it("preserves only the professional continuation while basic onboarding is incomplete", async () => {
+    api.search = { mode: "entrar", redirect: "/cadastro-motorista" };
+    api.auth = { user: signedInUser, loading: false };
+    api.onboarding.mockResolvedValue(null);
+    render(<AuthPage />);
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({
+      to: "/onboarding", search: { redirect: "/cadastro-motorista" }, replace: true,
+    }));
+    expect(api.destination).not.toHaveBeenCalled();
+  });
+
+  it("sends a completed universal account to professional data, never a new signup", async () => {
+    api.search = { mode: "entrar", redirect: "/cadastro-motorista" };
+    api.auth = { user: signedInUser, loading: false };
+    render(<AuthPage />);
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({
+      to: "/cadastro-motorista", replace: true,
+    }));
+    expect(api.signUp).not.toHaveBeenCalled();
+  });
+
 });

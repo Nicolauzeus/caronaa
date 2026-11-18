@@ -37,3 +37,10 @@ A migration é aditiva: não altera registros históricos nem RLS. Não altera a
 
 ## Limitações
 Não há prova neste documento de migration aplicada ou dos testes executados. Commits no GitHub e sincronização no Lovable não equivalem a publicação da nova versão no domínio de produção.
+
+## Complemento profissional sem segundo cadastro (17/11/2026)
+- `/cadastro-motorista` deixa de ser ponto de criação de conta e autenticação: visitantes entram em `/auth` e usuários incompletos passam por `/onboarding`.
+- Se o usuário iniciou pela rota profissional, a intenção é preservada após login, confirmação de e-mail e onboarding, sem ignorar o gate de pré-lançamento.
+- Com a conta universal concluída, a tela profissional recolhe só informações específicas para solicitação de aprovação; os nomes vêm da conta e o e-mail fica apenas informativo.
+- A autorização de mototaxista é administrativa e continua necessária para F07. A seleção `MOTORISTA` não concede direitos e não exige formulário F01.
+- Testes regressivos: `src/test/auth-regional-access.test.tsx`, `src/test/professional-universal-flow.test.tsx` e `src/lib/onboarding/universal-driver-entry.test.ts`. Execução real de testes/build depende de CI funcional ou terminal local.
