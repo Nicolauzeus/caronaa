@@ -251,8 +251,13 @@ function Home(){
   }:undefined;
   const previewablePickup=originSource==="MANUAL_ORIGIN"||
     (validPoint(plannedPickup)&&quotedAccuracy!==null&&canPreviewPassengerPickup({...plannedPickup,accuracy:quotedAccuracy}));
-  const pickupNeedsConfirmation=originPreview&&originSource==="CURRENT_LOCATION"&&validPoint(plannedPickup)&&
-    (quotedAccuracy===null||needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy}))&&confirmedPickupKey!==pickupKey;
+  // F07 requires the passenger to approve the actual boarding pin, even if
+  // the phone GPS is highly accurate. Sensor accuracy is not road accessibility.
+  // Scheduled-driver departure keeps its existing lower-accuracy policy.
+  const pickupNeedsConfirmation=passengerPreview
+    ? validPoint(plannedPickup)&&confirmedPickupKey!==pickupKey
+    : originPreview&&originSource==="CURRENT_LOCATION"&&validPoint(plannedPickup)&&
+      (quotedAccuracy===null||needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy}))&&confirmedPickupKey!==pickupKey;
   const locatingPickup=originSource==="CURRENT_LOCATION"&&location.locating&&!validPoint(quotedOrigin);
   const openPickupDialog=()=>{setPickupCandidate(quotedOrigin??null);setPickupDialogOpen(true);};
   const confirmPickup=()=>{
@@ -265,7 +270,8 @@ function Home(){
     // Closing the dialog is not consent. This action never submits a ride.
     ++originLookupSequence.current;originWasManuallySelected.current=true;
     setOriginSource("MANUAL_ORIGIN");setConfirmedPickupKey(candidateKey);
-    setOriginLocation({...pickupCandidate,isApproximate:false});setAppliedOriginAccuracy(null);
+    // Explicit confirmation does not magically improve the sensor's precision.
+    setOriginLocation({...pickupCandidate});setAppliedOriginAccuracy(null);
     setShellRouteOrigin({lat:pickupCandidate.lat,lng:pickupCandidate.lng});
     setPickupDialogOpen(false);setPickupCandidate(null);
   };
@@ -318,7 +324,8 @@ function Home(){
     setRequestIntentOpen(false);
   },[routeSearch.intent,activeRoleState.activeRole,activeRoleState.loading]);
 
-  const radarPickup=validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
+  // Radar must measure proximity from the same selected pickup used by pricing.
+  const radarPickup=validPoint(plannedPickup)?{lat:plannedPickup.lat,lng:plannedPickup.lng}:null;
   const radarLat=radarPickup?Math.round(radarPickup.lat*1000)/1000:null;
   const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
   useEffect(()=>{
