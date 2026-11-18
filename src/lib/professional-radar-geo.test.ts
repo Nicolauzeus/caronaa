@@ -32,7 +32,7 @@ describe("F07: radar GPS independent of registered driver region", () => {
   });
 
   it("rejects missing, imprecise and invalid browser GPS points", () => {
-    const valid={lat:-3.88,lng:-38.62,accuracyM:12};
+    const valid={lat:-3.88,lng:-38.62,accuracyM:12,sampledAtMs:Date.now()};
     expect(professionalRadarPointSchema.safeParse(valid).success).toBe(true);
     for (const invalid of [
       {...valid,lat:91},
@@ -41,6 +41,8 @@ describe("F07: radar GPS independent of registered driver region", () => {
       {...valid,accuracyM:5001},
       {...valid,accuracyM:Infinity},
       {...valid,lat:NaN},
+      {...valid,sampledAtMs:-1},
+      {...valid,sampledAtMs:1.5},
       {lat:-3.88,lng:-38.62},
     ]) {
       expect(professionalRadarPointSchema.safeParse(invalid).success).toBe(false);
