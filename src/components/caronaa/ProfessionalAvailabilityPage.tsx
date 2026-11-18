@@ -535,10 +535,20 @@ export function ProfessionalAvailabilityPage() {
           )}
         </div>
       )}
-      {blocked && ready && <p role="alert" className="flex items-start gap-2 text-xs text-red-200">
-        <ShieldAlert size={15} className="shrink-0" aria-hidden="true"/>
-        <span>Disponibilidade bloqueada por comissões. <Link to="/perfil" className="font-bold underline">Consultar conta</Link></span>
-      </p>}
+      {blocked && ready && <div role="alert" className="space-y-2 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-100">
+        <p className="flex items-start gap-2"><ShieldAlert size={17} className="shrink-0" aria-hidden="true"/>
+          <span><strong>Disponibilidade bloqueada.</strong> {feeExplanation} O desbloqueio requer confirmação financeira da quitação.</span>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/perfil" hash="comissoes-caronaa" className="inline-flex min-h-11 items-center rounded-lg border border-[#FFBB00]/50 px-3 font-semibold text-[#FFBB00]">Ver comissões e Pix</Link>
+          <button type="button" onClick={()=>setFeeRefresh(v=>v+1)}
+            className="min-h-11 rounded-lg border border-white/30 px-3 font-semibold">Atualizar situação</button>
+        </div>
+      </div>}
+      {feeUnavailable&&ready&&<div role="alert" className="space-y-2 rounded-xl border border-amber-400/40 p-3 text-sm">
+        <p>Não foi possível consultar as comissões. A disponibilidade não pode ser confirmada, sem presumir dívida.</p>
+        <button type="button" onClick={()=>setFeeRefresh(v=>v+1)} className="min-h-11 rounded-lg border border-amber-400/50 px-3">Tentar novamente</button>
+      </div>
       <Button
         variant={enabled ? "outline" : "default"}
         className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black transition-colors ${enabled
@@ -588,7 +598,13 @@ export function ProfessionalAvailabilityPage() {
             onClick={()=>void toggleOnline(!enabled)}>
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
-          {(!authorized || blocked) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">{blocked ? "Acesso bloqueado por repasses. Consulte Conta." : "Finalize os dados profissionais para receber corridas."}</p>}
+          {(blocked||feeUnavailable) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">
+            {feeUnavailable?"Não foi possível verificar as comissões.":
+              <>{feeExplanation} <Link to="/perfil" hash="comissoes-caronaa" className="font-semibold underline">Consultar conta</Link></>}
+          </p>}
+          {!authorized&&!blocked&&!feeUnavailable&&ready&&<p role="status" className="mt-2 text-xs text-amber-300">
+            Finalize os dados profissionais para receber corridas.
+          </p>
         </div>
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
@@ -630,7 +646,7 @@ export function ProfessionalAvailabilityPage() {
       <MunicipalitySelect value={municipality} onChange={setMunicipality} disabled={enabled||busy}/>
     </details>
     {blocked&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
-      Radar bloqueado por repasses. <Link to="/perfil" className="underline">Consultar comissões</Link>
+      {feeExplanation} <Link to="/perfil" hash="comissoes-caronaa" className="underline">Consultar comissões</Link>
     </p>}
     <section aria-label="Status da localização" className="hidden space-y-2 rounded-xl border p-4 text-sm sm:block">
       <p className="font-bold">{!ready?"Carregando...":fresh?"Online e transmitindo GPS":fix?.simulated?"SIMULAÇÃO — somente na sua conta":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
