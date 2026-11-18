@@ -6,6 +6,7 @@ const home=readFileSync("src/routes/_authenticated/home.tsx","utf8");
 const passengerMap=readFileSync("src/components/caronaa/GoogleHomeRideMap.tsx","utf8");
 const mapSurface=readFileSync("src/components/caronaa/GoogleMapSurface.tsx","utf8");
 const rideMap=readFileSync("src/components/caronaa/QuickRideOperationalMap.tsx","utf8");
+const driverPage=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
 const realtime=readFileSync("src/lib/quick-rides/use-quick-ride-realtime.ts","utf8");
 
 describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
@@ -31,6 +32,17 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
     expect(mapSurface).toContain('fitMode === "once"');
     expect(mapSurface).not.toContain('map.current.fitBounds(lastBounds.current');
     expect(passengerMap).not.toContain('routeManagedExternally,plannedRoute,routeBottomInset,routeLeftInset]');
+  });
+
+  it("keeps the driver's map and marker stable while GPS publication state changes",()=>{
+    expect(mapSurface).toContain('const markerKey = point.id || point.title');
+    expect(driverPage).toContain('!activeRide&&<section aria-label="Mapa do motorista"');
+    expect(driverPage).toContain('id:"self-professional"');
+    expect(driverPage).toContain('fitMode="once" smoothTracking');
+    expect(driverPage).toContain('fitKey="professional-home-position"');
+    expect(rideMap).toContain('id:"assigned-professional"');
+    expect(rideMap).toContain('id:"ride-pickup"');
+    expect(rideMap).toContain('id:"ride-destination"');
   });
 
   it("deduplicates route requests per trip while location and labels stay fresh",()=>{
