@@ -9,8 +9,7 @@ export const authenticatedNav = [
 ];
 
 export function isAppNavSelected(pathname: string, activeIntent: string | undefined, to: string, label: string): boolean {
-  if (label === "Oferecer") return (pathname === "/home" && activeIntent === "offer") || pathname === "/oferecer";
-  if (label === "Início") return pathname === "/home" && activeIntent !== "offer";
+  if (label === "Início") return pathname === "/home";
   if (label === "Viagens") {
     return pathname === "/minhas-caronas" || pathname.startsWith("/viagem/");
   }
