@@ -32,16 +32,16 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
-  driverCount, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
+  driverCount, driverCounts, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
   locating=false, pickupNeedsConfirmation=false, onConfirmPickup, actionContainer,
-  onFaresChange, onFarePendingChange, onCoverage, onOperationalRideChange,
+  onFaresChange, onFarePendingChange, onCoverage, onCoveragesChange, onOperationalRideChange,
   onRidePhaseChange, onDropoffPendingChange, onFareChange,
   shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
   originPoint?:FormLocationDetails;destinationPoint?:FormLocationDetails;
   vehicle:QuickVehicle;onVehicleChange:(value:QuickVehicle)=>void;
-  driverCount:number;driverLoading?:boolean;driverError?:string;
+  driverCount:number;driverCounts?:Record<QuickVehicle,number>;driverLoading?:boolean;driverError?:string;
   gpsOriginIsImprecise?:boolean;
   locating?:boolean;
   pickupNeedsConfirmation?:boolean;
@@ -51,6 +51,7 @@ export function QuickRideHomePanel({
   onFaresChange?:(value:Partial<Record<QuickVehicle,QuickRideFarePreview>>)=>void;
   onFarePendingChange?:(pending:boolean)=>void;
   onCoverage?:(coverage:QuickRideCoverage|null)=>void;
+  onCoveragesChange?:(coverages:Partial<Record<QuickVehicle,QuickRideCoverage>>)=>void;
   onOperationalRideChange?:(ride:{id:string;status:string;municipality:string}|null)=>void;
   onRidePhaseChange?:(status:RideStatus|null)=>void;
   onDropoffPendingChange?:(pending:boolean)=>void;
@@ -231,17 +232,22 @@ export function QuickRideHomePanel({
     retryInFlight.current=false;
   },[fieldsKey]);
   useEffect(()=>{
-    setCoverage(null);setCoverages({});setCoverageResolvedKey("");onCoverage?.(null);setCoverageLoading(false);
+    setCoverage(null);setCoverages({});setCoverageResolvedKey("");onCoverage?.(null);onCoveragesChange?.({});setCoverageLoading(false);
     if(!hasOrigin||originLat==null||originLng==null)return;
     let active=true;setCoverageLoading(true);
     const timer=window.setTimeout(()=>{
-      void Promise.all((shellMode?(["CAR","MOTO"] as const):[vehicle]).map(async type=>{
+      void Promise.allSettled((shellMode?(["CAR","MOTO"] as const):[vehicle]).map(async type=>{
         const value=await availabilityFn({data:{lat:originLat,lng:originLng,vehicleType:type}});
         return [type,value] as const;
-      })).then(entries=>{if(active){
-        const values=Object.fromEntries(entries);setCoverages(values);
-        setCoverage(values[vehicle]);setCoverageResolvedKey(coveragePointKey);onCoverage?.(values[vehicle]);
-      }}).catch(()=>{if(active)setError("Não foi possível verificar a cobertura agora.");})
+      })).then(results=>{if(active){
+        const values:Partial<Record<QuickVehicle,QuickRideCoverage>>={};
+        results.forEach(result=>{if(result.status==="fulfilled")values[result.value[0]]=result.value[1];});
+        setCoverages(values);
+        setCoverage(values[vehicle]??null);setCoverageResolvedKey(coveragePointKey);
+        onCoverage?.(values[vehicle]??null);onCoveragesChange?.(values);
+        if(results.every(result=>result.status==="rejected"))
+          setError("Não foi possível verificar a cobertura agora.");
+      }})
         .finally(()=>{if(active){setCoverageLoading(false);retryInFlight.current=false;}});
     },450);
     return()=>{active=false;window.clearTimeout(timer);};
@@ -402,7 +408,8 @@ export function QuickRideHomePanel({
         <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold"><Users size={16} className="text-[#FFBB00]"/><span>Profissionais disponíveis na região</span></div>
         <p role="status" className="mt-1 text-gray-300">{driverLoading?"Consultando o radar…":driverError?driverError:
           coverage?.radar===false?"Radar ainda indisponível nesse município.":driverCount===0?"Nenhum profissional autorizado e online no momento.":
-          driverCount===1?"1 profissional autorizado e online.":" "+driverCount+" profissionais autorizados e online."}</p>
+          driverCount===1?"1 profissional autorizado e online.":driverCount+" profissionais autorizados e online."}</p>
+        {driverCounts&&<p className="mt-1 text-xs text-gray-300">🚗 {driverCounts.CAR} carro(s) · 🏍️ {driverCounts.MOTO} moto(s) no radar</p>}
         <p className="mt-1 text-[11px] text-gray-400">Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.</p>
       </div>}
       {!liveRide&&!shownCompletedRide&&(shellMode
