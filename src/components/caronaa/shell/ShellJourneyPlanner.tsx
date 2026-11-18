@@ -182,7 +182,7 @@ export function ShellJourneyPlanner({
     if(details&&valid(details))onSnapChange?.("half");
   },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange,onOnRouteMatchSelected,serviceType]);
   useEffect(()=>{
-    onRouteSearchRef.current+=1;setOnRouteMatches([]);setSelectedMatch(null);
+    onRouteSearchRef.current+=1;setOnRouteMatches([]);setSelectedMatch(null);setOnRouteBusy(false);
     setOnRouteDiagnostic("");setOnRouteConfirmedId(null);onOnRouteMatchSelected?.(null);
   },[onRouteVehicle,seats,entireCar,scheduledAt,originRevision,onOnRouteMatchSelected]);
   const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
