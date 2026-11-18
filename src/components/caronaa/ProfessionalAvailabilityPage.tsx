@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, MapPin, ShieldAlert } from "lucide-react";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
-type Fix = { lat:number; lng:number; at:Date; simulated:boolean };
+type Fix = { lat:number; lng:number; at:Date; simulated:boolean; accuracyM?:number; heading?:number|null };
 type Vehicle = "CAR" | "MOTO";
 
 /** One explicit activation is consent for online presence AND real GPS.
@@ -35,6 +35,9 @@ export function ProfessionalAvailabilityPage() {
   const [activeQuickRide,setActiveQuickRide]=useState(false);
   const [hasPendingCalls,setHasPendingCalls]=useState(false);
   const [sheetExpanded,setSheetExpanded]=useState(false);
+  const sheetTouchStart=useRef<number|null>(null);
+  const sheetSwiped=useRef(false);
+  const lastRidePhase=useRef<string|null>(null);
   const [activeRide,setActiveRide]=useState<ActiveDriverRide|null>(null);
   const [authorized,setAuthorized]=useState(false);
   const [simpleMototaxi,setSimpleMototaxi]=useState(false);
@@ -113,7 +116,8 @@ export function ProfessionalAvailabilityPage() {
       return;
     }
     if(mounted.current){
-      setObservedFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false});
+      setObservedFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false,
+        accuracyM:accuracy,heading:position.coords.heading});
       setAccuracyWarning(accuracy>100);
     }
     // The dispatch SQL enforces <=150 m. Never send 5 km coarse fixes and
@@ -143,7 +147,8 @@ export function ProfessionalAvailabilityPage() {
         record("SERVER_PUBLISH_SUCCESS",{ref:result.traceId??ref,city:result.municipality});
         if(mounted.current){
           setMunicipality(result.municipality);
-          setFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false});
+          setFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false,
+            accuracyM:accuracy,heading:position.coords.heading});
           setError("");
         }
         void clearTest().catch(()=>undefined);
@@ -411,10 +416,32 @@ export function ProfessionalAvailabilityPage() {
   const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
   const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
   const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
+  // Local watchPosition updates the driver's camera immediately. The backend
+  // remains authoritative for ride states, arrival validation and payments.
+  const liveNavigationFix=[observedFix,fix].find(point=>point&&!point.simulated&&
+    (point.accuracyM??Infinity)<=150&&tick-point.at.getTime()<20000)??null;
+  useEffect(()=>{
+    const next=activeRide?.id+":"+activeRide?.status;
+    if(!activeRide){lastRidePhase.current=null;return;}
+    if(next===lastRidePhase.current)return;
+    lastRidePhase.current=next;
+    // On acceptance show the route; on arrival open the code field; after
+    // validating the OTP return to the full navigation map automatically.
+    if(activeRide.status==="ARRIVED")setSheetExpanded(true);
+    else if(activeRide.status==="ACCEPTED"||activeRide.status==="IN_PROGRESS")
+      setSheetExpanded(false);
+  },[activeRide?.id,activeRide?.status]);
+  const sheetOpen=activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
   return <div className="professional-cockpit">
     {activeRide && <div className="professional-cockpit__map">
       <QuickRideOperationalMap rideId={activeRide.id} status={activeRide.status}
-        role="DRIVER" immersive vehicleType={activeRide.vehicle_type==="MOTO"?"MOTO":"CAR"} />
+        role="DRIVER" immersive vehicleType={activeRide.vehicle_type==="MOTO"?"MOTO":"CAR"}
+        liveDriverFix={liveNavigationFix?{
+          lat:liveNavigationFix.lat,lng:liveNavigationFix.lng,
+          sampledAtMs:liveNavigationFix.at.getTime(),
+          accuracyM:liveNavigationFix.accuracyM??Infinity,
+          heading:liveNavigationFix.heading,
+        }:null} />
     </div>}
     {!activeRide&&<section aria-label="Mapa do motorista" className="professional-cockpit__map">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -554,19 +581,34 @@ export function ProfessionalAvailabilityPage() {
     </div>}
 
       </div>
-      <div className="professional-cockpit__right" data-expanded={activeQuickRide || hasPendingCalls || sheetExpanded ? "true" : "false"} data-can-start={ready && !enabled && !blocked && (authorized || pilotEnabled) ? "true" : "false"}>
+      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-can-start={ready && !enabled && !blocked && (authorized || pilotEnabled) ? "true" : "false"}>
         <button
           type="button"
           className="professional-cockpit__sheet-toggle"
-          aria-label={activeQuickRide || hasPendingCalls ? "Painel de atendimento em destaque" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : sheetExpanded ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
-          aria-expanded={activeQuickRide || hasPendingCalls || sheetExpanded}
-          disabled={activeQuickRide || hasPendingCalls}
+          aria-label={activeRide ? sheetOpen
+            ? "Recolher painel e mostrar navegação"
+            : "Expandir painel da corrida e código de embarque"
+            : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded
+              ? "FICAR ONLINE AGORA" : sheetOpen ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
+          aria-expanded={sheetOpen}
+          onTouchStart={event=>{sheetTouchStart.current=event.touches[0]?.clientY??null;}}
+          onTouchEnd={event=>{
+            const last=event.changedTouches[0]?.clientY;
+            const start=sheetTouchStart.current;sheetTouchStart.current=null;
+            if(start===null||last===undefined||Math.abs(last-start)<36)return;
+            sheetSwiped.current=true;
+            setSheetExpanded(last<start);
+          }}
           onClick={()=>{
-            if (ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded) void toggleOnline(true);
+            if(sheetSwiped.current){sheetSwiped.current=false;return;}
+            if (ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded && !activeRide) void toggleOnline(true);
             else setSheetExpanded(v=>!v);
           }}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
-          <span>{activeQuickRide ? "Corrida em andamento" : hasPendingCalls ? "Novos chamados" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
+          <span>{activeRide
+            ? activeRide.status==="ARRIVED" ? "Embarque · inserir código" :
+              activeRide.status==="IN_PROGRESS" ? "Em viagem · acompanhar destino" : "A caminho do passageiro"
+            : hasPendingCalls ? "Novos chamados" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
         </button>
         <div className="professional-cockpit__mobile-connection">
           <Button variant={enabled ? "outline" : "default"}
