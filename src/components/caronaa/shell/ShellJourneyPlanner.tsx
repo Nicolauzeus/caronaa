@@ -226,7 +226,7 @@ export function ShellJourneyPlanner({
       const result=await searchOnRouteMatches({
         originLat:from.lat,originLng:from.lng,destLat:destinationPoint.lat,destLng:destinationPoint.lng,
         seats:onRouteVehicle==="MOTO"?1:entireCar?3:seats,
-        targetTime:serviceType==="AGENDADA"&&validScheduleDate(scheduledAt)?new Date(scheduledAt):undefined,
+        targetTime:serviceType==="FLASH"?new Date():validScheduleDate(scheduledAt)?new Date(scheduledAt):undefined,
       });
       if(generation===onRouteSearchRef.current){
         setOnRouteMatches(result.matches);
