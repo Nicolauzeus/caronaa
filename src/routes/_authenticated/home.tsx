@@ -7,6 +7,7 @@ import type { ServiceType } from "@/components/caronaa/shell/ServiceTypeDock";
 import { ShellJourneyPlanner, type ShellRoute } from "@/components/caronaa/shell/ShellJourneyPlanner";
 import { UnifiedMyTripsPanel, type UnifiedTrip } from "@/components/caronaa/shell/UnifiedMyTripsPanel";
 import { DriverScheduledPlanner } from "@/components/caronaa/shell/DriverScheduledPlanner";
+import { DriverHomeDashboard } from "@/components/caronaa/shell/DriverHomeDashboard";
 import { DriverFlashPlanner } from "@/components/caronaa/shell/DriverFlashPlanner";
 import type { FlashDriverRide } from "@/services/flash-driver-service";
 import { DriverScheduledTripsPanel } from "@/components/caronaa/shell/DriverScheduledTripsPanel";
@@ -89,6 +90,26 @@ function Home(){
   const [sheetSnap,setSheetSnap]=useState<SheetSnap>("peek");
   useEffect(()=>{if(typeof window!=="undefined"&&window.matchMedia("(min-width: 768px)").matches)setSheetSnap("half");},[]);
   const [serviceType,setServiceType]=useState<ServiceType>("FLASH");
+  const [driverHomeOpen,setDriverHomeOpen]=useState(true);
+  useEffect(()=>{
+    if(activeRoleState.loading)return;
+    // The persisted role, not a URL query or the first-render default,
+    // determines which cockpit appears on every direct /home visit.
+    if(activeRoleState.activeRole==="MOTORISTA"){
+      setServiceType("AGENDADA");
+      setDriverHomeOpen(true);
+      setSheetSnap("half");
+    }else{
+      setServiceType("FLASH");
+      setDriverHomeOpen(false);
+      setSheetSnap("peek");
+    }
+  },[activeRoleState.loading,activeRoleState.activeRole]);
+  useEffect(()=>{
+    const showDriverHome=()=>{setDriverHomeOpen(true);setServiceType("AGENDADA");setTripsPanelOpen(false);setSheetSnap("half");};
+    window.addEventListener("caronaa:driver-home",showDriverHome);
+    return()=>window.removeEventListener("caronaa:driver-home",showDriverHome);
+  },[]);
   const [tripsPanelOpen,setTripsPanelOpen]=useState(false);
   useEffect(()=>{if(routeSearch.trips==="open"){setTripsPanelOpen(true);setSheetSnap("full");}},[routeSearch.trips]);
   const [tripsRefreshKey,setTripsRefreshKey]=useState(0);
@@ -306,6 +327,7 @@ function Home(){
         setOfferIntentOpen(false);
         setTripsPanelOpen(false);
         setServiceType("AGENDADA");
+        setDriverHomeOpen(true);
         setSheetSnap("half");
       }else setOfferIntentOpen(true);
       return;
@@ -417,15 +439,19 @@ function Home(){
             setSheetSnap("half");
           }
         }}/>
-      <InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title="Casca Única CARONAA"
-        headerAction={!tripsPanelOpen&&driverRole?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
+      {!activeRoleState.loading&&<InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title={driverRole?"Painel do motorista CARONAA":"Planejar viagem CARONAA"}
+        headerAction={!tripsPanelOpen&&driverRole&&!driverHomeOpen?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
         {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
         {tripsPanelOpen&&!driverRole&&<UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey} onShowOnMap={(trip:UnifiedTrip)=>{
           if(trip.operationalRideId!==passengerRide?.id){toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");return;}
           closeTrips();setSheetSnap("peek");
         }}/>}
         <div className={tripsPanelOpen?"hidden":"h-full min-h-0"}>
-          {driverRole&&serviceType==="FLASH"?<DriverFlashPlanner
+          {driverRole&&driverHomeOpen?<DriverHomeDashboard
+            refreshKey={driverTripsRefreshKey}
+            onOffer={()=>{setDriverHomeOpen(false);setServiceType("AGENDADA");setSheetSnap("half");}}
+            onOpenTrips={showTrips}/>:
+          driverRole&&serviceType==="FLASH"?<DriverFlashPlanner
             snap={sheetSnap} onSnapChange={setSheetSnap} serviceType={serviceType} onServiceTypeChange={setServiceType}
             vehicleType={activeRoleState.vehicleType==="moto"?"MOTO":"CAR"} municipality={resolvedAddress?.city??""}
             originPoint={(validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position)??null}
@@ -469,7 +495,8 @@ function Home(){
             onOnRouteMatchSelected={setSelectedOnRouteMatch} onDestinationChange={handleDestinationChange}
             onScheduled={()=>setTripsRefreshKey(value=>value+1)}/>}
         </div>
-      </InteractiveBottomSheet>
+      </InteractiveBottomSheet>}
+      {activeRoleState.loading&&<div role="status" className="pointer-events-none absolute inset-x-3 bottom-4 z-30 rounded-2xl border border-white/20 bg-[#121212] p-4 text-sm text-white">Abrindo sua área no CARONAA…</div>}
       <Dialog open={offerIntentOpen} onOpenChange={open=>{
         setOfferIntentOpen(open);
         if(!open&&activeRoleState.activeRole!=="MOTORISTA"){
