@@ -41,6 +41,9 @@ export function ProfessionalAvailabilityPage() {
   const [professionalReview,setProfessionalReview]=useState("");
   const [professionalMissing,setProfessionalMissing]=useState<MissingCode[]>([]);
   const [blocked,setBlocked]=useState(false);
+  const [feeDetails,setFeeDetails]=useState<{pending:number;outstanding:number}|null>(null);
+  const [feeUnavailable,setFeeUnavailable]=useState(false);
+  const [feeRefresh,setFeeRefresh]=useState(0);
   const [pilotEnabled,setPilotEnabled]=useState(false);
   const [pilotVehicle,setPilotVehicle]=useState<Vehicle>("MOTO");
   const [pilotExpiry,setPilotExpiry]=useState("");
@@ -260,7 +263,19 @@ export function ProfessionalAvailabilityPage() {
         getPilot().catch(()=>({enabled:false})),
       ]);
       if(!active)return;
-      if(presence.error || fees.error || access.error)throw new Error("Falha ao conferir autorização, presença ou repasses.");
+      if(presence.error || access.error)throw new Error("Falha ao conferir autorização ou presença.");
+      if(fees.error || typeof fees.data?.driverAllowed!=="boolean" ||
+         !Number.isSafeInteger(Number(fees.data?.pendingTrips)) ||
+         Number(fees.data?.pendingTrips)<0 ||
+         !Number.isFinite(Number(fees.data?.amountOutstanding))){
+        setFeeUnavailable(true);
+        throw new Error("Não foi possível confirmar seu saldo de comissões. Consulte novamente.");
+      }
+      setFeeUnavailable(false);
+      setFeeDetails({
+        pending:Number(fees.data.pendingTrips),
+        outstanding:Number(fees.data.amountOutstanding),
+      });
       const registeredCity=String(access.data?.request?.municipality??"");
       const candidate=registeredCity==="MACICO_BATURITE"||registeredCity==="FORTALEZA"
         ? "":registeredCity;
@@ -276,7 +291,7 @@ export function ProfessionalAvailabilityPage() {
       const registeredVehicle=access.data?.request?.vehicle_type;
       if(registeredVehicle==="CAR"||registeredVehicle==="MOTO")
         setPilotVehicle(registeredVehicle);
-      setBlocked(fees.data?.driverAllowed!==true);
+      setBlocked(fees.data.driverAllowed!==true);
       setPilotEnabled(pilot.enabled===true);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
       setEnabled(presence.data?.is_available===true &&
@@ -296,7 +311,7 @@ export function ProfessionalAvailabilityPage() {
       // On navigation, the common AppShell radar resumes an earlier opt-in.
       // Do not erase a valid fix when merely changing routes.
     };
-  },[]);
+  },[feeRefresh]);
 
   useEffect(()=>{
     if(!userId)return;
@@ -362,7 +377,8 @@ export function ProfessionalAvailabilityPage() {
   async function toggleOnline(next:boolean) {
     if(busy)return;
     record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized,feesAllowed:!blocked});
-    if(next && blocked){setError("Motorista bloqueado por repasses.");return;}
+    if(next && feeUnavailable){setError("Não foi possível verificar o financeiro. Tente novamente.");return;}
+    if(next && blocked){setError("Existem comissões pendentes. Consulte a conta e aguarde a confirmação da quitação.");return;}
     if(next && !authorized && !pilotEnabled){
       setError("É necessária aprovação administrativa para entrar no radar.");return;
     }
@@ -408,6 +424,9 @@ export function ProfessionalAvailabilityPage() {
     : enabled
       ? "Não foi possível confirmar sua posição no radar. Verifique a permissão de GPS e tente novamente."
       : "Não foi possível atualizar sua disponibilidade. Tente novamente.";
+  const feeExplanation=feeDetails
+    ? `${feeDetails.pending} ${feeDetails.pending===1?"comissão pendente":"comissões pendentes"} · ${new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(feeDetails.outstanding)} em aberto.`
+    : "Consulte suas comissões na Conta.";
   const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
   const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
   const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
@@ -525,7 +544,7 @@ export function ProfessionalAvailabilityPage() {
         className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black transition-colors ${enabled
           ? "border-amber-400/55 bg-transparent text-amber-200 hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-100"
           : "bg-[#FFBB00] text-[#121212] hover:bg-[#eeb000]"}`}
-        disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+        disabled={!ready||busy||feeUnavailable||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
         onClick={()=>void toggleOnline(!enabled)}>
         {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
       </Button>
@@ -565,7 +584,7 @@ export function ProfessionalAvailabilityPage() {
             className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black ${enabled
               ? "border border-[#FFBB00] bg-[#121212] text-[#FFBB00]"
               : "bg-[#FFBB00] text-[#121212]"}`}
-            disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+            disabled={!ready||busy||feeUnavailable||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
             onClick={()=>void toggleOnline(!enabled)}>
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
