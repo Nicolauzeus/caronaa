@@ -282,12 +282,16 @@ export function GoogleHomeRideMap({
   }, [ready, failed, originIsCurrent, origin?.lat, origin?.lng]);
 
   // Keep the existing road-routing contract and bounded refresh behavior.
+  // Coordinates for Google Routes must agree with the actual selected pickup.
+  // 0.001 degrees previously shifted the displayed road route by ~100m.
   const fromLat = validPoint(effectiveOrigin)
-    ? Math.round(effectiveOrigin.lat * 1000) / 1000 : undefined;
+    ? Math.round(effectiveOrigin.lat * 1_000_000) / 1_000_000 : undefined;
   const fromLng = validPoint(effectiveOrigin)
-    ? Math.round(effectiveOrigin.lng * 1000) / 1000 : undefined;
-  const toLat = validPoint(destination) ? Math.round(destination.lat * 10000) / 10000 : undefined;
-  const toLng = validPoint(destination) ? Math.round(destination.lng * 10000) / 10000 : undefined;
+    ? Math.round(effectiveOrigin.lng * 1_000_000) / 1_000_000 : undefined;
+  const toLat = validPoint(destination)
+    ? Math.round(destination.lat * 1_000_000) / 1_000_000 : undefined;
+  const toLng = validPoint(destination)
+    ? Math.round(destination.lng * 1_000_000) / 1_000_000 : undefined;
   useEffect(() => {
     if (!ready || !map.current || failed) return;
     routePolyline.current?.setMap(null);
