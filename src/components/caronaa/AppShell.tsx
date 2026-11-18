@@ -44,8 +44,10 @@ export function Brand({ light = false, homeSurface }: { light?: boolean; homeSur
   return (
     <Link to={target.to} search={target.to === "/home" ? target.search : undefined}
       onClick={() => {
-        if (homeSurface === "shared-driver" && typeof window !== "undefined")
+        if (typeof window !== "undefined" && homeSurface === "shared-driver")
           window.dispatchEvent(new Event("caronaa:driver-home"));
+        else if (typeof window !== "undefined" && homeSurface === "passenger")
+          window.dispatchEvent(new Event("caronaa:passenger-home"));
       }}
       className="inline-flex items-center" aria-label="CARONAA — página inicial">
       <img
@@ -194,8 +196,12 @@ export function AppShell({
                   to={to}
                   search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
                   onClick={()=>{
-                    if(to==="/home" && label==="Painel" && homeSurface==="shared-driver" && typeof window!=="undefined")
-                      window.dispatchEvent(new Event("caronaa:driver-home"));
+                    if(to==="/home" && typeof window!=="undefined"){
+                      if(homeSurface==="shared-driver"&&label==="Painel")
+                        window.dispatchEvent(new Event("caronaa:driver-home"));
+                      else if(homeSurface==="passenger"&&label==="Início")
+                        window.dispatchEvent(new Event("caronaa:passenger-home"));
+                    }
                   }}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                     selectedNav(to,label) ? "bg-secondary text-primary" : "text-muted-foreground"
@@ -361,8 +367,10 @@ export function AppShell({
                       search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
                       onClick={()=>{
                         setMenuOpen(false);
-                        if(to==="/home" && label==="Painel" && homeSurface==="shared-driver")
+                        if(to==="/home" && homeSurface==="shared-driver" && label==="Painel")
                           window.dispatchEvent(new Event("caronaa:driver-home"));
+                        else if(to==="/home" && homeSurface==="passenger" && label==="Início")
+                          window.dispatchEvent(new Event("caronaa:passenger-home"));
                       }}
                       className="flex items-center gap-3 rounded-xl px-3.5 py-3 font-semibold hover:bg-secondary"
                     >
