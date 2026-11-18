@@ -37,6 +37,7 @@ function ProfessionalMotorcycleRegistration() {
   const [request, setRequest] = useState<{ status: string; review_reason?: string | null } | null>(null);
   const [authorized, setAuthorized] = useState(false);
   const [reviewState, setReviewState] = useState<"loading" | "ready" | "error">("loading");
+  const [reviewError,setReviewError]=useState("");
   const [reviewRetry, setReviewRetry] = useState(0);
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [registeredVehicle,setRegisteredVehicle]=useState<"CAR"|"MOTO"|null>(null);
@@ -82,6 +83,7 @@ function ProfessionalMotorcycleRegistration() {
     if (!user?.email_confirmed_at || onboardingState !== "ready") return;
     let active = true;
     setReviewState("loading");
+    setReviewError("");
     void Promise.all([
       (supabase as any).from("professional_mototaxi_profiles").select("first_name,last_name,whatsapp_e164,region_code,registration_number").eq("user_id", user.id).maybeSingle(),
       supabase.from("profiles").select("avatar_url,vehicle_plate,full_name,vehicle_brand,vehicle_description,vehicle_color,vehicle_type,vehicle_seats,city").eq("id", user.id).maybeSingle(),
@@ -89,8 +91,12 @@ function ProfessionalMotorcycleRegistration() {
     ]).then(([details, profile, access]) => {
       if (!active) return;
       if(profile.error || !profile.data){
+        const detail=String(profile.error?.message??"");
+        if(/refresh_token|jwt|token.*expired|invalid.*session/i.test(detail)){
+          setSessionExpired(true);
+          setReviewError("Sua sessão expirou. Entre novamente para verificar o cadastro.");
+        }else setReviewError("Não foi possível verificar os dados obrigatórios do veículo.");
         setReviewState("error");
-        toast.error("Não foi possível verificar os dados obrigatórios do veículo.");
         return;
       }
       // No one may finish professional registration by bypassing the
@@ -117,9 +123,15 @@ function ProfessionalMotorcycleRegistration() {
         setFirstName(parts[0] ?? "");
         setLastName(parts.length > 1 ? parts[parts.length - 1] : "");
       }
-      if (access.error) {
+      if(access.error){
+        const code=String(access.error.code??"");
+        const detail=String(access.error.message??"");
+        if(code==="22P02")setReviewError("Erro interno 22P02 ao verificar cadastro. Aplicar a correção SQL 0211.");
+        else if(/refresh_token|jwt|token.*expired|invalid.*session/i.test(detail)||code==="PGRST301"){
+          setSessionExpired(true);
+          setReviewError("Sessão expirada. Entre novamente.");
+        }else setReviewError("Não foi possível confirmar a situação do seu acesso profissional.");
         setReviewState("error");
-        toast.error("Não foi possível confirmar a situação do seu acesso profissional.");
         return;
       }
       setPhotoUrl(profile.data?.avatar_url ?? "");
@@ -133,7 +145,7 @@ function ProfessionalMotorcycleRegistration() {
     }).catch(() => {
       if (active) {
         setReviewState("error");
-        toast.error("Falha ao consultar a situação do cadastro.");
+        setReviewError("Falha temporária ao consultar o cadastro.");
       }
     });
     return () => { active = false; };
@@ -316,8 +328,11 @@ function ProfessionalMotorcycleRegistration() {
             ) : (
               <>
                 <p role="alert" className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4 text-sm">
-                  Não foi possível conferir seu cadastro. Para evitar alterações duplicadas, tente novamente.
+                  {reviewError||"Não foi possível conferir seu cadastro. Para evitar alterações duplicadas, tente novamente."}
                 </p>
+                {sessionExpired&&<Link to="/auth"
+                  search={{mode:"entrar",redirect:"/cadastro-motorista"}}
+                  className="inline-flex min-h-11 items-center text-[#FFBB00] underline">Entrar novamente</Link>}
                 <button type="button" onClick={() => setReviewRetry(value => value + 1)}
                   className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
                   Tentar novamente
