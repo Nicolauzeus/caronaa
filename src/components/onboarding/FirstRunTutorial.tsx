@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CarFront, Check, ChevronRight, MapPin, Pause, Play, Route as RouteIcon, ShieldCheck, SkipForward, UserRound, X } from "lucide-react";
+import { ArrowRight, CarFront, ChevronRight, MapPin, Pause, Play, Route as RouteIcon, ShieldCheck, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { readOnboarding, markIntroSeen } from "@/lib/onboarding/progressive-onboarding";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
@@ -29,6 +29,7 @@ export function FirstRunTutorial() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(media.matches);
     const update = () => setReducedMotion(media.matches);
