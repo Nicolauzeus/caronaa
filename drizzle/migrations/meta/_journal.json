@@ -981,6 +981,13 @@
       "when": 1794968362057,
       "tag": "0203_driver_photo_active_role",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1794968594071,
+      "tag": "0140_verify_0203_driver_photo_active_role",
+      "breakpoints": true
     }
   ]
 }
