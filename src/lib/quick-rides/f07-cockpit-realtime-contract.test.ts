@@ -8,6 +8,8 @@ const hook=readFileSync("src/lib/quick-rides/use-quick-ride-realtime.ts","utf8")
 const home=readFileSync("src/routes/_authenticated/home.tsx","utf8");
 const flash=readFileSync("src/components/caronaa/shell/ShellJourneyPlanner.tsx","utf8");
 const passenger=readFileSync("src/components/caronaa/QuickRideHomePanel.tsx","utf8");
+const driverHistory=readFileSync("src/routes/_authenticated/viagens-profissionais.tsx","utf8");
+const passengerHistory=readFileSync("src/components/caronaa/QuickRideTripHistory.tsx","utf8");
 const map=readFileSync("src/components/caronaa/QuickRideOperationalMap.tsx","utf8");
 const surface=readFileSync("src/components/caronaa/GoogleMapSurface.tsx","utf8");
 const google=readFileSync("src/lib/location/google-places.ts","utf8");
@@ -64,7 +66,7 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(passenger).toContain('useQuickRideRealtime(');
     expect(passenger).toContain('quick_ride_transition');
   });
-  it("retains real dropoff deadline, payment and optional rating independently",()=>{
+  it("retains dropoff confirmation and moves posttrip Pix and ratings into the histories",()=>{
     expect(queue).toContain('quick_ride_dropoff_state');
     expect(queue).toContain('Solicitar confirmação de desembarque');
     expect(queue).toContain('Aguardando confirmação do passageiro');
@@ -72,11 +74,12 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(passenger).toContain('onDropoffPendingChange');
     expect(passenger).toContain('Confirmar desembarque no destino');
     expect(passenger).toContain('Ainda não desembarquei / Contestar');
-    expect(passenger).toContain('<QuickRidePixCard rideId={completedRide.id}/>');
-    expect(passenger).toContain('Avaliar viagem (opcional)');
-    expect(passenger).not.toContain('onClose={()=>{releaseCompletedRide();');
-    expect(queue).not.toContain('onClose={releaseCompleted}');
-    expect(queue).toContain('Liberar tela para novos chamados');
+    expect(passenger).not.toContain('Nova corrida');
+    expect(queue).not.toContain('Liberar tela para novos chamados');
+    expect(driverHistory).toContain('<QuickRideDriverSettlement rideId={ride.id}/>');
+    expect(passengerHistory).toContain('<QuickRidePixCard rideId={ride.id} />');
+    expect(driverHistory).toContain('Avaliar passageiro (opcional)');
+    expect(passengerHistory).toContain('Avaliar motorista (opcional)');
   });
   it("uses stage-specific Google map routes without animating over reduced-motion preference",()=>{
     expect(map).toContain('color:"#2563eb"');
