@@ -1,4 +1,5 @@
 import { createFileRoute,redirect } from "@tanstack/react-router";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { useEffect, useState } from "react";
@@ -20,6 +21,13 @@ import { calculateRequestedGroupFare, formatBrl } from "@/lib/ride-cost";
 
 export const Route = createFileRoute("/buscar")({
   ssr:false,
+  validateSearch: z.object({
+    origem: z.string().optional(),
+    destino: z.string().optional(),
+    data: z.string().optional(),
+    horario: z.string().optional(),
+    tolerancia: z.coerce.number().optional(),
+  }).passthrough(),
   beforeLoad:async()=>{
     const {data}=await supabase.auth.getUser();
     if(!data.user)return;
@@ -44,6 +52,7 @@ export const Route = createFileRoute("/buscar")({
   component: Buscar,
 });
 function Buscar() {
+  const searchParams = Route.useSearch();
   const searchOffers = useServerFn(searchRideOffers);
   const previewFare = useServerFn(previewRequestFare);
   const [origin, setOrigin] = useState("");
@@ -79,14 +88,15 @@ function Buscar() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const from = params.get("origem") || "";
-    const to = params.get("destino") || "";
-    const when = params.get("data") || "";
-    const hour = params.get("horario") || "";
-    const validHour = /^([01]\d|2[0-3]):[0-5]\d$/.test(hour) ? hour : "";
-    const tolerance = Number(params.get("tolerancia"));
-    const selectedTolerance: TimeToleranceMinutes = tolerance===5||tolerance===15||tolerance===30||tolerance===60 ? tolerance : 15;
+    // Respond to same-document route changes without a full page reload.
+    const from = searchParams.origem || "";
+    const to = searchParams.destino || "";
+    const when = searchParams.data || "";
+    const hour = searchParams.horario || "";
+    const validHour = /^([01]\\d|2[0-3]):[0-5]\\d$/.test(hour) ? hour : "";
+    const tolerance = Number(searchParams.tolerancia);
+    const selectedTolerance: TimeToleranceMinutes =
+      tolerance === 5 || tolerance === 15 || tolerance === 30 || tolerance === 60 ? tolerance : 15;
     if (from || to || when || validHour) {
       setOrigin(from);
       setDestination(to);
@@ -104,7 +114,8 @@ function Buscar() {
         destinationLocation: undefined,
       });
     }
-  }, []);
+  }, [searchParams.origem, searchParams.destino, searchParams.data,
+      searchParams.horario, searchParams.tolerancia]);
 
   useEffect(() => {
     let active = true;
