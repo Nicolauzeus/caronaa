@@ -28,7 +28,7 @@ function friendlyQuickQuoteError(cause:unknown):string{
   return "Não foi possível calcular o preço agora.";
 }
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
-type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
+type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;expires_at?:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
 
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
@@ -86,6 +86,8 @@ export function QuickRideHomePanel({
   const [ratingOpen,setRatingOpen]=useState<string|null>(null);
   const [timeoutCompletedId,setTimeoutCompletedId]=useState<string|null>(null);
   const [completedHidden,setCompletedHidden]=useState<string|null>(null);
+  const [expiredHidden,setExpiredHidden]=useState<string|null>(null);
+  const [rideRefreshError,setRideRefreshError]=useState(false);
   const mounted=useRef(true);
   const submissionInFlight=useRef(false);
   const retryInFlight=useRef(false);
@@ -119,6 +121,11 @@ export function QuickRideHomePanel({
   },[waitingForOrigin,coverageLoading,quoteLoading,hasOrigin,hasDestination,error,coverageResolvedKey,coveragePointKey,onFarePendingChange]);
   const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  const expiredRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="EXPIRED");
+  const shownExpiredRide=expiredRide?.id!==expiredHidden?expiredRide:null;
+  const searchSecondsLeft=liveRide?.status==="SEARCHING"&&liveRide.expires_at
+    ?Math.max(0,Math.ceil((Date.parse(liveRide.expires_at)-nowMs)/1000)):null;
+  const searchDeadlinePassed=searchSecondsLeft===0;
   const lastNotifiedCompleted=useRef<string|null>(null);
   useEffect(()=>{
     if(!completedRide||lastNotifiedCompleted.current===completedRide.id)return;
@@ -141,6 +148,20 @@ export function QuickRideHomePanel({
       if(window.localStorage.getItem(`caronaa-completed-dismissed:${completedRide.id}`)==="1")setCompletedHidden(completedRide.id);
     }catch{ /* in-memory dismissal remains available */ }
   },[completedRide?.id]);
+  useEffect(()=>{
+    if(!expiredRide)return;
+    try{
+      if(window.localStorage.getItem("caronaa-expired-dismissed:"+expiredRide.id)==="1")
+        setExpiredHidden(expiredRide.id);
+    }catch{/* In-memory dismissal remains available. */}
+  },[expiredRide?.id]);
+  function releaseExpiredRide(){
+    if(!expiredRide)return;
+    try{window.localStorage.setItem("caronaa-expired-dismissed:"+expiredRide.id,"1");}catch{}
+    setExpiredHidden(expiredRide.id);
+    setError("");
+    setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);
+  }
   function releaseCompletedRide(){
     if(!completedRide)return;
     try{
@@ -255,11 +276,42 @@ export function QuickRideHomePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[coveragePointKey,coverageRefresh]);
   const refreshQuickRides=useCallback(async()=>{
-    const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
-    if(mounted.current&&!error)setRides(Array.isArray(data)?data:[]);
+    try{
+      const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
+      if(!mounted.current)return;
+      if(error){setRideRefreshError(true);return;}
+      setRides(Array.isArray(data)?data:[]);
+      setRideRefreshError(false);
+    }catch{
+      if(mounted.current)setRideRefreshError(true);
+    }
   },[]);
   useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
   useQuickRideRealtime(liveRide?.municipality??coverage?.municipality??"",refreshQuickRides,true);
+  // A passenger is not authorized to read the driver-only municipal event
+  // channel. Read their own ride state at a bounded cadence while active;
+  // this is independent of driver socket delivery and survives missed events.
+  useEffect(()=>{
+    if(!liveRide)return;
+    const intervalMs=liveRide.status==="SEARCHING"?5000:
+      ["ACCEPTED","ARRIVED"].includes(liveRide.status)?8000:12000;
+    const timer=window.setInterval(()=>{
+      if(!document.hidden)void refreshQuickRides();
+    },intervalMs);
+    const visible=()=>{if(!document.hidden)void refreshQuickRides();};
+    window.addEventListener("focus",visible);
+    document.addEventListener("visibilitychange",visible);
+    return()=>{
+      window.clearInterval(timer);
+      window.removeEventListener("focus",visible);
+      document.removeEventListener("visibilitychange",visible);
+    };
+  },[liveRide?.id,liveRide?.status,refreshQuickRides]);
+  useEffect(()=>{
+    if(liveRide?.status!=="SEARCHING")return;
+    const timer=window.setInterval(()=>setNowMs(Date.now()),1000);
+    return()=>window.clearInterval(timer);
+  },[liveRide?.id,liveRide?.status]);
 
   useEffect(()=>{
     if(!(shellMode?Object.values(coverages).some(value=>value.status==="ENABLED")&&coverageResolvedKey===coveragePointKey:covered)||
@@ -323,7 +375,8 @@ export function QuickRideHomePanel({
       const submitted=await submitFn({data:{quoteId:currentQuote.quoteId}});
       quickQuoteCoordinator.forget();
       const acknowledged:ExistingQuickRide={id:submitted.rideId,role:"PASSENGER",status:"SEARCHING",
-        municipality:coverage?.municipality??"",vehicle_type:vehicle};
+        municipality:coverage?.municipality??"",vehicle_type:vehicle,
+        expires_at:new Date(Date.now()+120000).toISOString()};
       const {data,error:reloadError}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current){
         const fromServer:ExistingQuickRide[]=!reloadError&&Array.isArray(data)?data:[];
@@ -428,7 +481,19 @@ export function QuickRideHomePanel({
       </div>}
       {liveRide?<div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
         <p className="font-semibold">Sua Corrida Rápida</p>
-        <p role="status" className="mt-1 text-gray-300">{liveRide.status==="SEARCHING"?"Procurando um profissional autorizado…":liveRide.status==="ACCEPTED"?"Motorista a caminho.":liveRide.status==="ARRIVED"?"Seu motorista chegou!":"Viagem em andamento."}</p>
+        <p role="status" className="mt-1 text-gray-300">{liveRide.status==="SEARCHING"
+          ?searchDeadlinePassed
+            ?"O prazo de busca terminou. Confirmando o resultado com o servidor…"
+            :"Procurando um profissional autorizado…"+(searchSecondsLeft!==null?" · "+searchSecondsLeft+" s restantes":"")
+          :liveRide.status==="ACCEPTED"?"Motorista a caminho."
+          :liveRide.status==="ARRIVED"?"Seu motorista chegou!":"Viagem em andamento."}</p>
+        {rideRefreshError&&<p role="status" className="mt-2 text-xs text-amber-200">
+          Conexão instável. Ainda não foi possível confirmar a situação atual da corrida.
+        </p>}
+        {liveRide.status==="SEARCHING"&&<button type="button" onClick={()=>void refreshQuickRides()}
+          className="mt-2 min-h-11 rounded-xl border border-white/30 px-3 text-xs font-semibold">
+          Atualizar situação
+        </button>}
         <div className="flex min-w-0 flex-wrap gap-2">
           {liveRide.status==="ARRIVED"&&<div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
             <p className="text-xs text-gray-300">Informe este código ao motorista para iniciar a corrida.</p>
@@ -442,6 +507,15 @@ export function QuickRideHomePanel({
             className="min-h-12 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">Cancelar pedido</button>}
         </div>
       </div>:<>
+        {shownExpiredRide&&<section role="status"
+          className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
+          <p className="font-semibold text-[#FFBB00]">Busca encerrada</p>
+          <p className="text-white/85">O prazo terminou sem um motorista confirmado. Você pode solicitar outra corrida sem atualizar a página.</p>
+          <button type="button" onClick={releaseExpiredRide}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-bold text-[#121212]">
+            Tentar outra corrida
+          </button>
+        </section>}
         {covered&&hasDestination&&!currentQuote&&!error&&!priceFailure&&<p role="status" className="rounded-xl border border-white/20 bg-white/5 p-3 text-xs text-gray-200">
           {quoteLoading?"Calculando o preço da viagem…":"Preparando preço automaticamente para o destino selecionado…"}
         </p>}
