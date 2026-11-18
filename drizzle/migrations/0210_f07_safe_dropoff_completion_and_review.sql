@@ -176,7 +176,7 @@ BEGIN
   END IF;
   SELECT * INTO d FROM public.quick_ride_dropoff_reviews WHERE ride_id=p_id FOR UPDATE;
   IF NOT FOUND OR d.resolved_at IS NOT NULL OR d.deadline_at<=now() OR
-    p_response NOT IN ('CONFIRMED','CONTESTED') THEN
+    (p_response IS NULL OR p_response NOT IN ('CONFIRMED','CONTESTED')) THEN
     RAISE EXCEPTION 'Dropoff response is closed' USING ERRCODE='42501';
   END IF;
   v_new_status:=CASE WHEN p_response='CONFIRMED'
@@ -323,7 +323,7 @@ BEGIN
   IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
     RAISE EXCEPTION 'Acesso restrito' USING ERRCODE='42501';
   END IF;
-  IF p_decision NOT IN ('COMPLETE','CANCEL') OR
+  IF p_decision IS NULL OR p_decision NOT IN ('COMPLETE','CANCEL') OR
      char_length(btrim(coalesce(p_reason,''))) NOT BETWEEN 20 AND 2000 THEN
     RAISE EXCEPTION 'Invalid decision/reason (20 to 2000 chars)' USING ERRCODE='22023';
   END IF;
