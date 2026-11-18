@@ -48,23 +48,35 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
 
     const publish = async (position: GeolocationPosition) => {
       if (disposed || publishing || watchId === null) return;
-      if (Date.now() - lastGpsAttemptAt < 25000) return;
-      log("SYNC_GPS_FIX",undefined,{accuracy:f07RadarAccuracyBand(position.coords.accuracy)});
-      if(position.coords.accuracy>100 && position.coords.accuracy<=5000) log("SYNC_GPS_LOW_ACCURACY","GPS_LOW_ACCURACY",{accuracy:f07RadarAccuracyBand(position.coords.accuracy),guidance:"Procure janela ou ceu aberto"});
-      lastGpsAttemptAt = Date.now();
       const { latitude, longitude, accuracy } = position.coords;
+      const sampledAtMs=position.timestamp;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-          !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 5000) {
-        void (supabase as any).rpc("professional_location_stop");
+          !Number.isFinite(accuracy) || accuracy <= 0 || accuracy > 5000) {
+        log("SYNC_GPS_REJECTED","GPS_INVALID_FIX");
         return;
       }
+      const sampleAgeMs=Date.now()-sampledAtMs;
+      if(!Number.isFinite(sampledAtMs)||sampleAgeMs>25000||sampleAgeMs< -5000){
+        log("SYNC_GPS_REJECTED","GPS_STALE_SAMPLE");
+        return;
+      }
+      // The database only allows GPS accuracy <=150m for live dispatch.
+      // Still observe a coarse fix locally, but don't publish a misleading pin.
+      if(accuracy>150){
+        log("SYNC_GPS_LOW_ACCURACY","GPS_LOW_ACCURACY",
+          {accuracy:f07RadarAccuracyBand(accuracy),guidance:"Ative localizacao precisa"});
+        return;
+      }
+      if (Date.now() - lastGpsAttemptAt < 25000) return;
+      log("SYNC_GPS_FIX",undefined,{accuracy:f07RadarAccuracyBand(accuracy)});
+      lastGpsAttemptAt = Date.now();
       publishing = true;
       const epoch = generation;
       const ref=f07RadarTraceId();
       log("SYNC_PUBLISH_REQUEST",undefined,{ref});
       try {
         const result = await publisherRef.current({
-          data: { lat: latitude, lng: longitude, accuracyM: accuracy, traceId:ref },
+          data: { lat: latitude, lng: longitude, accuracyM: accuracy, sampledAtMs, traceId:ref },
         });
         // Consent may have been revoked (or page hidden) while the server
         // was resolving Google coordinates. Delete any late publication.
@@ -79,7 +91,10 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         // stop publishing until the driver returns to an approved municipality.
         if (!result.published) {
           log("SYNC_NOT_PUBLISHED",result.reason,{ref:result.traceId??ref});
-          void (supabase as any).rpc("professional_location_stop");
+          // Only confirmed out-of-zone status revokes the published position.
+          // Transient coverage/geocoding errors preserve it until the 90s TTL.
+          if(result.reason==="OUTSIDE_APPROVED_ZONE")
+            void (supabase as any).rpc("professional_location_stop");
         }else{
           log("SYNC_PUBLISHED",undefined,{ref:result.traceId??ref,city:result.municipality});
         }
