@@ -251,7 +251,7 @@ describe("Public Navigation & Institutional Footer", () => {
       expect(
         screen.queryByRole("navigation", { name: "Navegação inferior" }),
       ).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Abrir menu da conta" })).toBeInTheDocument();
     });
   });
 });
