@@ -144,9 +144,9 @@ export function QuickRideOperationalMap({
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
-        ...(statusNow==="IN_PROGRESS"?[]:[{lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const}]),
-        ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
-        ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,
+        ...(statusNow==="IN_PROGRESS"?[]:[{id:"ride-pickup",lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const}]),
+        ...((statusNow==="IN_PROGRESS")?[{id:"ride-destination",lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
+        ...(context?.driver?[{id:"assigned-professional",lat:context.driver.lat,lng:context.driver.lng,
           title:showingLastFix?"Última posição recebida · buscando GPS atualizado":
             isMoto?"Mototaxista":"Motorista",
           kind:isMoto?("availableMoto" as const):("driver" as const)}]:[]),
