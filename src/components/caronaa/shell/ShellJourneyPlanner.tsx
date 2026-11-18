@@ -222,12 +222,24 @@ export function ShellJourneyPlanner({
     const generation=++onRouteSearchRef.current;
     setOnRouteBusy(true);setOnRouteDiagnostic("");setOnRouteMatches([]);setSelectedMatch(null);onOnRouteMatchSelected?.(null);
     const from=frozenOrigin.current;
-    const result=await searchOnRouteMatches({
-      originLat:from.lat,originLng:from.lng,destLat:destinationPoint.lat,destLng:destinationPoint.lng,
-      seats:onRouteVehicle==="MOTO"?1:entireCar?3:seats,
-      targetTime:serviceType==="AGENDADA"&&validScheduleDate(scheduledAt)?new Date(scheduledAt):undefined,
-    });
-    if(generation===onRouteSearchRef.current){setOnRouteMatches(result.matches);setOnRouteDiagnostic(result.diagnostic);setOnRouteBusy(false);}
+    try {
+      const result=await searchOnRouteMatches({
+        originLat:from.lat,originLng:from.lng,destLat:destinationPoint.lat,destLng:destinationPoint.lng,
+        seats:onRouteVehicle==="MOTO"?1:entireCar?3:seats,
+        targetTime:serviceType==="AGENDADA"&&validScheduleDate(scheduledAt)?new Date(scheduledAt):undefined,
+      });
+      if(generation===onRouteSearchRef.current){
+        setOnRouteMatches(result.matches);
+        setOnRouteDiagnostic(result.diagnostic);
+      }
+    } catch {
+      if(generation===onRouteSearchRef.current){
+        setOnRouteMatches([]);
+        setOnRouteDiagnostic("ON_ROUTE_SERVICE_UNAVAILABLE");
+      }
+    } finally {
+      if(generation===onRouteSearchRef.current)setOnRouteBusy(false);
+    }
   };
   const selectOnRoute=(match:OnRouteMatch)=>{
     if(selectedMatch?.offerId===match.offerId)return;
@@ -251,9 +263,14 @@ export function ShellJourneyPlanner({
     }finally{setBookingBusy(false);}
   };
   useEffect(()=>{
-    if(serviceType!=="FLASH"||mode!=="ON_ROUTE"||!route||!valid(destinationPoint)||!frozenOrigin.current)return;
-    void searchAvailableOnRoute();
-  },[serviceType,mode,route?.distanceKm,destinationPoint?.lat,destinationPoint?.lng,onRouteVehicle,seats,entireCar]);
+    // Look up genuine shared rides as soon as a destination and route are ready.
+    // Do not require selecting the shared category to discover an offer.
+    if(serviceType!=="FLASH"||!route||!valid(destinationPoint)||!frozenOrigin.current||flashRideActive)return;
+    const timer=window.setTimeout(()=>{void searchAvailableOnRoute();},280);
+    return()=>window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[serviceType,route?.distanceKm,destinationPoint?.lat,destinationPoint?.lng,
+     onRouteVehicle,seats,entireCar,originRevision,flashRideActive]);
 
   const flashChoices=<section aria-label="Escolha sua carona" className="space-y-2">
     <p className="font-[Sora] text-base font-extrabold text-white">Veículos disponíveis agora</p>
