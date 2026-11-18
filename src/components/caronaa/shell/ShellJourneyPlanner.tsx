@@ -378,16 +378,17 @@ export function ShellJourneyPlanner({
   const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
     <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
     {originControl}
-    <ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
+    {(serviceType!=="FLASH"||!valid(destinationPoint))&&<ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>}
   </div>;
   return <div className={fixedFlash?"flex h-full min-h-0 flex-col font-sans":snap==="peek"?"space-y-1":"space-y-4 pb-4"}>
     {snap==="peek"&&<>
+      <h2 className="px-1 font-[Sora] text-lg font-black text-white">Para onde vamos?</h2>
       <div className="flex min-w-0 gap-1">
-        <button type="button" onClick={()=>{setFocusDestination(true);onSnapChange?.("half");}}
+        <button type="button" aria-label="Para onde vamos?" onClick={()=>{setFocusDestination(true);onSnapChange?.("half");}}
           className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/30 bg-white px-4 py-2 text-[#121212] shadow-sm transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] motion-reduce:transform-none">
           <Search size={21} className="shrink-0 text-[#121212]" aria-hidden="true"/>
           <span className="min-w-0 text-left">
-            <strong className="block truncate font-[Sora] text-sm font-extrabold">{destination||"Para onde vamos?"}</strong>
+            <strong className="block truncate font-[Sora] text-sm font-extrabold">{destination||"Digite seu destino"}</strong>
             <small className="block truncate text-[11px] font-medium text-[#505050]" aria-live="polite">{waitingForOrigin?"Localizando você…":destination?"Toque para mudar o destino":"Digite seu destino"}</small>
           </span>
         </button>
@@ -432,10 +433,45 @@ export function ShellJourneyPlanner({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-3">
         {onRouteConfirmedId&&<p role="status" className="text-primary">Carona Na Rota confirmada · {selectedMatch?.pickupMeeting.poiName}</p>}
         {routeFeedback}
-        {!flashRideActive&&flashChoices}{!flashRideActive&&flashOnRoute}
-        <div className={mode==="EXCLUSIVE"?"":"hidden"}>{flashOperationalPanel}</div>
+        {!flashRideActive&&valid(destinationPoint)&&flashStep==="choices"&&flashChoices}
+        {!flashRideActive&&valid(destinationPoint)&&flashStep!=="choices"&&
+          <button type="button" onClick={()=>{setFlashStep("choices");onSnapChange?.("half");}}
+            className="flex min-h-11 items-center gap-2 text-sm font-bold text-[#FFBB00]">
+            <ArrowLeft size={18}/> Voltar às opções
+          </button>}
+        {!flashRideActive&&flashStep==="confirm"&&mode==="EXCLUSIVE"&&
+          <section aria-label="Confirmar viagem" className="space-y-3">
+            <h2 className="font-[Sora] text-lg font-extrabold text-white">Confirmar viagem</h2>
+            <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/5 p-3">
+              <img src={exclusiveVehicle==="MOTO"?"/flash-moto.png":"/flash-carro.png"} alt="" aria-hidden="true"
+                className="h-16 w-24 object-contain"/>
+              <div className="min-w-0 flex-1">
+                <strong className="font-[Sora] text-sm text-white">{exclusiveVehicle==="MOTO"?"Flash Moto":"Flash Carro"}</strong>
+                <p className="text-xs text-white/65">{exclusiveVehicle==="MOTO"?"Mototáxi profissional":"Motorista profissional"}</p>
+              </div>
+              <strong className="shrink-0 font-[Sora] text-lg text-[#FFBB00]">
+                {flashFares[exclusiveVehicle]&&Date.parse(flashFares[exclusiveVehicle]!.expiresAt)>Date.now()
+                  ?formatBrl(flashFares[exclusiveVehicle]!.customerPaysCents/100):"Cotação pendente"}
+              </strong>
+            </div>
+            <div className="space-y-2 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm">
+              <p className="text-xs uppercase tracking-wide text-white/60">Embarque</p>
+              <p className="break-words font-semibold">{originLabel||"Localização de embarque"}</p>
+              <div className="border-t border-white/10 pt-2">
+                <p className="text-xs uppercase tracking-wide text-white/60">Destino</p>
+                <p className="break-words font-semibold">{destination}</p>
+              </div>
+              {flashFares[exclusiveVehicle]&&
+                <p className="text-xs text-white/65">
+                  {flashFares[exclusiveVehicle]!.distanceKm.toFixed(1)} km · aproximadamente {Math.round(flashFares[exclusiveVehicle]!.durationMinutes)} min
+                </p>}
+              <p className="border-t border-white/10 pt-2 text-xs text-white/65">Pagamento direto ao motorista, conforme a operação da viagem. Revise o preço antes de confirmar.</p>
+            </div>
+          </section>}
+        {!flashRideActive&&flashStep==="shared"&&flashOnRoute}
+        <div className={mode==="EXCLUSIVE"&&(flashStep==="confirm"||flashRideActive)?"":"hidden"}>{flashOperationalPanel}</div>
       </div>
-      {mode==="EXCLUSIVE"&&!flashRideActive&&<div ref={onFlashActionContainer} className="shrink-0 border-t border-caronaa-white/15 bg-secondary py-3"/>}
+      {mode==="EXCLUSIVE"&&!flashRideActive&&flashStep==="confirm"&&<div ref={onFlashActionContainer} className="shrink-0 border-t border-caronaa-white/15 bg-secondary py-3"/>}
     </>}
     {snap==="peek"&&serviceType==="FLASH"&&<div className="hidden">{flashOperationalPanel}</div>}
   </div>;
