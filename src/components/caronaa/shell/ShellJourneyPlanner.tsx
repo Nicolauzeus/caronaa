@@ -73,6 +73,7 @@ export function ShellJourneyPlanner({
   flashDriverCounts={CAR:0,MOTO:0},flashDriverErrors={},flashDriverLoading=false,flashDriverError="",onFlashActionContainer,
 }:Props){
   const [destination,setDestination]=useState("");
+  const [flashStep,setFlashStep]=useState<"choices"|"confirm"|"shared">("choices");
   const [focusDestination,setFocusDestination]=useState(false);
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
   const [exclusiveVehicle,setExclusiveVehicle]=useState<Vehicle>("CAR");
