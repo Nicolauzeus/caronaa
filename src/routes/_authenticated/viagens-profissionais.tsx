@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, Bike, CheckCircle2, RefreshCw, Route as RouteIcon, Wallet } from "lucide-react";
+import { ArrowRight, Bike, CheckCircle2, ChevronDown, RefreshCw, Route as RouteIcon, Wallet } from "lucide-react";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
+import { QuickRideDriverSettlement } from "@/components/caronaa/QuickRideDriverSettlement";
+import { QuickRideRatingModal } from "@/components/caronaa/QuickRideRatingModal";
 
 type ProfessionalRide = {
   id: string;
@@ -40,6 +42,8 @@ function ProfessionalTripsPage() {
   const [rides, setRides] = useState<ProfessionalRide[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedSettlement,setExpandedSettlement] = useState<string|null>(null);
+  const [ratingOpen,setRatingOpen] = useState<string|null>(null);
   const reload = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -103,6 +107,21 @@ function ProfessionalTripsPage() {
       {ride.requested_at && <p className="text-xs text-white/55">
         {new Date(ride.requested_at).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" })}
       </p>}
+      {ride.status === "COMPLETED" && <div className="space-y-2 border-t border-white/15 pt-3">
+        <button type="button" aria-expanded={expandedSettlement===ride.id}
+          onClick={()=>setExpandedSettlement(current=>current===ride.id?null:ride.id)}
+          className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-[#FFBB00]/50 px-3 text-sm font-bold text-[#FFBB00]">
+          <span>Consultar cobrança e recebimento Pix</span>
+          <ChevronDown size={17} className={expandedSettlement===ride.id?"rotate-180":""}/>
+        </button>
+        {expandedSettlement===ride.id&&<QuickRideDriverSettlement rideId={ride.id}/>}
+        <button type="button" onClick={()=>setRatingOpen(ride.id)}
+          className="min-h-11 text-sm font-semibold text-white/80 underline">
+          Avaliar passageiro (opcional)
+        </button>
+        {ratingOpen===ride.id&&<QuickRideRatingModal rideId={ride.id} subject="passageiro"
+          forceOpen onClose={()=>setRatingOpen(null)}/>}
+      </div>}
       {activeStatuses.includes(ride.status) && (
         <Link className="inline-flex min-h-11 items-center gap-2 font-bold text-[#FFBB00] underline"
           to="/disponibilidade-profissional">
