@@ -162,6 +162,22 @@ function Home(){
     const expand=()=>setSheetSnap("half");document.addEventListener("caronaa-shell-expand",expand);
     return()=>document.removeEventListener("caronaa-shell-expand",expand);
   },[]);
+  // Every explicit/foreground GPS reacquisition invalidates any UNCONFIRMED
+  // provisional pickup and its pending reverse-geocode response. A confirmed
+  // manual boarding point is intentionally preserved.
+  useEffect(()=>{
+    if(originSource!=="CURRENT_LOCATION"||!location.locating||location.position||
+       confirmedPickupKey!==""||passengerRide)return;
+    passengerOriginFix.current=null;
+    lastGpsLookup.current=null;
+    ++originLookupSequence.current;
+    setOriginLocation(undefined);
+    setAppliedOriginAccuracy(null);
+    setResolvedAddress(null);
+    setOrigin("");
+    setShellRoute(null);
+    setShellRouteOrigin(null);
+  },[originSource,location.locating,location.position,confirmedPickupKey,passengerRide]);
   const passengerPreview=activeRoleState.activeRole==="PASSAGEIRO"&&serviceType==="FLASH";
   const scheduledDriverPreview=activeRoleState.activeRole==="MOTORISTA"&&serviceType==="AGENDADA";
   // Traditional rides can preview a real approximate fix, then ask the user

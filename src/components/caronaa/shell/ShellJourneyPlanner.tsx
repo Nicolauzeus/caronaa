@@ -136,7 +136,11 @@ export function ShellJourneyPlanner({
       // the replacement GPS fix is still absent. Do not silently reuse it.
       frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
       lastOriginRevision.current=originRevision;
-    }else if(!frozenOrigin.current&&valid(originPoint)){
+    }else if(!valid(originPoint)){
+      // New GPS acquisition invalidated a previously unfixed origin. Do not
+      // keep routing or quoting from the old frozenOrigin in the background.
+      frozenOrigin.current=null;
+    }else if(!frozenOrigin.current){
       frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
     }
     if(!valid(destinationPoint)){

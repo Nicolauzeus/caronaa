@@ -430,6 +430,10 @@ export function GoogleHomeRideMap({
         }}>
         <LocateFixed size={21} className={locating ? "animate-pulse motion-reduce:animate-none" : following ? "text-primary" : ""}/>
       </Button>
+      {originIsCurrent&&!canDisplayGps&&!hasApproximateBrowserFix&&!locating&&
+        <div role="status" className="pointer-events-none absolute left-3 right-20 top-32 z-10 rounded-lg bg-background/95 px-3 py-2 text-[11px] text-foreground shadow-sm">
+          Localização não obtida. O mapa pode mostrar uma área padrão, não o seu endereço atual.
+        </div>}
       {originIsCurrent&&hasApproximateBrowserFix&&<div role="status"
         className={`pointer-events-none absolute left-3 right-20 z-10 rounded-lg bg-background/95 px-3 py-2 text-[11px] text-foreground shadow-sm ${immersive?"top-32":"top-3"}`}>
         GPS aproximado ({Math.round(userPosition!.accuracy)} m). Confirme o embarque no mapa; este ponto não será usado automaticamente no preço.
