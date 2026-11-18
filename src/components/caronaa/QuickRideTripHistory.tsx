@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Bike, CarFront, ChevronDown, Clock3, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
@@ -92,7 +93,10 @@ export function QuickRideTripHistory() {
         <button type="button" onClick={() => void refresh()} className="min-h-11 rounded-xl bg-[#FFBB00] px-4 text-sm font-bold text-[#121212]">Tentar novamente</button>
       </div> :
       rides.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-card p-5 text-sm text-muted-foreground">
-        Você ainda não solicitou uma Corrida Rápida.
+        <p>Você ainda não solicitou uma Corrida Rápida.</p>
+        <Link to="/home" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 text-sm font-bold text-[#121212]">
+          Pedir uma corrida
+        </Link>
       </div> :
       <div className="grid items-start gap-3 lg:grid-cols-2">
         {rides.map(ride => {
@@ -118,6 +122,11 @@ export function QuickRideTripHistory() {
             {ride.fareCents !== null && <p className="mt-3 font-display text-xl font-black">{formatBrl(ride.fareCents / 100)}
               <span className="ml-2 align-middle text-xs font-normal text-muted-foreground">valor contratado</span>
             </p>}
+            {["SEARCHING", "ACCEPTED", "ARRIVED", "IN_PROGRESS"].includes(ride.status) && (
+              <Link to="/home" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#FFBB00] px-3 text-sm font-bold text-[#121212]">
+                Acompanhar no mapa
+              </Link>
+            )}
             {ride.status === "COMPLETED" && (
               <div className="mt-3">
                 <button type="button" aria-expanded={pixOpen} aria-controls={"quick-pix-"+ride.id}
