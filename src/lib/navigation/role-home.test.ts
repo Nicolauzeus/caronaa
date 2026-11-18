@@ -12,10 +12,10 @@ describe("CARONAA role-dependent Home navigation", () => {
       authenticated: true, activeRole: "PASSAGEIRO",
     }))).toEqual({to:"/home"});
   });
-  it("routes shared drivers to the driver cockpit without granting F07", () => {
+  it("routes newly registered drivers to availability even before F07 authorization", () => {
     expect(caronaaHomeTarget(resolveCaronaaHomeSurface({
       authenticated: true, activeRole: "MOTORISTA", professionalAuthorized: false,
-    }))).toEqual({to:"/home",search:{intent:"offer"}});
+    }))).toEqual({to:"/disponibilidade-profissional"});
   });
   it("routes authorized professional drivers to their operational availability panel", () => {
     expect(caronaaHomeTarget(resolveCaronaaHomeSurface({

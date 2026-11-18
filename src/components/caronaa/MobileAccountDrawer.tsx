@@ -90,15 +90,14 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
             <div className="grid gap-2">
               {([
                 { role: "PASSAGEIRO" as const, title: "Pedir carona", description: "Encontrar viagens ou pedir uma corrida", intent: "request" as const, Icon: UserRound },
-                { role: "MOTORISTA" as const, title: "Oferecer carona", description: "Compartilhar um trajeto com passageiros", intent: "offer" as const, Icon: CarFront },
+                { role: "MOTORISTA" as const, title: "Trabalhar como motorista", description: "Ficar online e receber solicitações", intent: "offer" as const, Icon: CarFront },
               ]).map(item => {
                 const selected = activeRole === item.role;
                 return (
-                  <Link key={item.role} to="/home" search={{intent:item.intent}} onClick={()=>{
-                    close();
-                    if(selected && item.role==="MOTORISTA")
-                      window.dispatchEvent(new Event("caronaa:driver-home"));
-                  }}
+                  <Link key={item.role}
+                    to={selected&&item.role==="MOTORISTA"?"/disponibilidade-profissional":"/home"}
+                    search={selected&&item.role==="MOTORISTA"?undefined:{intent:item.intent}}
+                    onClick={close}
                     aria-current={selected ? "true" : undefined}
                     className={`flex min-h-[68px] items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${selected ? "border-[#FFBB00] bg-[#FFBB00]/10" : "border-border bg-background hover:border-[#FFBB00]/50"}`}>
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#FFBB00]/15 text-[#B58400]"><item.Icon size={21}/></span>
@@ -111,7 +110,7 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
                 );
               })}
             </div>
-            <p className="mt-2 px-1 text-xs text-muted-foreground">Oferecer carona comum não habilita corridas profissionais Flash.</p>
+            <p className="mt-2 px-1 text-xs text-muted-foreground">A disponibilidade Flash é a entrada principal do motorista. Caronas agendadas ficam nos atalhos abaixo; habilitação e GPS são verificados separadamente.</p>
           </section>
         )}
         {!prelaunchMode && !professionalOnly && (
@@ -135,6 +134,14 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
               <Link to="/viagens-profissionais" onClick={close} className={tileClass}>
                 <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
                 <span className="text-sm font-extrabold">Minhas viagens</span>
+              </Link>
+              <Link to="/home" search={{intent:"scheduled"}} onClick={close} className={tileClass}>
+                <CarFront size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Oferecer carona agendada</span>
+              </Link>
+              <Link to="/home" search={{trips:"open"}} onClick={close} className={tileClass}>
+                <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
+                <span className="text-sm font-extrabold">Caronas agendadas</span>
               </Link>
               <Link to="/perfil" hash="pix-do-motorista" onClick={close} className={tileClass}>
                 <Wallet size={23} className="text-[#C38D00]" aria-hidden="true" />

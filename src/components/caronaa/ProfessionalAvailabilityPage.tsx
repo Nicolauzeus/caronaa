@@ -509,10 +509,18 @@ export function ProfessionalAvailabilityPage() {
               </ul>
             </div>
           )}
-          {(simpleMototaxi && professionalMissing.length > 0 && professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED") && (
-            <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-bold underline">
-              Corrigir dados profissionais
+          {professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED" &&
+            pilotVehicle==="MOTO" && (
+            <Link to="/cadastro-motorista"
+              className="inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 py-2 font-bold text-[#121212]">
+              {professionalMissing.length ? "Corrigir dados profissionais" : "Concluir cadastro e habilitar corridas"}
             </Link>
+          )}
+          {professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED" &&
+            pilotVehicle==="CAR" && (
+            <p className="text-xs text-amber-100/80">
+              Para concluir a habilitação de carro, abra Configurações do motorista e confirme os dados profissionais.
+            </p>
           )}
         </div>
       )}

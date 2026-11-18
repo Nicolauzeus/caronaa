@@ -5,7 +5,7 @@ export type CaronaaRole = "PASSAGEIRO" | "MOTORISTA" | null | undefined;
 
 /** The profile's active role selects a landing surface; it never grants F07 access. */
 export function resolveCaronaaHomeSurface({
-  authenticated, activeRole, professionalAuthorized = false, prelaunchMode = false,
+  authenticated, activeRole, prelaunchMode = false,
 }: {
   authenticated: boolean;
   activeRole?: CaronaaRole;
@@ -14,8 +14,9 @@ export function resolveCaronaaHomeSurface({
 }): CaronaaHomeSurface {
   if (!authenticated) return "guest";
   if (prelaunchMode) return "waiting";
-  if (activeRole === "MOTORISTA")
-    return professionalAuthorized ? "professional-driver" : "shared-driver";
+  // Choosing MOTORISTA selects the operational landing, never a permission.
+  // Missing professional data/fees/GPS remain enforced in the guarded cockpit.
+  if (activeRole === "MOTORISTA") return "professional-driver";
   return "passenger";
 }
 

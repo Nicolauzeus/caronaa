@@ -134,7 +134,7 @@ function CompleteDriverVehicle() {
       if(next === "/aguardando") await navigate({to:"/aguardando",replace:true});
       else if(next !== "/home") throw new Error("Não foi possível confirmar o acesso inicial.");
       else if(redirect) await navigate({to:"/cadastro-motorista",replace:true});
-      else await navigate({to:"/home",search:{intent:"offer"},replace:true});
+      else await navigate({to:"/disponibilidade-profissional",replace:true});
     }catch(cause){
       setError(cause instanceof Error?cause.message:"Não foi possível concluir o cadastro.");
     }finally{setBusy(false);}
