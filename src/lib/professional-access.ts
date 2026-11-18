@@ -28,10 +28,10 @@ export const MISSING_LABELS: Record<MissingCode, string> = {
 export const PROFILE_CODES: MissingCode[] = ["PHOTO", "FULL_NAME", "VEHICLE_MODEL", "PLATE"];
 
 export const STATUS_LABELS: Record<AccessStatus, string> = {
-  PENDING: "Em análise",
-  APPROVED: "Autorizado para o radar (piloto)",
+  PENDING: "Confirmando cadastro",
+  APPROVED: "Habilitado para receber corridas",
   REJECTED: "Não aprovado",
-  CHANGES_REQUESTED: "Correções solicitadas",
+  CHANGES_REQUESTED: "Dados precisam de correção",
 };
 
 export function canApproveProfessionalRequest(status: AccessStatus, missing: MissingCode[] | null | undefined) {
