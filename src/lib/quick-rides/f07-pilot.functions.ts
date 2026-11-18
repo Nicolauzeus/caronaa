@@ -47,7 +47,7 @@ export const activateF07PilotDriver = createServerFn({ method: "POST" })
       },
     );
     if (error || typeof expiresAt !== "string") {
-      throw new Error("Piloto indisponível: confirme o e-mail, verifique seus repasses e a migration 0143.");
+      throw new Error("Piloto indisponível: confirme o e-mail, a autorização e a migration 0143.");
     }
     return { approved: true as const, vehicleType: data.vehicleType, expiresAt };
   });
