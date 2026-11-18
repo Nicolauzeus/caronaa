@@ -21,8 +21,8 @@ function friendlyRideActionError(cause:{message?:string}|null,next:string):strin
   if(next==="ACCEPT"){
     if(/VERIFIED_GPS_REQUIRED|GPS_STALE_SAMPLE|GPS_INVALID_FIX/i.test(message))
       return "Seu GPS expirou ou ficou impreciso. Ative a localização precisa, mantenha o app aberto e tente novamente.";
-    if(/DRIVER_NOT_AUTHORIZED_OR_FEES|Motorista com 3 repasses/i.test(message))
-      return "Acesso profissional ou repasses pendentes. Verifique sua conta antes de aceitar.";
+    if(/DRIVER_NOT_AUTHORIZED_OR_FEES/i.test(message))
+      return "Acesso profissional não autorizado. Se o erro citar comissões, verifique se a migration 0212 foi aplicada.";
     if(/OUTSIDE_DISPATCH_RADIUS/i.test(message))
       return "Este embarque está fora do raio permitido para sua localização atual.";
     if(/no longer approved|MUNICIPALITY_NOT_ENABLED/i.test(message))
