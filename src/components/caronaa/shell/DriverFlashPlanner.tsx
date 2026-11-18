@@ -238,17 +238,37 @@ export function DriverFlashPlanner({
     }finally{setBusyRide(false);}
   };
   const [dropoffSent,setDropoffSent]=useState(false);
+  const [manualCloseOpen,setManualCloseOpen]=useState(false);
+  const [manualCloseReason,setManualCloseReason]=useState("");
   useEffect(()=>{if(active?.status!=="IN_PROGRESS")setDropoffSent(false);},[active?.id,active?.status]);
   const requestDropoff=async()=>{
     if(!active||busyRide)return;
     setBusyRide(true);
     try{
       const {data,error}=await (supabase as any).rpc("quick_ride_complete_ride",{p_id:active.id});
-      if(error||data!==true)throw new Error("DROPOFF");
+      if(error||data!==true){
+        if(/DROPOFF_GPS_UNVERIFIED|DROPOFF_TOO_FAR_FROM_DESTINATION/i.test(String(error?.message??"")))
+          setManualCloseOpen(true);
+        throw new Error("DROPOFF");
+      }
       setDropoffSent(true);
       toast.success("Desembarque enviado ao passageiro.");
       await refresh();
-    }catch{toast.error("Não foi possível solicitar o desembarque. Tente novamente.");}
+    }catch{toast.error("Não foi possível confirmar o GPS no destino. Verifique o local ou peça análise manual.");}
+    finally{setBusyRide(false);}
+  };
+  const requestManualClose=async()=>{
+    if(!active||busyRide||manualCloseReason.trim().length<20)return;
+    setBusyRide(true);
+    try{
+      const {data,error}=await (supabase as any).rpc(
+        "quick_ride_request_manual_review",
+        {p_id:active.id,p_reason:manualCloseReason.trim()});
+      if(error||data!==true)throw new Error("REVIEW_UNAVAILABLE");
+      setManualCloseOpen(false);setManualCloseReason("");
+      toast.info("Corrida encaminhada para análise. Nenhum Pix ou comissão foi gerado.");
+      await refresh();
+    }catch{toast.error("Não foi possível enviar o encerramento para análise. Tente novamente.");}
     finally{setBusyRide(false);}
   };
   useEffect(()=>{
@@ -380,10 +400,29 @@ export function DriverFlashPlanner({
         </>}
         {active.status==="IN_PROGRESS"&&<>
           <p className="text-xs text-white/70">{dropoffSent?"Desembarque solicitado. Aguardando o passageiro confirmar.":"Siga a rota até o destino."}</p>
-          <button type="button" disabled={busyRide} onClick={()=>void requestDropoff()}
+          <button type="button" disabled={busyRide||dropoffSent} onClick={()=>void requestDropoff()}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-            {dropoffSent?"Reenviar pedido de desembarque":"Cheguei ao destino · Solicitar desembarque"}
+            {dropoffSent?"Aguardando confirmação do passageiro":"Cheguei ao destino · Solicitar desembarque"}
           </button>
+          {!dropoffSent&&<div className="space-y-2 rounded-xl border border-white/20 p-3">
+            <button type="button" aria-expanded={manualCloseOpen}
+              onClick={()=>setManualCloseOpen(value=>!value)}
+              className="min-h-11 w-full text-sm font-semibold text-[#FFBB00]">
+              Sem GPS no destino? Solicitar revisão
+            </button>
+            {manualCloseOpen&&<>
+              <p className="text-xs text-white/70">A corrida será retirada da operação e encaminhada para decisão administrativa, sem cobrança automática.</p>
+              <label className="block text-xs" htmlFor="flash-close-reason">Explique a dificuldade</label>
+              <textarea id="flash-close-reason" rows={3} maxLength={1000}
+                value={manualCloseReason} onChange={e=>setManualCloseReason(e.target.value)}
+                className="w-full rounded-xl border border-white/30 bg-[#121212] p-3 text-white" />
+              <button type="button" disabled={busyRide||manualCloseReason.trim().length<20}
+                onClick={()=>void requestManualClose()}
+                className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-3 font-bold text-[#FFBB00] disabled:opacity-50">
+                Encaminhar para análise, sem cobrança
+              </button>
+            </>}
+          </div>}
         </>}
       </section>}
       {canListen&&active?.status==="IN_PROGRESS"&&
