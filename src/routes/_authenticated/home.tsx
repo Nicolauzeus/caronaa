@@ -29,7 +29,7 @@ import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperation
 import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { useProfileGender } from "@/lib/use-profile-gender";
-import { useUserLocation, validPoint, type UserPosition } from "@/lib/location/use-user-location";
+import { useUserLocation, validPoint, locationFailureMessages, type UserPosition } from "@/lib/location/use-user-location";
 import { canPreviewPassengerPickup, needsPassengerPickupConfirmation } from "@/lib/location/passenger-pickup";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn, reversePassengerPickupServerFn } from "@/lib/location.functions";
@@ -514,6 +514,12 @@ function Home(){
               }setServiceType(next);
             }}
             originPoint={originLocation} originLabel={origin} locating={locatingPickup}
+            gpsError={location.failure?locationFailureMessages[location.failure]:
+              originSource==="CURRENT_LOCATION"&&!validPoint(originLocation)&&
+              location.addressPosition?.accuracy!=null&&location.addressPosition.accuracy>300
+                ?"GPS aproximado (±"+Math.round(location.addressPosition?.accuracy??0)+
+                  " m). Toque em escolher embarque no mapa ou ative a localização precisa.":undefined}
+            onRetryGps={requestNewPickupLocation}
             originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
             onFlashVehicleChange={setQuickVehicle}
             flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}

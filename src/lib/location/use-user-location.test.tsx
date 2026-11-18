@@ -73,8 +73,28 @@ describe("Localização da home", () => {
     const { result } = renderHook(useUserLocation);
     act(() => fail({ code } as GeolocationPositionError));
     expect(result.current.failure).toBe(expected);
-    expect(watchPosition).not.toHaveBeenCalled();
+    expect(watchPosition).toHaveBeenCalledOnce();
+    if (code === 1) expect(clearWatch).toHaveBeenCalledWith(42);
     expect(result.current.locating).toBe(false);
+  });
+  it("recupera um TIMEOUT inicial com o GPS recebido pelo watcher", () => {
+    const { result } = renderHook(useUserLocation);
+    act(() => fail({ code: 3 } as GeolocationPositionError));
+    expect(result.current.failure).toBe("TIMEOUT");
+    expect(watchPosition).toHaveBeenCalledOnce();
+    act(() => move(position(-3.733, 40)));
+    expect(result.current.failure).toBeNull();
+    expect(result.current.addressPosition?.lat).toBe(-3.733);
+    expect(result.current.locating).toBe(false);
+    expect(result.current.recenterVersion).toBe(1);
+  });
+  it("não substitui um fix preciso por resposta inicial atrasada e grosseira", () => {
+    const { result } = renderHook(useUserLocation);
+    act(() => move(position(-3.733, 18)));
+    act(() => fix(position(-3.74, 500)));
+    expect(result.current.addressPosition?.lat).toBe(-3.733);
+    expect(result.current.addressPosition?.accuracy).toBe(18);
+    expect(result.current.recenterVersion).toBe(1);
   });
   it("atualiza posição sem reverse geocoding a cada movimento", () => {
     const { result } = renderHook(useUserLocation);
@@ -103,11 +123,12 @@ describe("Localização da home", () => {
     act(() => move(position(-3.8)));
     expect(watchPosition).toHaveBeenCalledOnce();
   });
-  it("não inicia watcher se um fix chega após unmount", () => {
+  it("descarta o fix atrasado após desmontagem, sem criar outro watcher", () => {
     const { unmount } = renderHook(useUserLocation);
     unmount();
     act(() => fix(position()));
-    expect(watchPosition).not.toHaveBeenCalled();
+    expect(watchPosition).toHaveBeenCalledOnce();
+    expect(clearWatch).toHaveBeenCalledWith(42);
   });
   it("suspende no background e retoma apenas um watcher", () => {
     const { result } = renderHook(useUserLocation);

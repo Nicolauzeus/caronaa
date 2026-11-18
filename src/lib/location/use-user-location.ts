@@ -65,50 +65,61 @@ export function useUserLocation({
     setLocating(true);
     const current = generation.current;
     const alive = () => mounted.current && current === generation.current && !document.hidden;
+    let receivedFix = false;
+    let newestSampleAt = 0;
     const fail = (error: GeolocationPositionError) => {
       if (!alive()) return;
+      // Permission denial is terminal; transient timeouts are not.
+      if (error.code === 1) {
+        setFailure("PERMISSION_DENIED");
+        setLocating(false);
+        stop();
+        return;
+      }
+      if (receivedFix) return;
+      setFailure(error.code === 3 ? "TIMEOUT" : "POSITION_UNAVAILABLE");
+      // Keep the watcher listening: a late fix can still recover the journey.
       setLocating(false);
-      setFailure(
-        error.code === 1
-          ? "PERMISSION_DENIED"
-          : error.code === 3
-            ? "TIMEOUT"
-            : "POSITION_UNAVAILABLE",
-      );
-      if (error.code === 1) stop();
     };
-    const update = (value: GeolocationPosition, initial = false) => {
+    const update = (value: GeolocationPosition) => {
       if (!alive()) return false;
+      const sampledAt = Number.isFinite(value.timestamp) ? value.timestamp : Date.now();
+      if (sampledAt + 1000 < newestSampleAt) return false;
       const point = {
         lat: value.coords.latitude,
         lng: value.coords.longitude,
         accuracy: value.coords.accuracy,
       };
-      if (!validPoint(point) || !Number.isFinite(point.accuracy) || point.accuracy < 0)
-        return false;
+      if (!validPoint(point) || !Number.isFinite(point.accuracy) ||
+          point.accuracy < 0 || point.accuracy > 5000) return false;
+      newestSampleAt = Math.max(newestSampleAt, sampledAt);
       setPosition(point);
-      if (initial) {
-        setAddressPosition(point);
-      } else {
-        setAddressPosition((previous) => shouldImproveGpsOrigin(previous, point) ? point : previous);
-      }
+      setAddressPosition(previous => shouldImproveGpsOrigin(previous, point) ? point : previous);
       setFailure(null);
       setLocating(false);
-      return point;
+      if (!receivedFix) {
+        receivedFix = true;
+        setRecenterVersion(version => version + 1);
+      }
+      return true;
     };
-    const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 };
-    navigator.geolocation.getCurrentPosition(
-      (value) => {
-        const point = update(value, true);
-        if (!point) return;
-        // Follow the first fix; subsequent watches only revise a coarse fix
-        // when accuracy improves materially, not for ordinary movement.
-        setRecenterVersion((value) => value + 1);
-        watch.current = navigator.geolocation.watchPosition((next) => { update(next); }, fail, options);
-      },
-      fail,
-      options,
-    );
+    // Start the continuous watcher immediately, independently of the
+    // first getCurrentPosition result. Chrome/Safari may time out on that
+    // initial request while delivering a usable GPS fix seconds later.
+    const options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 };
+    try {
+      watch.current = navigator.geolocation.watchPosition(
+        value => { update(value); }, fail,
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 },
+      );
+      navigator.geolocation.getCurrentPosition(
+        value => { update(value); }, fail, options,
+      );
+    } catch {
+      setLocating(false);
+      setFailure("POSITION_UNAVAILABLE");
+      stop();
+    }
   }, [stop]);
   useEffect(() => {
     mounted.current = true;

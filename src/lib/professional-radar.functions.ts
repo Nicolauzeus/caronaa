@@ -30,6 +30,10 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       throw new Error(`${message} [F07:${code}] (ref ${traceId})`);
     };
 
+    const sampleAgeMs=Date.now()-data.sampledAtMs;
+    if(sampleAgeMs < -5000 || sampleAgeMs > 25000)
+      return reject("GPS_STALE_SAMPLE", "Recebemos uma leitura GPS antiga. Solicitando nova localização.");
+
     log("request", undefined, {
       accuracyBand: data.accuracyM <= 100 ? "<=100m" : data.accuracyM <= 1000 ? "101-1000m" : ">1000m",
       serviceRoleConfigured: Boolean(process.env["SUPABASE_SERVICE_ROLE_KEY"]),
@@ -126,12 +130,13 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
 
     log("db_publish_started", undefined, { city });
     const { data: saved, error: savedError } =
-      await admin.rpc("publish_verified_professional_position", {
+      await admin.rpc("publish_verified_professional_position_v2", {
         p_user_id: context.userId,
         p_lat: data.lat,
         p_lng: data.lng,
         p_accuracy_m: data.accuracyM,
         p_municipality: city,
+        p_sampled_at_ms: data.sampledAtMs,
       });
     if (savedError || saved !== true) {
       // Extra checks ONLY after an SQL rejection. They distinguish a user

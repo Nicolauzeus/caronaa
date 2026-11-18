@@ -19,6 +19,16 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
       .toBe("DB_REGION_DISABLED");
     expect(classifyF07RadarDbError({code:"22023",message:"Posicao GPS invalida"}))
       .toBe("DB_LOCATION_INVALID");
+    expect(classifyF07RadarDbError({code:"22023",message:"GPS_STALE_SAMPLE"}))
+      .toBe("GPS_STALE_SAMPLE");
+    expect(classifyF07RadarDbError({code:"22023",message:"GPS_IMPLAUSIBLE_JUMP"}))
+      .toBe("GPS_IMPLAUSIBLE_JUMP");
+    expect(classifyF07RadarDbError({code:"22023",message:"GPS_INVALID_FIX"}))
+      .toBe("GPS_INVALID_FIX");
+    expect(classifyF07RadarDbError({code:"42501",message:"MUNICIPALITY_NOT_ENABLED"}))
+      .toBe("DB_REGION_DISABLED");
+    expect(classifyF07RadarDbError({code:"42501",message:"DRIVER_OFFLINE"}))
+      .toBe("DB_DRIVER_OFFLINE");
     expect(classifyF07RadarDbError({code:"42703",message:"column absent"})).toBe("DB_SCHEMA_MISMATCH");
     expect(classifyF07RadarDbError({code:"23514",message:"check constraint"})).toBe("DB_CONSTRAINT_FAILED");
     expect(classifyF07RadarDbError({code:"42501",message:"Piloto F07 expirado; encerre a autorizacao temporaria"})).toBe("DB_DRIVER_NOT_APPROVED");
@@ -37,13 +47,17 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     expect(sql).not.toContain("sampled_at=now,");
   });
 
-  it("keeps coarse fixes publishable without bypassing server municipality checks",async()=>{
+  it("rejects coarse GPS publication while preserving visible diagnostics",async()=>{
     const { professionalRadarPointSchema } = await import("./professional-radar-geo");
+    const sampledAtMs=Date.now();
     expect(professionalRadarPointSchema.safeParse({
-      lat:-4.2,lng:-38.7,accuracyM:1500,traceId:"coarse01",
+      lat:-4.2,lng:-38.7,accuracyM:45,sampledAtMs,traceId:"good01",
     }).success).toBe(true);
     expect(professionalRadarPointSchema.safeParse({
-      lat:-4.2,lng:-38.7,accuracyM:6000,traceId:"invalid01",
+      lat:-4.2,lng:-38.7,accuracyM:1500,sampledAtMs,traceId:"coarse01",
+    }).success).toBe(false);
+    expect(professionalRadarPointSchema.safeParse({
+      lat:-4.2,lng:-38.7,accuracyM:6000,sampledAtMs,traceId:"invalid01",
     }).success).toBe(false);
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
@@ -51,6 +65,23 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     expect(page).toContain("accuracy>100");
     expect(sync).toContain("SYNC_GPS_LOW_ACCURACY");
     expect(sync).toContain("SYNC_RETRY_SCHEDULED");
+  });
+
+  it("publishes only fresh native GPS fixes with the v2 timestamp contract",()=>{
+    const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
+    const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
+    const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
+    const geo=readFileSync("src/lib/professional-radar-geo.ts","utf8");
+    expect(geo).toContain("sampledAtMs: z.number().int().positive()");
+    expect(geo).toContain("accuracyM: z.number().finite().positive().max(150)");
+    expect(server).toContain('rpc("publish_verified_professional_position_v2"');
+    expect(server).toContain("p_sampled_at_ms: data.sampledAtMs");
+    expect(server).toContain("data.sampledAtMs");
+    expect(page).toContain("sampledAtMs,traceId:ref");
+    expect(page).toContain("if(accuracy>150)");
+    expect(sync).toContain("sampledAtMs, traceId:ref");
+    expect(sync).toContain("if(accuracy>150)");
+    expect(sync).toContain('if(result.reason==="OUTSIDE_APPROVED_ZONE")');
   });
 
   it("copies only allowlisted safe fields into diagnostic events",()=>{

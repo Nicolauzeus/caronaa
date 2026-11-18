@@ -16,7 +16,8 @@ export type F07RadarDiagnosticCode =
   | "DB_LOCATION_INVALID" | "DB_SCHEMA_MISMATCH" | "DB_CONSTRAINT_FAILED" | "DB_WRITE_FAILED"
   | "DB_WRITE_FALSE" | "LOCATION_CLEAR_FAILED"
   | "NETWORK_OR_SERVER_ERROR" | "GPS_PERMISSION_DENIED"
-  | "GPS_TIMEOUT" | "GPS_UNAVAILABLE" | "GPS_INVALID_FIX";
+  | "GPS_TIMEOUT" | "GPS_UNAVAILABLE" | "GPS_INVALID_FIX"
+  | "GPS_STALE_SAMPLE" | "GPS_LOW_ACCURACY" | "GPS_IMPLAUSIBLE_JUMP";
 
 export type SafeF07RadarEvent = {
   at: string;
@@ -40,6 +41,13 @@ export function classifyF07RadarDbError(error: PostgrestLike | null | undefined)
       message.includes("could not find the function") ||
       message.includes("function public.publish_verified_professional_position") &&
         message.includes("does not exist")) return "DB_FUNCTION_MISSING";
+  if (message.includes("gps_stale_sample") ||
+      message.includes("gps_older_than_last_sample")) return "GPS_STALE_SAMPLE";
+  if (message.includes("gps_implausible_jump")) return "GPS_IMPLAUSIBLE_JUMP";
+  if (message.includes("gps_invalid_fix")) return "GPS_INVALID_FIX";
+  if (message.includes("municipality_not_enabled")) return "DB_REGION_DISABLED";
+  if (message.includes("driver_not_authorized")) return "DB_DRIVER_NOT_APPROVED";
+  if (message.includes("driver_offline")) return "DB_DRIVER_OFFLINE";
   if (message.includes("municipio ainda nao habilitado") ||
       message.includes("município ainda não habilitado")) return "DB_REGION_DISABLED";
   if (message.includes("motorista esta offline") ||
