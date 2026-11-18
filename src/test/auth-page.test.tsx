@@ -68,30 +68,20 @@ describe("Página /auth Redesenhada", () => {
     expect(screen.getByRole("button", { name: /Continuar com Google/i })).toBeInTheDocument();
   });
 
-  it("solicita somente os dados necessários em modo login e cadastro", () => {
-    mockSearchState = { submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc103" };
-    const { container } = render(<AuthComponent />);
+  it("mostra apenas dois perfis e exige a escolha antes dos dados", () => {
+    render(<AuthComponent />);
+    fireEvent.click(screen.getByRole("button", { name: /^Criar conta$/i }));
+    expect(screen.getByRole("heading", {name: /Como quer usar a CARONAA/i})).toBeInTheDocument();
+    expect(screen.getByRole("button", {name: /Sou passageiro/i})).toBeInTheDocument();
+    expect(screen.getByRole("button", {name: /Sou motorista/i})).toBeInTheDocument();
+    expect(screen.queryByRole("button", {name: /Ambos/i})).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
 
-    // Modo inicial padrão: login
-    expect(screen.getByLabelText(/E-mail/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Esqueci minha senha/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Nome completo/i)).not.toBeInTheDocument();
-
-    // Alterna para cadastro
-    const createAccount = screen.getByRole("button", { name: /^Criar conta$/i });
-    fireEvent.click(createAccount);
-
-    // Cadastro inicial: nome completo, e-mail e senha.
-    expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/E-mail/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Esqueci minha senha/i })).not.toBeInTheDocument();
-
-    // Botão de envio do formulário de cadastro
-    const submitBtn = container.querySelector('button[type="submit"]');
-    expect(submitBtn).toBeInTheDocument();
-    expect(submitBtn).toHaveTextContent("Criar minha conta");
+    fireEvent.click(screen.getByRole("button", {name: /Sou passageiro/i}));
+    expect(screen.getByLabelText(/Nome completo/i)).toBeRequired();
+    expect(screen.getByLabelText("E-mail")).toBeRequired();
+    expect(screen.getByLabelText("Senha")).toBeRequired();
+    expect(screen.getByRole("button", {name: /Alterar/i})).toBeInTheDocument();
   });
 
   it("possui links obrigatórios para Termos de Uso, Privacidade e Segurança", () => {
@@ -108,13 +98,13 @@ describe("Página /auth Redesenhada", () => {
   it("permite iniciar cadastro sem submissão de evento", () => {
     mockSearchState = { mode: "cadastro" };
     render(<AuthComponent />);
-    expect(screen.getByLabelText(/Nome completo/i)).toBeRequired();
-    expect(screen.getByRole("heading", { name: /Crie sua conta/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Como quer usar a CARONAA/i })).toBeInTheDocument();
   });
 
   it("preserva cadastro após conclusão do formulário", () => {
     mockSearchState = { mode: "cadastro", submissionId: "b51c1e71-59d8-4aab-850a-af4a584fc103" };
     render(<AuthComponent />);
+    fireEvent.click(screen.getByRole("button", {name: /Sou motorista/i}));
     expect(screen.getByLabelText(/Nome completo/i)).toBeInTheDocument();
   });
 });
