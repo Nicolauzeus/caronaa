@@ -106,6 +106,7 @@ export function useUserLocation({
     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 };
     navigator.geolocation.getCurrentPosition(
       (value) => {
+        if (!alive()) return;
         const point = update(value, true);
         if (point) setRecenterVersion((value) => value + 1);
         // A cached stale first fix must not stop a fresh GPS watch.

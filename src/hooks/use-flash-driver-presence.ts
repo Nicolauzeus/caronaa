@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
+import { GPS_POLICY, isFreshGpsTimestamp } from "@/lib/location/gps-policy";
 import { setFlashDriverOffline, setFlashDriverOnline, updateFlashDriverHeartbeatGPS, FlashDriverError, type FlashDriverOnlineInput } from "@/services/flash-driver-service";
 
 export type DriverGpsFix={lat:number;lng:number;accuracyM:number;at:number};
@@ -18,15 +21,19 @@ function gpsFailure(error:unknown):string{
 }
 const sample=(pos:GeolocationPosition):DriverGpsFix=>({
   lat:pos.coords.latitude,lng:pos.coords.longitude,
-  accuracyM:pos.coords.accuracy,at:Date.now(),
+  accuracyM:pos.coords.accuracy,at:pos.timestamp,
 });
 export function useFlashDriverPresence(){
+  const verifyPosition=useServerFn(publishVerifiedProfessionalPosition);
   const [state,setState]=useState<FlashPresenceState>(INITIAL);
   const watch=useRef<number|null>(null);
   const staleTimer=useRef<ReturnType<typeof setInterval>|null>(null);
   const lastGpsAt=useRef(0);
   const lastSentAt=useRef(0);
+  const lastVerifiedAt=useRef(0);
+  const lastVerifiedFixAt=useRef(0);
   const sending=useRef(false);
+  const verifying=useRef(false);
   const active=useRef(false);
   const inFlightStart=useRef(false);
   const currentFix=useRef<DriverGpsFix|null>(null);
@@ -38,11 +45,11 @@ export function useFlashDriverPresence(){
     staleTimer.current=null;
   },[]);
   const sendHeartbeat=useCallback(async(fix:DriverGpsFix,force=false)=>{
-    if(!active.current||sending.current)return false;
+    if(!active.current||sending.current||!isFreshGpsTimestamp(fix.at,GPS_POLICY.driverSampleMaxAgeMs))return false;
     if(!force && Date.now()-lastSentAt.current<FLASH_GPS_THROTTLE_MS)return true;
     sending.current=true;
     try{
-      await updateFlashDriverHeartbeatGPS(fix.lat,fix.lng,fix.accuracyM);
+      await updateFlashDriverHeartbeatGPS(fix.lat,fix.lng,fix.accuracyM,fix.at);
       lastSentAt.current=Date.now();
       setState(s=>({...s,gpsConnected:true,error:null}));
       return true;
@@ -51,6 +58,41 @@ export function useFlashDriverPresence(){
       return false;
     }finally{sending.current=false;}
   },[]);
+  const verifyFix=useCallback(async(fix:DriverGpsFix)=>{
+    if(verifying.current)return false;
+    if(fix.accuracyM>GPS_POLICY.driverMaxAccuracyM||
+       !isFreshGpsTimestamp(fix.at,GPS_POLICY.driverSampleMaxAgeMs))return false;
+    verifying.current=true;
+    try{
+      const result=await verifyPosition({data:{
+        lat:fix.lat,lng:fix.lng,accuracyM:fix.accuracyM,sampledAtMs:fix.at,
+      }});
+      if(!result.published)return false;
+      lastVerifiedAt.current=Date.now();
+      lastVerifiedFixAt.current=fix.at;
+      return true;
+    }catch{return false;}
+    finally{verifying.current=false;}
+  },[verifyPosition]);
+  const onGpsFix=useCallback(async(fix:DriverGpsFix)=>{
+    if(!active.current)return;
+    if(!isFreshGpsTimestamp(fix.at,GPS_POLICY.driverSampleMaxAgeMs)||
+       !Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||
+       fix.accuracyM>GPS_POLICY.driverMaxAccuracyM){
+      setState(s=>({...s,gpsConnected:false,error:"Sinal GPS antigo ou acima de 150 m. Aguardando melhor precisão."}));
+      return;
+    }
+    // Only publish to the privileged professional radar on a real GPS sample,
+    // and no more than once every 25 seconds.
+    if(Date.now()-lastVerifiedAt.current>=25000 &&
+       fix.at>lastVerifiedFixAt.current) {
+      await verifyFix(fix);
+    }
+    lastGpsAt.current=fix.at;
+    currentFix.current=fix;
+    setState(s=>({...s,gps:fix}));
+    void sendHeartbeat(fix);
+  },[verifyFix,sendHeartbeat]);
   const markOffline=useCallback(async()=>{
     active.current=false;
     stopWatch();
@@ -76,30 +118,25 @@ export function useFlashDriverPresence(){
           enableHighAccuracy:true,timeout:15000,maximumAge:0,
         }));
       const initial=sample(position);
-      if(!Number.isFinite(initial.accuracyM)||initial.accuracyM<=0||initial.accuracyM>5000)
+      if(!isFreshGpsTimestamp(initial.at,GPS_POLICY.driverSampleMaxAgeMs)||
+         !Number.isFinite(initial.accuracyM)||initial.accuracyM<=0||
+         initial.accuracyM>GPS_POLICY.driverMaxAccuracyM)
         throw new FlashDriverError("INVALID");
       await setFlashDriverOnline(input);
       active.current=true;
-      lastGpsAt.current=Date.now();
+      lastGpsAt.current=initial.at;
       currentFix.current=initial;
       setState(s=>({...s,gps:initial}));
       // A successful online RPC is not sufficient to claim connected GPS:
       // GPS publication must still be acknowledged.
+      const verified=await verifyFix(initial);
+      if(!verified)throw new FlashDriverError("UNAVAILABLE");
       const published=await sendHeartbeat(initial,true);
       if(!published)throw new FlashDriverError("UNAVAILABLE");
       setState(s=>({...s,online:true,gpsConnected:true}));
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;
-        const fix=sample(pos);
-        if(!Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>5000){
-          setState(state=>({...state,gpsConnected:false,
-            error:"O GPS está impreciso. Aguardando uma localização válida."}));
-          return;
-        }
-        lastGpsAt.current=fix.at;
-        currentFix.current=fix;
-        setState(s=>({...s,gps:fix}));
-        void sendHeartbeat(fix);
+        void onGpsFix(sample(pos));
       },()=>{
         setState(s=>({...s,gpsConnected:false,error:"Sinal GPS perdido. Verifique a localização."}));
       },{enableHighAccuracy:true,maximumAge:0,timeout:15000});
@@ -113,8 +150,15 @@ export function useFlashDriverPresence(){
           setState(s=>({...s,gpsConnected:false,error:"Sem GPS por mais de 60 segundos. Disponibilidade encerrada."}));
           void setFlashDriverOffline().then(()=>setState(s=>({...s,online:false}))).catch(()=>
             setState(s=>({...s,error:"GPS expirado; o servidor deve encerrar a presença por TTL."})));
-        }else if(currentFix.current&&Date.now()-lastSentAt.current>=FLASH_GPS_THROTTLE_MS){
-          void sendHeartbeat(currentFix.current);
+        }else if(Date.now()-lastVerifiedAt.current>=25000 &&
+                 !verifying.current){
+          // Fresh sensor read, not a replay of an old currentFix sample.
+          navigator.geolocation.getCurrentPosition(
+            pos=>{void onGpsFix(sample(pos));},
+            ()=>setState(s=>({...s,gpsConnected:false,
+              error:"Aguardando nova amostra GPS para manter o radar."})),
+            {enableHighAccuracy:true,timeout:15000,maximumAge:0},
+          );
         }
       },4000);
       return true;
@@ -130,25 +174,15 @@ export function useFlashDriverPresence(){
       inFlightStart.current=false;
       setState(s=>({...s,busy:false}));
     }
-  },[sendHeartbeat,stopWatch]);
+  },[sendHeartbeat,stopWatch,verifyFix,onGpsFix]);
 
   useEffect(()=>{
-    const close=()=>{
-      if(!active.current)return;
-      active.current=false;
-      // Browsers do not guarantee asynchronous RPC completion on page unload.
-      // The backend TTL is the authoritative defense against ghost drivers.
-      void setFlashDriverOffline().catch(()=>undefined);
-    };
-    window.addEventListener("pagehide",close);
-    window.addEventListener("beforeunload",close);
+    // On iOS/Android the browser may suspend geolocation in the background.
+    // Page navigation is NOT withdrawal of location consent: leave presence
+    // until the database TTL, instead of unexpectedly setting the driver offline.
     return()=>{
-      window.removeEventListener("pagehide",close);
-      window.removeEventListener("beforeunload",close);
-      const wasActive=active.current;
       active.current=false;
       stopWatch();
-      if(wasActive)void setFlashDriverOffline().catch(()=>undefined);
     };
   },[stopWatch]);
   return {...state,goOnline,markOffline};

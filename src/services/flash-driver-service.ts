@@ -33,7 +33,8 @@ const rpcError=(error:unknown):FlashDriverError=>{
   const x=record(error);
   const code=string(x?.code);
   const message=string(x?.message);
-  if(code==="42501"||/COMMISSION_BLOCKED|PLATFORM_FEE_PENDING/i.test(message))
+  if((code==="42501"&&/repasse|comiss|fee|pendente|pending/i.test(message))||
+    /COMMISSION_BLOCKED|PLATFORM_FEE_PENDING/i.test(message))
     return new FlashDriverError("COMMISSION_BLOCKED");
   if(/ALREADY_TAKEN|ALREADY_MATCHED|OVERBOOKING_PREVENTED/i.test(code+" "+message))
     return new FlashDriverError("ALREADY_TAKEN");
@@ -56,29 +57,33 @@ export async function setFlashDriverOnline(input:FlashDriverOnlineInput):Promise
   }
   try{
     const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{
-      p_online:true,p_booking_mode:mode,p_seats:seats,p_vehicle_type:vehicleType,
+      p_is_online:true,p_dispatch_mode:mode,p_available_seats:seats,
       p_destination_lat:destination?.lat??null,p_destination_lng:destination?.lng??null,
-      p_destination_label:destination?.label??null,p_route_path:geometry,
+      p_destination_label:destination?.label??null,
+      p_destination_municipality:null,p_route_geojson:geometry,p_route_polyline:null,
     });
     if(error)throw rpcError(error);
-    if(data!==true && record(data)?.online!==true && record(data)?.success!==true)
+    if(data!==true && record(data)?.is_online!==true && record(data)?.online!==true && record(data)?.success!==true)
       throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
 export async function setFlashDriverOffline():Promise<void>{
   try{
-    const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{p_online:false});
+    const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{p_is_online:false});
     if(error)throw rpcError(error);
-    if(data!==true&&record(data)?.online!==false&&record(data)?.success!==true)
+    if(data!==true&&record(data)?.is_online!==false&&record(data)?.online!==false&&record(data)?.success!==true)
       throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
-export async function updateFlashDriverHeartbeatGPS(lat:number,lng:number,accuracyM:number):Promise<void>{
-  if(!coordinatesValid({lat,lng})||!Number.isFinite(accuracyM)||accuracyM<=0||accuracyM>5000)
+export async function updateFlashDriverHeartbeatGPS(
+  lat:number,lng:number,accuracyM:number,sampledAtMs=Date.now(),
+):Promise<void>{
+  if(!coordinatesValid({lat,lng})||!Number.isFinite(accuracyM)||accuracyM<=0||accuracyM>150||
+    !Number.isFinite(sampledAtMs)||Date.now()-sampledAtMs>30000||sampledAtMs>Date.now()+5000)
     throw new FlashDriverError("INVALID");
   try{
-    const {data,error}=await (supabase as any).rpc("update_flash_driver_heartbeat_gps",{
-      p_lat:lat,p_lng:lng,p_accuracy_m:accuracyM,
+    const {data,error}=await (supabase as any).rpc("update_flash_driver_heartbeat_gps_v2",{
+      p_lat:lat,p_lng:lng,p_accuracy_m:accuracyM,p_sampled_at_ms:Math.floor(sampledAtMs),
     });
     if(error)throw rpcError(error);
     if(data!==true && record(data)?.success!==true && record(data)?.published!==true)
@@ -88,15 +93,23 @@ export async function updateFlashDriverHeartbeatGPS(lat:number,lng:number,accura
 function parseOrder(raw:unknown):FlashDriverOrder|null{
   const x=record(raw);
   if(!x)return null;
-  const id=string(x.ride_id??x.id),mode=x.mode??x.booking_mode;
-  const seats=numeric(x.seats??x.requested_seats);
-  const distanceKm=numeric(x.distance_km);
-  const driverEarnings=numeric(x.driver_earnings??x.driver_receives);
-  const pickupLabel=string(x.pickup_label??x.origin_label);
+  const id=string(x.ride_id??x.id);
+  const mode=x.service_mode??x.mode??x.booking_mode;
+  const seats=numeric(x.seats_requested??x.seats??x.requested_seats);
+  // The SQL dispatch RPC sends meters and integer cents, not km and reais.
+  const distanceM=numeric(x.distance_to_pickup_m);
+  const distanceKm=Number.isFinite(distanceM)?distanceM/1000:numeric(x.distance_km);
+  const earningsCents=numeric(x.driver_earnings_cents);
+  const driverEarnings=Number.isFinite(earningsCents)?earningsCents/100:
+    numeric(x.driver_earnings??x.driver_receives);
+  const pickupLabel=string(x.meeting_point_label??x.pickup_label??x.origin_label);
   const dropoffLabel=string(x.dropoff_label??x.destination_label);
-  const expiresAt=string(x.expires_at);
+  const seconds=numeric(x.expires_in_seconds);
+  const expiresAt=Number.isFinite(seconds)&&seconds>0
+    ?new Date(Date.now()+seconds*1000).toISOString()
+    :string(x.expires_at);
   if(!id||!["ON_ROUTE","EXCLUSIVE"].includes(String(mode))||
-    !Number.isInteger(seats)||seats<1||seats>4||
+    !Number.isInteger(seats)||seats<1||seats>7||
     !Number.isFinite(distanceKm)||distanceKm<0||
     !Number.isFinite(driverEarnings)||driverEarnings<0||
     !pickupLabel||!dropoffLabel||!Number.isFinite(Date.parse(expiresAt)))return null;
@@ -124,7 +137,8 @@ export async function respondFlashOrder(rideId:string,accept:boolean):Promise<"A
       if(data===true||status==="ACCEPTED"||record(data)?.accepted===true)return "ACCEPTED";
       throw new FlashDriverError("ALREADY_TAKEN");
     }
-    if(data===true||status==="REJECTED"||record(data)?.rejected===true)return "REJECTED";
+    if(data===true||status==="REJECTED"||record(data)?.rejected===true||
+       (record(data)?.success===true&&record(data)?.action==="SKIPPED"))return "REJECTED";
     throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
