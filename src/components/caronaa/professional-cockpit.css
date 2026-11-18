@@ -326,3 +326,10 @@
     background: rgba(18,18,18,.25);
   }
 }
+
+/* A financially blocked control must not look like an actionable yellow CTA. */
+.professional-cockpit__availability-button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+  filter: saturate(.45);
+}
