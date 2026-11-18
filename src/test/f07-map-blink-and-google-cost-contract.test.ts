@@ -7,6 +7,7 @@ const passengerMap=readFileSync("src/components/caronaa/GoogleHomeRideMap.tsx","
 const mapSurface=readFileSync("src/components/caronaa/GoogleMapSurface.tsx","utf8");
 const rideMap=readFileSync("src/components/caronaa/QuickRideOperationalMap.tsx","utf8");
 const driverPage=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
+const driverQueue=readFileSync("src/components/caronaa/QuickRideDriverQueue.tsx","utf8");
 const realtime=readFileSync("src/lib/quick-rides/use-quick-ride-realtime.ts","utf8");
 
 describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
@@ -69,6 +70,20 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
     expect(driverPage).toContain('aria-expanded={sheetOpen}');
     expect(driverPage).toContain('if(activeRide.status==="ARRIVED")setSheetExpanded(true)');
     expect(driverPage).toContain('else if(activeRide.status==="ACCEPTED"||activeRide.status==="IN_PROGRESS")');
+  });
+
+  it("explicit driver CTA returns to the GPS map without waiting for phase transitions",()=>{
+    expect(driverQueue).toContain('onFollowMap?.(active.id)');
+    expect(driverQueue).toContain('Acompanhar embarque no mapa');
+    expect(driverQueue).toContain('Acompanhar destino no mapa');
+    expect(driverPage).toContain('onFollowMap={followRideOnMap}');
+    expect(driverPage).toContain('setSheetExpanded(false)');
+    expect(driverPage).toContain('setNavigationFocusRequest(previous=>previous+1)');
+    expect(driverPage).toContain('navigationFocusRequest={navigationFocusRequest}');
+    expect(rideMap).toContain('navigationFocusRequest=0');
+    expect(rideMap).toContain('followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:undefined}');
+    expect(mapSurface).toContain('map.current.panTo({lat:fix.lat,lng:fix.lng})');
+    expect(mapSurface).toContain('followPointRef.current');
   });
 
   it("limits radar discovery to the waiting state and avoids display flicker",()=>{
