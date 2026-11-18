@@ -1023,6 +1023,13 @@
       "when": 1794971704000,
       "tag": "0208_professional_current_readiness",
       "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1795032000000,
+      "tag": "0212_remove_driver_repasse_blocking",
+      "breakpoints": true
     }
   ]
 }
