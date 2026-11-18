@@ -20,7 +20,7 @@ export async function canSwitchCaronaaRole(
 ):Promise<QuickRideGuardResult> {
   // A mounted operational ride with any nonterminal/unknown status blocks
   // switching, even if its status isn't listed in the known F07 enum.
-  if(operationalRide && !new Set(["COMPLETED","CANCELLED","CANCELED","EXPIRED","REJECTED","FINISHED"])
+  if(operationalRide && !new Set(["COMPLETED","CANCELLED","CANCELED","EXPIRED","REJECTED","FINISHED","PENDING_REVIEW"])
     .has(operationalRide.status.toUpperCase()))
     return {allowed:false,reason:"ACTIVE_RIDE"};
   try {
