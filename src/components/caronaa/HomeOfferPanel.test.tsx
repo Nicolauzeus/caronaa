@@ -99,11 +99,13 @@ describe("single-map offer workflow", () => {
     expect(api.publish).not.toHaveBeenCalled();
   });
 
-  it("disallows publishing when the driver owes unresolved commissions",async()=>{
-    api.allowed=false;
+  it("does not gate traditional offers on unresolved commissions",async()=>{
+    api.allowed=false; // Legacy RPC would have blocked the account.
     render(<Harness/>);
-    await screen.findByRole("alert");
-    expect(screen.getByRole("button",{name:"Revisar oferta"})).toBeDisabled();
-    expect(api.publish).not.toHaveBeenCalled();
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Revisar oferta"})).toBeEnabled());
+    expect(screen.queryByText(/repasses pendentes/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Revisar oferta"}));
+    fireEvent.click(screen.getByRole("button",{name:"Publicar oferta"}));
+    await waitFor(()=>expect(api.publish).toHaveBeenCalledTimes(1));
   });
 });
