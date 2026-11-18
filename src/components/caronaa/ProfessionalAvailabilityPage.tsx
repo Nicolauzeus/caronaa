@@ -416,7 +416,7 @@ export function ProfessionalAvailabilityPage() {
       <QuickRideOperationalMap rideId={activeRide.id} status={activeRide.status}
         role="DRIVER" immersive vehicleType={activeRide.vehicle_type==="MOTO"?"MOTO":"CAR"} />
     </div>}
-    {!activeQuickRide&&!activeRide&&<section aria-label="Mapa do motorista" className="professional-cockpit__map">
+    {!activeRide&&<section aria-label="Mapa do motorista" className="professional-cockpit__map">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${fresh ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
@@ -426,13 +426,13 @@ export function ProfessionalAvailabilityPage() {
       </div>
       <div className="relative overflow-hidden rounded-xl border">
         <GoogleMapSurface
-          points={mapFix ? [{lat:mapFix.lat,lng:mapFix.lng,
+          points={mapFix ? [{id:"self-professional",lat:mapFix.lat,lng:mapFix.lng,
             title: mapFix.simulated ? "Prévia simulada, não publicada" :
               fresh ? "Sua posição publicada" : "Posição apenas neste navegador",
             kind:"driver",label:"EU"}] : []}
-          fitMode="once"
+          fitMode="once" smoothTracking
           showControls gestureHandling="greedy"
-          fitKey={mapFix ? `${mapFix.simulated ? "sim" : "gps"}-${fresh ? "published" : "local"}` : "empty"}
+          fitKey="professional-home-position"
           className="h-full w-full"
           ariaLabel="Mapa da posição atual do motorista"
         />
