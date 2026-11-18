@@ -41,22 +41,18 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
 
     // Fast authenticated authorization checks avoid a paid Google API call
     // for unauthorized or offline users. SQL independently checks again.
-    const [access, fees, presence] = await Promise.all([
+    const [access, presence] = await Promise.all([
       (context.supabase as any).rpc("get_my_professional_access"),
-      (context.supabase as any).rpc("get_my_driver_platform_fees"),
       (context.supabase as any).from("professional_presence")
         .select("is_available").eq("user_id", context.userId).maybeSingle(),
     ]);
     const gateSummary = {
       appAccessAuthorized: access.data?.authorized === true,
-      appFeesAllowed: fees.data?.driverAllowed === true,
       appPresenceOnline: presence.data?.is_available === true,
     };
     log("preflight", undefined, gateSummary);
     if (access.error) return reject("ACCESS_RPC_ERROR", "Falha ao verificar sua autorização.", { sqlState: String(access.error.code ?? "") });
     if (access.data?.authorized !== true) return reject("ACCESS_NOT_AUTHORIZED", "O acesso profissional ainda não está aprovado.");
-    if (fees.error) return reject("FEES_RPC_ERROR", "Falha ao consultar os repasses.", { sqlState: String(fees.error.code ?? "") });
-    if (fees.data?.driverAllowed !== true) return reject("FEES_BLOCKED", "Seu acesso ao radar está bloqueado pelos repasses.");
     if (presence.error) return reject("PRESENCE_RPC_ERROR", "Falha ao consultar a disponibilidade.", { sqlState: String(presence.error.code ?? "") });
     if (presence.data?.is_available !== true) return reject("DRIVER_OFFLINE", "Sua presença está offline.");
 
