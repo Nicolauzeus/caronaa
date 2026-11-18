@@ -93,8 +93,8 @@ BEGIN
     v := array_append(v, 'MUNICIPALITY');
   END IF;
   RETURN v;
-END
-$function$
+END;
+$function$;
 
 
 COMMENT ON FUNCTION public.professional_access_missing(uuid,text,text,integer,text) IS
