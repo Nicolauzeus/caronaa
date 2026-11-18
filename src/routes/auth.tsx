@@ -30,6 +30,7 @@ import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { isProfessionalApplicationRedirect, PROFESSIONAL_APPLICATION_PATH } from "@/lib/onboarding/universal-driver-entry";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import desktopBackground from "@/assets/brand/caronaa-background-desktop.png.asset.json";
 import mobileBackground from "@/assets/brand/caronaa-background-mobile.png.asset.json";
@@ -69,7 +70,8 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"entrar" | "cadastro">(() => search.mode ?? "entrar");
   const effectiveMode = mode;
-  const [signupRole, setSignupRole] = useState<"PASSAGEIRO" | "MOTORISTA" | null>(null);
+  const [signupRole, setSignupRole] = useState<"PASSAGEIRO" | "MOTORISTA" | null>(() =>
+    search.mode === "cadastro" && isProfessionalApplicationRedirect(search.redirect) ? "MOTORISTA" : null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -91,7 +93,12 @@ function AuthPage() {
         const saved = await readOnboarding();
         const next = saved?.status === "BASIC_COMPLETED"
           ? await resolvePostOnboardingDestination() : "/onboarding";
-        if (active) await navigate({ to: next === "/home" && destination !== "/onboarding" ? destination : next, replace: true });
+        if (!active) return;
+        if (next === "/onboarding" && isProfessionalApplicationRedirect(destination)) {
+          await navigate({ to: "/onboarding", search: { redirect: PROFESSIONAL_APPLICATION_PATH }, replace: true });
+        } else {
+          await navigate({ to: next === "/home" && destination !== "/onboarding" ? destination : next, replace: true });
+        }
       } catch (error) {
         // Fail closed: do not send a user to Home if the research check fails.
         if (active) toast.error(error instanceof Error ? error.message : "Não foi possível verificar seu acesso.");
@@ -115,7 +122,9 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fonboarding`,
+            // Finish the same universal onboarding after email confirmation.
+            // Preserve only the internal, whitelisted professional entry.
+            emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=${isProfessionalApplicationRedirect(destination) ? "%2Fcadastro-motorista" : "%2Fonboarding"}`,
             data: {
               full_name: name,
               initial_usage_role: signupRole,
@@ -135,7 +144,11 @@ function AuthPage() {
       const saved = await readOnboarding();
       const next = saved?.status === "BASIC_COMPLETED"
         ? await resolvePostOnboardingDestination() : "/onboarding";
-      await navigate({ to: next === "/home" && destination !== "/onboarding" ? destination : next, replace: true });
+      if (next === "/onboarding" && isProfessionalApplicationRedirect(destination)) {
+        await navigate({ to: "/onboarding", search: { redirect: PROFESSIONAL_APPLICATION_PATH }, replace: true });
+      } else {
+        await navigate({ to: next === "/home" && destination !== "/onboarding" ? destination : next, replace: true });
+      }
     } catch (error) {
       const message = authErrorMessage(error);
       setSubmitError(message);
