@@ -1,4 +1,3 @@
-import { RoleSwitchHeader } from "@/components/caronaa/shell/RoleSwitchHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
@@ -38,7 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 
 export const Route = createFileRoute("/_authenticated/home")({
-  validateSearch: z.object({intent:z.enum(["offer"]).optional(),trips:z.enum(["open"]).optional()}),
+  validateSearch: z.object({intent:z.enum(["offer","request"]).optional(),trips:z.enum(["open"]).optional()}),
   beforeLoad:async({context})=>{
     beginCaronaaPhase("home-before-load");
     try {
@@ -69,6 +68,7 @@ function Home(){
   const routeSearch=Route.useSearch();
   const navigate=useNavigate();
   const [offerIntentOpen,setOfferIntentOpen]=useState(false);
+  const [requestIntentOpen,setRequestIntentOpen]=useState(false);
   const offerVehicleSavedRef=useRef(false);
   useEffect(()=>{endCaronaaPhase("home-first-render");},[]);
   const activeRoleState=useActiveRole();
@@ -276,23 +276,33 @@ function Home(){
     if(result.needsVehicleModal){setMissingVehicleFields(result.missingFields);setVehicleModalOpen(true);}
   };
 
-  // A tap on "Oferecer" must lead to a real action, never just highlight a tab.
-  // Explicitly confirm switching account roles, preserving the existing guard and
-  // vehicle completion flow. No driver rights or professional access are granted.
+  // Activity changes originate in the hamburger menu. Route intents are UX
+  // requests, never permission grants: every switch still runs ride guards and
+  // completes missing vehicle details before enabling the driver role.
   useEffect(()=>{
-    if(routeSearch.intent!=="offer"){
-      setOfferIntentOpen(false);
+    if(activeRoleState.loading)return;
+    if(routeSearch.intent==="offer"){
+      setRequestIntentOpen(false);
+      if(activeRoleState.activeRole==="MOTORISTA"){
+        setOfferIntentOpen(false);
+        setTripsPanelOpen(false);
+        setServiceType("AGENDADA");
+        setSheetSnap("half");
+      }else setOfferIntentOpen(true);
       return;
     }
-    if(activeRoleState.loading)return;
-    if(activeRoleState.activeRole==="MOTORISTA"){
+    if(routeSearch.intent==="request"){
       setOfferIntentOpen(false);
-      setTripsPanelOpen(false);
-      setServiceType("AGENDADA");
-      setSheetSnap("half");
-    }else{
-      setOfferIntentOpen(true);
+      if(activeRoleState.activeRole==="PASSAGEIRO"){
+        setRequestIntentOpen(false);
+        setTripsPanelOpen(false);
+        setServiceType("FLASH");
+        setSheetSnap("peek");
+      }else setRequestIntentOpen(true);
+      return;
     }
+    setOfferIntentOpen(false);
+    setRequestIntentOpen(false);
   },[routeSearch.intent,activeRoleState.activeRole,activeRoleState.loading]);
 
   const radarPickup=validPoint(originLocation)?{lat:originLocation.lat,lng:originLocation.lng}:location.position??null;
@@ -369,9 +379,6 @@ function Home(){
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
             onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>}
       </div>
-      {!selectingOrigin&&<div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-3 pt-[env(safe-area-inset-top)]">
-        <RoleSwitchHeader activeRole={activeRoleState.activeRole} disabled={activeRoleState.loading||activeRoleState.busy} onSwitch={handleShellRoleSwitch}/>
-      </div>}
       <QuickVehicleModal open={vehicleModalOpen} onOpenChange={open=>{
           setVehicleModalOpen(open);
           if(!open&&routeSearch.intent==="offer"){
@@ -391,7 +398,7 @@ function Home(){
           }
         }}/>
       <InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title="Casca Única CARONAA"
-        headerAction={!tripsPanelOpen?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">{driverRole?"Agendados":"Minhas Viagens"}</button>:undefined}>
+        headerAction={!tripsPanelOpen&&driverRole?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
         {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
         {tripsPanelOpen&&!driverRole&&<UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey} onShowOnMap={(trip:UnifiedTrip)=>{
           if(trip.operationalRideId!==passengerRide?.id){toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");return;}
@@ -471,6 +478,29 @@ function Home(){
               onClick={()=>{setOfferIntentOpen(false);void navigate({to:"/home",search:{},replace:true});}}>
               Continuar como passageiro
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={requestIntentOpen} onOpenChange={open=>{
+        setRequestIntentOpen(open);
+        if(!open&&activeRoleState.activeRole!=="PASSAGEIRO")
+          void navigate({to:"/home",search:{},replace:true});
+      }}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-3xl border-[#FFBB00]/30 bg-background p-5 text-foreground">
+          <DialogTitle className="font-display text-xl font-extrabold">Pedir uma carona</DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
+            Alterne para Passageiro para buscar Flash Moto, Flash Carro e caronas compartilhadas. Sua conta de motorista permanecerá disponível.
+          </DialogDescription>
+          <div className="grid gap-2 pt-2">
+            <Button type="button" className="min-h-12 rounded-xl bg-[#FFBB00] font-bold text-[#121212]"
+              disabled={activeRoleState.busy||activeRoleState.loading}
+              onClick={async()=>{
+                setRequestIntentOpen(false);
+                try { await handleShellRoleSwitch("PASSAGEIRO"); }
+                catch { toast.error("Não foi possível mudar para passageiro. Tente novamente."); }
+              }}>Continuar como passageiro</Button>
+            <Button type="button" variant="outline" className="min-h-12 rounded-xl"
+              onClick={()=>{setRequestIntentOpen(false);void navigate({to:"/home",search:{},replace:true});}}>Cancelar</Button>
           </div>
         </DialogContent>
       </Dialog>
