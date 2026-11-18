@@ -48,6 +48,13 @@ export function QuickRideDriverQueue({
   const [queueNow,setQueueNow]=useState(Date.now());
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
   const [lastCompleted,setLastCompleted]=useState<ActiveDriverRide|null>(null);
+  const [pendingReview,setPendingReview]=useState<ActiveDriverRide|null>(null);
+  const [manualReviewOpen,setManualReviewOpen]=useState(false);
+  const [manualReason,setManualReason]=useState("");
+  useEffect(()=>{
+    setManualReviewOpen(false);
+    setManualReason("");
+  },[active?.id]);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const [boardingPin,setBoardingPin]=useState("");
@@ -90,6 +97,7 @@ export function QuickRideDriverQueue({
         setActive(requests.find(r=>r.role==="DRIVER"&&
           ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
         setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")??null);
+        setPendingReview(requests.find(r=>r.role==="DRIVER"&&r.status==="PENDING_REVIEW")??null);
       }catch{/* Availability stays blocked without a verified GPS fix. */}
       return;
     }
@@ -107,6 +115,7 @@ export function QuickRideDriverQueue({
       setActive(requests.find(r=>r.role==="DRIVER" &&
         ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
       setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")??null);
+      setPendingReview(requests.find(r=>r.role==="DRIVER"&&r.status==="PENDING_REVIEW")??null);
       setQueue((Array.isArray(offers.data)?offers.data:[]).filter(
         (ride:DriverQueueRide)=>!rejected.current.has(ride.id),
       ));
@@ -206,7 +215,16 @@ export function QuickRideDriverQueue({
         next==="COMPLETED"?{p_id:rideId}:
         accept?{p_id:rideId}:{p_id:rideId,p_status:next};
       const {data,error:rpcError}=await (supabase as any).rpc(rpc,args);
-      if(rpcError)throw new Error(friendlyRideActionError(rpcError,next));
+      if(rpcError){
+        const message=String(rpcError?.message??"");
+        if(next==="COMPLETED"&&/DROPOFF_GPS_UNVERIFIED|DROPOFF_TOO_FAR_FROM_DESTINATION/i.test(message)){
+          setManualReviewOpen(true);
+          throw new Error(/DROPOFF_TOO_FAR_FROM_DESTINATION/i.test(message)
+            ?"O GPS não confirma que você chegou ao destino. Confira o local ou solicite análise manual sem cobrança."
+            :"GPS do destino indisponível ou impreciso. Reative a localização ou solicite análise manual.");
+        }
+        throw new Error(friendlyRideActionError(rpcError,next));
+      }
       if(accept && data!==true){
         rejected.current.add(rideId);
         setQueue(items=>items.filter(r=>r.id!==rideId));
@@ -220,7 +238,7 @@ export function QuickRideDriverQueue({
           ?"Para confirmar a chegada, esteja a até 75 m do embarque, com precisão GPS de até 50 m e localização atualizada nos últimos 45 segundos."
           :"A atualização não foi autorizada para o estado atual.");
       if(next==="IN_PROGRESS")setBoardingPin("");
-      if(next==="COMPLETED")await loadDropoff(rideId);
+      if(next==="COMPLETED"){setManualReviewOpen(false);await loadDropoff(rideId);}
       if(accept){
         rejected.current.add(rideId);
         setQueue(items=>items.filter(r=>r.id!==rideId));
@@ -236,6 +254,29 @@ export function QuickRideDriverQueue({
     }finally{
       requestLock.current=false;
       setBusy(false);
+    }
+  };
+
+  const requestManualReview=async(rideId:string)=>{
+    const reason=manualReason.trim();
+    if(busy||requestLock.current||reason.length<20||reason.length>1000){
+      setError("Explique o motivo da solicitação manual em 20 a 1000 caracteres.");
+      return;
+    }
+    requestLock.current=true;
+    setBusy(true);setError("");
+    try{
+      const {data,error:rpcError}=await (supabase as any).rpc(
+        "quick_ride_request_manual_review",{p_id:rideId,p_reason:reason});
+      if(rpcError||data!==true)throw new Error("Não foi possível solicitar a confirmação manual do passageiro. Tente novamente.");
+      setManualReviewOpen(false);setManualReason("");
+      await loadDropoff(rideId);
+      toast.info("Confirmação enviada ao passageiro. Após 120 segundos sem resposta, o caso irá para análise sem cobrança.");
+      await refresh();
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:"Erro ao abrir análise manual.");
+    }finally{
+      requestLock.current=false;setBusy(false);
     }
   };
 
@@ -307,8 +348,32 @@ export function QuickRideDriverQueue({
               </p>:
              <button type="button" disabled={busy} onClick={()=>void action(active.id,"COMPLETED")}
                className="professional-cockpit__primary-action w-full">Solicitar confirmação de desembarque</button>}
+            {!dropoffDeadline&&<div className="rounded-xl border border-white/15 p-3">
+              <button type="button" aria-expanded={manualReviewOpen}
+                onClick={()=>setManualReviewOpen(value=>!value)}
+                className="min-h-11 w-full text-sm font-semibold text-[#FFBB00]">
+                GPS indisponível? Solicitar revisão do encerramento
+              </button>
+              {manualReviewOpen&&<div className="mt-2 space-y-2">
+                <p className="text-xs text-white/70">A confirmação será enviada ao passageiro por até 120 segundos. Se não houver resposta ou houver contestação, a corrida irá para análise sem cobrança automática.</p>
+                <label htmlFor="quick-manual-review-reason" className="block text-xs font-semibold">Explique por que não foi possível confirmar o destino</label>
+                <textarea id="quick-manual-review-reason" rows={3} maxLength={1000}
+                  value={manualReason} onChange={event=>setManualReason(event.target.value)}
+                  placeholder="Ex.: GPS sem sinal no destino; passageiro já desembarcou"
+                  className="min-h-24 w-full rounded-xl border border-white/20 bg-white/10 p-3 text-sm text-white"/>
+                <button type="button" disabled={busy||manualReason.trim().length<20}
+                  onClick={()=>void requestManualReview(active.id)}
+                  className="min-h-12 w-full rounded-xl border border-[#FFBB00]/50 px-3 font-bold text-[#FFBB00] disabled:opacity-50">
+                  Solicitar confirmação manual de desembarque
+                </button>
+              </div>}
+            </div>}
           </>}
         </article>}
+        {!active&&pendingReview&&<div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
+          <p className="font-bold text-[#FFBB00]">Encerramento em análise</p>
+          <p className="mt-1 text-white/75">Esta corrida aguarda decisão administrativa. Sem cobrança ou comissão até a conclusão confirmada. Sua disponibilidade para novos chamados não depende desta revisão.</p>
+        </div>}
         {!active&&visibleQueue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
@@ -363,7 +428,7 @@ export function QuickRideDriverQueue({
         </article>)}
       </>
     )}
-    <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??null} completedRide={lastCompleted}/>
+    <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??pendingReview?.id??null} completedRide={lastCompleted}/>
     {error&&<p role="alert" className="rounded-lg border border-red-300/40 p-3 text-xs text-red-200">{error}</p>}
   </section>;
 }

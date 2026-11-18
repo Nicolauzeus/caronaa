@@ -37,6 +37,7 @@ const labels: Record<string, string> = {
   ACCEPTED: "Motorista confirmado",
   ARRIVED: "Motorista chegou",
   IN_PROGRESS: "Em viagem",
+  PENDING_REVIEW: "Encerramento em análise",
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   EXPIRED: "Busca encerrada",
@@ -703,6 +704,11 @@ export function QuickRideExperience({
               <button disabled={busy} onClick={()=>void action(r.id,"COMPLETED")}
                 className="rounded-lg border px-3 py-2 text-sm">Concluir Corrida</button>
             )}
+            {r.status==="PENDING_REVIEW" && <p role="status"
+              className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
+              Desembarque sob análise. Sem Pix ou comissão até decisão registrada.
+              Você pode usar o CARONAA normalmente.
+            </p>}
             {r.status==="COMPLETED" && <>
               {r.role==="DRIVER"?<QuickRideDriverSettlement rideId={r.id}/>:<QuickRidePixCard rideId={r.id}/>}
               {ratingDismissed!==r.id&&<QuickRideRatingModal rideId={r.id}

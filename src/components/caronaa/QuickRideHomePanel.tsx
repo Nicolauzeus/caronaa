@@ -26,7 +26,7 @@ function friendlyQuickQuoteError(cause:unknown):string{
     return "Esta modalidade ainda não está disponível neste trajeto.";
   return "Não foi possível calcular o preço agora.";
 }
-type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
+type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"PENDING_REVIEW"|"COMPLETED"|"CANCELLED"|"EXPIRED";
 type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;requested_at?:string|null;expires_at?:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
 
 export function QuickRideHomePanel({
@@ -124,6 +124,7 @@ export function QuickRideHomePanel({
     ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status)||
     (r.status==="SEARCHING"&&!searchExpired(r))));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
+  const pendingReviewRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="PENDING_REVIEW");
   const expiredRide=rides.find(r=>r.role==="PASSENGER"&&(r.status==="EXPIRED"||searchExpired(r)));
   const shownExpiredRide=expiredRide?.id!==expiredHidden?expiredRide:null;
   const searchSecondsLeft=liveRide?.status==="SEARCHING"&&liveRide.expires_at
@@ -231,6 +232,7 @@ export function QuickRideHomePanel({
       const {data}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current)setRides(Array.isArray(data)?data:[]);
       setDropoff(previous=>previous?{...previous,passenger_response:response,resolved_at:new Date().toISOString()}:previous);
+      if(response==="CONTESTED")toast.info("Desembarque contestado. A conclusão ficará suspensa para análise.");
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível responder.");}
     finally{setBusy(false);}
   }
@@ -496,6 +498,10 @@ export function QuickRideHomePanel({
             className="min-h-12 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">Cancelar pedido</button>}
         </div>
       </div>:<>
+        {pendingReviewRide&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
+          <p className="font-bold text-[#FFBB00]">Encerramento em análise</p>
+          <p className="text-white/85">O desembarque não foi confirmado ou houve contestação. Não há cobrança Pix nem comissão até uma decisão registrada. Você pode solicitar outra corrida normalmente.</p>
+        </section>}
         {shownExpiredRide&&<section role="status"
           className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-semibold text-[#FFBB00]">Busca encerrada</p>
@@ -525,7 +531,7 @@ export function QuickRideHomePanel({
           {!shellMode&&requestControls}
         </div>}
       </>}
-      <QuickRidePostTripFlow role="PASSENGER" activeRideId={liveRide?.id??null} completedRide={completedRide??null}/>
+      <QuickRidePostTripFlow role="PASSENGER" activeRideId={liveRide?.id??pendingReviewRide?.id??null} completedRide={completedRide??null}/>
       {error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
       {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">{retryLabel}</Button>}
     </section>

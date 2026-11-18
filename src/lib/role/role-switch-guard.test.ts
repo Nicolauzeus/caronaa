@@ -22,6 +22,13 @@ describe("role switch operational safety",()=>{
     mock.rpc.mockResolvedValue({data:[{status:"COMPLETED"},{status:"CANCELLED"}],error:null});
     expect(await canSwitchCaronaaRole(null)).toEqual({allowed:true});
   });
+  it("releases role switch for F07 closure pending administrative review",async()=>{
+    expect(isQuickRideActive("PENDING_REVIEW")).toBe(false);
+    mock.rpc.mockResolvedValue({data:[{role:"DRIVER",status:"PENDING_REVIEW"}],error:null});
+    expect(await canSwitchCaronaaRole({id:"review-case",status:"PENDING_REVIEW"}))
+      .toEqual({allowed:true});
+    expect(mock.rpc).toHaveBeenCalledWith("quick_ride_my_requests");
+  });
   it("fails closed for RPC errors or unexpected payloads",async()=>{
     mock.rpc.mockRejectedValue(new Error("disconnected"));
     expect(await canSwitchCaronaaRole(null)).toEqual({allowed:false,reason:"UNAVAILABLE"});
