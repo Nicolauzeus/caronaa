@@ -30,6 +30,8 @@ type Props = {
   originPoint?:{lat?:number;lng?:number}|null;
   originLabel?:string;
   locating?:boolean;
+  gpsError?:string;
+  onRetryGps?:()=>void;
   originMunicipality:string;
   originRevision?:number;
   gender:ProfileGender;
@@ -68,7 +70,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{dateS
 const fortalezaLocal=(value:string)=>new Date(Date.parse(value)-3*60*60*1000).toISOString();
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,locating=false,
-  originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
+  gpsError="",onRetryGps,originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
   flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},flashFarePending=false,
   flashDriverCounts={CAR:0,MOTO:0},flashDriverErrors={},flashDriverLoading=false,flashDriverError="",onFlashActionContainer,
 }:Props){
@@ -374,6 +376,16 @@ export function ShellJourneyPlanner({
     {waitingForOrigin?<Loader2 size={16} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none"/>:<MapPin size={16} aria-hidden="true" className="shrink-0"/>}
     <span role="status" aria-live="polite" className="min-w-0 break-words">{originText}</span>
   </Button>;
+  const gpsFeedback=!waitingForOrigin&&!valid(originPoint)&&gpsError
+    ?<div role="status" aria-live="polite" className="space-y-2 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3">
+      <p className="text-xs leading-relaxed text-white/90">{gpsError}</p>
+      <div className="flex flex-wrap gap-2">
+        {onRetryGps&&<Button type="button" variant="outline" onClick={onRetryGps}
+          className="min-h-11 border-[#FFBB00]/45 text-[#FFBB00]">Tentar GPS novamente</Button>}
+        {onAdjustOrigin&&<Button type="button" variant="outline" onClick={onAdjustOrigin}
+          className="min-h-11 border-white/25 text-white">Escolher embarque no mapa</Button>}
+      </div>
+    </div>:null;
   const routeFeedback=routeError&&!flashRideActive&&<div role="alert" className="space-y-2 rounded-xl border border-[#FFBB00]/30 p-3">
     <p className="text-xs text-white/80">{routeError}</p>
     <Button type="button" variant="outline" disabled={routeBusy||!valid(destinationPoint)||!valid(originPoint)}
@@ -384,6 +396,7 @@ export function ShellJourneyPlanner({
   const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
     <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
     {originControl}
+    {gpsFeedback}
     {(serviceType!=="FLASH"||!valid(destinationPoint))&&<ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>}
   </div>;
   return <div className={fixedFlash?"flex h-full min-h-0 flex-col font-sans":snap==="peek"?"space-y-1":"space-y-4 pb-4"}>
@@ -405,7 +418,7 @@ export function ShellJourneyPlanner({
     </>}
     {snap==="half"&&serviceType!=="FLASH"&&<>
       <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou destino" autoFocus={focusDestination} onChange={pickDestination}/>
-      {originControl}<ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
+      {originControl}{gpsFeedback}<ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
       {serviceType==="AGENDADA"&&<label className="block space-y-2 rounded-2xl border border-white/20 bg-white/5 p-3 text-sm">
         <span className="flex items-center gap-2 font-bold"><Clock3 size={18} className="text-[#FFBB00]"/> Data e hora da viagem</span>
         <input type="datetime-local" aria-label="Data e hora do agendamento" required min={localDateTime(30*60*1000)} value={scheduledAt} onChange={event=>{setScheduledAt(event.target.value);setScheduledId(null);setScheduleError("");}} className="min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] px-3 text-white [color-scheme:dark]"/>
