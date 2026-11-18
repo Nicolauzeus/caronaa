@@ -14,7 +14,7 @@ type Point={lat:number;lng:number};
 type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null;status:string};
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
 type LocalDriverFix=Point&{sampledAtMs:number;accuracyM:number;heading?:number|null};
-type DriverRouteState={phase:NavigationPhase;start:Point;at:number;result:Route};
+type DriverRouteState={rideId:string;phase:NavigationPhase;start:Point;at:number;result:Route};
 
 // One protected route calculation per ride/target while a trip is active.
 // Prevent duplicate Google Routes calls if React/Safari remounts a map panel.
@@ -60,7 +60,7 @@ export function QuickRideOperationalMap({
   const [approach,setApproach]=useState<Route|null>(null);
   const [route,setRoute]=useState<Route|null>(null);
   const [driverRoute,setDriverRoute]=useState<DriverRouteState|null>(null);
-  const lastDriverRouteAttempt=useRef<{phase:NavigationPhase;at:number}|null>(null);
+  const lastDriverRouteAttempt=useRef<{rideId:string;phase:NavigationPhase;at:number}|null>(null);
   const [routeTick,setRouteTick]=useState(0);
   const [details,setDetails]=useState<DriverDetails|null>(null);
   const [error,setError]=useState("");
@@ -151,7 +151,7 @@ export function QuickRideOperationalMap({
     driverPhase==="DROPOFF"?destination:null;
   const driverPhaseRef=useRef<NavigationPhase|null>(null);
   driverPhaseRef.current=driverPhase;
-  const currentDriverRoute=driverRoute?.phase===driverPhase?driverRoute.result:null;
+  const currentDriverRoute=driverRoute?.rideId===rideId&&driverRoute.phase===driverPhase?driverRoute.result:null;
   const mapsNavigationUrl=navigationTarget&&validNavigationPoint(navigationTarget)
     ?"https://www.google.com/maps/dir/?api=1&destination="+
       encodeURIComponent(navigationTarget.lat+","+navigationTarget.lng)+
@@ -197,7 +197,7 @@ export function QuickRideOperationalMap({
   useEffect(()=>{
     if(role!=="DRIVER"||!driverPhase||!driverPoint||!navigationTarget||
       !validNavigationPoint(driverPoint)||!validNavigationPoint(navigationTarget))return;
-    const previous=driverRoute?.phase===driverPhase?driverRoute:null;
+    const previous=driverRoute?.rideId===rideId&&driverRoute.phase===driverPhase?driverRoute:null;
     const now=Date.now();
     if(previous){
       if(statusNow==="ARRIVED"&&driverPhase==="PICKUP")return;
@@ -207,9 +207,10 @@ export function QuickRideOperationalMap({
       }))return;
     }
     // A failed route or a fast series of GPS samples cannot exhaust Google.
-    if(lastDriverRouteAttempt.current?.phase===driverPhase&&
+    if(lastDriverRouteAttempt.current?.rideId===rideId&&
+       lastDriverRouteAttempt.current.phase===driverPhase&&
        now-lastDriverRouteAttempt.current.at<60000)return;
-    lastDriverRouteAttempt.current={phase:driverPhase,at:now};
+    lastDriverRouteAttempt.current={rideId,phase:driverPhase,at:now};
     const from={lat:driverPoint.lat,lng:driverPoint.lng};
     const target={lat:navigationTarget.lat,lng:navigationTarget.lng};
     const requestKey=[rideId,driverPhase,from.lat.toFixed(4),from.lng.toFixed(4),
@@ -218,7 +219,7 @@ export function QuickRideOperationalMap({
       data:{points:[from,target]},
     })).then(result=>{
       if(!mounted.current||driverPhaseRef.current!==driverPhase)return;
-      setDriverRoute({phase:driverPhase,start:from,at:Date.now(),result});
+      setDriverRoute({rideId,phase:driverPhase,start:from,at:Date.now(),result});
       setError("");
     }).catch(()=>{
       if(mounted.current&&driverPhaseRef.current===driverPhase)
@@ -292,13 +293,14 @@ export function QuickRideOperationalMap({
     {role==="DRIVER"&&statusNow==="ACCEPTED"&&
       <p className="text-xs text-white/70">
         A chegada só será confirmada a até 75 m do embarque, com GPS de precisão de até 50 m e sinal recente.
-        {approach? ` Distância pela via até o embarque: ${approach.distanceKm.toFixed(1)} km (estimativa, não comprova proximidade GPS).` : ""}
+        {(role==="DRIVER"?currentDriverRoute:approach)
+           ? ` Distância pela via até o embarque: ${(role==="DRIVER"?currentDriverRoute:approach)!.distanceKm.toFixed(1)} km (estimativa, não comprova proximidade GPS).` : ""}
       </p>}
-    {["ACCEPTED","ARRIVED"].includes(statusNow)&&approach&&<p className="text-sm">
-      Distância até o embarque: {approach.distanceKm.toFixed(1)} km · aproximadamente {Math.max(1,Math.round(approach.durationMinutes))} min
+    {["ACCEPTED","ARRIVED"].includes(statusNow)&&(role==="DRIVER"?currentDriverRoute:approach)&&<p className="text-sm">
+      Distância até o embarque: {(role==="DRIVER"?currentDriverRoute:approach)!.distanceKm.toFixed(1)} km · aproximadamente {Math.max(1,Math.round((role==="DRIVER"?currentDriverRoute:approach)!.durationMinutes))} min
     </p>}
-    {statusNow==="IN_PROGRESS"&&route&&<p className="text-sm">
-      Rota ao destino: {route.distanceKm.toFixed(1)} km · aproximadamente {Math.round(route.durationMinutes)} min
+    {statusNow==="IN_PROGRESS"&&(role==="DRIVER"?currentDriverRoute:route)&&<p className="text-sm">
+      Rota ao destino: {(role==="DRIVER"?currentDriverRoute:route)!.distanceKm.toFixed(1)} km · aproximadamente {Math.round((role==="DRIVER"?currentDriverRoute:route)!.durationMinutes)} min
     </p>}
     {!context?.driver&&statusNow==="ACCEPTED"&&<p className="text-xs text-white/65">
       Aguardando posição autorizada e recente do motorista.
