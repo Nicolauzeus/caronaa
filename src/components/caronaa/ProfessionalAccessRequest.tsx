@@ -12,7 +12,7 @@ import {
 type State = {
   authorized: boolean;
   profileMissing: MissingCode[];
-  request: null | { status: AccessStatus; vehicle_type: VehicleType; car_category: CarCategory | null; passenger_seats: number; municipality: string; review_reason: string | null; submitted_at: string };
+  request: null | { status: AccessStatus; access_type?: "STANDARD" | "MOTOTAXI_SIMPLE"; vehicle_type: VehicleType; car_category: CarCategory | null; passenger_seats: number; municipality: string; review_reason: string | null; submitted_at: string };
 };
 
 export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v: boolean) => void }) {
@@ -52,23 +52,31 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
 
   if (!state) return <p className="rounded-xl border p-4 text-sm">{error || "Carregando autorização…"}</p>;
   const r = state.request;
-  const canSubmit = !state.authorized && (!r || editing || r.status === "CHANGES_REQUESTED" || r.status === "REJECTED");
+  const simpleMototaxi = r?.access_type === "MOTOTAXI_SIMPLE";
+  const canSubmit = !simpleMototaxi && !state.authorized && (!r || editing || r.status === "CHANGES_REQUESTED" || r.status === "REJECTED");
   const profileMissing = missing.length ? missing : state.profileMissing;
   const maxSeats = maxSeatsFor(type, category || null);
 
   return (
     <section className="space-y-3 rounded-xl border p-4" aria-label="Acesso ao radar profissional">
-      <h2 className="font-semibold">Acesso ao radar profissional</h2>
+      <h2 className="font-semibold">{simpleMototaxi ? "Situação dos dados profissionais" : "Acesso ao radar profissional"}</h2>
       {state.authorized
         ? <div className="space-y-2"><ProfessionalAuthorizationBadge /><p className="text-xs text-muted-foreground">Autorização administrativa para o radar piloto. Não representa verificação documental nem habilitação comercial.</p></div>
         : r && <p className="text-sm">Situação: <strong>{STATUS_LABELS[r.status]}</strong>{r.status === "PENDING" && " — aguarde a análise do administrador."}</p>}
       {r?.review_reason && !state.authorized && <p className="rounded-lg border p-2 text-sm">Motivo: {r.review_reason}</p>}
       {profileMissing.length > 0 && !state.authorized && (
         <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">
-          <p className="font-semibold">Faltam dados para solicitar:</p>
+          <p className="font-semibold">{simpleMototaxi ? "Dados que faltam para operar:" : "Faltam dados para solicitar:"}</p>
           <ul className="ml-4 list-disc">{profileMissing.map((c) => <li key={c}>{MISSING_LABELS[c]}</li>)}</ul>
-          {profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
+          {simpleMototaxi
+            ? <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center font-semibold underline">Corrigir dados profissionais</Link>
+            : profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
         </div>
+      )}
+      {simpleMototaxi && !state.authorized && (r?.status === "CHANGES_REQUESTED" || r?.status === "REJECTED") && (
+        <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
+          Corrigir dados do motorista
+        </Link>
       )}
       {canSubmit && (
         <div className="space-y-2">
