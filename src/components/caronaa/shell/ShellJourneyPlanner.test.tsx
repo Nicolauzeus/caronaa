@@ -140,8 +140,8 @@ describe("CARONAA Flash passenger shell",()=>{
     const car=screen.getByRole("radio",{name:/Flash Carro/});
     expect(moto).toHaveTextContent("2 mototáxi(s) online");
     expect(car).toHaveTextContent("3 carro(s) online");
-    expect(moto).toHaveTextContent(/R\\$\\s*10,00/);
-    expect(car).toHaveTextContent(/R\\$\\s*18,00/);
+    expect(moto).toHaveTextContent(/R\$\s*10,00/);
+    expect(car).toHaveTextContent(/R\$\s*18,00/);
     expect(moto).toHaveTextContent("8.4 km");
     expect(car).toHaveTextContent("8.4 km");
     fireEvent.click(moto);
