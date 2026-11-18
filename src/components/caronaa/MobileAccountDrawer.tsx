@@ -116,7 +116,9 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
         )}
         {!prelaunchMode && !professionalOnly && (
           <nav aria-label="Atalhos da conta" className="space-y-1">
-            <Link to="/minhas-caronas" onClick={close} className={rowClass}><CalendarClock size={19} className="text-[#C38D00]"/> Minhas viagens <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>
+            {activeRole==="MOTORISTA"?
+              <Link to="/home" search={{trips:"open"}} onClick={close} className={rowClass}><CalendarClock size={19} className="text-[#C38D00]"/> Minhas viagens <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>:
+              <Link to="/minhas-caronas" onClick={close} className={rowClass}><CalendarClock size={19} className="text-[#C38D00]"/> Minhas viagens <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>}
             <Link to="/perfil" onClick={close} className={rowClass}><CarFront size={19} className="text-[#C38D00]"/> Meu veículo e perfil <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>
             <Link to="/como-funciona" onClick={close} className={rowClass}><HelpCircle size={19} className="text-[#C38D00]"/> Ajuda e suporte <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>
           </nav>
