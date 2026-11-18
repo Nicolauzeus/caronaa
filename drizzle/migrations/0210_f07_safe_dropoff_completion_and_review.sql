@@ -112,9 +112,9 @@ BEGIN
 END;
 $request$;
 
--- If precise destination GPS cannot be obtained, the driver can end the
--- operational part only by escalating for human review. There is NO Pix,
--- platform fee or confirmed completion until an administrator decides.
+-- If precise GPS is missing, the driver must still request the passenger's
+-- confirmation. Explicit passenger consent may complete the ride; contest
+-- or silence releases it to manual review WITHOUT Pix or platform fee.
 CREATE OR REPLACE FUNCTION public.quick_ride_request_manual_review(
   p_id uuid,p_reason text
 ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
@@ -135,23 +135,18 @@ BEGIN
   END IF;
   IF q.status='PENDING_REVIEW' THEN RETURN true; END IF;
   SELECT * INTO d FROM public.quick_ride_dropoff_reviews WHERE ride_id=p_id FOR UPDATE;
-  IF FOUND AND d.resolved_at IS NOT NULL THEN
-    RETURN false;
+  IF FOUND THEN
+    -- The driver cannot replace an active request or extend its deadline.
+    RETURN d.resolved_at IS NULL AND d.passenger_response IS NULL;
   END IF;
   INSERT INTO public.quick_ride_dropoff_reviews
-    (ride_id,deadline_at,resolved_at,completion_request_method,driver_review_reason)
-  VALUES (p_id,now(),now(),'MANUAL_REVIEW',v_reason)
-  ON CONFLICT (ride_id) DO UPDATE
-    SET resolved_at=now(),deadline_at=now(),updated_at=now(),
-        completion_request_method='MANUAL_REVIEW',driver_review_reason=v_reason
-    WHERE public.quick_ride_dropoff_reviews.resolved_at IS NULL
-      AND public.quick_ride_dropoff_reviews.passenger_response IS NULL;
-  IF NOT FOUND THEN RETURN false; END IF;
-  UPDATE public.professional_quick_rides
-    SET status='PENDING_REVIEW',updated_at=now() WHERE id=p_id AND status='IN_PROGRESS';
+    (ride_id,deadline_at,completion_request_method,driver_review_reason)
+  VALUES (p_id,now()+interval '120 seconds','MANUAL_REVIEW',v_reason);
+  -- Still IN_PROGRESS during passenger review; no unilateral driver closure.
+  -- A contest or timeout sends the ride to PENDING_REVIEW automatically.
   INSERT INTO public.quick_ride_completion_events
     (ride_id,actor_id,event_type,previous_status,new_status,detail)
-  VALUES(p_id,auth.uid(),'MANUAL_REVIEW_REQUESTED','IN_PROGRESS','PENDING_REVIEW',v_reason)
+  VALUES(p_id,auth.uid(),'MANUAL_REVIEW_REQUESTED','IN_PROGRESS','IN_PROGRESS',v_reason)
   ON CONFLICT (ride_id,event_type) DO NOTHING;
   RETURN true;
 END;
