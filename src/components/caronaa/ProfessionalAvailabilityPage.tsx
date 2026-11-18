@@ -610,7 +610,7 @@ export function ProfessionalAvailabilityPage() {
               activeRide.status==="IN_PROGRESS" ? "Em viagem · acompanhar destino" : "A caminho do passageiro"
             : hasPendingCalls ? "Novos chamados" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
         </button>
-        <div className="professional-cockpit__mobile-connection">
+        {!activeRide&&<div className="professional-cockpit__mobile-connection">
           <Button variant={enabled ? "outline" : "default"}
             className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black ${enabled
               ? "border border-[#FFBB00] bg-[#121212] text-[#FFBB00]"
@@ -620,7 +620,7 @@ export function ProfessionalAvailabilityPage() {
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
           {(!authorized || blocked) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">{blocked ? "Acesso bloqueado por repasses. Consulte Conta." : "Finalize os dados profissionais para receber corridas."}</p>}
-        </div>
+        </div>}
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
       onActiveRideChange={setActiveRide}
