@@ -271,7 +271,7 @@ export function ShellJourneyPlanner({
           className={`grid h-auto min-h-[76px] w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-normal rounded-xl border px-3 py-3 text-left text-secondary-foreground hover:bg-caronaa-white/10 hover:text-secondary-foreground motion-reduce:transition-none ${checked?"border-primary bg-primary/15":"border-caronaa-white/20 bg-caronaa-white/5"} disabled:opacity-60`}>
           {type==="MOTO"?<Bike size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>:<CarFront size={24} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>}
           <span className="min-w-0 flex-1">
-            <strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Mototáxi":"Carro"}</strong>
+            <strong className="block font-[Sora] text-sm font-extrabold">{type==="MOTO"?"Flash Moto · Mototáxi":"Flash Carro · Motorista"}</strong>
             <small className="block text-xs text-white/65">{type==="MOTO"?"Viagem de moto":"Viagem de carro"} · {fare?.distanceKm.toFixed(1)??"—"} km</small>
             <small className={`mt-1 block text-xs ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
               {flashDriverLoading?"Verificando online…":radarFailed?"Radar temporariamente indisponível":available
