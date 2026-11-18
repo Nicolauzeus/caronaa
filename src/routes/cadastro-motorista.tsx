@@ -11,7 +11,6 @@ import {
   professionalServerCorrections,
   professionalFieldLabels,
   professionalPhotoTypes,
-  professionalPhotoMaxBytes,
   type ProfessionalCorrections,
   type ProfessionalField,
 } from "@/lib/mototaxi-registration";
@@ -133,9 +132,12 @@ function ProfessionalMotorcycleRegistration() {
   };
   const focusMissing = (fields: ProfessionalField[]) => {
     if (!fields.length) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById("prof-" + fields[0])?.focus();
-    });
+    const focus = () => document.getElementById("prof-" + fields[0])?.focus();
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(focus);
+    } else {
+      focus();
+    }
   };
 
   async function confirmData(event: FormEvent) {
@@ -239,9 +241,9 @@ function ProfessionalMotorcycleRegistration() {
       <section className="w-full max-w-[460px] space-y-5 rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 shadow-xl sm:p-7">
         <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Complemento profissional</p>
+          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Dados do motorista</p>
           <h1 className="mt-2 font-display text-2xl font-bold">{authorized && reviewState === "ready" ? "Dados confirmados" : "Confirme seus dados"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized && reviewState === "ready" ? "Você pode acessar suas corridas." : "Confira seus dados profissionais para continuar às corridas."}</p>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized && reviewState === "ready" ? "Você pode acessar suas corridas." : "Confira os campos abaixo para continuar para as corridas."}</p>
         </div>
         {reviewState !== "ready" ? (
           <div className="space-y-4" role="status" aria-live="polite">
@@ -350,7 +352,7 @@ function ProfessionalMotorcycleRegistration() {
               <label className="block text-sm" htmlFor="prof-photo">Foto pessoal
                 {photoUrl && <img src={photoUrl} alt="Foto atual do perfil" className="my-2 size-16 rounded-full object-cover" />}
                 <input id="prof-photo" type="file" accept={professionalPhotoTypes.join(",")} aria-required={!photoUrl && !photo} aria-invalid={Boolean(corrections.photo)} aria-describedby={corrections.photo ? "prof-photo-error" : undefined} onChange={e => {setPhoto(e.target.files?.[0] ?? null);clearCorrection("photo");}} className="mt-2 block min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-[#FFBB00] file:px-3 file:py-2 file:font-bold file:text-[#121212] focus-visible:outline focus-visible:border-[#FFBB00]" />
-                {photo && <span className="mt-1 block text-xs text-white/70">Selecionada: {photo.name}</span>}
+                {photo && <span className="mt-1 block break-all text-xs text-white/70">Selecionada: {photo.name}</span>}
                 {corrections.photo && <span id="prof-photo-error" className="mt-1 block text-xs text-amber-300">{corrections.photo}</span>}
               </label>
               <p className="text-xs text-white/55">A matrícula é declaratória. A aprovação administrativa não substitui licenças ou exigências legais para operação.</p>
