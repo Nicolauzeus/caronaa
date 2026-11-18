@@ -179,7 +179,8 @@ export function useActiveRole() {
         .update(values).eq("id",userRef.current)
         .select("vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_type,vehicle_seats,active_role")
         .single();
-      if(error || data?.active_role!=="MOTORISTA")throw new Error("Falha ao salvar o veículo.");
+      if(error)throw new Error(error.message || "Falha ao salvar o veículo.");
+      if(data?.active_role!=="MOTORISTA")throw new Error("Falha ao ativar motorista.");
       const persisted=data as ProfileVehicle;
       const type=parseVehicleType(persisted.vehicle_type);
       const completed=getVehicleStatus(persisted);
