@@ -69,7 +69,7 @@ export function AppShell({
   const queryClient = useQueryClient();
   const { data: professionalAccess, isPending: professionalAccessPending } = useQuery({
     queryKey: ["caronaa", "professional-navigation", user?.id ?? "guest"],
-    enabled: Boolean(user?.id) && !publicPage,
+    enabled: Boolean(user?.id) && !publicPage && !prelaunchMode,
     staleTime: 15_000,
     gcTime: 120_000,
     retry: false,
@@ -87,10 +87,10 @@ export function AppShell({
         roleRow.data?.active_role === "MOTORISTA";
     },
   });
-  const professionalOnly = !user || publicPage ? false
+  const professionalOnly = !user || publicPage || prelaunchMode ? false
     : professionalAccessPending ? null : professionalAccess === true;
   useEffect(() => {
-    if (!user?.id || publicPage) return;
+    if (!user?.id || publicPage || prelaunchMode) return;
     const onRoleChanged = () => {
       void queryClient.invalidateQueries({
         queryKey: ["caronaa", "professional-navigation", user.id],
@@ -98,7 +98,7 @@ export function AppShell({
     };
     window.addEventListener("caronaa:role-changed", onRoleChanged);
     return () => window.removeEventListener("caronaa:role-changed", onRoleChanged);
-  }, [queryClient, user?.id, publicPage]);
+  }, [queryClient, user?.id, publicPage, prelaunchMode]);
   const navigation = prelaunchMode ? waitingNav : professionalOnly === true ? professionalNav : professionalOnly === null ? [] : authenticatedNav;
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
