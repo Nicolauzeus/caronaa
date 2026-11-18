@@ -115,23 +115,20 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       starting = true;
       const epoch = generation;
       try {
-        const [presence, access, fees] = await Promise.all([
+        const [presence, access] = await Promise.all([
           (supabase as any).from("professional_presence")
             .select("is_available,municipality").eq("user_id", userId).maybeSingle(),
           (supabase as any).rpc("get_my_professional_access"),
-          (supabase as any).rpc("get_my_driver_platform_fees"),
         ]);
         if (disposed || generation !== epoch) return;
-        if (presence.error || access.error || fees.error ||
-            access.data?.authorized !== true || fees.data?.driverAllowed !== true ||
+        if (presence.error || access.error ||
+            access.data?.authorized !== true ||
             presence.data?.is_available !== true) {
           log("SYNC_START_BLOCKED",presence.error?"PRESENCE_RPC_ERROR":
-            access.error?"ACCESS_RPC_ERROR":fees.error?"FEES_RPC_ERROR":
-            access.data?.authorized!==true?"ACCESS_NOT_AUTHORIZED":
-            fees.data?.driverAllowed!==true?"FEES_BLOCKED":"DRIVER_OFFLINE", {
+            access.error?"ACCESS_RPC_ERROR":
+            access.data?.authorized!==true?"ACCESS_NOT_AUTHORIZED":"DRIVER_OFFLINE",{
               authorized:access.data?.authorized===true?"yes":"no",
               presenceOnline:presence.data?.is_available===true?"yes":"no",
-              feesAllowed:fees.data?.driverAllowed===true?"yes":"no",
             });
           return;
         }
