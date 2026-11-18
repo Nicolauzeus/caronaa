@@ -116,14 +116,48 @@ describe("CARONAA Flash passenger shell",()=>{
   });
   it("shows only real Flash price when quote belongs to the selected vehicle",async()=>{
     render(<ShellJourneyPlanner {...props} snap="half"
-      flashFare={{quoteId:"valid",vehicleType:"CAR",expiresAt:new Date(Date.now()+60000).toISOString(),
+      flashFares={{CAR:{quoteId:"valid",vehicleType:"CAR",expiresAt:new Date(Date.now()+60000).toISOString(),
         customerPaysCents:1450,distanceKm:7,durationMinutes:14,region:"M",municipality:"Redenção",
         driverReceivesCents:1232,platformCommissionCents:218,commissionBps:1500,commissionSource:"STANDARD",
-        policyVersion:"pilot"}}/>);
+        policyVersion:"pilot"}}}/>);
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     await screen.findByRole("radio",{name:/Flash Carro/});
     expect(screen.getByText(/R\$\s*14,50/)).toBeTruthy();
   });
+  it("compares both live fleets and destination-based prices without hiding a mode",async()=>{
+    const expiresAt=new Date(Date.now()+60000).toISOString();
+    const common={expiresAt,distanceKm:8.4,durationMinutes:17,region:"MACICO_BATURITE",municipality:"Redenção",
+      driverReceivesCents:800,platformCommissionCents:200,commissionBps:2000,
+      commissionSource:"MACICO" as const,policyVersion:"pilot"};
+    render(<ShellJourneyPlanner {...props} snap="half"
+      flashFares={{
+        CAR:{...common,quoteId:"car-quote",vehicleType:"CAR",customerPaysCents:1800},
+        MOTO:{...common,quoteId:"moto-quote",vehicleType:"MOTO",customerPaysCents:1000},
+      }}
+      flashDriverCounts={{CAR:3,MOTO:2}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    const moto=await screen.findByRole("radio",{name:/Flash Moto/});
+    const car=screen.getByRole("radio",{name:/Flash Carro/});
+    expect(moto).toHaveTextContent("2 mototáxi(s) online");
+    expect(car).toHaveTextContent("3 carro(s) online");
+    expect(moto).toHaveTextContent(/R\\$\\s*10,00/);
+    expect(car).toHaveTextContent(/R\\$\\s*18,00/);
+    expect(moto).toHaveTextContent("8.4 km");
+    expect(car).toHaveTextContent("8.4 km");
+    fireEvent.click(moto);
+    expect(moto).toHaveAttribute("aria-checked","true");
+    expect(car).toBeInTheDocument();
+  });
+
+  it("keeps both types visible while one radar service fails",async()=>{
+    render(<ShellJourneyPlanner {...props} snap="half"
+      flashDriverCounts={{CAR:2,MOTO:0}}
+      flashDriverErrors={{MOTO:"Falha de radar"}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    expect(await screen.findByRole("radio",{name:/Flash Carro/})).toHaveTextContent("2 carro(s) online");
+    expect(screen.getByRole("radio",{name:/Flash Moto/})).toHaveTextContent("Radar temporariamente indisponível");
+  });
+
   it("delegates Flash CTA to the real operational panel, not an isolated timer",async()=>{
     render(<Harness/>);
     await prepareFull();
