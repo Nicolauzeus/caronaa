@@ -348,7 +348,8 @@ export function GoogleHomeRideMap({
       routePolyline.current = null;
     };
   }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview,
-    routeManagedExternally,plannedRoute,routeBottomInset,routeLeftInset]);
+    // Bottom-sheet resizing must never restart the route RPC or erase the line.
+    routeManagedExternally,plannedRoute]);
 
   useEffect(() => {
     if (!ready || !map.current || failed) return;
