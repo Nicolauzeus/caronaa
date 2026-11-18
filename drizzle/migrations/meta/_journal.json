@@ -967,6 +967,13 @@
       "when": 1794967507779,
       "tag": "0202_driver_photo_nonremovable",
       "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1794968361057,
+      "tag": "0138_verify_0202_driver_photo_protection",
+      "breakpoints": true
     }
   ]
 }
