@@ -12,14 +12,16 @@ export const authenticatedNav = [
 // Professional F07 drivers use the separate authorized availability dashboard.
 export const sharedDriverNav = [
   { to: "/home" as const, label: "Painel", icon: LayoutDashboard },
-  { to: "/minhas-caronas" as const, label: "Viagens", icon: CalendarClock },
+  { to: "/home" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
 
-export function isAppNavSelected(pathname: string, activeIntent: string | undefined, to: string, label: string): boolean {
-  if (label === "Início" || label === "Painel") return pathname === to;
+export function isAppNavSelected(pathname: string, activeIntent: string | undefined, to: string, label: string, tripsOpen = false): boolean {
+  if (label === "Início") return pathname === "/home" && !tripsOpen;
+  if (label === "Painel") return pathname === to && !tripsOpen;
   if (label === "Viagens") {
-    return pathname === "/minhas-caronas" || pathname.startsWith("/viagem/");
+    if (to === "/home") return pathname === "/home" && tripsOpen;
+    return pathname === to || pathname === "/minhas-caronas" || pathname.startsWith("/viagem/");
   }
   return pathname === to || pathname.startsWith(to + "/");
 }
