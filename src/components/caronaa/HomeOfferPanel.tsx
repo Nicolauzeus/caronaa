@@ -69,7 +69,8 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
   const [allowDetours, setAllowDetours] = useState(initialDraft?.allowDetours ?? false);
   const [scheduleMode, setScheduleMode] = useState<"point" | "routine">(initialDraft?.scheduleMode ?? "point");
   const [departureMode, setDepartureMode] = useState<"now" | "schedule">(initialDraft?.departureMode ?? "schedule");
-  const [driverAllowed, setDriverAllowed] = useState<boolean | null>(null);
+  // Commissions are accounting obligations, not an eligibility gate.
+  const driverAllowed = true;
   const [quote, setQuote] = useState<OfferQuote | null>(null);
   const [womenOnly, setWomenOnly] = useState(initialDraft?.womenOnly ?? false);
   const [step, setStep] = useState<Step>("DETAILS");
@@ -81,10 +82,6 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
 
   useEffect(() => {
     let active = true;
-    void (supabase as any).rpc("get_my_driver_platform_fees")
-      .then(({ data, error }: { data: { driverAllowed?: boolean } | null; error: unknown }) => {
-        if (active) setDriverAllowed(!error && data?.driverAllowed === true);
-      }).catch(() => { if (active) setDriverAllowed(false); });
     void supabase.auth.getUser().then(async ({data}) => {
       if (!data.user) return;
       const { data: profile } = await supabase.from("profiles")
@@ -107,7 +104,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
   const currentQuote = quote?.origin === origin && quote?.destination === destination ? quote : null;
   const originReady = Boolean(origin.trim() && originLocation?.lat != null && originLocation?.lng != null);
   const destinationReady = Boolean(destination.trim() && destinationLocation?.lat != null && destinationLocation?.lng != null);
-  const canContinue = driverAllowed === true && Boolean(vehicle.trim()) &&
+  const canContinue = Boolean(vehicle.trim()) &&
     Boolean(currentQuote) && originReady && destinationReady &&
     Boolean(date && time) && (vehicleType === "MOTO" ? seats === 1 : seats >= 1 && seats <= 4);
 
@@ -119,9 +116,7 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
     }
     if (scheduleMode === "routine") return;
     if (!canContinue || !currentQuote) {
-      toast.error(driverAllowed !== true
-        ? "Verifique sua autorização e os repasses da plataforma."
-        : "Confira o veículo, trajeto, data, horário e a cotação antes de continuar.");
+      toast.error("Confira o veículo, trajeto, data, horário e a cotação antes de continuar.");
       return;
     }
     if (step === "DETAILS") { setStep("REVIEW"); return; }
@@ -169,12 +164,6 @@ export const HomeOfferPanel = forwardRef<HomeOfferPanelHandle, Props>(function H
         </div>
       ) : (
         <>
-          {driverAllowed === false && (
-            <p role="alert" className="rounded-xl border border-red-400/40 bg-red-400/10 p-3 text-sm">
-              Ofertas indisponíveis para esta conta. Confira o cadastro de veículo e os repasses pendentes no{" "}
-              <Link to="/perfil" className="font-bold text-[#FFBB00] underline">Perfil</Link>.
-            </p>
-          )}
           {step === "REVIEW" ? (
             <div className="space-y-3 rounded-2xl border border-[#FFBB00]/35 bg-[#FFBB00]/5 p-4">
               <h3 className="font-bold text-[#FFBB00]">Revise sua oferta</h3>
