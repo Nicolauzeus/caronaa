@@ -145,7 +145,8 @@ export function QuickRideTripHistory() {
                   Avaliar motorista (opcional)
                 </button>
                 {ratingOpen===ride.id&&<QuickRideRatingModal rideId={ride.id} subject="motorista"
-                  forceOpen onClose={()=>setRatingOpen(null)}/>}}
+                  forceOpen onClose={()=>setRatingOpen(null)}/>}
+
               </div>
             )}
           </article>;
