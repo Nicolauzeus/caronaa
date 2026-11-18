@@ -127,12 +127,20 @@ export function useFlashDriverPresence(){
       lastGpsAt.current=initial.at;
       currentFix.current=initial;
       setState(s=>({...s,gps:initial}));
-      // A successful online RPC is not sufficient to claim connected GPS:
-      // GPS publication must still be acknowledged.
-      const verified=await verifyFix(initial);
-      if(!verified)throw new FlashDriverError("UNAVAILABLE");
-      const published=await sendHeartbeat(initial,true);
-      if(!published)throw new FlashDriverError("UNAVAILABLE");
+      // First try the DB against a recent verified sample already published
+      // by ProfessionalRadarSync. This prevents a double geocoding/rate-gate
+      // race when both professional and Flash cockpit are mounted.
+      // A backend ACK can only happen after validating the verified GPS.
+      let published=await sendHeartbeat(initial,true);
+      if(published) {
+        lastVerifiedAt.current=Date.now();
+        lastVerifiedFixAt.current=initial.at;
+      }else{
+        const verified=await verifyFix(initial);
+        if(!verified)throw new FlashDriverError("UNAVAILABLE");
+        published=await sendHeartbeat(initial,true);
+        if(!published)throw new FlashDriverError("UNAVAILABLE");
+      }
       setState(s=>({...s,online:true,gpsConnected:true}));
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;

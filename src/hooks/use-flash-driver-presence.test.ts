@@ -40,7 +40,8 @@ describe("Flash driver GPS presence",()=>{
     await act(async()=>{await result.current.goOnline(config);});
     expect(api.online).toHaveBeenCalledOnce();
     expect(api.heartbeat).toHaveBeenCalledWith(-3.731,-38.521,21,expect.any(Number));
-    expect(api.verify).toHaveBeenCalledOnce();
+    // A previously verified server sample avoids duplicate geocoding.
+    expect(api.verify).not.toHaveBeenCalled();
     expect(api.watch).toHaveBeenCalledTimes(1);
     expect(result.current.online).toBe(true);
     expect(result.current.gpsConnected).toBe(true);
@@ -48,7 +49,15 @@ describe("Flash driver GPS presence",()=>{
     // Never refresh a stale GPS sample by replaying it as a new heartbeat.
     expect(api.heartbeat).toHaveBeenCalledTimes(1);
   });
-  it("does not claim online when the first GPS heartbeat is refused",async()=>{
+  it("falls back to server GPS verification if there is no fresh sample yet",async()=>{
+    api.heartbeat.mockRejectedValueOnce(new Error("VERIFIED_GPS_REQUIRED"));
+    const {result}=renderHook(()=>useFlashDriverPresence());
+    await act(async()=>{await result.current.goOnline(config);});
+    expect(result.current.online).toBe(true);
+    expect(api.verify).toHaveBeenCalledOnce();
+    expect(api.heartbeat).toHaveBeenCalledTimes(2);
+  });
+  it("does not claim online when both verified heartbeat attempts fail",async()=>{
     api.heartbeat.mockRejectedValue(new Error("timeout"));
     const {result}=renderHook(()=>useFlashDriverPresence());
     await act(async()=>{await result.current.goOnline(config);});
