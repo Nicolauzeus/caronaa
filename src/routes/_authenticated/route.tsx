@@ -53,15 +53,8 @@ export const Route = createFileRoute("/_authenticated")({
     // Professional dispatch remains separately authorized; choosing a driver role
     // in onboarding never bypasses passenger account completion.
     const onboarding = await readOnboarding();
-    if (location.pathname === "/home" || location.pathname === "/minhas-caronas" ||
-        location.pathname === "/buscar") {
-      const { data: professional, error: professionalError } = await (supabase as any)
-        .from("professional_mototaxi_profiles").select("user_id")
-        .eq("user_id", data.user.id).maybeSingle();
-      if (!professionalError && professional) {
-        throw redirect({ to: "/disponibilidade-profissional", replace: true });
-      }
-    }
+    // Pending professional registration must not lock the person's ordinary
+    // passenger/shared-ride app. F07 dispatch authorization stays separate.
     // Passenger app and other routes keep the normal research/onboarding
     // gates. These pilot exceptions do NOT grant access to passenger Home.
     if (onboarding?.status !== "BASIC_COMPLETED") {
