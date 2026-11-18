@@ -25,10 +25,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Mototaxi confirmado na tela de corridas", () => {
-  it("shows pending approval without asking for a second professional application", async () => {
+  it("shows a pending legacy registration with no second application", async () => {
     render(<ProfessionalAccessRequest/>);
     await screen.findByText(/Situação dos dados profissionais/i);
-    expect(screen.getByText(/Em análise/i)).toBeTruthy();
+    expect(screen.getByText(/Confirmando cadastro/i)).toBeTruthy();
     expect(screen.queryByText(/Solicitar autorização/i)).toBeNull();
     expect(screen.queryByText(/Reenviar solicitação/i)).toBeNull();
     expect(api.rpc).toHaveBeenCalledTimes(1);
