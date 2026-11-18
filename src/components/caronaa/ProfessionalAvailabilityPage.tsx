@@ -170,7 +170,13 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError(code==="RATE_LIMITED"
         ?"Publicação temporariamente limitada. O GPS continuará ativo e tentará novamente em até 45 segundos."
         :code==="GOOGLE_REVERSE_FAILED"
-          ?"O Google não confirmou o município. Verifique a configuração da API Geocoding no servidor."
+          ?"Não foi possível confirmar seu município agora. O GPS continuará tentando."
+          :code==="GPS_STALE_SAMPLE"
+            ?"O sinal GPS chegou atrasado. Uma nova leitura será solicitada automaticamente."
+          :code==="GPS_IMPLAUSIBLE_JUMP"
+            ?"O GPS detectou um salto improvável. Aguarde a estabilização da localização."
+          :code==="GPS_INVALID_FIX"
+            ?"O sinal GPS foi rejeitado por precisão inválida. Ative a localização precisa."
           :"Não foi possível publicar o GPS. Consulte o diagnóstico técnico F07.");
     }finally{sending.current=false;}
   },[publishVerified,clearTest,userId,discardWatch,record]);
