@@ -42,7 +42,7 @@ export function professionalFormCorrections(data: ProfessionalData): Professiona
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       const key = issue.path[0] as ProfessionalField;
-      if (key in professionalFieldLabels && !errors[key]) errors[key] = issue.message;
+      if (key in professionalFieldLabels && !errors[key]) errors[key] = key === "region" ? "Selecione a região de atuação." : issue.message;
     }
   }
   const isStoredPhoto = Boolean(data.photoUrl && data.userId &&
