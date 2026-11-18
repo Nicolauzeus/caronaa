@@ -4,6 +4,7 @@ import { Clock3, Navigation2, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
+import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -12,7 +13,7 @@ type DriverQueueRide={
 };
 export type ActiveDriverRide={
   id:string;role:string;status:string;vehicle_type:string;
-  origin_label:string;destination_label:string;
+  origin_label:string;destination_label:string;requested_at?:string|null;
 };
 
 function friendlyRideActionError(cause:{message?:string}|null,next:string):string{
@@ -46,7 +47,7 @@ export function QuickRideDriverQueue({
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
   const [queueNow,setQueueNow]=useState(Date.now());
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
-  const [lastCompleted,setLastCompleted]=useState<string|null>(null);
+  const [lastCompleted,setLastCompleted]=useState<ActiveDriverRide|null>(null);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const [boardingPin,setBoardingPin]=useState("");
@@ -66,14 +67,7 @@ export function QuickRideDriverQueue({
     [visibleQueue.length,onHasPendingChange]);
   useEffect(()=>{if(!dropoffDeadline)return;const timer=window.setInterval(()=>setDropoffNow(Date.now()),1000);return()=>window.clearInterval(timer);},[dropoffDeadline]);
   const remainingDropoffSeconds=dropoffDeadline?Math.max(0,Math.ceil((Date.parse(dropoffDeadline)-dropoffNow)/1000)):0;
-  const previouslyActiveRide=useRef<string|null>(null);
-  useEffect(()=>{
-    if(active){previouslyActiveRide.current=active.id;return;}
-    if(lastCompleted&&previouslyActiveRide.current===lastCompleted){
-      previouslyActiveRide.current=null;
-      toast.success("Corrida concluída. Consulte o recebimento em Minhas viagens.",{duration:7000});
-    }
-  },[active?.id,lastCompleted]);
+  // The post-trip flow presents Pix and optional rating when the active ride becomes completed.
   useEffect(()=>{
     onActiveChange?.(Boolean(active));
   },[active?.id,active?.status,onActiveChange]);
@@ -95,7 +89,7 @@ export function QuickRideDriverQueue({
         const requests:ActiveDriverRide[]=Array.isArray(data)?data:[];
         setActive(requests.find(r=>r.role==="DRIVER"&&
           ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
-        setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")?.id??null);
+        setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")??null);
       }catch{/* Availability stays blocked without a verified GPS fix. */}
       return;
     }
@@ -112,7 +106,7 @@ export function QuickRideDriverQueue({
       const requests:ActiveDriverRide[]=Array.isArray(mine.data)?mine.data:[];
       setActive(requests.find(r=>r.role==="DRIVER" &&
         ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
-      setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")?.id??null);
+      setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")??null);
       setQueue((Array.isArray(offers.data)?offers.data:[]).filter(
         (ride:DriverQueueRide)=>!rejected.current.has(ride.id),
       ));
@@ -369,6 +363,7 @@ export function QuickRideDriverQueue({
         </article>)}
       </>
     )}
+    <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??null} completedRide={lastCompleted}/>
     {error&&<p role="alert" className="rounded-lg border border-red-300/40 p-3 text-xs text-red-200">{error}</p>}
   </section>;
 }

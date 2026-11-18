@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { buildPixPayload } from "@/lib/pix";
@@ -23,10 +23,18 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
   const [declared,setDeclared]=useState(false);
   const [driverConfirmed,setDriverConfirmed]=useState(false);
   const [refreshKey,setRefreshKey]=useState(0);
+  const lastRideId=useRef<string|null>(null);
 
   useEffect(()=>{
     let alive=true;
-    setPix(null);setError("");setLoading(true);
+    const switchedRide=lastRideId.current!==rideId;
+    lastRideId.current=rideId;
+    // Keep the last verified QR visible while refreshing the same ride.
+    // Before this, each 15-second poll erased the QR and payment actions.
+    if(switchedRide){
+      setPix(null);setDeclared(false);setDriverConfirmed(false);
+    }
+    setError("");setLoading(switchedRide);
     void (supabase as any).rpc("quick_ride_payment_declaration_state",{p_id:rideId})
       .then(({data,error:rpcError}:{data:any;error:any})=>{
         if(!alive || rpcError)return;
@@ -41,7 +49,7 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
       if(rpcError)throw new Error("Pix da Corrida Rápida indisponível. Confira a migration 0143 e o encerramento da viagem.");
       const row=data as CompletedQuickPix | null;
       if(!row || row.available!==true || !row.key){
-        if(alive)setError("Motorista ainda não cadastrou a chave Pix. Consulte o perfil de pagamentos.");
+        if(alive)setError("Aguardando o motorista cadastrar uma chave Pix. Esta cobrança será atualizada automaticamente.");
         return;
       }
       if(row.rideId!==rideId || row.paymentMethod!=="MANUAL_DRIVER_PIX" ||

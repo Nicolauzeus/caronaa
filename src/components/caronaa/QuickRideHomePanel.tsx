@@ -14,6 +14,7 @@ import {
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
+import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
 import { toast } from "sonner";
 
 type QuickVehicle = "CAR" | "MOTO";
@@ -26,7 +27,7 @@ function friendlyQuickQuoteError(cause:unknown):string{
   return "Não foi possível calcular o preço agora.";
 }
 type RideStatus = "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED"|"EXPIRED";
-type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;expires_at?:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
+type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:string;municipality:string;requested_at?:string|null;expires_at?:string;distance_km?:number|null;duration_minutes?:number|null;fare_cents?:number|null};
 
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
@@ -135,7 +136,7 @@ export function QuickRideHomePanel({
     // Old completed trips must not hijack the Home on every reload.
     if(completedRide&&previouslyActiveRide.current===completedRide.id){
       previouslyActiveRide.current=null;
-      toast.success("Corrida concluída. O Pix e a avaliação ficam em Minhas viagens.",{duration:7000});
+      // The checkout is shown automatically by QuickRidePostTripFlow below.
       setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
     }
   },[liveRide?.id,completedRide?.id]);
@@ -524,6 +525,7 @@ export function QuickRideHomePanel({
           {!shellMode&&requestControls}
         </div>}
       </>}
+      <QuickRidePostTripFlow role="PASSENGER" activeRideId={liveRide?.id??null} completedRide={completedRide??null}/>
       {error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
       {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">{retryLabel}</Button>}
     </section>

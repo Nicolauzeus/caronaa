@@ -10,6 +10,7 @@ const flash=readFileSync("src/components/caronaa/shell/ShellJourneyPlanner.tsx",
 const passenger=readFileSync("src/components/caronaa/QuickRideHomePanel.tsx","utf8");
 const driverHistory=readFileSync("src/routes/_authenticated/viagens-profissionais.tsx","utf8");
 const passengerHistory=readFileSync("src/components/caronaa/QuickRideTripHistory.tsx","utf8");
+const checkout=readFileSync("src/components/caronaa/QuickRidePostTripFlow.tsx","utf8");
 const map=readFileSync("src/components/caronaa/QuickRideOperationalMap.tsx","utf8");
 const surface=readFileSync("src/components/caronaa/GoogleMapSurface.tsx","utf8");
 const google=readFileSync("src/lib/location/google-places.ts","utf8");
@@ -81,6 +82,18 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(driverHistory).toContain('Avaliar passageiro (opcional)');
     expect(passengerHistory).toContain('Avaliar motorista (opcional)');
   });
+  it("presents Pix and rating automatically after completion without blocking the next trip",()=>{
+    expect(passenger).toContain('<QuickRidePostTripFlow role="PASSENGER"');
+    expect(queue).toContain('<QuickRidePostTripFlow role="DRIVER"');
+    expect(checkout).toContain('<QuickRidePixCard rideId={rideId} />');
+    expect(checkout).toContain('<QuickRideDriverSettlement rideId={rideId} />');
+    expect(checkout).toContain('quick_ride_my_rating');
+    expect(checkout).toContain("Continuar no CARONAA");
+    expect(checkout).toContain('role="dialog" aria-modal="true"');
+    expect(checkout).toContain('createPortal(');
+    expect(checkout).not.toContain("quick_ride_declare_manual_pix");
+  });
+
   it("uses stage-specific Google map routes without animating over reduced-motion preference",()=>{
     expect(map).toContain('color:"#2563eb"');
     expect(map).toContain('color:"#FFBB00"');
