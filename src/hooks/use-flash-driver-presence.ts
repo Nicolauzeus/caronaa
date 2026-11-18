@@ -11,7 +11,7 @@ export const FLASH_GPS_THROTTLE_MS=4000;
 export const FLASH_GPS_STALE_MS=60000;
 function gpsFailure(error:unknown):string{
   if(error instanceof FlashDriverError&&error.code==="COMMISSION_BLOCKED")
-    return "Você possui 3 repasses pendentes. Quite a comissão da plataforma para voltar a ficar online.";
+    return "O servidor ainda aplica uma restrição financeira desatualizada. Solicite a aplicação da migration 0212.";
   if(error instanceof FlashDriverError&&error.code==="UNAVAILABLE")
     return "Serviço Flash indisponível no momento. Verifique a configuração e tente novamente.";
   return "GPS indisponível. Ative a localização e tente novamente.";
