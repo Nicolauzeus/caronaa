@@ -48,7 +48,7 @@ function mobileSheetBottomInset(snap:SheetSnap):number {
 }
 
 export const Route = createFileRoute("/_authenticated/home")({
-  validateSearch: z.object({intent:z.enum(["offer","request"]).optional(),trips:z.enum(["open"]).optional()}),
+  validateSearch: z.object({intent:z.enum(["offer","request","scheduled"]).optional(),trips:z.enum(["open"]).optional()}),
   beforeLoad:async({context,location})=>{
     beginCaronaaPhase("home-before-load");
     try {
@@ -87,7 +87,8 @@ export const Route = createFileRoute("/_authenticated/home")({
       }
       // Explicit scheduled carpool and trip-list navigation remains available
       // without silently forcing drivers into the old shared-driver dashboard.
-      if(roleRow?.active_role==="MOTORISTA"&&!activityIntent&&
+      if(roleRow?.active_role==="MOTORISTA"&&
+         activityIntent!=="scheduled"&&activityIntent!=="request"&&
          (location.search as {trips?:string}).trips!=="open"){
         throw redirect({to:"/disponibilidade-profissional",replace:true});
       }
@@ -372,7 +373,7 @@ function Home(){
   // completes missing vehicle details before enabling the driver role.
   useEffect(()=>{
     if(activeRoleState.loading)return;
-    if(routeSearch.intent==="offer"){
+    if(routeSearch.intent==="offer"||routeSearch.intent==="scheduled"){
       setRequestIntentOpen(false);
       if(activeRoleState.activeRole==="MOTORISTA"){
         setOfferIntentOpen(false);
@@ -505,7 +506,7 @@ function Home(){
       </div>
       <QuickVehicleModal open={vehicleModalOpen} onOpenChange={open=>{
           setVehicleModalOpen(open);
-          if(!open&&routeSearch.intent==="offer"){
+          if(!open&&(routeSearch.intent==="offer"||routeSearch.intent==="scheduled")){
             if(!offerVehicleSavedRef.current)void navigate({to:"/home",search:{},replace:true});
             offerVehicleSavedRef.current=false;
           }
@@ -515,7 +516,7 @@ function Home(){
           const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
           if(!check.allowed)throw new Error(check.reason==="ACTIVE_RIDE"?"Não é possível alternar durante uma corrida.":"Não foi possível verificar suas corridas.");
           await activeRoleState.saveVehicle(vehicle);
-          if(routeSearch.intent==="offer"){
+          if(routeSearch.intent==="offer"||routeSearch.intent==="scheduled"){
             offerVehicleSavedRef.current=true;
             // After first vehicle registration, open the operational driver
             // cockpit; regular scheduled rides remain available in the menu.

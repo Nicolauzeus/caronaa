@@ -25,7 +25,9 @@ describe("new CARONAA driver: online-first navigation",()=>{
 
   it("redirects legacy /home bookmarks only when no activity was explicitly requested",()=>{
     const home=read("src/routes/_authenticated/home.tsx");
-    expect(home).toContain('roleRow?.active_role==="MOTORISTA"&&!activityIntent');
+    expect(home).toContain('roleRow?.active_role==="MOTORISTA"&&');
+    expect(home).toContain('activityIntent!=="scheduled"&&activityIntent!=="request"');
+    expect(home).toContain('z.enum(["offer","request","scheduled"])');
     expect(home).toContain('(location.search as {trips?:string}).trips!=="open"');
     expect(home).toContain('throw redirect({to:"/disponibilidade-profissional",replace:true})');
     expect(home).not.toContain('if(!accessError&&access?.authorized===true)');
@@ -36,7 +38,7 @@ describe("new CARONAA driver: online-first navigation",()=>{
     const home=read("src/routes/_authenticated/home.tsx");
     expect(drawer).toContain("Trabalhar como motorista");
     expect(drawer).toContain("Oferecer carona agendada");
-    expect(drawer).toContain('search={{intent:"offer"}}');
+    expect(drawer).toContain('search={{intent:"scheduled"}}');
     expect(drawer).toContain('search={{trips:"open"}}');
     expect(home).toContain('setDriverHomeOpen(false);');
     expect(home).toContain('await navigate({to:"/disponibilidade-profissional",replace:true})');

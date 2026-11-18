@@ -135,7 +135,7 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
                 <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
                 <span className="text-sm font-extrabold">Minhas viagens</span>
               </Link>
-              <Link to="/home" search={{intent:"offer"}} onClick={close} className={tileClass}>
+              <Link to="/home" search={{intent:"scheduled"}} onClick={close} className={tileClass}>
                 <CarFront size={23} className="text-[#C38D00]" aria-hidden="true" />
                 <span className="text-sm font-extrabold">Oferecer carona agendada</span>
               </Link>
