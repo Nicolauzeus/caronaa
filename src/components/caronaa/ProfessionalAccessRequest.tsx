@@ -73,7 +73,7 @@ export function ProfessionalAccessRequest({ onAuthorized }: { onAuthorized?: (v:
             : profileMissing.some((c) => PROFILE_CODES.includes(c)) && <Link to="/perfil" className="font-semibold underline">Completar perfil</Link>}
         </div>
       )}
-      {simpleMototaxi && !state.authorized && (r?.status === "CHANGES_REQUESTED" || r?.status === "REJECTED") && (
+      {simpleMototaxi && !state.authorized && profileMissing.length === 0 && (r?.status === "CHANGES_REQUESTED" || r?.status === "REJECTED") && (
         <Link to="/cadastro-motorista" className="inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
           Corrigir dados do motorista
         </Link>
