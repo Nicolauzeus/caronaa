@@ -48,9 +48,11 @@ describe("F07 lifecycle: transport end != payment or customer confirmation",()=>
     expect(manual).toContain("char_length(v_reason) NOT BETWEEN 20 AND 1000");
     expect(manual).toContain("q.driver_id IS DISTINCT FROM auth.uid()");
     expect(manual).toContain("q.pickup_confirmed_at IS NULL");
-    expect(manual).toContain("SET status='PENDING_REVIEW'");
-    expect(manual).toContain("completion_request_method='MANUAL_REVIEW'");
+    expect(manual).toContain("now()+interval '120 seconds'");
+    expect(manual).toContain("'MANUAL_REVIEW',v_reason");
+    expect(manual).toContain("RETURN d.resolved_at IS NULL AND d.passenger_response IS NULL");
     expect(manual).not.toContain("SET status='COMPLETED'");
+    expect(manual).not.toContain("SET status='PENDING_REVIEW'");
     expect(manual).not.toContain("payment_status");
   });
 
