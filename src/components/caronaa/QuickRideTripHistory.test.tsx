@@ -4,6 +4,9 @@ import { QuickRideTripHistory } from "./QuickRideTripHistory";
 
 const api = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({supabase: {rpc:api.rpc}}));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({to, children}: {to:string;children:import("react").ReactNode}) => <a href={to}>{children}</a>,
+}));
 vi.mock("./QuickRidePixCard", () => ({
   QuickRidePixCard: ({rideId}: {rideId:string}) => <div>Pix autorizado para {rideId}</div>,
 }));
