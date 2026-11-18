@@ -94,7 +94,11 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
               ]).map(item => {
                 const selected = activeRole === item.role;
                 return (
-                  <Link key={item.role} to="/home" search={{intent:item.intent}} onClick={close}
+                  <Link key={item.role} to="/home" search={{intent:item.intent}} onClick={()=>{
+                    close();
+                    if(selected && item.role==="MOTORISTA")
+                      window.dispatchEvent(new Event("caronaa:driver-home"));
+                  }}
                     aria-current={selected ? "true" : undefined}
                     className={`flex min-h-[68px] items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${selected ? "border-[#FFBB00] bg-[#FFBB00]/10" : "border-border bg-background hover:border-[#FFBB00]/50"}`}>
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#FFBB00]/15 text-[#B58400]"><item.Icon size={21}/></span>
