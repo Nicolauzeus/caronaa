@@ -37,12 +37,13 @@ function friendlyRideActionError(cause:{message?:string}|null,next:string):strin
 }
 
 export function QuickRideDriverQueue({
-  municipality,online,gpsReady,onActiveChange,onActiveRideChange,onHasPendingChange,
+  municipality,online,gpsReady,onActiveChange,onActiveRideChange,onHasPendingChange,onFollowMap,
 }:{
   municipality:string;online:boolean;gpsReady:boolean;
   onActiveChange?:(hasActive:boolean)=>void;
   onActiveRideChange?:(ride:ActiveDriverRide|null)=>void;
   onHasPendingChange?:(value:boolean)=>void;
+  onFollowMap?:(rideId:string)=>void;
 }) {
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
   const [queueNow,setQueueNow]=useState(Date.now());
@@ -310,6 +311,22 @@ export function QuickRideDriverQueue({
                     : active.status}
             </span>
           </div>
+          <button
+            type="button"
+            onClick={()=>onFollowMap?.(active.id)}
+            disabled={!onFollowMap}
+            aria-label={active.status==="IN_PROGRESS"
+              ? "Acompanhar destino no mapa em tempo real"
+              : "Acompanhar embarque no mapa em tempo real"}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#FFBB00] px-3 py-3 font-[Sora] text-sm font-extrabold text-[#121212] shadow-md shadow-[#FFBB00]/10 active:scale-[.99] disabled:opacity-60">
+            <Navigation2 size={20} aria-hidden="true"/>
+            {active.status==="IN_PROGRESS"
+              ? "Acompanhar destino no mapa"
+              : "Acompanhar embarque no mapa"}
+          </button>
+          <p className="-mt-2 text-center text-[11px] leading-relaxed text-white/60">
+            Abre o mapa com sua posição atual. Para voltar ao atendimento ou ao código, expanda a barra inferior.
+          </p>
           <div className="professional-cockpit__timeline" aria-label="Origem e destino da corrida">
             <span className="professional-cockpit__timeline-marker" aria-hidden="true"/>
             <div className="min-w-0">
