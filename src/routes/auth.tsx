@@ -253,7 +253,7 @@ function AuthPage() {
     return (
       <AuthFrame>
         <div className="mb-6 flex items-center justify-between">
-          <Link to="/" aria-label="Página inicial"><img src={logoAsset.url} alt="CARONAA" className="h-12 w-auto object-contain" /></Link>
+          <Link to={user ? "/home" : "/"} aria-label="Página inicial"><img src={logoAsset.url} alt="CARONAA" className="h-12 w-auto object-contain" /></Link>
           <ThemeToggle />
         </div>
         <p className="text-xs font-bold uppercase tracking-wider text-caronaa-primary-strong">Cadastro · 1 de 2</p>
@@ -283,7 +283,7 @@ function AuthPage() {
       {/* Header oficial da experiência CARONAA */}
       <div className="mb-4 space-y-1 lg:mb-6 lg:space-y-2">
         <div className="flex items-center justify-between">
-          <Link to="/" className="inline-block transition hover:opacity-90">
+          <Link to={user ? "/home" : "/"} className="inline-block transition hover:opacity-90">
             <img src={logoAsset.url} alt="CARONAA" className="h-12 w-auto object-contain sm:h-12" />
           </Link>
           <ThemeToggle className="shrink-0 border-border/70 bg-background/70" />
