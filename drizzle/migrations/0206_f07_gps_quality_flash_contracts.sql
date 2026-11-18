@@ -595,15 +595,76 @@ REVOKE ALL ON FUNCTION public.respond_flash_order(uuid,boolean)
 GRANT EXECUTE ON FUNCTION public.respond_flash_order(uuid,boolean)
   TO authenticated;
 
--- Older F07 accept RPC must use exactly the same secure dispatcher.
+-- Legacy professional-driver queue remains operational independently
+-- of the new Flash cockpit. It receives the SAME anti-spoof, permissions,
+-- fees, dispatch and proximity checks, but relies on verified professional
+-- presence, not a separate flash_driver_presence online toggle.
 CREATE OR REPLACE FUNCTION public.quick_ride_accept(p_id uuid)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $legacy_accept$
+DECLARE
+  v_uid uuid:=auth.uid();
+  v_vehicle text;
+  v_ride public.professional_quick_rides%ROWTYPE;
+  v_fix public.professional_driver_locations%ROWTYPE;
+  v_distance_m double precision;
+  v_pin text:=lpad((floor(random()*9000)+1000)::text,4,'0');
 BEGIN
-  PERFORM public.respond_flash_order(p_id,true);
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';
+  END IF;
+  SELECT a.vehicle_type INTO v_vehicle
+    FROM public.professional_driver_authorizations a
+    WHERE a.user_id=v_uid AND a.approved=true;
+  IF v_vehicle IS NULL OR NOT public.driver_platform_access_allowed(v_uid) THEN
+    RAISE EXCEPTION 'DRIVER_NOT_AUTHORIZED_OR_FEES' USING ERRCODE='42501';
+  END IF;
+  SELECT l.* INTO v_fix
+    FROM public.professional_driver_locations l
+    JOIN public.professional_presence p ON p.user_id=l.user_id
+    JOIN public.professional_service_regions sr ON sr.municipality=l.municipality
+    WHERE l.user_id=v_uid AND p.is_available
+      AND p.municipality=l.municipality AND sr.public_discovery_enabled
+      AND p.last_seen_at>now()-interval '90 seconds'
+      AND l.accuracy_m<=150
+      AND l.sampled_at>now()-interval '90 seconds'
+      AND l.updated_at>now()-interval '90 seconds';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'VERIFIED_GPS_REQUIRED' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO v_ride FROM public.professional_quick_rides
+    WHERE id=p_id FOR UPDATE;
+  IF NOT FOUND OR v_ride.status<>'SEARCHING' OR v_ride.expires_at<=now() THEN
+    RETURN false;
+  END IF;
+  IF v_ride.passenger_id=v_uid OR v_ride.vehicle_type<>v_vehicle
+     OR (v_vehicle='MOTO' AND coalesce(v_ride.seats_requested,1)>1)
+     OR EXISTS(
+       SELECT 1 FROM public.professional_quick_rides active
+       WHERE active.driver_id=v_uid AND active.id<>p_id
+         AND active.status IN ('ACCEPTED','ARRIVED','IN_PROGRESS')
+     )
+     OR NOT EXISTS(
+       SELECT 1 FROM public.professional_service_regions sr
+       JOIN public.caronaa_service_municipalities c ON c.municipality=sr.municipality
+       WHERE sr.municipality=v_ride.municipality AND sr.dispatch_enabled
+         AND CASE WHEN v_vehicle='MOTO' THEN c.moto_enabled ELSE c.car_enabled END
+     ) THEN RETURN false;
+  END IF;
+  v_distance_m:=6371000.0*2*asin(least(1.0,sqrt(
+    power(sin(radians((v_fix.lat-coalesce(v_ride.meeting_point_lat,v_ride.origin_lat))/2)),2)+
+    cos(radians(v_fix.lat))*
+    cos(radians(coalesce(v_ride.meeting_point_lat,v_ride.origin_lat)))*
+    power(sin(radians((v_fix.lng-coalesce(v_ride.meeting_point_lng,v_ride.origin_lng))/2)),2)
+  )));
+  IF v_distance_m>15000 THEN RETURN false; END IF;
+  UPDATE public.professional_quick_rides SET
+    driver_id=v_uid,status='ACCEPTED',start_pin=v_pin,accepted_at=now(),updated_at=now()
+    WHERE id=p_id AND status='SEARCHING' AND expires_at>now();
+  IF NOT FOUND THEN RETURN false; END IF;
+  INSERT INTO public.caronaa_quick_queue_events(ride_id,driver_id,event_type,created_at)
+    VALUES(p_id,v_uid,'ORDER_ACCEPTED',now());
   RETURN true;
-EXCEPTION WHEN SQLSTATE 'P0001' THEN
-  RETURN false;
 END
 $legacy_accept$;
 REVOKE ALL ON FUNCTION public.quick_ride_accept(uuid) FROM PUBLIC,anon;

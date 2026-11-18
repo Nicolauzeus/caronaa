@@ -80,3 +80,20 @@ somente migrations aditivas após revisão explícita.
 
 Não aplicar SQL sem mostrar migrations, autorizar e testar RLS/concorrência.
 Não reter Pix, não alterar Asaas, comissões nem serviços legados.
+
+## Atualização auditada 0206 — 18/11/2026
+
+O contrato real foi corrigido em `src/services/flash-driver-service.ts`.
+A migration **0206_f07_gps_quality_flash_contracts.sql** deve ser aplicada
+**manualmente no Supabase antes do deploy de todo o código da PR #82**.
+
+- Disponibilidade: `set_flash_driver_online(p_is_online,p_dispatch_mode,p_available_seats,p_destination_label,p_destination_lat,p_destination_lng,p_destination_municipality,p_route_geojson,p_route_polyline)`; retorno `{is_online:boolean}`. O banco mantém também `professional_presence.is_available`, não o campo inexistente `is_online`.
+- GPS profissional: `publish_verified_professional_position_v2` acessível **somente pelo serviço** recebe município geocodificado no servidor, precisão até 150m e horário real da amostra; protege salto e duplicação.
+- GPS Flash: `update_flash_driver_heartbeat_gps_v2(p_lat,p_lng,p_accuracy_m,p_sampled_at_ms)` apenas autenticado e após publicação profissional verificada. Não grava latitude/longitude inexistes no schema antigo.
+- Pedidos: `get_flash_driver_radar_orders` retorna `distance_to_pickup_m`, `driver_earnings_cents`, `expires_in_seconds`, `service_mode`, `seats_requested` e `meeting_point_label`. O frontend converte para quilômetros e reais explicitamente.
+- Aceites: `respond_flash_order` exige Flash online validado; `quick_ride_accept` continua sendo o fluxo **independente** da fila profissional antiga, com as mesmas verificações críticas no servidor.
+- Mapa público: posição aproximada ~100m e restrição de GPS <=150m; mapa operacional só mostra ponto exato ao motorista atribuído/passageiro durante a corrida.
+- Chegada: motorista com fix <=50m, amostra <=45s e distância <=75m ao ponto de encontro.
+- Geocoding: configure **chave de servidor**, não a chave pública do mapa, em `GOOGLE_MAPS_API_KEY` ou `GOOGLE_PLACES_API_KEY` e habilite a **Geocoding API**.
+
+A migration não executa ao ser adicionada à branch. Faça testes com localização aproximada/desativada e em movimento real em iOS/Android.

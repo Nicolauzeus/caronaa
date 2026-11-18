@@ -4,7 +4,7 @@ import { useUserLocation } from "@/lib/location/use-user-location";
 let fix: PositionCallback, fail: PositionErrorCallback, move: PositionCallback;
 const gps = { getCurrentPosition: vi.fn(), watchPosition: vi.fn(), clearWatch: vi.fn() };
 const position = (latitude = -4.22) =>
-  ({ coords: { latitude, longitude: -38.71, accuracy: 10 } }) as GeolocationPosition;
+  ({ coords: { latitude, longitude: -38.71, accuracy: 10 }, timestamp:Date.now() }) as GeolocationPosition;
 beforeEach(() => {
   vi.clearAllMocks();
   Object.defineProperty(document, "hidden", { configurable: true, value: false });
@@ -20,14 +20,17 @@ beforeEach(() => {
   });
 });
 describe("Automatic operational location", () => {
-  it("requests GPS on desktop and freezes the address fix while the live marker moves", () => {
+  it("updates a provisional GPS origin on meaningful movement without an address lookup", () => {
     const { result, unmount } = renderHook(() => useUserLocation({ autoLocate: true }));
     expect(gps.getCurrentPosition).toHaveBeenCalledOnce();
     act(() => fix(position()));
     expect(result.current.addressPosition?.lat).toBe(-4.22);
     act(() => move(position(-4.23)));
     expect(result.current.position?.lat).toBe(-4.23);
-    expect(result.current.addressPosition?.lat).toBe(-4.22);
+    expect(result.current.addressPosition?.lat).toBe(-4.23);
+    // A tiny fluctuating GPS sample is not a new pickup.
+    act(() => move(position(-4.23001)));
+    expect(result.current.addressPosition?.lat).toBe(-4.23);
     unmount();
     expect(gps.clearWatch).toHaveBeenCalledWith(7);
   });

@@ -22,7 +22,7 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(google).toContain('maxResultCount: 1');
     expect(google).toContain('radius: 150.0');
     expect(google).toContain('reverseQuotaCooldownUntil');
-    expect(server).toContain('resolvePilotCivic(data.lat, data.lng)');
+    expect(server).toContain('reverseGeocodeRadarMunicipality(data.lat, data.lng)');
     expect(server).not.toContain('verifiedGpsCity');
     expect(server).not.toContain('await clearStaleLocation();\n      return { published: false, reason: "LOCATION_UNKNOWN"');
   });
@@ -81,7 +81,7 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
   it("uses stage-specific Google map routes without animating over reduced-motion preference",()=>{
     expect(map).toContain('color:"#2563eb"');
     expect(map).toContain('color:"#FFBB00"');
-    expect(map).toContain('const routeStart={lat:context.driver.lat,lng:context.driver.lng};');
+    expect(map).toContain('const routeStart={lat:driver.lat,lng:driver.lng};');
     expect(map).toContain('fitMode="once" fitKey=');
     expect(surface).toContain('prefers-reduced-motion: reduce');
   });

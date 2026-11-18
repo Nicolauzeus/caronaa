@@ -26,7 +26,8 @@ describe("F07 GPS SQL guardrails",()=>{
     expect(sql).toContain("interval '45 seconds'");
     expect(sql).toContain(")))<=75");
     expect(sql).not.toContain("'start_pin',v_pin");
-    expect(sql).toContain("PERFORM public.respond_flash_order(p_id,true)");
+    expect(sql).toContain("Legacy professional-driver queue remains operational independently");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.quick_ride_accept");
     expect(sql).toContain("COALESCE");
   });
 });
