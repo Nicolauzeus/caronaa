@@ -35,8 +35,13 @@ export function ProfessionalAccessRequest({
     setState(data); onAuthorized?.(Boolean(data?.authorized));
     const r = data?.request;
     if (r) {
-      setType(r.vehicle_type);setCategory(r.car_category ?? "");
-      setSeats(r.passenger_seats);setCity(r.municipality);
+      const actualType=initialVehicle?.type??r.vehicle_type;
+      setType(actualType);
+      setCategory(actualType==="CAR"&&r.vehicle_type==="CAR" ? r.car_category??"" : "");
+      setSeats(initialVehicle?.seats!=null
+        ?(actualType==="MOTO"?1:Math.min(3,Math.max(1,initialVehicle.seats)))
+        :r.passenger_seats);
+      setCity(initialVehicle?.municipality||r.municipality);
     } else if(initialVehicle) {
       // Reuse the universal registration instead of making a new application.
       setType(initialVehicle.type);
@@ -100,12 +105,20 @@ export function ProfessionalAccessRequest({
       )}
       {canSubmit && (
         <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            {(["CAR", "MOTO"] as const).map((t) => (
-              <button key={t} type="button" aria-pressed={type === t} onClick={() => { setType(t);setMissing([]);if(t === "MOTO") { setSeats(1); setCategory(""); } }}
-                className={`min-h-12 rounded-xl border p-2 font-semibold ${type === t ? "border-primary bg-primary text-primary-foreground" : ""}`}>{t === "CAR" ? "Carro" : "Moto"}</button>
-            ))}
-          </div>
+          {initialVehicle ?
+            <p role="status" className="rounded-lg border border-[#FFBB00]/30 p-3 text-sm">
+              Tipo confirmado no cadastro: <strong>{initialVehicle.type==="CAR"?"Carro":"Moto"}</strong>.
+              Para alterar, corrija o veículo antes de habilitar corridas.
+            </p> :
+            <div className="grid grid-cols-2 gap-2">
+              {(["CAR", "MOTO"] as const).map((t) => (
+                <button key={t} type="button" aria-pressed={type===t}
+                  onClick={()=>{setType(t);setMissing([]);if(t==="MOTO"){setSeats(1);setCategory("");}}}
+                  className={`min-h-12 rounded-xl border p-2 font-semibold ${type===t?"border-primary bg-primary text-primary-foreground":""}`}>
+                  {t==="CAR"?"Carro":"Moto"}
+                </button>
+              ))}
+            </div>}
           {type === "CAR" && (
             <label className="block text-sm">Categoria do carro
               <select value={category} onChange={(e) => { const c = e.target.value as CarCategory; setCategory(c);setMissing([]);setSeats((s) => Math.min(s,3,maxSeatsFor("CAR",c))); }} className="mt-1 w-full rounded-lg border bg-background p-3">
