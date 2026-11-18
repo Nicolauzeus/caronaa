@@ -265,8 +265,8 @@ export function DriverFlashPlanner({
         "quick_ride_request_manual_review",
         {p_id:active.id,p_reason:manualCloseReason.trim()});
       if(error||data!==true)throw new Error("REVIEW_UNAVAILABLE");
-      setManualCloseOpen(false);setManualCloseReason("");
-      toast.info("Corrida encaminhada para análise. Nenhum Pix ou comissão foi gerado.");
+      setManualCloseOpen(false);setManualCloseReason("");setDropoffSent(true);
+      toast.info("Confirmação manual enviada ao passageiro. Sem resposta em 120 segundos, irá para análise sem cobrança.");
       await refresh();
     }catch{toast.error("Não foi possível enviar o encerramento para análise. Tente novamente.");}
     finally{setBusyRide(false);}
@@ -411,7 +411,7 @@ export function DriverFlashPlanner({
               Sem GPS no destino? Solicitar revisão
             </button>
             {manualCloseOpen&&<>
-              <p className="text-xs text-white/70">A corrida será retirada da operação e encaminhada para decisão administrativa, sem cobrança automática.</p>
+              <p className="text-xs text-white/70">O passageiro terá até 120 segundos para confirmar. Contestação ou silêncio encaminham a corrida para análise, sem cobrança automática.</p>
               <label className="block text-xs" htmlFor="flash-close-reason">Explique a dificuldade</label>
               <textarea id="flash-close-reason" rows={3} maxLength={1000}
                 value={manualCloseReason} onChange={e=>setManualCloseReason(e.target.value)}
@@ -419,7 +419,7 @@ export function DriverFlashPlanner({
               <button type="button" disabled={busyRide||manualCloseReason.trim().length<20}
                 onClick={()=>void requestManualClose()}
                 className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-3 font-bold text-[#FFBB00] disabled:opacity-50">
-                Encaminhar para análise, sem cobrança
+                Pedir confirmação manual de desembarque
               </button>
             </>}
           </div>}
