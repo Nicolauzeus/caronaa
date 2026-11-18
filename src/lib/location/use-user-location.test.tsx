@@ -73,8 +73,37 @@ describe("Localização da home", () => {
     const { result } = renderHook(useUserLocation);
     act(() => fail({ code } as GeolocationPositionError));
     expect(result.current.failure).toBe(expected);
-    expect(watchPosition).not.toHaveBeenCalled();
+    if (code === 1) expect(watchPosition).not.toHaveBeenCalled();
+    else expect(watchPosition).toHaveBeenCalledOnce();
     expect(result.current.locating).toBe(false);
+  });
+  it("retoma GPS pelo watchPosition após timeout e recupera cotação provisória", () => {
+    const { result } = renderHook(useUserLocation);
+    act(() => fail({ code: 3 } as GeolocationPositionError));
+    expect(result.current.failure).toBe("TIMEOUT");
+    expect(watchPosition).toHaveBeenCalledOnce();
+    act(() => move(position(-3.732, 42)));
+    expect(result.current.position).toEqual({ lat: -3.732, lng: -38.52, accuracy: 42 });
+    expect(result.current.addressPosition).toEqual({ lat: -3.732, lng: -38.52, accuracy: 42 });
+    expect(result.current.failure).toBeNull();
+    expect(result.current.recenterVersion).toBe(1);
+  });
+  it("ignora amostra inicial antiga e continua procurando uma localização recente", () => {
+    const { result } = renderHook(useUserLocation);
+    act(() => fix({ ...position(-3.73, 15), timestamp: Date.now()-45_000 } as GeolocationPosition));
+    expect(result.current.position).toBeNull();
+    expect(watchPosition).toHaveBeenCalledOnce();
+    act(() => move(position(-3.731, 120)));
+    expect(result.current.position?.lat).toBe(-3.731);
+    expect(result.current.addressPosition?.accuracy).toBe(120);
+  });
+  it("mantém fix visual acima de 300m sem afirmar que o embarque é preciso", () => {
+    const { result } = renderHook(useUserLocation);
+    act(() => fix(position(-3.73, 900)));
+    expect(result.current.position?.accuracy).toBe(900);
+    expect(result.current.isLowAccuracy).toBe(true);
+    act(() => move(position(-3.73001, 180)));
+    expect(result.current.addressPosition?.accuracy).toBe(180);
   });
   it("atualiza posição sem reverse geocoding a cada movimento", () => {
     const { result } = renderHook(useUserLocation);
