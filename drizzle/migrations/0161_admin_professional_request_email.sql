@@ -1,7 +1,6 @@
 -- 0161 | Expose authenticated account email only to the administrative
 -- professional-approval queue. Historical requests need no backfill.
 -- Never trust snapshot.email from browser submissions as identity evidence.
-BEGIN;
 
 CREATE OR REPLACE FUNCTION public.admin_professional_access_queue()
 RETURNS jsonb
@@ -54,5 +53,4 @@ GRANT EXECUTE ON FUNCTION public.admin_professional_access_queue()
 
 COMMENT ON FUNCTION public.admin_professional_access_queue() IS
   'Admin-only professional queue with verified login email from auth.users; historical snapshots are enriched on read.';
-COMMIT;
 NOTIFY pgrst, 'reload schema';
