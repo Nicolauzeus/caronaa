@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   LayoutDashboard,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -62,35 +62,46 @@ export function AppShell({
   mapLayout?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [professionalOnly, setProfessionalOnly] = useState<boolean | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
   const selectedNav = (to: string, label: string) => isAppNavSelected(pathname, activeIntent, to, label);
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: professionalAccess, isPending: professionalAccessPending } = useQuery({
+    queryKey: ["caronaa", "professional-navigation", user?.id ?? "guest"],
+    enabled: Boolean(user?.id) && !publicPage,
+    staleTime: 15_000,
+    gcTime: 120_000,
+    retry: false,
+    queryFn: async () => {
+      if (!user?.id) return false;
+      // This only selects the navigation surface. F07 permissions are still
+      // enforced by the database and authenticated route guards.
+      const [access, roleRow] = await Promise.all([
+        (supabase as any).rpc("get_my_professional_access"),
+        (supabase as any).from("profiles").select("active_role")
+          .eq("id", user.id).maybeSingle(),
+      ]);
+      if (access.error || roleRow.error) return false;
+      return access.data?.authorized === true &&
+        roleRow.data?.active_role === "MOTORISTA";
+    },
+  });
+  const professionalOnly = !user || publicPage ? false
+    : professionalAccessPending ? null : professionalAccess === true;
   useEffect(() => {
-    let live = true;
-    setProfessionalOnly(null);
-    if (!user || publicPage) { setProfessionalOnly(false); return () => { live = false; }; }
-    // Only a server-authorized professional may receive the exclusive F07
-    // navigation. Declared MOTORISTA or an unfinished application never hides
-    // regular passenger and shared-carona routes.
-    void Promise.all([
-      (supabase as any).rpc("get_my_professional_access"),
-      (supabase as any).from("profiles").select("active_role")
-        .eq("id", user.id).maybeSingle(),
-    ]).then(([access, roleRow]) => {
-      if (!live) return;
-      if (access.error || roleRow.error) { setProfessionalOnly(false); return; }
-      setProfessionalOnly(access.data?.authorized === true &&
-        roleRow.data?.active_role === "MOTORISTA");
-    }).catch(() => { if (live) setProfessionalOnly(false); });
-    return () => { live = false; };
-  }, [user?.id, publicPage]);
+    if (!user?.id || publicPage) return;
+    const onRoleChanged = () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["caronaa", "professional-navigation", user.id],
+      });
+    };
+    window.addEventListener("caronaa:role-changed", onRoleChanged);
+    return () => window.removeEventListener("caronaa:role-changed", onRoleChanged);
+  }, [queryClient, user?.id, publicPage]);
   const navigation = prelaunchMode ? waitingNav : professionalOnly === true ? professionalNav : professionalOnly === null ? [] : authenticatedNav;
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
   async function signOut() {
     clearRideIntentDraft();
     if (user && typeof window !== "undefined") {
@@ -161,6 +172,7 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
+                  preload="intent"
                   search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary ${
                     selectedNav(to,label) ? "bg-secondary text-primary" : "text-muted-foreground"
@@ -379,7 +391,7 @@ export function AppShell({
           className="fixed bottom-0 left-0 top-16 z-30 hidden w-48 flex-col border-r border-white/10 bg-[#121212] px-3 py-6 text-white lg:flex">
           <nav className="space-y-2">
             {professionalNav.map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to} aria-current={selectedNav(to,label) ? "page" : undefined}
+              <Link key={to} to={to} preload="intent" aria-current={selectedNav(to,label) ? "page" : undefined}
                 className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] ${selectedNav(to,label) ? "bg-[#FFBB00] text-[#121212]" : "text-white/85 hover:bg-white/10"}`}>
                 <Icon size={19} aria-hidden="true" />
                 <span>{label}</span>
@@ -400,7 +412,7 @@ export function AppShell({
             ? `relative min-h-0 w-full flex-1 mb-[calc(80px_+_env(safe-area-inset-bottom))] md:mb-0 ${professionalOnly ? "lg:ml-48 lg:w-[calc(100%_-_12rem)]" : ""}`
             : publicPage
             ? "flex-1"
-            : "flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
+            : "caronaa-page-enter flex-1 mx-auto w-full max-w-[1280px] px-4 pb-8 pt-4 sm:px-5 md:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12 md:pt-8"
         }
       >
         {children}
@@ -419,6 +431,7 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
+                  preload="intent"
                   search={to==="/home" ? {intent:label==="Oferecer"?"offer":undefined} : undefined}
                   aria-current={selected ? "page" : undefined}
                   className={`group relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
@@ -427,8 +440,8 @@ export function AppShell({
                       : professionalOnly ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  {selected && <span aria-hidden="true" className="absolute top-0 h-[3px] w-9 rounded-b-full bg-[#FFBB00]" />}
-                  <Icon size={22} aria-hidden="true" className={selected && !professionalOnly ? "text-primary" : ""} />
+                  <span aria-hidden="true" className={`absolute top-0 h-[3px] w-9 rounded-b-full bg-[#FFBB00] transition-[opacity,transform] duration-150 motion-reduce:transition-none ${selected ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"}`} />
+                  <Icon size={22} aria-hidden="true" className={`transition-transform duration-150 motion-reduce:transition-none ${selected ? "scale-[1.08]" : "scale-100"} ${selected && !professionalOnly ? "text-primary" : ""}`} />
                   <span className="truncate">{label}</span>
                 </Link>
               );
