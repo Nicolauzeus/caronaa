@@ -61,21 +61,19 @@ export const simulateF07TestLocation = createServerFn({method:"POST"})
     }
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const admin=supabaseAdmin as any;
-    const [presence,driver,region,fees,access]=await Promise.all([
+    const [presence,driver,region,access]=await Promise.all([
       (context.supabase as any).from("professional_presence")
         .select("is_available,last_seen_at").eq("user_id",context.userId).maybeSingle(),
       admin.from("professional_driver_authorizations").select("approved,vehicle_type")
         .eq("user_id",context.userId).maybeSingle(),
       admin.from("professional_service_regions").select("public_discovery_enabled")
         .eq("municipality",data.municipality).maybeSingle(),
-      (context.supabase as any).rpc("get_my_driver_platform_fees"),
       (context.supabase as any).rpc("get_my_professional_access"),
     ]);
     if(presence.error || presence.data?.is_available!==true ||
        driver.error || driver.data?.approved!==true ||
        driver.data.vehicle_type!==data.vehicleType ||
        region.error || region.data?.public_discovery_enabled!==true ||
-       fees.error || fees.data?.driverAllowed!==true ||
        access.error || access.data?.authorized!==true) {
       throw new Error("Simulação indisponível: motorista, veículo ou município não habilitado.");
     }
