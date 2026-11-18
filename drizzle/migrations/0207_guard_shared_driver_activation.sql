@@ -15,7 +15,7 @@ BEGIN
      AND OLD.active_role IS DISTINCT FROM NEW.active_role THEN
     v_plate := upper(regexp_replace(coalesce(NEW.vehicle_plate,''), '[^A-Za-z0-9]', '', 'g'));
     v_name := btrim(coalesce(NEW.full_name,''));
-    IF v_name !~ '^\S{2,}(\s+\S+)+ THEN
+    IF v_name !~ '^[^[:space:]]{2,}[[:space:]]+[^[:space:]]{2,}' THEN
       RAISE EXCEPTION 'Nome e sobrenome são obrigatórios para motoristas'
         USING ERRCODE='23514';
     END IF;
