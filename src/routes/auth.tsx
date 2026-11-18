@@ -247,46 +247,6 @@ function AuthPage() {
         </div>
       </div>
 
-      {/* Seletor de Modo (Tabs acessíveis) */}
-      <div
-        className="hidden lg:grid grid-cols-2 p-1 bg-muted/60 rounded-2xl mb-6 border border-border/60"
-        role="tablist"
-        aria-label="Opções de acesso"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "entrar"}
-          onClick={() => { setSubmitError(""); setMode("entrar"); }}
-          className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
-            mode === "entrar"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Entrar na CARONAA
-        </button>
-        {
-          <button
-            type="button"
-            role="tab"
-            aria-selected={effectiveMode === "cadastro"}
-            onClick={() => { setSubmitError(""); setMode("cadastro"); }}
-            className={`py-2.5 px-3 text-sm font-bold rounded-xl transition ${
-              effectiveMode === "cadastro"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Criar minha conta
-          </button>
-        }
-      </div>
-
-      <Link to="/cadastro-motorista" className="mb-5 hidden lg:flex min-h-12 items-center justify-center rounded-xl border border-caronaa-primary/40 bg-caronaa-primary/10 px-4 text-center text-sm font-bold text-foreground hover:bg-caronaa-primary/20">
-        Sou mototaxista — cadastro simplificado
-      </Link>
-
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-3 lg:space-y-4">
         {submitError && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</p>}
@@ -406,7 +366,7 @@ function AuthPage() {
 
       {/* Alternância secundária */}
       {
-        <div className="mt-3 border-t border-border/70 pt-2 text-center text-sm font-medium text-muted-foreground lg:mt-6 lg:pt-4 lg:text-xs">
+        <div className="mt-4 border-t border-border/70 pt-3 text-center text-sm font-medium text-muted-foreground lg:mt-6 lg:pt-4 lg:text-xs">
           {mode === "entrar" ? "Não tem conta?" : "Já tem uma conta?"}{" "}
           <button
             type="button"
