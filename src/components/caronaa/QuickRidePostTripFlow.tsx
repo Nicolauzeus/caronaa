@@ -44,7 +44,7 @@ export function QuickRidePostTripFlow({
   }, [role, activeRideId]);
 
   useEffect(() => {
-    if (!rideId) return;
+    if (!rideId || activeRideId) return;
     let lastActiveId: string | null = null;
     let alreadySeen = false;
     try {
@@ -55,7 +55,7 @@ export function QuickRidePostTripFlow({
     if (shouldPresentQuickPostTrip(completedRide, lastActiveId, alreadySeen)) {
       setOpenRideId(rideId);
     }
-  }, [role, rideId, completedRide?.requested_at]);
+  }, [role, rideId, activeRideId, completedRide?.requested_at]);
 
   useEffect(() => {
     if (!rideId || openRideId !== rideId) return;
@@ -96,7 +96,8 @@ export function QuickRidePostTripFlow({
   };
   const rate = () => {
     if (!rideId || ratingStatus !== "available") return;
-    markPresented();
+    // Leave Pix checkout pending while rating is open. Returning from
+    // feedback must show payment again instead of abandoning it.
     setOpenRideId(null);
     setRatingRideId(rideId);
   };
@@ -189,7 +190,7 @@ export function QuickRidePostTripFlow({
     )}
     {isRatingOpen && createPortal(
       <QuickRideRatingModal rideId={rideId} subject={who} forceOpen
-        onClose={() => setRatingRideId(null)} />,
+        onClose={() => { setRatingRideId(null); setOpenRideId(rideId); setRatingRetry(v => v + 1); }} />,
       document.body,
     )}
   </>;
