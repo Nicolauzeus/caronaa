@@ -269,6 +269,8 @@ export function ProfessionalAvailabilityPage() {
          Number(fees.data?.pendingTrips)<0 ||
          !Number.isFinite(Number(fees.data?.amountOutstanding))){
         setFeeUnavailable(true);
+        setBlocked(false);
+        setFeeDetails(null);
         throw new Error("Não foi possível confirmar seu saldo de comissões. Consulte novamente.");
       }
       setFeeUnavailable(false);
