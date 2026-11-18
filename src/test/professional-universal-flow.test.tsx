@@ -36,6 +36,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("sonner", () => ({toast: {success:vi.fn(),error:vi.fn()}}));
 
+const validDriverProfile = {
+  full_name:"Motorista Exemplo",
+  avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",
+  vehicle_brand:"Honda",vehicle_description:"CG 160",vehicle_color:"Preto",
+  vehicle_plate:"ABC1D23",vehicle_type:"moto",vehicle_seats:1,
+};
+
 import { Route } from "@/routes/cadastro-motorista";
 const ProfessionalPage = Route.options.component as ComponentType;
 
@@ -45,7 +52,7 @@ beforeEach(() => {
   api.readOnboarding.mockResolvedValue({status:"BASIC_COMPLETED"});
   api.query.mockImplementation(async (table:string) => ({
     data: table === "profiles"
-      ? {full_name:"Motorista Exemplo",avatar_url:null,vehicle_plate:null}
+      ? validDriverProfile
       : null,
     error: null,
   }));
@@ -76,6 +83,21 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
     expect(api.rpc).not.toHaveBeenCalled();
   });
 
+  it("redirects incomplete vehicle records before the professional form opens", async () => {
+    api.auth.user={id:"driver-1",email:"teste@example.com",
+      email_confirmed_at:"2026-11-17T18:00:00Z",
+      user_metadata:{full_name:"Motorista Exemplo"}};
+    api.query.mockImplementation(async (table:string) => ({
+      data:table==="profiles"?{...validDriverProfile,vehicle_description:null,vehicle_plate:null}:null,
+      error:null,
+    }));
+    render(<ProfessionalPage/>);
+    await waitFor(()=>expect(api.navigate).toHaveBeenCalledWith({
+      to:"/cadastro-veiculo",search:{redirect:"/cadastro-motorista"},replace:true,
+    }));
+    expect(screen.queryByRole("button",{name:/Confirmar dados e ver corridas/i})).toBeNull();
+  });
+
   it("reuses the confirmed account and pre-fills the name, without asking for credentials", async () => {
     api.auth.user={id:"driver-1",email:"teste@example.com",
       email_confirmed_at:"2026-11-17T18:00:00Z",
@@ -95,9 +117,9 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
       user_metadata:{full_name:"Motorista Exemplo"}};
     render(<ProfessionalPage/>);
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Faltam 4 dados obrigatórios/i));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Faltam 3 dados obrigatórios/i));
     expect(screen.getAllByText(/Selecione a região de atuação/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Adicione sua foto pessoal para concluir/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/WhatsApp com DDD/i)).toBeTruthy();
     expect(api.rpc).not.toHaveBeenCalledWith("submit_simple_mototaxi_access", expect.anything());
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
   });
@@ -107,7 +129,7 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
       email_confirmed_at:"2026-11-17T18:00:00Z",
       user_metadata:{full_name:"Motorista Exemplo"}};
     api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
-      ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
+      ? validDriverProfile
       : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
     let authorized = false;
     api.rpc.mockImplementation(async (method:string) => {
@@ -135,7 +157,7 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
       email_confirmed_at:"2026-11-17T18:00:00Z",
       user_metadata:{full_name:"Motorista Exemplo"}};
     api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
-      ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
+      ? validDriverProfile
       : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
     api.rpc.mockImplementation(async (method:string) => method==="submit_simple_mototaxi_access"
       ? {data:null,error:{message:"Dados pendentes: PHOTO"}}
@@ -151,7 +173,7 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
       email_confirmed_at:"2026-11-17T18:00:00Z",
       user_metadata:{full_name:"Motorista Exemplo"}};
     api.query.mockImplementation(async (table:string) => ({data:table==="profiles"
-      ? {full_name:"Motorista Exemplo",avatar_url:"https://storage.example.com/storage/v1/object/public/avatars/driver-1/portrait.jpg",vehicle_plate:null}
+      ? validDriverProfile
       : {first_name:"Motorista",last_name:"Exemplo",whatsapp_e164:"+5585999999999",region_code:"MACICO_BATURITE",registration_number:"AB123CD"},error:null}));
     api.rpc.mockImplementation(async (method:string) =>
       method==="get_my_professional_access"
