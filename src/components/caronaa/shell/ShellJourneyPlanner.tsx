@@ -175,16 +175,16 @@ export function ShellJourneyPlanner({
   const pickDestination=useCallback((label:string,details?:FormLocationDetails)=>{
     onRouteSearchRef.current+=1;setOnRouteMatches([]);setSelectedMatch(null);
     setOnRouteConfirmedId(null);setOnRouteDiagnostic("");onOnRouteMatchSelected?.(null);
-    setDestination(label);setDestinationPoint(details);onDestinationChange?.(label,details);
+    setDestination(label);setDestinationPoint(details);setFlashStep("choices");onDestinationChange?.(label,details);
     if(details)setFocusDestination(false);
     setRoute(null);setPrices(null);
     frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
-    if(details&&valid(details))onSnapChange?.(serviceType==="FLASH"?"full":"half");
+    if(details&&valid(details))onSnapChange?.("half");
   },[originPoint?.lat,originPoint?.lng,onDestinationChange,onSnapChange,onOnRouteMatchSelected,serviceType]);
   useEffect(()=>{
     onRouteSearchRef.current+=1;setOnRouteMatches([]);setSelectedMatch(null);
     setOnRouteDiagnostic("");setOnRouteConfirmedId(null);onOnRouteMatchSelected?.(null);
-  },[mode,onRouteVehicle,seats,entireCar,scheduledAt,originRevision,onOnRouteMatchSelected]);
+  },[onRouteVehicle,seats,entireCar,scheduledAt,originRevision,onOnRouteMatchSelected]);
   const changeVehicle=(value:Vehicle,kind:UnifiedFareMode)=>{
     if(flashRideActive){toast.info("Finalize ou cancele a corrida atual antes de mudar o veículo.");return;}
     if(kind==="EXCLUSIVE"){setExclusiveVehicle(value);onFlashVehicleChange?.(value);return;}
@@ -218,7 +218,7 @@ export function ShellJourneyPlanner({
     finally{setScheduling(false);}
   };
   const searchAvailableOnRoute=async()=>{
-    if(onRouteBusy||mode!=="ON_ROUTE"||!valid(destinationPoint)||!frozenOrigin.current)return;
+    if(onRouteBusy||!valid(destinationPoint)||!frozenOrigin.current)return;
     const generation=++onRouteSearchRef.current;
     setOnRouteBusy(true);setOnRouteDiagnostic("");setOnRouteMatches([]);setSelectedMatch(null);onOnRouteMatchSelected?.(null);
     const from=frozenOrigin.current;
