@@ -6,7 +6,7 @@ import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { loadGoogleMaps, onGoogleMapsAuthFailure } from "@/lib/google-maps-loader";
 const api = vi.hoisted(() => ({
   create: vi.fn(), panTo: vi.fn(), setCenter: vi.fn(), fitBounds: vi.fn(),
-  on: vi.fn(), marker: vi.fn(), circle: vi.fn(), clear: vi.fn(), polyline: vi.fn(),
+  on: vi.fn(), marker: vi.fn(), markerMove:vi.fn(), circle: vi.fn(), clear: vi.fn(), polyline: vi.fn(),
 }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@/lib/google-maps-browser.functions", () => ({getGoogleMapsBrowserKey: vi.fn()}));
@@ -31,8 +31,25 @@ beforeEach(() => {
       constructor(_element:unknown,options:unknown){api.create(options);}
       addListener=api.on;panTo=api.panTo;setCenter=api.setCenter;fitBounds=api.fitBounds;
     },
-    Marker:class {constructor(options:unknown){api.marker(options);}setMap=api.clear;},
-    Circle:class {constructor(options:unknown){api.circle(options);}setMap=api.clear;},
+    Marker:class {
+      point:{lat:number;lng:number};title:string;
+      constructor(options:{position:{lat:number;lng:number};title:string}){
+        this.point=options.position;this.title=options.title;api.marker(options);
+      }
+      setMap=api.clear;
+      getTitle=()=>this.title;
+      setTitle=(title:string)=>{this.title=title;};
+      getPosition=()=>({lat:()=>this.point.lat,lng:()=>this.point.lng});
+      setPosition=(point:{lat:number;lng:number})=>{this.point=point;api.markerMove(point);};
+    },
+    Circle:class {
+      radius:number;
+      constructor(options:{radius:number}){this.radius=options.radius;api.circle(options);}
+      setMap=api.clear;
+      getRadius=()=>this.radius;
+      setCenter=vi.fn();
+      setRadius=(value:number)=>{this.radius=value;};
+    },
     Polyline:class {constructor(options:unknown){api.polyline(options);}setMap=api.clear;},
     LatLngBounds:class {extend=vi.fn();},SymbolPath:{CIRCLE:"circle"},
   }});
@@ -173,10 +190,12 @@ describe("Google home map",()=>{
     const markers=api.marker.mock.calls.map(([marker])=>marker as {title:string;position:{lat:number;lng:number}});
     expect(markers).toHaveLength(1);expect(markers[0].title).toContain("Sua saída escolhida");
     expect(markers[0].position).toEqual(selected);expect(api.circle).not.toHaveBeenCalled();
-    api.panTo.mockClear();api.marker.mockClear();
+    api.panTo.mockClear();api.marker.mockClear();api.markerMove.mockClear();
     rerender(<HomeRideMap {...base} passengerPreview originIsCurrent={false} following={false}
       origin={selected} userPosition={{lat:-4.2,lng:-38.7,accuracy:150}}/>);
-    expect(api.marker).toHaveBeenCalledWith(expect.objectContaining({position:selected}));
+    // A previously selected manual origin must keep the same marker instance.
+    expect(api.marker).not.toHaveBeenCalled();
+    expect(api.markerMove).not.toHaveBeenCalled();
     expect(api.panTo).not.toHaveBeenCalled();expect(api.circle).not.toHaveBeenCalled();
   });
   it("permite escolher saída no mapa apenas quando esse modo é habilitado",async()=>{
@@ -194,8 +213,10 @@ describe("Google home map",()=>{
     const {rerender,unmount}=render(<HomeRideMap {...base}/>);
     await waitFor(()=>expect(api.on).toHaveBeenCalledWith("dragstart",expect.any(Function)));
     act(()=>api.on.mock.calls[0][1]());expect(base.onDrag).toHaveBeenCalledOnce();api.panTo.mockClear();
+    const originalMarkers=api.marker.mock.calls.length;
     rerender(<HomeRideMap {...base} following={false} userPosition={{lat:-3.74,lng:-38.53,accuracy:80}}/>);
-    await waitFor(()=>expect(api.marker).toHaveBeenCalledWith(expect.objectContaining({position:{lat:-3.74,lng:-38.53}})));
+    await waitFor(()=>expect(api.markerMove).toHaveBeenCalledWith({lat:-3.74,lng:-38.53}));
+    expect(api.marker).toHaveBeenCalledTimes(originalMarkers);
     expect(api.panTo).not.toHaveBeenCalled();expect(api.create).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button",{name:"Centralizar na minha localização"}));expect(base.onRecenter).toHaveBeenCalledOnce();
     rerender(<HomeRideMap {...base} recenterVersion={1}/>);
@@ -212,6 +233,22 @@ describe("Google home map",()=>{
     await waitFor(()=>expect(api.polyline).toHaveBeenCalledWith(expect.objectContaining({path:pickupPreview.walk.routePath,strokeOpacity:0,icons:expect.any(Array)})));
     expect(api.marker).toHaveBeenCalledWith(expect.objectContaining({position:pickupPreview.pickup.point,title:pickupPreview.pickup.label}));
     api.clear.mockClear();rerender(<HomeRideMap {...base} pickupPreview={null}/>);expect(api.clear).toHaveBeenCalled();
+  });
+  it("reuses existing driver markers during repeated radar GPS updates",async()=>{
+    const driver={
+      driver_key:"driver-stable",lat:-3.731,lng:-38.53,
+      seen_at:"2026-11-18T14:40:00Z",vehicle_type:"MOTO" as const,
+    };
+    const {rerender}=render(<HomeRideMap {...base}
+      professionalDrivers={[driver]} userPosition={null}/>);
+    await waitFor(()=>expect(api.marker).toHaveBeenCalled());
+    const markerCount=api.marker.mock.calls.length;
+    api.markerMove.mockClear();api.clear.mockClear();
+    rerender(<HomeRideMap {...base} userPosition={null}
+      professionalDrivers={[{...driver,lat:-3.733,lng:-38.531,seen_at:"2026-11-18T14:40:15Z"}]}/>);
+    expect(api.marker).toHaveBeenCalledTimes(markerCount);
+    expect(api.markerMove).toHaveBeenCalled();
+    expect(api.clear).not.toHaveBeenCalled();
   });
   it("shows reload action on script failure without another map",async()=>{
     vi.mocked(loadGoogleMaps).mockRejectedValue(new Error("network"));

@@ -72,7 +72,7 @@ export function GoogleHomeRideMap({
   const getServerBrowserKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
-  const markers = useRef<any[]>([]);
+  const markers = useRef<Map<string,any>>(new Map());
   const routePolyline = useRef<any>(null);
   const circle = useRef<any>(null);
   const pickupLines = useRef<any[]>([]);
@@ -145,7 +145,7 @@ export function GoogleHomeRideMap({
       unsubscribe();
       setReady(false);
       markers.current.forEach((marker) => marker.setMap(null));
-      markers.current = [];
+      markers.current.clear();
       routePolyline.current?.setMap(null);
       routePolyline.current = null;
       circle.current?.setMap(null);
@@ -160,67 +160,84 @@ export function GoogleHomeRideMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Update existing markers instead of removing all of them on every GPS
+  // pulse or 15s radar refresh. The previous implementation visibly blinked.
+  // Marker changes are local Google JS objects, not paid Routes API calls.
   useEffect(() => {
     if (!ready || !map.current) return;
     const G = (window as any).google.maps;
-    markers.current.forEach((marker) => marker.setMap(null));
-    markers.current = [];
-    const add = (point: Point | null | undefined, title: string, kind: TripMarkerKind) => {
+    const visible = new Set<string>();
+    const add = (key:string, point: Point | null | undefined, title:string,kind:TripMarkerKind) => {
       if (!validPoint(point)) return;
-      const marker = new G.Marker({
-        map: map.current,
-        position: { lat: point.lat, lng: point.lng },
-        title,
-        icon: tripMarkerIcon(kind),
-        zIndex: kind === "you" ? 50 : kind === "destination" ? 40 : kind === "origin" ? 30 : 20,
-      });
-      markers.current.push(marker);
-    };
-    // An explicit manual pickup remains authoritative even if GPS arrives late.
-    if (!originIsCurrent && validPoint(origin)) {
-      add(origin, "Sua saída escolhida · ponto informado (não GPS ao vivo)", "you");
-    } else if (originIsCurrent && trustedAppliedOrigin) {
-      if (canDisplayGps) {
-        add(userPosition, trustedGps ? "Você · localização GPS" : "Você · localização aproximada", "you");
-        if (validPoint(origin) && !areNearbyPoints(origin, userPosition)) {
-          add(origin, "Saída registrada anteriormente", "origin");
+      visible.add(key);
+      const location={lat:point.lat,lng:point.lng};
+      const icon=tripMarkerIcon(kind);
+      const zIndex=kind==="you"?50:kind==="destination"?40:kind==="origin"?30:20;
+      const existing=markers.current.get(key);
+      if(existing){
+        if(existing.getTitle?.()!==title)existing.setTitle?.(title);
+        const previous=existing.getPosition?.();
+        const lat=previous?.lat?.(),lng=previous?.lng?.();
+        if(!Number.isFinite(lat)||!Number.isFinite(lng)||
+           Math.abs(lat-location.lat)>0.000015||Math.abs(lng-location.lng)>0.000015){
+          existing.setPosition(location);
         }
-      } else if (validPoint(origin)) {
-        add(origin, "Sua saída registrada · último ponto válido (não ao vivo)", "you");
+      }else{
+        markers.current.set(key,new G.Marker({
+          map:map.current,position:location,title,icon,zIndex,
+        }));
+      }
+    };
+    if(!originIsCurrent&&validPoint(origin)){
+      add("pickup-manual",origin,"Sua saída escolhida · ponto informado (não GPS ao vivo)","you");
+    }else if(originIsCurrent&&trustedAppliedOrigin){
+      if(canDisplayGps){
+        add("passenger-live",userPosition,
+          trustedGps?"Você · localização GPS":"Você · localização aproximada","you");
+        if(validPoint(origin)&&!areNearbyPoints(origin,userPosition))
+          add("pickup-frozen",origin,"Saída registrada anteriormente","origin");
+      }else if(validPoint(origin)){
+        add("passenger-live",origin,"Sua saída registrada · último ponto válido (não ao vivo)","you");
       }
     }
-    add(destination, "Destino", "destination");
-    if (pickupPreview) {
-      add(pickupPreview.passenger, "Origem do passageiro", "passenger");
-      add(pickupPreview.pickup.point, pickupPreview.pickup.label, "meeting");
+    add("destination",destination,"Destino","destination");
+    if(pickupPreview){
+      add("meeting-passenger",pickupPreview.passenger,"Origem do passageiro","passenger");
+      add("meeting-point",pickupPreview.pickup.point,pickupPreview.pickup.label,"meeting");
     }
-    professionalDrivers.forEach((driver) => {
-      const isMoto = driver.vehicle_type === "MOTO";
-      add(driver, driver.simulated
-        ? "MINHA SIMULAÇÃO DE HOMOLOGAÇÃO · posição fictícia · sem viagens"
-        : driver.is_self
-          ? "MEU VEÍCULO · GPS real aproximado · visualização de teste"
-          : (isMoto ? "Mototaxista" : "Motorista") + " disponível no radar · posição aproximada · ainda não atribuído",
-        isMoto ? "availableMoto" : "availableDriver");
+    professionalDrivers.forEach(driver=>{
+      const isMoto=driver.vehicle_type==="MOTO";
+      add("professional:"+driver.driver_key,driver,
+        driver.simulated?"MINHA SIMULAÇÃO DE HOMOLOGAÇÃO · posição fictícia · sem viagens":
+        driver.is_self?"MEU VEÍCULO · GPS real aproximado · visualização de teste":
+        (isMoto?"Mototaxista":"Motorista")+" disponível no radar · posição aproximada · ainda não atribuído",
+        isMoto?"availableMoto":"availableDriver");
     });
-    circle.current?.setMap(null);
-    circle.current = null;
-    if (originIsCurrent && canDisplayGps && userPosition && userPosition.accuracy > 0) {
-      circle.current = new G.Circle({
-        map: map.current,
-        center: { lat: userPosition.lat, lng: userPosition.lng },
-        radius: userPosition.accuracy,
-        fillColor: "#2563eb",
-        fillOpacity: 0.08,
-        strokeColor: "#2563eb",
-        strokeOpacity: 0.4,
-        strokeWeight: 1,
+    markers.current.forEach((marker,key)=>{
+      if(visible.has(key))return;
+      marker.setMap(null);
+      markers.current.delete(key);
+    });
+    if(originIsCurrent&&canDisplayGps&&userPosition&&userPosition.accuracy>0){
+      const center={lat:userPosition.lat,lng:userPosition.lng};
+      if(!circle.current)circle.current=new G.Circle({
+        map:map.current,center,radius:userPosition.accuracy,
+        fillColor:"#2563eb",fillOpacity:0.08,strokeColor:"#2563eb",
+        strokeOpacity:0.4,strokeWeight:1,
       });
+      else{
+        circle.current.setCenter(center);
+        if(Math.abs((circle.current.getRadius?.()??0)-userPosition.accuracy)>2)
+          circle.current.setRadius(userPosition.accuracy);
+      }
+    }else if(circle.current){
+      circle.current.setMap(null);
+      circle.current=null;
     }
   }, [
-    ready, userPosition, professionalDrivers,
-    origin?.lat, origin?.lng, destination?.lat, destination?.lng,
-    originIsCurrent, trustedGps, canDisplayGps, trustedAppliedOrigin, pickupPreview,
+    ready,userPosition,professionalDrivers,
+    origin?.lat,origin?.lng,destination?.lat,destination?.lng,
+    originIsCurrent,trustedGps,canDisplayGps,trustedAppliedOrigin,pickupPreview,
   ]);
 
   // Only an explicit selection mode may change the departure from a map tap.
@@ -331,7 +348,8 @@ export function GoogleHomeRideMap({
       routePolyline.current = null;
     };
   }, [ready, failed, fromLat, fromLng, toLat, toLng, pickupPreview,
-    routeManagedExternally,plannedRoute,routeBottomInset,routeLeftInset]);
+    // Bottom-sheet resizing must never restart the route RPC or erase the line.
+    routeManagedExternally,plannedRoute]);
 
   useEffect(() => {
     if (!ready || !map.current || failed) return;

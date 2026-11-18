@@ -400,9 +400,19 @@ function Home(){
       setQuickDriverCounts({CAR:0,MOTO:0});setQuickDriverErrors({});
       setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;
     }
+    // A matched passenger already has the authenticated operational map.
+    // Continuing 2 radar discovery RPCs every 15s cannot improve that journey.
+    if(passengerRide){
+      setQuickDriverLoading(false);
+      return;
+    }
     let alive=true;
+    let inFlight=false;
+    let loadedOnce=false;
     const refresh=async()=>{
-      if(alive)setQuickDriverLoading(true);
+      if(!alive||inFlight||document.hidden)return;
+      inFlight=true;
+      if(!loadedOnce)setQuickDriverLoading(true);
       // Two independent authorized radar queries: a failure in one fleet must
       // not hide the other fleet on the map or in the quote selector.
       const results=await Promise.allSettled((["CAR","MOTO"] as const).map(async type=>{
@@ -416,7 +426,9 @@ function Home(){
         if(error)throw error;
         return {type,drivers:mapQuickRadarDrivers(data,type)};
       }));
+      inFlight=false;
       if(!alive)return;
+      loadedOnce=true;
       const counts:Record<"CAR"|"MOTO",number>={CAR:0,MOTO:0};
       const visible:ApproximateProfessionalDriver[]=[];
       let failures=0;
@@ -430,15 +442,32 @@ function Home(){
           errors[(["CAR","MOTO"] as const)[index]]="Não foi possível consultar a disponibilidade agora.";
         }
       });
-      setQuickDriverErrors(errors);
-      setQuickDriverCounts(counts);
-      setQuickDrivers(visible);
+      setQuickDriverErrors(previous=>
+        previous.CAR===errors.CAR&&previous.MOTO===errors.MOTO?previous:errors);
+      setQuickDriverCounts(previous=>
+        previous.CAR===counts.CAR&&previous.MOTO===counts.MOTO?previous:counts);
+      setQuickDrivers(previous=>{
+        if(previous.length===visible.length&&previous.every((driver,index)=>{
+          const next=visible[index];
+          return driver.driver_key===next.driver_key&&driver.lat===next.lat&&
+            driver.lng===next.lng&&driver.seen_at===next.seen_at&&
+            driver.vehicle_type===next.vehicle_type;
+        }))return previous;
+        return visible;
+      });
       setQuickDriverError(failures===2?"Radar indisponível. Tente novamente.":"");
       setQuickDriverLoading(false);
     };
-    void refresh();const timer=window.setInterval(refresh,15000);
-    return()=>{alive=false;window.clearInterval(timer);};
-  },[activeRoleState.activeRole,serviceType,quickMunicipality,radarLat,radarLng]);
+    void refresh();
+    const timer=window.setInterval(()=>{void refresh();},15000);
+    const onVisible=()=>{if(!document.hidden)void refresh();};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{
+      alive=false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",onVisible);
+    };
+  },[activeRoleState.activeRole,serviceType,quickMunicipality,radarLat,radarLng,passengerRide?.id]);
   // Live GPS is rendered separately by the map; it is never a fallback pickup.
   const mapOrigin=validPoint(plannedPickup)?plannedPickup:undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;

@@ -449,7 +449,7 @@ export function ShellJourneyPlanner({
     </>}
     {fixedFlash&&<>
       {!flashRideActive&&itinerary}
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-3">
+      <div className={flashRideActive?"hidden":"min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-3"}>
         {onRouteConfirmedId&&<p role="status" className="text-primary">Carona Na Rota confirmada · {selectedMatch?.pickupMeeting.poiName}</p>}
         {routeFeedback}
         {!flashRideActive&&valid(destinationPoint)&&flashStep==="choices"&&flashChoices}
@@ -488,10 +488,18 @@ export function ShellJourneyPlanner({
             </div>
           </section>}
         {!flashRideActive&&flashStep==="shared"&&flashOnRoute}
-        <div className={mode==="EXCLUSIVE"&&(flashStep==="confirm"||flashRideActive)?"":"hidden"}>{flashOperationalPanel}</div>
+
       </div>
       {mode==="EXCLUSIVE"&&!flashRideActive&&flashStep==="confirm"&&<div ref={onFlashActionContainer} className="shrink-0 border-t border-caronaa-white/15 bg-secondary py-3"/>}
     </>}
-    {snap==="peek"&&serviceType==="FLASH"&&<div className="hidden">{flashOperationalPanel}</div>}
+    {/* One stable, stateful F07 panel across peek/half/full.
+        The previous conditional placements unmounted QuickRideHomePanel on
+        each sheet transition, causing state resets, flicker and RPC bursts. */}
+    {serviceType==="FLASH"&&<div className={
+      fixedFlash&&(flashRideActive||mode==="EXCLUSIVE"&&flashStep==="confirm")
+        ?flashRideActive?"min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          :"min-h-0 max-h-[55dvh] shrink-0 overflow-y-auto overscroll-contain"
+        :"hidden"
+    }>{flashOperationalPanel}</div>}
   </div>;
 }
