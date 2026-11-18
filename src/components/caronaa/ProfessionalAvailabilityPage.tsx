@@ -143,7 +143,7 @@ export function ProfessionalAvailabilityPage() {
         record("SERVER_PUBLISH_SUCCESS",{ref:result.traceId??ref,city:result.municipality});
         if(mounted.current){
           setMunicipality(result.municipality);
-          setFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});
+          setFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false});
           setError("");
         }
         void clearTest().catch(()=>undefined);

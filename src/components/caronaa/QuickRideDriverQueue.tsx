@@ -10,12 +10,32 @@ import { QuickRideRatingModal } from "./QuickRideRatingModal";
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
   destination_label:string;driver_receives_cents:number|null;
-  fare_cents:number|null;distance_km?:number|null;
+  fare_cents:number|null;distance_km?:number|null;expires_at:string;
 };
 export type ActiveDriverRide={
   id:string;role:string;status:string;vehicle_type:string;
   origin_label:string;destination_label:string;
 };
+
+function friendlyRideActionError(cause:{message?:string}|null,next:string):string{
+  const message=typeof cause?.message==="string"?cause.message:"";
+  if(next==="ACCEPT"){
+    if(/VERIFIED_GPS_REQUIRED|GPS_STALE_SAMPLE|GPS_INVALID_FIX/i.test(message))
+      return "Seu GPS expirou ou ficou impreciso. Ative a localização precisa, mantenha o app aberto e tente novamente.";
+    if(/DRIVER_NOT_AUTHORIZED_OR_FEES|Motorista com 3 repasses/i.test(message))
+      return "Acesso profissional ou repasses pendentes. Verifique sua conta antes de aceitar.";
+    if(/OUTSIDE_DISPATCH_RADIUS/i.test(message))
+      return "Este embarque está fora do raio permitido para sua localização atual.";
+    if(/no longer approved|MUNICIPALITY_NOT_ENABLED/i.test(message))
+      return "A cobertura ou tarifa deste trajeto mudou. Esta corrida não pode ser aceita agora.";
+    if(/caronaa_quick_queue_events|column .*ride_id.*does not exist/i.test(message))
+      return "O serviço de aceitação precisa ser atualizado. Tente novamente após a correção do sistema.";
+    return "Falha na aceitação. Confira sua localização e tente novamente.";
+  }
+  if(next==="IN_PROGRESS")return "Código incorreto, expirado ou bloqueado. Confira com o passageiro.";
+  if(next==="ARRIVED")return "Para registrar a chegada, esteja a até 75 m do embarque com GPS recente e preciso.";
+  return "Não foi possível atualizar a corrida. Verifique sua conexão e disponibilidade.";
+}
 
 export function QuickRideDriverQueue({
   municipality,online,gpsReady,onActiveChange,onActiveRideChange,onHasPendingChange,
@@ -26,6 +46,7 @@ export function QuickRideDriverQueue({
   onHasPendingChange?:(value:boolean)=>void;
 }) {
   const [queue,setQueue]=useState<DriverQueueRide[]>([]);
+  const [queueNow,setQueueNow]=useState(Date.now());
   const [active,setActive]=useState<ActiveDriverRide|null>(null);
   const [lastCompleted,setLastCompleted]=useState<string|null>(null);
   const [error,setError]=useState("");
@@ -37,9 +58,17 @@ export function QuickRideDriverQueue({
   const [ratingOpen,setRatingOpen]=useState<string|null>(null);
   const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
   const [completedDismissed,setCompletedDismissed]=useState<string|null>(null);
+  const visibleQueue=queue.filter(ride=>Number.isFinite(Date.parse(ride.expires_at))&&
+    Date.parse(ride.expires_at)>queueNow);
+  useEffect(()=>{
+    if(queue.length===0)return;
+    const timer=window.setInterval(()=>setQueueNow(Date.now()),1000);
+    return()=>window.clearInterval(timer);
+  },[queue.length>0]);
   const lastCompletedVisible=lastCompleted!==null && completedDismissed!==lastCompleted &&
     (()=>{try{return window.localStorage.getItem("caronaa-driver-dismissed:"+lastCompleted)!=="1";}catch{return true}})();
-  useEffect(()=>{onHasPendingChange?.(queue.length>0 || lastCompletedVisible);},[queue.length,lastCompletedVisible,onHasPendingChange]);
+  useEffect(()=>{onHasPendingChange?.(visibleQueue.length>0 || lastCompletedVisible);},
+    [visibleQueue.length,lastCompletedVisible,onHasPendingChange]);
   useEffect(()=>{if(!dropoffDeadline)return;const timer=window.setInterval(()=>setDropoffNow(Date.now()),1000);return()=>window.clearInterval(timer);},[dropoffDeadline]);
   const remainingDropoffSeconds=dropoffDeadline?Math.max(0,Math.ceil((Date.parse(dropoffDeadline)-dropoffNow)/1000)):0;
   const releaseCompleted=()=>{
@@ -101,6 +130,18 @@ export function QuickRideDriverQueue({
   },[municipality,online,gpsReady]);
   useEffect(()=>{void refresh();},[refresh]);
   useQuickRideRealtime(municipality,refresh,Boolean(active)||online&&gpsReady);
+  // Time-based expiry does not emit a database UPDATE or Realtime event.
+  // Revalidate the queue periodically while the driver is eligible; only
+  // current, server-validated offers may be accepted.
+  useEffect(()=>{
+    if(!online||!gpsReady||active)return;
+    const timer=window.setInterval(()=>{
+      if(!document.hidden)void refresh();
+    },15000);
+    const onVisible=()=>{if(!document.hidden)void refresh();};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);};
+  },[online,gpsReady,active?.id,refresh]);
   const loadDropoff=useCallback(async(rideId:string)=>{
     const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:rideId});
     if(error)return;
@@ -145,6 +186,18 @@ export function QuickRideDriverQueue({
   },[online,gpsReady,active?.id,active?.status,refresh]);
   const action=async(rideId:string,next:"ACCEPT"|"ARRIVED"|"IN_PROGRESS"|"COMPLETED")=>{
     if(requestLock.current)return;
+    if(next==="ACCEPT"){
+      const offer=queue.find(ride=>ride.id===rideId);
+      if(!offer||!Number.isFinite(Date.parse(offer.expires_at))||Date.parse(offer.expires_at)<=Date.now()){
+        setQueue(items=>items.filter(item=>item.id!==rideId));
+        setError("Esta solicitação expirou. Buscando chamados disponíveis.");
+        void refresh();return;
+      }
+      if(!online||!gpsReady){
+        setError("Seu GPS precisa estar publicado e atualizado antes de aceitar uma corrida.");
+        return;
+      }
+    }
     requestLock.current=true;
     setBusy(true);
     setError("");
@@ -157,15 +210,11 @@ export function QuickRideDriverQueue({
         next==="COMPLETED"?{p_id:rideId}:
         accept?{p_id:rideId}:{p_id:rideId,p_status:next};
       const {data,error:rpcError}=await (supabase as any).rpc(rpc,args);
-      if(rpcError)throw new Error(next==="IN_PROGRESS"
-        ?"Código incorreto, expirado ou bloqueado. Confira com o passageiro."
-        :next==="ARRIVED"
-          ?"Não foi possível confirmar a chegada. Verifique se o GPS está recente, com precisão de até 50 m, e se você está a até 75 m do embarque."
-          :"Não foi possível atualizar a corrida. Verifique GPS e disponibilidade.");
+      if(rpcError)throw new Error(friendlyRideActionError(rpcError,next));
       if(accept && data!==true){
         rejected.current.add(rideId);
         setQueue(items=>items.filter(r=>r.id!==rideId));
-        toast.error("Corrida já aceita por outro motorista da região.");
+        toast.error("Solicitação indisponível: pode ter expirado ou sido aceita por outro motorista.");
         await refresh();
         return;
       }
@@ -187,6 +236,7 @@ export function QuickRideDriverQueue({
       await refresh();
     }catch(cause){
       setError(cause instanceof Error?cause.message:"Não foi possível atualizar a corrida.");
+      if(next==="ACCEPT")void refresh();
     }finally{
       requestLock.current=false;
       setBusy(false);
@@ -278,10 +328,10 @@ export function QuickRideDriverQueue({
             <CheckCircle2 size={18} aria-hidden="true"/> Liberar tela para novos chamados
           </button>
         </section>}
-        {!active&&queue.length===0&&<p role="status" className="text-sm text-white/70">
+        {!active&&visibleQueue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
         </p>}
-        {!active&&queue.map(ride=><article key={ride.id}
+        {!active&&visibleQueue.map(ride=><article key={ride.id}
           className="min-w-0 space-y-3 rounded-2xl border border-white/15 bg-white/[0.04] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-[Sora] text-sm font-extrabold text-white">Nova solicitação</h3>
