@@ -10,7 +10,12 @@ describe("CARONAA F07 Google Routes and public radar integration",()=>{
   it("passes authorized, approximate positions through the passenger map",()=>{
     expect(home).toContain('rpc("discover_caronaa_quick_drivers"');
     expect(home).toContain("p_radius_km:QUICK_RADAR_RADIUS_KM");
-    expect(home).toContain('const approvedDrivers=mapQuickRadarDrivers(data,quickVehicle)');
+    expect(home).toContain('(["CAR","MOTO"] as const).map(async type=>');
+    expect(home).toContain("p_vehicle:type");
+    expect(home).toContain("mapQuickRadarDrivers(data,type)");
+    expect(home).toContain("Promise.allSettled");
+    expect(home).toContain("setQuickDriverCounts(counts)");
+    expect(home).not.toContain("p_vehicle:quickVehicle");
     expect(home).toContain('professionalDrivers={quickDrivers}');
     expect(home).toContain('setQuickDrivers([])');
     expect(markers).toContain("entry.simulated === true");
