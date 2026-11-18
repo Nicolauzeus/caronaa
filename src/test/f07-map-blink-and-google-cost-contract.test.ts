@@ -50,9 +50,25 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
     expect(rideMap).toContain('cachedTripRoute(cacheKey,()=>readRouteRef.current(');
     expect(rideMap).toContain('readMapRef.current({data:{rideId}})');
     expect(rideMap).toContain('lastDriverFix.current');
-    expect(rideMap).toContain('Última posição recebida · buscando GPS atualizado');
+    expect(rideMap).toContain('Última posição conhecida (não ao vivo)');
     expect(rideMap).toContain('Date.now()-last.at<=30000');
     expect(rideMap).toContain('fitMode="once" fitKey=');
+  });
+
+  it("follows the driver GPS in both phases and lets the driver pull the sheet up or down",()=>{
+    expect(mapSurface).toContain('followPoint?: {lat:number;lng:number}|null;');
+    expect(mapSurface).toContain('map.current.addListener("dragstart"');
+    expect(mapSurface).toContain('map.current.panTo({lat:followPoint.lat,lng:followPoint.lng})');
+    expect(mapSurface).toContain("Retomar acompanhamento do GPS");
+    expect(rideMap).toContain('followPoint={driverPhase?driverPoint:null}');
+    expect(rideMap).toContain('driverNavigationPhase(statusNow)');
+    expect(rideMap).toContain('estimateDriverRouteRemaining(driverPoint,currentDriverRoute)');
+    expect(rideMap).toContain('Abrir orientação por voz no Google Maps');
+    expect(driverPage).toContain('onTouchStart={event=>');
+    expect(driverPage).toContain('onTouchEnd={event=>');
+    expect(driverPage).toContain('aria-expanded={sheetOpen}');
+    expect(driverPage).toContain('if(activeRide.status==="ARRIVED")setSheetExpanded(true)');
+    expect(driverPage).toContain('else if(activeRide.status==="ACCEPTED"||activeRide.status==="IN_PROGRESS")');
   });
 
   it("limits radar discovery to the waiting state and avoids display flicker",()=>{
