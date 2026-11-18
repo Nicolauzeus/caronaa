@@ -38,8 +38,9 @@ const professionalNav = [
 ];
 
 export function Brand({ light = false }: { light?: boolean }) {
+  const { user } = useAuth();
   return (
-    <Link to="/" className="inline-flex items-center" aria-label="CARONAA — página inicial">
+    <Link to={user ? "/home" : "/"} className="inline-flex items-center" aria-label="CARONAA — página inicial">
       <img
         src={logoAsset.url}
         alt="CARONAA"
