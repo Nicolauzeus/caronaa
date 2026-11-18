@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, MapPin, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -24,6 +24,7 @@ export function PageHeading({
 }
 
 export function SearchForm({ compact = false }: { compact?: boolean }) {
+  const navigate = useNavigate();
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
@@ -31,7 +32,8 @@ export function SearchForm({ compact = false }: { compact?: boolean }) {
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        window.location.href = `/buscar?origem=${encodeURIComponent(origin)}&destino=${encodeURIComponent(destination)}&data=${encodeURIComponent(date)}`;
+        // Keep the authenticated session, router state and cached data intact.
+        void navigate({ to: "/buscar", search: { origem: origin, destino: destination, data: date } });
       }}
       className={`grid gap-3 rounded-xl border border-border bg-card p-3 shadow-soft ${compact ? "lg:grid-cols-[1fr_1fr_1fr_auto]" : "md:grid-cols-[1fr_1fr_1fr_auto]"} md:items-end md:p-4`}
     >
