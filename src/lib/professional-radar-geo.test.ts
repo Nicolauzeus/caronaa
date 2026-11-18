@@ -38,6 +38,8 @@ describe("F07: radar GPS independent of registered driver region", () => {
       {...valid,lat:91},
       {...valid,lng:181},
       {...valid,accuracyM:-1},
+      {...valid,accuracyM:0},
+      {...valid,accuracyM:151},
       {...valid,accuracyM:5001},
       {...valid,accuracyM:Infinity},
       {...valid,lat:NaN},
