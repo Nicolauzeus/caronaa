@@ -1,10 +1,9 @@
-import { CalendarClock, CarFront, House, UserRound } from "lucide-react";
+import { CalendarClock, House, UserRound } from "lucide-react";
 
-// The four destinations are the product contract. Keep the mobile dock and
-// desktop navigation sourced from this same configuration.
+// Offer/request is selected exclusively inside the account menu. The dock
+// contains destinations, not a duplicate account-role switch.
 export const authenticatedNav = [
   { to: "/home" as const, label: "Início", icon: House },
-  { to: "/home" as const, label: "Oferecer", icon: CarFront },
   { to: "/minhas-caronas" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
