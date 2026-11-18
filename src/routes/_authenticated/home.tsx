@@ -403,7 +403,9 @@ function Home(){
             routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
             origin={mapOrigin} destination={currentDestination} originIsCurrent={originSource==="CURRENT_LOCATION"}
             originAccuracyM={originPreview?(validPoint(plannedPickup)?quotedAccuracy??Number.POSITIVE_INFINITY:null):location.originAccuracyM}
-            following={originSource==="CURRENT_LOCATION"&&(originPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
+            following={originSource==="CURRENT_LOCATION"&&(originPreview
+              ?validPoint(location.position)&&location.position.accuracy<=5000
+              :isTrustedGpsFix(location.position))&&location.isFollowingUser}
             recenterVersion={location.recenterVersion} locating={location.locating}
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
             onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>}
@@ -456,6 +458,8 @@ function Home(){
               }setServiceType(next);
             }}
             originPoint={originLocation} originLabel={origin} locating={locatingPickup}
+            gpsAccuracyM={location.accuracyM} gpsFailure={location.failure}
+            onRetryGps={requestNewPickupLocation}
             originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
             onFlashVehicleChange={setQuickVehicle}
             flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}
