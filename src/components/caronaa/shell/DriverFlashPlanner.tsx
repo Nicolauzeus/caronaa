@@ -272,8 +272,8 @@ export function DriverFlashPlanner({
     finally{setBusyRide(false);}
   };
   useEffect(()=>{
-    if(presence.error?.includes("3 repasses pendentes"))
-      toast.warning(presence.error);
+    if(presence.error?.includes("COMMISSION_BLOCKED"))
+      toast.error("A regra financeira do servidor está desatualizada. É necessária a migration 0212.");
   },[presence.error]);
   const canListen=presence.online&&presence.gpsConnected&&
     (!active||((active.mode??passenger?.rideMode)==="ON_ROUTE"&&
