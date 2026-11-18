@@ -244,6 +244,18 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     render(<QuickRideHomePanel {...basic} onOperationalRideChange={changed}/>);
     await waitFor(()=>expect(changed).toHaveBeenCalledWith({id:"0f066ee8-bb89-47e2-85cf-20121e1b021f",status:"ACCEPTED",municipality:"Redenção"}));
   });
+  it("libera nova solicitação em PENDING_REVIEW sem cobrar ou avaliar antes da decisão",async()=>{
+    const reviewId="ab317262-8dfc-452a-9db0-f2d414127c31";
+    api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"
+      ?{data:[{id:reviewId,role:"PASSENGER",status:"PENDING_REVIEW",
+        vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
+      :{data:[],error:null});
+    render(<QuickRideHomePanel {...basic}/>);
+    expect(await screen.findByText("Encerramento em análise")).toBeInTheDocument();
+    expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
+    expect(screen.queryByRole("dialog",{name:"Corrida concluída"})).not.toBeInTheDocument();
+    expect(api.rpc.mock.calls.some(([name])=>name==="get_completed_quick_ride_pix")).toBe(false);
+  });
   it("mantém dispensada a corrida concluída após remontar painel",async()=>{
     const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";window.localStorage.setItem("caronaa-completed-dismissed:"+completed,"1");
     api.rpc.mockImplementation(async(name:string)=>name==="quick_ride_my_requests"?{data:[{id:completed,role:"PASSENGER",status:"COMPLETED",vehicle_type:"MOTO",municipality:"Redenção"}],error:null}:{data:[],error:null});
