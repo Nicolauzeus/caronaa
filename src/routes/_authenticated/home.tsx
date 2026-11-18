@@ -36,24 +36,24 @@ import { reverseGeocodeServerFn } from "@/lib/location.functions";
 import { sessionRequest } from "@/lib/session-request-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
-import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
-import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 
 export const Route = createFileRoute("/_authenticated/home")({
   validateSearch: z.object({intent:z.enum(["offer"]).optional(),trips:z.enum(["open"]).optional()}),
-  beforeLoad:async()=>{
+  beforeLoad:async({context})=>{
     beginCaronaaPhase("home-before-load");
-    try{
-      const {data,error}=await supabase.auth.getUser();
-      if(error||!data.user)return;
-      if(getAdminAppPreview(data.user.id))return;
+    try {
+      // The authenticated parent route already verified session, basic
+      // onboarding and launch campaign access. Avoid repeating those three
+      // network checks before rendering the Home map.
+      const user=context.user;
+      if (!user) return;
+      if (getAdminAppPreview(user.id)) return;
       const destination=await getMyAdminEntry();
-      if(destination)throw redirect({to:destination as "/admin",replace:true});
-      const progress=await readOnboarding();
-      if(progress?.status!=="BASIC_COMPLETED")throw redirect({to:"/onboarding",replace:true});
-      const next=await resolvePostOnboardingDestination();
-      if(next!=="/home")throw redirect({to:next,replace:true});
-    }finally{endCaronaaPhase("home-before-load");beginCaronaaPhase("home-first-render");}
+      if (destination) throw redirect({to:destination as "/admin",replace:true});
+    } finally {
+      endCaronaaPhase("home-before-load");
+      beginCaronaaPhase("home-first-render");
+    }
   },
   head:()=>({meta:[
     {title:"Início — CARONAA"},
