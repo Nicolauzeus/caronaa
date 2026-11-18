@@ -16,16 +16,23 @@ export function PassengerAccountDashboard({
 }:Props){
   const [expanded,setExpanded]=useState<SectionKey|null>(()=>typeof window!=="undefined"&&window.location.hash==="#pix-do-motorista"?"pix":null);
   const show=(key:SectionKey)=>setExpanded(previous=>previous===key?null:key);
+  const openPersonal=()=>{
+    setExpanded("personal");
+    if(typeof window!=="undefined")window.requestAnimationFrame(()=>{
+      const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      document.getElementById("passenger-personal")?.scrollIntoView?.({behavior:reduced?"auto":"smooth",block:"center"});
+    });
+  };
   const section=(key:SectionKey,title:string,subtitle:string,Icon:typeof Bell,content:ReactNode)=>(
-    <section key={key} className="self-start rounded-2xl border border-white/15 bg-white/[0.055] p-4 sm:p-5">
+    <section key={key} className="min-w-0 self-start rounded-2xl border border-white/15 bg-white/[0.055] p-4 sm:p-5">
       <button type="button" aria-expanded={expanded===key} aria-controls={"passenger-"+key}
-        className="flex min-h-14 w-full items-center gap-3 text-left" onClick={()=>show(key)}>
+        className="flex min-h-14 w-full items-center gap-3 rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00]" onClick={()=>show(key)}>
         <Icon className="size-6 shrink-0 text-[#FFBB00]" aria-hidden="true"/>
         <span className="min-w-0 flex-1"><strong className="block font-[Sora] text-base font-extrabold">{title}</strong>
           <small className="text-xs text-white/65">{subtitle}</small></span>
         <ChevronRight className={`size-5 shrink-0 text-white/60 transition-transform motion-reduce:transition-none ${expanded===key?"rotate-90":""}`} aria-hidden="true"/>
       </button>
-      {expanded===key&&<div id={"passenger-"+key} className="mt-4 space-y-3 border-t border-white/15 pt-4">{content}</div>}
+      {expanded===key&&<div id={"passenger-"+key} className="mt-4 scroll-mt-20 space-y-3 border-t border-white/15 pt-4">{content}</div>}
     </section>
   );
   return <div className="dark mx-auto max-w-5xl space-y-4 rounded-3xl bg-[#121212] p-4 font-[Manrope] text-white sm:space-y-5 sm:p-6">
@@ -45,13 +52,13 @@ export function PassengerAccountDashboard({
           <span className="inline-flex items-center gap-1 rounded-full border border-[#FFBB00]/25 bg-[#FFBB00]/10 px-2.5 py-1 text-xs text-[#FFBB00]"><ShieldCheck size={14}/>{verified?"Vínculo confirmado":"Conta CARONAA"}</span>
         </div>
       </div>
-      <button type="button" onClick={()=>setExpanded("personal")} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 font-[Sora] text-sm font-extrabold text-[#121212] sm:w-auto">
+      <button type="button" onClick={openPersonal} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 font-[Sora] text-sm font-extrabold text-[#121212] sm:w-auto">
         <IdCard size={18}/> Editar meus dados
       </button>
     </section>
     <div className="grid gap-3 sm:grid-cols-2">
-      <Link to="/home" search={{trips:"open"}} className="flex min-h-20 items-center gap-3 rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4">
-        <Route className="size-6 shrink-0 text-[#FFBB00]"/><span className="flex-1"><strong className="block font-[Sora]">Minhas viagens</strong><small className="text-xs text-white/70">Corridas e histórico no início</small></span><ChevronRight size={18}/>
+      <Link to="/minhas-caronas" className="flex min-h-20 items-center gap-3 rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4 transition-colors hover:bg-[#FFBB00]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00]">
+        <Route className="size-6 shrink-0 text-[#FFBB00]"/><span className="flex-1"><strong className="block font-[Sora]">Minhas viagens</strong><small className="text-xs text-white/70">Pedidos, reservas e histórico</small></span><ChevronRight size={18}/>
       </Link>
       {section("personal","Dados pessoais","Nome, cidade e contato",IdCard,<div className="space-y-4">
         {personalFields}
