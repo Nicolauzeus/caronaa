@@ -488,10 +488,16 @@ export function ShellJourneyPlanner({
             </div>
           </section>}
         {!flashRideActive&&flashStep==="shared"&&flashOnRoute}
-        <div className={mode==="EXCLUSIVE"&&(flashStep==="confirm"||flashRideActive)?"":"hidden"}>{flashOperationalPanel}</div>
+
       </div>
       {mode==="EXCLUSIVE"&&!flashRideActive&&flashStep==="confirm"&&<div ref={onFlashActionContainer} className="shrink-0 border-t border-caronaa-white/15 bg-secondary py-3"/>}
     </>}
-    {snap==="peek"&&serviceType==="FLASH"&&<div className="hidden">{flashOperationalPanel}</div>}
+    {/* One stable, stateful F07 panel across peek/half/full.
+        The previous conditional placements unmounted QuickRideHomePanel on
+        each sheet transition, causing state resets, flicker and RPC bursts. */}
+    <div className={serviceType==="FLASH"&&fixedFlash&&
+      (flashRideActive||mode==="EXCLUSIVE"&&flashStep==="confirm")
+        ?"min-h-0 shrink-0 overflow-y-auto overscroll-contain"
+        :"hidden"}>{flashOperationalPanel}</div>
   </div>;
 }
