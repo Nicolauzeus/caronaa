@@ -10,6 +10,27 @@ type Point={lat:number;lng:number};
 type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null;status:string};
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
 
+// One protected route calculation per ride/target while a trip is active.
+// Prevent duplicate Google Routes calls if React/Safari remounts a map panel.
+const tripRouteRequests=new Map<string,{expiresAt:number;request:Promise<Route>}>();
+function cachedTripRoute(key:string,load:()=>Promise<Route>):Promise<Route>{
+  const now=Date.now();
+  const cached=tripRouteRequests.get(key);
+  if(cached&&cached.expiresAt>now)return cached.request;
+  if(tripRouteRequests.size>64){
+    for(const [entry,value] of tripRouteRequests){
+      if(value.expiresAt<=now)tripRouteRequests.delete(entry);
+    }
+    if(tripRouteRequests.size>64)tripRouteRequests.delete(tripRouteRequests.keys().next().value!);
+  }
+  const request=load().catch(error=>{
+    if(tripRouteRequests.get(key)?.request===request)tripRouteRequests.delete(key);
+    throw error;
+  });
+  tripRouteRequests.set(key,{expiresAt:now+10*60_000,request});
+  return request;
+}
+
 export function QuickRideOperationalMap({
   rideId, status, role, immersive=false, vehicleType,
 }: {
@@ -23,6 +44,10 @@ export function QuickRideOperationalMap({
   const readMap=useServerFn(getQuickRideMapContext);
   const readApproach=useServerFn(getQuickRideApproach);
   const readRoute=useServerFn(getMapDrivingRoute);
+  // Server-function wrapper identities must not restart network timers.
+  const readMapRef=useRef(readMap);readMapRef.current=readMap;
+  const readApproachRef=useRef(readApproach);readApproachRef.current=readApproach;
+  const readRouteRef=useRef(readRoute);readRouteRef.current=readRoute;
   const [context,setContext]=useState<Context|null>(null);
   const [approach,setApproach]=useState<Route|null>(null);
   const [route,setRoute]=useState<Route|null>(null);
@@ -32,10 +57,22 @@ export function QuickRideOperationalMap({
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const reload=useCallback(async()=>{
     try{
-      const result=await readMap({data:{rideId}});
-      if(mounted.current){setContext(result);setError("");}
+      const result=await readMapRef.current({data:{rideId}});
+      if(mounted.current){
+        setContext(previous=>{
+          if(previous&&previous.status===result.status&&
+            previous.origin.lat===result.origin.lat&&previous.origin.lng===result.origin.lng&&
+            previous.destination.lat===result.destination.lat&&
+            previous.destination.lng===result.destination.lng&&
+            previous.driver?.lat===result.driver?.lat&&
+            previous.driver?.lng===result.driver?.lng&&
+            previous.driver?.seenAt===result.driver?.seenAt)return previous;
+          return result;
+        });
+        setError("");
+      }
     }catch{if(mounted.current)setError("Não foi possível acompanhar a localização. Verifique sua conexão.");}
-  },[readMap,rideId]);
+  },[rideId]);
   useEffect(()=>{
     void reload();
     // Reading GPS from the own authorized backend is not a Google Routes request.
@@ -62,13 +99,14 @@ export function QuickRideOperationalMap({
       setApproach(null);return;
     }
     let active=true;
-    const read=()=>void readApproach({data:{rideId}})
-      .then(result=>{if(active)setApproach(result);}).catch(()=>{if(active)setApproach(null);});
+    const read=()=>void readApproachRef.current({data:{rideId}})
+      .then(result=>{if(active)setApproach(result);})
+      .catch(()=>{ /* Keep last validated route while the network recovers. */ });
     read();
     // ETA is recomputed no more than once per minute; GPS animation remains independent.
     const timer=window.setInterval(read,60000);
     return()=>{active=false;window.clearInterval(timer);};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,readApproach]);
+  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng]);
 
   useEffect(()=>{
     if(!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
@@ -77,11 +115,14 @@ export function QuickRideOperationalMap({
     // Snapshot the authorized driver's position when the in-progress route starts.
     // Avoid recalculating this Google route on every GPS pulse.
     const routeStart={lat:context.driver.lat,lng:context.driver.lng};
-    void readRoute({data:{points:[routeStart,destination]}})
-      .then(result=>{if(active)setRoute(result);})
+    const cacheKey=[rideId,statusNow,destination.lat.toFixed(5),
+      destination.lng.toFixed(5)].join(":");
+    void cachedTripRoute(cacheKey,()=>readRouteRef.current({
+      data:{points:[routeStart,destination]},
+    })).then(result=>{if(active)setRoute(result);})
       .catch(()=>{if(active)setError("Não foi possível calcular a rota ao destino.");});
     return()=>{active=false;};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver),readRoute]);
+  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver)]);
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
