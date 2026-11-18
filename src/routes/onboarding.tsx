@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, CarFront, Check, UserRound } from "lucide-react";
 import { toast } from "sonner";
@@ -6,9 +7,15 @@ import { useAuth } from "@/lib/auth-context";
 import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import { completeOnboarding, readOnboarding, saveOnboarding, type UsageRole } from "@/lib/onboarding/progressive-onboarding";
+import { afterUniversalOnboarding, PROFESSIONAL_APPLICATION_PATH } from "@/lib/onboarding/universal-driver-entry";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
-export const Route = createFileRoute("/onboarding")({ ssr: false, component: OnboardingPage });
+export const Route = createFileRoute("/onboarding")({
+  ssr: false,
+  // A known, internal professional step can be resumed after signup; no URL open redirects.
+  validateSearch: z.object({ redirect: z.literal(PROFESSIONAL_APPLICATION_PATH).optional().catch(undefined) }),
+  component: OnboardingPage,
+});
 
 type InitialRole = "PASSAGEIRO" | "MOTORISTA";
 const isInitialRole = (value: unknown): value is InitialRole =>
@@ -17,6 +24,7 @@ const isInitialRole = (value: unknown): value is InitialRole =>
 function OnboardingPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { redirect: professionalContinuation } = Route.useSearch();
   const [role, setRole] = useState<InitialRole | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,7 +41,7 @@ function OnboardingPage() {
       await getMyResearchLaunchState();
       await completeOnboarding(saved);
       sessionStorage.removeItem("caronaa:oauth-role-preference");
-      await navigate({ to: await resolvePostOnboardingDestination(), replace: true });
+      await navigate({ to: afterUniversalOnboarding(await resolvePostOnboardingDestination(), professionalContinuation), replace: true });
     } catch (cause) {
       const text = cause instanceof Error ? cause.message : "Não foi possível concluir seu cadastro.";
       setError(text);
@@ -41,23 +49,23 @@ function OnboardingPage() {
     } finally {
       setBusy(false);
     }
-  }, [navigate]);
+  }, [navigate, professionalContinuation]);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      void navigate({ to: "/auth", search: { mode: "entrar", redirect: "/onboarding" }, replace: true });
+      void navigate({ to: "/auth", search: { mode: "entrar", redirect: professionalContinuation || "/onboarding" }, replace: true });
       return;
     }
     if (!user.email_confirmed_at) {
-      void navigate({ to: "/auth", search: { mode: "entrar" }, replace: true });
+      void navigate({ to: "/auth", search: { mode: "entrar", redirect: professionalContinuation || "/onboarding" }, replace: true });
       return;
     }
     let active = true;
     void readOnboarding().then(async progress => {
       if (!active) return;
       if (progress?.status === "BASIC_COMPLETED") {
-        await navigate({ to: await resolvePostOnboardingDestination(), replace: true });
+        await navigate({ to: afterUniversalOnboarding(await resolvePostOnboardingDestination(), professionalContinuation), replace: true });
         return;
       }
       const metadataRole = user.user_metadata?.initial_usage_role;
@@ -79,7 +87,7 @@ function OnboardingPage() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [authLoading, user?.id, user?.email_confirmed_at, navigate, finish]);
+  }, [authLoading, user?.id, user?.email_confirmed_at, navigate, finish, professionalContinuation]);
 
   if (authLoading || loading) return (
     <main className="grid h-[100dvh] place-items-center bg-[#121212] text-white">
