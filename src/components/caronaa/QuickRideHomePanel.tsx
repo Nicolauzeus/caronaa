@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
-import { Bike, CarFront, Clock3, Loader2, MapPin, ShieldCheck, Users } from "lucide-react";
+import { Bike, CarFront, Clock3, Loader2, MapPin, Navigation2, ShieldCheck, Users } from "lucide-react";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { validPoint } from "@/lib/location/use-user-location";
 import { useAuth } from "@/lib/auth-context";
@@ -34,7 +34,7 @@ export function QuickRideHomePanel({
   driverCount, driverCounts, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
   locating=false, pickupNeedsConfirmation=false, onConfirmPickup, actionContainer,
   onFaresChange, onFarePendingChange, onCoverage, onCoveragesChange, onOperationalRideChange,
-  onRidePhaseChange, onDropoffPendingChange, onFareChange,
+  onRidePhaseChange, onDropoffPendingChange, onFareChange, onFollowMap,
   shellMode=false, shellSnap="full", onOpenOperational,
 }: {
   origin:string;destination:string;
@@ -55,6 +55,7 @@ export function QuickRideHomePanel({
   onRidePhaseChange?:(status:RideStatus|null)=>void;
   onDropoffPendingChange?:(pending:boolean)=>void;
   onFareChange?:(value:QuickRideFarePreview|null)=>void;
+  onFollowMap?:(rideId:string)=>void;
   shellMode?:boolean;shellSnap?:"peek"|"half"|"full";onOpenOperational?:()=>void;
 }) {
   const {user}=useAuth();
@@ -478,6 +479,19 @@ export function QuickRideHomePanel({
             :"Procurando um profissional autorizado…"+(searchSecondsLeft!==null?" · "+searchSecondsLeft+" s restantes":"")
           :liveRide.status==="ACCEPTED"?"Motorista a caminho."
           :liveRide.status==="ARRIVED"?"Seu motorista chegou!":"Viagem em andamento."}</p>
+        {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&onFollowMap&&
+          <button type="button" onClick={()=>onFollowMap(liveRide.id)}
+            aria-label="Acompanhar motorista no mapa em tempo real"
+            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#FFBB00] px-3 py-3 text-sm font-extrabold text-[#121212] shadow-sm active:scale-[.99]">
+            <Navigation2 size={20} aria-hidden="true"/>
+            {liveRide.status==="IN_PROGRESS"
+              ?"Acompanhar viagem no mapa"
+              :"Acompanhar motorista no mapa"}
+          </button>}
+        {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&onFollowMap&&
+          <p className="mt-2 text-xs text-white/65">
+            Veja a localização atualizada e o trajeto. Para acessar o código ou atendimento, expanda a barra inferior.
+          </p>}
         {rideRefreshError&&<p role="status" className="mt-2 text-xs text-amber-200">
           Conexão instável. Ainda não foi possível confirmar a situação atual da corrida.
         </p>}
