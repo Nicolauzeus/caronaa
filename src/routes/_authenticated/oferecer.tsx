@@ -142,18 +142,6 @@ function Oferecer() {
   const [mode, setMode] = useState<"point" | "routine">("point");
   const [routineSaved, setRoutineSaved] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [driverAllowed, setDriverAllowed] = useState<boolean | null>(null);
-  useEffect(() => {
-    let live = true;
-    void (supabase as any)
-      .rpc("get_my_driver_platform_fees")
-      .then(({ data, error }: { data: any; error: any }) => {
-        if (live) setDriverAllowed(!error && data?.driverAllowed === true);
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [publishedOfferId, setPublishedOfferId] = useState<string | null>(null);
   const publishingRef = useRef(false);
@@ -375,10 +363,6 @@ function Oferecer() {
     : null;
   const next = async (e: FormEvent) => {
     e.preventDefault();
-    if (driverAllowed !== true) {
-      toast.error("Verifique os repasses da plataforma no perfil antes de oferecer caronas.");
-      return;
-    }
     if (step === 1) {
       if (!quoteCurrent) {
         toast.error("Aguarde a cotação rodoviária do percurso ou tente novamente.");
@@ -568,19 +552,6 @@ function Oferecer() {
                 ? "Escolha seu veículo, trajeto e horário de saída."
                 : "Confira o trajeto, as vagas e a estimativa antes de publicar."}
             </p>
-            {driverAllowed === false && (
-              <div
-                role="alert"
-                className="mt-3 rounded-xl border border-destructive/50 p-3 text-sm"
-              >
-                Não foi possível liberar novas ofertas. Se houver três repasses pendentes,
-                regularize-os no{" "}
-                <Link to="/perfil" className="font-bold underline">
-                  Perfil
-                </Link>
-                .
-              </div>
-            )}
             <form className="mt-5 space-y-4" onSubmit={next}>
               {step === 1 ? (
                 <>
@@ -1053,7 +1024,7 @@ function Oferecer() {
                 )}
                 <Button
                   type="submit"
-                  disabled={driverAllowed !== true || (step === 2 && (publishing || !quoteCurrent))}
+                  disabled={step === 2 && (publishing || !quoteCurrent)}
                   className="min-h-14 flex-1 rounded-2xl bg-[#FFBB00] text-base font-bold text-[#121212] shadow-lg hover:bg-[#ffd04d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 sm:flex-none sm:px-8"
                 >
                   {step === 1 ? "Revisar carona" : publishing ? "Publicando..." : "Publicar Viagem"}{" "}
