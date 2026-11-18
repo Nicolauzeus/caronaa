@@ -66,6 +66,10 @@ describe("Flash driver GPS presence",()=>{
     expect(api.offline).toHaveBeenCalled();
   });
   it("stops sharing and tries offline when GPS goes stale",async()=>{
+    // Initial fresh GPS succeeds; all subsequent forced refreshes time out.
+    api.current.mockImplementationOnce((resolve:(value:GeolocationPosition)=>void)=>resolve(pos()));
+    api.current.mockImplementation((_resolve:unknown,reject:(error:GeolocationPositionError)=>void)=>
+      reject({code:3,message:"TIMEOUT"} as GeolocationPositionError));
     const {result}=renderHook(()=>useFlashDriverPresence());
     await act(async()=>{await result.current.goOnline(config);});
     await act(async()=>{vi.advanceTimersByTime(FLASH_GPS_STALE_MS+4500);});
