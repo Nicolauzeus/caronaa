@@ -161,6 +161,9 @@ function Home(){
   const [driverFlashRide,setDriverFlashRide]=useState<FlashDriverRide|null>(null);
   const [passengerRide,setPassengerRide]=useState<{id:string;status:string;municipality:string}|null>(null);
   const [passengerPhase,setPassengerPhase]=useState<string|null>(null);
+  const [passengerMapFollowing,setPassengerMapFollowing]=useState(false);
+  const [passengerMapFocusRequest,setPassengerMapFocusRequest]=useState(0);
+  const lastFollowRideId=useRef<string|null>(null);
   const [urgentDropoff,setUrgentDropoff]=useState(false);
   const [quickVehicle,setQuickVehicle]=useState<"CAR"|"MOTO">("CAR");
   const [flashFares,setFlashFares]=useState<Partial<Record<"CAR"|"MOTO",QuickRideFarePreview>>>({});
@@ -179,7 +182,20 @@ function Home(){
     const available=(["CAR","MOTO"] as const).map(type=>values[type]).find(value=>value?.radar&&value.municipality);
     setQuickMunicipality(available?.municipality??"");
   },[]);
-  const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>setPassengerRide(ride),[]);
+  const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>{
+    setPassengerRide(ride);
+    if(lastFollowRideId.current!==(ride?.id??null)){
+      lastFollowRideId.current=ride?.id??null;
+      setPassengerMapFollowing(false);
+    }
+  },[]);
+  const onPassengerFollowMap=useCallback((rideId:string)=>{
+    if(passengerRide?.id!==rideId || !["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerRide.status))return;
+    setTripsPanelOpen(false);
+    setPassengerMapFollowing(true);
+    setPassengerMapFocusRequest(value=>value+1);
+    setSheetSnap("peek");
+  },[passengerRide?.id,passengerRide?.status]);
   const onUrgentDropoff=useCallback((pending:boolean)=>{setUrgentDropoff(pending);if(pending){setTripsPanelOpen(false);setSheetSnap("full");}},[]);
   const previousPassengerPhase=useRef<string|null>(null);
   const onPassengerPhase=useCallback((status:string|null)=>{
@@ -188,12 +204,14 @@ function Home(){
     previousPassengerPhase.current=status;
     setPassengerPhase(status);
     if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
-      setTripsPanelOpen(false);setSheetSnap("full");
+      setTripsPanelOpen(false);
+      // Preserve the user's explicit map view as accepted -> in progress.
+      if(!passengerMapFollowing||status==="SEARCHING")setSheetSnap("full");
     }else if(wasActive&&!status){
       // Once the server ends the ride, release the full-height live panel.
-      setTripsPanelOpen(false);setSheetSnap("peek");
+      setTripsPanelOpen(false);setSheetSnap("peek");setPassengerMapFollowing(false);
     }
-  },[]);
+  },[passengerMapFollowing]);
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
   const [selectingOrigin,setSelectingOrigin]=useState(false);
@@ -488,7 +506,9 @@ function Home(){
     <CaronaaPerformanceDiagnostic/>
     <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
       <div className="absolute inset-0">
-        {shouldShowPassengerMap&&passengerRide?<QuickRideOperationalMap rideId={passengerRide.id} status={passengerRide.status} role="PASSENGER" immersive/>:
+        {shouldShowPassengerMap&&passengerRide?<QuickRideOperationalMap rideId={passengerRide.id}
+          status={passengerRide.status} role="PASSENGER" immersive
+          passengerFollow={passengerMapFollowing} navigationFocusRequest={passengerMapFocusRequest}/>:
           shouldShowOperationalMap&&driverFlashRide?<QuickRideOperationalMap rideId={driverFlashRide.id} status={driverFlashRide.status} role="DRIVER" vehicleType={driverFlashRide.vehicleType} immersive/>:
           <HomeRideMap immersive passengerPreview={originPreview}
             professionalDrivers={quickDrivers} userPosition={location.position}
@@ -533,7 +553,7 @@ function Home(){
         {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
         {tripsPanelOpen&&!driverRole&&<UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey} onShowOnMap={(trip:UnifiedTrip)=>{
           if(trip.operationalRideId!==passengerRide?.id){toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");return;}
-          closeTrips();setSheetSnap("peek");
+          closeTrips();onPassengerFollowMap(trip.operationalRideId);
         }}/>}
         <div className={tripsPanelOpen?"hidden":"h-full min-h-0"}>
           {driverRole&&driverHomeOpen?<DriverHomeDashboard
@@ -585,6 +605,7 @@ function Home(){
               actionContainer={flashActionContainer} onFaresChange={setFlashFares} onFarePendingChange={setFlashFarePending}
               onCoveragesChange={onQuickCoverages} onOperationalRideChange={onPassengerRide} onRidePhaseChange={onPassengerPhase}
               onDropoffPendingChange={onUrgentDropoff} onFareChange={setFlashFare}
+              onFollowMap={onPassengerFollowMap}
               onOpenOperational={()=>setSheetSnap("full")} shellMode shellSnap={sheetSnap}/>}
             onAdjustOrigin={openPickupDialog} onRouteChange={handleShellRouteChange}
             onOnRouteMatchSelected={setSelectedOnRouteMatch} onDestinationChange={handleDestinationChange}
