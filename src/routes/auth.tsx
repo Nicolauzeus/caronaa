@@ -229,7 +229,7 @@ function AuthPage() {
   return (
     <AuthFrame>
       {/* Header oficial da experiência CARONAA */}
-      <div className="mb-7 space-y-2 lg:mb-6">
+      <div className="mb-4 space-y-1 lg:mb-6 lg:space-y-2">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-block transition hover:opacity-90">
             <img src={logoAsset.url} alt="CARONAA" className="h-12 w-auto object-contain sm:h-12" />
@@ -288,7 +288,7 @@ function AuthPage() {
       </Link>
 
       {/* Formulário - Somente o necessário */}
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={submit} className="space-y-3 lg:space-y-4">
         {submitError && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</p>}
         {effectiveMode === "cadastro" && <div className="space-y-1.5">
           <Label htmlFor="signup-full-name" className="text-xs font-semibold text-foreground">Nome completo</Label>
@@ -385,7 +385,7 @@ function AuthPage() {
       {/* Autenticação social configurada */}
       {
         <>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="my-3 flex items-center gap-3 text-xs text-muted-foreground lg:my-5">
             <span className="h-px flex-1 bg-border" />
             ou continue com
             <span className="h-px flex-1 bg-border" />
@@ -406,7 +406,7 @@ function AuthPage() {
 
       {/* Alternância secundária */}
       {
-        <div className="mt-7 border-t border-border/70 pt-5 text-center text-sm font-medium text-muted-foreground lg:mt-6 lg:pt-4 lg:text-xs">
+        <div className="mt-3 border-t border-border/70 pt-2 text-center text-sm font-medium text-muted-foreground lg:mt-6 lg:pt-4 lg:text-xs">
           {mode === "entrar" ? "Não tem conta?" : "Já tem uma conta?"}{" "}
           <button
             type="button"
@@ -419,7 +419,7 @@ function AuthPage() {
       }
 
       {/* Links obrigatórios: Termos, Privacidade, Segurança */}
-      <div className="mt-6 border-t border-border/70 pt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+      <div className="mt-2 border-t border-border/70 pt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground lg:mt-6 lg:pt-4 lg:text-xs">
         <Link
           to="/termos"
           className="hover:text-foreground underline underline-offset-4 transition"
@@ -533,7 +533,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
     { icon: ShieldCheck, text: "Viaje com segurança" },
   ];
   return (
-    <main className="relative grid min-h-screen bg-background lg:grid-cols-[1.14fr_.86fr]">
+    <main className="relative grid h-[100dvh] min-h-0 overflow-hidden bg-background lg:h-auto lg:min-h-screen lg:overflow-visible lg:grid-cols-[1.14fr_.86fr]">
       {/* Coluna visual esquerda para desktop */}
       <section className="relative hidden min-h-screen overflow-hidden px-10 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-12">
         <img
@@ -582,12 +582,12 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
       </section>
 
       {/* Coluna de formulário responsiva */}
-      <section className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#121212] px-4 py-6 sm:px-8 md:px-10 lg:min-h-screen lg:bg-[#fbfaf6] lg:py-8 lg:dark:bg-background">
+      <section className="relative flex h-full min-h-0 items-start justify-center overflow-x-hidden overflow-y-auto overscroll-contain bg-[#121212] px-4 py-3 sm:px-8 sm:py-5 md:px-10 lg:min-h-screen lg:items-center lg:overflow-hidden lg:bg-[#fbfaf6] lg:py-8 lg:dark:bg-background">
         <picture className="absolute inset-0 lg:hidden">
           <img src={mobileBackground.url} alt="" className="size-full object-cover" />
         </picture>
         <div className="absolute inset-0 bg-background/90 backdrop-blur-sm lg:hidden" />
-        <div className="relative z-10 w-full max-w-[540px] rounded-2xl border border-border/50 bg-card/95 p-5 shadow-xl sm:p-6 md:p-10 lg:rounded-3xl lg:border-white/70 lg:dark:border-border/70">
+        <div className="relative z-10 my-auto w-full max-w-[540px] shrink-0 rounded-2xl border border-border/50 bg-card/95 p-4 shadow-xl sm:p-6 md:p-10 lg:rounded-3xl lg:border-white/70 lg:dark:border-border/70">
           {children}
         </div>
       </section>
