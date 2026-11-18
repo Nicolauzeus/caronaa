@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { getVehicleStatus, normalizeVehicleSeats, type VehicleType } from "@/lib/role/use-active-role";
 import { normalizePlate } from "@/lib/professional-access";
+import { readOnboarding, completeOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import { professionalPhotoMaxBytes, professionalPhotoTypes } from "@/lib/mototaxi-registration";
 
 export const Route = createFileRoute("/_authenticated/cadastro-veiculo")({
@@ -123,9 +125,15 @@ function CompleteDriverVehicle() {
       if(saveError || data?.active_role!=="MOTORISTA"){
         throw new Error(saveError?.message||"O cadastro não pôde ser confirmado pelo banco.");
       }
+      const progress = await readOnboarding();
+      if (!progress) throw new Error("Cadastro inicial indisponível. Tente novamente.");
+      if (progress.status === "IN_PROGRESS") await completeOnboarding(progress);
+      const next = await resolvePostOnboardingDestination();
       window.dispatchEvent(new Event("caronaa:role-changed"));
       toast.success("Cadastro do motorista completo.");
-      if(redirect) await navigate({to:"/cadastro-motorista",replace:true});
+      if(next === "/aguardando") await navigate({to:"/aguardando",replace:true});
+      else if(next !== "/home") throw new Error("Não foi possível confirmar o acesso inicial.");
+      else if(redirect) await navigate({to:"/cadastro-motorista",replace:true});
       else await navigate({to:"/home",search:{intent:"offer"},replace:true});
     }catch(cause){
       setError(cause instanceof Error?cause.message:"Não foi possível concluir o cadastro.");
