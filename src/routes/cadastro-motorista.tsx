@@ -239,7 +239,7 @@ function ProfessionalMotorcycleRegistration() {
   return (
     <main className="flex min-h-[100dvh] items-start justify-center bg-[#121212] px-3 py-5 text-white sm:items-center sm:px-5 sm:py-10">
       <section className="w-full max-w-[460px] space-y-5 rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 shadow-xl sm:p-7">
-        <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
+        <Link to={user ? "/home" : "/"} aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
           <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Dados do motorista</p>
           <h1 className="mt-2 font-display text-2xl font-bold">{authorized || request?.status === "APPROVED" ? "Dados confirmados" : "Confirme seus dados"}</h1>
