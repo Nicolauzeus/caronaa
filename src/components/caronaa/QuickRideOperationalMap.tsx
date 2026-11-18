@@ -54,20 +54,38 @@ export function QuickRideOperationalMap({
   const [details,setDetails]=useState<DriverDetails|null>(null);
   const [error,setError]=useState("");
   const mounted=useRef(true);
+  const lastDriverFix=useRef<{rideId:string;at:number;point:NonNullable<Context["driver"]>}|null>(null);
+  const [showingLastFix,setShowingLastFix]=useState(false);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const reload=useCallback(async()=>{
     try{
       const result=await readMapRef.current({data:{rideId}});
       if(mounted.current){
+        let next=result;
+        if(result.driver){
+          lastDriverFix.current={rideId,at:Date.now(),point:result.driver};
+          setShowingLastFix(false);
+        }else{
+          const last=lastDriverFix.current;
+          const canKeep=last?.rideId===rideId &&
+            Date.now()-last.at<=30000 &&
+            ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(result.status);
+          if(canKeep&&last){
+            // Grace period for a single transient GPS dropout. Clearly label
+            // it as last known, never as a fresh validated dispatch location.
+            next={...result,driver:last.point};
+          }
+          setShowingLastFix(Boolean(canKeep));
+        }
         setContext(previous=>{
-          if(previous&&previous.status===result.status&&
-            previous.origin.lat===result.origin.lat&&previous.origin.lng===result.origin.lng&&
-            previous.destination.lat===result.destination.lat&&
-            previous.destination.lng===result.destination.lng&&
-            previous.driver?.lat===result.driver?.lat&&
-            previous.driver?.lng===result.driver?.lng&&
-            previous.driver?.seenAt===result.driver?.seenAt)return previous;
-          return result;
+          if(previous&&previous.status===next.status&&
+            previous.origin.lat===next.origin.lat&&previous.origin.lng===next.origin.lng&&
+            previous.destination.lat===next.destination.lat&&
+            previous.destination.lng===next.destination.lng&&
+            previous.driver?.lat===next.driver?.lat&&
+            previous.driver?.lng===next.driver?.lng&&
+            previous.driver?.seenAt===next.driver?.seenAt)return previous;
+          return next;
         });
         setError("");
       }
@@ -110,7 +128,7 @@ export function QuickRideOperationalMap({
 
   useEffect(()=>{
     if(!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
-    if(!context?.driver)return;
+    if(!context?.driver || showingLastFix)return;
     let active=true;
     // Snapshot the authorized driver's position when the in-progress route starts.
     // Avoid recalculating this Google route on every GPS pulse.
@@ -122,14 +140,15 @@ export function QuickRideOperationalMap({
     })).then(result=>{if(active)setRoute(result);})
       .catch(()=>{if(active)setError("Não foi possível calcular a rota ao destino.");});
     return()=>{active=false;};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver)]);
+  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver),showingLastFix]);
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
         ...(statusNow==="IN_PROGRESS"?[]:[{lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const}]),
         ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
         ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,
-          title:isMoto?"Mototaxista":"Motorista",
+          title:showingLastFix?"Última posição recebida · buscando GPS atualizado":
+            isMoto?"Mototaxista":"Motorista",
           kind:isMoto?("availableMoto" as const):("driver" as const)}]:[]),
       ]}
       lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
@@ -143,6 +162,9 @@ export function QuickRideOperationalMap({
     <div className="pointer-events-none absolute left-3 right-3 top-20 z-10 max-w-sm space-y-1 rounded-2xl border border-[#FFBB00]/50 bg-[#121212]/90 p-3 text-sm text-white shadow-xl">
       <p className="font-bold text-[#FFBB00]">{statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
       {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
+      {showingLastFix&&<p role="status" className="text-xs text-amber-200">
+        GPS do motorista em atualização · última posição conhecida (não ao vivo).
+      </p>}
       {approach&&statusNow!=="IN_PROGRESS"&&<p>{approach.distanceKm.toFixed(1)} km · {Math.max(1,Math.round(approach.durationMinutes))} min para embarque</p>}
       {error&&<p role="alert" className="text-red-300">{error}</p>}
     </div>
