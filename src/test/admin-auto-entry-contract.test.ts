@@ -13,10 +13,13 @@ const authProvider = file("src/lib/auth-context.tsx");
 describe("Administrative first-entry navigation contract", () => {
   it("keeps the existing login and checks admin scope before showing the ordinary home", () => {
     expect(login).toContain('"/home"');
-    expect(home).toContain("beforeLoad: async () =>");
+    expect(home).toContain("beforeLoad:async({context})=>");
     expect(home).toContain("getMyAdminEntry()");
-    expect(home).toContain("getAdminAppPreview(data.user.id)");
-    expect(home).toContain("throw redirect({ to: destination");
+    expect(home).toContain("const user=context.user");
+    expect(home).not.toContain("await readOnboarding()");
+    expect(home).not.toContain("await resolvePostOnboardingDestination()");
+    expect(home).toContain("getAdminAppPreview(user.id)");
+    expect(home).toContain("throw redirect({to:destination");
   });
   it("preserves institutional prelaunch restrictions and server-side administrative authorization", () => {
     expect(launchGuard).toContain("getMyResearchLaunchState()");
