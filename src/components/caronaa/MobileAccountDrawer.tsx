@@ -145,7 +145,7 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
         <h3 className="mb-1 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Minha conta</h3>
         <nav aria-label="Dados e configurações" className="space-y-0.5">
           <Link to="/perfil" onClick={close} className={rowClass}><UserRound size={19} className="text-muted-foreground" /> Dados pessoais <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
-          <Link to="/seguranca" search={{ action: "alterar-senha" }} onClick={close} className={rowClass}><KeyRound size={19} className="text-muted-foreground" /> Alterar senha <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
+          <Link to="/seguranca" hash="alterar-senha" onClick={close} className={rowClass}><KeyRound size={19} className="text-muted-foreground" /> Alterar senha <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
           <Link to="/perfil" onClick={close} className={rowClass}><Settings2 size={19} className="text-muted-foreground" /> Preferências <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
           {!prelaunchMode && professionalOnly && (
             <Link to="/cadastro-motorista" onClick={close} className={rowClass}><ShieldCheck size={19} className="text-muted-foreground" /> Meu cadastro profissional <ChevronRight size={17} className="ml-auto text-muted-foreground" /></Link>
