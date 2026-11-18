@@ -30,6 +30,9 @@ type Props = {
   originPoint?:{lat?:number;lng?:number}|null;
   originLabel?:string;
   locating?:boolean;
+  gpsAccuracyM?:number|null;
+  gpsFailure?:string|null;
+  onRetryGps?:()=>void;
   originMunicipality:string;
   originRevision?:number;
   gender:ProfileGender;
@@ -68,6 +71,7 @@ const scheduledLabel=(localValue:string)=>new Intl.DateTimeFormat("pt-BR",{dateS
 const fortalezaLocal=(value:string)=>new Date(Date.parse(value)-3*60*60*1000).toISOString();
 export function ShellJourneyPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,originPoint,originLabel,locating=false,
+  gpsAccuracyM=null,gpsFailure=null,onRetryGps,
   originMunicipality,originRevision=0,gender,onDestinationChange,onRouteChange,onAdjustOrigin,onScheduled,onOnRouteMatchSelected,
   flashOperationalPanel,onFlashVehicleChange,flashRideActive=false,flashFare=null,flashFares={},flashFarePending=false,
   flashDriverCounts={CAR:0,MOTO:0},flashDriverErrors={},flashDriverLoading=false,flashDriverError="",onFlashActionContainer,
@@ -132,7 +136,11 @@ export function ShellJourneyPlanner({
       // the replacement GPS fix is still absent. Do not silently reuse it.
       frozenOrigin.current=valid(originPoint)?{lat:originPoint.lat,lng:originPoint.lng}:null;
       lastOriginRevision.current=originRevision;
-    }else if(!frozenOrigin.current&&valid(originPoint)){
+    }else if(!valid(originPoint)){
+      // New GPS acquisition invalidated a previously unfixed origin. Do not
+      // keep routing or quoting from the old frozenOrigin in the background.
+      frozenOrigin.current=null;
+    }else if(!frozenOrigin.current){
       frozenOrigin.current={lat:originPoint.lat,lng:originPoint.lng};
     }
     if(!valid(destinationPoint)){
@@ -369,6 +377,26 @@ export function ShellJourneyPlanner({
       {onRouteVehicle==="CAR"&&entireCar&&<p className="text-xs text-white/70">O bloqueio das outras vagas só vale após o servidor confirmar a reserva.</p>}
     </div>}
   </div>;
+  const gpsProblem=serviceType==="FLASH"&&!valid(originPoint)&&!locating;
+  const gpsStatus=gpsProblem
+    ? gpsAccuracyM!=null&&gpsAccuracyM>300
+      ? `O navegador informou uma região com precisão de ±${Math.round(gpsAccuracyM)} m. Confirme o embarque no mapa.`
+      : gpsFailure==="PERMISSION_DENIED"
+        ? "O navegador não autorizou a localização. Ative a permissão ou escolha o embarque no mapa."
+        : gpsFailure==="TIMEOUT"
+          ? "A primeira tentativa de localização expirou. Estamos tentando novamente."
+          : gpsFailure==="POSITION_UNAVAILABLE"
+            ? "Localização ainda indisponível. Verifique o GPS ou escolha o ponto de embarque."
+            : "Aguardando um GPS confiável. Você pode definir o ponto no mapa."
+    : null;
+  const gpsFeedback=gpsStatus&&<div role="status" aria-live="polite"
+      className="space-y-2 rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/5 p-3 text-xs text-white/80">
+      <p>{gpsStatus}</p>
+      {onRetryGps&&<button type="button" onClick={onRetryGps}
+        className="min-h-10 rounded-lg border border-[#FFBB00]/50 px-3 font-semibold text-[#FFBB00]">
+        Tentar GPS novamente
+      </button>}
+    </div>;
   const originControl=<Button variant="ghost" type="button" onClick={onAdjustOrigin}
     className="h-auto min-h-12 w-full justify-start whitespace-normal px-1 text-left text-xs text-primary hover:bg-caronaa-white/10 hover:text-primary">
     {waitingForOrigin?<Loader2 size={16} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none"/>:<MapPin size={16} aria-hidden="true" className="shrink-0"/>}
@@ -383,7 +411,7 @@ export function ShellJourneyPlanner({
   const fixedFlash=serviceType==="FLASH"&&snap!=="peek";
   const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
     <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
-    {originControl}
+    {originControl}{gpsFeedback}
     {(serviceType!=="FLASH"||!valid(destinationPoint))&&<ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>}
   </div>;
   return <div className={fixedFlash?"flex h-full min-h-0 flex-col font-sans":snap==="peek"?"space-y-1":"space-y-4 pb-4"}>

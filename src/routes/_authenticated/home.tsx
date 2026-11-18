@@ -29,7 +29,7 @@ import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperation
 import { CaronaaPerformanceDiagnostic, beginCaronaaPhase, endCaronaaPhase } from "@/components/caronaa/CaronaaPerformanceDiagnostic";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { useProfileGender } from "@/lib/use-profile-gender";
-import { useUserLocation, validPoint, type UserPosition } from "@/lib/location/use-user-location";
+import { useUserLocation, validPoint, shouldImproveGpsOrigin, type UserPosition } from "@/lib/location/use-user-location";
 import { canPreviewPassengerPickup, needsPassengerPickupConfirmation } from "@/lib/location/passenger-pickup";
 import { isTrustedGpsFix } from "@/lib/location/gps-trust";
 import { reverseGeocodeServerFn, reversePassengerPickupServerFn } from "@/lib/location.functions";
@@ -202,6 +202,22 @@ function Home(){
     const expand=()=>setSheetSnap("half");document.addEventListener("caronaa-shell-expand",expand);
     return()=>document.removeEventListener("caronaa-shell-expand",expand);
   },[]);
+  // Every explicit/foreground GPS reacquisition invalidates any UNCONFIRMED
+  // provisional pickup and its pending reverse-geocode response. A confirmed
+  // manual boarding point is intentionally preserved.
+  useEffect(()=>{
+    if(originSource!=="CURRENT_LOCATION"||!location.locating||location.position||
+       confirmedPickupKey!==""||passengerRide)return;
+    passengerOriginFix.current=null;
+    lastGpsLookup.current=null;
+    ++originLookupSequence.current;
+    setOriginLocation(undefined);
+    setAppliedOriginAccuracy(null);
+    setResolvedAddress(null);
+    setOrigin("");
+    setShellRoute(null);
+    setShellRouteOrigin(null);
+  },[originSource,location.locating,location.position,confirmedPickupKey,passengerRide]);
   const passengerPreview=activeRoleState.activeRole==="PASSAGEIRO"&&serviceType==="FLASH";
   const scheduledDriverPreview=activeRoleState.activeRole==="MOTORISTA"&&serviceType==="AGENDADA";
   // Traditional rides can preview a real approximate fix, then ask the user
@@ -215,18 +231,27 @@ function Home(){
       if(location.recenterVersion===awaitingNewOriginVersion.current)return;
       awaitingNewOriginVersion.current=null;
     }
-    const fix=originPreview
-      ?passengerOriginFix.current??(canPreviewPassengerPickup(location.addressPosition)?location.addressPosition:null)
-      :isTrustedGpsFix(location.addressPosition)?location.addressPosition:null;
+    // Live position and quoted pickup are independent. Improve an UNCONFIRMED
+    // departure on real movement or better accuracy; never move it after a
+    // destination, route or explicit pickup is confirmed.
+    const previewCandidate=canPreviewPassengerPickup(location.position)?location.position:
+      canPreviewPassengerPickup(location.addressPosition)?location.addressPosition:null;
+    const pickupFrozen=shellSelectedDestination||pickupDialogOpen||
+      confirmedPickupKey!==""||passengerRide!==null;
+    if(originPreview&&previewCandidate&&(!passengerOriginFix.current||
+      (!pickupFrozen&&shouldImproveGpsOrigin(passengerOriginFix.current,previewCandidate))))
+      passengerOriginFix.current={...previewCandidate};
+    const fix=originPreview?passengerOriginFix.current:
+      isTrustedGpsFix(location.addressPosition)?location.addressPosition:null;
     if(!fix){setOriginLocation(undefined);setAppliedOriginAccuracy(null);if(location.failure)setOrigin("");return;}
-    if(originPreview&&!passengerOriginFix.current)passengerOriginFix.current={...fix};
     const {lat,lng,accuracy}=fix;
     const addressIsNear=resolvedAddress?.lat!=null&&resolvedAddress.lng!=null&&
       Math.abs(resolvedAddress.lat-lat)<0.0003&&Math.abs(resolvedAddress.lng-lng)<0.0003;
     const label=addressIsNear?resolvedAddress?.formattedAddress||"Localização obtida pelo GPS":"Localização obtida pelo GPS";
     setOrigin(label);setAppliedOriginAccuracy(accuracy);
     setOriginLocation({rawText:label,formattedAddress:label,lat,lng,isApproximate:!isTrustedGpsFix(fix)});
-  },[originSource,location.addressPosition,location.failure,location.recenterVersion,resolvedAddress,originPreview,usableOriginFix]);
+  },[originSource,location.addressPosition,location.position,location.failure,location.recenterVersion,
+    resolvedAddress,originPreview,usableOriginFix,shellSelectedDestination,pickupDialogOpen,confirmedPickupKey,passengerRide]);
 
   useEffect(()=>{
     // The same approximate GPS fix used for pickup preview must also be
@@ -435,7 +460,9 @@ function Home(){
             routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
             origin={mapOrigin} destination={currentDestination} originIsCurrent={originSource==="CURRENT_LOCATION"}
             originAccuracyM={originPreview?(validPoint(plannedPickup)?quotedAccuracy??Number.POSITIVE_INFINITY:null):location.originAccuracyM}
-            following={originSource==="CURRENT_LOCATION"&&(originPreview?canPreviewPassengerPickup(location.position):isTrustedGpsFix(location.position))&&location.isFollowingUser}
+            following={originSource==="CURRENT_LOCATION"&&(originPreview
+              ?validPoint(location.position)&&location.position.accuracy<=5000
+              :isTrustedGpsFix(location.position))&&location.isFollowingUser}
             recenterVersion={location.recenterVersion} locating={location.locating}
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
             onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>}
@@ -497,6 +524,8 @@ function Home(){
               }setServiceType(next);
             }}
             originPoint={originLocation} originLabel={origin} locating={locatingPickup}
+            gpsAccuracyM={location.accuracyM} gpsFailure={location.failure}
+            onRetryGps={requestNewPickupLocation}
             originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
             onFlashVehicleChange={setQuickVehicle}
             flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}

@@ -105,13 +105,24 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError("Sinal GPS com precisão insuficiente.");
       return;
     }
-    if(mounted.current){setObservedFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});setAccuracyWarning(accuracy>100);}
+    if(mounted.current){setObservedFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});setAccuracyWarning(accuracy>80);}
+    if(!Number.isFinite(position.timestamp) || Date.now()-position.timestamp>30000 ||
+       position.timestamp-Date.now()>5000){
+      record("GPS_FIX_REJECTED",{code:"STALE_GPS"},"warn");
+      if(mounted.current)setError("Sinal GPS antigo. Aguardando nova atualização.");
+      return;
+    }
+    if(accuracy>150){
+      record("GPS_FIX_REJECTED",{code:"GPS_LOW_ACCURACY"},"warn");
+      if(mounted.current)setError("Precisão acima de 150 m. Aguardando sinal melhor; o radar não usará esta posição.");
+      return;
+    }
     sending.current=true;
     lastAttempt.current=Date.now();
     const ref=f07RadarTraceId();
     record("SERVER_PUBLISH_REQUEST",{ref,accuracy:f07RadarAccuracyBand(accuracy)});
     try{
-      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy,traceId:ref}});
+      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy,sampledAtMs:position.timestamp,traceId:ref}});
       if(!tracking.current){
         // Route switch is not withdrawal of consent. Do not let a late
         // server response erase an active watch started on the next page.
@@ -130,14 +141,20 @@ export function ProfessionalAvailabilityPage() {
       }else{
         record("SERVER_PUBLISH_NOT_PUBLISHED",{ref:result.traceId??ref,code:result.reason,city:result.municipality??undefined},"warn");
         if(mounted.current){
-          setFix(null);
+          if(result.reason==="OUTSIDE_APPROVED_ZONE")setFix(null);
           if(result.reason==="LOCATION_UNKNOWN" || result.reason==="GOOGLE_QUOTA_LIMITED")
             lastAttempt.current=Date.now()+35000; // 60s total before retrying upstream geocoding
           setError(result.reason==="OUTSIDE_APPROVED_ZONE"
             ?"Localização fora dos municípios habilitados; publicação suspensa."
-            :result.reason==="GOOGLE_QUOTA_LIMITED"
-              ?"O Google Maps atingiu o limite temporário. Nova verificação automática em cerca de 60 segundos."
-              :"O Google não conseguiu identificar o município pelo GPS. Tentaremos novamente; confira a API Geocoding e o sinal GPS.");
+            :result.reason==="GPS_LOW_ACCURACY"
+              ?"GPS aproximado demais para o radar. Procure melhor sinal."
+              :result.reason==="STALE_GPS"
+                ?"Aguardando coordenada GPS recente."
+                :result.reason==="GPS_JUMP"
+                  ?"GPS mudou de posição de modo inconsistente. Aguardando confirmação."
+                  :result.reason==="GOOGLE_QUOTA_LIMITED"
+                    ?"O serviço de localização atingiu o limite temporário. Nova verificação automática em cerca de 60 segundos."
+                    :"Não foi possível confirmar o município neste instante. Tentaremos novamente.");
         }
       }
     }catch(e){

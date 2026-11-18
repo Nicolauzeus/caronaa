@@ -1,6 +1,7 @@
 import { validPoint, type UserPosition } from "./use-user-location";
+import { GPS_POLICY } from "./gps-policy";
 
-export const MAX_TRUSTED_GPS_ACCURACY_M = 80;
+export const MAX_TRUSTED_GPS_ACCURACY_M = GPS_POLICY.trustedPassengerAccuracyM;
 
 /** An accuracy circle is an uncertainty estimate, not proof of the user's position. */
 export function isTrustedGpsFix(point?: UserPosition | null): point is UserPosition {

@@ -93,6 +93,10 @@ export function GoogleHomeRideMap({
   const trustedGps = isTrustedGpsFix(userPosition);
   const canPreviewGps = canPreviewPassengerPickup(userPosition);
   const canDisplayGps = passengerPreview ? canPreviewGps : trustedGps;
+  // Coarse browser GPS is visual context, NEVER a trusted quote origin.
+  const hasApproximateBrowserFix = passengerPreview && validPoint(userPosition) &&
+    Number.isFinite(userPosition.accuracy) && userPosition.accuracy > 300 &&
+    userPosition.accuracy <= 5000;
   // Previewing a real approximate pickup is not consent to dispatch it.
   // Route from the selected/frozen origin, never substitute a live GPS pulse.
   const trustedAppliedOrigin = originIsCurrent
@@ -115,7 +119,7 @@ export function GoogleHomeRideMap({
       if (!active || !container.current) return;
       const G = (window as any).google.maps;
       // A coarse, rejected fix must not be used as a person's map position.
-      const center = [effectiveOrigin, canDisplayGps ? userPosition : null, destination].find(validPoint) ?? {
+      const center = [effectiveOrigin, (canDisplayGps || hasApproximateBrowserFix) ? userPosition : null, destination].find(validPoint) ?? {
         lat: -3.73,
         lng: -38.53,
       };
@@ -179,14 +183,15 @@ export function GoogleHomeRideMap({
     // An explicit manual pickup remains authoritative even if GPS arrives late.
     if (!originIsCurrent && validPoint(origin)) {
       add(origin, "Sua saída escolhida · ponto informado (não GPS ao vivo)", "you");
-    } else if (originIsCurrent && trustedAppliedOrigin) {
+    } else if (originIsCurrent) {
       if (canDisplayGps) {
         add(userPosition, trustedGps ? "Você · localização GPS" : "Você · localização aproximada", "you");
-        if (validPoint(origin) && !areNearbyPoints(origin, userPosition)) {
-          add(origin, "Saída registrada anteriormente", "origin");
-        }
-      } else if (validPoint(origin)) {
-        add(origin, "Sua saída registrada · último ponto válido (não ao vivo)", "you");
+      } else if (hasApproximateBrowserFix) {
+        add(userPosition, "Região aproximada indicada pelo navegador · confirme o embarque no mapa", "you");
+      }
+      if (trustedAppliedOrigin && validPoint(origin) &&
+          (!canDisplayGps || !areNearbyPoints(origin, userPosition))) {
+        add(origin, "Ponto de saída registrado · não acompanha o GPS", "origin");
       }
     }
     add(destination, "Destino", "destination");
@@ -205,7 +210,8 @@ export function GoogleHomeRideMap({
     });
     circle.current?.setMap(null);
     circle.current = null;
-    if (originIsCurrent && canDisplayGps && userPosition && userPosition.accuracy > 0) {
+    if (originIsCurrent && (canDisplayGps || hasApproximateBrowserFix) &&
+        userPosition && userPosition.accuracy > 0) {
       circle.current = new G.Circle({
         map: map.current,
         center: { lat: userPosition.lat, lng: userPosition.lng },
@@ -220,7 +226,7 @@ export function GoogleHomeRideMap({
   }, [
     ready, userPosition, professionalDrivers,
     origin?.lat, origin?.lng, destination?.lat, destination?.lng,
-    originIsCurrent, trustedGps, canDisplayGps, trustedAppliedOrigin, pickupPreview,
+    originIsCurrent, trustedGps, canDisplayGps, hasApproximateBrowserFix, trustedAppliedOrigin, pickupPreview,
   ]);
 
   // Only an explicit selection mode may change the departure from a map tap.
@@ -276,12 +282,16 @@ export function GoogleHomeRideMap({
   }, [ready, failed, originIsCurrent, origin?.lat, origin?.lng]);
 
   // Keep the existing road-routing contract and bounded refresh behavior.
+  // Coordinates for Google Routes must agree with the actual selected pickup.
+  // 0.001 degrees previously shifted the displayed road route by ~100m.
   const fromLat = validPoint(effectiveOrigin)
-    ? Math.round(effectiveOrigin.lat * 1000) / 1000 : undefined;
+    ? Math.round(effectiveOrigin.lat * 1_000_000) / 1_000_000 : undefined;
   const fromLng = validPoint(effectiveOrigin)
-    ? Math.round(effectiveOrigin.lng * 1000) / 1000 : undefined;
-  const toLat = validPoint(destination) ? Math.round(destination.lat * 10000) / 10000 : undefined;
-  const toLng = validPoint(destination) ? Math.round(destination.lng * 10000) / 10000 : undefined;
+    ? Math.round(effectiveOrigin.lng * 1_000_000) / 1_000_000 : undefined;
+  const toLat = validPoint(destination)
+    ? Math.round(destination.lat * 1_000_000) / 1_000_000 : undefined;
+  const toLng = validPoint(destination)
+    ? Math.round(destination.lng * 1_000_000) / 1_000_000 : undefined;
   useEffect(() => {
     if (!ready || !map.current || failed) return;
     routePolyline.current?.setMap(null);
@@ -369,7 +379,7 @@ export function GoogleHomeRideMap({
     if (!ready || !map.current || failed) return;
     const recenterRequested = lastRecenter.current !== recenterVersion;
     const position = originIsCurrent
-      ? (canDisplayGps ? userPosition : null)
+      ? ((canDisplayGps || hasApproximateBrowserFix) ? userPosition : null)
       : (validPoint(effectiveOrigin) ? effectiveOrigin : null);
     // Do not consume recenterVersion while GPS/map initialization is pending.
     if (!validPoint(position)) return;
@@ -387,7 +397,7 @@ export function GoogleHomeRideMap({
     lastRecenter.current = recenterVersion;
     if (originIsCurrent) firstGpsCentered.current = true;
   }, [ready, failed, recenterVersion, following, userPosition, canDisplayGps,
-    originIsCurrent, effectiveOrigin?.lat, effectiveOrigin?.lng]);
+    hasApproximateBrowserFix, originIsCurrent, effectiveOrigin?.lat, effectiveOrigin?.lng]);
 
   return (
     <section
@@ -420,6 +430,14 @@ export function GoogleHomeRideMap({
         }}>
         <LocateFixed size={21} className={locating ? "animate-pulse motion-reduce:animate-none" : following ? "text-primary" : ""}/>
       </Button>
+      {originIsCurrent&&!canDisplayGps&&!hasApproximateBrowserFix&&!locating&&
+        <div role="status" className="pointer-events-none absolute left-3 right-20 top-32 z-10 rounded-lg bg-background/95 px-3 py-2 text-[11px] text-foreground shadow-sm">
+          Localização não obtida. O mapa pode mostrar uma área padrão, não o seu endereço atual.
+        </div>}
+      {originIsCurrent&&hasApproximateBrowserFix&&<div role="status"
+        className={`pointer-events-none absolute left-3 right-20 z-10 rounded-lg bg-background/95 px-3 py-2 text-[11px] text-foreground shadow-sm ${immersive?"top-32":"top-3"}`}>
+        GPS aproximado ({Math.round(userPosition!.accuracy)} m). Confirme o embarque no mapa; este ponto não será usado automaticamente no preço.
+      </div>}
       {professionalDrivers.some(driver=>driver.simulated) && (
         <div role="status" className="pointer-events-none absolute bottom-14 left-3 z-10 rounded-lg border border-[#FFBB00]/60 bg-background/95 px-3 py-2 text-[11px] font-semibold">
           SIMULAÇÃO F07 · ponto fictício somente nesta conta · sem despacho

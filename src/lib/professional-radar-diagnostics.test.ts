@@ -37,7 +37,7 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     expect(sql).not.toContain("sampled_at=now,");
   });
 
-  it("keeps coarse fixes publishable without bypassing server municipality checks",async()=>{
+  it("allows diagnostics for coarse fixes but blocks their public publication",async()=>{
     const { professionalRadarPointSchema } = await import("./professional-radar-geo");
     expect(professionalRadarPointSchema.safeParse({
       lat:-4.2,lng:-38.7,accuracyM:1500,traceId:"coarse01",
@@ -48,7 +48,9 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
     expect(page).toContain("Online e transmitindo GPS");
-    expect(page).toContain("accuracy>100");
+    expect(page).toContain("accuracy>80");
+    const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
+    expect(server).toContain("GPS_LOW_ACCURACY");
     expect(sync).toContain("SYNC_GPS_LOW_ACCURACY");
     expect(sync).toContain("SYNC_RETRY_SCHEDULED");
   });
@@ -90,7 +92,7 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
-    expect(server).toContain("resolvePilotCivic(data.lat, data.lng)");
+    expect(server).toContain("reverseGeocodeRadarMunicipality(data.lat, data.lng)");
     expect(server).toContain("municipalityFromProfessionalGps(geo)");
     expect(server).toContain("p_user_id: context.userId");
     expect(server).toContain("db_publish_rejected");

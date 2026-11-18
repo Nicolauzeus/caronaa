@@ -20,6 +20,16 @@ describe("F07 approximate professional markers",()=>{
     expect(mapQuickRadarDrivers([{driver_key:key,lat:999,lng:-38.7,seen_at:now}],"CAR")).toEqual([]);
     expect(mapQuickRadarDrivers([{driver_key:key,lat:-4.2,lng:-38.7,seen_at:"not a timestamp"}],"CAR")).toEqual([]);
   });
+  it("does not draw markers from stale or future-dated GPS replies",()=>{
+    expect(mapQuickRadarDrivers([{
+      driver_key:key,lat:-4.2,lng:-38.7,
+      seen_at:new Date(Date.now()-120000).toISOString(),
+    }],"MOTO")).toEqual([]);
+    expect(mapQuickRadarDrivers([{
+      driver_key:key,lat:-4.2,lng:-38.7,
+      seen_at:new Date(Date.now()+10000).toISOString(),
+    }],"MOTO")).toEqual([]);
+  });
   it("drops flagged self/simulated markers and duplicate identities",()=>{
     const point={driver_key:key,lat:-4.2,lng:-38.7,seen_at:now};
     const second={driver_key:anotherKey,lat:-4.3,lng:-38.8,seen_at:now};

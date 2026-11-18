@@ -28,12 +28,14 @@ export function mapQuickRadarDrivers(
     const lat = entry.lat;
     const lng = entry.lng;
     const sampledAt = entry.seen_at;
-    // Backend currently exposes a daily pseudonymous MD5 key and coordinates
-    // rounded to ~0.01 degrees. Never replace them with precise GPS values.
+    // Backend exposes a daily pseudonymous MD5 key and 0.001-degree
+    // coordinates (~100m); never infer or disclose an exact unassigned position.
     if (typeof key !== "string" || !/^[a-f0-9]{32}$/i.test(key) || seen.has(key)) continue;
     if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -90 || lat > 90) continue;
     if (typeof lng !== "number" || !Number.isFinite(lng) || lng < -180 || lng > 180) continue;
     if (typeof sampledAt !== "string" || !Number.isFinite(Date.parse(sampledAt))) continue;
+    const age = Date.now() - Date.parse(sampledAt);
+    if (age > 90_000 || age < -5_000) continue;
     seen.add(key);
     mapped.push({
       driver_key: key,

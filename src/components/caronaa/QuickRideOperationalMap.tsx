@@ -7,7 +7,7 @@ import { GoogleMapSurface } from "./GoogleMapSurface";
 
 type Route = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
 type Point={lat:number;lng:number};
-type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null;status:string};
+type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string;sampledAt?:string;accuracyM?:number})|null;status:string};
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
 
 export function QuickRideOperationalMap({
@@ -28,6 +28,7 @@ export function QuickRideOperationalMap({
   const [route,setRoute]=useState<Route|null>(null);
   const [details,setDetails]=useState<DriverDetails|null>(null);
   const [error,setError]=useState("");
+  const [now,setNow]=useState(()=>Date.now());
   const mounted=useRef(true);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const reload=useCallback(async()=>{
@@ -40,7 +41,15 @@ export function QuickRideOperationalMap({
     void reload();
     // Reading GPS from the own authorized backend is not a Google Routes request.
     const timer=window.setInterval(()=>{if(!document.hidden)void reload();},15000);
-    return()=>window.clearInterval(timer);
+    const clock=window.setInterval(()=>setNow(Date.now()),5000);
+    const resume=()=>{if(!document.hidden)void reload();};
+    document.addEventListener("visibilitychange",resume);
+    window.addEventListener("focus",resume);
+    return()=>{
+      window.clearInterval(timer);window.clearInterval(clock);
+      document.removeEventListener("visibilitychange",resume);
+      window.removeEventListener("focus",resume);
+    };
   },[reload]);
 
   useEffect(()=>{
@@ -55,6 +64,10 @@ export function QuickRideOperationalMap({
 
   const origin=context?.origin;
   const destination=context?.destination;
+  const sampleTime=context?.driver&&Date.parse(context.driver.sampledAt??context.driver.seenAt);
+  const driver=context?.driver&&sampleTime&&now-sampleTime>=-5000&&now-sampleTime<=90000&&
+    (context.driver.accuracyM==null||context.driver.accuracyM<=150)
+    ?context.driver:null;
   const statusNow=context?.status??status;
   const isMoto = (vehicleType ?? details?.vehicleType)?.toUpperCase() === "MOTO";
   useEffect(()=>{
@@ -72,22 +85,22 @@ export function QuickRideOperationalMap({
 
   useEffect(()=>{
     if(!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
-    if(!context?.driver)return;
+    if(!driver)return;
     let active=true;
     // Snapshot the authorized driver's position when the in-progress route starts.
     // Avoid recalculating this Google route on every GPS pulse.
-    const routeStart={lat:context.driver.lat,lng:context.driver.lng};
+    const routeStart={lat:driver.lat,lng:driver.lng};
     void readRoute({data:{points:[routeStart,destination]}})
       .then(result=>{if(active)setRoute(result);})
       .catch(()=>{if(active)setError("Não foi possível calcular a rota ao destino.");});
     return()=>{active=false;};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver),readRoute]);
+  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(driver),readRoute]);
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
         ...(statusNow==="IN_PROGRESS"?[]:[{lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const}]),
         ...((statusNow==="IN_PROGRESS")?[{lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
-        ...(context?.driver?[{lat:context.driver.lat,lng:context.driver.lng,
+        ...(driver?[{lat:driver.lat,lng:driver.lng,
           title:isMoto?"Mototaxista":"Motorista",
           kind:isMoto?("availableMoto" as const):("driver" as const)}]:[]),
       ]}
@@ -102,6 +115,9 @@ export function QuickRideOperationalMap({
     <div className="pointer-events-none absolute left-3 right-3 top-20 z-10 max-w-sm space-y-1 rounded-2xl border border-[#FFBB00]/50 bg-[#121212]/90 p-3 text-sm text-white shadow-xl">
       <p className="font-bold text-[#FFBB00]">{statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
       {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
+      {driver?.accuracyM!=null&&<p className="text-xs text-white/65">
+        GPS com precisão estimada de {Math.round(driver.accuracyM)} m
+      </p>}
       {approach&&statusNow!=="IN_PROGRESS"&&<p>{approach.distanceKm.toFixed(1)} km · {Math.max(1,Math.round(approach.durationMinutes))} min para embarque</p>}
       {error&&<p role="alert" className="text-red-300">{error}</p>}
     </div>
@@ -135,7 +151,7 @@ export function QuickRideOperationalMap({
     {statusNow==="IN_PROGRESS"&&route&&<p className="text-sm">
       Rota ao destino: {route.distanceKm.toFixed(1)} km · aproximadamente {Math.round(route.durationMinutes)} min
     </p>}
-    {!context?.driver&&statusNow==="ACCEPTED"&&<p className="text-xs text-white/65">
+    {!driver&&statusNow==="ACCEPTED"&&<p className="text-xs text-white/65">
       Aguardando posição autorizada e recente do motorista.
     </p>}
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
