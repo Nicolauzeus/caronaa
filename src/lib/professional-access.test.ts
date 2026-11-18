@@ -28,5 +28,5 @@ describe("professional access validation", () => {
   });
   it("car requires category", () => expect(professionalAccessMissing({ ...ok, carCategory: null })).toContain("CAR_CATEGORY"));
   it("parses database pending error", () => expect(parseMissingError("Dados pendentes: PHOTO,PLATE")).toEqual(["PHOTO", "PLATE"]));
-  it("approved never claims document verification", () => expect(STATUS_LABELS.APPROVED).toBe("Autorizado para o radar (piloto)"));
+  it("approved means platform eligibility, not legal license verification", () => expect(STATUS_LABELS.APPROVED).toBe("Habilitado para receber corridas"));
 });
