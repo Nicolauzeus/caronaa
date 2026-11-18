@@ -71,6 +71,11 @@ afterEach(() => {
   else Reflect.deleteProperty(window, "isSecureContext");
 });
 
+function choosePassengerForSignup() {
+  fireEvent.click(screen.getByRole("button", { name: /Sou passageiro/i }));
+  fireEvent.change(screen.getByLabelText(/Nome completo/i), { target: { value: "Pessoa Teste" } });
+}
+
 function enterCredentials() {
   fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "cadastro@example.com" } });
   fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-segura" } });
@@ -93,14 +98,15 @@ describe("F02 account access without a regional restriction", () => {
       if (scenario === "unavailable geocoding") api.reverse.mockRejectedValue(new Error("offline"));
       if (scenario === "insecure context") Object.defineProperty(window, "isSecureContext", { configurable: true, value: false });
       render(<AuthPage />);
+      choosePassengerForSignup();
       enterCredentials();
       fireEvent.click(screen.getByRole("button", { name: "Criar minha conta" }));
       await screen.findByRole("heading", { name: "Confirme seu e-mail" });
       expect(api.signUp).toHaveBeenCalledWith({
         email: "cadastro@example.com", password: "senha-segura",
         options: {
-          emailRedirectTo: `${window.location.origin}/auth?mode=cadastro&redirect=%2Fonboarding`,
-          data: { full_name: "" },
+          emailRedirectTo: `${window.location.origin}/auth?mode=entrar&redirect=%2Fonboarding`,
+          data: { full_name: "Pessoa Teste", initial_usage_role: "PASSAGEIRO" },
         },
       });
       expect(api.navigate).not.toHaveBeenCalled();
@@ -112,15 +118,17 @@ describe("F02 account access without a regional restriction", () => {
     api.search = { mode: "cadastro" };
     api.signUp.mockResolvedValue({ data: { session: {} }, error: null });
     render(<AuthPage />);
+    choosePassengerForSignup();
     enterCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Criar minha conta" }));
-    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/onboarding" }));
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/onboarding", replace: true }));
     expectNoGeographicGate();
   });
 
   it.each(["entrar", "cadastro"])("starts Google %s without requesting location or adding regionCheck", async (mode) => {
     api.search = { mode, redirect: "/perfil" };
     render(<AuthPage />);
+    if (mode === "cadastro") choosePassengerForSignup();
     fireEvent.click(screen.getByRole("button", { name: /Continuar com Google/i }));
     await waitFor(() => expect(api.oauth).toHaveBeenCalledOnce());
     const [provider, options] = api.oauth.mock.calls[0];
@@ -137,7 +145,7 @@ describe("F02 account access without a regional restriction", () => {
     api.search = { redirect: "/oferecer" };
     render(<AuthPage />);
     enterCredentials();
-    fireEvent.click(screen.getByRole("button", { name: /^Entrar na CARONAA$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Entrar na CARONAA/ }));
     await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/oferecer", replace: true }));
     expect(api.signIn).toHaveBeenCalledWith({ email: "cadastro@example.com", password: "senha-segura" });
     expect(api.destination).toHaveBeenCalledOnce();
