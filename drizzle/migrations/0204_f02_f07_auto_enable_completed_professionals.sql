@@ -28,6 +28,11 @@ BEGIN
                  WHERE id=v_uid AND email_confirmed_at IS NOT NULL) THEN
     RAISE EXCEPTION 'Confirme seu e-mail para trabalhar' USING ERRCODE='42501';
   END IF;
+  -- Serialize submissions from two tabs/devices for the same account.
+  PERFORM 1 FROM public.profiles WHERE id=v_uid FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Perfil indisponivel. Complete seu cadastro.' USING ERRCODE='22023';
+  END IF;
   IF p_access_type NOT IN ('STANDARD','MOTOTAXI_SIMPLE') OR p_vehicle_type NOT IN ('CAR','MOTO') THEN
     RAISE EXCEPTION 'Modalidade profissional invalida' USING ERRCODE='22023';
   END IF;
@@ -100,6 +105,14 @@ BEGIN
       ORDER BY submitted_at DESC LIMIT 1 FOR UPDATE;
     IF v_current.id IS NOT NULL THEN
       v_id := v_current.id;
+      -- Existing active driver editing complete data stays active. Keep the
+      -- snapshot current without producing a duplicate approval event.
+      UPDATE public.professional_access_requests
+        SET municipality=p_municipality,car_category=p_car_category,
+            passenger_seats=p_seats,snapshot=p_snapshot,updated_at=now()
+        WHERE id=v_id
+          AND (municipality,car_category,passenger_seats,snapshot)
+               IS DISTINCT FROM (p_municipality,p_car_category,p_seats,p_snapshot);
     ELSE
       INSERT INTO public.professional_access_requests
         (user_id,status,vehicle_type,car_category,passenger_seats,
