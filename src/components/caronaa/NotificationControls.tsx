@@ -72,13 +72,13 @@ export function NotificationPreferences() {
   );
 }
 
-export function NotificationControls() {
+export function NotificationControls({ dock = false }: { dock?: boolean } = {}) {
   const { settings, setSoundEnabled, alerts, markAllRead, connection } = useNotifications();
   const unread = alerts.filter((alert) => !alert.read).length;
   const label = settings.soundEnabled ? "Desativar som" : "Ativar som";
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <Tooltip>
+    <div className={dock?"flex min-w-0 flex-1 items-stretch":"flex shrink-0 items-center gap-1"}>
+      {!dock&&<Tooltip>
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
@@ -95,16 +95,17 @@ export function NotificationControls() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
-      </Tooltip>
+      </Tooltip>}
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            className={dock?"relative flex h-14 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted":"relative"}
             aria-label={`Notificações, ${unread} não lidas`}
           >
-            <Bell className="size-4" />
+            <Bell className={dock?"size-[22px]":"size-4"} />
+            {dock&&<span>Alertas</span>}
             {unread > 0 && (
               <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
             )}
