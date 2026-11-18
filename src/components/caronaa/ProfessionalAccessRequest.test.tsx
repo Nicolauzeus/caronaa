@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({rpc: vi.fn()}));
@@ -48,4 +48,28 @@ describe("Mototaxi confirmado na tela de corridas", () => {
     expect(screen.queryByRole("link",{name:/Corrigir dados profissionais/i})).toBeNull();
     expect(screen.queryByText(/Solicitar autorização/i)).toBeNull();
   });
+  it("submits complete car data without the fabricated missing vehicle color",async()=>{
+    api.rpc.mockImplementation(async (name:string)=>{
+      if(name==="get_my_professional_access")return {
+        data:{authorized:false,profileMissing:[],request:null},error:null,
+      };
+      if(name==="submit_professional_access_request")return {
+        data:"request-accepted",error:null,
+      };
+      return {data:null,error:{message:"Unknown RPC"}};
+    });
+    render(<ProfessionalAccessRequest initialVehicle={{
+      type:"CAR",seats:3,municipality:"Fortaleza",
+    }}/>);
+    expect(await screen.findByText("Categoria do carro")).toBeTruthy();
+    expect(screen.getByLabelText(/Vagas para passageiros/i)).toHaveValue(3);
+    fireEvent.click(screen.getByRole("button",{name:/Confirmar dados e habilitar corridas/i}));
+    expect(api.rpc).not.toHaveBeenCalledWith("submit_professional_access_request",expect.anything());
+    fireEvent.change(screen.getByLabelText("Categoria do carro"),{target:{value:"HATCH"}});
+    fireEvent.click(screen.getByRole("button",{name:/Confirmar dados e habilitar corridas/i}));
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("submit_professional_access_request",{
+      p_vehicle_type:"CAR",p_car_category:"HATCH",p_seats:3,p_municipality:"Fortaleza",
+    }));
+  });
+
 });
