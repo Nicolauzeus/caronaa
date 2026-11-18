@@ -14,7 +14,7 @@ import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, MapPin, ShieldAlert } from "lucide-react";
+import { AlertTriangle, MapPin } from "lucide-react";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
 type Fix = { lat:number; lng:number; at:Date; simulated:boolean; accuracyM?:number; heading?:number|null };
@@ -44,7 +44,6 @@ export function ProfessionalAvailabilityPage() {
   const [simpleMototaxi,setSimpleMototaxi]=useState(false);
   const [professionalReview,setProfessionalReview]=useState("");
   const [professionalMissing,setProfessionalMissing]=useState<MissingCode[]>([]);
-  const [blocked,setBlocked]=useState(false);
   const [pilotEnabled,setPilotEnabled]=useState(false);
   const [pilotVehicle,setPilotVehicle]=useState<Vehicle>("MOTO");
   const [pilotExpiry,setPilotExpiry]=useState("");
@@ -257,16 +256,15 @@ export function ProfessionalAvailabilityPage() {
     void (async()=>{
       const {data:{user}}=await supabase.auth.getUser();
       if(!user)throw new Error("Entre na sua conta para usar o radar.");
-      const [presence,fees,access,profile,pilot]=await Promise.all([
+      const [presence,access,profile,pilot]=await Promise.all([
         (supabase as any).from("professional_presence")
           .select("is_available,municipality").eq("user_id",user.id).maybeSingle(),
-        (supabase as any).rpc("get_my_driver_platform_fees"),
         (supabase as any).rpc("get_my_professional_access"),
         supabase.from("profiles").select("city").eq("id",user.id).maybeSingle(),
         getPilot().catch(()=>({enabled:false})),
       ]);
       if(!active)return;
-      if(presence.error || fees.error || access.error)throw new Error("Falha ao conferir autorização, presença ou repasses.");
+      if(presence.error || access.error)throw new Error("Falha ao conferir autorização ou presença.");
       const registeredCity=String(access.data?.request?.municipality??"");
       const candidate=registeredCity==="MACICO_BATURITE"||registeredCity==="FORTALEZA"
         ? "":registeredCity;
@@ -282,16 +280,13 @@ export function ProfessionalAvailabilityPage() {
       const registeredVehicle=access.data?.request?.vehicle_type;
       if(registeredVehicle==="CAR"||registeredVehicle==="MOTO")
         setPilotVehicle(registeredVehicle);
-      setBlocked(fees.data?.driverAllowed!==true);
       setPilotEnabled(pilot.enabled===true);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
-      setEnabled(presence.data?.is_available===true &&
-        access.data?.authorized===true && fees.data?.driverAllowed===true);
+      setEnabled(presence.data?.is_available===true && access.data?.authorized===true);
       record("INITIAL_STATE",{
         city:String(presence.data?.municipality||profile.data?.city||candidate).trim()||undefined,
         authorized:access.data?.authorized===true,
         presenceOnline:presence.data?.is_available===true,
-        feesAllowed:fees.data?.driverAllowed===true,
       });
       setReady(true);
     })().catch(e=>{if(active){
@@ -324,11 +319,11 @@ export function ProfessionalAvailabilityPage() {
   // A previously consented GPS session can resume when returning to this
   // screen, including after a tab switch. No first-visit silent permission.
   useEffect(()=>{
-    if(!ready||!enabled||!authorized||blocked||!userId||tracking.current||fix?.simulated)return;
+    if(!ready||!enabled||!authorized||!userId||tracking.current||fix?.simulated)return;
     if(window.localStorage.getItem(professionalRadarConsentKey(userId))==="yes"){
       startGps(municipality,pilotVehicle,userId);
     }
-  },[ready,enabled,authorized,blocked,userId,municipality,pilotVehicle,startGps,fix?.simulated]);
+  },[ready,enabled,authorized,userId,municipality,pilotVehicle,startGps,fix?.simulated]);
 
   useEffect(()=>{
     if(!enabled)return;
@@ -367,8 +362,7 @@ export function ProfessionalAvailabilityPage() {
 
   async function toggleOnline(next:boolean) {
     if(busy)return;
-    record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized,feesAllowed:!blocked});
-    if(next && blocked){setError("Motorista bloqueado por repasses.");return;}
+    record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized});
     if(next && !authorized && !pilotEnabled){
       setError("É necessária aprovação administrativa para entrar no radar.");return;
     }
@@ -560,16 +554,12 @@ export function ProfessionalAvailabilityPage() {
           )}
         </div>
       )}
-      {blocked && ready && <p role="alert" className="flex items-start gap-2 text-xs text-red-200">
-        <ShieldAlert size={15} className="shrink-0" aria-hidden="true"/>
-        <span>Disponibilidade bloqueada por comissões. <Link to="/perfil" className="font-bold underline">Consultar conta</Link></span>
-      </p>}
       <Button
         variant={enabled ? "outline" : "default"}
         className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black transition-colors ${enabled
           ? "border-amber-400/55 bg-transparent text-amber-200 hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-100"
           : "bg-[#FFBB00] text-[#121212] hover:bg-[#eeb000]"}`}
-        disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+        disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(!authorized&&!pilotEnabled))}
         onClick={()=>void toggleOnline(!enabled)}>
         {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
       </Button>
@@ -590,14 +580,14 @@ export function ProfessionalAvailabilityPage() {
     </div>}
 
       </div>
-      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-can-start={ready && !enabled && !blocked && (authorized || pilotEnabled) ? "true" : "false"}>
+      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-can-start={ready && !enabled && (authorized || pilotEnabled) ? "true" : "false"}>
         <button
           type="button"
           className="professional-cockpit__sheet-toggle"
           aria-label={activeRide ? sheetOpen
             ? "Recolher painel e mostrar navegação"
             : "Expandir painel da corrida e código de embarque"
-            : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded
+            : ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded
               ? "FICAR ONLINE AGORA" : sheetOpen ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
           aria-expanded={sheetOpen}
           onTouchStart={event=>{sheetTouchStart.current=event.touches[0]?.clientY??null;}}
@@ -610,25 +600,25 @@ export function ProfessionalAvailabilityPage() {
           }}
           onClick={()=>{
             if(sheetSwiped.current){sheetSwiped.current=false;return;}
-            if (ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded && !activeRide) void toggleOnline(true);
+            if (ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded && !activeRide) void toggleOnline(true);
             else setSheetExpanded(v=>!v);
           }}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
           <span>{activeRide
             ? activeRide.status==="ARRIVED" ? "Embarque · inserir código" :
               activeRide.status==="IN_PROGRESS" ? "Em viagem · acompanhar destino" : "A caminho do passageiro"
-            : hasPendingCalls ? "Novos chamados" : ready && !enabled && !blocked && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
+            : hasPendingCalls ? "Novos chamados" : ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
         </button>
         {!activeRide&&<div className="professional-cockpit__mobile-connection">
           <Button variant={enabled ? "outline" : "default"}
             className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black ${enabled
               ? "border border-[#FFBB00] bg-[#121212] text-[#FFBB00]"
               : "bg-[#FFBB00] text-[#121212]"}`}
-            disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}
+            disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(!authorized&&!pilotEnabled))}
             onClick={()=>void toggleOnline(!enabled)}>
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
-          {(!authorized || blocked) && ready && <p role="alert" className="mt-2 text-xs text-amber-300">{blocked ? "Acesso bloqueado por repasses. Consulte Conta." : "Finalize os dados profissionais para receber corridas."}</p>}
+          {!authorized && ready && <p role="alert" className="mt-2 text-xs text-amber-300">Finalize os dados profissionais para receber corridas.</p>}
         </div>}
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
@@ -636,7 +626,7 @@ export function ProfessionalAvailabilityPage() {
       onHasPendingChange={setHasPendingCalls}
       onFollowMap={followRideOnMap}
       municipality={municipality}
-      online={enabled && authorized && !blocked}
+      online={enabled && authorized}
       gpsReady={fresh}
     />
 
@@ -670,9 +660,7 @@ export function ProfessionalAvailabilityPage() {
       <p className="my-2 text-xs text-muted-foreground">A cidade selecionada não limita sua atuação: o GPS verificado define onde você pode receber pedidos.</p>
       <MunicipalitySelect value={municipality} onChange={setMunicipality} disabled={enabled||busy}/>
     </details>
-    {blocked&&<p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm">
-      Radar bloqueado por repasses. <Link to="/perfil" className="underline">Consultar comissões</Link>
-    </p>}
+
     <section aria-label="Status da localização" className="hidden space-y-2 rounded-xl border p-4 text-sm sm:block">
       <p className="font-bold">{!ready?"Carregando...":fresh?"Online e transmitindo GPS":fix?.simulated?"SIMULAÇÃO — somente na sua conta":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
       <p>Município: <strong>{municipality||"Aguardando verificação"}</strong></p>
