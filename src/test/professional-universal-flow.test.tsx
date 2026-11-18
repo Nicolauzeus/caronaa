@@ -119,7 +119,7 @@ describe("Fluxo universal para candidatos a mototaxista", () => {
     fireEvent.click(await screen.findByRole("button",{name:/Confirmar dados e ver corridas/i}));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Faltam 3 dados obrigatórios/i));
     expect(screen.getAllByText(/Selecione a região de atuação/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/WhatsApp com DDD/i)).toBeTruthy();
+    expect(screen.getAllByText(/WhatsApp com DDD/i).length).toBeGreaterThan(0);
     expect(api.rpc).not.toHaveBeenCalledWith("submit_simple_mototaxi_access", expect.anything());
     expect(api.navigate).not.toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true});
   });
