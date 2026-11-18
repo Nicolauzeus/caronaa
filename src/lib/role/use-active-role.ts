@@ -141,6 +141,7 @@ export function useActiveRole() {
         if(error || data?.active_role!==target)throw new Error("Papel não atualizado.");
       }
       setState(prev=>({...prev,activeRole:target,busy:false,error:null}));
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("caronaa:role-changed"));
       return {needsVehicleModal:false,missingFields:[]};
     }catch{
       setState(prev=>({...prev,activeRole:previous,busy:false,
@@ -188,6 +189,7 @@ export function useActiveRole() {
         vehicleType:type,vehicleSeats:normalizeVehicleSeats(type,persisted.vehicle_seats),
         isDriverEligible:completed.isComplete,activeRole:"MOTORISTA",
         busy:false,error:null}));
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("caronaa:role-changed"));
     }catch{
       setState(prev=>({...prev,busy:false,
         error:"Não foi possível salvar os dados do veículo. Confira as informações e tente novamente."}));
