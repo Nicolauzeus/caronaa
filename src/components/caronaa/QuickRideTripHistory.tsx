@@ -4,6 +4,7 @@ import { Bike, CarFront, ChevronDown, Clock3, RefreshCw, Wallet } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { QuickRideRatingModal } from "./QuickRideRatingModal";
 
 type PassengerQuickRide = {
   id: string;
@@ -48,6 +49,7 @@ export function QuickRideTripHistory() {
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
   const [expandedPix,setExpandedPix] = useState<string | null>(null);
+  const [ratingOpen,setRatingOpen] = useState<string | null>(null);
 
   const refresh = useCallback(async (withSpinner = true) => {
     if (withSpinner) setLoading(true);
@@ -138,6 +140,12 @@ export function QuickRideTripHistory() {
                 {pixOpen && <div id={"quick-pix-"+ride.id} className="dark mt-3 rounded-2xl bg-[#121212] p-2 text-white">
                   <QuickRidePixCard rideId={ride.id} />
                 </div>}
+                <button type="button" onClick={()=>setRatingOpen(ride.id)}
+                  className="mt-3 min-h-11 w-full rounded-xl border border-border text-sm font-semibold">
+                  Avaliar motorista (opcional)
+                </button>
+                {ratingOpen===ride.id&&<QuickRideRatingModal rideId={ride.id} subject="motorista"
+                  forceOpen onClose={()=>setRatingOpen(null)}/>}}
               </div>
             )}
           </article>;
