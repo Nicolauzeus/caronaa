@@ -33,7 +33,7 @@ BEGIN
       RAISE EXCEPTION 'Informe uma placa brasileira válida'
         USING ERRCODE='23514';
     END IF;
-    IF NEW.vehicle_type NOT IN ('car','moto')
+    IF NEW.vehicle_type IS NULL OR NEW.vehicle_type NOT IN ('car','moto')
        OR NEW.vehicle_seats IS NULL
        OR (NEW.vehicle_type='moto' AND NEW.vehicle_seats<>1)
        OR (NEW.vehicle_type='car' AND (NEW.vehicle_seats<1 OR NEW.vehicle_seats>3)) THEN
