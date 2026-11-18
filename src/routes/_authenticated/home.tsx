@@ -49,7 +49,7 @@ function mobileSheetBottomInset(snap:SheetSnap):number {
 
 export const Route = createFileRoute("/_authenticated/home")({
   validateSearch: z.object({intent:z.enum(["offer","request"]).optional(),trips:z.enum(["open"]).optional()}),
-  beforeLoad:async({context})=>{
+  beforeLoad:async({context,location})=>{
     beginCaronaaPhase("home-before-load");
     try {
       // The authenticated parent route already verified session, basic
@@ -66,7 +66,10 @@ export const Route = createFileRoute("/_authenticated/home")({
       // authenticated RPC: URL intent/auth metadata never grants F07 access.
       const {data:roleRow,error:roleError}=await (supabase as any).from("profiles")
         .select("active_role").eq("id",user.id).maybeSingle();
-      if(!roleError&&roleRow?.active_role==="MOTORISTA"){
+      // Explicit role switching in the drawer must remain possible, including
+      // for authorized professionals who wish to offer an ordinary carona.
+      const activityIntent=(location.search as {intent?:string}).intent;
+      if(!roleError&&roleRow?.active_role==="MOTORISTA"&&!activityIntent){
         const {data:access,error:accessError}=await (supabase as any).rpc("get_my_professional_access");
         if(!accessError&&access?.authorized===true)
           throw redirect({to:"/disponibilidade-profissional",replace:true});
