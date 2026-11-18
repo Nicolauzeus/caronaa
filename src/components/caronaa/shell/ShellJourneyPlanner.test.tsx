@@ -66,15 +66,24 @@ afterEach(()=>{vi.useRealTimers();cleanup();});
 function Harness(){
   const [snap,setSnap]=useState<SheetSnap>("peek");
   const [service,setService]=useState<"FLASH"|"AGENDADA">("FLASH");
+  const expiresAt=new Date(Date.now()+60000).toISOString();
+  const common={expiresAt,distanceKm:11,durationMinutes:18,region:"MACICO_BATURITE",municipality:"Redenção",
+    driverReceivesCents:800,platformCommissionCents:200,commissionBps:2000,
+    commissionSource:"MACICO" as const,policyVersion:"pilot"};
   return <ShellJourneyPlanner {...props} snap={snap}
     serviceType={service} onServiceTypeChange={setService} onSnapChange={setSnap}
+    flashDriverCounts={{CAR:2,MOTO:3}}
+    flashFares={{
+      CAR:{...common,quoteId:"car-quote",vehicleType:"CAR",customerPaysCents:1800},
+      MOTO:{...common,quoteId:"moto-quote",vehicleType:"MOTO",customerPaysCents:1000},
+    }}
     flashOperationalPanel={<button type="button" onClick={api.dispatch}>Pedir Caronaa Flash</button>}/>;
 }
 async function prepareFull(){
   fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
   fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
   await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1),{timeout:3000});
-  await screen.findByRole("radio",{name:/Flash Carro/});
+  fireEvent.click(await screen.findByRole("radio",{name:/Flash Carro/}));
   await screen.findByRole("button",{name:"Pedir Caronaa Flash"});
 }
 
@@ -88,31 +97,32 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(adjust).toHaveBeenCalledOnce();
     expect(screen.getByRole("button",{name:/agora/i})).toBeTruthy();
   });
-  it("shows three direct choices and switches vehicle without extra Google routes",async()=>{
+  it("shows only genuine available modes, then presents a separate confirmation",async()=>{
     render(<Harness/>);
     fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
-    await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1),{timeout:3000});
-    expect(screen.getByRole("radio",{name:/Flash Carro/})).toHaveAttribute("aria-checked","true");
+    await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
+    expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
+    expect(screen.queryByRole("radio",{name:/Carona Na Rota/})).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio",{name:/Flash Moto/}));
-    expect(screen.getByRole("radio",{name:/Flash Moto/})).toHaveAttribute("aria-checked","true");
-    await waitFor(()=>expect(api.quote).toHaveBeenCalledWith(expect.objectContaining({
-      vehicleType:"MOTO",mode:"EXCLUSIVE",
-    })),{timeout:3000});
-    fireEvent.click(screen.getByRole("radio",{name:/Carona Na Rota/}));
-    expect(screen.getByRole("radio",{name:/Carona Na Rota/})).toHaveAttribute("aria-checked","true");
+    expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
+    expect(screen.getByText(/R\\$\\s*10,00/)).toBeInTheDocument();
     expect(api.route).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("button",{name:"Revisar e Continuar"})).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:/Voltar às opções/}));
+    expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
+    expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
   });
-  it("shows a single Flash decision without internal pricing or duplicated review",async()=>{
+
+  it("does not display a fictitious shared ride or duplicate review",async()=>{
     render(<Harness/>);
-    await prepareFull();
-    expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeTruthy();
-    expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeTruthy();
-    expect(screen.getByRole("radio",{name:/Carona Na Rota/})).toBeTruthy();
-    expect(screen.queryByRole("button",{name:"Revisar e Continuar"})).toBeNull();
-    expect(screen.queryByText("Preferências de viagem")).toBeNull();
-    expect(screen.queryByText(/Comissão de/)).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    expect(await screen.findByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
+    expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
+    expect(screen.queryByRole("radio",{name:/Carona Na Rota/})).not.toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Revisar e Continuar"})).not.toBeInTheDocument();
+    expect(screen.queryByText("Preferências de viagem")).not.toBeInTheDocument();
   });
   it("shows only real Flash price when quote belongs to the selected vehicle",async()=>{
     render(<ShellJourneyPlanner {...props} snap="half"
