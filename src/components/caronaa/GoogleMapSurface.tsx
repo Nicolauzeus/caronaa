@@ -64,6 +64,8 @@ export function GoogleMapSurface({
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const artifacts = useRef<any[]>([]);
+  // Stable line instances: GPS refresh never destroys a road route.
+  const lineArtifacts = useRef<Map<string,{fingerprint:string;polyline:any}>>(new Map());
   const trackingMarkers = useRef<Map<string, any>>(new Map());
   const movementFrames = useRef<Map<string, number>>(new Map());
   const fitted = useRef(false);
@@ -117,6 +119,8 @@ export function GoogleMapSurface({
       unsubscribe();
       artifacts.current.forEach((item) => item.setMap(null));
       artifacts.current = [];
+      lineArtifacts.current.forEach(({polyline})=>polyline.setMap(null));
+      lineArtifacts.current.clear();
       movementFrames.current.forEach(frame=>window.cancelAnimationFrame(frame));
       movementFrames.current.clear();
       trackingMarkers.current.clear();
@@ -147,8 +151,10 @@ export function GoogleMapSurface({
         const G = (window as any).google?.maps;
         if (!map.current) return;
         G?.event?.trigger(map.current, "resize");
-        if (hadSize && lastBounds.current && fitted.current)
-          map.current.fitBounds(lastBounds.current, { top: 48, right: 48, bottom: 48, left: 48 });
+        // A bottom-sheet resize is not a new destination. Refitting here
+        // moved the camera on every mobile sheet animation/keyboard resize.
+        // fitMode/fitKey below explicitly control camera framing instead.
+        void hadSize;
       });
     });
     observer.observe(container.current);
@@ -249,31 +255,39 @@ export function GoogleMapSurface({
       });
     }
     let validRouteCount = 0;
-    lines.forEach((line) => {
-      const path = line.points.filter(isValid);
-      if (path.length >= 2) validRouteCount += 1;
-      if (path.length < 2) return;
-      const polyline = new G.Polyline({
-        map: map.current,
-        path,
-        geodesic: false,
-        strokeColor: line.color || "#FFBB00",
-        strokeOpacity: line.dotted ? 0 : 0.95,
-        ...(line.dotted
-          ? {
-              icons: [
-                {
-                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 2 },
-                  offset: "0",
-                  repeat: "12px",
-                },
-              ],
-            }
-          : {}),
-        strokeWeight: 5,
-      });
-      artifacts.current.push(polyline);
+    const visibleLines=new Set<string>();
+    lines.forEach((line,index)=>{
+      const path=line.points.filter(isValid);
+      if(path.length<2)return;
+      validRouteCount+=1;
+      const key=String(index);
+      visibleLines.add(key);
+      // Route geometry changes much less often than GPS marker positions.
+      const fingerprint=[line.color||"#FFBB00",line.dotted?"d":"s",
+        ...path.map(p=>p.lat.toFixed(6)+":"+p.lng.toFixed(6))].join("|");
+      const existing=lineArtifacts.current.get(key);
+      if(existing?.fingerprint!==fingerprint){
+        existing?.polyline.setMap(null);
+        const polyline=new G.Polyline({
+          map:map.current,
+          path,
+          geodesic:false,
+          strokeColor:line.color||"#FFBB00",
+          strokeOpacity:line.dotted?0:0.95,
+          ...(line.dotted?{icons:[{
+            icon:{path:"M 0,-1 0,1",strokeOpacity:1,scale:2},
+            offset:"0",repeat:"12px",
+          }]}:{}),
+          strokeWeight:5,
+        });
+        lineArtifacts.current.set(key,{fingerprint,polyline});
+      }
       path.forEach(extend);
+    });
+    lineArtifacts.current.forEach(({polyline},key)=>{
+      if(visibleLines.has(key))return;
+      polyline.setMap(null);
+      lineArtifacts.current.delete(key);
     });
     const validMarkerCount = points.filter(isValid).length;
     const newFitKey = fitKey !== undefined && lastFitKey.current !== fitKey;
