@@ -40,6 +40,11 @@ type Props = {
   smoothTracking?: boolean;
   showControls?: boolean;
   gestureHandling?: "cooperative" | "greedy";
+  /** Live GPS camera following, opt-in only for an active driver trip. */
+  followPoint?: {lat:number;lng:number}|null;
+  /** Changes when the ride or navigation leg changes. */
+  followKey?: string;
+  followZoom?: number;
 };
 
 const isValid = (p: { lat: number; lng: number }) =>
@@ -61,6 +66,9 @@ export function GoogleMapSurface({
   smoothTracking = false,
   showControls = false,
   gestureHandling = "cooperative",
+  followPoint = null,
+  followKey,
+  followZoom = 16,
 }: Props) {
   const getKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
@@ -77,6 +85,10 @@ export function GoogleMapSurface({
   const lastBounds = useRef<any>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [following, setFollowing] = useState(true);
+  const hasFollowFix = Boolean(followPoint && isValid(followPoint));
+  const lastFollow = useRef<{lat:number;lng:number;at:number}|null>(null);
+  const followInitialized = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -106,6 +118,9 @@ export function GoogleMapSurface({
         gestureHandling: previewOnly ? "none" : gestureHandling,
         keyboardShortcuts: !previewOnly,
       });
+      // A deliberate swipe across the map pauses camera following; GPS and
+      // markers continue to update. The recenter control restores following.
+      map.current.addListener("dragstart",()=>{if(active)setFollowing(false);});
       setReady(true);
     };
     void initialize().catch(() => {
@@ -298,6 +313,9 @@ export function GoogleMapSurface({
     lastFitKey.current = fitKey;
     lastFitRouteCount.current = validRouteCount;
     lastFitPointCount.current = validMarkerCount;
+    // Navigation owns the camera while GPS following is available. Do not
+    // let fitBounds steal focus on route redraws or bottom-sheet movements.
+    if(hasFollowFix)return;
     if (fitted.current && fitMode === "once" && !newFitKey && !newRoute && !moreMarkers) return;
     if (count > 0) {
       fitted.current = true;
@@ -310,7 +328,32 @@ export function GoogleMapSurface({
     } else if (count > 1) {
       map.current.fitBounds(bounds, { top: 48, right: 48, bottom: 48, left: 48 });
     }
-  }, [ready, failed, points, lines, fitMode, fitKey, smoothTracking]);
+  }, [ready, failed, points, lines, fitMode, fitKey, smoothTracking, hasFollowFix]);
+
+  useEffect(()=>{
+    if(!followKey)return;
+    // Reactivate following automatically when switching pickup -> destination.
+    followInitialized.current=false;
+    lastFollow.current=null;
+    setFollowing(true);
+  },[followKey]);
+  useEffect(()=>{
+    if(!ready||failed||!map.current||!following||!followPoint||!isValid(followPoint))return;
+    const now=Date.now();
+    const prior=lastFollow.current;
+    if(prior&&now-prior.at<850)return;
+    const moved=!prior||Math.hypot(
+      (followPoint.lat-prior.lat)*111195,
+      (followPoint.lng-prior.lng)*111195*Math.cos(followPoint.lat*Math.PI/180),
+    )>6;
+    if(!moved)return;
+    lastFollow.current={lat:followPoint.lat,lng:followPoint.lng,at:now};
+    map.current.panTo({lat:followPoint.lat,lng:followPoint.lng});
+    if(!followInitialized.current){
+      map.current.setZoom(Math.max(14,Math.min(19,followZoom)));
+      followInitialized.current=true;
+    }
+  },[ready,failed,following,followPoint?.lat,followPoint?.lng,followZoom]);
 
   return (
     <div
@@ -337,11 +380,20 @@ export function GoogleMapSurface({
       )}
       {ready && !failed && showControls && !previewOnly && (
         <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">
-          <button type="button" aria-label="Centralizar mapa no motorista"
-            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-xl font-bold text-slate-900 shadow-lg"
+          <button type="button"
+            aria-label={hasFollowFix?(following?"Centralizar e seguir motorista":"Retomar acompanhamento do GPS"):"Centralizar mapa no motorista"}
+            title={hasFollowFix&&!following?"Retomar acompanhamento automático":"Centralizar"}
+            className={"flex size-11 items-center justify-center rounded-full border bg-white text-xl font-bold text-slate-900 shadow-lg "+(hasFollowFix&&following?"border-[#FFBB00] ring-2 ring-[#FFBB00]/40":"border-slate-200")}
             onClick={() => {
-              const driver = points.find(point => point.kind === "driver" || point.kind === "availableMoto") ?? points[0];
-              if (driver && isValid(driver)) map.current?.panTo({ lat: driver.lat, lng: driver.lng });
+              const driver = followPoint&&isValid(followPoint)?followPoint:
+                points.find(point => point.kind === "driver" || point.kind === "availableMoto") ?? points[0];
+              if(driver&&isValid(driver)){
+                map.current?.panTo({lat:driver.lat,lng:driver.lng});
+                if(hasFollowFix)map.current?.setZoom(Math.max(14,Math.min(19,followZoom)));
+                lastFollow.current={lat:driver.lat,lng:driver.lng,at:Date.now()};
+                followInitialized.current=true;
+                setFollowing(true);
+              }
             }}>◎</button>
           <button type="button" aria-label="Aumentar zoom do mapa"
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
