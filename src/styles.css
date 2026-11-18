@@ -795,3 +795,34 @@ a:active {
   }
 }
 
+
+/* ==========================================================
+ * iOS SAFARI — STABLE FORM FOCUS / MOBILE VIEWPORT
+ * Safari zooms the entire visual viewport when a focused text field has
+ * a computed font size below 16px. Keep physical text inputs >=16px on
+ * phones, including embedded dialogs and dynamically-rendered forms.
+ * Preserve native pinch zoom for accessibility and Google Maps gestures.
+ * ========================================================== */
+@media (max-width: 767px) and (hover: none) and (pointer: coarse) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+
+  /* Avoid accidental Safari double-tap zoom on conventional controls.
+     This does not disable pinch zoom or map gestures. */
+  button,
+  a,
+  label,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
+  }
+}
