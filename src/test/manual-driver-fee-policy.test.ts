@@ -30,19 +30,22 @@ describe("Manual payments and platform fee policy", () => {
     expect(finance).toContain("Recebimento conferido");
     expect(migration).not.toContain("UPDATE public.payments SET status='PAID'");
   });
-  it("blocks new driver activity after three unpaid trips without blocking passenger journeys", () => {
-    expect(migration).toContain("f.status <> 'SETTLED') < 3");
-    for (const name of [
-      "ride_offer_driver_debt",
-      "ride_routine_driver_debt",
-      "ride_match_driver_debt",
-      "presence_driver_debt",
-      "professional_location_driver_debt",
-      "quick_ride_accept_driver_debt",
-    ]) expect(migration).toContain(name);
-    expect(migration).toContain("professional_presence SET is_available=false");
-    expect(migration).toContain("DELETE FROM public.professional_driver_locations");
-    expect(offer).toContain("driverAllowed !== true");
+  it("preserves all financial ledgers but revokes only repasse-based mobility blocks", () => {
+    const policy = readFileSync("drizzle/migrations/0212_remove_driver_repasse_blocking.sql", "utf8");
+    expect(policy).toContain("CREATE OR REPLACE FUNCTION public.driver_platform_access_allowed(p_driver uuid)");
+    expect(policy).toContain("SELECT p_driver IS NOT NULL;");
+    expect(policy).toContain("'driverAllowed',true");
+    expect(policy).toContain("get_my_caronaa_commission_ledger");
+    expect(policy).toContain("get_my_driver_platform_fees");
+    expect(policy).toContain("get_admin_driver_debts_overview");
+    for(const name of ["ride_offer_driver_debt","ride_routine_driver_debt",
+      "ride_match_driver_debt","presence_driver_debt",
+      "professional_location_driver_debt","quick_ride_accept_driver_debt"]){
+      expect(policy).toContain("DROP TRIGGER IF EXISTS "+name);
+    }
+    expect(offer).not.toContain("get_my_driver_platform_fees");
+    expect(offer).not.toContain("Verifique os repasses da plataforma");
+    expect(migration).toContain("ON CONFLICT(ride_id) DO NOTHING");
   });
   it("exposes an explicit four-tab navigation and distinct roles", () => {
     expect(shell).toContain('label: "Oferecer"');
