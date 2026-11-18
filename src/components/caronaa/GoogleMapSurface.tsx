@@ -10,6 +10,8 @@ import { MapUnavailable } from "./MapUnavailable";
 import { tripMarkerIcon, type TripMarkerKind } from "./trip-marker-icons";
 
 export type GoogleMapPoint = {
+  /** Stable marker identity: do not key by a title that changes with GPS state. */
+  id?: string;
   lat: number;
   lng: number;
   title?: string;
@@ -182,7 +184,7 @@ export function GoogleMapSurface({
       }
     };
     points.filter(isValid).forEach((point, index) => {
-      const markerKey = point.title || point.kind || point.label || String(index);
+      const markerKey = point.id || point.title || point.kind || point.label || String(index);
       visibleKeys.add(markerKey);
       const badgeIcon = point.kind && point.kind !== "person" ? tripMarkerIcon(point.kind) : null;
       const options = {
