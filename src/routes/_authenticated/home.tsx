@@ -101,10 +101,15 @@ function Home(){
   const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
   const [quickMunicipality,setQuickMunicipality]=useState("");
   const [quickDriverCount,setQuickDriverCount]=useState(0);
+  const [quickDriverCounts,setQuickDriverCounts]=useState<Record<"CAR"|"MOTO",number>>({CAR:0,MOTO:0});
   const [quickDrivers,setQuickDrivers]=useState<ApproximateProfessionalDriver[]>([]);
   const [quickDriverLoading,setQuickDriverLoading]=useState(false);
   const [quickDriverError,setQuickDriverError]=useState("");
-  const onQuickCoverage=useCallback((value:QuickRideCoverage|null)=>setQuickMunicipality(value?.radar&&value.municipality?value.municipality:""),[]);
+  const onQuickCoverages=useCallback((values:Partial<Record<"CAR"|"MOTO",QuickRideCoverage>>)=>{
+    // Discover both fleets when either mode is in an active radar zone.
+    const available=(["CAR","MOTO"] as const).map(type=>values[type]).find(value=>value?.radar&&value.municipality);
+    setQuickMunicipality(available?.municipality??"");
+  },[]);
   const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>setPassengerRide(ride),[]);
   const onUrgentDropoff=useCallback((pending:boolean)=>{setUrgentDropoff(pending);if(pending){setTripsPanelOpen(false);setSheetSnap("full");}},[]);
   const onPassengerPhase=useCallback((status:string|null)=>{
@@ -295,24 +300,49 @@ function Home(){
   const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
   useEffect(()=>{
     if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){
-      setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;
+      setQuickDriverCount(0);setQuickDriverCounts({CAR:0,MOTO:0});
+      setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;
     }
     let alive=true;
     const refresh=async()=>{
       if(alive)setQuickDriverLoading(true);
-      try{
+      // Two independent authorized radar queries: a failure in one fleet must
+      // not hide the other fleet on the map or in the quote selector.
+      const results=await Promise.allSettled((["CAR","MOTO"] as const).map(async type=>{
         const {data,error}=radarLat!=null&&radarLng!=null
-          ?await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_lat:radarLat,p_lng:radarLng,p_vehicle:quickVehicle,p_radius_km:QUICK_RADAR_RADIUS_KM})
-          :await (supabase as any).rpc("discover_caronaa_quick_drivers",{p_municipality:quickMunicipality,p_vehicle:quickVehicle});
-        if(!alive)return;if(error)throw error;
-        const approvedDrivers=mapQuickRadarDrivers(data,quickVehicle);
-        setQuickDrivers(approvedDrivers);setQuickDriverCount(approvedDrivers.length);setQuickDriverError("");
-      }catch{if(alive){setQuickDriverCount(0);setQuickDrivers([]);setQuickDriverError("Radar indisponível. Tente novamente.");}}
-      finally{if(alive)setQuickDriverLoading(false);}
+          ?await (supabase as any).rpc("discover_caronaa_quick_drivers",{
+            p_lat:radarLat,p_lng:radarLng,p_vehicle:type,p_radius_km:QUICK_RADAR_RADIUS_KM,
+          })
+          :await (supabase as any).rpc("discover_caronaa_quick_drivers",{
+            p_municipality:quickMunicipality,p_vehicle:type,
+          });
+        if(error)throw error;
+        return {type,drivers:mapQuickRadarDrivers(data,type)};
+      }));
+      if(!alive)return;
+      const counts:Record<"CAR"|"MOTO",number>={CAR:0,MOTO:0};
+      const visible:ApproximateProfessionalDriver[]=[];
+      let failures=0;
+      results.forEach((result,index)=>{
+        if(result.status==="fulfilled"){
+          counts[result.value.type]=result.value.drivers.length;
+          visible.push(...result.value.drivers);
+        }else{
+          failures+=1;
+        }
+      });
+      setQuickDriverCounts(counts);
+      setQuickDrivers(visible);
+      setQuickDriverError(failures===2?"Radar indisponível. Tente novamente.":failures===1
+        ?`Falha ao consultar ${results[0].status==="rejected"?"carros":"motos"}; as outras opções continuam disponíveis.`:"");
+      setQuickDriverLoading(false);
     };
     void refresh();const timer=window.setInterval(refresh,15000);
     return()=>{alive=false;window.clearInterval(timer);};
-  },[activeRoleState.activeRole,serviceType,quickMunicipality,quickVehicle,radarLat,radarLng]);
+  },[activeRoleState.activeRole,serviceType,quickMunicipality,radarLat,radarLng]);
+  useEffect(()=>{
+    setQuickDriverCount(quickDriverCounts[quickVehicle]);
+  },[quickDriverCounts,quickVehicle]);
   // Live GPS is rendered separately by the map; it is never a fallback pickup.
   const mapOrigin=validPoint(plannedPickup)?plannedPickup:undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;
@@ -395,16 +425,17 @@ function Home(){
             onFlashVehicleChange={setQuickVehicle}
             flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}
             flashFare={flashFare} flashFares={flashFares} flashFarePending={flashFarePending}
+            flashDriverCounts={quickDriverCounts} flashDriverLoading={quickDriverLoading} flashDriverError={quickDriverError}
             onFlashActionContainer={setFlashActionContainer}
             flashOperationalPanel={<QuickRideHomePanel
               origin={origin||"Minha localização atual"} destination={passengerDestinationLabel}
               originPoint={quotedOrigin} destinationPoint={shellDestinationLocation}
               locating={locatingPickup} vehicle={quickVehicle} onVehicleChange={setQuickVehicle}
-              driverCount={quickDriverCount} driverLoading={quickDriverLoading} driverError={quickDriverError}
+              driverCount={quickDriverCount} driverCounts={quickDriverCounts} driverLoading={quickDriverLoading} driverError={quickDriverError}
               gpsOriginIsImprecise={originSource==="CURRENT_LOCATION"&&!previewablePickup}
               pickupNeedsConfirmation={pickupNeedsConfirmation} onConfirmPickup={openPickupDialog}
               actionContainer={flashActionContainer} onFaresChange={setFlashFares} onFarePendingChange={setFlashFarePending}
-              onCoverage={onQuickCoverage} onOperationalRideChange={onPassengerRide} onRidePhaseChange={onPassengerPhase}
+              onCoveragesChange={onQuickCoverages} onOperationalRideChange={onPassengerRide} onRidePhaseChange={onPassengerPhase}
               onDropoffPendingChange={onUrgentDropoff} onFareChange={setFlashFare}
               onOpenOperational={()=>setSheetSnap("full")} shellMode shellSnap={sheetSnap}/>}
             onAdjustOrigin={openPickupDialog} onRouteChange={handleShellRouteChange}
