@@ -40,6 +40,8 @@ export function ProfessionalAvailabilityPage() {
   const sheetSwiped=useRef(false);
   const lastRidePhase=useRef<string|null>(null);
   const [activeRide,setActiveRide]=useState<ActiveDriverRide|null>(null);
+  const activeRideRef=useRef<ActiveDriverRide|null>(null);
+  activeRideRef.current=activeRide;
   const [authorized,setAuthorized]=useState(false);
   const [simpleMototaxi,setSimpleMototaxi]=useState(false);
   const [professionalReview,setProfessionalReview]=useState("");
@@ -64,6 +66,8 @@ export function ProfessionalAvailabilityPage() {
   const sending=useRef(false);
   const simulating=useRef(false);
   const lastAttempt=useRef(0);
+  const lastLiveAttempt=useRef(0);
+  const livePublishing=useRef(false);
   const positionHandler=useRef<(position:GeolocationPosition)=>void>(()=>{});
   const record=useCallback((stage:string, details:Omit<Partial<SafeF07RadarEvent>,"at"|"stage">={}, level:"info"|"warn"="info")=>{
     const entry=f07RadarEvent(stage,details);
@@ -129,9 +133,27 @@ export function ProfessionalAvailabilityPage() {
         " m). Ative a localização precisa e aproxime-se de uma janela ou área aberta.");
       return;
     }
-    if(sending.current||Date.now()-lastAttempt.current<25000)return;
+    const now=Date.now();
+    const needsFullMunicipalityCheck=now-lastAttempt.current>=25000;
+    const currentRide=activeRideRef.current;
+    if(!needsFullMunicipalityCheck&&!sending.current&&!livePublishing.current&&
+       currentRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(currentRide.status)&&
+       now-lastLiveAttempt.current>=7500){
+      // A verified city and an assigned active ride are necessary before the
+      // server accepts faster GPS signals. SQL checks ownership, consented
+      // availability, speed, accuracy and official position age.
+      livePublishing.current=true;
+      lastLiveAttempt.current=now;
+      void (supabase as any).rpc("publish_active_quick_ride_gps",{
+        p_ride_id:currentRide.id,p_lat:latitude,p_lng:longitude,
+        p_accuracy_m:accuracy,p_sampled_at_ms:sampledAtMs,
+      }).catch(()=>undefined).finally(()=>{livePublishing.current=false;});
+    }
+    // Revalidate the driver's actual city with the existing Google-backed
+    // pipeline every 25s. Frequent active-ride updates never replace it.
+    if(sending.current||livePublishing.current||!needsFullMunicipalityCheck)return;
     sending.current=true;
-    lastAttempt.current=Date.now();
+    lastAttempt.current=now;
     const ref=f07RadarTraceId();
     record("SERVER_PUBLISH_REQUEST",{ref,accuracy:f07RadarAccuracyBand(accuracy)});
     try{
