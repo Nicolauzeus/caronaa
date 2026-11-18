@@ -31,7 +31,7 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(cockpit).toContain('gpsReady={fresh}');
     expect(cockpit).not.toContain('Ver pedidos de corrida');
     expect(queue).toContain("quick_ride_accept");
-    expect(queue).toContain('Corrida já aceita por outro motorista da região.');
+    expect(queue).toContain('Solicitação indisponível: pode ter expirado ou sido aceita por outro motorista.');
     expect(queue).toContain('"ARRIVED"');
     expect(queue).toContain('"IN_PROGRESS"');
     expect(queue).toContain('"COMPLETED"');
