@@ -199,7 +199,7 @@ function SimpleMotorcycleRegistration() {
       if (refreshError) throw refreshError;
       setRequest(refreshed?.request ?? null);
       setAuthorized(refreshed?.authorized === true);
-      toast.success("Solicitação enviada ao administrativo. Não há período de carência.");
+      toast.success("Cadastro salvo. Você já pode usar caronas comuns; o acesso profissional requer habilitação.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível enviar sua solicitação.");
     } finally { setBusy(false); }
@@ -325,6 +325,15 @@ function SimpleMotorcycleRegistration() {
           </section>
         ) : (
           <>
+            {request?.status === "PENDING" && (
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm">
+                <p className="font-bold text-white">Você já pode utilizar as caronas comuns</p>
+                <p className="mt-1 text-white/75">O cadastro profissional segue uma habilitação separada. Enquanto isso, você pode buscar e oferecer caronas compartilhadas na mesma conta.</p>
+                <Link to="/home" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
+                  Abrir CARONAA
+                </Link>
+              </div>
+            )}
             {request && <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
               Solicitação: <strong>{request.status === "PENDING" ? "Em análise" : request.status === "APPROVED" ? "Aprovada" : request.status === "REJECTED" ? "Rejeitada" : "Correções solicitadas"}</strong>
               {request.review_reason && <p>Observação: {request.review_reason}</p>}
