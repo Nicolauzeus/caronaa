@@ -803,7 +803,7 @@ a:active {
  * phones, including embedded dialogs and dynamically-rendered forms.
  * Preserve native pinch zoom for accessibility and Google Maps gestures.
  * ========================================================== */
-@media (max-width: 767px) and (hover: none) and (pointer: coarse) {
+@media (hover: none) and (pointer: coarse) {
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
