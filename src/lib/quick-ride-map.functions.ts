@@ -12,7 +12,11 @@ const mapSchema = z.object({
   status: z.string(),
   origin: point,
   destination: point,
-  driver: point.extend({ seenAt: z.string() }).nullable(),
+  driver: point.extend({
+    seenAt: z.string(),
+    sampledAt: z.string().optional(),
+    accuracyM: z.number().positive().optional(),
+  }).nullable(),
 });
 const input = z.object({ rideId: z.string().uuid() });
 async function readContext(client: any, rideId: string) {
