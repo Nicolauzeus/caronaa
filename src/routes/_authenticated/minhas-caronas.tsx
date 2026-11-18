@@ -460,8 +460,10 @@ function Tab({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`border-b-2 px-1 pb-3 text-sm font-bold ${active ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+      className={`min-h-12 shrink-0 whitespace-nowrap rounded-t-lg border-b-[3px] px-2 py-3 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${active ? "border-[#FFBB00] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
     >
       {children}
     </button>
