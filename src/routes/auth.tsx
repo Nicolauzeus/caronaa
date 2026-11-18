@@ -229,27 +229,27 @@ function AuthPage() {
   return (
     <AuthFrame>
       {/* Header oficial da experiência CARONAA */}
-      <div className="mb-6 space-y-2">
+      <div className="mb-7 space-y-2 lg:mb-6">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-block transition hover:opacity-90">
-            <img src={logoAsset.url} alt="CARONAA" className="h-10 sm:h-12 w-auto object-contain" />
+            <img src={logoAsset.url} alt="CARONAA" className="h-12 w-auto object-contain sm:h-12" />
           </Link>
           <ThemeToggle className="shrink-0 border-border/70 bg-background/70" />
         </div>
 
         <div className="pt-2">
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            Seu caminho continua aqui.
+            {effectiveMode === "entrar" ? "Entre na sua conta" : "Crie sua conta"}
           </h1>
           <p className="text-sm font-medium text-muted-foreground mt-1">
-            Tenha seu perfil pronto para encontrar ou oferecer caronas.
+            {effectiveMode === "entrar" ? "Acesse sua conta para continuar na CARONAA." : "Comece com seus dados. Você poderá pedir ou oferecer viagens depois."}
           </p>
         </div>
       </div>
 
       {/* Seletor de Modo (Tabs acessíveis) */}
       <div
-        className="grid grid-cols-2 p-1 bg-muted/60 rounded-2xl mb-6 border border-border/60"
+        className="hidden lg:grid grid-cols-2 p-1 bg-muted/60 rounded-2xl mb-6 border border-border/60"
         role="tablist"
         aria-label="Opções de acesso"
       >
@@ -283,7 +283,7 @@ function AuthPage() {
         }
       </div>
 
-      <Link to="/cadastro-motorista" className="mb-5 flex min-h-12 items-center justify-center rounded-xl border border-caronaa-primary/40 bg-caronaa-primary/10 px-4 text-center text-sm font-bold text-foreground hover:bg-caronaa-primary/20">
+      <Link to="/cadastro-motorista" className="mb-5 hidden lg:flex min-h-12 items-center justify-center rounded-xl border border-caronaa-primary/40 bg-caronaa-primary/10 px-4 text-center text-sm font-bold text-foreground hover:bg-caronaa-primary/20">
         Sou mototaxista — cadastro simplificado
       </Link>
 
@@ -367,7 +367,7 @@ function AuthPage() {
 
         <Button
           type="submit"
-          className="h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md hover:bg-caronaa-primary-strong transition mt-2"
+          className="mt-2 h-12 w-full rounded-xl bg-caronaa-primary text-sm font-bold text-caronaa-dark shadow-md transition hover:bg-caronaa-primary-strong"
           disabled={busy}
         >
           {busy ? (
@@ -376,7 +376,7 @@ function AuthPage() {
             "Criar minha conta"
           ) : (
             <>
-              Entrar na CARONAA <ArrowRight size={16} />
+              <span className="lg:hidden">Entrar</span><span className="hidden lg:inline">Entrar na CARONAA</span><ArrowRight className="hidden lg:inline" size={16} />
             </>
           )}
         </Button>
@@ -406,14 +406,14 @@ function AuthPage() {
 
       {/* Alternância secundária */}
       {
-        <div className="mt-6 border-t border-border pt-4 text-center text-xs font-medium text-muted-foreground">
-          {mode === "entrar" ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
+        <div className="mt-7 border-t border-border/70 pt-5 text-center text-sm font-medium text-muted-foreground lg:mt-6 lg:pt-4 lg:text-xs">
+          {mode === "entrar" ? "Não tem conta?" : "Já tem uma conta?"}{" "}
           <button
             type="button"
-            className="font-bold text-foreground underline underline-offset-4 hover:text-caronaa-primary-strong transition ml-1"
+            className="ml-1 inline-flex min-h-11 items-center font-bold text-caronaa-primary-strong underline underline-offset-4 transition hover:text-caronaa-primary"
             onClick={() => setMode(mode === "entrar" ? "cadastro" : "entrar")}
           >
-            {mode === "entrar" ? "Criar minha conta" : "Entrar na CARONAA"}
+            {mode === "entrar" ? "Criar conta" : "Entrar"}
           </button>
         </div>
       }
@@ -582,12 +582,12 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
       </section>
 
       {/* Coluna de formulário responsiva */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fbfaf6] dark:bg-background px-4 py-8 sm:px-8 md:px-10">
+      <section className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#121212] px-4 py-6 sm:px-8 md:px-10 lg:min-h-screen lg:bg-[#fbfaf6] lg:py-8 lg:dark:bg-background">
         <picture className="absolute inset-0 lg:hidden">
           <img src={mobileBackground.url} alt="" className="size-full object-cover" />
         </picture>
         <div className="absolute inset-0 bg-background/90 backdrop-blur-sm lg:hidden" />
-        <div className="relative z-10 w-full max-w-[540px] rounded-3xl border border-white/70 dark:border-border/70 bg-card/95 p-6 shadow-xl md:p-10">
+        <div className="relative z-10 w-full max-w-[540px] rounded-2xl border border-border/50 bg-card/95 p-5 shadow-xl sm:p-6 md:p-10 lg:rounded-3xl lg:border-white/70 lg:dark:border-border/70">
           {children}
         </div>
       </section>
