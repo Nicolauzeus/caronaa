@@ -35,6 +35,7 @@ export function ProfessionalAvailabilityPage() {
   const [activeQuickRide,setActiveQuickRide]=useState(false);
   const [hasPendingCalls,setHasPendingCalls]=useState(false);
   const [sheetExpanded,setSheetExpanded]=useState(false);
+  const [navigationFocusRequest,setNavigationFocusRequest]=useState(0);
   const sheetTouchStart=useRef<number|null>(null);
   const sheetSwiped=useRef(false);
   const lastRidePhase=useRef<string|null>(null);
@@ -432,10 +433,18 @@ export function ProfessionalAvailabilityPage() {
       setSheetExpanded(false);
   },[activeRide?.id,activeRide?.status]);
   const sheetOpen=activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
+  const followRideOnMap=useCallback((rideId:string)=>{
+    // The driver explicitly asks to see the map: do not wait for another
+    // automatic phase transition or force the user to leave this screen.
+    if(activeRide?.id!==rideId)return;
+    setSheetExpanded(false);
+    setNavigationFocusRequest(previous=>previous+1);
+  },[activeRide?.id]);
   return <div className="professional-cockpit">
     {activeRide && <div className="professional-cockpit__map">
       <QuickRideOperationalMap rideId={activeRide.id} status={activeRide.status}
         role="DRIVER" immersive vehicleType={activeRide.vehicle_type==="MOTO"?"MOTO":"CAR"}
+        navigationFocusRequest={navigationFocusRequest}
         liveDriverFix={liveNavigationFix?{
           lat:liveNavigationFix.lat,lng:liveNavigationFix.lng,
           sampledAtMs:liveNavigationFix.at.getTime(),
@@ -625,6 +634,7 @@ export function ProfessionalAvailabilityPage() {
       onActiveChange={setActiveQuickRide}
       onActiveRideChange={setActiveRide}
       onHasPendingChange={setHasPendingCalls}
+      onFollowMap={followRideOnMap}
       municipality={municipality}
       online={enabled && authorized && !blocked}
       gpsReady={fresh}
