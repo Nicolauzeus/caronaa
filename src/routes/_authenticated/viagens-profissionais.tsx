@@ -25,6 +25,7 @@ const rideStatus: Record<string, string> = {
   ACCEPTED: "Aceita",
   ARRIVED: "Chegada confirmada",
   IN_PROGRESS: "Em andamento",
+  PENDING_REVIEW: "Encerramento em análise",
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   EXPIRED: "Expirada",
@@ -106,6 +107,11 @@ function ProfessionalTripsPage() {
       )}
       {ride.requested_at && <p className="text-xs text-white/55">
         {new Date(ride.requested_at).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" })}
+      </p>}
+      {ride.status === "PENDING_REVIEW" && <p role="status"
+        className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm text-white/80">
+        Corrida encerrada operacionalmente. A conclusão e a comissão estão suspensas
+        até a decisão administrativa. Você pode receber novos chamados, se estiver habilitado.
       </p>}
       {ride.status === "COMPLETED" && <div className="space-y-2 border-t border-white/15 pt-3">
         <button type="button" aria-expanded={expandedSettlement===ride.id}
