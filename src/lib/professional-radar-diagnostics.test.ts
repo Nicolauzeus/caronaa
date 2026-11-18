@@ -57,6 +57,23 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     expect(sync).toContain("SYNC_RETRY_SCHEDULED");
   });
 
+  it("publishes only fresh native GPS fixes with the v2 timestamp contract",()=>{
+    const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
+    const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
+    const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
+    const geo=readFileSync("src/lib/professional-radar-geo.ts","utf8");
+    expect(geo).toContain("sampledAtMs: z.number().int().positive()");
+    expect(geo).toContain("accuracyM: z.number().finite().positive().max(150)");
+    expect(server).toContain('rpc("publish_verified_professional_position_v2"');
+    expect(server).toContain("p_sampled_at_ms: data.sampledAtMs");
+    expect(server).toContain("data.sampledAtMs");
+    expect(page).toContain("sampledAtMs,traceId:ref");
+    expect(page).toContain("if(accuracy>150)");
+    expect(sync).toContain("sampledAtMs, traceId:ref");
+    expect(sync).toContain("if(accuracy>150)");
+    expect(sync).toContain('if(result.reason==="OUTSIDE_APPROVED_ZONE")');
+  });
+
   it("copies only allowlisted safe fields into diagnostic events",()=>{
     const entry=f07RadarEvent("SERVER_PUBLISH_ERROR",{
       ref:"abc-123",code:"DB_PERMISSION_DENIED",accuracy:"21-100m",
