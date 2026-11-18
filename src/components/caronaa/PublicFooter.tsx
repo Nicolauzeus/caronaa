@@ -1,9 +1,11 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
 export function PublicFooter({ className }: { className?: string }) {
+  const { user } = useAuth();
   return (
     <footer
       className={cn(
@@ -16,7 +18,7 @@ export function PublicFooter({ className }: { className?: string }) {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
           {/* Coluna 1: Marca, Proposta de Valor e Badges Institucionais */}
           <div className="space-y-4 md:col-span-6 lg:col-span-7">
-            <Link to="/" className="inline-block" aria-label="CARONAA — Início">
+            <Link to={user ? "/home" : "/"} className="inline-block" aria-label="CARONAA — Início">
               <img src={logoAsset.url} alt="CARONAA" className="h-10 w-auto object-contain" />
             </Link>
 
