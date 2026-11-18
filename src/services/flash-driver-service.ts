@@ -20,7 +20,7 @@ export type FlashDriverOnlineInput={
   routePath?:RoadPoint[]|null;
 };
 export class FlashDriverError extends Error {
-  constructor(public code:"UNAVAILABLE"|"COMMISSION_BLOCKED"|"ALREADY_TAKEN"|"INVALID"|"EXPIRED"){
+  constructor(public code:"UNAVAILABLE"|"ACCESS_DENIED"|"MIGRATION_REQUIRED"|"ALREADY_TAKEN"|"INVALID"|"EXPIRED"){
     super(code);this.name="FlashDriverError";
   }
 }
@@ -33,8 +33,9 @@ const rpcError=(error:unknown):FlashDriverError=>{
   const x=record(error);
   const code=string(x?.code);
   const message=string(x?.message);
-  if(code==="42501"||/COMMISSION_BLOCKED|PLATFORM_FEE_PENDING/i.test(message))
-    return new FlashDriverError("COMMISSION_BLOCKED");
+  if(/COMMISSION_BLOCKED|PLATFORM_FEE_PENDING|3 repasses pendentes/i.test(message))
+    return new FlashDriverError("MIGRATION_REQUIRED");
+  if(code==="42501")return new FlashDriverError("ACCESS_DENIED");
   if(/ALREADY_TAKEN|ALREADY_MATCHED|OVERBOOKING_PREVENTED/i.test(code+" "+message))
     return new FlashDriverError("ALREADY_TAKEN");
   if(/EXPIRED|DEADLINE_PASSED/i.test(code+" "+message))return new FlashDriverError("EXPIRED");
