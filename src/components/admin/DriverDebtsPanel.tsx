@@ -8,10 +8,10 @@ type Driver = {
 };
 const brl = (v: number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const date = (v: string) => new Date(v).toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" });
-type Filter = "all" | "blocked" | "pending" | "claimed";
+type Filter = "all" | "high" | "pending" | "claimed";
 
-export function driverDebtTag(d: Pick<Driver, "blocked" | "claimedCount">) {
-  if (d.blocked) return { label: "Bloqueado (3+ débitos)", cls: "bg-destructive/15 text-destructive" };
+export function driverDebtTag(d: Pick<Driver, "pendingCount" | "claimedCount">) {
+  if (d.pendingCount >= 3) return { label: "3+ pendências · sem bloqueio", cls: "bg-amber-500/15 text-amber-700" };
   if (d.claimedCount > 0) return { label: "Comprovante declarado", cls: "bg-secondary text-secondary-foreground" };
   return { label: "Pendente", cls: "bg-primary/20 text-foreground" };
 }
@@ -32,16 +32,16 @@ export function DriverDebtsPanel({ refresh }: { refresh: number }) {
   if (error) return <p role="alert" className="text-sm text-destructive">Pendências indisponíveis: {error}</p>;
   if (!rows) return <p className="text-sm text-muted-foreground">Carregando pendências dos motoristas…</p>;
 
-  const blocked = rows.filter((r) => r.blocked);
+  const high = rows.filter((r) => r.pendingCount >= 3);
   const claimed = rows.filter((r) => r.claimedCount > 0);
   const total = rows.reduce((s, r) => s + Number(r.pendingAmount), 0);
   const term = q.trim().toLowerCase();
   const list = rows
-    .filter((r) => filter === "all" || (filter === "blocked" ? r.blocked : filter === "claimed" ? r.claimedCount > 0 : !r.blocked))
+    .filter((r) => filter === "all" || (filter === "high" ? r.pendingCount >= 3 : filter === "claimed" ? r.claimedCount > 0 : r.pendingCount < 3))
     .filter((r) => !term || [r.name, r.email, r.plate].some((v) => v?.toLowerCase().includes(term)));
   const cards: [string, string, Filter][] = [
-    ["Motoristas bloqueados", String(blocked.length), "blocked"],
-    ["Com 1–2 pendências", String(rows.length - blocked.length), "pending"],
+    ["3+ pendências (sem bloqueio)", String(high.length), "high"],
+    ["Com 1–2 pendências", String(rows.length - high.length), "pending"],
     ["Aguardando conferência", String(claimed.length), "claimed"],
     ["Total a receber", brl(total), "all"],
   ];
