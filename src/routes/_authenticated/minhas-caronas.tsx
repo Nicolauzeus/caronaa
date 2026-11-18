@@ -323,7 +323,7 @@ function MinhasCaronas() {
         </div>
       </section>
       <div className="mt-7 border-b border-border">
-        <div role="tablist" aria-label="Categorias de viagens" className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1.5 sm:flex sm:flex-wrap sm:gap-2">
+        <div role="group" aria-label="Categorias de viagens" className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1.5 sm:flex sm:flex-wrap sm:gap-2">
           <Tab active={tab === "pedidos"} onClick={() => setTab("pedidos")}>
             Meus pedidos ({passengerRides.length})
           </Tab>
@@ -460,8 +460,7 @@ function Tab({
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={active}
+      aria-pressed={active}
       onClick={onClick}
       className={`min-h-12 min-w-0 rounded-xl border px-2 py-2 text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] sm:px-4 sm:text-sm ${active ? "border-[#FFBB00] bg-[#FFBB00] text-[#121212]" : "border-transparent text-muted-foreground hover:bg-background hover:text-foreground"}`}
     >
