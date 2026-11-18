@@ -39,7 +39,7 @@ function cachedTripRoute(key:string,load:()=>Promise<Route>):Promise<Route>{
 }
 
 export function QuickRideOperationalMap({
-  rideId, status, role, immersive=false, vehicleType, liveDriverFix=null,
+  rideId, status, role, immersive=false, vehicleType, liveDriverFix=null, navigationFocusRequest=0,
 }: {
   rideId:string;
   municipality?:string;
@@ -47,6 +47,8 @@ export function QuickRideOperationalMap({
   vehicleType?:"CAR"|"MOTO";
   /** Local browser GPS for smooth visual tracking. Never used for dispatch approval. */
   liveDriverFix?:LocalDriverFix|null;
+  /** Explicit navigation button re-enables GPS camera tracking. */
+  navigationFocusRequest?:number;
   status:string;
   role:"DRIVER"|"PASSENGER";
 }) {
@@ -249,7 +251,7 @@ export function QuickRideOperationalMap({
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
       fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}:${Boolean(currentDriverRoute)}`}
       smoothTracking showControls={immersive} gestureHandling={immersive?"greedy":"cooperative"}
-      followPoint={driverPhase?driverPoint:null} followKey={driverPhase?`${rideId}:${driverPhase}`:undefined}
+      followPoint={driverPhase?driverPoint:null} followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:undefined}
       followZoom={16} ariaLabel="Mapa Google com deslocamento da corrida"
       className={immersive?"h-full w-full":"h-64 w-full rounded-2xl"} />;
   if(immersive) return <section aria-label="Mapa operacional da Corrida Rápida"
