@@ -90,7 +90,7 @@ export function ProfessionalAvailabilityPage() {
   },[discardWatch,clearTest,record]);
 
   const onFix=useCallback(async(position:GeolocationPosition)=>{
-    if(!tracking.current || sending.current || Date.now()-lastAttempt.current<25000)return;
+    if(!tracking.current)return;
     record("GPS_FIX_RECEIVED",{accuracy:f07RadarAccuracyBand(position.coords.accuracy)});
     if(userId && window.localStorage.getItem(professionalRadarConsentKey(userId))!=="yes"){
       record("CONSENT_REVOKED",{},"warn");
@@ -105,13 +105,33 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError("Sinal GPS com precisão insuficiente.");
       return;
     }
-    if(mounted.current){setObservedFix({lat:latitude,lng:longitude,at:new Date(),simulated:false});setAccuracyWarning(accuracy>100);}
+    const sampledAtMs=position.timestamp;
+    if(!Number.isFinite(sampledAtMs)||sampledAtMs>Date.now()+5000||
+        Date.now()-sampledAtMs>25000){
+      record("GPS_FIX_REJECTED",{code:"GPS_STALE_SAMPLE"},"warn");
+      if(mounted.current)setError("A localização recebida está antiga. Buscando um sinal GPS atualizado.");
+      return;
+    }
+    if(mounted.current){
+      setObservedFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false});
+      setAccuracyWarning(accuracy>100);
+    }
+    // The dispatch SQL enforces <=150 m. Never send 5 km coarse fixes and
+    // label them as online; keep listening for a better real sensor reading.
+    if(accuracy>150){
+      record("GPS_FIX_REJECTED",{code:"GPS_LOW_ACCURACY",accuracy:f07RadarAccuracyBand(accuracy)},"warn");
+      if(mounted.current)setError(
+        "GPS localizado, mas ainda impreciso (aprox. "+Math.round(accuracy)+
+        " m). Ative a localização precisa e aproxime-se de uma janela ou área aberta.");
+      return;
+    }
+    if(sending.current||Date.now()-lastAttempt.current<25000)return;
     sending.current=true;
     lastAttempt.current=Date.now();
     const ref=f07RadarTraceId();
     record("SERVER_PUBLISH_REQUEST",{ref,accuracy:f07RadarAccuracyBand(accuracy)});
     try{
-      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy,traceId:ref}});
+      const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy,sampledAtMs,traceId:ref}});
       if(!tracking.current){
         // Route switch is not withdrawal of consent. Do not let a late
         // server response erase an active watch started on the next page.
@@ -130,7 +150,9 @@ export function ProfessionalAvailabilityPage() {
       }else{
         record("SERVER_PUBLISH_NOT_PUBLISHED",{ref:result.traceId??ref,code:result.reason,city:result.municipality??undefined},"warn");
         if(mounted.current){
-          setFix(null);
+          // Temporary lookup failures do not revoke the last consented fix.
+          // A previously published position still expires after 90 seconds.
+          if(result.reason==="OUTSIDE_APPROVED_ZONE")setFix(null);
           if(result.reason==="LOCATION_UNKNOWN" || result.reason==="GOOGLE_QUOTA_LIMITED")
             lastAttempt.current=Date.now()+35000; // 60s total before retrying upstream geocoding
           setError(result.reason==="OUTSIDE_APPROVED_ZONE"
@@ -171,7 +193,7 @@ export function ProfessionalAvailabilityPage() {
     }catch(e){
       record("SIMULATED_PREVIEW_FAILED",{code:f07RadarFailureCode(e)},"warn");
       if(mounted.current)setError(
-        e instanceof Error?e.message:"Não foi possível criar a prévia simulada.");
+        "Não foi possível criar a prévia simulada.");
     }finally{simulating.current=false;}
   },[pilotEnabled,simulateTest,record]);
 
@@ -200,7 +222,7 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError(reason.code===1
         ? "Permissão GPS negada. Ative a localização nas configurações do navegador."
         : "Sinal GPS temporariamente indisponível. Continuaremos tentando automaticamente.");
-      if(reason.code===1)void simulationFallback(city,vehicle,reason.message);
+      if(reason.code===1)void simulationFallback(city,vehicle,"Ative a permissão nas configurações de localização do navegador.");
     };
     try{
       // First fix immediately after the same click; the watch provides updates.
@@ -504,7 +526,7 @@ export function ProfessionalAvailabilityPage() {
     </section>
     {error && <div role="alert" className="professional-cockpit__banner">
       <AlertTriangle size={15} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
-      <span className="text-white/90">{enabled ? "Buscando sinal de GPS... Confira sua localização nas configurações." : "Disponibilidade indisponível. Consulte os detalhes."}</span>
+      <span className="text-white/90">{error}</span>
     </div>}
     {accuracyWarning && enabled && <div role="status" className="professional-cockpit__banner">
       <AlertTriangle size={15} className="shrink-0 text-amber-300" aria-hidden="true"/>
