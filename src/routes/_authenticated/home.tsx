@@ -517,7 +517,7 @@ function Home(){
             gpsError={location.failure?locationFailureMessages[location.failure]:
               originSource==="CURRENT_LOCATION"&&!validPoint(originLocation)&&
               location.addressPosition?.accuracy!=null&&location.addressPosition.accuracy>300
-                ?"GPS aproximado (±"+Math.round(location.addressPosition.accuracy)+
+                ?"GPS aproximado (±"+Math.round(location.addressPosition?.accuracy??0)+
                   " m). Toque em escolher embarque no mapa ou ative a localização precisa.":undefined}
             onRetryGps={requestNewPickupLocation}
             originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
