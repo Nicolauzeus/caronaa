@@ -37,13 +37,17 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
     expect(sql).not.toContain("sampled_at=now,");
   });
 
-  it("keeps coarse fixes publishable without bypassing server municipality checks",async()=>{
+  it("rejects coarse GPS publication while preserving visible diagnostics",async()=>{
     const { professionalRadarPointSchema } = await import("./professional-radar-geo");
+    const sampledAtMs=Date.now();
     expect(professionalRadarPointSchema.safeParse({
-      lat:-4.2,lng:-38.7,accuracyM:1500,traceId:"coarse01",
+      lat:-4.2,lng:-38.7,accuracyM:45,sampledAtMs,traceId:"good01",
     }).success).toBe(true);
     expect(professionalRadarPointSchema.safeParse({
-      lat:-4.2,lng:-38.7,accuracyM:6000,traceId:"invalid01",
+      lat:-4.2,lng:-38.7,accuracyM:1500,sampledAtMs,traceId:"coarse01",
+    }).success).toBe(false);
+    expect(professionalRadarPointSchema.safeParse({
+      lat:-4.2,lng:-38.7,accuracyM:6000,sampledAtMs,traceId:"invalid01",
     }).success).toBe(false);
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
