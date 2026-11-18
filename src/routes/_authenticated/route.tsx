@@ -57,14 +57,19 @@ export const Route = createFileRoute("/_authenticated")({
     // passenger/shared-ride app. F07 dispatch authorization stays separate.
     // Passenger app and other routes keep the normal research/onboarding
     // gates. These pilot exceptions do NOT grant access to passenger Home.
-    if (onboarding?.status !== "BASIC_COMPLETED") {
+    const vehicleRegistration = location.pathname === "/cadastro-veiculo";
+    // Driver-intent users may finish their vehicle inside the authenticated
+    // app without being incorrectly marked BASIC_COMPLETED first.
+    if (onboarding?.status !== "BASIC_COMPLETED" &&
+        !(vehicleRegistration && data.user.email_confirmed_at &&
+          onboarding?.usage_role === "MOTORISTA")) {
       throw redirect({ to: "/onboarding", replace: true });
     }
     const launch = await getMyResearchLaunchState();
     // New campaign participants may personalize their account before launch.
     // All other app routes remain restricted, backed by the database ride guards.
     const accessibleWhileWaiting = location.pathname === "/aguardando" ||
-      location.pathname === "/perfil";
+      location.pathname === "/perfil" || vehicleRegistration;
     if (launch.locked && !accessibleWhileWaiting && !approvedProfessional) {
       throw redirect({ to: "/aguardando", replace: true });
     }
