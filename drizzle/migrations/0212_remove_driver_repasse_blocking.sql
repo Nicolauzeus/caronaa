@@ -130,44 +130,36 @@ BEGIN
   );
 END $legacy$;
 
--- Admin financial overview keeps counts and amounts, but the legacy
--- blocked JSON field must never imply that pending dues suspend mobility.
-CREATE OR REPLACE FUNCTION public.get_admin_driver_debts_overview()
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $
-DECLARE r jsonb;
+-- Preserve the currently deployed admin finance RPC (it may already
+-- unify SHARED and QUICK obligations). Rewrite only its legacy "blocked"
+-- presentation field, without replacing reports with an older definition.
+DO $admin_debt_status$
+DECLARE
+  v_definition text;
+  v_rewritten text;
 BEGIN
- IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
-  RAISE EXCEPTION 'Not authorized' USING ERRCODE='42501';
- END IF;
- SELECT coalesce(jsonb_agg(d ORDER BY (d->>'pendingCount')::int DESC, (d->>'pendingAmount')::numeric DESC),'[]'::jsonb) INTO r
- FROM (
-  SELECT jsonb_build_object(
-   'driverId', f.driver_id,
-   'name', coalesce(p.full_name,'Sem nome'),
-   'email', u.email,
-   'vehicle', nullif(trim(concat_ws(' ', p.vehicle_brand, p.vehicle_description)),''),
-   'plate', p.vehicle_plate,
-   'pendingCount', count(*),
-   'openCount', count(*) FILTER (WHERE f.status='OPEN'),
-   'claimedCount', count(*) FILTER (WHERE f.status='CLAIMED'),
-   'pendingAmount', coalesce(sum(f.fee_amount),0),
-   'blocked', false,
-   'oldestAt', min(f.created_at),
-   'items', jsonb_agg(jsonb_build_object('rideId',f.ride_id,'status',f.status,'gross',f.gross_amount,'fee',f.fee_amount,'createdAt',f.created_at,'claimReference',f.claim_reference) ORDER BY f.created_at)
-  ) d
-  FROM public.driver_platform_fees f
-  LEFT JOIN public.profiles p ON p.id=f.driver_id
-  LEFT JOIN auth.users u ON u.id=f.driver_id
-  WHERE f.status <> 'SETTLED'
-  GROUP BY f.driver_id, p.full_name, u.email, p.vehicle_brand, p.vehicle_description, p.vehicle_plate
- ) s;
- RETURN r;
-END $;
-
-REVOKE ALL ON FUNCTION public.get_admin_driver_debts_overview()
-  FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.get_admin_driver_debts_overview()
-  TO authenticated;
+  SELECT pg_get_functiondef('public.get_admin_driver_debts_overview()'::regprocedure)
+    INTO v_definition;
+  IF v_definition IS NULL THEN
+    RAISE EXCEPTION 'Admin debt RPC is missing. Preserve finance until it is installed.';
+  END IF;
+  v_rewritten:=regexp_replace(
+    v_definition,
+    '''blocked''[[:space:]]*,[[:space:]]*count\\(\\*\\)[[:space:]]*>=[[:space:]]*3',
+    '''blocked'',false',
+    'g'
+  );
+  IF v_rewritten=v_definition THEN
+    -- Already migrated environments can run this safely again.
+    IF position('''blocked'',false' IN
+      regexp_replace(v_definition,'[[:space:]]','','g'))=0 THEN
+      RAISE EXCEPTION 'Admin debt blocked expression is unfamiliar; refusing to replace the current report';
+    END IF;
+  ELSE
+    EXECUTE v_rewritten;
+  END IF;
+END
+$admin_debt_status$;
 
 COMMENT ON FUNCTION public.driver_platform_access_allowed(uuid) IS
   'Unpaid commissions never prevent mobility; non-NULL identity is the only test. Professional authorization and GPS checks remain separate.';
