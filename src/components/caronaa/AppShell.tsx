@@ -1,9 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowUpRight,
-  CarFront,
-  House,
-  CalendarClock,
+    CalendarClock,
   LogIn,
   LogOut,
   Menu,
@@ -26,6 +24,7 @@ import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
+import { authenticatedNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
 
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
@@ -36,13 +35,6 @@ const professionalNav = [
   { to: "/disponibilidade-profissional" as const, label: "Painel", icon: LayoutDashboard },
   { to: "/viagens-profissionais" as const, label: "Viagens", icon: CalendarClock },
   { to: "/perfil" as const, label: "Conta", icon: UserRound },
-];
-
-const authenticatedNav = [
-  { to: "/home" as const, label: "Início", icon: House },
-  { to: "/home" as const, label: "Oferecer", icon: CarFront },
-  { to: "/minhas-caronas" as const, label: "Viagens", icon: CalendarClock },
-  { to: "/perfil" as const, label: "Perfil", icon: UserRound },
 ];
 
 export function Brand({ light = false }: { light?: boolean }) {
@@ -72,11 +64,7 @@ export function AppShell({
   const [professionalOnly, setProfessionalOnly] = useState<boolean | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeIntent = useRouterState({ select: (state) => (state.location.search as {intent?:string}).intent });
-  const selectedNav = (to:string,label:string) => label==="Oferecer"
-    ? (pathname==="/home" && activeIntent==="offer") || pathname==="/oferecer"
-    : label==="Início" ? pathname==="/home" && activeIntent!=="offer"
-    : label==="Viagens" ? pathname==="/minhas-caronas" || pathname.startsWith("/viagem/")
-    : pathname===to || pathname.startsWith(`${to}/`);
+  const selectedNav = (to: string, label: string) => isAppNavSelected(pathname, activeIntent, to, label);
   const { user, loading } = useAuth();
   useEffect(() => {
     let live = true;
