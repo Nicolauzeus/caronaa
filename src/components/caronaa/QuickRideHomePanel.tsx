@@ -13,8 +13,6 @@ import {
   submitQuotedQuickRide, type QuickRideCoverage, type QuickRideFarePreview,
 } from "@/lib/quick-rides/quick-ride.functions";
 import { formatBrl } from "@/lib/ride-cost";
-import { QuickRidePixCard } from "./QuickRidePixCard";
-import { QuickRideRatingModal } from "./QuickRideRatingModal";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { toast } from "sonner";
 
@@ -82,10 +80,6 @@ export function QuickRideHomePanel({
   const [boardingCode,setBoardingCode]=useState("");
   const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
-  const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
-  const [ratingOpen,setRatingOpen]=useState<string|null>(null);
-  const [timeoutCompletedId,setTimeoutCompletedId]=useState<string|null>(null);
-  const [completedHidden,setCompletedHidden]=useState<string|null>(null);
   const [expiredHidden,setExpiredHidden]=useState<string|null>(null);
   const [rideRefreshError,setRideRefreshError]=useState(false);
   const mounted=useRef(true);
@@ -119,35 +113,40 @@ export function QuickRideHomePanel({
     onFarePendingChange?.(waitingForOrigin||coverageLoading||quoteLoading||
       Boolean(hasOrigin&&hasDestination&&!error&&coverageResolvedKey!==coveragePointKey));
   },[waitingForOrigin,coverageLoading,quoteLoading,hasOrigin,hasDestination,error,coverageResolvedKey,coveragePointKey,onFarePendingChange]);
-  const liveRide=rides.find(r=>r.role==="PASSENGER"&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status));
+  // A search that exceeded its server-issued deadline is no longer active in
+  // the UI, even if a delayed RPC returns the old SEARCHING status.
+  // The database remains authoritative for acceptance and new requests.
+  const searchExpired=(r:ExistingQuickRide)=>r.status==="SEARCHING"&&
+    typeof r.expires_at==="string"&&Number.isFinite(Date.parse(r.expires_at))&&
+    Date.parse(r.expires_at)<=nowMs;
+  const liveRide=rides.find(r=>r.role==="PASSENGER"&&(
+    ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status)||
+    (r.status==="SEARCHING"&&!searchExpired(r))));
   const completedRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="COMPLETED");
-  const expiredRide=rides.find(r=>r.role==="PASSENGER"&&r.status==="EXPIRED");
+  const expiredRide=rides.find(r=>r.role==="PASSENGER"&&(r.status==="EXPIRED"||searchExpired(r)));
   const shownExpiredRide=expiredRide?.id!==expiredHidden?expiredRide:null;
   const searchSecondsLeft=liveRide?.status==="SEARCHING"&&liveRide.expires_at
     ?Math.max(0,Math.ceil((Date.parse(liveRide.expires_at)-nowMs)/1000)):null;
   const searchDeadlinePassed=searchSecondsLeft===0;
-  const lastNotifiedCompleted=useRef<string|null>(null);
+  const previouslyActiveRide=useRef<string|null>(null);
   useEffect(()=>{
-    if(!completedRide||lastNotifiedCompleted.current===completedRide.id)return;
-    lastNotifiedCompleted.current=completedRide.id;
-    // In-app notice; the post-ride card remains the actionable payment surface.
-    toast.info("Corrida concluída. Confira o QR Pix e realize o pagamento ao motorista.",{duration:10000});
-  },[completedRide?.id]);
-
+    if(liveRide){previouslyActiveRide.current=liveRide.id;return;}
+    // One non-blocking notice for the actual transition to COMPLETED.
+    // Old completed trips must not hijack the Home on every reload.
+    if(completedRide&&previouslyActiveRide.current===completedRide.id){
+      previouslyActiveRide.current=null;
+      toast.success("Corrida concluída. O Pix e a avaliação ficam em Minhas viagens.",{duration:7000});
+      setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
+    }
+  },[liveRide?.id,completedRide?.id]);
 
   useEffect(()=>{
     onOperationalRideChange?.(liveRide&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)
       ?{id:liveRide.id,status:liveRide.status,municipality:liveRide.municipality}:null);
   },[liveRide?.id,liveRide?.status,liveRide?.municipality,onOperationalRideChange]);
   useEffect(()=>()=>onOperationalRideChange?.(null),[onOperationalRideChange]);
-  const shownCompletedRide=completedRide?.id!==completedHidden?completedRide:null;
-  useEffect(()=>{onRidePhaseChange?.(liveRide?.status??(shownCompletedRide?"COMPLETED":null));},[liveRide?.id,liveRide?.status,shownCompletedRide?.id,onRidePhaseChange]);
-  useEffect(()=>{
-    if(!completedRide)return;
-    try{
-      if(window.localStorage.getItem(`caronaa-completed-dismissed:${completedRide.id}`)==="1")setCompletedHidden(completedRide.id);
-    }catch{ /* in-memory dismissal remains available */ }
-  },[completedRide?.id]);
+
+  useEffect(()=>{onRidePhaseChange?.(liveRide?.status??null);},[liveRide?.id,liveRide?.status,onRidePhaseChange]);
   useEffect(()=>{
     if(!expiredRide)return;
     try{
@@ -161,17 +160,6 @@ export function QuickRideHomePanel({
     setExpiredHidden(expiredRide.id);
     setError("");
     setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);
-  }
-  function releaseCompletedRide(){
-    if(!completedRide)return;
-    try{
-      window.localStorage.setItem(`caronaa-completed-dismissed:${completedRide.id}`,"1");
-      window.localStorage.setItem(`caronaa-rating-dismissed:${completedRide.id}`,"1");
-    }catch{ /* in-memory dismissal remains available */ }
-    console.info("[CARONAA][F07][POST_TRIP] COMPLETED_RIDE_DISMISSED",{rideIdPrefix:completedRide.id.slice(0,8)});
-    setCompletedHidden(completedRide.id);setRatingDismissed(completedRide.id);
-    quickQuoteCoordinator.forget();
-    setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(v=>v+1);
   }
   useEffect(()=>{if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))setBoardingCode("");},[liveRide?.id,liveRide?.status]);
   useEffect(()=>{
@@ -197,7 +185,7 @@ export function QuickRideHomePanel({
       .then(async({data,error:rpcError}:{data:any;error:any})=>{
         if(!alive||rpcError||data!==true)return;
         const {data:ridesData}=await (supabase as any).rpc("quick_ride_my_requests");
-        if(alive&&mounted.current){setTimeoutCompletedId(liveRide.id);setRides(Array.isArray(ridesData)?ridesData:[]);}
+        if(alive&&mounted.current){setRides(Array.isArray(ridesData)?ridesData:[]);}
       });
     return()=>{alive=false;};
   },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
@@ -465,7 +453,7 @@ export function QuickRideHomePanel({
         {driverCounts&&<p className="mt-1 text-xs text-gray-300">🚗 {driverCounts.CAR} carro(s) · 🏍️ {driverCounts.MOTO} moto(s) no radar</p>}
         <p className="mt-1 text-[11px] text-gray-400">Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.</p>
       </div>}
-      {!liveRide&&!shownCompletedRide&&(shellMode
+      {!liveRide&&(shellMode
         ?(actionContainer?createPortal(requestControls,actionContainer):requestControls)
         :!currentQuote?requestControls:null)}
       {!hasOrigin&&!waitingForOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
@@ -536,19 +524,6 @@ export function QuickRideHomePanel({
           {!shellMode&&requestControls}
         </div>}
       </>}
-      {!liveRide&&completedRide&&shownCompletedRide&&<div className="space-y-3">
-        <section role="status" className="space-y-2 rounded-2xl border border-emerald-400/35 bg-emerald-400/10 p-4">
-          <h2 className="font-[Sora] text-lg font-bold text-white">{timeoutCompletedId===completedRide.id?"Corrida concluída após o prazo de confirmação":"Desembarque confirmado · Corrida concluída"}</h2>
-          <p className="text-xs text-white/80">Resumo financeiro e meio de pagamento abaixo. Você pode avaliar depois.</p>
-          {typeof completedRide.distance_km==="number"&&<p className="text-sm">Distância: {completedRide.distance_km.toFixed(1)} km</p>}
-          {typeof completedRide.duration_minutes==="number"&&<p className="text-sm">Tempo estimado: {Math.round(completedRide.duration_minutes)} min</p>}
-          {typeof completedRide.fare_cents==="number"&&<p className="font-[Sora] text-xl font-black text-[#FFBB00]">Valor contratado: {formatBrl(completedRide.fare_cents/100)}</p>}
-        </section>
-        <QuickRidePixCard rideId={completedRide.id}/>
-        <button type="button" onClick={()=>setRatingOpen(completedRide.id)} className="min-h-12 w-full rounded-xl border border-[#FFBB00]/40 px-4 text-sm font-semibold text-[#FFBB00]">Avaliar viagem (opcional)</button>
-        <button type="button" onClick={releaseCompletedRide} className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Nova corrida</button>
-        {ratingOpen===completedRide.id&&<QuickRideRatingModal rideId={completedRide.id} subject="motorista" forceOpen onClose={()=>setRatingOpen(null)}/>}
-      </div>}
       {error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
       {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">{retryLabel}</Button>}
     </section>
