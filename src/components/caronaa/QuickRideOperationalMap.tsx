@@ -4,11 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { getQuickRideApproach, getQuickRideMapContext } from "@/lib/quick-ride-map.functions";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { GoogleMapSurface } from "./GoogleMapSurface";
+import {
+  driverNavigationPhase, validNavigationPoint, needsDriverReroute,
+  type NavigationPhase,
+} from "@/lib/quick-rides/driver-navigation";
 
 type Route = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
 type Point={lat:number;lng:number};
 type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null;status:string};
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
+type LocalDriverFix=Point&{sampledAtMs:number;accuracyM:number;heading?:number|null};
+type DriverRouteState={phase:NavigationPhase;start:Point;at:number;result:Route};
 
 // One protected route calculation per ride/target while a trip is active.
 // Prevent duplicate Google Routes calls if React/Safari remounts a map panel.
@@ -32,12 +38,14 @@ function cachedTripRoute(key:string,load:()=>Promise<Route>):Promise<Route>{
 }
 
 export function QuickRideOperationalMap({
-  rideId, status, role, immersive=false, vehicleType,
+  rideId, status, role, immersive=false, vehicleType, liveDriverFix=null,
 }: {
   rideId:string;
   municipality?:string;
   immersive?:boolean;
   vehicleType?:"CAR"|"MOTO";
+  /** Local browser GPS for smooth visual tracking. Never used for dispatch approval. */
+  liveDriverFix?:LocalDriverFix|null;
   status:string;
   role:"DRIVER"|"PASSENGER";
 }) {
@@ -51,6 +59,9 @@ export function QuickRideOperationalMap({
   const [context,setContext]=useState<Context|null>(null);
   const [approach,setApproach]=useState<Route|null>(null);
   const [route,setRoute]=useState<Route|null>(null);
+  const [driverRoute,setDriverRoute]=useState<DriverRouteState|null>(null);
+  const lastDriverRouteAttempt=useRef<{phase:NavigationPhase;at:number}|null>(null);
+  const [routeTick,setRouteTick]=useState(0);
   const [details,setDetails]=useState<DriverDetails|null>(null);
   const [error,setError]=useState("");
   const mounted=useRef(true);
@@ -93,10 +104,18 @@ export function QuickRideOperationalMap({
   },[rideId]);
   useEffect(()=>{
     void reload();
-    // Reading GPS from the own authorized backend is not a Google Routes request.
-    const timer=window.setInterval(()=>{if(!document.hidden)void reload();},15000);
-    return()=>window.clearInterval(timer);
-  },[reload]);
+    // Local GPS moves the driver's camera; authorized server context keeps
+    // passenger map, ride stage, and backend data reconciled in the background.
+    const timer=window.setInterval(()=>{if(!document.hidden)void reload();},role==="DRIVER"?10000:15000);
+    const foreground=()=>{if(!document.hidden)void reload();};
+    window.addEventListener("focus",foreground);
+    document.addEventListener("visibilitychange",foreground);
+    return()=>{
+      window.clearInterval(timer);
+      window.removeEventListener("focus",foreground);
+      document.removeEventListener("visibilitychange",foreground);
+    };
+  },[reload,role]);
 
   useEffect(()=>{
     if(!rideId || role!=="PASSENGER")return;
@@ -110,10 +129,35 @@ export function QuickRideOperationalMap({
 
   const origin=context?.origin;
   const destination=context?.destination;
-  const statusNow=context?.status??status;
+  // The driver queue receives its stage from the authenticated RPC. Show
+  // the new leg promptly after the OTP succeeds, even during map poll latency.
+  const statusNow=role==="DRIVER"&&["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)
+    ?status:context?.status??status;
   const isMoto = (vehicleType ?? details?.vehicleType)?.toUpperCase() === "MOTO";
+  const localFixFresh=role==="DRIVER"&&liveDriverFix&&
+    validNavigationPoint(liveDriverFix)&&Number.isFinite(liveDriverFix.accuracyM)&&
+    liveDriverFix.accuracyM<=150&&Number.isFinite(liveDriverFix.sampledAtMs)&&
+    Date.now()-liveDriverFix.sampledAtMs>=0&&Date.now()-liveDriverFix.sampledAtMs<20000;
+  const serverFixFresh=context?.driver&&!showingLastFix&&
+    Number.isFinite(Date.parse(context.driver.seenAt))&&
+    Math.abs(Date.now()-Date.parse(context.driver.seenAt))<45000;
+  const driverPoint:Point|null=localFixFresh&&liveDriverFix
+    ?{lat:liveDriverFix.lat,lng:liveDriverFix.lng}:
+    serverFixFresh&&context?.driver
+      ?{lat:context.driver.lat,lng:context.driver.lng}:null;
+  const visibleDriver=role==="DRIVER"?(driverPoint??context?.driver??null):context?.driver??null;
+  const driverPhase=role==="DRIVER"?driverNavigationPhase(statusNow):null;
+  const navigationTarget=driverPhase==="PICKUP"?origin:
+    driverPhase==="DROPOFF"?destination:null;
+  const driverPhaseRef=useRef<NavigationPhase|null>(null);
+  driverPhaseRef.current=driverPhase;
+  const currentDriverRoute=driverRoute?.phase===driverPhase?driverRoute.result:null;
+  const mapsNavigationUrl=navigationTarget&&validNavigationPoint(navigationTarget)
+    ?"https://www.google.com/maps/dir/?api=1&destination="+
+      encodeURIComponent(navigationTarget.lat+","+navigationTarget.lng)+
+      "&travelmode=driving&dir_action=navigate":null;
   useEffect(()=>{
-    if(!origin||!destination||!["ACCEPTED","ARRIVED"].includes(statusNow)){
+    if(role==="DRIVER"||!origin||!destination||!["ACCEPTED","ARRIVED"].includes(statusNow)){
       setApproach(null);return;
     }
     let active=true;
@@ -124,10 +168,10 @@ export function QuickRideOperationalMap({
     // ETA is recomputed no more than once per minute; GPS animation remains independent.
     const timer=window.setInterval(read,60000);
     return()=>{active=false;window.clearInterval(timer);};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng]);
+  },[rideId,statusNow,role,origin?.lat,origin?.lng,destination?.lat,destination?.lng]);
 
   useEffect(()=>{
-    if(!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
+    if(role==="DRIVER"||!origin||!destination||statusNow!=="IN_PROGRESS"){setRoute(null);return;}
     if(!context?.driver || showingLastFix)return;
     let active=true;
     // Snapshot the authorized driver's position when the in-progress route starts.
@@ -140,33 +184,91 @@ export function QuickRideOperationalMap({
     })).then(result=>{if(active)setRoute(result);})
       .catch(()=>{if(active)setError("Não foi possível calcular a rota ao destino.");});
     return()=>{active=false;};
-  },[rideId,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver),showingLastFix]);
+  },[rideId,role,statusNow,origin?.lat,origin?.lng,destination?.lat,destination?.lng,Boolean(context?.driver),showingLastFix]);
+
+  useEffect(()=>{
+    if(role!=="DRIVER"||!driverPhase)return;
+    // GPS may update every second, but deciding whether to request another
+    // Google route is bounded by distance from the last calculated road path.
+    const timer=window.setInterval(()=>setRouteTick(v=>v+1),20000);
+    return()=>window.clearInterval(timer);
+  },[role,driverPhase,rideId]);
+
+  useEffect(()=>{
+    if(role!=="DRIVER"||!driverPhase||!driverPoint||!navigationTarget||
+      !validNavigationPoint(driverPoint)||!validNavigationPoint(navigationTarget))return;
+    const previous=driverRoute?.phase===driverPhase?driverRoute:null;
+    const now=Date.now();
+    if(previous){
+      if(statusNow==="ARRIVED"&&driverPhase==="PICKUP")return;
+      if(!needsDriverReroute({
+        current:driverPoint,start:previous.start,
+        path:previous.result.routePath,elapsedMs:now-previous.at,
+      }))return;
+    }
+    // A failed route or a fast series of GPS samples cannot exhaust Google.
+    if(lastDriverRouteAttempt.current?.phase===driverPhase&&
+       now-lastDriverRouteAttempt.current.at<60000)return;
+    lastDriverRouteAttempt.current={phase:driverPhase,at:now};
+    const from={lat:driverPoint.lat,lng:driverPoint.lng};
+    const target={lat:navigationTarget.lat,lng:navigationTarget.lng};
+    const requestKey=[rideId,driverPhase,from.lat.toFixed(4),from.lng.toFixed(4),
+      target.lat.toFixed(5),target.lng.toFixed(5),Math.floor(now/180000)].join(":");
+    void cachedTripRoute(requestKey,()=>readRouteRef.current({
+      data:{points:[from,target]},
+    })).then(result=>{
+      if(!mounted.current||driverPhaseRef.current!==driverPhase)return;
+      setDriverRoute({phase:driverPhase,start:from,at:Date.now(),result});
+      setError("");
+    }).catch(()=>{
+      if(mounted.current&&driverPhaseRef.current===driverPhase)
+        setError("A rota do Google está indisponível. Você pode abrir a navegação no Google Maps.");
+    });
+  },[rideId,role,driverPhase,statusNow,driverPoint?.lat,driverPoint?.lng,
+     navigationTarget?.lat,navigationTarget?.lng,routeTick,driverRoute?.at]);
 
   const rideMap = origin&&destination&&<GoogleMapSurface
       points={[
         ...(statusNow==="IN_PROGRESS"?[]:[{id:"ride-pickup",lat:origin.lat,lng:origin.lng,title:"Ponto de Embarque",kind:"meeting" as const}]),
         ...((statusNow==="IN_PROGRESS")?[{id:"ride-destination",lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
-        ...(context?.driver?[{id:"assigned-professional",lat:context.driver.lat,lng:context.driver.lng,
-          title:showingLastFix?"Última posição recebida · buscando GPS atualizado":
+        ...(visibleDriver?[{id:"assigned-professional",lat:visibleDriver.lat,lng:visibleDriver.lng,
+          title:driverPoint&&role==="DRIVER"?"GPS do motorista em movimento":
+            showingLastFix?"Última posição conhecida (não ao vivo)":
             isMoto?"Mototaxista":"Motorista",
           kind:isMoto?("availableMoto" as const):("driver" as const)}]:[]),
       ]}
-      lines={statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
+      lines={driverPhase?(currentDriverRoute?[{points:currentDriverRoute.routePath,
+        color:driverPhase==="PICKUP"?"#2563eb":"#FFBB00"}]:[]):
+        statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
-      fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}`}
-      smoothTracking showControls={immersive} gestureHandling={immersive?"greedy":"cooperative"} ariaLabel="Mapa Google com deslocamento da corrida"
+      fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}:${Boolean(currentDriverRoute)}`}
+      smoothTracking showControls={immersive} gestureHandling={immersive?"greedy":"cooperative"}
+      followPoint={driverPhase?driverPoint:null} followKey={driverPhase?`${rideId}:${driverPhase}`:undefined}
+      followZoom={16} ariaLabel="Mapa Google com deslocamento da corrida"
       className={immersive?"h-full w-full":"h-64 w-full rounded-2xl"} />;
   if(immersive) return <section aria-label="Mapa operacional da Corrida Rápida"
     className="relative h-full w-full overflow-hidden bg-[#121212]">
     <div className="absolute inset-0">{rideMap}</div>
     <div className="pointer-events-none absolute left-3 right-3 top-20 z-10 max-w-sm space-y-1 rounded-2xl border border-[#FFBB00]/50 bg-[#121212]/90 p-3 text-sm text-white shadow-xl">
-      <p className="font-bold text-[#FFBB00]">{statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
+      <p className="font-bold text-[#FFBB00]" aria-live="polite">{driverPhase==="PICKUP"
+        ?statusNow==="ARRIVED"?"No embarque · aguarde o código":"Navegando até o passageiro"
+        :driverPhase==="DROPOFF"?"Navegando até o destino":
+          statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
       {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
-      {showingLastFix&&<p role="status" className="text-xs text-amber-200">
+      {driverPhase&&currentDriverRoute&&<p className="font-semibold">
+        {currentDriverRoute.distanceKm.toFixed(1)} km · cerca de {Math.max(1,Math.round(currentDriverRoute.durationMinutes))} min
+      </p>}
+      {driverPhase&&!currentDriverRoute&&!error&&<p className="text-xs text-white/75">Calculando rota rodoviária…</p>}
+      {driverPhase&&!driverPoint&&<p role="status" className="text-xs text-amber-200">Sem GPS recente. Confira a permissão de localização.</p>}
+      {!driverPhase&&showingLastFix&&<p role="status" className="text-xs text-amber-200">
         GPS do motorista em atualização · última posição conhecida (não ao vivo).
       </p>}
-      {approach&&statusNow!=="IN_PROGRESS"&&<p>{approach.distanceKm.toFixed(1)} km · {Math.max(1,Math.round(approach.durationMinutes))} min para embarque</p>}
-      {error&&<p role="alert" className="text-red-300">{error}</p>}
+      {!driverPhase&&approach&&statusNow!=="IN_PROGRESS"&&<p>{approach.distanceKm.toFixed(1)} km · {Math.max(1,Math.round(approach.durationMinutes))} min para embarque</p>}
+      {driverPhase&&mapsNavigationUrl&&<a href={mapsNavigationUrl} target="_blank" rel="noopener noreferrer"
+        className="pointer-events-auto inline-flex min-h-10 items-center rounded-xl border border-[#FFBB00]/60 bg-[#FFBB00]/15 px-3 text-xs font-bold text-[#FFBB00]">
+        Abrir orientação por voz no Google Maps
+      </a>}
+      {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
     </div>
   </section>;
   return <section className="space-y-3 rounded-2xl border border-[#FFBB00]/30 bg-[#121212] p-3 text-white"
