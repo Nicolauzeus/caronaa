@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 type Dispute = {
  ride_id:string; municipality:string; vehicle_type:string; status:string;
  requested_at:string; passenger_name:string; driver_name:string;
- origin_label:string; destination_label:string; passenger_response:string;
+ origin_label:string; destination_label:string; passenger_response:string|null;
+ completion_request_method?:string|null;driver_review_reason?:string|null;
+ finish_distance_m?:number|null;finish_accuracy_m?:number|null;
  admin_decision:string|null; admin_reason:string|null;
  admin_resolved_at:string|null; admin_resolved_by:string|null; audit_at:string|null;
 };
@@ -26,7 +28,8 @@ export function QuickRideDisputesAdmin() {
   setLoading(false);
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
- const pending=items.filter(item=>item.status==="IN_PROGRESS"&&!item.admin_decision);
+ const pending=items.filter(item=>(item.status==="PENDING_REVIEW"||
+   item.status==="IN_PROGRESS"&&item.passenger_response==="CONTESTED")&&!item.admin_decision);
  const visible=filter==="pending"?pending:items;
  async function decide(ride:Dispute,decision:"COMPLETE"|"CANCEL"){
   const reason=(reasons[ride.ride_id]||"").trim();
@@ -41,9 +44,9 @@ export function QuickRideDisputesAdmin() {
   else {setNotice("Decisão registrada com auditoria.");setReasons(prev=>({...prev,[ride.ride_id]:""}));}
   await refresh();setBusy(null);
  }
- return <section className="space-y-4 rounded-xl border bg-card p-4" aria-label="Contestações de desembarque">
+ return <section className="space-y-4 rounded-xl border bg-card p-4" aria-label="Revisões de encerramento de corrida">
   <div className="flex flex-wrap items-center justify-between gap-3">
-   <div><h2 className="text-xl font-bold">Contestações de desembarque</h2>
+   <div><h2 className="text-xl font-bold">Revisões de encerramento</h2>
     <p className="text-sm text-muted-foreground">{pending.length} aguardando análise · decisões registradas no histórico.</p>
    </div>
    <Button type="button" variant="outline" onClick={()=>void refresh()} disabled={loading||busy!==null}>Atualizar</Button>
@@ -57,7 +60,7 @@ export function QuickRideDisputesAdmin() {
   {loading?<p className="text-sm text-muted-foreground">Carregando…</p>:
     visible.length===0?<p className="text-sm text-muted-foreground">Nenhuma contestação nesta visualização.</p>:
     <div className="space-y-3">{visible.map(ride=>{
-     const open=ride.status==="IN_PROGRESS"&&!ride.admin_decision;
+     const open=(ride.status==="PENDING_REVIEW"||ride.status==="IN_PROGRESS"&&ride.passenger_response==="CONTESTED")&&!ride.admin_decision;
      return <article key={ride.ride_id} className="space-y-3 rounded-xl border p-4">
       <div className="flex flex-wrap justify-between gap-2 text-sm">
        <strong>{ride.municipality} · {ride.vehicle_type==="MOTO"?"Moto":"Carro"}</strong>
@@ -67,6 +70,20 @@ export function QuickRideDisputesAdmin() {
       <p className="text-sm"><strong>Passageiro:</strong> {ride.passenger_name} · <strong>Motorista:</strong> {ride.driver_name}</p>
       <p className="text-sm"><strong>Embarque:</strong> {ride.origin_label}</p>
       <p className="text-sm"><strong>Destino:</strong> {ride.destination_label}</p>
+      <p role="status" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-2 text-sm">
+        <strong>Motivo da revisão:</strong> {ride.passenger_response==="CONTESTED"
+          ?"Desembarque contestado pelo passageiro"
+          :ride.completion_request_method==="MANUAL_REVIEW"
+            ?"Pedido manual do motorista (GPS sem verificação)"
+            :"Prazo de confirmação encerrado sem resposta do passageiro"}
+      </p>
+      {ride.driver_review_reason&&<p className="break-words text-sm">
+        <strong>Justificativa do motorista:</strong> {ride.driver_review_reason}
+      </p>}
+      {ride.finish_distance_m!=null&&<p className="text-xs text-muted-foreground">
+        GPS registrado no pedido de encerramento: {Math.round(ride.finish_distance_m)} m
+        do destino (precisão ±{Math.round(ride.finish_accuracy_m??0)} m).
+      </p>}
       {ride.admin_decision?<div className="space-y-1 rounded-lg bg-secondary/40 p-3 text-sm">
        <p><strong>Justificativa:</strong> {ride.admin_reason}</p>
        <p className="text-xs text-muted-foreground">Responsável: {ride.admin_resolved_by||"—"} · {ride.admin_resolved_at?new Date(ride.admin_resolved_at).toLocaleString("pt-BR"):"—"}</p>
