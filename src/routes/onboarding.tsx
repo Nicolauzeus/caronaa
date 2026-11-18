@@ -39,16 +39,17 @@ function OnboardingPage() {
       const saved = await saveOnboarding({ usage_role: selectedRole as UsageRole, current_step: "ROLE" });
       // Preserve launch-state error handling: a backend failure must not bypass campaign gates.
       await getMyResearchLaunchState();
-      await completeOnboarding(saved);
       sessionStorage.removeItem("caronaa:oauth-role-preference");
-      const destination = await resolvePostOnboardingDestination();
-      if (destination === "/home" && selectedRole === "MOTORISTA") {
-        // Basic account completion is NOT driver readiness. The vehicle/photo
-        // step must persist before the MOTORISTA role can become active.
+      if (selectedRole === "MOTORISTA") {
+        // Do not mark BASIC_COMPLETED until the driver has a verified photo,
+        // vehicle, color, plate and passenger seats. This completes the
+        // original onboarding rather than fabricating a ready driver profile.
         await navigate({ to: "/cadastro-veiculo",
           search: { redirect: professionalContinuation }, replace: true });
       } else {
-        await navigate({ to: afterUniversalOnboarding(destination, professionalContinuation), replace: true });
+        await completeOnboarding(saved);
+        await navigate({ to: afterUniversalOnboarding(await resolvePostOnboardingDestination(),
+          professionalContinuation), replace: true });
       }
     } catch (cause) {
       const text = cause instanceof Error ? cause.message : "Não foi possível concluir seu cadastro.";
