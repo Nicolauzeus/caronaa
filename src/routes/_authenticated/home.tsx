@@ -180,9 +180,18 @@ function Home(){
   },[]);
   const onPassengerRide=useCallback((ride:{id:string;status:string;municipality:string}|null)=>setPassengerRide(ride),[]);
   const onUrgentDropoff=useCallback((pending:boolean)=>{setUrgentDropoff(pending);if(pending){setTripsPanelOpen(false);setSheetSnap("full");}},[]);
+  const previousPassengerPhase=useRef<string|null>(null);
   const onPassengerPhase=useCallback((status:string|null)=>{
+    const wasActive=previousPassengerPhase.current!==null&&
+      ["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(previousPassengerPhase.current);
+    previousPassengerPhase.current=status;
     setPassengerPhase(status);
-    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(status)){setTripsPanelOpen(false);setSheetSnap("full");}
+    if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
+      setTripsPanelOpen(false);setSheetSnap("full");
+    }else if(wasActive&&!status){
+      // Once the server ends the ride, release the full-height live panel.
+      setTripsPanelOpen(false);setSheetSnap("peek");
+    }
   },[]);
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
@@ -342,7 +351,7 @@ function Home(){
   };
 
   const handleShellRoleSwitch=async(target:ActiveRole)=>{
-    if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
+    if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase)){
       toast.info("Cancele a solicitação Flash antes de alternar de papel.");setSheetSnap("full");return;
     }
     const check=await canSwitchCaronaaRole(driverFlashRide??passengerRide);
@@ -509,7 +518,7 @@ function Home(){
             onPublished={()=>setDriverTripsRefreshKey(value=>value+1)} onOpenTrips={showTrips}/>:
           <ShellJourneyPlanner snap={sheetSnap} onSnapChange={setSheetSnap}
             serviceType={serviceType} onServiceTypeChange={next=>{
-              if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase)){
+              if(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase)){
                 toast.info("Finalize ou cancele a corrida atual antes de mudar de modalidade.");setSheetSnap("full");return;
               }setServiceType(next);
             }}
@@ -522,7 +531,7 @@ function Home(){
             onRetryGps={requestNewPickupLocation}
             originRevision={shellOriginRevision} originMunicipality={resolvedAddress?.city??""} gender={gender}
             onFlashVehicleChange={setQuickVehicle}
-            flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}
+            flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
             flashFare={flashFare} flashFares={flashFares} flashFarePending={flashFarePending}
             flashDriverCounts={quickDriverCounts} flashDriverErrors={quickDriverErrors} flashDriverLoading={quickDriverLoading} flashDriverError={quickDriverError}
             onFlashActionContainer={setFlashActionContainer}
