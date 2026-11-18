@@ -105,7 +105,7 @@ export function NotificationControls({ dock = false }: { dock?: boolean } = {}) 
             aria-label={`Notificações, ${unread} não lidas`}
           >
             <Bell className={dock?"size-[22px]":"size-4"} />
-            {dock&&<span>Alertas</span>}
+            {dock&&<span className="truncate text-[10px]">Notificações</span>}
             {unread > 0 && (
               <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
             )}
