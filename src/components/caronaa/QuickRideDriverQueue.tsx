@@ -264,9 +264,10 @@ export function QuickRideDriverQueue({
     try{
       const {data,error:rpcError}=await (supabase as any).rpc(
         "quick_ride_request_manual_review",{p_id:rideId,p_reason:reason});
-      if(rpcError||data!==true)throw new Error("Não foi possível solicitar a análise manual. Tente novamente.");
+      if(rpcError||data!==true)throw new Error("Não foi possível solicitar a confirmação manual do passageiro. Tente novamente.");
       setManualReviewOpen(false);setManualReason("");
-      toast.info("Corrida encaminhada para revisão administrativa, sem gerar cobrança.");
+      await loadDropoff(rideId);
+      toast.info("Confirmação enviada ao passageiro. Após 120 segundos sem resposta, o caso irá para análise sem cobrança.");
       await refresh();
     }catch(cause){
       setError(cause instanceof Error?cause.message:"Erro ao abrir análise manual.");
@@ -350,7 +351,7 @@ export function QuickRideDriverQueue({
                 GPS indisponível? Solicitar revisão do encerramento
               </button>
               {manualReviewOpen&&<div className="mt-2 space-y-2">
-                <p className="text-xs text-white/70">O atendimento será liberado para análise, mas não será concluído nem cobrado automaticamente.</p>
+                <p className="text-xs text-white/70">A confirmação será enviada ao passageiro por até 120 segundos. Se não houver resposta ou houver contestação, a corrida irá para análise sem cobrança automática.</p>
                 <label htmlFor="quick-manual-review-reason" className="block text-xs font-semibold">Explique por que não foi possível confirmar o destino</label>
                 <textarea id="quick-manual-review-reason" rows={3} maxLength={1000}
                   value={manualReason} onChange={event=>setManualReason(event.target.value)}
@@ -359,7 +360,7 @@ export function QuickRideDriverQueue({
                 <button type="button" disabled={busy||manualReason.trim().length<20}
                   onClick={()=>void requestManualReview(active.id)}
                   className="min-h-12 w-full rounded-xl border border-[#FFBB00]/50 px-3 font-bold text-[#FFBB00] disabled:opacity-50">
-                  Encaminhar para análise, sem cobrança
+                  Solicitar confirmação manual de desembarque
                 </button>
               </div>}
             </div>}
