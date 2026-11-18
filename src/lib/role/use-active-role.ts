@@ -59,11 +59,11 @@ function parseActiveRole(value:unknown):ActiveRole|null {
 }
 type RoleState = {
   activeRole:ActiveRole;isDriverEligible:boolean;vehicleStatus:VehicleStatus;
-  vehicleType:VehicleType;vehicleSeats:number;loading:boolean;busy:boolean;error:string|null;
+  vehicleType:VehicleType;vehicleSeats:number;loading:boolean;busy:boolean;roleLoadFailed:boolean;error:string|null;
 };
 const initialState:RoleState={
   activeRole:"PASSAGEIRO",isDriverEligible:false,vehicleStatus:getVehicleStatus(null),
-  vehicleType:"car",vehicleSeats:1,loading:true,busy:false,error:null,
+  vehicleType:"car",vehicleSeats:1,loading:true,busy:false,roleLoadFailed:false,error:null,
 };
 export function useActiveRole() {
   const [state,setState]=useState<RoleState>(initialState);
@@ -81,14 +81,14 @@ export function useActiveRole() {
     }
     const userId=auth.user.id;
     userRef.current=userId;
-    const [{data:profile,error:profileError},{data:roleProfile}]=await Promise.all([
+    const [{data:profile,error:profileError},{data:roleProfile,error:roleError}]=await Promise.all([
       (supabase as any).from("profiles")
         .select("vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_type,vehicle_seats")
         .eq("id",userId).maybeSingle(),
       // Optional: active_role may not exist in older versions of profiles.
       (supabase as any).from("profiles").select("active_role").eq("id",userId).maybeSingle(),
     ]);
-    if(profileError)throw new Error("Não foi possível carregar os dados do veículo. Tente novamente.");
+    if(profileError||roleError)throw new Error("Não foi possível carregar o perfil ativo. Tente novamente.");
     const row=profile as ProfileVehicle|null;
     profileRef.current=row;
     const vehicleType=parseVehicleType(row?.vehicle_type);
@@ -100,14 +100,14 @@ export function useActiveRole() {
       // remains enforced by its own server-side services and RPCs.
       isDriverEligible:vehicleStatus.isComplete,
       vehicleType,vehicleSeats:normalizeVehicleSeats(vehicleType,row?.vehicle_seats),
-      loading:false,error:null,
+      loading:false,roleLoadFailed:false,error:null,
     }));
   },[]);
 
   useEffect(()=>{
     let alive=true;
     void refresh().catch(()=>{
-      if(alive)setState(prev=>({...prev,loading:false,
+      if(alive)setState(prev=>({...prev,loading:false,roleLoadFailed:true,
         isDriverEligible:false,
         error:"Não foi possível carregar seu perfil. Tente novamente."}));
     });
