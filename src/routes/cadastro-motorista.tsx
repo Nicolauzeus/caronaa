@@ -242,8 +242,8 @@ function ProfessionalMotorcycleRegistration() {
         <Link to="/" aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
         <div>
           <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Dados do motorista</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">{authorized && reviewState === "ready" ? "Dados confirmados" : "Confirme seus dados"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized && reviewState === "ready" ? "Você pode acessar suas corridas." : "Confira os campos abaixo para continuar para as corridas."}</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{authorized || request?.status === "APPROVED" ? "Dados confirmados" : "Confirme seus dados"}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized || request?.status === "APPROVED" ? "Você pode consultar suas corridas." : "Confira os campos abaixo para continuar para as corridas."}</p>
         </div>
         {reviewState !== "ready" ? (
           <div className="space-y-4" role="status" aria-live="polite">
@@ -296,7 +296,7 @@ function ProfessionalMotorcycleRegistration() {
                 <p className="mt-1 break-words text-xs font-bold">{vehiclePlate || "Não informada"}</p>
               </div>
             </div>
-            {authorized && <Link to="/disponibilidade-profissional"
+            {<Link to="/disponibilidade-profissional"
               className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-4 text-center font-[Sora] text-sm font-black text-[#121212]">
               IR PARA MINHAS CORRIDAS
             </Link>}
