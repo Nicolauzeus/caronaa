@@ -4,6 +4,7 @@ import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/caronaa/BrandElements";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { supabase } from "@/integrations/supabase/client";
+import { getVehicleStatus } from "@/lib/role/use-active-role";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
@@ -73,10 +74,24 @@ function ProfessionalMotorcycleRegistration() {
     setReviewState("loading");
     void Promise.all([
       (supabase as any).from("professional_mototaxi_profiles").select("first_name,last_name,whatsapp_e164,region_code,registration_number").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("avatar_url,vehicle_plate,full_name").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("avatar_url,vehicle_plate,full_name,vehicle_brand,vehicle_description,vehicle_color,vehicle_type,vehicle_seats").eq("id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
     ]).then(([details, profile, access]) => {
       if (!active) return;
+      if(profile.error || !profile.data){
+        setReviewState("error");
+        toast.error("Não foi possível verificar os dados obrigatórios do veículo.");
+        return;
+      }
+      // No one may finish professional registration by bypassing the
+      // universal vehicle/photo completion. Applies to historical applicants.
+      const validVehicle=getVehicleStatus(profile.data).isComplete;
+      const hasPhoto=Boolean(profile.data.avatar_url?.trim());
+      if(!validVehicle || !hasPhoto){
+        void navigate({to:"/cadastro-veiculo",
+          search:{redirect:"/cadastro-motorista"},replace:true});
+        return;
+      }
       if (details.data) {
         setFirstName(details.data.first_name ?? "");
         setLastName(details.data.last_name ?? "");
