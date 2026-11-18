@@ -44,8 +44,8 @@ describe("Mototaxi confirmado na tela de corridas", () => {
     await screen.findByText(/Situação dos dados profissionais/i);
     expect(screen.getByText(/Foto real no perfil/i)).toBeTruthy();
     expect(screen.getByText(/WhatsApp com DDD/i)).toBeTruthy();
-    const link=screen.getByRole("link",{name:/Corrigir dados profissionais/i});
-    expect(link.getAttribute("href")).toBe("/cadastro-motorista");
+    expect(screen.getByText(/entre em contato com o suporte CARONAA/i)).toBeTruthy();
+    expect(screen.queryByRole("link",{name:/Corrigir dados profissionais/i})).toBeNull();
     expect(screen.queryByText(/Solicitar autorização/i)).toBeNull();
   });
 });
