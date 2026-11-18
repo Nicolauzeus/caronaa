@@ -36,6 +36,16 @@ import { sessionRequest } from "@/lib/session-request-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAdminEntry, getAdminAppPreview } from "@/lib/admin/entry";
 
+/** Align map route padding with the actual mobile drawer height. */
+function mobileSheetBottomInset(snap:SheetSnap):number {
+  if(typeof window==="undefined")return 224;
+  const viewport=window.visualViewport?.height??window.innerHeight;
+  const mapHeight=Math.max(240,viewport-56-80);
+  const sheetHeight=snap==="peek"?224:snap==="half"?mapHeight*.68:
+    Math.min(mapHeight*.92,mapHeight-70);
+  return Math.round(Math.min(sheetHeight,mapHeight-70))+24;
+}
+
 export const Route = createFileRoute("/_authenticated/home")({
   validateSearch: z.object({intent:z.enum(["offer","request"]).optional(),trips:z.enum(["open"]).optional()}),
   beforeLoad:async({context})=>{
@@ -373,7 +383,7 @@ function Home(){
             plannedRoute={shellSelectedDestination?shellRoute:null} routeManagedExternally={shellSelectedDestination}
             onRouteMeeting={selectedOnRouteMatch&&shellRouteOrigin?{origin:shellRouteOrigin,pickup:{lat:selectedOnRouteMatch.pickupMeeting.lat,lng:selectedOnRouteMatch.pickupMeeting.lng,poiName:selectedOnRouteMatch.pickupMeeting.poiName}}:null}
             routeBottomInset={shellSelectedDestination?(typeof window!=="undefined"&&window.innerWidth>=768?72:
-              Math.round((typeof window==="undefined"?800:window.innerHeight)*(sheetSnap==="peek"?0.15:sheetSnap==="half"?0.50:0.85))+24):undefined}
+              mobileSheetBottomInset(sheetSnap)):undefined}
             routeLeftInset={typeof window!=="undefined"&&window.innerWidth>=768?480:48}
             origin={mapOrigin} destination={currentDestination} originIsCurrent={originSource==="CURRENT_LOCATION"}
             originAccuracyM={originPreview?(validPoint(plannedPickup)?quotedAccuracy??Number.POSITIVE_INFINITY:null):location.originAccuracyM}
