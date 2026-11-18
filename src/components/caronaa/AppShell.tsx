@@ -80,24 +80,18 @@ export function AppShell({
     let live = true;
     setProfessionalOnly(null);
     if (!user || publicPage) { setProfessionalOnly(false); return () => { live = false; }; }
-    // A server/database-backed professional application or exclusive onboarding role
-    // determines the simplified driver experience, never a self-declared URL flag.
+    // Only a server-authorized professional may receive the exclusive F07
+    // navigation. Declared MOTORISTA or an unfinished application never hides
+    // regular passenger and shared-carona routes.
     void Promise.all([
-      (supabase as any).from("professional_mototaxi_profiles").select("user_id")
-        .eq("user_id", user.id).maybeSingle(),
-      (supabase as any).from("user_onboarding_progress").select("usage_role,status")
-        .eq("user_id", user.id).maybeSingle(),
+      (supabase as any).rpc("get_my_professional_access"),
       (supabase as any).from("profiles").select("active_role")
-        .eq("id",user.id).maybeSingle(),
-    ]).then(([professional, onboarding, roleRow]) => {
+        .eq("id", user.id).maybeSingle(),
+    ]).then(([access, roleRow]) => {
       if (!live) return;
-      if (professional.error || onboarding.error) { setProfessionalOnly(false); return; }
-      const persistedRole=roleRow.error?null:roleRow.data?.active_role;
-      if(persistedRole==="PASSAGEIRO"){setProfessionalOnly(false);return;}
-      if(persistedRole==="MOTORISTA"){setProfessionalOnly(true);return;}
-      setProfessionalOnly(Boolean(professional.data) ||
-        (onboarding.data?.usage_role === "MOTORISTA" &&
-         onboarding.data?.status === "BASIC_COMPLETED"));
+      if (access.error || roleRow.error) { setProfessionalOnly(false); return; }
+      setProfessionalOnly(access.data?.authorized === true &&
+        roleRow.data?.active_role === "MOTORISTA");
     }).catch(() => { if (live) setProfessionalOnly(false); });
     return () => { live = false; };
   }, [user?.id, publicPage]);
