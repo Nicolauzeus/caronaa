@@ -30,6 +30,24 @@ export const reverseGeocodeServerFn = createServerFn({ method: "POST" })
     }
   });
 
+/** Street-address lookup for passenger GPS pickup; does not substitute a nearby POI. */
+export const reversePassengerPickupServerFn = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z.object({
+      lat: z.number().finite().min(-90).max(90),
+      lng: z.number().finite().min(-180).max(180),
+    }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { reversePassengerPickupAddress } = await import("./location/passenger-reverse-address.server");
+      return await reversePassengerPickupAddress(data.lat, data.lng);
+    } catch {
+      console.warn("[PassengerPickup] Geographic address unavailable");
+      return null;
+    }
+  });
+
 const searchQuerySchema = z.object({
   query: z.string().max(200),
   sessionToken: z.string().trim().max(100).uuid().optional(),
