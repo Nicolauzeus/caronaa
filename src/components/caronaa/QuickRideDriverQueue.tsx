@@ -93,7 +93,6 @@ export function QuickRideDriverQueue({
         setActive(requests.find(r=>r.role==="DRIVER"&&
           ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
         setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")??null);
-      setPendingReview(requests.find(r=>r.role==="DRIVER"&&r.status==="PENDING_REVIEW")??null);
         setPendingReview(requests.find(r=>r.role==="DRIVER"&&r.status==="PENDING_REVIEW")??null);
       }catch{/* Availability stays blocked without a verified GPS fix. */}
       return;
@@ -112,6 +111,7 @@ export function QuickRideDriverQueue({
       setActive(requests.find(r=>r.role==="DRIVER" &&
         ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(r.status))??null);
       setLastCompleted(requests.find(r=>r.role==="DRIVER"&&r.status==="COMPLETED")??null);
+      setPendingReview(requests.find(r=>r.role==="DRIVER"&&r.status==="PENDING_REVIEW")??null);
       setQueue((Array.isArray(offers.data)?offers.data:[]).filter(
         (ride:DriverQueueRide)=>!rejected.current.has(ride.id),
       ));
