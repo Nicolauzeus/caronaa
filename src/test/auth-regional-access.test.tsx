@@ -114,9 +114,21 @@ describe("F02 account access without a regional restriction", () => {
     },
   );
 
-  it("sends a signup with an existing session to onboarding", async () => {
+  it("keeps a completed signup session and takes the user to home", async () => {
     api.search = { mode: "cadastro" };
     api.signUp.mockResolvedValue({ data: { session: {} }, error: null });
+    render(<AuthPage />);
+    choosePassengerForSignup();
+    enterCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Criar minha conta" }));
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/home", replace: true }));
+    expectNoGeographicGate();
+  });
+
+  it("directs a newly created, incomplete account to onboarding", async () => {
+    api.search = { mode: "cadastro" };
+    api.signUp.mockResolvedValue({ data: { session: {} }, error: null });
+    api.onboarding.mockResolvedValue({ status: "IN_PROGRESS" });
     render(<AuthPage />);
     choosePassengerForSignup();
     enterCredentials();
