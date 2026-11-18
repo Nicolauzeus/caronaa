@@ -100,8 +100,8 @@ function Home(){
   const [confirmedPickupKey,setConfirmedPickupKey]=useState("");
   const [flashFare,setFlashFare]=useState<QuickRideFarePreview|null>(null);
   const [quickMunicipality,setQuickMunicipality]=useState("");
-  const [quickDriverCount,setQuickDriverCount]=useState(0);
   const [quickDriverCounts,setQuickDriverCounts]=useState<Record<"CAR"|"MOTO",number>>({CAR:0,MOTO:0});
+  const [quickDriverErrors,setQuickDriverErrors]=useState<Partial<Record<"CAR"|"MOTO",string>>>({});
   const [quickDrivers,setQuickDrivers]=useState<ApproximateProfessionalDriver[]>([]);
   const [quickDriverLoading,setQuickDriverLoading]=useState(false);
   const [quickDriverError,setQuickDriverError]=useState("");
@@ -300,7 +300,7 @@ function Home(){
   const radarLng=radarPickup?Math.round(radarPickup.lng*1000)/1000:null;
   useEffect(()=>{
     if(activeRoleState.activeRole!=="PASSAGEIRO"||serviceType!=="FLASH"||!quickMunicipality){
-      setQuickDriverCount(0);setQuickDriverCounts({CAR:0,MOTO:0});
+      setQuickDriverCounts({CAR:0,MOTO:0});setQuickDriverErrors({});
       setQuickDrivers([]);setQuickDriverError("");setQuickDriverLoading(false);return;
     }
     let alive=true;
@@ -323,26 +323,25 @@ function Home(){
       const counts:Record<"CAR"|"MOTO",number>={CAR:0,MOTO:0};
       const visible:ApproximateProfessionalDriver[]=[];
       let failures=0;
+      const errors:Partial<Record<"CAR"|"MOTO",string>>={};
       results.forEach((result,index)=>{
         if(result.status==="fulfilled"){
           counts[result.value.type]=result.value.drivers.length;
           visible.push(...result.value.drivers);
         }else{
           failures+=1;
+          errors[(["CAR","MOTO"] as const)[index]]="Não foi possível consultar a disponibilidade agora.";
         }
       });
+      setQuickDriverErrors(errors);
       setQuickDriverCounts(counts);
       setQuickDrivers(visible);
-      setQuickDriverError(failures===2?"Radar indisponível. Tente novamente.":failures===1
-        ?`Falha ao consultar ${results[0].status==="rejected"?"carros":"motos"}; as outras opções continuam disponíveis.`:"");
+      setQuickDriverError(failures===2?"Radar indisponível. Tente novamente.":"");
       setQuickDriverLoading(false);
     };
     void refresh();const timer=window.setInterval(refresh,15000);
     return()=>{alive=false;window.clearInterval(timer);};
   },[activeRoleState.activeRole,serviceType,quickMunicipality,radarLat,radarLng]);
-  useEffect(()=>{
-    setQuickDriverCount(quickDriverCounts[quickVehicle]);
-  },[quickDriverCounts,quickVehicle]);
   // Live GPS is rendered separately by the map; it is never a fallback pickup.
   const mapOrigin=validPoint(plannedPickup)?plannedPickup:undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;
@@ -425,13 +424,14 @@ function Home(){
             onFlashVehicleChange={setQuickVehicle}
             flashRideActive={Boolean(passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS","COMPLETED"].includes(passengerPhase))}
             flashFare={flashFare} flashFares={flashFares} flashFarePending={flashFarePending}
-            flashDriverCounts={quickDriverCounts} flashDriverLoading={quickDriverLoading} flashDriverError={quickDriverError}
+            flashDriverCounts={quickDriverCounts} flashDriverErrors={quickDriverErrors} flashDriverLoading={quickDriverLoading} flashDriverError={quickDriverError}
             onFlashActionContainer={setFlashActionContainer}
             flashOperationalPanel={<QuickRideHomePanel
               origin={origin||"Minha localização atual"} destination={passengerDestinationLabel}
               originPoint={quotedOrigin} destinationPoint={shellDestinationLocation}
               locating={locatingPickup} vehicle={quickVehicle} onVehicleChange={setQuickVehicle}
-              driverCount={quickDriverCount} driverCounts={quickDriverCounts} driverLoading={quickDriverLoading} driverError={quickDriverError}
+              driverCount={quickDriverCounts[quickVehicle]} driverCounts={quickDriverCounts} driverLoading={quickDriverLoading}
+              driverError={quickDriverErrors[quickVehicle]??quickDriverError}
               gpsOriginIsImprecise={originSource==="CURRENT_LOCATION"&&!previewablePickup}
               pickupNeedsConfirmation={pickupNeedsConfirmation} onConfirmPickup={openPickupDialog}
               actionContainer={flashActionContainer} onFaresChange={setFlashFares} onFarePendingChange={setFlashFarePending}
