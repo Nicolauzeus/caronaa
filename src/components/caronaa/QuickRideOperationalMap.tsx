@@ -197,14 +197,22 @@ export function QuickRideOperationalMap({
     validNavigationPoint(liveDriverFix)&&Number.isFinite(liveDriverFix.accuracyM)&&
     liveDriverFix.accuracyM<=150&&Number.isFinite(liveDriverFix.sampledAtMs)&&
     Date.now()-liveDriverFix.sampledAtMs>=0&&Date.now()-liveDriverFix.sampledAtMs<20000;
+  // A recent DB write is not proof of recent GPS sampling; prefer the
+  // sensor timestamp and never call a stale fix "live".
+  const driverSampleTime=Date.parse(context?.driver?.sampledAt??
+    context?.driver?.seenAt??"");
   const serverFixFresh=context?.driver&&!showingLastFix&&
-    Number.isFinite(Date.parse(context.driver.seenAt))&&
-    Math.abs(Date.now()-Date.parse(context.driver.seenAt))<45000;
+    Number.isFinite(driverSampleTime)&&
+    Date.now()-driverSampleTime>=-5000&&Date.now()-driverSampleTime<30000;
   const driverPoint:Point|null=localFixFresh&&liveDriverFix
     ?{lat:liveDriverFix.lat,lng:liveDriverFix.lng}:
     serverFixFresh&&context?.driver
       ?{lat:context.driver.lat,lng:context.driver.lng}:null;
   const visibleDriver=role==="DRIVER"?(driverPoint??context?.driver??null):context?.driver??null;
+  const passengerTracking=role==="PASSENGER"&&passengerFollow&&
+    ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(statusNow);
+  const driverPositionDelayed=role==="PASSENGER"&&
+    Boolean(context?.driver)&&!driverPoint;
   const driverPhase=role==="DRIVER"?driverNavigationPhase(statusNow):null;
   const navigationTarget=driverPhase==="PICKUP"?origin:
     driverPhase==="DROPOFF"?destination:null;
@@ -215,6 +223,9 @@ export function QuickRideOperationalMap({
   const currentDriverRoute=driverRoute?.rideId===rideId&&driverRoute.phase===driverPhase?driverRoute.result:null;
   const remaining=driverPoint&&currentDriverRoute
     ?estimateDriverRouteRemaining(driverPoint,currentDriverRoute):null;
+  const passengerRoute=statusNow==="IN_PROGRESS"?route:approach;
+  const passengerRemaining=role==="PASSENGER"&&driverPoint&&passengerRoute
+    ?estimateDriverRouteRemaining(driverPoint,passengerRoute):null;
   const mapsNavigationUrl=navigationTarget&&validNavigationPoint(navigationTarget)
     ?"https://www.google.com/maps/dir/?api=1&destination="+
       encodeURIComponent(navigationTarget.lat+","+navigationTarget.lng)+
@@ -297,7 +308,7 @@ export function QuickRideOperationalMap({
         ...((statusNow==="IN_PROGRESS")?[{id:"ride-destination",lat:destination.lat,lng:destination.lng,title:"Destino",kind:"destination" as const}]:[]),
         ...(visibleDriver?[{id:"assigned-professional",lat:visibleDriver.lat,lng:visibleDriver.lng,
           title:driverPoint&&role==="DRIVER"?"GPS do motorista em movimento":
-            showingLastFix?"Última posição conhecida (não ao vivo)":
+            showingLastFix||driverPositionDelayed?"Última posição conhecida (não ao vivo)":
             isMoto?"Mototaxista":"Motorista",
           kind:isMoto?("availableMoto" as const):("driver" as const)}]:[]),
       ]}
@@ -307,8 +318,12 @@ export function QuickRideOperationalMap({
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
       fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}:${Boolean(currentDriverRoute)}`}
       smoothTracking showControls={immersive} gestureHandling={immersive?"greedy":"cooperative"}
-      followPoint={driverPhase?driverPoint:null} followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:undefined}
-      followZoom={16} ariaLabel="Mapa Google com deslocamento da corrida"
+      followPoint={driverPhase||passengerTracking?driverPoint:null}
+      followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:
+        passengerTracking?`${rideId}:PASSENGER:${statusNow}:${navigationFocusRequest}`:undefined}
+      followZoom={16} ariaLabel={role==="PASSENGER"
+        ?"Mapa com acompanhamento da localização do motorista durante a corrida"
+        :"Mapa Google com deslocamento da corrida"}
       className={immersive?"h-full w-full":"h-64 w-full rounded-2xl"} />;
   if(immersive) return <section aria-label="Mapa operacional da Corrida Rápida"
     className="relative h-full w-full overflow-hidden bg-[#121212]">
@@ -319,6 +334,16 @@ export function QuickRideOperationalMap({
         :driverPhase==="DROPOFF"?"Navegando até o destino":
           statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
       {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
+      {role==="PASSENGER"&&<p role="status" aria-live="polite"
+        className={"text-xs "+(driverPoint?"text-emerald-200":"text-amber-200")}>
+        {driverPoint?"Motorista no mapa · localização recebida pelo GPS":
+          driverPositionDelayed||showingLastFix
+            ?"Sinal GPS atrasado · última posição conhecida":
+            "Aguardando a posição GPS do motorista. O mapa atualizará automaticamente."}
+      </p>}
+      {role==="PASSENGER"&&passengerRemaining&&<p className="text-xs text-white/85">
+        {passengerRemaining.distanceKm.toFixed(1)} km restantes · cerca de {Math.max(1,Math.round(passengerRemaining.durationMinutes))} min (estimativa)
+      </p>}
       {driverPhase&&currentDriverRoute&&<p className="font-semibold">
         {(remaining?.distanceKm??currentDriverRoute.distanceKm).toFixed(1)} km {remaining?"restantes (estimativa)":""} · cerca de {Math.max(1,Math.round(remaining?.durationMinutes??currentDriverRoute.durationMinutes))} min
       </p>}
