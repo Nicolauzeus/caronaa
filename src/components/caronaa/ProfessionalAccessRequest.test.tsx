@@ -63,6 +63,8 @@ describe("Mototaxi confirmado na tela de corridas", () => {
     }}/>);
     expect(await screen.findByText("Categoria do carro")).toBeTruthy();
     expect(screen.getByLabelText(/Vagas para passageiros/i)).toHaveValue(3);
+    expect(screen.getByText(/Tipo confirmado no cadastro/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Moto"})).toBeNull();
     fireEvent.click(screen.getByRole("button",{name:/Confirmar dados e habilitar corridas/i}));
     expect(api.rpc).not.toHaveBeenCalledWith("submit_professional_access_request",expect.anything());
     fireEvent.change(screen.getByLabelText("Categoria do carro"),{target:{value:"HATCH"}});
