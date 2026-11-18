@@ -74,6 +74,12 @@ export function ShellJourneyPlanner({
 }:Props){
   const [destination,setDestination]=useState("");
   const [flashStep,setFlashStep]=useState<"choices"|"confirm"|"shared">("choices");
+  useEffect(()=>{
+    // A new service or pickup invalidates the old selection; the server will
+    // produce a fresh route-specific quotation before confirmation.
+    setFlashStep("choices");
+  },[serviceType,originRevision]);
+
   const [focusDestination,setFocusDestination]=useState(false);
   const [destinationPoint,setDestinationPoint]=useState<FormLocationDetails>();
   const [exclusiveVehicle,setExclusiveVehicle]=useState<Vehicle>("CAR");
