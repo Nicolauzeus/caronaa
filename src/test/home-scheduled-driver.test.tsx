@@ -38,6 +38,12 @@ vi.mock("@/components/caronaa/DriverPlatformFees",()=>({DriverPlatformFees:()=>n
 vi.mock("@/components/caronaa/WomenOnlyToggle",()=>({WomenOnlyToggle:()=>null}));
 vi.mock("@/components/caronaa/QuickRideHomePanel",()=>({QuickRideHomePanel:()=>null}));
 vi.mock("@/components/caronaa/QuickRideOperationalMap",()=>({QuickRideOperationalMap:()=>null}));
+vi.mock("@/components/caronaa/shell/DriverHomeDashboard",()=>({
+  DriverHomeDashboard:({onOffer,onOpenTrips}:any)=><div aria-label="Início do motorista">
+    <button type="button" onClick={onOffer}>Planejar carona agendada</button>
+    <button type="button" onClick={onOpenTrips}>Ver pedidos</button>
+  </div>,
+}));
 vi.mock("@/components/caronaa/shell/DriverFlashPlanner",()=>({
   DriverFlashPlanner:(props:any)=>{api.flash(props);return <button type="button"
     onClick={()=>props.onServiceTypeChange("AGENDADA")}>Planejar carona agendada</button>;},
@@ -95,7 +101,13 @@ beforeEach(()=>{
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 
 describe("Home — origem da carona tradicional",()=>{
-  it("starts the selected itinerary when GPS arrives, without reselecting the destination",async()=>{
+  it("opens the shared-driver cockpit by default, not passenger search",()=>{
+    const view=render(<Home/>);
+    expect(screen.getByLabelText("Início do motorista")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Escolha sua carona")).toBeNull();
+    view.unmount();
+  });
+    it("starts the selected itinerary when GPS arrives, without reselecting the destination",async()=>{
     const {rerender}=render(<Home/>);plan();
     fireEvent.click(screen.getByRole("button",{name:"Selecionar UNIFOR"}));schedule();
     expect(screen.getByText(/Destino selecionado. Aguardando sua localização/)).toBeTruthy();
