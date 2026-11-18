@@ -190,10 +190,13 @@ export function useActiveRole() {
         isDriverEligible:completed.isComplete,activeRole:"MOTORISTA",
         busy:false,error:null}));
       if (typeof window !== "undefined") window.dispatchEvent(new Event("caronaa:role-changed"));
-    }catch{
-      setState(prev=>({...prev,busy:false,
-        error:"Não foi possível salvar os dados do veículo. Confira as informações e tente novamente."}));
-      throw new Error("Não foi possível salvar os dados do veículo. Confira as informações e tente novamente.");
+    }catch(cause){
+      const raw=cause instanceof Error?cause.message:"";
+      const message=/foto|avatar|imagem/i.test(raw)
+        ?"Antes de ativar o modo motorista, adicione uma foto de perfil. A foto poderá ser substituída depois, mas não removida."
+        :"Não foi possível salvar os dados do veículo. Confira as informações e tente novamente.";
+      setState(prev=>({...prev,busy:false,error:message}));
+      throw new Error(message);
     }
   },[state.busy]);
 
