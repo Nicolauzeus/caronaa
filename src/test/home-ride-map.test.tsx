@@ -190,10 +190,12 @@ describe("Google home map",()=>{
     const markers=api.marker.mock.calls.map(([marker])=>marker as {title:string;position:{lat:number;lng:number}});
     expect(markers).toHaveLength(1);expect(markers[0].title).toContain("Sua saída escolhida");
     expect(markers[0].position).toEqual(selected);expect(api.circle).not.toHaveBeenCalled();
-    api.panTo.mockClear();api.marker.mockClear();
+    api.panTo.mockClear();api.marker.mockClear();api.markerMove.mockClear();
     rerender(<HomeRideMap {...base} passengerPreview originIsCurrent={false} following={false}
       origin={selected} userPosition={{lat:-4.2,lng:-38.7,accuracy:150}}/>);
-    expect(api.marker).toHaveBeenCalledWith(expect.objectContaining({position:selected}));
+    // A previously selected manual origin must keep the same marker instance.
+    expect(api.marker).not.toHaveBeenCalled();
+    expect(api.markerMove).not.toHaveBeenCalled();
     expect(api.panTo).not.toHaveBeenCalled();expect(api.circle).not.toHaveBeenCalled();
   });
   it("permite escolher saída no mapa apenas quando esse modo é habilitado",async()=>{
@@ -211,8 +213,10 @@ describe("Google home map",()=>{
     const {rerender,unmount}=render(<HomeRideMap {...base}/>);
     await waitFor(()=>expect(api.on).toHaveBeenCalledWith("dragstart",expect.any(Function)));
     act(()=>api.on.mock.calls[0][1]());expect(base.onDrag).toHaveBeenCalledOnce();api.panTo.mockClear();
+    const originalMarkers=api.marker.mock.calls.length;
     rerender(<HomeRideMap {...base} following={false} userPosition={{lat:-3.74,lng:-38.53,accuracy:80}}/>);
-    await waitFor(()=>expect(api.marker).toHaveBeenCalledWith(expect.objectContaining({position:{lat:-3.74,lng:-38.53}})));
+    await waitFor(()=>expect(api.markerMove).toHaveBeenCalledWith({lat:-3.74,lng:-38.53}));
+    expect(api.marker).toHaveBeenCalledTimes(originalMarkers);
     expect(api.panTo).not.toHaveBeenCalled();expect(api.create).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button",{name:"Centralizar na minha localização"}));expect(base.onRecenter).toHaveBeenCalledOnce();
     rerender(<HomeRideMap {...base} recenterVersion={1}/>);
