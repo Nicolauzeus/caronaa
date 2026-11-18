@@ -37,6 +37,7 @@ function statusLabel(status: string): string {
     case "ACCEPTED": return "Motorista a caminho";
     case "ARRIVED": return "Motorista chegou";
     case "IN_PROGRESS": return "Em andamento";
+    case "PENDING_REVIEW": return "Encerramento em análise";
     case "COMPLETED": return "Concluída";
     case "CANCELLED": return "Cancelada";
     case "EXPIRED": return "Expirada";
@@ -129,6 +130,11 @@ export function QuickRideTripHistory() {
                 Acompanhar no mapa
               </Link>
             )}
+            {ride.status === "PENDING_REVIEW" && <p role="status"
+              className="mt-3 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm">
+              O encerramento está aguardando análise. Nenhum Pix ou comissão será gerado
+              antes da decisão registrada pela plataforma. Você pode continuar usando o CARONAA.
+            </p>}
             {ride.status === "COMPLETED" && (
               <div className="mt-3">
                 <button type="button" aria-expanded={pixOpen} aria-controls={"quick-pix-"+ride.id}
