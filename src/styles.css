@@ -826,3 +826,16 @@ a:active {
     touch-action: manipulation;
   }
 }
+
+/* Short, GPU-friendly transition for document pages, never for a live map.
+   The actual route is already ready before its content enters. */
+@keyframes caronaa-page-enter {
+  from { opacity: .72; transform: translate3d(0, 5px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.caronaa-page-enter {
+  animation: caronaa-page-enter 155ms cubic-bezier(.2, .7, .2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caronaa-page-enter { animation: none !important; }
+}
