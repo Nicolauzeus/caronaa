@@ -13,17 +13,20 @@ export type Progress = {
   institution_code: "UNIFOR" | "UNILAB" | null;
   usage_role: UsageRole | null;
   completed_at: string | null;
+  tutorial_eligible?: boolean;
+  tutorial_seen_at?: string | null;
 };
 
 export function institutionForRegion(region: RegionCode): "UNIFOR" | "UNILAB" | null {
   return region === "FORTALEZA" ? "UNIFOR" : region === "MACICO_BATURITE" ? "UNILAB" : null;
 }
 
-export function canComplete(progress: Pick<Progress, "region_code" | "affiliation_type" | "usage_role" | "institution_code">): boolean {
-  return Boolean(progress.region_code && progress.affiliation_type && progress.usage_role &&
-    (progress.affiliation_type === "COMUNIDADE" || progress.region_code === "OTHER" ||
-     progress.institution_code === institutionForRegion(progress.region_code)));
+/** Region and academic affiliation are now optional profile enrichment. */
+export function canComplete(progress: Pick<Progress, "usage_role">): boolean {
+  return progress.usage_role === "PASSAGEIRO" ||
+    progress.usage_role === "MOTORISTA" || progress.usage_role === "AMBOS";
 }
+
 
 async function authenticatedUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -84,10 +87,10 @@ export async function completeOnboarding(progress: Progress): Promise<void> {
   const now = new Date().toISOString();
   const { data, error } = await table().update({
     status: "BASIC_COMPLETED", current_step: "DONE",
-    completed_at: now, updated_at: now,
+    completed_at: now, updated_at: now, tutorial_eligible: true,
   }).eq("user_id", userId).eq("status", "IN_PROGRESS")
     .select("user_id").maybeSingle();
-  if (error) throw new Error("Não foi possível concluir seu perfil.");
+  if (error) throw new Error("Não foi possível concluir seu perfil. Verifique se a migration de cadastro universal foi aplicada.");
 
   if (!data) {
     // A simultaneous request may have already committed the completion.
@@ -98,4 +101,13 @@ export async function completeOnboarding(progress: Progress): Promise<void> {
       throw new Error("Não foi possível confirmar a conclusão do cadastro.");
     }
   }
+}
+
+/** Cosmetic tutorial state: never affects service permissions. */
+export async function markIntroSeen(): Promise<void> {
+  const userId = await authenticatedUserId();
+  const { error } = await table().update({tutorial_seen_at: new Date().toISOString()})
+    .eq("user_id", userId).eq("status", "BASIC_COMPLETED")
+    .eq("tutorial_eligible", true);
+  if (error) throw new Error("Não foi possível salvar o progresso do tutorial.");
 }
