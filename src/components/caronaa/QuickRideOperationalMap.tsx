@@ -12,10 +12,11 @@ import {
 
 type Route = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number};
 type Point={lat:number;lng:number};
-type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string})|null;status:string};
+type Context={origin:Point;destination:Point;driver:(Point&{seenAt:string;sampledAt?:string;accuracyM?:number})|null;status:string};
 type DriverDetails={name:string;photo:string|null;vehicle:string|null;plate:string|null;vehicleType:string};
 type LocalDriverFix=Point&{sampledAtMs:number;accuracyM:number;heading?:number|null};
 type DriverRouteState={rideId:string;phase:NavigationPhase;start:Point;at:number;result:Route};
+let passengerPositionSubscriptionSequence=0;
 
 // One protected route calculation per ride/target while a trip is active.
 // Prevent duplicate Google Routes calls if React/Safari remounts a map panel.
@@ -39,7 +40,8 @@ function cachedTripRoute(key:string,load:()=>Promise<Route>):Promise<Route>{
 }
 
 export function QuickRideOperationalMap({
-  rideId, status, role, immersive=false, vehicleType, liveDriverFix=null, navigationFocusRequest=0,
+  rideId, status, role, immersive=false, vehicleType, liveDriverFix=null,
+  navigationFocusRequest=0, passengerFollow=false,
 }: {
   rideId:string;
   municipality?:string;
@@ -49,6 +51,8 @@ export function QuickRideOperationalMap({
   liveDriverFix?:LocalDriverFix|null;
   /** Explicit navigation button re-enables GPS camera tracking. */
   navigationFocusRequest?:number;
+  /** Passenger opts in to keeping the assigned driver's verified marker centered. */
+  passengerFollow?:boolean;
   status:string;
   role:"DRIVER"|"PASSENGER";
 }) {
@@ -68,13 +72,21 @@ export function QuickRideOperationalMap({
   const [details,setDetails]=useState<DriverDetails|null>(null);
   const [error,setError]=useState("");
   const mounted=useRef(true);
+  const latestContextRequest=useRef(0);
+  const latestContextApplied=useRef(0);
+  const activeMapRideId=useRef(rideId);
+  activeMapRideId.current=rideId;
   const lastDriverFix=useRef<{rideId:string;at:number;point:NonNullable<Context["driver"]>}|null>(null);
   const [showingLastFix,setShowingLastFix]=useState(false);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const reload=useCallback(async()=>{
+    const requestNumber=++latestContextRequest.current;
     try{
       const result=await readMapRef.current({data:{rideId}});
-      if(mounted.current){
+      if(mounted.current&&activeMapRideId.current===rideId&&
+         requestNumber>=latestContextApplied.current){
+        // Out-of-order responses must never move the car backwards.
+        latestContextApplied.current=requestNumber;
         let next=result;
         if(result.driver){
           lastDriverFix.current={rideId,at:Date.now(),point:result.driver};
@@ -103,13 +115,16 @@ export function QuickRideOperationalMap({
         });
         setError("");
       }
-    }catch{if(mounted.current)setError("Não foi possível acompanhar a localização. Verifique sua conexão.");}
+    }catch{if(mounted.current&&activeMapRideId.current===rideId&&
+      requestNumber>=latestContextApplied.current)
+      setError("Não foi possível acompanhar a localização. Verifique sua conexão.");}
   },[rideId]);
   useEffect(()=>{
     void reload();
-    // Local GPS moves the driver's camera; authorized server context keeps
-    // passenger map, ride stage, and backend data reconciled in the background.
-    const timer=window.setInterval(()=>{if(!document.hidden)void reload();},role==="DRIVER"?10000:15000);
+    // The driver already watches its own browser GPS. The passenger listens
+    // for participant-scoped server signals below, with HTTP as a fallback.
+    if(role==="PASSENGER")return;
+    const timer=window.setInterval(()=>{if(!document.hidden)void reload();},10000);
     const foreground=()=>{if(!document.hidden)void reload();};
     window.addEventListener("focus",foreground);
     document.addEventListener("visibilitychange",foreground);
@@ -119,6 +134,47 @@ export function QuickRideOperationalMap({
       document.removeEventListener("visibilitychange",foreground);
     };
   },[reload,role]);
+
+  useEffect(()=>{
+    if(role!=="PASSENGER"||!rideId)return;
+    let disposed=false,subscribed=false,lastSignal=0;
+    let debounce:ReturnType<typeof setTimeout>|null=null;
+    const wake=()=>{
+      if(disposed||document.hidden)return;
+      if(debounce)clearTimeout(debounce);
+      debounce=setTimeout(()=>{debounce=null;if(!disposed)void reload();},180);
+    };
+    const client=supabase as any;
+    // Only the assigned passenger/driver may read this row via SQL RLS.
+    // The Realtime event never contains coordinates or another driver's ID.
+    const channel=client.channel("f07-passenger-track-"+
+      (++passengerPositionSubscriptionSequence)+"-"+rideId)
+      .on("postgres_changes",{
+        event:"*",schema:"public",table:"caronaa_quick_position_updates",
+        filter:"ride_id=eq."+rideId,
+      },()=>{lastSignal=Date.now();wake();})
+      .subscribe((state:string)=>{
+        subscribed=state==="SUBSCRIBED";
+        if(subscribed)wake();
+      });
+    // 5-second fallback if Realtime is unavailable. While healthy, poll
+    // only if no location signal was received recently (missed events, tabs).
+    const fallback=window.setInterval(()=>{
+      if(document.hidden)return;
+      if(!subscribed||Date.now()-lastSignal>12000)wake();
+    },5000);
+    const onVisible=()=>{if(!document.hidden)wake();};
+    window.addEventListener("focus",onVisible);
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{
+      disposed=true;
+      if(debounce)clearTimeout(debounce);
+      window.clearInterval(fallback);
+      window.removeEventListener("focus",onVisible);
+      document.removeEventListener("visibilitychange",onVisible);
+      void client.removeChannel(channel);
+    };
+  },[rideId,role,reload]);
 
   useEffect(()=>{
     if(!rideId || role!=="PASSENGER")return;
