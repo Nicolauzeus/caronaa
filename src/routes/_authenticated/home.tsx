@@ -121,11 +121,16 @@ function Home(){
   },[activeRoleState.loading,activeRoleState.activeRole,routeSearch.trips]);
   useEffect(()=>{
     const showDriverHome=()=>{setDriverHomeOpen(true);setServiceType("AGENDADA");setTripsPanelOpen(false);setSheetSnap("half");};
+    const showPassengerHome=()=>{setTripsPanelOpen(false);setSheetSnap("peek");setServiceType("FLASH");};
     window.addEventListener("caronaa:driver-home",showDriverHome);
-    return()=>window.removeEventListener("caronaa:driver-home",showDriverHome);
+    window.addEventListener("caronaa:passenger-home",showPassengerHome);
+    return()=>{
+      window.removeEventListener("caronaa:driver-home",showDriverHome);
+      window.removeEventListener("caronaa:passenger-home",showPassengerHome);
+    };
   },[]);
   const [tripsPanelOpen,setTripsPanelOpen]=useState(false);
-  useEffect(()=>{if(routeSearch.trips==="open"){setTripsPanelOpen(true);setSheetSnap("full");}},[routeSearch.trips]);
+  useEffect(()=>{if(routeSearch.trips==="open"){setTripsPanelOpen(true);setSheetSnap("full");}else setTripsPanelOpen(false);},[routeSearch.trips]);
   const [tripsRefreshKey,setTripsRefreshKey]=useState(0);
   const [driverTripsRefreshKey,setDriverTripsRefreshKey]=useState(0);
   const lastPlanningSnap=useRef<SheetSnap>("peek");
