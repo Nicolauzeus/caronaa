@@ -206,7 +206,7 @@ export function QuickRideExperience({
     // Fixed origin/destination only: no calls from camera or GPS observation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeKey, routeRequest]);
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const { data, error: loadError } = await (supabase as any).rpc(
         "quick_ride_my_requests",
@@ -223,7 +223,7 @@ export function QuickRideExperience({
         "Conexão indisponível. Suas solicitações serão consultadas novamente.",
       );
     }
-  };
+  }, []);
 
 
   const refreshQueue = useCallback(async () => {
@@ -261,7 +261,20 @@ export function QuickRideExperience({
   useEffect(()=>()=>{
     ++queueRequestVersion.current;
   },[refreshQueue]);
-  useEffect(()=>{void refresh();},[]);
+  useEffect(()=>{void refresh();},[refresh]);
+  // Passenger accounts cannot rely on the professional-driver-only
+  // municipal notification channel. Reconcile their own ride status
+  // periodically until acceptance, cancellation, completion or expiry.
+  useEffect(()=>{
+    if(driverOnly||!activeRide||activeRide.role!=="PASSENGER")return;
+    const ms=activeRide.status==="SEARCHING"?5000:10000;
+    const timer=window.setInterval(()=>{
+      if(!document.hidden)void refresh();
+    },ms);
+    const onVisible=()=>{if(!document.hidden)void refresh();};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);};
+  },[driverOnly,activeId,activeStatus,refresh]);
   const useGps = () => {
     if (!window.isSecureContext || !navigator.geolocation) {
       setError("GPS requer HTTPS e um navegador compatível.");
@@ -342,7 +355,12 @@ export function QuickRideExperience({
           status==="COMPLETED"?{p_id:id}:{p_id:id,p_status:status},
       );
       if (actionError) {
-        setError("Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
+        const message=String(actionError.message??"");
+        setError(/VERIFIED_GPS_REQUIRED/i.test(message)
+          ?"GPS não atualizado. Ative a localização precisa e mantenha o aplicativo aberto."
+          :/caronaa_quick_queue_events|column .*ride_id.*does not exist/i.test(message)
+            ?"O serviço de aceitação precisa ser atualizado. Tente novamente após a correção do sistema."
+            :"Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
         await refreshQueue();
         return;
       }
@@ -353,7 +371,7 @@ export function QuickRideExperience({
         // actionable card while another driver already owns the ride.
         rejectedQueueIds.current.add(id);
         setQueue(items => items.filter(item => item.id !== id));
-        const message = "Corrida já aceita por outro motorista da região.";
+        const message = "Solicitação indisponível: pode ter expirado ou sido aceita por outro motorista.";
         setError(message);
         toast.error(message);
         await refreshQueue();
