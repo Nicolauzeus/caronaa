@@ -111,27 +111,11 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
           </section>
         )}
         {!prelaunchMode && !professionalOnly && (
-          <>
-            <h3 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Acesso rápido</h3>
-            <nav aria-label="Atalhos da conta" className="grid grid-cols-2 gap-2.5">
-              <Link to="/minhas-caronas" onClick={close} className={tileClass}>
-                <CalendarClock size={23} className="text-[#C38D00]" aria-hidden="true" />
-                <span className="text-sm font-extrabold">Minhas viagens</span>
-              </Link>
-              <Link to="/perfil" onClick={close} className={tileClass}>
-                <UserRound size={23} className="text-[#C38D00]" aria-hidden="true" />
-                <span className="text-sm font-extrabold">Meu perfil</span>
-              </Link>
-              <Link to="/seguranca" onClick={close} className={tileClass}>
-                <ShieldCheck size={23} className="text-[#C38D00]" aria-hidden="true" />
-                <span className="text-sm font-extrabold">Segurança</span>
-              </Link>
-              <Link to="/como-funciona" onClick={close} className={tileClass}>
-                <HelpCircle size={23} className="text-[#C38D00]" aria-hidden="true" />
-                <span className="text-sm font-extrabold">Central de ajuda</span>
-              </Link>
-            </nav>
-          </>
+          <nav aria-label="Atalhos da conta" className="space-y-1">
+            <Link to="/minhas-caronas" onClick={close} className={rowClass}><CalendarClock size={19} className="text-[#C38D00]"/> Minhas viagens <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>
+            <Link to="/perfil" onClick={close} className={rowClass}><CarFront size={19} className="text-[#C38D00]"/> Meu veículo e perfil <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>
+            <Link to="/como-funciona" onClick={close} className={rowClass}><HelpCircle size={19} className="text-[#C38D00]"/> Ajuda e suporte <ChevronRight size={17} className="ml-auto text-muted-foreground"/></Link>
+          </nav>
         )}
 
         {professionalOnly && !prelaunchMode && (
