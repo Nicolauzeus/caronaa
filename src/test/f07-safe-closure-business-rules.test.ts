@@ -102,7 +102,7 @@ describe("F07 lifecycle: transport end != payment or customer confirmation",()=>
   it("keeps new requests available while pending cases stay reviewable",()=>{
     expect(guard).toContain('"PENDING_REVIEW"');
     expect(passenger).toContain('r.status==="PENDING_REVIEW"');
-    expect(passenger).toContain("Encerramento em análise");
+    expect(passenger).toContain("Confirmação de desembarque pendente");
     expect(driver).toContain('r.status==="PENDING_REVIEW"');
     expect(driver).toContain("quick_ride_request_manual_review");
     expect(flashDriver).toContain("quick_ride_request_manual_review");
