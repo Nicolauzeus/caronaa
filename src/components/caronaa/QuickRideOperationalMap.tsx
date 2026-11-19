@@ -84,6 +84,7 @@ export function QuickRideOperationalMap({
   const [voiceEnabled,setVoiceEnabled]=useState(false);
   const announcedVoiceCues=useRef<Set<string>>(new Set());
   const activeUtterance=useRef<SpeechSynthesisUtterance|null>(null);
+  const lastSpokenPhase=useRef<NavigationPhase|null>(null);
   const mounted=useRef(true);
   const latestContextRequest=useRef(0);
   const latestContextApplied=useRef(0);
@@ -374,6 +375,17 @@ export function QuickRideOperationalMap({
     announcedVoiceCues.current.clear();
     setVoiceEnabled(true);
   },[voiceEnabled,speakNavigation]);
+  useEffect(()=>{
+    if(lastSpokenPhase.current===driverPhase)return;
+    const previous=lastSpokenPhase.current;
+    lastSpokenPhase.current=driverPhase;
+    // Once boarding is verified, cancel instructions for the old pickup leg.
+    if(previous&&voiceEnabled&&typeof window!=="undefined"&&activeUtterance.current){
+      window.speechSynthesis.cancel();
+      activeUtterance.current=null;
+    }
+    announcedVoiceCues.current.clear();
+  },[driverPhase,voiceEnabled]);
   useEffect(()=>{
     // Do not carry guidance, cached announcements or speech into the next trip.
     announcedVoiceCues.current.clear();
