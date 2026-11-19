@@ -622,6 +622,9 @@ export function ProfessionalAvailabilityPage() {
             if(start===null||last===undefined||Math.abs(last-start)<36)return;
             sheetSwiped.current=true;
             setSheetExpanded(last<start);
+            // Android may suppress the synthetic click after a swipe. Never
+            // consume the user's next intentional tap because a flag stayed set.
+            window.setTimeout(()=>{sheetSwiped.current=false;},0);
           }}
           onClick={()=>{
             if(sheetSwiped.current){sheetSwiped.current=false;return;}
