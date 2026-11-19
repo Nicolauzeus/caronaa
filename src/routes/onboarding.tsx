@@ -38,11 +38,8 @@ function OnboardingPage() {
       const saved = await saveOnboarding({ usage_role: selectedRole as UsageRole, current_step: "ROLE" });
       sessionStorage.removeItem("caronaa:oauth-role-preference");
       if (selectedRole === "MOTORISTA") {
-        // Do not mark BASIC_COMPLETED until the driver has a verified photo,
-        // vehicle, color, plate and passenger seats. This completes the
-        // original onboarding rather than fabricating a ready driver profile.
-        await navigate({ to: "/cadastro-veiculo",
-          search: { redirect: professionalContinuation }, replace: true });
+        // A unified wizard completes registration, server eligibility and onboarding.
+        await navigate({ to: "/cadastro-motorista", replace: true });
       } else {
         await completeOnboarding(saved);
         await navigate({ to: afterUniversalOnboarding(await resolvePostOnboardingDestination(),
@@ -77,7 +74,7 @@ function OnboardingPage() {
             .from("profiles").select("active_role").eq("id",user.id).maybeSingle();
           if (profileError) throw profileError;
           if (profile?.active_role !== "MOTORISTA") {
-            await navigate({ to: "/cadastro-veiculo", search: {redirect: professionalContinuation}, replace: true });
+            await navigate({ to: "/cadastro-motorista", replace: true });
             return;
           }
         }
@@ -118,7 +115,7 @@ function OnboardingPage() {
         <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
           <div className="h-full w-full rounded-full bg-[#FFBB00]" />
         </div>
-        <p className="mt-5 text-xs font-bold uppercase tracking-widest text-[#FFBB00]">Último passo</p>
+        <p className="mt-5 text-xs font-bold uppercase tracking-widest text-[#FFBB00]">Escolha de atividade</p>
         <h1 className="mt-2 font-display text-2xl font-bold">Como você quer começar?</h1>
         <p className="mt-2 text-sm leading-relaxed text-white/65">
           Uma conta para pedir e oferecer caronas. Você poderá mudar de atividade quando quiser.
@@ -140,10 +137,12 @@ function OnboardingPage() {
         {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
         <button type="button" disabled={!role || busy} onClick={() => role && void finish(role)}
           className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212] disabled:opacity-50">
-          {busy ? "Concluindo…" : "Começar a usar"} <ArrowRight size={18} />
+          {busy ? "Continuando…" : role === "MOTORISTA" ? "Continuar cadastro do motorista" : "Começar a usar"} <ArrowRight size={18} />
         </button>
         <p className="mt-4 text-center text-xs text-white/50">
-          Região, universidade e veículo poderão ser informados quando forem necessários. O uso profissional exige autorização.
+          {role === "MOTORISTA"
+            ? "A seguir: contato e município, veículo, identificação e revisão. Sua conta será habilitada quando os dados forem confirmados."
+            : "Você pode completar suas preferências e informações adicionais depois."}
         </p>
       </div>
     </main>
