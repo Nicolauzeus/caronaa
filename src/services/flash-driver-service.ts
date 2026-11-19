@@ -140,24 +140,45 @@ export async function respondFlashOrder(rideId:string,accept:boolean):Promise<"A
     throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
-export async function getMyActiveFlashRide():Promise<FlashDriverRide|null>{
+export type FlashRideSnapshot={
+  active:FlashDriverRide|null;
+  completed:{id:string;requested_at:string|null}|null;
+};
+/** One guarded participant RPC returns both the active trip and a recently
+ * completed one. This keeps post-trip Pix/rating available when the active
+ * driver row disappears on COMPLETED without an extra polling channel. */
+export async function getMyFlashRideSnapshot():Promise<FlashRideSnapshot>{
   try{
     const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
     if(error||!Array.isArray(data))throw new FlashDriverError("UNAVAILABLE");
-    const row=data.find((x:unknown)=>{const r=record(x);return r?.role==="DRIVER"&&
-      ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(string(r.status).toUpperCase());});
-    if(!row)return null;
-    const r=record(row)!;
-    const id=string(r.id),status=string(r.status).toUpperCase();
-    if(!id)return null;
+    const mine=data.map(record).filter((x):x is Record<string,unknown>=>x!==null&&x.role==="DRIVER");
+    const row=mine.find(r=>["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(string(r.status).toUpperCase()));
+    const completed=mine.filter(r=>string(r.status).toUpperCase()==="COMPLETED"&&!!string(r.id))
+      .sort((a,b)=>Date.parse(string(b.requested_at)||"1970-01-01")-
+        Date.parse(string(a.requested_at)||"1970-01-01"))[0];
+    let active:FlashDriverRide|null=null;
+    if(row){
+      const id=string(row.id),status=string(row.status).toUpperCase();
+      if(!id)throw new FlashDriverError("UNAVAILABLE");
+      active={
+        id,status:status as FlashDriverRide["status"],
+        originLabel:string(row.origin_label),destinationLabel:string(row.destination_label),
+        municipality:string(row.municipality),
+        vehicleType:row.vehicle_type==="MOTO"?"MOTO":"CAR",
+        ...(row.mode==="ON_ROUTE"||row.mode==="EXCLUSIVE"?{mode:row.mode}:{}),
+      };
+    }
     return {
-      id,status:status as FlashDriverRide["status"],
-      originLabel:string(r.origin_label),destinationLabel:string(r.destination_label),
-      municipality:string(r.municipality),
-      vehicleType:r.vehicle_type==="MOTO"?"MOTO":"CAR",
-      ...(r.mode==="ON_ROUTE"||r.mode==="EXCLUSIVE"?{mode:r.mode}:{}),
+      active,completed:completed?
+        {id:string(completed.id),requested_at:string(completed.requested_at)||null}:null,
     };
-  }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
+  }catch(error){
+    if(error instanceof FlashDriverError)throw error;
+    throw new FlashDriverError("UNAVAILABLE");
+  }
+}
+export async function getMyActiveFlashRide():Promise<FlashDriverRide|null>{
+  return (await getMyFlashRideSnapshot()).active;
 }
 export type FlashPassengerDetails={
   name:string;photo:string|null;whatsapp:string|null;seatsRemaining:number|null;
