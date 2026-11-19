@@ -251,38 +251,19 @@ export function DriverFlashPlanner({
     }finally{setBusyRide(false);}
   };
   const [dropoffSent,setDropoffSent]=useState(false);
-  const [manualCloseOpen,setManualCloseOpen]=useState(false);
-  const [manualCloseReason,setManualCloseReason]=useState("");
   useEffect(()=>{if(active?.status!=="IN_PROGRESS")setDropoffSent(false);},[active?.id,active?.status]);
   const requestDropoff=async()=>{
     if(!active||busyRide)return;
     setBusyRide(true);
     try{
       const {data,error}=await (supabase as any).rpc("quick_ride_complete_ride",{p_id:active.id});
-      if(error||data!==true){
-        if(/DROPOFF_GPS_UNVERIFIED|DROPOFF_TOO_FAR_FROM_DESTINATION/i.test(String(error?.message??"")))
-          setManualCloseOpen(true);
-        throw new Error("DROPOFF");
-      }
+      if(error||data!==true)throw new Error(error?.message||"DROPOFF_UNAVAILABLE");
       setDropoffSent(true);
-      toast.success("Desembarque enviado ao passageiro.");
+      toast.success("Desembarque solicitado. O passageiro pode confirmar depois; você já pode receber novas corridas.");
       await refresh();
-    }catch{toast.error("Não foi possível confirmar o GPS no destino. Verifique o local ou peça análise manual.");}
-    finally{setBusyRide(false);}
-  };
-  const requestManualClose=async()=>{
-    if(!active||busyRide||manualCloseReason.trim().length<20)return;
-    setBusyRide(true);
-    try{
-      const {data,error}=await (supabase as any).rpc(
-        "quick_ride_request_manual_review",
-        {p_id:active.id,p_reason:manualCloseReason.trim()});
-      if(error||data!==true)throw new Error("REVIEW_UNAVAILABLE");
-      setManualCloseOpen(false);setManualCloseReason("");setDropoffSent(true);
-      toast.info("Confirmação manual enviada ao passageiro. Sem resposta em 120 segundos, irá para análise sem cobrança.");
-      await refresh();
-    }catch{toast.error("Não foi possível enviar o encerramento para análise. Tente novamente.");}
-    finally{setBusyRide(false);}
+    }catch{
+      toast.error("Não foi possível solicitar o desembarque. Confira a conexão e tente novamente.");
+    }finally{setBusyRide(false);}
   };
   useEffect(()=>{
     if(presence.error?.includes("COMMISSION_BLOCKED"))
@@ -376,12 +357,9 @@ export function DriverFlashPlanner({
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
         whatsappUrl={normalizeWhatsapp(passenger?.whatsapp)}
         pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
-        manualCloseOpen={manualCloseOpen} onToggleManualClose={()=>setManualCloseOpen(v=>!v)}
-        manualCloseReason={manualCloseReason} onManualCloseReason={setManualCloseReason}
         onArrived={()=>void transition("ARRIVED")}
         onStart={()=>void transition("IN_PROGRESS")}
         onDropoff={()=>void requestDropoff()}
-        onManualClose={()=>void requestManualClose()}
         onSnapChange={onSnapChange}/>}
       {!presence.online&&snap!=="peek"&&
         <p className="text-xs text-white/65">Para receber chamados, ative o GPS e sua disponibilidade.</p>}
