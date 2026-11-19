@@ -47,20 +47,20 @@ export async function unlockNotificationAudio(): Promise<void> {
     const Audio = win.AudioContext || win.webkitAudioContext;
     if (!Audio) return;
     context ??= new Audio();
-    const ctx = context;
+    const ctx: AudioContext = context;
     if (!audioPrimed) {
       audioPrimed = true;
-      const oscillator = context.createOscillator();
-      const silence = context.createGain();
+      const oscillator = ctx.createOscillator();
+      const silence = ctx.createGain();
       silence.gain.value = 0;
       oscillator.connect(silence);
-      silence.connect(context.destination);
+      silence.connect(ctx.destination);
       oscillator.onended = () => {
         oscillator.disconnect();
         silence.disconnect();
       };
       oscillator.start();
-      oscillator.stop(context.currentTime + 0.03);
+      oscillator.stop(ctx.currentTime + 0.03);
     }
     if (ctx.state === "suspended") await ctx.resume();
   } catch {
