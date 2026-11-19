@@ -276,8 +276,8 @@ export function QuickRideHomePanel({
   // this is independent of driver socket delivery and survives missed events.
   useEffect(()=>{
     if(!liveRide)return;
-    const intervalMs=liveRide.status==="SEARCHING"?5000:
-      ["ACCEPTED","ARRIVED"].includes(liveRide.status)?8000:12000;
+    const intervalMs=liveRide.status==="SEARCHING"?3000:
+      ["ACCEPTED","ARRIVED"].includes(liveRide.status)?5000:12000;
     const timer=window.setInterval(()=>{
       if(!document.hidden)void refreshQuickRides();
     },intervalMs);
