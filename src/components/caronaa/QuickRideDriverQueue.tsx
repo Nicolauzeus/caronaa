@@ -336,9 +336,7 @@ export function QuickRideDriverQueue({
               ? "Acompanhar destino no mapa"
               : "Acompanhar embarque no mapa"}
           </button>
-          <p className="-mt-2 text-center text-[11px] leading-relaxed text-white/60">
-            Abre o mapa com sua posição atual. Para voltar ao atendimento ou ao código, expanda a barra inferior.
-          </p>
+          
           <div className="professional-cockpit__timeline" aria-label="Origem e destino da corrida">
             <span className="professional-cockpit__timeline-marker" aria-hidden="true"/>
             <div className="min-w-0">
