@@ -32,6 +32,7 @@ export function useFlashDriverPresence(){
   const sending=useRef(false);
   const active=useRef(false);
   const inFlightStart=useRef(false);
+  const unmounted=useRef(false);
   const currentFix=useRef<DriverGpsFix|null>(null);
   const stopWatch=useCallback(()=>{
     if(watch.current!==null && typeof navigator!=="undefined"&&navigator.geolocation)
@@ -86,6 +87,7 @@ export function useFlashDriverPresence(){
       ]);
       if(presenceResult.status==="rejected")throw presenceResult.reason;
       serverActivated=true;
+      if(unmounted.current)throw new FlashDriverError("UNAVAILABLE");
       if(gpsResult.status==="rejected")throw gpsResult.reason;
       const initial=sample(gpsResult.value);
       const age=Date.now()-initial.at;
@@ -101,7 +103,7 @@ export function useFlashDriverPresence(){
       // A successful online RPC is not sufficient to claim connected GPS:
       // GPS publication must still be acknowledged.
       const published=await sendHeartbeat(initial,true);
-      if(!published)throw new FlashDriverError("UNAVAILABLE");
+      if(!published||unmounted.current)throw new FlashDriverError("UNAVAILABLE");
       setState(s=>({...s,online:true,gpsConnected:true,phase:"online"}));
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;
@@ -151,10 +153,17 @@ export function useFlashDriverPresence(){
   },[sendHeartbeat,stopWatch]);
 
   useEffect(()=>{
-    // Backgrounding or route navigation is not an explicit offline request.
-    // Stop this local sensor on unmount; server TTL prevents ghost drivers.
-    // Only the "Ficar Indisponível" action requests permanent offline.
-    return()=>{active.current=false;stopWatch();};
+    unmounted.current=false;
+    // Display lock / backgrounding alone must never mark the user offline.
+    // Unmounting the driver surface stops this hook's sole GPS publisher,
+    // so close server presence to prevent ghost drivers until it remounts.
+    return()=>{
+      unmounted.current=true;
+      const wasActive=active.current;
+      active.current=false;
+      stopWatch();
+      if(wasActive)void setFlashDriverOffline().catch(()=>undefined);
+    };
   },[stopWatch]);
   return {...state,goOnline,markOffline};
 }
