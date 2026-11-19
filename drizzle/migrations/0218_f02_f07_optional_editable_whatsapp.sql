@@ -247,7 +247,8 @@ BEGIN
   END IF;
 
   -- Municipality is required; WhatsApp is a private optional CRM contact.
-  IF NOT EXISTS (
+  -- MOTOTAXI_SIMPLE already verifies the region via its own profile above.
+  IF p_access_type='STANDARD' AND NOT EXISTS (
     SELECT 1 FROM public.professional_driver_authorizations a
     WHERE a.user_id=v_uid AND a.approved IS TRUE
   ) AND NOT EXISTS (
