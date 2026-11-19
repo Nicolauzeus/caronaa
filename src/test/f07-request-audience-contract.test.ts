@@ -6,6 +6,7 @@ const migration=file("drizzle/migrations/0214_f07_request_viewers_and_profiles.s
 const card=file("src/components/caronaa/shell/FlashIncomingOrderCard.tsx");
 const queue=file("src/components/caronaa/QuickRideDriverQueue.tsx");
 const passenger=file("src/components/caronaa/QuickRideHomePanel.tsx");
+const passengerSheet=file("src/components/caronaa/shell/FlashPassengerLiveSheet.tsx");
 const audio=file("src/lib/notification-sound.ts");
 const viewer=file("src/components/caronaa/QuickRidePassengerIdentity.tsx");
 const audience=file("src/components/caronaa/QuickRideSearchActivity.tsx");
@@ -32,7 +33,8 @@ describe("F07 incoming-call and genuine audience contracts",()=>{
     expect(migration).not.toContain("GRANT SELECT ON public.quick_ride_driver_views TO authenticated");
   });
   it("shows sequential genuine drivers and the actual accepted driver",()=>{
-    expect(passenger).toContain('<QuickRideSearchActivity rideId={liveRide.id} status={liveRide.status}/>');
+    expect(passenger).toContain('<FlashPassengerLiveSheet');
+    expect(passengerSheet).toContain('<QuickRideSearchActivity rideId={ride.id} status={ride.status} compact={false}/>');
     expect(audience).toContain("audience.watchingCount");
     expect(audience).toContain("audience.viewers");
     expect(audience).toContain("audience.acceptedDriver");
