@@ -183,6 +183,83 @@ BEGIN
 END;
 $admin_list$;
 
+-- Immutable receiver + amount per ride. Both devices fetch this one
+-- server-owned snapshot; changing a profile Pix key cannot change an
+-- already displayed collection. The first completed-trip lookup creates it
+-- only when the driver has a valid key. No transfer takes place here.
+CREATE TABLE IF NOT EXISTS public.quick_ride_pix_checkout_snapshot (
+  ride_id uuid PRIMARY KEY REFERENCES public.professional_quick_rides(id) ON DELETE RESTRICT,
+  recipient_key text NOT NULL CHECK (char_length(btrim(recipient_key)) BETWEEN 6 AND 77),
+  recipient_name text NOT NULL,
+  amount_cents integer NOT NULL CHECK (amount_cents>=450),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.quick_ride_pix_checkout_snapshot ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.quick_ride_pix_checkout_snapshot FROM PUBLIC,anon,authenticated;
+GRANT ALL ON public.quick_ride_pix_checkout_snapshot TO service_role;
+
+CREATE OR REPLACE FUNCTION public.get_completed_quick_ride_pix(p_ride_id uuid)
+RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path TO ''
+AS $pix_snapshot$
+DECLARE
+  r public.professional_quick_rides%ROWTYPE;
+  q public.caronaa_quick_fare_quotes%ROWTYPE;
+  s public.quick_ride_pix_checkout_snapshot%ROWTYPE;
+  v_key text;
+  v_name text;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO r FROM public.professional_quick_rides WHERE id=p_ride_id;
+  IF NOT FOUND OR (r.passenger_id IS DISTINCT FROM auth.uid() AND
+      r.driver_id IS DISTINCT FROM auth.uid()) THEN
+    RAISE EXCEPTION 'Quick ride not found' USING ERRCODE='42501';
+  END IF;
+  IF r.status<>'COMPLETED' OR r.driver_id IS NULL THEN
+    RAISE EXCEPTION 'Pix somente apos conclusao confirmada' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO q FROM public.caronaa_quick_fare_quotes WHERE ride_id=p_ride_id;
+  IF NOT FOUND OR q.passenger_id IS DISTINCT FROM r.passenger_id
+      OR q.municipality IS DISTINCT FROM r.municipality
+      OR q.vehicle_type IS DISTINCT FROM r.vehicle_type
+      OR q.customer_pays_cents<450
+      OR q.customer_pays_cents <> q.driver_receives_cents+q.platform_commission_cents THEN
+    RAISE EXCEPTION 'Contrato de tarifa inconsistente' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO s FROM public.quick_ride_pix_checkout_snapshot WHERE ride_id=p_ride_id;
+  IF NOT FOUND THEN
+    SELECT d.pix_key INTO v_key FROM public.driver_pix_settings d
+      WHERE d.user_id=r.driver_id;
+    IF length(btrim(coalesce(v_key,''))) BETWEEN 6 AND 77 THEN
+      SELECT p.full_name INTO v_name FROM public.profiles p WHERE p.id=r.driver_id;
+      INSERT INTO public.quick_ride_pix_checkout_snapshot
+        (ride_id,recipient_key,recipient_name,amount_cents)
+      VALUES(p_ride_id,btrim(v_key),
+        coalesce(nullif(btrim(v_name),''),'Motorista'),q.customer_pays_cents)
+      ON CONFLICT(ride_id) DO NOTHING;
+      SELECT * INTO s FROM public.quick_ride_pix_checkout_snapshot
+        WHERE ride_id=p_ride_id;
+    END IF;
+  END IF;
+  IF s.ride_id IS NOT NULL AND s.amount_cents<>q.customer_pays_cents THEN
+    RAISE EXCEPTION 'Snapshot Pix inconsistente' USING ERRCODE='22023';
+  END IF;
+  RETURN jsonb_build_object(
+    'available',s.ride_id IS NOT NULL,
+    'key',s.recipient_key,
+    'name',coalesce(s.recipient_name,'Motorista'),
+    'amountCents',q.customer_pays_cents,
+    'rideId',r.id,
+    'paymentMethod','MANUAL_DRIVER_PIX',
+    'automaticConfirmation',false,
+    'pilotOnly',(q.policy_version LIKE '%-piloto')
+  );
+END;
+$pix_snapshot$;
+REVOKE ALL ON FUNCTION public.get_completed_quick_ride_pix(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_completed_quick_ride_pix(uuid) TO authenticated;
+
 -- Payment declarations are separate, idempotent events. Driver can
 -- acknowledge a real bank receipt even if passenger forgot to tap "paguei".
 -- Never treat the app button as bank reconciliation or platform fee payment.
