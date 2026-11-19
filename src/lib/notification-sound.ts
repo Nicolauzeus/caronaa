@@ -46,8 +46,8 @@ export async function unlockNotificationAudio(): Promise<void> {
     const win = window as Window & { webkitAudioContext?: typeof AudioContext };
     const Audio = win.AudioContext || win.webkitAudioContext;
     if (!Audio) return;
-    context ??= new Audio();
-    const ctx: AudioContext = context;
+    const ctx: AudioContext = context ?? new Audio();
+    context = ctx;
     if (!audioPrimed) {
       audioPrimed = true;
       const oscillator = ctx.createOscillator();
