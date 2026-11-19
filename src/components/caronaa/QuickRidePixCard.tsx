@@ -49,7 +49,7 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
       if(rpcError)throw new Error("Pix da Corrida Rápida indisponível. Confira a migration 0143 e o encerramento da viagem.");
       const row=data as CompletedQuickPix | null;
       if(!row || row.available!==true || !row.key){
-        if(alive)setError("Aguardando o motorista cadastrar uma chave Pix. Esta cobrança será atualizada automaticamente.");
+        if(alive){setPix(null);setError("Aguardando o motorista cadastrar uma chave Pix. Esta cobrança será atualizada automaticamente.");}
         return;
       }
       if(row.rideId!==rideId || row.paymentMethod!=="MANUAL_DRIVER_PIX" ||
@@ -66,10 +66,12 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     return()=>{alive=false;};
   },[rideId,refreshKey]);
 
-  const copy=async()=>{
+  const copy=async(kind:"payload"|"key")=>{
     if(!pix)return;
-    try { await navigator.clipboard.writeText(pix.payload); }
-    catch {setError("Não foi possível copiar. Selecione o código e copie manualmente.");}
+    const value=kind==="key"?pix.data.key:pix.payload;
+    if(!value)return;
+    try{await navigator.clipboard.writeText(value);}
+    catch{setError("Não foi possível copiar automaticamente. Abra os detalhes e selecione o código.");}
   };
 
   useEffect(()=>{
@@ -95,30 +97,38 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     {error&&<button type="button" onClick={()=>setRefreshKey(v=>v+1)} className="min-h-10 rounded-lg border border-[#FFBB00] px-3 text-[#FFBB00]">Tentar novamente</button>}
     {error&&<p role="alert" className="break-words text-destructive">{error}</p>}
     {pix&&<>
-      <p className="text-xs text-white/70">Valor total da corrida</p>
+      <p className="text-xs text-white/70">Valor contratado da corrida</p>
       <p className="text-3xl font-black text-[#FFBB00]">{formatBrl(pix.data.amountCents/100)}</p>
-      <img src={pix.image} alt="QR Pix estático com o valor da viagem concluída" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48" />
-      <p className="break-all text-xs">Chave do motorista: {pix.data.key}</p>
-      <button type="button" onClick={()=>void copy()}
-        className="min-h-11 w-full rounded-lg bg-[#FFBB00] p-2 font-bold text-[#121212]">
-        Copiar chave Pix / código copia e cola
+      {pix.data.pilotOnly&&<p role="alert" className="rounded-lg border border-amber-300/50 p-2 text-xs text-amber-200">Homologação — não realize transferências reais.</p>}
+      <p className="text-xs text-white/75">Pague diretamente ao motorista pelo aplicativo do seu banco. O botão abaixo copia o Pix completo, incluindo o valor da corrida.</p>
+      <button type="button" onClick={()=>void copy("payload")}
+        className="min-h-14 w-full rounded-xl bg-[#FFBB00] px-3 font-extrabold text-[#121212]">
+        Copiar Pix Copia e Cola
       </button>
-      <p className="text-xs text-white/65">Pagamento direto ao motorista. A declaração não substitui a confirmação no banco.</p>
-      {declared ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 p-3">
-        {driverConfirmed?"Motorista também confirmou recebimento (declarações registradas; sem confirmação bancária).":"Você declarou pagamento. Aguardando o motorista confirmar o recebimento."}
-      </p> : <>
-        <button type="button" disabled={submitting} onClick={()=>void confirmDeclaration()} className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-4 font-bold text-[#FFBB00]">
-          {submitting?"Registrando...":"Já fiz o Pix — declarar pagamento"}
+      <div className="space-y-1 rounded-xl border border-white/20 p-3">
+        <p className="text-xs text-white/70">Chave Pix do motorista</p>
+        <p className="break-all text-sm font-medium text-white">{pix.data.key}</p>
+        <button type="button" onClick={()=>void copy("key")}
+          className="min-h-11 w-full rounded-lg border border-[#FFBB00]/55 text-sm font-bold text-[#FFBB00]">
+          Copiar somente a chave Pix
         </button>
-      </>}
-      <details className="rounded-xl border border-white/15 p-2 text-xs text-white/70">
-        <summary className="min-h-8 cursor-pointer font-semibold">Ver código Pix e informações de segurança</summary>
-        <textarea readOnly aria-label="Código Pix copia e cola" value={pix.payload}
-          className="mt-2 w-full break-all rounded-lg border border-white/20 bg-[#121212] p-2 text-base text-white" rows={2}/>
-        <p className="mt-2 text-xs">
-          {pix.data.pilotOnly?"HOMOLOGAÇÃO — não efetue transferências reais. ":""}
-          O QR não confirma o pagamento, o recebimento nem o repasse automático.
-        </p>
+      </div>
+      <p className="text-xs text-white/65">A confirmação do desembarque não realiza o pagamento. Confira o destinatário e o valor no banco.</p>
+      {driverConfirmed&&!declared&&<p role="status" className="rounded-xl border border-white/20 p-3 text-xs">
+        O motorista declarou ter recebido. Confira seu banco antes de registrar sua própria declaração.
+      </p>}
+      {declared?<p role="status" className="rounded-xl border border-[#FFBB00]/40 p-3">
+        {driverConfirmed?"Ambas as partes declararam o pagamento; não houve conciliação bancária automática.":"Você declarou pagamento. O motorista pode confirmar após conferir o banco."}
+      </p>:<button type="button" disabled={submitting} onClick={()=>void confirmDeclaration()}
+        className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-4 font-bold text-[#FFBB00]">
+        {submitting?"Registrando...":"Já fiz o Pix — declarar pagamento"}
+      </button>}
+      <details className="rounded-xl border border-white/15 p-3 text-xs text-white/70">
+        <summary className="min-h-8 cursor-pointer font-semibold">Ver QR Code opcional e código Pix completo</summary>
+        <img src={pix.image} alt="QR Pix da mesma cobrança exibida ao motorista" className="mx-auto my-2 h-40 w-40 rounded-xl bg-white p-2"/>
+        <textarea readOnly aria-label="Código Pix completo para seleção manual" value={pix.payload}
+          className="mt-2 w-full break-all rounded-lg border border-white/20 bg-[#121212] p-2 text-base text-white" rows={3}/>
+        <p className="mt-2">O QR não comprova transferência nem recebimento automático.</p>
       </details>
     </>}
   </section>;
