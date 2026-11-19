@@ -66,6 +66,7 @@ export function QuickRideDriverQueue({
   const [dropoffDeadline,setDropoffDeadline]=useState<string|null>(null);
   const [dropoffResponse,setDropoffResponse]=useState<string|null>(null);
   const [dropoffNow,setDropoffNow]=useState(Date.now());
+  const [nearDropoff,setNearDropoff]=useState(false);
   const visibleQueue=queue.filter(ride=>Number.isFinite(Date.parse(ride.expires_at))&&
     Date.parse(ride.expires_at)>queueNow);
   const ringingOrderId=!active&&online&&gpsReady?visibleQueue[0]?.id:null;
@@ -159,6 +160,28 @@ export function QuickRideDriverQueue({
       window.removeEventListener("focus",onVisible);
     };
   },[online,gpsReady,active?.id,active?.status,refresh]);
+  useEffect(()=>{
+    if(!active||active.status!=="IN_PROGRESS"){setNearDropoff(false);return;}
+    let alive=true;
+    const check=async()=>{
+      try{
+        const {data,error}=await (supabase as any).rpc(
+          "quick_ride_driver_near_dropoff",{p_id:active.id});
+        if(alive)setNearDropoff(!error&&data===true);
+      }catch{if(alive)setNearDropoff(false);}
+    };
+    void check();
+    const visible=()=>{if(!document.hidden)void check();};
+    const timer=window.setInterval(visible,15000);
+    window.addEventListener("focus",visible);
+    document.addEventListener("visibilitychange",visible);
+    return()=>{
+      alive=false;window.clearInterval(timer);
+      window.removeEventListener("focus",visible);
+      document.removeEventListener("visibilitychange",visible);
+    };
+  },[active?.id,active?.status]);
+
   const loadDropoff=useCallback(async(rideId:string)=>{
     const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:rideId});
     if(error)return;
@@ -369,6 +392,7 @@ export function QuickRideDriverQueue({
               className="professional-cockpit__primary-action w-full">Validar código e iniciar viagem</button>
           </>}
           {active.status==="IN_PROGRESS"&&<>
+            {nearDropoff&&!dropoffDeadline&&<p role="status" className="rounded-xl border border-[#FFBB00]/35 p-2 text-xs text-[#FFBB00]">GPS indica proximidade do destino. Confirme com o passageiro antes de solicitar desembarque.</p>}
             {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado pelo passageiro. Cobrança suspensa; aguarde a decisão da plataforma.</p>:
              dropoffResponse==="NOT_YET"?<div className="space-y-2">
                <p role="status" className="text-sm text-white/90">O passageiro informou que ainda está na corrida. Continue até o desembarque.</p>
