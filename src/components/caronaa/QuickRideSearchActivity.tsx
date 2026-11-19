@@ -15,6 +15,10 @@ function DriverProfile({driver,confirmed}:{driver:RideParticipantSummary;confirm
       <p className="truncate text-xs text-white/70">
         {driver.registration?`Matrícula informada: ${driver.registration}`:"Motorista cadastrado no CARONAA"}
       </p>
+      {confirmed&&(driver.vehicle||driver.plate)&&
+        <p className="truncate text-xs text-white/70">
+          {[driver.vehicle,driver.plate].filter(Boolean).join(" · ")}
+        </p>}
       <p className="text-[11px] font-semibold text-[#FFBB00]">
         {confirmed?"Aceitou sua solicitação":"Visualizando sua solicitação"}
       </p>
@@ -40,7 +44,7 @@ export function QuickRideSearchActivity({rideId,status,compact=false}:{rideId:st
       if(!active||running||document.hidden)return;
       running=true;
       try{
-        const result=await getQuickRideRequestAudience(rideId);
+        const result=await getQuickRideRequestAudience(rideId,status);
         if(active){setAudience(result);setFailed(false);}
       }catch{if(active)setFailed(true);}
       finally{running=false;}
