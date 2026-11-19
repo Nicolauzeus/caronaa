@@ -5,6 +5,7 @@ const sql=readFileSync("drizzle/migrations/0209_f07_accept_queue_event_schema_an
 const driver=readFileSync("src/components/caronaa/QuickRideDriverQueue.tsx","utf8");
 const cockpit=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
 const passenger=readFileSync("src/components/caronaa/QuickRideHomePanel.tsx","utf8");
+const passengerSheet=readFileSync("src/components/caronaa/shell/FlashPassengerLiveSheet.tsx","utf8");
 const legacy=readFileSync("src/components/caronaa/QuickRideExperience.tsx","utf8");
 const driverHistory=readFileSync("src/routes/_authenticated/viagens-profissionais.tsx","utf8");
 const passengerHistory=readFileSync("src/components/caronaa/QuickRideTripHistory.tsx","utf8");
@@ -52,7 +53,7 @@ describe("F07 atomic accept and bounded passenger waiting",()=>{
     expect(passenger).toContain("searchDeadlinePassed");
     expect(passenger).toContain("Busca encerrada");
     expect(passenger).toContain("Tentar outra corrida");
-    expect(passenger).toContain("Cancelar pedido");
+    expect(passengerSheet).toContain("Cancelar pedido");
     expect(legacy).toContain('activeRide.status==="SEARCHING"?5000:10000');
   });
   it("returns both roles to their normal screens after completed rides",()=>{
