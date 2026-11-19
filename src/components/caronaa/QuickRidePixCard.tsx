@@ -97,16 +97,13 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     {pix&&<>
       <p className="text-xs text-white/70">Valor total da corrida</p>
       <p className="text-3xl font-black text-[#FFBB00]">{formatBrl(pix.data.amountCents/100)}</p>
-      <img src={pix.image} alt="QR Pix estático com o valor da viagem concluída" className="mx-auto h-56 w-56 bg-white p-2" />
+      <img src={pix.image} alt="QR Pix estático com o valor da viagem concluída" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48" />
       <p className="break-all text-xs">Chave do motorista: {pix.data.key}</p>
       <button type="button" onClick={()=>void copy()}
         className="min-h-11 w-full rounded-lg bg-[#FFBB00] p-2 font-bold text-[#121212]">
         Copiar chave Pix / código copia e cola
       </button>
-      <div role="alert" className="rounded-xl border border-[#FFBB00] bg-[#FFBB00]/10 p-3 text-sm text-white">
-        <strong className="text-[#FFBB00]">Atenção ao pagamento Pix.</strong>
-        <p className="mt-1">Regularize o valor da corrida. Pendências financeiras poderão restringir novas viagens quando houver política de bloqueio válida.</p>
-      </div>
+      <p className="text-xs text-white/65">Pagamento direto ao motorista. A declaração não substitui a confirmação no banco.</p>
       {declared ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 p-3">
         {driverConfirmed?"Motorista também confirmou recebimento (declarações registradas; sem confirmação bancária).":"Você declarou pagamento. Aguardando o motorista confirmar o recebimento."}
       </p> : <>
@@ -114,13 +111,15 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
           {submitting?"Registrando...":"Já fiz o Pix — declarar pagamento"}
         </button>
       </>}
-      <textarea readOnly aria-label="Código Pix copia e cola" value={pix.payload}
-        className="w-full break-all rounded-lg border bg-background p-2 text-xs" rows={2}/>
-      <p className="text-xs text-muted-foreground">
-        {pix.data.pilotOnly?"HOMOLOGAÇÃO — não efetue transferências reais. ":""}
-        O QR apenas preenche um Pix estático. Não comprova pagamento,
-        não confirma recebimento e não faz repasse automático.
-      </p>
+      <details className="rounded-xl border border-white/15 p-2 text-xs text-white/70">
+        <summary className="min-h-8 cursor-pointer font-semibold">Ver código Pix e informações de segurança</summary>
+        <textarea readOnly aria-label="Código Pix copia e cola" value={pix.payload}
+          className="mt-2 w-full break-all rounded-lg border border-white/20 bg-[#121212] p-2 text-base text-white" rows={2}/>
+        <p className="mt-2 text-xs">
+          {pix.data.pilotOnly?"HOMOLOGAÇÃO — não efetue transferências reais. ":""}
+          O QR não confirma o pagamento, o recebimento nem o repasse automático.
+        </p>
+      </details>
     </>}
   </section>;
 }
