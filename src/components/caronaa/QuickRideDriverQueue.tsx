@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { Clock3, Navigation2, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
-import { startLoop, stopLoop, unlockNotificationAudio } from "@/lib/notification-sound";
+import { isNotificationAudioReady, playNotificationSound, startLoop, stopLoop, unlockNotificationAudio } from "@/lib/notification-sound";
+import { readNotificationSettings } from "@/lib/notification-settings";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
 
@@ -411,6 +412,17 @@ export function QuickRideDriverQueue({
               {ride.vehicle_type==="MOTO"?"Mototáxi":"Carro"}
             </span>
           </div>
+          {ride.id===ringingOrderId && readNotificationSettings().soundEnabled && !isNotificationAudioReady() &&
+            <button type="button"
+              onClick={() => {
+                void unlockNotificationAudio().then(() => {
+                  if (Date.parse(ride.expires_at)>Date.now())
+                    void playNotificationSound("order_incoming_loop",ride.id);
+                });
+              }}
+              className="min-h-11 w-full rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 px-3 text-xs font-semibold text-[#FFBB00]">
+              Ativar som dos chamados
+            </button>}
           <div className="professional-cockpit__timeline rounded-xl bg-white/[0.035] p-3" aria-label="Trajeto solicitado">
             <span className="professional-cockpit__timeline-marker" aria-hidden="true"/>
             <p className="min-w-0 break-words text-sm"><span className="font-bold text-emerald-300">Embarque</span> · {ride.origin_label}</p>
