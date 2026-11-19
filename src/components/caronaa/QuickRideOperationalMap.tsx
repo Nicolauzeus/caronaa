@@ -362,7 +362,7 @@ export function QuickRideOperationalMap({
           className="pointer-events-auto flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 px-2.5 text-xs font-bold text-[#FFBB00]">
           Rota por voz
         </a>}
-        {(error||(!driverPoint&&(driverPositionDelayed||showingLastFix)))&&
+        {(error||driverPositionDelayed||showingLastFix||(Boolean(driverPhase)&&!driverPoint))&&
           <span role="status" title={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
             aria-label={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
             className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-1 text-[10px] font-bold text-amber-300">
