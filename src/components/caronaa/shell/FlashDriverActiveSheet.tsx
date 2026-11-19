@@ -3,7 +3,7 @@ import type { FlashDriverRide, FlashPassengerDetails } from "@/services/flash-dr
 import type { SheetSnap } from "./InteractiveBottomSheet";
 
 type Props={
-  ride:FlashDriverRide;passenger:FlashPassengerDetails|null;snap:SheetSnap;
+  ride:FlashDriverRide;passenger:FlashPassengerDetails|null;snap:SheetSnap;whatsappUrl?:string|null;
   pin:string;onPinChange:(pin:string)=>void;
   busy:boolean;dropoffSent:boolean;
   manualCloseOpen:boolean;onToggleManualClose:()=>void;
@@ -18,7 +18,7 @@ const status={
 } as const;
 
 export function FlashDriverActiveSheet({
-  ride,passenger,snap,pin,onPinChange,busy,dropoffSent,
+  ride,passenger,snap,whatsappUrl,pin,onPinChange,busy,dropoffSent,
   manualCloseOpen,onToggleManualClose,manualCloseReason,onManualCloseReason,
   onArrived,onStart,onDropoff,onManualClose,onSnapChange,
 }:Props){
@@ -126,8 +126,11 @@ export function FlashDriverActiveSheet({
                 </button>
               </div>}
             </div>}
-          {snap==="full"&&passenger?.whatsapp&&
-            <p className="text-xs text-white/60">Contato do passageiro disponível após o aceite, conforme sua autorização.</p>}
+          {snap==="full"&&whatsappUrl&&<a href={whatsappUrl}
+            target="_blank" rel="noopener noreferrer"
+            className="flex min-h-12 items-center justify-center rounded-xl border border-[#FFBB00]/40 px-3 text-sm font-bold text-[#FFBB00]">
+            Falar com passageiro no WhatsApp
+          </a>}
         </div>
         <div className="mt-auto grid shrink-0 grid-cols-[auto_minmax(0,1fr)] gap-2 border-t border-white/10 bg-[#121212] px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <button type="button" onClick={()=>onSnapChange("peek")}
