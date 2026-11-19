@@ -20,6 +20,12 @@ describe("F07 map-first mobile operational drawers",()=>{
     expect(incoming).toContain('00:{String(remaining).padStart(2,"0")}');
     expect(incoming).toContain('data-testid="flash-request-drawer"');
     expect(incoming).toContain("Aceitar corrida");
+    // A driver has 30 seconds and must not scroll to reach either decision.
+    expect(incoming).toContain('data-no-scroll-acceptance="true"');
+    expect(incoming).toContain('overflow-hidden overscroll-none');
+    expect(incoming).toContain('height:"min(510px, 90dvh)"');
+    expect(incoming).toContain('<footer className="grid shrink-0');
+    expect(incoming).not.toContain("overflow-y-auto");
     expect(incoming).toContain("Dispensar");
     expect(incoming).toContain("stopLoop(order.id)");
     expect(flashApi).toContain("x.service_mode??x.mode??x.booking_mode");
