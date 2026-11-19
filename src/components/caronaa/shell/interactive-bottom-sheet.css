@@ -39,3 +39,54 @@
     outline-offset: -3px;
   }
 }
+
+/* CARONAA mobile cockpit: one operational panel per ride phase.
+   Avoid accidental iPhone Safari focus-zoom while preserving pinch accessibility. */
+@media (max-width: 767px) {
+  .caronaa-journey-sheet[data-ride-active="true"] {
+    background: #121212;
+    color: #fff;
+    border-color: rgba(255, 187, 0, .28);
+  }
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="half"] {
+    height: min(62dvh, 570px) !important;
+  }
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="full"] {
+    height: min(92dvh, 900px) !important;
+  }
+  .caronaa-journey-sheet[data-ride-active="true"] .caronaa-journey-sheet__content {
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0;
+    -webkit-overflow-scrolling: auto;
+  }
+  .caronaa-journey-sheet[data-ride-active="true"] .caronaa-journey-sheet__content > div {
+    min-height: 0;
+  }
+  .caronaa-journey-sheet input,
+  .caronaa-journey-sheet textarea,
+  .caronaa-journey-sheet select {
+    font-size: 16px !important;
+  }
+  .caronaa-journey-sheet button,
+  .caronaa-journey-sheet a,
+  .caronaa-journey-sheet input {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .caronaa-journey-sheet .caronaa-active-trip,
+  .caronaa-journey-sheet .caronaa-passenger-live {
+    min-height: 0;
+  }
+  /* On compact iPhones, omit secondary descriptions before allowing scrolling. */
+  @media (max-height: 700px) {
+    .caronaa-journey-sheet[data-ride-active="true"][data-snap="half"] {
+      height: min(69dvh, 510px) !important;
+    }
+    .caronaa-journey-sheet[data-ride-active="true"][data-snap="peek"] {
+      height: 205px !important;
+    }
+    .caronaa-passenger-live [aria-label="Acompanhamento da procura por motorista"] > p:last-child {
+      display: none;
+    }
+  }
+}
