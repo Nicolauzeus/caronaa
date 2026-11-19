@@ -450,6 +450,7 @@ export function ProfessionalAvailabilityPage() {
     else if(activeRide.status==="ACCEPTED"||activeRide.status==="IN_PROGRESS")
       setSheetExpanded(false);
   },[activeRide?.id,activeRide?.status]);
+  // The professional cockpit has its own sheet; map-first collapse takes priority.
   const sheetOpen=activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
   const followRideOnMap=useCallback((rideId:string)=>{
     // The driver explicitly asks to see the map: do not wait for another
@@ -458,7 +459,7 @@ export function ProfessionalAvailabilityPage() {
     setSheetExpanded(false);
     setNavigationFocusRequest(previous=>previous+1);
   },[activeRide?.id]);
-  return <div className="professional-cockpit">
+  return <div className="professional-cockpit" data-active-ride={activeRide?"true":"false"}>
     {activeRide && <div className="professional-cockpit__map">
       <QuickRideOperationalMap rideId={activeRide.id} status={activeRide.status}
         role="DRIVER" immersive vehicleType={activeRide.vehicle_type==="MOTO"?"MOTO":"CAR"}
@@ -604,7 +605,7 @@ export function ProfessionalAvailabilityPage() {
     </div>}
 
       </div>
-      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-can-start={ready && !enabled && (authorized || pilotEnabled) ? "true" : "false"}>
+      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-active-ride={activeRide?"true":"false"} data-can-start={ready && !enabled && (authorized || pilotEnabled) ? "true" : "false"}>
         <button
           type="button"
           className="professional-cockpit__sheet-toggle"
@@ -628,9 +629,9 @@ export function ProfessionalAvailabilityPage() {
             else setSheetExpanded(v=>!v);
           }}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
-          <span>{activeRide
-            ? activeRide.status==="ARRIVED" ? "Embarque · inserir código" :
-              activeRide.status==="IN_PROGRESS" ? "Em viagem · acompanhar destino" : "A caminho do passageiro"
+          <span className="professional-cockpit__sheet-label">{activeRide
+            ? activeRide.status==="ARRIVED" ? "Embarque · ver código" :
+              activeRide.status==="IN_PROGRESS" ? "Em viagem · abrir controles" : "A caminho · ver detalhes"
             : hasPendingCalls ? "Novos chamados" : ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
         </button>
         {!activeRide&&<div className="professional-cockpit__mobile-connection">
