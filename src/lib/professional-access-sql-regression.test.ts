@@ -1,32 +1,33 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const sql=readFileSync("drizzle/migrations/0211_professional_access_missing_array_append.sql","utf8");
-const professional=readFileSync("src/components/caronaa/ProfessionalAccessRequest.tsx","utf8");
-const mototaxi=readFileSync("src/routes/cadastro-motorista.tsx","utf8");
+const read=(path:string)=>readFileSync(path,"utf8");
+const old=read("drizzle/migrations/0211_professional_access_missing_array_append.sql");
+const sql=read("drizzle/migrations/0216_unified_driver_registration.sql");
+const wizard=read("src/routes/cadastro-motorista.tsx");
 
-describe("professional registration SQL 22P02 regression",()=>{
-  it("replaces all scalar concatenations with safe array_append, without bypassing mandatory checks",()=>{
-    expect(sql).not.toMatch(/v\s*:=\s*v\s*\|\|\s*'[A-Z_]+'/);
-    expect((sql.match(/array_append\(v, '[A-Z_]+'\)/g)||[]).length).toBeGreaterThanOrEqual(12);
-    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.professional_access_missing");
-    expect(sql).toContain("v_avatar_path");
-    expect(sql).toContain("storage.objects");
-    expect(sql).toContain("vehicle_plate");
-    expect(sql).toContain("vehicle_color");
-    expect(sql).toContain("NOTIFY pgrst,'reload schema'");
+describe("F07 cadastro único e progressivo",()=>{
+  it("mantém a correção de array das validações de banco",()=>{
+    expect(old).not.toMatch(/v\s*:=\s*v\s*\|\|\s*'[A-Z_]+'/);
+    expect((old.match(/array_append\(v, '[A-Z_]+'\)/g)||[]).length).toBeGreaterThanOrEqual(12);
+  });
+  it("não concede nova autorização sem WhatsApp, município e veículo",()=>{
+    for(const expected of [
+      "professional_driver_contacts","whatsapp_e164","p_municipality",
+      "p_vehicle_plate","professional_auto_enable",
+      "Dados pendentes: WHATSAPP,MUNICIPALITY","storage.objects",
+      "ON CONFLICT (user_id) DO UPDATE","NOTIFY pgrst,'reload schema'",
+    ])expect(sql).toContain(expected);
     expect(sql.trim().endsWith("COMMIT;")).toBe(true);
+    expect(sql).not.toContain("set_professional_presence");
   });
-  it("never validates a made-up vehicle profile lacking its actual color",()=>{
-    expect(professional).not.toContain('avatarUrl: "https://ok"');
-    expect(professional).toContain("initialVehicle");
-    expect(professional).toContain('rpc("submit_professional_access_request"');
-  });
-  it("reuses the correct vehicle type and blocks expired sessions before writes",()=>{
-    expect(mototaxi).toContain('registeredVehicle==="CAR"');
-    expect(mototaxi).toContain("supabase.auth.getUser()");
-    expect(mototaxi).toContain("vehicleMissing");
-    expect(mototaxi).toContain("Entrar novamente");
-    expect(mototaxi).toContain("onCarAuthorized");
+  it("exibe progresso e verifica habilitação no servidor antes do cockpit",()=>{
+    expect(wizard).toContain('rpc("complete_professional_driver_registration"');
+    expect(wizard).toContain('rpc("get_my_professional_access")');
+    expect(wizard).toContain("supabase.auth.getUser()");
+    expect(wizard).toContain("Etapa {stage + 1} de 4");
+    expect(wizard).toContain("Próxima: ");
+    expect(wizard).toContain("(stage + 1) * 25");
+    expect(wizard).not.toContain('rpc("set_professional_presence"');
   });
 });

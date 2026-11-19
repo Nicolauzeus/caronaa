@@ -7,7 +7,11 @@ describe("CARONAA — cadastro de motorista só conclui quando completo",()=>{
   it("does not mark MOTORISTA onboarding completed before mandatory vehicle setup",()=>{
     const page=source("src/routes/onboarding.tsx");
     expect(page).toContain('if (selectedRole === "MOTORISTA")');
-    expect(page).toContain('to: "/cadastro-veiculo"');
+    expect(page).toContain('to: "/cadastro-motorista"');
+    const wizard=source("src/routes/cadastro-motorista.tsx");
+    expect(wizard).toContain('complete_professional_driver_registration');
+    expect(wizard).toContain('Etapa {stage + 1} de 4');
+    expect(wizard).toContain('Próxima: ');
     expect(page).toContain('await completeOnboarding(saved)');
     const vehicle=source("src/routes/_authenticated/cadastro-veiculo.tsx");
     expect(vehicle).toContain('getVehicleStatus({');

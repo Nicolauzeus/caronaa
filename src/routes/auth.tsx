@@ -307,6 +307,12 @@ function AuthPage() {
           <button type="button" onClick={() => setSignupRole(null)} className="min-h-11 px-2 font-bold text-caronaa-primary-strong underline">Alterar</button>
         </div>
       )}
+      {mode === "cadastro" && signupRole === "MOTORISTA" && (
+        <p className="mb-3 rounded-xl border border-caronaa-primary/25 bg-caronaa-primary/5 p-3 text-xs text-muted-foreground">
+          Depois de confirmar a conta: contato e município, veículo, identificação e revisão.
+          Você verá o progresso em cada etapa e poderá ficar online após a habilitação.
+        </p>
+      )}
       {/* Formulário - Somente o necessário */}
       <form onSubmit={submit} className="space-y-3 lg:space-y-4">
         {submitError && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</p>}

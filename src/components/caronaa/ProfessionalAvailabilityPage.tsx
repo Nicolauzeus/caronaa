@@ -9,7 +9,6 @@ import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTrace
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
-import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAccessRequest";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
@@ -60,7 +59,6 @@ export function ProfessionalAvailabilityPage() {
   const [diagnostics,setDiagnostics]=useState<SafeF07RadarEvent[]>([]);
   const [copied,setCopied]=useState(false);
   const [tick,setTick]=useState(Date.now());
-  const onAuthorized=useCallback((value:boolean)=>setAuthorized(value),[]);
   const mounted=useRef(true);
   const watch=useRef<number|null>(null);
   const tracking=useRef(false);
@@ -388,7 +386,7 @@ export function ProfessionalAvailabilityPage() {
     if(busy)return;
     record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized});
     if(next && !authorized && !pilotEnabled){
-      setError("É necessária aprovação administrativa para entrar no radar.");return;
+      setError("Conclua o cadastro profissional para ficar online.");return;
     }
     setBusy(true);setError("");
     try{
@@ -676,7 +674,6 @@ export function ProfessionalAvailabilityPage() {
         Parar compartilhamento de GPS
       </button>}
     </div>
-    <ProfessionalAccessRequest onAuthorized={onAuthorized}/>
     {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
       <strong>Piloto F07 — apenas homologação</strong>
       <p>Autorização temporária somente no ambiente de testes.</p>

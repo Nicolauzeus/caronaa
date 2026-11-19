@@ -1,472 +1,336 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
-import { BrandLogo } from "@/components/caronaa/BrandElements";
-import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
-import { supabase } from "@/integrations/supabase/client";
-import { getVehicleStatus } from "@/lib/role/use-active-role";
-import { ProfessionalAccessRequest } from "@/components/caronaa/ProfessionalAccessRequest";
-import { parseMissingError, MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
-import { useAuth } from "@/lib/auth-context";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, Bike, Camera, CarFront, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  professionalFormCorrections,
-  professionalServerCorrections,
-  professionalFieldLabels,
-  professionalPhotoTypes,
-  type ProfessionalCorrections,
-  type ProfessionalField,
-} from "@/lib/mototaxi-registration";
+import { BrandLogo } from "@/components/caronaa/BrandElements";
+import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { CAR_CATEGORIES, MISSING_LABELS, isValidBrazilianPlate, normalizePlate, parseMissingError, type CarCategory, type MissingCode } from "@/lib/professional-access";
+import { professionalPhotoTypes, professionalPhotoMaxBytes } from "@/lib/mototaxi-registration";
 
 export const Route = createFileRoute("/cadastro-motorista")({
-  ssr: false,
-  component: ProfessionalMotorcycleRegistration,
-  head: () => ({ meta: [{ title: "Dados profissionais — CARONAA" }] }),
+  ssr: false, component: DriverRegistration,
+  head: () => ({ meta: [{ title: "Cadastro de motorista | CARONAA" }] }),
 });
 
-function ProfessionalMotorcycleRegistration() {
-  const navigate = useNavigate();
+type Field = "name" | "whatsapp" | "municipality" | "type" | "brand" | "model" | "color" | "category" | "seats" | "plate" | "registration" | "photo";
+type Vehicle = "" | "CAR" | "MOTO";
+const stages = ["Contato e município", "Dados do veículo", "Identificação", "Revisão final"];
+const phoneValid = (v: string) => /^[1-9][0-9]9[0-9]{8}$/.test(v.replace(/\D/g, "").replace(/^55(?=\d{11}$)/, ""));
+const avatarValid = (url: string, id: string) => url.startsWith("https://") && url.includes("/avatars/" + id + "/");
+const inputStyle = "mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#252525] p-3 text-base text-white outline-none focus-visible:border-[#FFBB00]";
+const labelStyle = "block text-sm font-semibold text-white/90";
+
+function DriverRegistration() {
   const { user, loading: authLoading } = useAuth();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [stage, setStage] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [missing, setMissing] = useState<Partial<Record<Field, string>>>({});
+  const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [region, setRegion] = useState<"" | "MACICO_BATURITE" | "FORTALEZA">("");
-  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [municipality, setMunicipality] = useState("");
+  const [type, setType] = useState<Vehicle>("");
+  const [brand, setBrand] = useState("");
+  const [model, setModel] = useState("");
+  const [color, setColor] = useState("");
+  const [category, setCategory] = useState<CarCategory | "">("");
+  const [seats, setSeats] = useState(1);
+  const [plate, setPlate] = useState("");
+  const [registration, setRegistration] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
-  const [request, setRequest] = useState<{ status: string; review_reason?: string | null } | null>(null);
-  const [authorized, setAuthorized] = useState(false);
-  const [reviewState, setReviewState] = useState<"loading" | "ready" | "error">("loading");
-  const [reviewError,setReviewError]=useState("");
-  const [reviewRetry, setReviewRetry] = useState(0);
-  const [vehiclePlate, setVehiclePlate] = useState("");
-  const [registeredVehicle,setRegisteredVehicle]=useState<"CAR"|"MOTO"|null>(null);
-  const [carSeats,setCarSeats]=useState(1);
-  const [carMunicipality,setCarMunicipality]=useState("");
-  const [vehicleCorrections,setVehicleCorrections]=useState<MissingCode[]>([]);
-  const [sessionExpired,setSessionExpired]=useState(false);
-  const [busy, setBusy] = useState(false);
-  const [attempted, setAttempted] = useState(false);
-  const [serverCorrections, setServerCorrections] = useState<ProfessionalCorrections>({});
-  const [submissionMessage, setSubmissionMessage] = useState("");
-  const [onboardingState, setOnboardingState] = useState<"checking" | "ready" | "error">("checking");
-  const [onboardingRetry, setOnboardingRetry] = useState(0);
-  const onCarAuthorized=useCallback((value:boolean)=>{
-    if(value)void navigate({to:"/disponibilidade-profissional",replace:true});
-  },[navigate]);
 
-  // A professional application is not a second sign-up.
   useEffect(() => {
     if (authLoading) return;
     if (!user?.email_confirmed_at) {
-      void navigate({
-        to: "/auth",
-        search: { mode: user ? "entrar" : "cadastro", redirect: "/cadastro-motorista" },
-        replace: true,
-      });
+      void navigate({ to: "/auth", search: { mode: user ? "entrar" : "cadastro", redirect: "/cadastro-motorista" }, replace: true });
       return;
     }
-    let alive = true;
-    setOnboardingState("checking");
-    void readOnboarding().then(progress => {
-      if (!alive) return;
-      if (progress?.status !== "BASIC_COMPLETED") {
-        void navigate({ to: "/onboarding", search: { redirect: "/cadastro-motorista" }, replace: true });
-        return;
-      }
-      setOnboardingState("ready");
-    }).catch(() => { if (alive) setOnboardingState("error"); });
-    return () => { alive = false; };
-  }, [authLoading, user?.id, user?.email_confirmed_at, navigate, onboardingRetry]);
-
-  useEffect(() => {
-    if (!user?.email_confirmed_at || onboardingState !== "ready") return;
-    let active = true;
-    setReviewState("loading");
-    setReviewError("");
+    let live = true;
+    setReady(false); setLoadFailed(false); setError("");
     void Promise.all([
-      (supabase as any).from("professional_mototaxi_profiles").select("first_name,last_name,whatsapp_e164,region_code,registration_number").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("avatar_url,vehicle_plate,full_name,vehicle_brand,vehicle_description,vehicle_color,vehicle_type,vehicle_seats,city").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles")
+        .select("full_name,avatar_url,city,vehicle_type,vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_seats")
+        .eq("id", user.id).maybeSingle(),
+      (supabase as any).from("professional_driver_contacts")
+        .select("whatsapp_e164,municipality,registration_number").eq("user_id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
-    ]).then(([details, profile, access]) => {
-      if (!active) return;
-      if(profile.error || !profile.data){
-        const detail=String(profile.error?.message??"");
-        if(/refresh_token|jwt|token.*expired|invalid.*session/i.test(detail)){
-          setSessionExpired(true);
-          setReviewError("Sua sessão expirou. Entre novamente para verificar o cadastro.");
-        }else setReviewError("Não foi possível verificar os dados obrigatórios do veículo.");
-        setReviewState("error");
-        return;
+    ]).then(([profile, contact, access]) => {
+      if (!live) return;
+      if (profile.error || !profile.data || contact.error || access.error) {
+        setLoadFailed(true);
+        setError(contact.error?.code === "42P01" ? "A migration 0216 do cadastro de motoristas precisa ser aplicada no Supabase." :
+          "Não foi possível consultar os dados do cadastro. Tente novamente.");
+        setReady(true); return;
       }
-      // No one may finish professional registration by bypassing the
-      // universal vehicle/photo completion. Applies to historical applicants.
-      const validVehicle=getVehicleStatus(profile.data).isComplete;
-      const hasPhoto=Boolean(profile.data.avatar_url?.trim());
-      if(!validVehicle || !hasPhoto || !["car","moto"].includes(String(profile.data.vehicle_type))){
-        void navigate({to:"/cadastro-veiculo",
-          search:{redirect:"/cadastro-motorista"},replace:true});
-        return;
+      if (access.data?.authorized === true) {
+        void navigate({ to: "/disponibilidade-profissional", replace: true }); return;
       }
-      setRegisteredVehicle(profile.data.vehicle_type==="moto"?"MOTO":"CAR");
-      setCarSeats(Number(profile.data.vehicle_seats)||1);
-      setCarMunicipality(typeof profile.data.city==="string"?profile.data.city:"");
-      if (details.data) {
-        setFirstName(details.data.first_name ?? "");
-        setLastName(details.data.last_name ?? "");
-        setWhatsapp(details.data.whatsapp_e164 ?? "");
-        setRegion(details.data.region_code === "FORTALEZA" ? "FORTALEZA" : details.data.region_code === "MACICO_BATURITE" ? "MACICO_BATURITE" : "");
-        setRegistrationNumber(details.data.registration_number ?? "");
-      } else {
-        const fullName = String(profile.data?.full_name || user.user_metadata?.full_name || "").trim();
-        const parts = fullName.split(/\s+/).filter(Boolean);
-        setFirstName(parts[0] ?? "");
-        setLastName(parts.length > 1 ? parts[parts.length - 1] : "");
-      }
-      if(access.error){
-        const code=String(access.error.code??"");
-        const detail=String(access.error.message??"");
-        if(code==="22P02")setReviewError("Erro interno 22P02 ao verificar cadastro. Aplicar a correção SQL 0211.");
-        else if(/refresh_token|jwt|token.*expired|invalid.*session/i.test(detail)||code==="PGRST301"){
-          setSessionExpired(true);
-          setReviewError("Sessão expirada. Entre novamente.");
-        }else setReviewError("Não foi possível confirmar a situação do seu acesso profissional.");
-        setReviewState("error");
-        return;
-      }
-      setPhotoUrl(profile.data?.avatar_url ?? "");
-      setVehiclePlate(profile.data?.vehicle_plate ?? "");
-      setRequest(access.data?.request ?? null);
-      setAuthorized(access.data?.authorized === true);
-      setReviewState("ready");
-      if (details.error || profile.error) {
-        toast.error("Alguns dados cadastrais não puderam ser carregados.");
-      }
-    }).catch(() => {
-      if (active) {
-        setReviewState("error");
-        setReviewError("Falha temporária ao consultar o cadastro.");
-      }
-    });
-    return () => { active = false; };
-  }, [user?.id, user?.email_confirmed_at, onboardingState, reviewRetry]);
+      const p = profile.data, c = contact.data;
+      setName(String(p.full_name || user.user_metadata?.full_name || ""));
+      setWhatsapp(String(c?.whatsapp_e164 || ""));
+      const city = String(c?.municipality || p.city || "").trim();
+      setMunicipality(["MACICO_BATURITE", "OUTRA_REGIAO"].includes(city.toUpperCase()) ? "" : city);
+      setType(p.vehicle_type === "car" ? "CAR" : p.vehicle_type === "moto" ? "MOTO" : "");
+      setBrand(String(p.vehicle_brand || "")); setModel(String(p.vehicle_description || ""));
+      setColor(String(p.vehicle_color || "")); setPlate(String(p.vehicle_plate || ""));
+      setSeats(Number(p.vehicle_seats) > 0 ? Number(p.vehicle_seats) : 1);
+      setPhotoUrl(String(p.avatar_url || "")); setRegistration(String(c?.registration_number || ""));
+      setReady(true);
+    }).catch(() => { if (live) { setLoadFailed(true); setError("Falha de conexão. Tente novamente."); setReady(true); } });
+    return () => { live = false; };
+  }, [authLoading, user?.id, user?.email_confirmed_at, navigate, retry]);
 
+  const clear = (field: Field) => setMissing(old => { const next = { ...old }; delete next[field]; return next; });
+  const FieldError = ({ field }: { field: Field }) => missing[field] ?
+    <span role="alert" className="mt-1 block text-xs text-amber-300">{missing[field]}</span> : null;
 
+  function validate(which: number) {
+    const m: Partial<Record<Field, string>> = {};
+    if (which === 0 || which === 3) {
+      if (!/^\S{2,}\s+\S{2,}/.test(name.trim()) || name.trim().length > 120) m.name = "Informe nome e sobrenome.";
+      if (!phoneValid(whatsapp)) m.whatsapp = "Informe WhatsApp com DDD.";
+      if (municipality.trim().length < 2 || ["MACICO_BATURITE", "OUTRA_REGIAO"].includes(municipality.toUpperCase()))
+        m.municipality = "Escolha seu município nas sugestões.";
+    }
+    if (which === 1 || which === 3) {
+      if (!type) m.type = "Escolha carro ou moto.";
+      if (!brand.trim()) m.brand = "Informe a marca.";
+      if (!model.trim()) m.model = "Informe o modelo.";
+      if (!color.trim()) m.color = "Informe a cor.";
+      if (type === "CAR" && !category) m.category = "Escolha a categoria.";
+      if (!Number.isInteger(seats) || seats < 1 || (type === "CAR" && seats > 3) || (type === "MOTO" && seats !== 1))
+        m.seats = "Confira as vagas.";
+    }
+    if (which === 2 || which === 3) {
+      if (!isValidBrazilianPlate(plate) || !/^[A-Z]{3}\d[\dA-J]\d{2}$/.test(normalizePlate(plate)))
+        m.plate = "Informe placa válida (ABC1234 ou ABC1D23).";
+      if (type === "MOTO" && registration.trim().length < 2) m.registration = "Informe sua matrícula/registro.";
+      if (!photo && !avatarValid(photoUrl, user?.id || "")) m.photo = "Adicione sua foto pessoal.";
+      if (photo && (!professionalPhotoTypes.includes(photo.type as typeof professionalPhotoTypes[number]) ||
+          photo.size === 0 || photo.size > professionalPhotoMaxBytes))
+        m.photo = "Use JPG, PNG ou WebP com até 5 MB.";
+    }
+    return m;
+  }
 
-  const localCorrections = professionalFormCorrections({
-    firstName, lastName, whatsapp, region, registrationNumber, photo, photoUrl,
-    userId: user?.id ?? "",
-  });
-  const corrections: ProfessionalCorrections = attempted
-    ? { ...localCorrections, ...serverCorrections } : {};
-  const missingFields = (Object.keys(professionalFieldLabels) as ProfessionalField[])
-    .filter(field => Boolean(corrections[field]));
-  const clearCorrection = (field: ProfessionalField) => {
-    setServerCorrections(previous => {
-      if (!previous[field]) return previous;
-      const next = { ...previous };
-      delete next[field];
-      return next;
-    });
-    setSubmissionMessage("");
-  };
-  const focusMissing = (fields: ProfessionalField[]) => {
-    if (!fields.length) return;
-    const focus = () => document.getElementById("prof-" + fields[0])?.focus();
-    if (typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(focus);
-    } else {
-      focus();
-    }
-  };
+  function changeStage(next: number) {
+    setStage(next); setMissing({}); setError("");
+    if (typeof window.scrollTo === "function") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-  async function confirmData(event: FormEvent) {
-    event.preventDefault();
-    setAttempted(true);
-    setServerCorrections({});
-    setVehicleCorrections([]);
-    setSubmissionMessage("");
-    if(registeredVehicle!=="MOTO"){
-      setSubmissionMessage("O veículo registrado é um carro. Utilize a habilitação de carro, sem preencher novamente os dados de mototáxi.");
-      return;
-    }
-    if (Object.keys(localCorrections).length) {
-      focusMissing(Object.keys(localCorrections) as ProfessionalField[]);
-      return;
-    }
-    if (!user?.email_confirmed_at || reviewState !== "ready") {
-      setSubmissionMessage("Verifique sua sessão e tente novamente.");
-      return;
-    }
-    setBusy(true);
+  async function complete() {
+    if (busy || !user) return;
+    setBusy(true); setError("");
     try {
-      // Refresh-token 400 is an authentication problem, not missing fields.
-      // Verify the session BEFORE performing image uploads or SQL writes.
-      const {data:authenticated,error:authError}=await supabase.auth.getUser();
-      if(authError || authenticated.user?.id!==user.id){
-        setSessionExpired(true);
-        setSubmissionMessage("A sessão expirou. Entre novamente para concluir com segurança; os dados já salvos permanecem no CARONAA.");
-        return;
-      }
-      setSessionExpired(false);
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || auth.user?.id !== user.id || !auth.user.email_confirmed_at)
+        throw new Error("Sessão expirada. Entre novamente para concluir.");
       if (photo) {
         const extension = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
         const path = user.id + "/" + crypto.randomUUID() + "." + extension;
-        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, photo, {
-          upsert: false, contentType: photo.type,
-        });
-        if (uploadError) {
-          setServerCorrections({photo: "Não foi possível salvar sua foto. Escolha outra imagem e tente novamente."});
-          focusMissing(["photo"]);
-          return;
-        }
-        const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(path);
-        const { error: profileError } = await supabase.from("profiles")
-          .update({ avatar_url: publicData.publicUrl, updated_at: new Date().toISOString() })
-          .eq("id", user.id);
-        if (profileError) {
-          setServerCorrections({photo: "Não foi possível confirmar a foto no seu perfil. Tente novamente."});
-          focusMissing(["photo"]);
-          return;
-        }
-        setPhotoUrl(publicData.publicUrl);
-        setPhoto(null);
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, photo,
+          { contentType: photo.type, upsert: false });
+        if (uploadError) throw new Error("Não foi possível salvar a foto.");
+        const { data: photoData } = supabase.storage.from("avatars").getPublicUrl(path);
+        const { error: photoError } = await supabase.from("profiles").update({
+          avatar_url: photoData.publicUrl, updated_at: new Date().toISOString(),
+        }).eq("id", user.id);
+        if (photoError) throw new Error("Não foi possível vincular a foto ao perfil.");
+        setPhotoUrl(photoData.publicUrl); setPhoto(null);
       }
-
-      // The server checks completeness and enables the professional vehicle atomically.
-      // GPS and online presence still require explicit consent.
-      const { error } = await (supabase as any).rpc("submit_simple_mototaxi_access", {
-        p_first_name: firstName.trim(),
-        p_last_name: lastName.trim(),
-        p_whatsapp: whatsapp,
-        p_region: region,
-        p_registration_number: registrationNumber.trim(),
+      const { error: registrationError } = await (supabase as any).rpc("complete_professional_driver_registration", {
+        p_full_name: name.trim(), p_whatsapp: whatsapp.trim(), p_municipality: municipality.trim(),
+        p_vehicle_type: type, p_vehicle_brand: brand.trim(), p_vehicle_model: model.trim(),
+        p_vehicle_color: color.trim(), p_vehicle_plate: normalizePlate(plate),
+        p_car_category: type === "CAR" ? category : null, p_vehicle_seats: type === "MOTO" ? 1 : seats,
+        p_registration_number: type === "MOTO" ? registration.trim() : null,
       });
-      if (error) {
-        const code=String(error.code??"");
-        const message=String(error.message??"");
-        const allMissing=parseMissingError(message);
-        const vehicleMissing=allMissing.filter(value=>
-          ["VEHICLE_MODEL","VEHICLE_COLOR","PLATE","VEHICLE_TYPE","SEATS"].includes(value));
-        if(vehicleMissing.length){
-          setVehicleCorrections(vehicleMissing);
-          setSubmissionMessage("O veículo cadastrado possui uma inconsistência. Corrija apenas os itens abaixo.");
-          return;
-        }
-        const missing=professionalServerCorrections(error);
-        if(Object.keys(missing).length){
-          setServerCorrections(missing);
-          focusMissing(Object.keys(missing) as ProfessionalField[]);
-          return;
-        }
-        if(code==="22P02"){
-          setSubmissionMessage("Falha interna na validação de dados (22P02). A correção SQL 0211 precisa ser aplicada; os campos preenchidos não são necessariamente inválidos.");
-        }else if(/session|jwt|token|sessao|autentica/i.test(message)||code==="PGRST301"){
-          setSessionExpired(true);
-          setSubmissionMessage("A sessão expirou. Entre novamente para continuar.");
-        }else if(code==="42501"){
-          setSubmissionMessage("Existe uma restrição administrativa anterior. Consulte o suporte CARONAA.");
-        }else{
-          setSubmissionMessage("Não foi possível verificar a habilitação no servidor. Seus dados foram preservados. Código: "+(code||"INDEFINIDO"));
-        }
+      if (registrationError) {
+        const codes = parseMissingError(String(registrationError.message || ""));
+        if (codes.length) {
+          const target = codes.some((v: MissingCode) => ["WHATSAPP", "MUNICIPALITY", "FULL_NAME"].includes(v)) ? 0 :
+            codes.some((v: MissingCode) => ["VEHICLE_MODEL", "VEHICLE_COLOR", "VEHICLE_TYPE", "CAR_CATEGORY", "SEATS"].includes(v)) ? 1 : 2;
+          changeStage(target);
+          setError("Corrija: " + codes.map((v: MissingCode) => MISSING_LABELS[v]).join(", ") + ".");
+        } else setError(registrationError.code === "PGRST202" ? "Aplique a migration 0216 antes de publicar." :
+          String(registrationError.message || "Falha ao concluir o cadastro."));
         return;
       }
-      const { data: refreshed, error: refreshError } =
-        await (supabase as any).rpc("get_my_professional_access");
-      if (refreshError || !refreshed || refreshed.authorized !== true) {
-        setSubmissionMessage("Dados recebidos, mas a habilitação não foi confirmada pelo servidor. Tente novamente.");
-        return;
-      }
-      setRequest(refreshed.request ?? null);
-      setAuthorized(refreshed.authorized === true);
-      toast.success("Cadastro concluído! Ative sua disponibilidade para receber corridas.");
-      await navigate({to: "/disponibilidade-profissional", replace: true});
-    } catch {
-      setSubmissionMessage("Não foi possível concluir a confirmação. Verifique sua conexão e tente novamente.");
-    } finally {
-      setBusy(false);
-    }
+      const { data: access, error: checkError } = await (supabase as any).rpc("get_my_professional_access");
+      if (checkError || access?.authorized !== true) throw new Error("O servidor ainda não confirmou a habilitação.");
+      window.dispatchEvent(new Event("caronaa:role-changed"));
+      toast.success("Cadastro concluído. Ative sua disponibilidade quando quiser.");
+      await navigate({ to: "/disponibilidade-profissional", replace: true });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível concluir o cadastro.");
+    } finally { setBusy(false); }
   }
 
-  if (authLoading || !user?.email_confirmed_at || onboardingState !== "ready") {
-    return (
-      <main className="grid min-h-[100dvh] place-items-center bg-[#121212] px-4 text-white">
-        <section className="w-full max-w-sm space-y-4 rounded-3xl border border-white/15 bg-[#1b1b1b] p-6">
-          <BrandLogo size="lg" className="max-w-[185px]" />
-          {onboardingState === "error" && user?.email_confirmed_at ? (
-            <>
-              <h1 className="font-display text-lg font-bold">Não foi possível conferir seu cadastro universal</h1>
-              <p role="alert" className="text-sm text-white/70">Confirme os dados da sua conta para continuar.</p>
-              <button type="button" onClick={() => setOnboardingRetry(current => current + 1)}
-                className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">
-                Tentar novamente
-              </button>
-            </>
-          ) : <p role="status" className="text-sm text-white/70">Abrindo seu cadastro universal…</p>}
-        </section>
-      </main>
-    );
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const m = validate(stage);
+    if (Object.keys(m).length) { setMissing(m); setError("Revise os dados indicados."); return; }
+    if (stage < stages.length - 1) changeStage(stage + 1);
+    else void complete();
   }
 
-  return (
-    <main className="flex min-h-[100dvh] items-start justify-center bg-[#121212] px-3 py-5 text-white sm:items-center sm:px-5 sm:py-10">
-      <section className="w-full max-w-[460px] space-y-5 rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 shadow-xl sm:p-7">
-        <Link to={user ? "/home" : "/"} aria-label="CARONAA — página inicial" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFBB00]"><BrandLogo size="lg" className="max-w-[205px]" /></Link>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[.15em] text-[#FFBB00]">Dados do motorista</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">{authorized ? "Cadastro concluído" : "Confirme seus dados"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/70">{authorized ? "Seu cadastro está habilitado. Ative sua disponibilidade quando estiver pronto." : "Complete os dados obrigatórios para habilitar seu acesso sem esperar aprovação."}</p>
-        </div>
-        {reviewState !== "ready" ? (
-          <div className="space-y-4" role="status" aria-live="polite">
-            {reviewState === "loading" ? (
-              <div className="space-y-3">
-                <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10"/>
-                <div className="h-20 animate-pulse rounded-2xl bg-white/10"/>
-                <p className="text-sm text-white/70">Conferindo o cadastro profissional...</p>
-              </div>
-            ) : (
-              <>
-                <p role="alert" className="rounded-xl border border-[#FFBB00]/30 bg-[#FFBB00]/10 p-4 text-sm">
-                  {reviewError||"Não foi possível conferir seu cadastro. Para evitar alterações duplicadas, tente novamente."}
-                </p>
-                {sessionExpired&&<Link to="/auth"
-                  search={{mode:"entrar",redirect:"/cadastro-motorista"}}
-                  className="inline-flex min-h-11 items-center text-[#FFBB00] underline">Entrar novamente</Link>}
-                <button type="button" onClick={() => setReviewRetry(value => value + 1)}
-                  className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
-                  Tentar novamente
-                </button>
-              </>
-            )}
-          </div>
-        ) : authorized ? (
-          <section className="space-y-5 rounded-2xl border border-[#FFBB00]/25 bg-[#121212] p-4 sm:p-5" aria-label="Credencial profissional">
-            <div className="flex justify-center">
-              <span className="relative flex size-16 items-center justify-center rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/15">
-                <ShieldCheck className="size-9 text-[#FFBB00]" aria-hidden="true"/>
-                <CheckCircle2 className="absolute -bottom-1 -right-1 size-5 rounded-full bg-[#121212] text-emerald-400" aria-hidden="true"/>
-              </span>
-            </div>
-            <div className="space-y-2 text-center">
-              <h2 className="font-[Sora] text-xl font-extrabold">
-                Cadastro profissional habilitado
-              </h2>
-              <p className="text-xs leading-relaxed text-white/65">
-                O acesso está ativo no CARONAA. Ative sua disponibilidade numa região atendida para começar a receber corridas. A plataforma não substitui licenças legais.
-              </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <div className="rounded-xl bg-white/5 p-3 text-center">
-                <p className="text-[11px] text-white/55">Região cadastrada</p>
-                <p className="mt-1 break-words text-xs font-bold">{region === "FORTALEZA" ? "Fortaleza" : "Maciço de Baturité"}</p>
-              </div>
-              <div className="rounded-xl bg-white/5 p-3 text-center">
-                <p className="text-[11px] text-white/55">Matrícula</p>
-                <p className="mt-1 break-words text-xs font-bold">{registrationNumber || "Não informada"}</p>
-              </div>
-              <div className="rounded-xl bg-white/5 p-3 text-center">
-                <p className="text-[11px] text-white/55">Placa</p>
-                <p className="mt-1 break-words text-xs font-bold">{vehiclePlate || "Não informada"}</p>
-              </div>
-            </div>
-            <Link to="/disponibilidade-profissional"
-              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#FFBB00] px-4 text-center font-[Sora] text-sm font-black text-[#121212]">
-              IR PARA MINHAS CORRIDAS
-            </Link>
-            <p className="text-center text-xs text-white/55">
-              Precisa atualizar seus dados cadastrais? Fale com o suporte.
-            </p>
-            <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))}
-              className="min-h-11 w-full text-sm text-white/65 underline">Sair da conta</button>
-          </section>
-        ) : registeredVehicle==="CAR" ? (
-          <section className="space-y-4" aria-label="Habilitação do motorista de carro">
-            <div className="rounded-2xl border border-[#FFBB00]/30 bg-[#FFBB00]/5 p-4 text-sm text-white/85">
-              <h2 className="font-bold text-[#FFBB00]">Veículo já cadastrado: carro</h2>
-              <p className="mt-2">Nome, foto, marca, modelo, cor e placa já foram reaproveitados.
-                Para receber corridas de carro, confirme apenas a categoria e o município.</p>
-              <p className="mt-2 text-xs text-white/60">
-                Não é necessário informar matrícula de mototáxi nem enviar outra foto.</p>
-            </div>
-            <ProfessionalAccessRequest
-              initialVehicle={{type:"CAR",seats:carSeats,municipality:carMunicipality}}
-              onAuthorized={onCarAuthorized}/>
-            <Link to="/cadastro-veiculo" search={{redirect:"/cadastro-motorista"}}
-              className="inline-flex min-h-11 items-center font-semibold text-[#FFBB00] underline">
-              Meu veículo é moto — corrigir tipo de veículo
-            </Link>
-          </section>
-        ) : (
-          <>
-            {request && <div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-              Situação: <strong>{request.status === "PENDING" ? "Conclua a confirmação" : request.status === "APPROVED" ? "Sincronizando habilitação" : request.status === "REJECTED" ? "Cadastro bloqueado" : "Correções necessárias"}</strong>
-              {request.review_reason && <p>Observação: {request.review_reason}</p>}
-            </div>}
-            <form className="space-y-3" noValidate onSubmit={confirmData}>
-              {missingFields.length > 0 && (
-                <div role="alert" className="rounded-2xl border border-amber-400/55 bg-amber-400/10 p-3 text-sm">
-                  <p className="font-extrabold text-[#FFBB00]">Faltam {missingFields.length} {missingFields.length === 1 ? "dado obrigatório" : "dados obrigatórios"}:</p>
-                  <ul className="mt-1 list-inside list-disc space-y-1 text-white/85">
-                    {missingFields.map(field => <li key={field}>{professionalFieldLabels[field]} — {corrections[field]}</li>)}
-                  </ul>
-                </div>
-              )}
-              {submissionMessage && <div role="alert" className="space-y-2 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
-                <p>{submissionMessage}</p>
-                {sessionExpired&&<Link to="/auth" search={{mode:"entrar",redirect:"/cadastro-motorista"}}
-                  className="inline-flex min-h-11 items-center font-semibold underline">Entrar novamente</Link>}
-              </div>}
-              {vehicleCorrections.length>0&&<div role="alert" className="rounded-xl border border-amber-400/40 p-3 text-sm">
-                <p className="font-semibold">Dados do veículo que precisam ser ajustados:</p>
-                <ul className="ml-5 list-disc">{vehicleCorrections.map(code=><li key={code}>{MISSING_LABELS[code]}</li>)}</ul>
-                <Link to="/cadastro-veiculo" search={{redirect:"/cadastro-motorista"}}
-                  className="inline-flex min-h-11 items-center font-semibold text-[#FFBB00] underline">
-                  Corrigir somente o veículo
-                </Link>
-              </div>}
-              <div className="grid gap-3 min-[390px]:grid-cols-2">
-                <label className="block text-sm" htmlFor="prof-firstName">Primeiro nome
-                    <input id="prof-firstName" aria-required="true" aria-invalid={Boolean(corrections.firstName)} aria-describedby={corrections.firstName ? "prof-firstName-error" : undefined} value={firstName} onChange={e => {setFirstName(e.target.value);clearCorrection("firstName");}} autoComplete="given-name" className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
-                    {corrections.firstName && <span id="prof-firstName-error" className="mt-1 block text-xs text-amber-300">{corrections.firstName}</span>}
-                  </label>
-                <label className="block text-sm" htmlFor="prof-lastName">Último sobrenome
-                    <input id="prof-lastName" aria-required="true" aria-invalid={Boolean(corrections.lastName)} aria-describedby={corrections.lastName ? "prof-lastName-error" : undefined} value={lastName} onChange={e => {setLastName(e.target.value);clearCorrection("lastName");}} autoComplete="family-name" className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
-                    {corrections.lastName && <span id="prof-lastName-error" className="mt-1 block text-xs text-amber-300">{corrections.lastName}</span>}
-                  </label>
-              </div>
-              
-              <label className="block text-sm" htmlFor="prof-whatsapp">WhatsApp com DDD
-                <input id="prof-whatsapp" type="tel" inputMode="tel" autoComplete="tel" aria-required="true" aria-invalid={Boolean(corrections.whatsapp)} aria-describedby={corrections.whatsapp ? "prof-whatsapp-error" : undefined} value={whatsapp} placeholder="(85) 99999-9999" onChange={e => {setWhatsapp(e.target.value);clearCorrection("whatsapp");}} className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
-                {corrections.whatsapp && <span id="prof-whatsapp-error" className="mt-1 block text-xs text-amber-300">{corrections.whatsapp}</span>}
-              </label>
-              <label className="block text-sm" htmlFor="prof-region">Região de atuação
-                <select id="prof-region" aria-required="true" aria-invalid={Boolean(corrections.region)} aria-describedby={corrections.region ? "prof-region-error" : undefined} value={region} onChange={e => {setRegion(e.target.value as typeof region);clearCorrection("region");}} className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]">
-                  <option value="">Selecione a região</option>
-                  <option value="MACICO_BATURITE">Maciço de Baturité</option>
-                  <option value="FORTALEZA">Fortaleza e região metropolitana</option>
-                </select>
-                {corrections.region && <span id="prof-region-error" className="mt-1 block text-xs text-amber-300">{corrections.region}</span>}
-              </label>
-              <label className="block text-sm" htmlFor="prof-registrationNumber">Matrícula / registro de mototaxista
-                <input id="prof-registrationNumber" aria-required="true" aria-invalid={Boolean(corrections.registrationNumber)} aria-describedby={corrections.registrationNumber ? "prof-registrationNumber-error" : undefined} value={registrationNumber} onChange={e => {setRegistrationNumber(e.target.value);clearCorrection("registrationNumber");}} className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-3 text-base outline-none focus-visible:border-[#FFBB00]" />
-                {corrections.registrationNumber && <span id="prof-registrationNumber-error" className="mt-1 block text-xs text-amber-300">{corrections.registrationNumber}</span>}
-              </label>
-              <label className="block text-sm" htmlFor="prof-photo">Foto pessoal
-                {photoUrl && <img src={photoUrl} alt="Foto atual do perfil" className="my-2 size-16 rounded-full object-cover" />}
-                <input id="prof-photo" type="file" accept={professionalPhotoTypes.join(",")} aria-required={!photoUrl && !photo} aria-invalid={Boolean(corrections.photo)} aria-describedby={corrections.photo ? "prof-photo-error" : undefined} onChange={e => {setPhoto(e.target.files?.[0] ?? null);clearCorrection("photo");}} className="mt-2 block min-h-12 w-full rounded-xl border border-white/25 bg-[#232323] p-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-[#FFBB00] file:px-3 file:py-2 file:font-bold file:text-[#121212] focus-visible:outline focus-visible:border-[#FFBB00]" />
-                {photo && <span className="mt-1 block break-all text-xs text-white/70">Selecionada: {photo.name}</span>}
-                {corrections.photo && <span id="prof-photo-error" className="mt-1 block text-xs text-amber-300">{corrections.photo}</span>}
-              </label>
-              <p className="text-xs text-white/55">A matrícula é declaratória. A aprovação administrativa não substitui licenças ou exigências legais para operação.</p>
-              <button type="submit" disabled={busy} aria-busy={busy} className="min-h-14 w-full rounded-2xl bg-[#FFBB00] px-4 py-3 text-base font-extrabold text-[#121212] shadow-md transition-colors hover:bg-[#ffe35c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] disabled:opacity-60">
-                {busy ? "Confirmando dados..." : "Confirmar dados e ver corridas"}
-              </button>
-            </form>
-            <button type="button" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/auth" }))} className="min-h-11 text-sm text-white/65 underline">Sair da conta</button>
-          </>
-        )}
-      </section>
+  if (authLoading || !user?.email_confirmed_at || !ready) return (
+    <main className="grid min-h-[100dvh] place-items-center bg-[#121212] p-5 text-white">
+      <p role="status">Preparando o cadastro do motorista…</p>
     </main>
   );
+  if (loadFailed) return <main className="grid min-h-[100dvh] place-items-center bg-[#121212] p-5 text-white">
+    <section className="w-full max-w-sm space-y-4 rounded-2xl border border-white/20 p-5">
+      <BrandLogo size="lg" />
+      <p role="alert" className="text-sm text-amber-200">{error}</p>
+      <button className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]"
+        onClick={() => setRetry(v => v + 1)}>Tentar novamente</button>
+    </section>
+  </main>;
+
+  return <main className="min-h-[100dvh] bg-[#121212] px-3 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white">
+    <section className="mx-auto w-full max-w-lg rounded-3xl border border-white/15 bg-[#1b1b1b] p-4 sm:mt-4 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <BrandLogo size="lg" />
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-[#FFBB00]">Etapa {stage + 1} de 4</span>
+      </div>
+      <div className="mt-5" role="progressbar" aria-valuemin={0} aria-valuemax={100}
+        aria-valuenow={(stage + 1) * 25} aria-label="Cadastro de motorista">
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full rounded-full bg-[#FFBB00] transition-all" style={{ width: ((stage + 1) * 25) + "%" }} />
+        </div>
+        <div className="mt-2 flex justify-between gap-2 text-xs text-white/60">
+          <span>{(stage + 1) * 25}% concluído</span>
+          <span>{stage === 3 ? "Última etapa" : "Próxima: " + stages[stage + 1]}</span>
+        </div>
+      </div>
+      <h1 className="mt-5 font-[Sora] text-2xl font-extrabold">{stages[stage]}</h1>
+      <p className="mt-1 text-sm text-white/65">
+        {stage === 0 ? "Confirme seu contato e município principal." :
+          stage === 1 ? "Informe o veículo que atenderá seus passageiros." :
+          stage === 2 ? "Está perto do fim: só faltam placa, registro e foto." :
+          "Confira seus dados. Depois, será só escolher quando ficar online."}
+      </p>
+      <form onSubmit={submit} noValidate className="mt-5 space-y-4">
+        {error && <p role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">{error}</p>}
+        {stage === 0 && <>
+          <label className={labelStyle}>Nome completo
+            <input className={inputStyle} value={name} autoComplete="name" maxLength={120}
+              onChange={e => { setName(e.target.value); clear("name"); }} /><FieldError field="name" />
+          </label>
+          <label className={labelStyle}>WhatsApp com DDD
+            <input className={inputStyle} type="tel" inputMode="tel" autoComplete="tel"
+              placeholder="(85) 99999-9999" value={whatsapp}
+              onChange={e => { setWhatsapp(e.target.value); clear("whatsapp"); }} /><FieldError field="whatsapp" />
+          </label>
+          <div className="rounded-xl border border-white/15 bg-white/[0.03] p-3">
+            <MunicipalitySelect value={municipality} onChange={value => { setMunicipality(value); clear("municipality"); }} />
+            <FieldError field="municipality" />
+            <p className="mt-2 text-xs text-white/55">Escolha um município específico. O GPS real será verificado quando você ficar online.</p>
+          </div>
+        </>}
+        {stage === 1 && <>
+          <div role="group" aria-label="Tipo de veículo" className="grid grid-cols-2 gap-2">
+            <button type="button" aria-pressed={type === "CAR"}
+              onClick={() => { setType("CAR"); setSeats(1); clear("type"); }}
+              className={"flex min-h-14 items-center justify-center gap-2 rounded-xl border font-bold " +
+                (type === "CAR" ? "border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]" : "border-white/20")}>
+              <CarFront size={20} /> Carro
+            </button>
+            <button type="button" aria-pressed={type === "MOTO"}
+              onClick={() => { setType("MOTO"); setSeats(1); setCategory(""); clear("type"); }}
+              className={"flex min-h-14 items-center justify-center gap-2 rounded-xl border font-bold " +
+                (type === "MOTO" ? "border-[#FFBB00] bg-[#FFBB00]/15 text-[#FFBB00]" : "border-white/20")}>
+              <Bike size={20} /> Moto
+            </button>
+          </div><FieldError field="type" />
+          <div className="grid grid-cols-2 gap-3">
+            <label className={labelStyle}>Marca
+              <input className={inputStyle} value={brand} placeholder="Honda"
+                onChange={e => { setBrand(e.target.value); clear("brand"); }} /><FieldError field="brand" />
+            </label>
+            <label className={labelStyle}>Modelo
+              <input className={inputStyle} value={model} placeholder="CG 160"
+                onChange={e => { setModel(e.target.value); clear("model"); }} /><FieldError field="model" />
+            </label>
+          </div>
+          <label className={labelStyle}>Cor
+            <input className={inputStyle} value={color} placeholder="Preto"
+              onChange={e => { setColor(e.target.value); clear("color"); }} /><FieldError field="color" />
+          </label>
+          {type === "CAR" && <>
+            <label className={labelStyle}>Categoria do carro
+              <select className={inputStyle} value={category}
+                onChange={e => { setCategory(e.target.value as CarCategory); clear("category"); }}>
+                <option value="">Selecione</option>
+                {CAR_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select><FieldError field="category" />
+            </label>
+            <label className={labelStyle}>Vagas para passageiros
+              <select className={inputStyle} value={seats}
+                onChange={e => { setSeats(Number(e.target.value)); clear("seats"); }}>
+                {[1, 2, 3].map(n => <option key={n} value={n}>{n} {n === 1 ? "vaga" : "vagas"}</option>)}
+              </select><FieldError field="seats" />
+            </label>
+          </>}
+          {type === "MOTO" && <p className="text-xs text-white/60">Moto: 1 vaga para passageiro, automaticamente.</p>}
+        </>}
+        {stage === 2 && <>
+          <label className={labelStyle}>Placa do veículo
+            <input className={inputStyle} value={plate} autoCapitalize="characters" maxLength={8}
+              placeholder="ABC1D23" onChange={e => { setPlate(e.target.value.toUpperCase()); clear("plate"); }} />
+            <FieldError field="plate" />
+          </label>
+          {type === "MOTO" && <label className={labelStyle}>Matrícula / registro do mototaxista
+            <input className={inputStyle} value={registration} maxLength={80}
+              onChange={e => { setRegistration(e.target.value); clear("registration"); }} />
+            <FieldError field="registration" />
+          </label>}
+          <label className={labelStyle}>Foto do motorista
+            {avatarValid(photoUrl, user.id) && !photo &&
+              <img className="my-2 size-20 rounded-full object-cover" src={photoUrl} alt="Foto cadastrada" />}
+            <span className="mt-2 flex gap-2 text-xs font-normal text-white/60"><Camera size={16} /> JPG, PNG ou WebP, até 5 MB</span>
+            <input type="file" accept={professionalPhotoTypes.join(",")}
+              className="mt-2 block w-full rounded-xl border border-white/20 bg-[#252525] p-3 text-sm"
+              onChange={e => { setPhoto(e.target.files?.[0] || null); clear("photo"); }} />
+            {photo && <span className="mt-1 block break-all text-xs text-white/60">{photo.name}</span>}
+            <FieldError field="photo" />
+          </label>
+          <p className="text-xs text-white/55">Dados declaratórios. A habilitação na plataforma não substitui licenças exigidas para transporte profissional.</p>
+        </>}
+        {stage === 3 && <>
+          <div className="space-y-3 rounded-2xl border border-white/15 bg-white/[0.03] p-4 text-sm">
+            <div><span className="text-xs text-white/55">Nome e contato</span><p className="font-semibold">{name} · {whatsapp}</p></div>
+            <div><span className="text-xs text-white/55">Município</span><p className="font-semibold">{municipality}</p></div>
+            <div><span className="text-xs text-white/55">Veículo</span><p className="font-semibold">{type === "CAR" ? "Carro" : "Moto"} · {brand} {model} · {color} · {normalizePlate(plate)}</p></div>
+            <div><span className="text-xs text-white/55">Vagas</span><p className="font-semibold">{seats}</p></div>
+            {type === "MOTO" && <div><span className="text-xs text-white/55">Matrícula</span><p className="font-semibold">{registration}</p></div>}
+          </div>
+          <p className="text-xs text-white/60">O servidor validará seu cadastro. Nenhum GPS será ligado automaticamente.</p>
+        </>}
+        <div className="flex gap-3 pt-2">
+          {stage > 0 && <button type="button" disabled={busy} onClick={() => changeStage(stage - 1)}
+            className="flex min-h-13 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-bold">
+            <ArrowLeft size={16} /> Voltar
+          </button>}
+          <button type="submit" disabled={busy}
+            className="flex min-h-13 flex-1 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-sm font-extrabold text-[#121212] disabled:opacity-50">
+            {busy ? "Validando…" : stage === 3 ? "Concluir e ver corridas" : "Continuar"}
+            {stage === 3 ? <CheckCircle2 size={18} /> : <ArrowRight size={18} />}
+          </button>
+        </div>
+        <p className="text-center text-xs text-white/50">
+          {stage === 3 ? "Depois: cockpit → ficar online quando quiser." :
+            "A seguir: " + stages[stage + 1] + ". Você revisará tudo antes de concluir."}
+        </p>
+      </form>
+    </section>
+  </main>;
 }

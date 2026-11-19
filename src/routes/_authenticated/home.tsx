@@ -82,7 +82,7 @@ export const Route = createFileRoute("/_authenticated/home")({
             .eq("user_id",user.id).maybeSingle();
           if(onboardingError)throw new Error("Não foi possível conferir seu cadastro inicial.");
           if(progress?.usage_role==="MOTORISTA")
-            throw redirect({to:"/cadastro-veiculo",replace:true});
+            throw redirect({to:"/cadastro-motorista",replace:true});
         }
       }
       // Explicit scheduled carpool and trip-list navigation remains available
