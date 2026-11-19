@@ -229,7 +229,9 @@ export function QuickRideHomePanel({
     setBusy(true);setError("");
     try{
       const {data:accepted,error:rpcError}=await (supabase as any).rpc("quick_ride_respond_dropoff",{p_id:dropoffRide.id,p_response:response});
-      if(rpcError||accepted!==true)throw new Error("Não foi possível registrar a resposta.");
+      if(rpcError||accepted!==true)throw new Error(/DROPOFF_DRIVER_ALREADY_REASSIGNED/i.test(String(rpcError?.message??""))
+        ?"O motorista já iniciou outro atendimento. Para sua segurança, conteste o desembarque ou entre em contato com o suporte."
+        :"Não foi possível registrar a resposta.");
       const {data}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current)setRides(Array.isArray(data)?data:[]);
       setDropoff(previous=>previous?{...previous,passenger_response:response,resolved_at:new Date().toISOString()}:previous);
