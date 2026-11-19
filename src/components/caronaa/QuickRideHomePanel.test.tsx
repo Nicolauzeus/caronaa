@@ -256,6 +256,24 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     expect(screen.queryByRole("dialog",{name:"Corrida concluída"})).not.toBeInTheDocument();
     expect(api.rpc.mock.calls.some(([name])=>name==="get_completed_quick_ride_pix")).toBe(false);
   });
+  it("passageiro que ainda está na viagem não abre contestação administrativa",async()=>{
+    const rideId="a04c83e6-9114-46eb-b402-3c2d29c92eb3";
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="quick_ride_my_requests")return {data:[{
+        id:rideId,role:"PASSENGER",status:"PENDING_REVIEW",vehicle_type:"CAR",
+        municipality:"Fortaleza"}],error:null};
+      if(name==="quick_ride_dropoff_state")return {data:[{
+        deadline_at:new Date(Date.now()-120000).toISOString(),
+        passenger_response:null,resolved_at:null}],error:null};
+      if(name==="quick_ride_respond_dropoff")return {data:true,error:null};
+      return {data:[],error:null};
+    });
+    render(<QuickRideHomePanel {...basic}/>);
+    fireEvent.click(await screen.findByRole("button",{name:"Ainda estou na viagem"}));
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{
+      p_id:rideId,p_response:"NOT_YET"}));
+    expect(api.rpc.mock.calls.some(([name])=>name==="admin_resolve_quick_ride_dispute")).toBe(false);
+  });
   it("permite ao passageiro confirmar desembarque mesmo após o prazo antigo, sem chamar o admin",async()=>{
     const rideId="fc782126-1834-4a0a-82ad-f146eb3b27e6";
     api.rpc.mockImplementation(async(name:string)=>{
