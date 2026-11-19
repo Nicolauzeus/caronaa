@@ -37,7 +37,7 @@ const labels: Record<string, string> = {
   ACCEPTED: "Motorista confirmado",
   ARRIVED: "Motorista chegou",
   IN_PROGRESS: "Em viagem",
-  PENDING_REVIEW: "Encerramento em análise",
+  PENDING_REVIEW: "Confirmação / análise pendente",
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   EXPIRED: "Busca encerrada",
@@ -706,8 +706,8 @@ export function QuickRideExperience({
             )}
             {r.status==="PENDING_REVIEW" && <p role="status"
               className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
-              Desembarque sob análise. Sem Pix ou comissão até decisão registrada.
-              Você pode usar o CARONAA normalmente.
+              O motorista solicitou o desembarque. Se ainda não respondeu, confirme ao retornar ao aplicativo.
+              Sem Pix ou comissão até a conclusão confirmada; após o prazo, poderá haver análise administrativa.
             </p>}
             {r.status==="COMPLETED" && <>
               {r.role==="DRIVER"?<QuickRideDriverSettlement rideId={r.id}/>:<QuickRidePixCard rideId={r.id}/>}
