@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FlashPassengerLiveSheet } from "./shell/FlashPassengerLiveSheet";
 import { QuickRideSearchActivity } from "./QuickRideSearchActivity";
 import { playNotificationSound, unlockNotificationAudio } from "@/lib/notification-sound";
 import { createPortal } from "react-dom";
@@ -419,7 +420,7 @@ export function QuickRideHomePanel({
       onClick={retryPrice} className="min-h-12">{cooldownSeconds>0?retryLabel:"Atualizar preço expirado"}</Button>}
   </div>;
   return (
-    <section aria-label="Corrida Rápida no mapa" className={shellMode?"min-w-0 w-full space-y-3 text-white":
+    <section aria-label="Corrida Rápida no mapa" className={shellMode&&liveRide?"flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden text-white":shellMode?"min-w-0 w-full space-y-3 text-white":
       "min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white"}>
       {liveRide?.status==="IN_PROGRESS"&&dropoff?.deadline_at&&!dropoff.resolved_at&&!dropoff.passenger_response&&<section role="alert" aria-label="Confirmação de desembarque pendente"
         className="space-y-3 rounded-2xl border-2 border-[#FFBB00] bg-[#FFBB00]/15 p-4">
@@ -463,48 +464,18 @@ export function QuickRideHomePanel({
           className="mt-2 min-h-12 rounded-xl border border-[#FFBB00]/40 px-3 font-bold text-[#FFBB00] disabled:opacity-60">{interestSent?"Interesse registrado":"Avise-me quando chegar aqui"}</button>}
         {!shellMode&&<p className="mt-2 text-gray-400">Você pode escolher outra saída numa região habilitada. A região do seu cadastro não limita os pedidos.</p>}
       </div>}
-      {liveRide?<div className="rounded-xl border border-[#FFBB00]/30 p-3 text-sm">
-        <p className="font-semibold">Sua Corrida Rápida</p>
-        <p role="status" className="mt-1 text-gray-300">{liveRide.status==="SEARCHING"
-          ?searchDeadlinePassed
-            ?"O prazo de busca terminou. Confirmando o resultado com o servidor…"
-            :"Procurando um profissional autorizado…"+(searchSecondsLeft!==null?" · "+searchSecondsLeft+" s restantes":"")
-          :liveRide.status==="ACCEPTED"?"Motorista a caminho."
-          :liveRide.status==="ARRIVED"?"Seu motorista chegou!":"Viagem em andamento."}</p>
-        <QuickRideSearchActivity rideId={liveRide.id} status={liveRide.status}/>
-        {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&onFollowMap&&
-          <button type="button" onClick={()=>onFollowMap(liveRide.id)}
-            aria-label="Acompanhar motorista no mapa em tempo real"
-            className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#FFBB00] px-3 py-3 text-sm font-extrabold text-[#121212] shadow-sm active:scale-[.99]">
-            <Navigation2 size={20} aria-hidden="true"/>
-            {liveRide.status==="IN_PROGRESS"
-              ?"Acompanhar viagem no mapa"
-              :"Acompanhar motorista no mapa"}
-          </button>}
-        {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&onFollowMap&&
-          <p className="mt-2 text-xs text-white/65">
-            Veja a localização atualizada e o trajeto. Para acessar o código ou atendimento, expanda a barra inferior.
-          </p>}
-        {rideRefreshError&&<p role="status" className="mt-2 text-xs text-amber-200">
-          Conexão instável. Ainda não foi possível confirmar a situação atual da corrida.
-        </p>}
-        {liveRide.status==="SEARCHING"&&<button type="button" onClick={()=>void refreshQuickRides()}
-          className="mt-2 min-h-11 rounded-xl border border-white/30 px-3 text-xs font-semibold">
-          Atualizar situação
-        </button>}
-        <div className="flex min-w-0 flex-wrap gap-2">
-          {liveRide.status==="ARRIVED"&&<div className="w-full space-y-2 rounded-xl border border-white/20 p-3">
-            <p className="text-xs text-gray-300">Informe este código ao motorista para iniciar a corrida.</p>
-            {boardingCode?<p role="status" className="text-center text-3xl font-bold tracking-widest text-[#FFBB00]">{boardingCode}</p>:
-              <button type="button" disabled={busy} onClick={()=>void issueBoardingCode()} className="min-h-12 rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Gerar código secreto</button>}
-          </div>}
-          {liveRide.status==="IN_PROGRESS"&&dropoff?.passenger_response&&<p role="status" className="w-full rounded-xl border border-white/20 p-3 text-sm text-white/85">
-            {dropoff.passenger_response==="CONTESTED"?"Contestação registrada. Aguarde orientação da plataforma.":"Desembarque confirmado. Aguardando conclusão registrada pelo servidor."}
-          </p>}
-          {["SEARCHING","ACCEPTED","ARRIVED"].includes(liveRide.status)&&<button type="button" disabled={busy} onClick={()=>void rideAction("CANCELLED")}
-            className="min-h-12 min-w-0 rounded-xl border border-white/30 px-3 text-xs font-semibold">Cancelar pedido</button>}
-        </div>
-      </div>:<>
+      {liveRide?(dropoffIsPending?null:<FlashPassengerLiveSheet
+        ride={{id:liveRide.id,status:liveRide.status as "SEARCHING"|"ACCEPTED"|"ARRIVED"|"IN_PROGRESS",
+          vehicle_type:liveRide.vehicle_type,fare_cents:liveRide.fare_cents??null}}
+        snap={shellSnap} origin={origin} destination={destination}
+        searchSecondsLeft={searchSecondsLeft} searchDeadlinePassed={searchDeadlinePassed}
+        boardingCode={boardingCode} busy={busy} rideRefreshError={rideRefreshError}
+        onBoardingCode={()=>void issueBoardingCode()}
+        onCancel={()=>void rideAction("CANCELLED")}
+        onRefresh={()=>void refreshQuickRides()}
+        onFollowMap={onFollowMap?()=>onFollowMap(liveRide.id):undefined}
+        onExpand={()=>onOpenOperational?.()}/>
+      ):<>
         {pendingReviewRide&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-bold text-[#FFBB00]">Encerramento em análise</p>
           <p className="text-white/85">O desembarque não foi confirmado ou houve contestação. Não há cobrança Pix nem comissão até uma decisão registrada. Você pode solicitar outra corrida normalmente.</p>
