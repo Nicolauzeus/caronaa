@@ -333,8 +333,9 @@ export function QuickRideDriverQueue({
               className="professional-cockpit__primary-action w-full">Validar código e iniciar viagem</button>
           </>}
           {active.status==="IN_PROGRESS"&&<>
+            {dropoffResponse==="NOT_YET"&&<p role="status" className="text-sm text-white/80">O passageiro informou que ainda está na viagem. Siga até o destino e solicite novamente.</p>}
             {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado. Aguarde atendimento da plataforma.</p>:
-             dropoffDeadline?<p role="status" className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm text-white/90">
+             dropoffDeadline&&!dropoffResponse?<p role="status" className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm text-white/90">
                {remainingDropoffSeconds>0?`Aguardando confirmação do passageiro (${String(Math.floor(remainingDropoffSeconds/60)).padStart(2,"0")}:${String(remainingDropoffSeconds%60).padStart(2,"0")})`:
                  "Prazo encerrado. Aguardando conclusão confirmada pelo servidor."}
               </p>:
