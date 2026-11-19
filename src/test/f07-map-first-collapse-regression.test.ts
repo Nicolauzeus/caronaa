@@ -27,8 +27,11 @@ describe("F07 map-first ride controls on Android and iPhone",()=>{
     expect(proCss).toContain("max-width: 767px");
   });
   it("avoids duplicate map overlays and free space while a ride is active",()=>{
-    expect(map).toContain('showControls={!immersive}');
+    expect(map).toContain('showControls={Boolean(driverPhase)||!immersive}');
     expect(map).toContain('Rota por voz');
+    expect(map).toContain('toggleNavigationVoice');
+    expect(map).toContain('Google Maps');
+    expect(map).toContain('navigationVoiceKey');
     expect(map).not.toContain('top-20 z-10 max-w-sm space-y-1');
     expect(map).toContain('GPS atrasado');
     expect(sheetCss).toContain('nav[aria-label="Navegação principal mobile"]');
