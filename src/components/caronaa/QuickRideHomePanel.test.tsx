@@ -49,23 +49,31 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({data:{quoteId:"CAR"}}));
     expect(api.preview).toHaveBeenCalledTimes(2);
   });
-  it("abre confirmação de embarque somente no CTA e não envia antes do consentimento",async()=>{
-    const confirm=vi.fn();
-    const {rerender}=render(<QuickRideHomePanel {...basic} pickupNeedsConfirmation onConfirmPickup={confirm}/>);
-    const request=await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3500});
-    expect(request).toBeEnabled();expect(confirm).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button",{name:"Confirmar local"})).not.toBeInTheDocument();
-    fireEvent.click(request);
-    expect(confirm).toHaveBeenCalledOnce();expect(api.submit).not.toHaveBeenCalled();
-    // Closing the dialog without approval leaves the gate active.
-    rerender(<QuickRideHomePanel {...basic} pickupNeedsConfirmation onConfirmPickup={confirm}/>);
-    fireEvent.click(screen.getByRole("button",{name:/Solicitar corrida por/}));
-    expect(confirm).toHaveBeenCalledTimes(2);expect(api.submit).not.toHaveBeenCalled();
-    // The parent only clears the gate after explicit confirmation of this point.
-    rerender(<QuickRideHomePanel {...basic} pickupNeedsConfirmation={false} onConfirmPickup={confirm}/>);
+  it("solicita a corrida F07 uma única vez: confirmação final inclui o ponto de embarque exibido",async()=>{
+    const edit=vi.fn();
+    const approve=vi.fn().mockReturnValue(true);
+    render(<QuickRideHomePanel {...basic} shellMode pickupNeedsConfirmation
+      onConfirmPickup={edit} onApprovePickupForRequest={approve}/>);
+    const button=await screen.findByRole("button",{name:/Solicitar Flash Moto/},{timeout:3500});
+    expect(button).toBeEnabled();
     expect(api.submit).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button",{name:/Solicitar corrida por/}));
+    fireEvent.click(button);
     await waitFor(()=>expect(api.submit).toHaveBeenCalledOnce());
+    expect(approve).toHaveBeenCalledOnce();
+    expect(approve).toHaveBeenCalledWith(origin);
+    expect(edit).not.toHaveBeenCalled();
+    expect(api.submit).toHaveBeenCalledWith({data:{quoteId:fare.quoteId}});
+  });
+  it("não envia a solicitação se o pickup exibido não corresponder ao ponto aprovado",async()=>{
+    const edit=vi.fn();
+    const approve=vi.fn().mockReturnValue(false);
+    render(<QuickRideHomePanel {...basic} pickupNeedsConfirmation
+      onConfirmPickup={edit} onApprovePickupForRequest={approve}/>);
+    const button=await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3500});
+    fireEvent.click(button);
+    expect(approve).toHaveBeenCalledWith(origin);
+    expect(edit).toHaveBeenCalledOnce();
+    expect(api.submit).not.toHaveBeenCalled();
   });
   it("mostra GPS pendente no CTA sem consultar cobertura ou preço com coordenadas ausentes",()=>{
     const pending=vi.fn();
