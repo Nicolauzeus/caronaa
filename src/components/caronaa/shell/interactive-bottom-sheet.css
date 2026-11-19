@@ -113,3 +113,15 @@
     display: none;
   }
 }
+
+/* Active F07 trips reclaim the mobile tab bar area for navigation.
+   The ride drawer remains the reversible way to reach every trip action. */
+@media (max-width: 767px) {
+  body:has(.caronaa-journey-sheet[data-ride-active="true"]) nav[aria-label="Navegação principal mobile"],
+  body:has(.caronaa-journey-sheet[data-ride-active="true"]) nav[aria-label="Navegação profissional mobile"] {
+    display: none !important;
+  }
+  body:has(.caronaa-journey-sheet[data-ride-active="true"]) main {
+    margin-bottom: 0 !important;
+  }
+}
