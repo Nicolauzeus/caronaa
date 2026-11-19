@@ -35,7 +35,7 @@ afterEach(()=>{cleanup();quickQuoteCoordinator.setAccount(null);vi.restoreAllMoc
 describe("Authenticated passenger quote lifecycle",()=>{
   it("StrictMode and ten address-label updates still perform one CAR and one MOTO quote",async()=>{
     const {rerender}=render(<StrictMode><QuickRideHomePanel {...props}/></StrictMode>);
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Carro/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Carro/})).toBeEnabled(),{timeout:3500});
     for(let i=0;i<10;i++)rerender(<StrictMode><QuickRideHomePanel {...props} origin={"Rua confirmada "+i}/></StrictMode>);
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,900));});
     expect(api.preview).toHaveBeenCalledTimes(2);
@@ -45,15 +45,15 @@ describe("Authenticated passenger quote lifecycle",()=>{
   });
   it("remount reuses the same-account server quote instead of spending another allowance",async()=>{
     const first=render(<QuickRideHomePanel {...props}/>);
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Carro/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Carro/})).toBeEnabled(),{timeout:3500});
     first.unmount();render(<QuickRideHomePanel {...props}/>);
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Carro/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Carro/})).toBeEnabled(),{timeout:3500});
     expect(api.preview).toHaveBeenCalledTimes(2);
     expect(api.submit).not.toHaveBeenCalled();
   });
   it("a different passenger never receives a previous account's cached quote",async()=>{
     const {rerender}=render(<QuickRideHomePanel {...props}/>);
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Carro/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Carro/})).toBeEnabled(),{timeout:3500});
     api.account="passenger-two";rerender(<QuickRideHomePanel {...props}/>);
     await waitFor(()=>expect(api.preview).toHaveBeenCalledTimes(4),{timeout:3500});
     expect(api.submit).not.toHaveBeenCalled();
@@ -70,13 +70,13 @@ describe("Authenticated passenger quote lifecycle",()=>{
     fireEvent.click(retry);fireEvent.click(retry);
     expect(api.preview).toHaveBeenCalledTimes(2);
     rerender(<QuickRideHomePanel {...props} vehicle="MOTO"/>);
-    expect(screen.getByRole("button",{name:/Confirmar Flash Moto/})).toBeEnabled();
+    expect(screen.getByRole("button",{name:/Solicitar Flash Moto/})).toBeEnabled();
     rerender(<QuickRideHomePanel {...props}/>);
     vi.spyOn(Date,"now").mockReturnValue(Date.now()+61000);
     await waitFor(()=>expect(screen.getByRole("button",{name:"Tentar novamente"})).toBeEnabled(),{timeout:1600});
     expect(api.preview).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole("button",{name:"Tentar novamente"}));
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Carro/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Carro/})).toBeEnabled(),{timeout:3500});
     expect(api.preview).toHaveBeenCalledTimes(3);
     expect(api.preview.mock.calls.filter(([value])=>value.data.vehicleType==="MOTO")).toHaveLength(1);
     expect(api.submit).not.toHaveBeenCalled();
