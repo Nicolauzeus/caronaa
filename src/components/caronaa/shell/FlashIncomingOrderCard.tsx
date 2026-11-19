@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Clock3, MapPin, Navigation, Users } from "lucide-react";
 import { formatBrl } from "@/lib/ride-cost";
-import { startLoop, stopLoop } from "@/lib/notification-sound";
+import { isNotificationAudioReady, playNotificationSound, startLoop, stopLoop, unlockNotificationAudio } from "@/lib/notification-sound";
+import { readNotificationSettings } from "@/lib/notification-settings";
 import type { FlashDriverOrder } from "@/services/flash-driver-service";
 
 type Props={
@@ -67,6 +68,16 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
       {order.pickupLabel}</p>
     <p className="flex items-start gap-2 text-sm"><Navigation size={16} className="shrink-0 text-[#FFBB00]"/>
       {order.dropoffLabel}</p>
+    {remaining>0 && readNotificationSettings().soundEnabled && !isNotificationAudioReady() &&
+      <button type="button" className="min-h-11 w-full rounded-xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 px-3 text-xs font-semibold text-[#FFBB00]"
+        onClick={() => {
+          void unlockNotificationAudio().then(() => {
+            if (!answering.current && Date.now() < deadline.current)
+              void playNotificationSound("order_incoming_loop", order.id);
+          });
+        }}>
+        Ativar som do chamado
+      </button>}
     <div className="grid grid-cols-2 gap-2">
       <button type="button" disabled={busy||remaining===0} onClick={()=>respond(false)}
         className="min-h-12 rounded-xl border border-white/30 bg-white/10 text-sm font-bold disabled:opacity-50">
