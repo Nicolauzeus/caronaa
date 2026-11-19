@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { CAR_CATEGORIES, MISSING_LABELS, isValidBrazilianPlate, normalizePlate, parseMissingError, type CarCategory, type MissingCode } from "@/lib/professional-access";
 import { professionalPhotoTypes, professionalPhotoMaxBytes } from "@/lib/mototaxi-registration";
+import { formatBrazilWhatsapp, validBrazilWhatsapp, normalizeBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
 
 export const Route = createFileRoute("/cadastro-motorista")({
   ssr: false, component: DriverRegistration,
@@ -17,7 +18,6 @@ export const Route = createFileRoute("/cadastro-motorista")({
 type Field = "name" | "whatsapp" | "municipality" | "type" | "brand" | "model" | "color" | "category" | "seats" | "plate" | "registration" | "photo";
 type Vehicle = "" | "CAR" | "MOTO";
 const stages = ["Contato e município", "Dados do veículo", "Identificação", "Revisão final"];
-const phoneValid = (v: string) => /^[1-9][0-9]9[0-9]{8}$/.test(v.replace(/\D/g, "").replace(/^55(?=\d{11}$)/, ""));
 const avatarValid = (url: string, id: string) => url.startsWith("https://") && url.includes("/avatars/" + id + "/");
 const inputStyle = "mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#252525] p-3 text-base text-white outline-none focus-visible:border-[#FFBB00]";
 const labelStyle = "block text-sm font-semibold text-white/90";
@@ -95,7 +95,8 @@ function DriverRegistration() {
     const m: Partial<Record<Field, string>> = {};
     if (which === 0 || which === 3) {
       if (!/^\S{2,}\s+\S{2,}/.test(name.trim()) || name.trim().length > 120) m.name = "Informe nome e sobrenome.";
-      if (!phoneValid(whatsapp)) m.whatsapp = "Informe WhatsApp com DDD.";
+      if (whatsapp.trim() && !validBrazilWhatsapp(whatsapp))
+        m.whatsapp = "Informe um celular com DDD válido e nove dígitos começando por 9.";
       if (municipality.trim().length < 2 || ["MACICO_BATURITE", "OUTRA_REGIAO"].includes(municipality.toUpperCase()))
         m.municipality = "Escolha seu município nas sugestões.";
     }
@@ -146,7 +147,7 @@ function DriverRegistration() {
         setPhotoUrl(photoData.publicUrl); setPhoto(null);
       }
       const { error: registrationError } = await (supabase as any).rpc("complete_professional_driver_registration", {
-        p_full_name: name.trim(), p_whatsapp: whatsapp.trim(), p_municipality: municipality.trim(),
+        p_full_name: name.trim(), p_whatsapp: whatsapp.trim()?normalizeBrazilWhatsapp(whatsapp):null, p_municipality: municipality.trim(),
         p_vehicle_type: type, p_vehicle_brand: brand.trim(), p_vehicle_model: model.trim(),
         p_vehicle_color: color.trim(), p_vehicle_plate: normalizePlate(plate),
         p_car_category: type === "CAR" ? category : null, p_vehicle_seats: type === "MOTO" ? 1 : seats,
@@ -225,10 +226,11 @@ function DriverRegistration() {
             <input className={inputStyle} value={name} autoComplete="name" maxLength={120}
               onChange={e => { setName(e.target.value); clear("name"); }} /><FieldError field="name" />
           </label>
-          <label className={labelStyle}>WhatsApp com DDD
+          <label className={labelStyle}>WhatsApp com DDD (opcional)
             <input className={inputStyle} type="tel" inputMode="tel" autoComplete="tel"
-              placeholder="(85) 99999-9999" value={whatsapp}
-              onChange={e => { setWhatsapp(e.target.value); clear("whatsapp"); }} /><FieldError field="whatsapp" />
+              placeholder="(11) 99999-9999" value={whatsapp} maxLength={20}
+              onChange={e => { setWhatsapp(formatBrazilWhatsapp(e.target.value)); clear("whatsapp"); }} /><FieldError field="whatsapp" />
+            <span className="mt-1 block text-xs text-white/55">Contato opcional. Você poderá adicionar, alterar ou remover no Perfil. Não bloqueia corridas.</span>
           </label>
           <div className="rounded-xl border border-white/15 bg-white/[0.03] p-3">
             <MunicipalitySelect value={municipality} onChange={value => { setMunicipality(value); clear("municipality"); }} />
@@ -307,7 +309,7 @@ function DriverRegistration() {
         </>}
         {stage === 3 && <>
           <div className="space-y-3 rounded-2xl border border-white/15 bg-white/[0.03] p-4 text-sm">
-            <div><span className="text-xs text-white/55">Nome e contato</span><p className="font-semibold">{name} · {whatsapp}</p></div>
+            <div><span className="text-xs text-white/55">Nome e contato</span><p className="font-semibold">{name} · {whatsapp||"WhatsApp não informado (opcional)"}</p></div>
             <div><span className="text-xs text-white/55">Município</span><p className="font-semibold">{municipality}</p></div>
             <div><span className="text-xs text-white/55">Veículo</span><p className="font-semibold">{type === "CAR" ? "Carro" : "Moto"} · {brand} {model} · {color} · {normalizePlate(plate)}</p></div>
             <div><span className="text-xs text-white/55">Vagas</span><p className="font-semibold">{seats}</p></div>

@@ -1,3 +1,4 @@
+import { brazilWhatsappChatUrl } from "@/lib/contacts/brazil-whatsapp";
 import { SavedAnswers } from "@/components/admin/SavedAnswers";
 import { UnifiedCrmWorkspace } from "@/components/admin/UnifiedCrmWorkspace";
 import { ListPagination } from "@/components/admin/ListPagination";
@@ -60,7 +61,6 @@ import {
 import {
   exportPitchContactsToCsv,
   getPitchContacts,
-  normalizePhoneNumber,
   savePitchContact,
   updatePitchContactNotes,
   updatePitchContactStatus,
@@ -541,8 +541,7 @@ function LegacyPitchRelationshipPage() {
       ) : (
         <div className="space-y-3">
           {filteredContacts.slice(currentPage * 8, (currentPage + 1) * 8).map((contact) => {
-            const cleanPhone = normalizePhoneNumber(contact.whatsapp || "");
-            const waLink = `https://wa.me/55${cleanPhone}`;
+            const waLink = brazilWhatsappChatUrl(contact.whatsapp);
 
             return (
               <Card
@@ -561,7 +560,7 @@ function LegacyPitchRelationshipPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                      <a
+                      {waLink?<a
                         href={waLink}
                         target="_blank"
                         rel="noreferrer"
@@ -570,7 +569,7 @@ function LegacyPitchRelationshipPage() {
                         <Phone className="w-3.5 h-3.5" />
                         <span>WhatsApp: {contact.whatsapp}</span>
                         <ExternalLink className="w-3 h-3" />
-                      </a>
+                      </a>:<span className="text-xs text-muted-foreground">WhatsApp indisponível</span>}
 
                       {contact.phone && !contact.same_phone_whatsapp && (
                         <span className="flex items-center gap-1">
@@ -640,17 +639,12 @@ function LegacyPitchRelationshipPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs gap-1 text-emerald-600 hover:text-emerald-700"
-                      >
+                      {waLink&&<Button asChild size="sm" variant="outline"
+                        className="h-8 text-xs gap-1 text-emerald-600 hover:text-emerald-700">
                         <a href={waLink} target="_blank" rel="noreferrer">
-                          <Phone className="w-3.5 h-3.5" />
-                          Conversar
+                          <Phone className="w-3.5 h-3.5" /> Conversar
                         </a>
-                      </Button>
+                      </Button>}
 
                       <Button
                         size="sm"
@@ -932,15 +926,12 @@ function LegacyPitchRelationshipPage() {
                   <span className="text-xs font-semibold text-muted-foreground block">
                     WhatsApp:
                   </span>
-                  <a
-                    href={`https://wa.me/55${normalizePhoneNumber(selectedContact.whatsapp || "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-medium text-emerald-600 flex items-center gap-1 hover:underline"
-                  >
-                    {selectedContact.whatsapp}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  {brazilWhatsappChatUrl(selectedContact.whatsapp)?<a
+                    href={brazilWhatsappChatUrl(selectedContact.whatsapp)!}
+                    target="_blank" rel="noreferrer"
+                    className="font-medium text-emerald-600 flex items-center gap-1 hover:underline">
+                    {selectedContact.whatsapp}<ExternalLink className="w-3 h-3"/>
+                  </a>:<span className="text-muted-foreground">Número não disponível para conversa</span>}
                 </div>
 
                 <div>

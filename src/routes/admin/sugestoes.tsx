@@ -1,3 +1,4 @@
+import { brazilWhatsappChatUrl } from "@/lib/contacts/brazil-whatsapp";
 import { ListPagination } from "@/components/admin/ListPagination";
 // @ts-nocheck -- legacy typing mismatches with generated database types; fix incrementally
 import { createFileRoute } from "@tanstack/react-router";
@@ -40,7 +41,6 @@ import {
 } from "@/lib/pitch/types";
 import {
   getPitchContacts,
-  normalizePhoneNumber,
   updatePitchSuggestionStatus,
 } from "@/lib/pitch/pitch-service";
 import { cn } from "@/lib/utils";
@@ -258,10 +258,10 @@ export function AdminSugestoesPage() {
       ) : (
         <div className="space-y-4">
           {filtered.slice(currentPage * 8, (currentPage + 1) * 8).map((item) => {
-            const cleanPhone = normalizePhoneNumber(item.whatsapp);
-            const waLink = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
-              `Olá ${item.name}! Agradecemos por compartilhar sua mensagem com a equipe da CARONAA.`,
-            )}`;
+            const baseWhatsappLink=brazilWhatsappChatUrl(item.whatsapp);
+            const waLink=baseWhatsappLink?baseWhatsappLink+"?text="+encodeURIComponent(
+              `Olá ${item.name}! Agradecemos por compartilhar sua mensagem com a equipe da CARONAA.`
+            ):null;
 
             return (
               <Card
@@ -366,18 +366,13 @@ export function AdminSugestoesPage() {
                         </Select>
                       </div>
 
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="default"
-                        className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
+                      {waLink?<Button asChild size="sm" variant="default"
+                        className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
                         <a href={waLink} target="_blank" rel="noreferrer">
-                          <Phone className="w-3.5 h-3.5" />
-                          Responder no WhatsApp
-                          <ExternalLink className="w-3 h-3" />
+                          <Phone className="w-3.5 h-3.5"/> Responder no WhatsApp
+                          <ExternalLink className="w-3 h-3"/>
                         </a>
-                      </Button>
+                      </Button>:<span className="text-xs text-muted-foreground">WhatsApp indisponível</span>}
                     </div>
                   </div>
                 </CardContent>

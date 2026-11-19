@@ -172,9 +172,11 @@ function PrivacidadePage() {
               <div className="rounded-2xl border border-border bg-muted/20 p-4">
                 <h3 className="font-bold text-sm text-foreground">b) Dados de contato</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Número de telefone com WhatsApp (para validação de autenticidade e combinação ágil
-                  de caronas) e endereço de e-mail (para avisos da conta, recuperação de acesso e
-                  comunicados essenciais).
+                  Endereço de e-mail para acesso, recuperação da conta e avisos essenciais.
+                  O WhatsApp é um contato opcional: você pode adicioná-lo, alterá-lo ou removê-lo
+                  no Perfil. Informar o número não comprova que ele possui conta no WhatsApp
+                  nem autoriza mensagens comerciais, que dependem de consentimento específico
+                  e revogável.
                 </p>
               </div>
 

@@ -1,3 +1,4 @@
+import { brazilWhatsappChatUrl } from "@/lib/contacts/brazil-whatsapp";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
@@ -41,11 +42,6 @@ const valid=(p:{lat?:number;lng?:number}|null|undefined):p is Point=>
 const modeButtons:[FlashDriverMode,string][]=[
   ["ALL","Aceito tudo"],["ON_ROUTE","Apenas Na Rota"],["EXCLUSIVE","Apenas Exclusiva"],
 ];
-function normalizeWhatsapp(value:string|null|undefined){
-  const raw=(value??"").replace(/\D/g,"");
-  const number=raw.startsWith("55")?raw.slice(2):raw;
-  return /^[1-9][0-9]9[0-9]{8}$/.test(number)?"https://wa.me/55"+number:null;
-}
 
 export function DriverFlashPlanner({
   snap,onSnapChange,serviceType,onServiceTypeChange,vehicleType,municipality,
@@ -374,7 +370,7 @@ export function DriverFlashPlanner({
       </p>}
       {queueError&&presence.online&&!active&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
-        whatsappUrl={normalizeWhatsapp(passenger?.whatsapp)}
+        whatsappUrl={brazilWhatsappChatUrl(passenger?.whatsapp)}
         pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
         manualCloseOpen={manualCloseOpen} onToggleManualClose={()=>setManualCloseOpen(v=>!v)}
         manualCloseReason={manualCloseReason} onManualCloseReason={setManualCloseReason}

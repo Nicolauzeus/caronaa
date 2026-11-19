@@ -1,3 +1,4 @@
+import { brazilWhatsappChatUrl } from "@/lib/contacts/brazil-whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { type RoadPoint } from "@/lib/road-routing";
 import type { TravelPreferences } from "@/lib/travel-preferences";
@@ -188,13 +189,12 @@ export async function getDriverScheduledTrips():Promise<DriverScheduledTrip[]>{
 }
 /** WhatsApp is contact initiated by the driver, never an automatic message. */
 export function driverWhatsappLink(trip:DriverScheduledTrip,passenger:ScheduledDriverPassenger):string|null {
-  const raw=passenger.whatsapp?.replace(/\D/g,"")??"";
-  const local=raw.startsWith("55")?raw.slice(2):raw;
-  if(!/^[1-9][0-9]9[0-9]{8}$/.test(local))return null;
+  const chatUrl=brazilWhatsappChatUrl(passenger.whatsapp);
+  if(!chatUrl)return null;
   const date=new Date(trip.departureAt);
   if(!Number.isFinite(date.getTime()))return null;
   const day=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short"}).format(date);
   const time=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Fortaleza",hour:"2-digit",minute:"2-digit"}).format(date);
   const message=`Olá ${passenger.name}, sou seu motorista do CARONAA para a viagem de ${trip.origin} até ${trip.destination} no dia ${day} às ${time}. Nos encontramos no ponto combinado!`;
-  return `https://wa.me/55${local}?text=${encodeURIComponent(message)}`;
+  return `${chatUrl}?text=${encodeURIComponent(message)}`;
 }
