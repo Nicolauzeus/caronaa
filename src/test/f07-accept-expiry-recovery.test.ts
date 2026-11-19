@@ -46,8 +46,8 @@ describe("F07 atomic accept and bounded passenger waiting",()=>{
 
   it("passenger polls their own status because the driver-only channel cannot notify them",()=>{
     expect(passenger).toContain('rpc("quick_ride_my_requests")');
-    expect(passenger).toContain('liveRide.status==="SEARCHING"?5000');
-    expect(passenger).toContain('["ACCEPTED","ARRIVED"].includes(liveRide.status)?8000:12000');
+    expect(passenger).toContain('liveRide.status==="SEARCHING"?3000');
+    expect(passenger).toContain('["ACCEPTED","ARRIVED"].includes(liveRide.status)?5000:12000');
     expect(passenger).toContain('liveRide.status!=="SEARCHING"');
     expect(passenger).toContain("searchDeadlinePassed");
     expect(passenger).toContain("Busca encerrada");
