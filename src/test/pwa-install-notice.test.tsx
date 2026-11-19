@@ -21,6 +21,7 @@ describe("Marca e instalação", () => {
   });
 
   it("aguarda suporte real e instala após clique", async () => {
+    vi.useFakeTimers();
     render(<PwaInstallNotice />);
     expect(screen.queryByText("Instale a CARONAA")).toBeNull();
     const event = new Event("beforeinstallprompt", { cancelable: true });
@@ -29,19 +30,23 @@ describe("Marca e instalação", () => {
     act(() => { window.dispatchEvent(event); });
     expect(event.defaultPrevented).toBe(true);
     expect(prompt).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(30000));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Instalar" })); });
     expect(prompt).toHaveBeenCalledOnce();
     expect(screen.queryByText("Instale a CARONAA")).toBeNull();
+    vi.useRealTimers();
   });
 
   it("permite fechar e não repete na mesma sessão", () => {
+    vi.useFakeTimers();
     const { unmount } = render(<PwaInstallNotice />);
-    act(() => { window.dispatchEvent(new Event("beforeinstallprompt")); });
+    act(() => { window.dispatchEvent(new Event("beforeinstallprompt")); vi.advanceTimersByTime(30000); });
     fireEvent.click(screen.getByLabelText("Fechar aviso de instalação"));
     unmount();
     render(<PwaInstallNotice />);
     act(() => { window.dispatchEvent(new Event("beforeinstallprompt")); });
     expect(screen.queryByText("Instale a CARONAA")).toBeNull();
+    vi.useRealTimers();
   });
 
   it("não mostra aviso no aplicativo instalado", () => {
