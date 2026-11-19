@@ -365,7 +365,9 @@ export function QuickRideOperationalMap({
         {(error||(!driverPoint&&(driverPositionDelayed||showingLastFix)))&&
           <span role="status" title={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
             aria-label={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
-            className="shrink-0 text-amber-300">!</span>}
+            className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-1 text-[10px] font-bold text-amber-300">
+            {error?"Rota instável":"GPS atrasado"}
+          </span>}
       </div>
     </div>
   </section>;
