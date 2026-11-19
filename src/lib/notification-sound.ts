@@ -137,7 +137,7 @@ export function startLoop(orderId: string, expiresAtMs: number): void {
   if (loopOwner === orderId) return;
   stopLoop();
   const now = Date.now();
-  const expiry = Math.min(Number.isFinite(expiresAtMs) ? expiresAtMs : now + 15_000, now + 15_000);
+  const expiry = Math.min(Number.isFinite(expiresAtMs) ? expiresAtMs : now + 30_000, now + 30_000);
   if (expiry <= now) return;
   loopOwner = orderId;
   const tick = () => {
