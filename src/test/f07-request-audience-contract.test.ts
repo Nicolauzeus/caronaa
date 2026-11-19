@@ -26,7 +26,7 @@ describe("F07 incoming-call and genuine audience contracts",()=>{
     expect(migration).toContain("quick_ride_driver_views");
     expect(migration).toContain("last_viewed_at>now()-interval '12 seconds'");
     expect(migration).toContain("v_ride.passenger_id IS DISTINCT FROM auth.uid()");
-    expect(migration).toContain("q.driver_id");
+    expect(migration).toContain("v_ride.driver_id");
     expect(migration).toContain("professional_mototaxi_profiles");
     expect(migration).toContain("quick_ride_stop_view");
     expect(migration).not.toContain("GRANT SELECT ON public.quick_ride_driver_views TO authenticated");
