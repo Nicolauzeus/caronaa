@@ -8,8 +8,10 @@ interface InstallPrompt extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "caronaa-install-dismissed-until";
-const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+// Reappear after the user temporarily dismisses the invitation.
+const DISPLAY_DELAY_MS = 30_000;
+const REMIND_AFTER_DISMISS_MS = 30_000;
+const ELIGIBILITY_CHECK_MS = 5_000;
 
 function installed() {
   return window.matchMedia("(display-mode: standalone)").matches ||
@@ -21,47 +23,39 @@ function eligibleRoute() {
   return window.location.pathname === "/" || window.location.pathname === "/home";
 }
 
-function isDismissed() {
-  try {
-    return Number(localStorage.getItem(DISMISS_KEY) ?? 0) > Date.now() ||
-      sessionStorage.getItem("caronaa-install-dismissed") === "1";
-  } catch {
-    return false;
-  }
-}
-
 export function PwaInstallNotice() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
   const [safari, setSafari] = useState(false);
   const [busy, setBusy] = useState(false);
-  const dismissedRef = useRef(false);
+  const lastDismissedAt = useRef(0);
   const promptRef = useRef<InstallPrompt | null>(null);
+  const installedRef = useRef(false);
 
   useEffect(() => {
     if (installed()) return;
-    const mobile = window.matchMedia("(max-width: 767px)");
     const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const isSafari = /Safari/i.test(navigator.userAgent) &&
       !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent);
-    dismissedRef.current = isDismissed();
     setIos(isIos);
     setSafari(isSafari);
 
-    // Check eligibility every 30 seconds, rather than interrupting users
-    // with repeated browser prompts during an active ride.
+    // Both landing (signed out) and Home (signed in) stay eligible.
+    // Do not gate on viewport size, login state, or a seven-day dismissal.
     const startedAt = Date.now();
     const checkEligibility = () => {
-      if (installed() || dismissedRef.current || !eligibleRoute() || document.hidden) {
-        setVisible(false);
-        return;
-      }
-      if (Date.now() - startedAt < 30000) return;
-      if (mobile.matches && window.isSecureContext && (isIos || Boolean(promptRef.current))) setVisible(true);
+      const canShow = !installedRef.current &&
+        !installed() && eligibleRoute() && !document.hidden &&
+        window.isSecureContext &&
+        Date.now() - startedAt >= DISPLAY_DELAY_MS &&
+        Date.now() - lastDismissedAt.current >= REMIND_AFTER_DISMISS_MS;
+      setVisible(canShow);
     };
-    const eligibilityTimer = window.setInterval(checkEligibility, 30000);
+    // Route changes in TanStack Router use pushState, which does not emit
+    // popstate. Periodic checks also cover logged-in/logged-out Home changes.
+    const eligibilityTimer = window.setInterval(checkEligibility, ELIGIBILITY_CHECK_MS);
 
     const beforeInstall = (event: Event) => {
       event.preventDefault();
@@ -70,12 +64,12 @@ export function PwaInstallNotice() {
       checkEligibility();
     };
     const onInstalled = () => {
+      installedRef.current = true;
       setVisible(false);
       promptRef.current = null;
       setPrompt(null);
     };
     const onNavigation = () => { checkEligibility(); };
-
     window.addEventListener("beforeinstallprompt", beforeInstall);
     window.addEventListener("appinstalled", onInstalled);
     window.addEventListener("popstate", onNavigation);
@@ -83,7 +77,8 @@ export function PwaInstallNotice() {
     document.addEventListener("visibilitychange", onNavigation);
     window.addEventListener("focus", onNavigation);
     const displayMode = window.matchMedia("(display-mode: standalone)");
-    displayMode.addEventListener?.("change", onInstalled);
+    displayMode.addEventListener?.("change", onNavigation);
+    checkEligibility();
     return () => {
       window.removeEventListener("beforeinstallprompt", beforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
@@ -92,17 +87,13 @@ export function PwaInstallNotice() {
       document.removeEventListener("visibilitychange", onNavigation);
       window.removeEventListener("focus", onNavigation);
       window.clearInterval(eligibilityTimer);
-      displayMode.removeEventListener?.("change", onInstalled);
+      displayMode.removeEventListener?.("change", onNavigation);
     };
   }, []);
 
   function dismiss() {
-    dismissedRef.current = true;
+    lastDismissedAt.current = Date.now();
     setVisible(false);
-    try {
-      sessionStorage.setItem("caronaa-install-dismissed", "1");
-      localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DURATION_MS));
-    } catch { /* Private browsing may disable storage. */ }
   }
 
   async function install() {
@@ -111,23 +102,28 @@ export function PwaInstallNotice() {
     try {
       await prompt.prompt();
       const choice = await prompt.userChoice;
-      if (choice.outcome === "accepted") dismiss();
-      else dismiss();
+      // Some browsers report acceptance before the appinstalled event fires.
+      // Never mark installation complete without the browser confirmation.
+      dismiss();
+      if (choice.outcome === "accepted") {
+        promptRef.current = null;
+      }
     } catch {
       toast.error("Não foi possível abrir a instalação. Tente pelo menu do navegador.");
     } finally {
+      promptRef.current = null;
       setPrompt(null);
       setBusy(false);
     }
   }
 
-  if (!visible || (!ios && !prompt)) return null;
+  if (!visible) return null;
 
   return (
     <aside
       role="region"
       aria-label="Instalar CARONAA"
-      className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+12px)] z-50 mx-auto max-h-[min(85dvh,560px)] max-w-sm overflow-y-auto rounded-[24px] border border-white/15 bg-[#121212] p-5 text-white shadow-[0_18px_70px_rgba(0,0,0,.42)] md:hidden"
+      className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+12px)] z-50 mx-auto max-h-[min(85dvh,560px)] max-w-sm overflow-y-auto rounded-[24px] border border-white/15 bg-[#121212] p-5 text-white shadow-[0_18px_70px_rgba(0,0,0,.42)]"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#FFBB00] p-1.5">
@@ -169,11 +165,15 @@ export function PwaInstallNotice() {
             <PlusSquare className="shrink-0 text-[#FFBB00]" size={22} aria-hidden="true" />
           </div>
         </div>
-      ) : (
+      ) : prompt ? (
         <button type="button" disabled={busy} onClick={() => void install()} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-4 text-base font-bold text-[#121212] transition-colors hover:bg-[#ffd04d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60">
           <Download size={20} aria-hidden="true" />
           {busy ? "Aguarde..." : "Instalar"}
         </button>
+      ) : (
+        <p className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-white/85">
+          Para instalar, abra o menu do navegador e escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>, se disponível.
+        </p>
       )}
       <div className="mt-4 flex items-center justify-center gap-2 text-center text-[11px] text-white/55">
         <Smartphone size={13} aria-hidden="true" />

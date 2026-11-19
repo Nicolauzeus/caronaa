@@ -5,13 +5,19 @@ import { BrandLogo, CaronaaSymbol } from "@/components/caronaa/BrandElements";
 import logo from "@/assets/brand/caronaa-logo.png.asset.json";
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/");
+  localStorage.clear();
   sessionStorage.clear();
   vi.stubGlobal("isSecureContext", true);
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: query.includes("max-width"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }));
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  window.history.replaceState({}, "", "/");
+  vi.unstubAllGlobals();
+});
 
 describe("Marca e instalação", () => {
   it("usa o arquivo oficial nas duas representações", () => {
@@ -37,16 +43,37 @@ describe("Marca e instalação", () => {
     vi.useRealTimers();
   });
 
-  it("permite fechar e não repete na mesma sessão", () => {
+  it("reapresenta o convite na home pública após 30 segundos, mesmo depois de fechar", () => {
     vi.useFakeTimers();
-    const { unmount } = render(<PwaInstallNotice />);
-    act(() => { window.dispatchEvent(new Event("beforeinstallprompt")); vi.advanceTimersByTime(30000); });
-    fireEvent.click(screen.getByLabelText("Fechar aviso de instalação"));
-    unmount();
     render(<PwaInstallNotice />);
-    act(() => { window.dispatchEvent(new Event("beforeinstallprompt")); });
-    expect(screen.queryByText("Instale a CARONAA")).toBeNull();
-    vi.useRealTimers();
+    act(() => vi.advanceTimersByTime(30000));
+    expect(screen.getByLabelText("Instalar CARONAA")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Fechar aviso de instalação"));
+    expect(screen.queryByLabelText("Instalar CARONAA")).toBeNull();
+    act(() => vi.advanceTimersByTime(29000));
+    expect(screen.queryByLabelText("Instalar CARONAA")).toBeNull();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByLabelText("Instalar CARONAA")).toBeInTheDocument();
+  });
+
+  it("mostra na /home autenticada mesmo sem beforeinstallprompt e oferece instruções", () => {
+    vi.useFakeTimers();
+    window.history.pushState({}, "", "/home");
+    render(<PwaInstallNotice />);
+    act(() => vi.advanceTimersByTime(30000));
+    expect(screen.getByLabelText("Instalar CARONAA")).toBeInTheDocument();
+    expect(screen.getByText(/menu do navegador/)).toBeInTheDocument();
+  });
+
+  it("não interrompe outras rotas, mas aparece ao entrar na Home SPA", () => {
+    vi.useFakeTimers();
+    window.history.pushState({}, "", "/viagem-rapida");
+    render(<PwaInstallNotice />);
+    act(() => vi.advanceTimersByTime(30000));
+    expect(screen.queryByLabelText("Instalar CARONAA")).toBeNull();
+    act(() => window.history.pushState({}, "", "/home"));
+    act(() => vi.advanceTimersByTime(5000));
+    expect(screen.getByLabelText("Instalar CARONAA")).toBeInTheDocument();
   });
 
   it("não mostra aviso no aplicativo instalado", () => {
