@@ -24,6 +24,12 @@ FROM (
   SELECT m.user_id,m.whatsapp_e164,2 AS priority
     FROM public.professional_mototaxi_profiles m
     WHERE m.whatsapp_e164 IS NOT NULL
+  UNION ALL
+  -- Recover numbers from historical approved/requested snapshots when both
+  -- current profile tables were accidentally overwritten with NULL.
+  SELECT r.user_id,r.snapshot->>'whatsapp_e164',3 AS priority
+    FROM public.professional_access_requests r
+    WHERE r.snapshot->>'whatsapp_e164' IS NOT NULL
 ) legacy
 WHERE whatsapp_e164 ~ '^[+]55[0-9]{11}$'
   AND NOT EXISTS (
@@ -40,8 +46,8 @@ ON CONFLICT(user_id) DO UPDATE SET
     WHEN public.caronaa_account_whatsapp.whatsapp_e164 IS NULL THEN now()
     ELSE public.caronaa_account_whatsapp.updated_at END;
 
--- The select above can contain both sources for one account. Keep the first
--- deterministic priority to avoid the PostgreSQL ON CONFLICT multi-update error.
+-- DISTINCT ON chooses one historical source per account and prevents a
+-- PostgreSQL ON CONFLICT multi-update. Never changes non-null new-table values.
 
 CREATE OR REPLACE FUNCTION public.get_my_caronaa_whatsapp()
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO ''
@@ -58,7 +64,10 @@ BEGIN
    (SELECT c.whatsapp_e164 FROM public.professional_driver_contacts c
      WHERE c.user_id=v_uid AND c.whatsapp_e164 IS NOT NULL),
    (SELECT m.whatsapp_e164 FROM public.professional_mototaxi_profiles m
-     WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL)
+     WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL),
+   (SELECT r.snapshot->>'whatsapp_e164' FROM public.professional_access_requests r
+     WHERE r.user_id=v_uid AND r.snapshot->>'whatsapp_e164' IS NOT NULL
+     ORDER BY r.submitted_at DESC LIMIT 1)
  ) INTO v_phone;
  RETURN jsonb_build_object('whatsapp',v_phone,
    'contact_consent',coalesce(v_contact.contact_consent,false));
@@ -143,7 +152,10 @@ BEGIN
       (SELECT c.whatsapp_e164 FROM public.professional_driver_contacts c
         WHERE c.user_id=v_uid AND c.whatsapp_e164 IS NOT NULL),
       (SELECT m.whatsapp_e164 FROM public.professional_mototaxi_profiles m
-        WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL)
+        WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL),
+      (SELECT r.snapshot->>'whatsapp_e164' FROM public.professional_access_requests r
+        WHERE r.user_id=v_uid AND r.snapshot->>'whatsapp_e164' IS NOT NULL
+        ORDER BY r.submitted_at DESC LIMIT 1)
     ) INTO v_phone;
   END IF;
   IF length(v_city) NOT BETWEEN 2 AND 120
@@ -280,7 +292,10 @@ BEGIN
       (SELECT c.whatsapp_e164 FROM public.professional_driver_contacts c
         WHERE c.user_id=v_uid AND c.whatsapp_e164 IS NOT NULL),
       (SELECT m.whatsapp_e164 FROM public.professional_mototaxi_profiles m
-        WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL)
+        WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL),
+      (SELECT r.snapshot->>'whatsapp_e164' FROM public.professional_access_requests r
+        WHERE r.user_id=v_uid AND r.snapshot->>'whatsapp_e164' IS NOT NULL
+        ORDER BY r.submitted_at DESC LIMIT 1)
     ) INTO v_phone;
   END IF;
 
