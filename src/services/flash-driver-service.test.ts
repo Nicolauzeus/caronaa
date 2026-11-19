@@ -67,6 +67,23 @@ describe("Flash driver RPC boundaries",()=>{
       id:"ride-1",distanceKm:2.4,driverEarnings:7.35,
     })]);
   });
+  it("maps the actual SQL Flash DTO in cents/meters and remaining seconds",async()=>{
+    api.rpc.mockResolvedValue({data:[{
+      ride_id:"ride-22",service_mode:"EXCLUSIVE",seats_requested:1,
+      distance_to_pickup_m:1950,driver_earnings_cents:735,
+      meeting_point_label:"Embarque aprovado",destination_label:"UNIFOR",
+      expires_in_seconds:30,passenger_name:"Ana",passenger_avatar:"https://example.org/ana.png",
+    }],error:null});
+    expect(await getFlashDriverRadarOrders()).toEqual([expect.objectContaining({
+      id:"ride-22",mode:"EXCLUSIVE",seats:1,distanceKm:1.95,
+      driverEarnings:7.35,pickupLabel:"Embarque aprovado",
+      passengerName:"Ana",
+    })]);
+  });
+  it("treats backend SKIPPED as a successful decline",async()=>{
+    api.rpc.mockResolvedValue({data:{success:true,action:"SKIPPED"},error:null});
+    expect(await respondFlashOrder("ride-22",false)).toBe("REJECTED");
+  });
   it("accept needs real backend confirmation; ALREADY_TAKEN is safe",async()=>{
     api.rpc.mockResolvedValue({data:{status:"ACCEPTED"},error:null});
     expect(await respondFlashOrder("ride-1",true)).toBe("ACCEPTED");
