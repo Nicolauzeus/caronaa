@@ -1,34 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Clock3, MapPin, Navigation, Users } from "lucide-react";
 import { formatBrl } from "@/lib/ride-cost";
+import { startLoop, stopLoop } from "@/lib/notification-sound";
 import type { FlashDriverOrder } from "@/services/flash-driver-service";
 
 type Props={
   order:FlashDriverOrder;onAnswer:(accept:boolean)=>Promise<void>;
   busy?:boolean;
-};
-const vibration=()=>{
-  try{if(typeof navigator!=="undefined"&&"vibrate" in navigator)navigator.vibrate([200,100,200]);}
-  catch{/* Optional phone feedback. */}
-};
-const tone=()=>{
-  try {
-    const Audio=(window as any).AudioContext||(window as any).webkitAudioContext;
-    if(!Audio)return;
-    const context=new Audio();
-    for(const [index,freq] of [650,830].entries()){
-      const oscillator=context.createOscillator();
-      const gain=context.createGain();
-      const time=context.currentTime+index*0.14;
-      oscillator.type="sine";oscillator.frequency.value=freq;
-      gain.gain.setValueAtTime(0.001,time);
-      gain.gain.exponentialRampToValueAtTime(0.06,time+0.025);
-      gain.gain.exponentialRampToValueAtTime(0.001,time+0.12);
-      oscillator.connect(gain);gain.connect(context.destination);
-      oscillator.start(time);oscillator.stop(time+0.13);
-    }
-    void new Promise<void>(resolve=>setTimeout(resolve,360)).then(()=>context.close()).catch(()=>undefined);
-  }catch{/* Autoplay policies can block sound; visual card remains usable. */}
 };
 export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
   // Never reset the deadline on Realtime refresh of the same offer ID.
@@ -40,23 +18,24 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
     deadline.current=Math.min(Date.parse(order.expiresAt),Date.now()+15000);
     answering.current=false;
     setRemaining(Math.max(0,Math.ceil((deadline.current-Date.now())/1000)));
-    vibration();
-    tone();
+    startLoop(order.id, deadline.current);
     const tick=()=>{
       const left=Math.max(0,Math.ceil((deadline.current-Date.now())/1000));
       setRemaining(left);
       if(left===0&&!answering.current){
+        stopLoop(order.id);
         answering.current=true;
         void answerRef.current(false);
       }
     };
     tick();
     const clock=window.setInterval(tick,200);
-    return()=>window.clearInterval(clock);
+    return()=>{window.clearInterval(clock);stopLoop(order.id);};
   },[order.id]);
   const respond=(accept:boolean)=>{
     if(answering.current||busy)return;
     answering.current=true;
+    stopLoop(order.id);
     void answerRef.current(accept);
   };
   return <section aria-label="Novo chamado Flash" role="dialog" aria-modal="false"
