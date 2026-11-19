@@ -22,6 +22,7 @@ import { NotificationControls } from "@/components/caronaa/NotificationControls"
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
+import { QuickRidePendingDropoffPrompt } from "@/components/caronaa/QuickRidePendingDropoffPrompt";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
 import { authenticatedNav, sharedDriverNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
@@ -449,6 +450,11 @@ export function AppShell({
       >
         {children}
       </main>
+
+      {/* Persisted dropoff confirmation is accessible after login, app resume
+          or navigation to any authenticated route, not only passenger Home. */}
+      {!publicPage && !prelaunchMode && user &&
+        <QuickRidePendingDropoffPrompt userId={user.id} />}
 
       {/* Navegação inferior acessível para a área autenticada em celulares. */}
       {!publicPage && user && professionalOnly !== null && (
