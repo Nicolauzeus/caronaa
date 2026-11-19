@@ -3,6 +3,7 @@ import {
   getMultiStopRoute,
   getDrivingDistanceKm,
   getWalkingRoute,
+  getDrivingRoute,
 } from "./road-routing";
 
 const points = [
@@ -139,4 +140,24 @@ it("requests walking geometry without a driving-only routing preference", async 
   expect(body.travelMode).toBe("WALK");
   expect(body.routingPreference).toBeUndefined();
   expect(result.routePath).toHaveLength(2);
+});
+
+it("enables Google traffic and turn-by-turn instructions only for navigation (not fares)",async()=>{
+  vi.stubEnv("GOOGLE_MAPS_API_KEY","server-test-key");
+  const navigationStep={
+    startLocation:{latLng:{latitude:-3.7,longitude:-38.5}},
+    endLocation:{latLng:{latitude:-3.6,longitude:-38.4}},
+    navigationInstruction:{maneuver:"TURN_RIGHT",instructions:"Vire à direita na avenida"},
+  };
+  const request=vi.fn().mockImplementation(async()=>response({
+    ...route,legs:[{...route.legs[0],steps:[navigationStep]}],
+  }));
+  const result=await getDrivingRoute(points.slice(0,2),request,"DRIVE",true);
+  const body=JSON.parse(request.mock.calls[0][1].body);
+  expect(body.routingPreference).toBe("TRAFFIC_AWARE");
+  expect(request.mock.calls[0][1].headers["X-Goog-FieldMask"]).toContain("navigationInstruction");
+  expect(result.maneuvers?.[0]?.instruction).toBe("Vire à direita na avenida");
+  request.mockClear();
+  await getDrivingRoute(points.slice(0,2),request);
+  expect(JSON.parse(request.mock.calls[0][1].body).routingPreference).toBe("TRAFFIC_UNAWARE");
 });
