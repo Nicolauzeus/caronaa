@@ -18,8 +18,8 @@ export const NOTIFICATION_NOTES: Record<NotificationSound, readonly number[]> = 
 let context: AudioContext | undefined;
 let audioPrimed = false;
 let loopOwner: string | null = null;
-let loopTimer: ReturnType<typeof setInterval> | undefined;
-let loopExpiry: ReturnType<typeof setTimeout> | undefined;
+let loopTimer: number | undefined;
+let loopExpiry: number | undefined;
 const loopOscillators = new Set<OscillatorNode>();
 const lastPlayed = new Map<NotificationSound, number>();
 
@@ -47,6 +47,7 @@ export async function unlockNotificationAudio(): Promise<void> {
     const Audio = win.AudioContext || win.webkitAudioContext;
     if (!Audio) return;
     context ??= new Audio();
+    const ctx = context;
     if (!audioPrimed) {
       audioPrimed = true;
       const oscillator = context.createOscillator();
@@ -61,7 +62,7 @@ export async function unlockNotificationAudio(): Promise<void> {
       oscillator.start();
       oscillator.stop(context.currentTime + 0.03);
     }
-    if (context.state === "suspended") await context.resume();
+    if (ctx.state === "suspended") await ctx.resume();
   } catch {
     /* Mobile autoplay or an unavailable audio device must never block a trip. */
   }
