@@ -54,6 +54,20 @@
   .caronaa-journey-sheet[data-ride-active="true"][data-snap="full"] {
     height: min(92dvh, 900px) !important;
   }
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="peek"] {
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    border-radius: 20px 20px 0 0;
+  }
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="peek"] .caronaa-journey-sheet__handle {
+    width: 100%;
+    min-height: 62px;
+    font-size: 12px;
+  }
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="peek"] .caronaa-journey-sheet__content {
+    display: none !important;
+  }
   .caronaa-journey-sheet[data-ride-active="true"] .caronaa-journey-sheet__content {
     min-height: 0;
     overflow: hidden;
@@ -83,7 +97,7 @@
       height: min(69dvh, 510px) !important;
     }
     .caronaa-journey-sheet[data-ride-active="true"][data-snap="peek"] {
-      height: 205px !important;
+      height: 64px !important;
     }
     .caronaa-passenger-live [aria-label="Acompanhamento da procura por motorista"] > p:last-child {
       display: none;
