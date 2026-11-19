@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type RideParticipantSummary={
   id:string;name:string;photo:string|null;registration:string|null;
+  vehicle?:string|null;plate?:string|null;
 };
 export type QuickRideAudience={
   watchingCount:number;
@@ -25,6 +26,7 @@ function parseDriver(x:unknown):RideParticipantSummary|null{
     id:text(d.id),name:text(d.name)||"Motorista CARONAA",
     photo:safePhoto(d.photo),
     registration:text(d.registration)||null,
+    vehicle:text(d.vehicle)||null,plate:text(d.plate)||null,
   };
 }
 
@@ -46,9 +48,28 @@ export async function stopQuickRideRequestView(rideId:string):Promise<void>{
 }
 
 /** Passenger-only projection: no GPS, phone, PIN, emails or payment data. */
-export async function getQuickRideRequestAudience(rideId:string):Promise<QuickRideAudience>{
+export async function getQuickRideRequestAudience(rideId:string,status="SEARCHING"):Promise<QuickRideAudience>{
   const {data,error}=await (supabase as any).rpc("quick_ride_request_audience",{p_ride_id:rideId});
-  if(error)throw error;
+  if(error){
+    // Migration 0214 may still be awaiting manual application. The already
+    // installed, participant-only 0154 RPC must still reveal the ACCEPTED
+    // driver to their passenger without exposing an unassigned driver.
+    if(["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
+      const {data:driver,error:driverError}=await (supabase as any).rpc(
+        "quick_ride_driver_details",{p_id:rideId});
+      if(!driverError){
+        const d=record(driver);
+        if(d&&text(d.name))return {
+          watchingCount:0,viewers:[],
+          acceptedDriver:{
+            id:"assigned:"+rideId,name:text(d.name),photo:safePhoto(d.photo),
+            registration:null,vehicle:text(d.vehicle)||null,plate:text(d.plate)||null,
+          },
+        };
+      }
+    }
+    throw error;
+  }
   const row=record(data);
   const n=Number(row?.watching_count);
   return {
