@@ -133,7 +133,7 @@ export function QuickRideTripHistory() {
             {ride.status === "PENDING_REVIEW" && <p role="status"
               className="mt-3 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm">
               Aguardando confirmação do desembarque. Se estiver tudo certo, confirme na página inicial. O Pix aparecerá após essa confirmação. Se houver contestação, o atendimento poderá analisar o caso.
-              <Link to="/home" className="mt-2 block font-semibold underline">Abrir detalhes do desembarque</Link>
+              <Link to="/home" className="mt-2 block font-semibold underline">Abrir confirmação de desembarque</Link>
             </p>}
             {ride.status === "COMPLETED" && (
               <div className="mt-3">
