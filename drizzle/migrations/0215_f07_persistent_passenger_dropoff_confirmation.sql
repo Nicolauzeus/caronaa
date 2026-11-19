@@ -25,7 +25,8 @@ SET deadline_at=greatest(d.deadline_at,d.requested_at+interval '10 minutes'),
     updated_at=now()
 FROM public.professional_quick_rides q
 WHERE q.id=d.ride_id AND q.status IN ('IN_PROGRESS','PENDING_REVIEW')
-  AND d.passenger_response IS NULL AND d.resolved_at IS NULL
+  AND d.passenger_response IS NULL
+  -- Includes already timed-out requests with no administrator decision.
   AND d.admin_decision IS NULL
   AND d.requested_at+interval '10 minutes'>now()
   AND d.deadline_at<d.requested_at+interval '10 minutes';
