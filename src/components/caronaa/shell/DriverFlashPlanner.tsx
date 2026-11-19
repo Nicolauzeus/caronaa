@@ -10,12 +10,15 @@ import { LocationAutocomplete } from "@/components/formulario/LocationAutocomple
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { useFlashDriverPresence } from "@/hooks/use-flash-driver-presence";
 import {
-  FlashDriverError, getFlashDriverRadarOrders, getMyActiveFlashRide,
+  FlashDriverError, getFlashDriverRadarOrders, getMyActiveFlashRide, getMyFlashRideSnapshot,
   getFlashPassengerDetails, markFlashDriverArrived, respondFlashOrder,
   startFlashRideWithPin, type FlashDriverMode, type FlashDriverOrder,
   type FlashDriverRide, type FlashPassengerDetails,
 } from "@/services/flash-driver-service";
 import { FlashIncomingOrderCard } from "./FlashIncomingOrderCard";
+import { FlashDriverActiveSheet } from "./FlashDriverActiveSheet";
+import { QuickRidePostTripFlow } from "../QuickRidePostTripFlow";
+import type { CompletedQuickRideRef } from "@/lib/quick-rides/post-trip-prompt";
 import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
 import type { SheetSnap } from "./InteractiveBottomSheet";
 import type { ShellRoute } from "./ShellJourneyPlanner";
@@ -56,6 +59,8 @@ export function DriverFlashPlanner({
   const [seats,setSeats]=useState(1);
   const [onlineRoute,setOnlineRoute]=useState<ShellRoute|null>(null);
   const [active,setActive]=useState<FlashDriverRide|null>(null);
+  const [completedRide,setCompletedRide]=useState<CompletedQuickRideRef|null>(null);
+  const priorRidePhase=useRef<string|null>(null);
   const [passenger,setPassenger]=useState<FlashPassengerDetails|null>(null);
   const [orders,setOrders]=useState<FlashDriverOrder[]>([]);
   const [dismissed,setDismissed]=useState<string[]>([]);
@@ -82,19 +87,23 @@ export function DriverFlashPlanner({
     const version=++readVersion.current;
     try{
       const [current,offers]=await Promise.allSettled([
-        getMyActiveFlashRide(),
+        getMyFlashRideSnapshot(),
         presence.online&&presence.gpsConnected
           ?getFlashDriverRadarOrders():Promise.resolve([] as FlashDriverOrder[]),
       ]);
       if(version!==readVersion.current)return;
       if(current.status==="fulfilled"){
-        const ride=current.value;
+        const ride=current.value.active;
         setActive(ride);
+        setCompletedRide(current.value.completed);
         onRideRef.current?.(ride);
-        if(ride){
-          onSnapChange("peek");
+        const phase=ride?ride.id+":"+ride.status:null;
+        // Do not snap shut again on every Realtime/heartbeat refresh.
+        if(ride && phase!==priorRidePhase.current){
+          onSnapChange(ride.status==="ARRIVED"?"half":"peek");
           void getFlashPassengerDetails(ride.id).then(setPassenger);
-        }else setPassenger(null);
+        }else if(!ride)setPassenger(null);
+        priorRidePhase.current=phase;
       }
       if(offers.status==="fulfilled"){
         setOrders(offers.value.filter(order=>!ignored.current.has(order.id)&&
@@ -286,7 +295,7 @@ export function DriverFlashPlanner({
   return <>
     <section aria-label="CARONAA Flash motorista" className="space-y-2 pb-3 text-white"
       style={{fontFamily:"Manrope, sans-serif"}}>
-      {snap==="peek"&&<>
+      {!active&&snap==="peek"&&<>
         <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"
           placeholder="Para onde você vai?" onChange={pickDestination}/>
@@ -308,7 +317,7 @@ export function DriverFlashPlanner({
           </button>}
         <ServiceTypeDock value={serviceType} onChange={changeService} compact/>
       </>}
-      {snap==="half"&&<>
+      {!active&&snap==="half"&&<>
         <LocationAutocomplete id="flash-driver-dest-edit" label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"
           placeholder="Destino opcional" onChange={pickDestination}/>
@@ -347,7 +356,7 @@ export function DriverFlashPlanner({
           {presence.online?"Ficar Indisponível":"Ficar Disponível"}
         </button>
       </>}
-      {snap==="full"&&<>
+      {!active&&snap==="full"&&<>
         <button type="button" onClick={()=>onSnapChange("half")}
           className="min-h-11 text-[#FFBB00]">Voltar às opções Flash</button>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">Disponibilidade Flash</h2>
@@ -362,72 +371,15 @@ export function DriverFlashPlanner({
         <CircleAlert size={16} className="shrink-0 text-[#FFBB00]"/>{presence.error}
       </p>}
       {queueError&&presence.online&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
-      {active&&<section aria-label="Corrida Flash em andamento"
-        className="space-y-3 rounded-2xl border border-[#FFBB00]/50 bg-white/5 p-3">
-        <div className="flex items-center justify-between">
-          <p className="font-[family-name:var(--font-display)] font-bold text-[#FFBB00]">
-            {active.status==="ACCEPTED"?"A caminho do embarque":active.status==="ARRIVED"?
-              "No embarque · validar PIN":"Em viagem"}
-          </p>
-          <Radio size={18}/>
-        </div>
-        <div className="flex items-center gap-2">
-          {passenger?.photo?<img src={passenger.photo} alt="Foto do passageiro"
-            className="size-11 rounded-full object-cover"/>:
-            <span className="flex size-11 items-center justify-center rounded-full bg-white/10"><UserRound size={20}/></span>}
-          <p className="font-bold">{passenger?.name||"Passageiro confirmado"}</p>
-        </div>
-        {passenger?.whatsapp&&normalizeWhatsapp(passenger.whatsapp)&&
-          <a href={normalizeWhatsapp(passenger.whatsapp)!} target="_blank" rel="noopener noreferrer"
-            className="flex min-h-11 items-center justify-center rounded-xl border border-white/25 text-sm">
-            Falar no WhatsApp
-          </a>}
-        <p className="text-sm">Embarque: {active.originLabel||"Ponto confirmado"}</p>
-        <p className="text-sm">Destino: {active.destinationLabel||"Destino confirmado"}</p>
-        {active.status==="ACCEPTED"&&<button type="button" disabled={busyRide}
-          onClick={()=>void transition("ARRIVED")}
-          className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
-          Cheguei no local
-        </button>}
-        {active.status==="ARRIVED"&&<>
-          <label className="block text-xs">Código PIN de 4 dígitos
-            <input inputMode="numeric" type="text" autoComplete="one-time-code"
-              maxLength={4} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))}
-              className="mt-1 min-h-12 w-full rounded-xl border border-white/25 bg-[#121212] px-3 text-center font-bold tracking-widest"/>
-          </label>
-          <button type="button" disabled={busyRide||pin.length!==4}
-            onClick={()=>void transition("IN_PROGRESS")}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-            Validar PIN e iniciar viagem
-          </button>
-        </>}
-        {active.status==="IN_PROGRESS"&&<>
-          <p className="text-xs text-white/70">{dropoffSent?"Desembarque solicitado. Aguardando o passageiro confirmar.":"Siga a rota até o destino."}</p>
-          <button type="button" disabled={busyRide||dropoffSent} onClick={()=>void requestDropoff()}
-            className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-            {dropoffSent?"Aguardando confirmação do passageiro":"Cheguei ao destino · Solicitar desembarque"}
-          </button>
-          {!dropoffSent&&<div className="space-y-2 rounded-xl border border-white/20 p-3">
-            <button type="button" aria-expanded={manualCloseOpen}
-              onClick={()=>setManualCloseOpen(value=>!value)}
-              className="min-h-11 w-full text-sm font-semibold text-[#FFBB00]">
-              Sem GPS no destino? Solicitar revisão
-            </button>
-            {manualCloseOpen&&<>
-              <p className="text-xs text-white/70">O passageiro terá até 120 segundos para confirmar. Contestação ou silêncio encaminham a corrida para análise, sem cobrança automática.</p>
-              <label className="block text-xs" htmlFor="flash-close-reason">Explique a dificuldade</label>
-              <textarea id="flash-close-reason" rows={3} maxLength={1000}
-                value={manualCloseReason} onChange={e=>setManualCloseReason(e.target.value)}
-                className="w-full rounded-xl border border-white/30 bg-[#121212] p-3 text-white" />
-              <button type="button" disabled={busyRide||manualCloseReason.trim().length<20}
-                onClick={()=>void requestManualClose()}
-                className="min-h-12 w-full rounded-xl border border-[#FFBB00] px-3 font-bold text-[#FFBB00] disabled:opacity-50">
-                Pedir confirmação manual de desembarque
-              </button>
-            </>}
-          </div>}
-        </>}
-      </section>}
+      {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
+        pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
+        manualCloseOpen={manualCloseOpen} onToggleManualClose={()=>setManualCloseOpen(v=>!v)}
+        manualCloseReason={manualCloseReason} onManualCloseReason={setManualCloseReason}
+        onArrived={()=>void transition("ARRIVED")}
+        onStart={()=>void transition("IN_PROGRESS")}
+        onDropoff={()=>void requestDropoff()}
+        onManualClose={()=>void requestManualClose()}
+        onSnapChange={onSnapChange}/>}
       {canListen&&active?.status==="IN_PROGRESS"&&
         <p className="rounded-xl border border-[#FFBB00]/25 p-2 text-xs text-white/65">
           Você continua recebendo oportunidades Na Rota enquanto houver vagas confirmadas pelo servidor.
@@ -435,6 +387,7 @@ export function DriverFlashPlanner({
       {!presence.online&&snap!=="peek"&&
         <p className="text-xs text-white/65">Para receber chamados, ative o GPS e sua disponibilidade.</p>}
     </section>
+    <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??null} completedRide={completedRide}/>
     {canListen&&current&&typeof document!=="undefined"&&createPortal(
       <FlashIncomingOrderCard key={current.id} order={current} busy={acting}
         onAnswer={answer}/>,document.body
