@@ -354,6 +354,15 @@ function Home(){
       (quotedAccuracy===null||needsPassengerPickupConfirmation({...plannedPickup,accuracy:quotedAccuracy}))&&confirmedPickupKey!==pickupKey;
   const locatingPickup=originSource==="CURRENT_LOCATION"&&location.locating&&!validPoint(quotedOrigin);
   const openPickupDialog=()=>{setPickupCandidate(quotedOrigin??null);setPickupDialogOpen(true);};
+  // The final booking click is explicit consent for the quoted pickup.
+  // GPS updates or a different point can never be accepted silently.
+  const approvePickupForFlashRequest=(selected:FormLocationDetails):boolean=>{
+    if(!passengerPreview||!pickupKey||!validPoint(selected)||
+       !validPoint(plannedPickup)||selected.lat!==plannedPickup.lat||
+       selected.lng!==plannedPickup.lng)return false;
+    setConfirmedPickupKey(pickupKey);
+    return true;
+  };
   const confirmPickup=()=>{
     if(!validPoint(pickupCandidate))return;
     const candidateKey=JSON.stringify([pickupCandidate.lat,pickupCandidate.lng]);
@@ -619,6 +628,7 @@ function Home(){
               driverError={quickDriverErrors[quickVehicle]??quickDriverError}
               gpsOriginIsImprecise={originSource==="CURRENT_LOCATION"&&!previewablePickup}
               pickupNeedsConfirmation={pickupNeedsConfirmation} onConfirmPickup={openPickupDialog}
+              onApprovePickupForRequest={approvePickupForFlashRequest}
               actionContainer={flashActionContainer} onFaresChange={setFlashFares} onFarePendingChange={setFlashFarePending}
               onCoveragesChange={onQuickCoverages} onOperationalRideChange={onPassengerRide} onRidePhaseChange={onPassengerPhase}
               onDropoffPendingChange={onUrgentDropoff} onFareChange={setFlashFare}
