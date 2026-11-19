@@ -60,6 +60,7 @@ export function DriverFlashPlanner({
   const [onlineRoute,setOnlineRoute]=useState<ShellRoute|null>(null);
   const [active,setActive]=useState<FlashDriverRide|null>(null);
   const [completedRide,setCompletedRide]=useState<CompletedQuickRideRef|null>(null);
+  const [nearDropoff,setNearDropoff]=useState(false);
   const priorRidePhase=useRef<string|null>(null);
   const [passenger,setPassenger]=useState<FlashPassengerDetails|null>(null);
   const [orders,setOrders]=useState<FlashDriverOrder[]>([]);
@@ -76,6 +77,30 @@ export function DriverFlashPlanner({
   const answerLock=useRef(false);
   const ignored=useRef(new Set<string>());
   const refreshCallback=useRef<()=>Promise<void>>(async()=>{});
+
+  useEffect(()=>{
+    if(!active||active.status!=="IN_PROGRESS"){
+      setNearDropoff(false);return;
+    }
+    let alive=true;
+    const check=async()=>{
+      try{
+        const {data,error}=await (supabase as any).rpc(
+          "quick_ride_driver_near_dropoff",{p_id:active.id});
+        if(alive)setNearDropoff(!error&&data===true);
+      }catch{if(alive)setNearDropoff(false);}
+    };
+    void check();
+    const visible=()=>{if(!document.hidden)void check();};
+    const timer=window.setInterval(visible,15000);
+    window.addEventListener("focus",visible);
+    document.addEventListener("visibilitychange",visible);
+    return()=>{
+      alive=false;window.clearInterval(timer);
+      window.removeEventListener("focus",visible);
+      document.removeEventListener("visibilitychange",visible);
+    };
+  },[active?.id,active?.status]);
 
   // Keep the map callback stable even when Home rerenders.
   const onRouteRef=useRef(onRouteChange);onRouteRef.current=onRouteChange;
@@ -376,6 +401,7 @@ export function DriverFlashPlanner({
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
         whatsappUrl={normalizeWhatsapp(passenger?.whatsapp)}
         pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
+        nearDestination={nearDropoff}
         manualCloseOpen={manualCloseOpen} onToggleManualClose={()=>setManualCloseOpen(v=>!v)}
         manualCloseReason={manualCloseReason} onManualCloseReason={setManualCloseReason}
         onArrived={()=>void transition("ARRIVED")}
