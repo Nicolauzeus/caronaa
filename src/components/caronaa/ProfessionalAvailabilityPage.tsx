@@ -451,7 +451,7 @@ export function ProfessionalAvailabilityPage() {
       setSheetExpanded(false);
   },[activeRide?.id,activeRide?.status]);
   // The professional cockpit has its own sheet; map-first collapse takes priority.
-  const sheetOpen=activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
+  const sheetOpen=activeRide||activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
   const followRideOnMap=useCallback((rideId:string)=>{
     // The driver explicitly asks to see the map: do not wait for another
     // automatic phase transition or force the user to leave this screen.
