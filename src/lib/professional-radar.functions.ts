@@ -13,6 +13,40 @@ export type ProfessionalRadarPublication =
   | { published: true; municipality: string; traceId?: string }
   | { published: false; reason: "OUTSIDE_APPROVED_ZONE" | "LOCATION_UNKNOWN" | "GOOGLE_QUOTA_LIMITED"; municipality: string | null; traceId?: string };
 
+// Short-lived server-side cache. A municipality is cached ONLY after a
+// successful authenticated publication with Google-verified civic data.
+// Keep scope per driver and never trust a client-supplied city.
+type VerifiedMunicipality={city:string;lat:number;lng:number;verifiedAt:number};
+const civicCache=new Map<string,VerifiedMunicipality>();
+const CIVIC_CACHE_TTL_MS=180000;
+const CIVIC_CACHE_MAX_DISTANCE_M=150; // Conservative around municipal borders.
+function civicDistanceM(lat1:number,lng1:number,lat2:number,lng2:number):number{
+  const radians=Math.PI/180;
+  const dLat=(lat2-lat1)*radians;
+  const dLng=(lng2-lng1)*radians;
+  const a=Math.sin(dLat/2)**2+
+    Math.cos(lat1*radians)*Math.cos(lat2*radians)*Math.sin(dLng/2)**2;
+  return 6371000*2*Math.atan2(Math.sqrt(a),Math.sqrt(Math.max(0,1-a)));
+}
+function cachedCivic(userId:string,lat:number,lng:number):string|null{
+  const entry=civicCache.get(userId);
+  if(!entry)return null;
+  if(Date.now()-entry.verifiedAt>CIVIC_CACHE_TTL_MS){
+    civicCache.delete(userId);return null;
+  }
+  return civicDistanceM(entry.lat,entry.lng,lat,lng)<=CIVIC_CACHE_MAX_DISTANCE_M?entry.city:null;
+}
+function rememberCivic(userId:string,city:string,lat:number,lng:number){
+  if(civicCache.size>500){
+    const now=Date.now();
+    for(const [id,entry] of civicCache){
+      if(now-entry.verifiedAt>CIVIC_CACHE_TTL_MS)civicCache.delete(id);
+    }
+    if(civicCache.size>500)civicCache.delete(civicCache.keys().next().value!);
+  }
+  civicCache.set(userId,{city,lat,lng,verifiedAt:Date.now()});
+}
+
 export const publishVerifiedProfessionalPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((value: unknown) => professionalRadarPointSchema.parse(value))
@@ -73,9 +107,9 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       });
     };
 
-    // Recent Google-verified municipality may be reused only inside a 300m
-    // radius and 3-minute TTL. An HTTP 429 never fabricates a municipality.
-    let city: string | null = null;
+    // Reuse a recently server-verified location only for small movements.
+    // Cache misses always resolve civic coverage from real GPS via Google.
+    let city: string | null = cachedCivic(context.userId,data.lat,data.lng);
     if(city){
       log("municipality_cache_hit", undefined, {ageBoundSeconds:180});
     } else {
@@ -164,5 +198,6 @@ export const publishVerifiedProfessionalPosition = createServerFn({ method: "POS
       return reject(code, "O banco recusou publicar a localização. Consulte o diagnóstico F07 e o log do servidor.");
     }
     log("db_publish_success", undefined, { city });
+    rememberCivic(context.userId,city,data.lat,data.lng);
     return { published: true, municipality: city, traceId };
   });
