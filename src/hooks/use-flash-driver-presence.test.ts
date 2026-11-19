@@ -84,6 +84,13 @@ describe("Flash driver GPS presence",()=>{
     expect(api.heartbeat).not.toHaveBeenCalled();
     expect(api.offline).not.toHaveBeenCalled();
   });
+  it("ends server presence when its sole Flash publisher unmounts",async()=>{
+    const {result,unmount}=renderHook(()=>useFlashDriverPresence());
+    await act(async()=>{await result.current.goOnline(config);});
+    act(()=>unmount());
+    expect(api.clear).toHaveBeenCalledWith(42);
+    expect(api.offline).toHaveBeenCalled();
+  });
   it("stops sharing and tries offline when GPS goes stale",async()=>{
     const {result}=renderHook(()=>useFlashDriverPresence());
     await act(async()=>{await result.current.goOnline(config);});
