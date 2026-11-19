@@ -325,12 +325,15 @@ BEGIN
      OR q.status<>'COMPLETED' THEN
     RAISE EXCEPTION 'Pagamento indisponivel' USING ERRCODE='42501';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.driver_pix_settings d
-    WHERE d.user_id=q.driver_id AND length(btrim(d.pix_key))>=6) THEN
-    RAISE EXCEPTION 'Motorista sem chave Pix' USING ERRCODE='22023';
+  IF NOT EXISTS (SELECT 1 FROM public.quick_ride_pix_checkout_snapshot s
+    WHERE s.ride_id=p_id) THEN
+    RAISE EXCEPTION 'Cobrança Pix ainda nao emitida' USING ERRCODE='22023';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.caronaa_quick_fare_quotes f
-    WHERE f.ride_id=p_id AND f.customer_pays_cents>=450
+    WHERE f.ride_id=p_id AND f.passenger_id IS NOT DISTINCT FROM q.passenger_id
+      AND f.municipality IS NOT DISTINCT FROM q.municipality
+      AND f.vehicle_type IS NOT DISTINCT FROM q.vehicle_type
+      AND f.customer_pays_cents>=450
       AND f.customer_pays_cents=f.driver_receives_cents+f.platform_commission_cents) THEN
     RAISE EXCEPTION 'Contrato tarifario inconsistente' USING ERRCODE='22023';
   END IF;
@@ -357,12 +360,15 @@ BEGIN
      OR q.status<>'COMPLETED' THEN
     RAISE EXCEPTION 'Recebimento indisponivel' USING ERRCODE='42501';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.driver_pix_settings d
-    WHERE d.user_id=q.driver_id AND length(btrim(d.pix_key))>=6) THEN
-    RAISE EXCEPTION 'Motorista sem chave Pix' USING ERRCODE='22023';
+  IF NOT EXISTS (SELECT 1 FROM public.quick_ride_pix_checkout_snapshot s
+    WHERE s.ride_id=p_id) THEN
+    RAISE EXCEPTION 'Cobrança Pix ainda nao emitida' USING ERRCODE='22023';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.caronaa_quick_fare_quotes f
-    WHERE f.ride_id=p_id AND f.customer_pays_cents>=450
+    WHERE f.ride_id=p_id AND f.passenger_id IS NOT DISTINCT FROM q.passenger_id
+      AND f.municipality IS NOT DISTINCT FROM q.municipality
+      AND f.vehicle_type IS NOT DISTINCT FROM q.vehicle_type
+      AND f.customer_pays_cents>=450
       AND f.customer_pays_cents=f.driver_receives_cents+f.platform_commission_cents) THEN
     RAISE EXCEPTION 'Contrato tarifario inconsistente' USING ERRCODE='22023';
   END IF;
