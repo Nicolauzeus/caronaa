@@ -218,6 +218,34 @@ COMMENT ON COLUMN public.quick_ride_dropoff_reviews.passenger_dispute_reason_cod
   IS 'Set only for a passenger-initiated dispute; NOT_YET is not a dispute.';
 
 
+-- Advisory proximity only. Valid, recent driver GPS can highlight the action
+-- but cannot confirm passenger disembarkation or change ride/payment state.
+CREATE OR REPLACE FUNCTION public.quick_ride_driver_near_dropoff(p_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO ''
+AS $near$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.professional_quick_rides q
+    JOIN public.professional_driver_locations l ON l.user_id=q.driver_id
+    WHERE auth.uid() IS NOT NULL
+      AND q.id=p_id AND q.driver_id=auth.uid()
+      AND q.status='IN_PROGRESS'
+      AND l.accuracy_m>0 AND l.accuracy_m<=100
+      AND l.sampled_at>=now()-interval '90 seconds'
+      AND l.sampled_at<=now()+interval '5 seconds'
+      AND l.updated_at>=now()-interval '90 seconds'
+      AND 6371000.0*2*asin(least(1.0,sqrt(
+        power(sin(radians((l.lat-q.destination_lat)/2)),2)+
+        cos(radians(l.lat))*cos(radians(q.destination_lat))*
+        power(sin(radians((l.lng-q.destination_lng)/2)),2)
+      )))<=greatest(120.0,least(180.0,l.accuracy_m+80.0))
+  );
+$near$;
+REVOKE ALL ON FUNCTION public.quick_ride_driver_near_dropoff(uuid)
+  FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.quick_ride_driver_near_dropoff(uuid)
+  TO authenticated;
+
 -- Participant-scoped case status for both histories (one batch read).
 -- Never leaks a dispute belonging to another passenger or driver.
 CREATE OR REPLACE FUNCTION public.quick_ride_my_case_updates()
