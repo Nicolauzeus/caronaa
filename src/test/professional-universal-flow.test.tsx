@@ -47,6 +47,7 @@ beforeEach(()=>{
   api.query.mockImplementation(async(table:string)=>({data:table==="profiles"?completeProfile:null,error:null}));
   api.rpc.mockImplementation(async(name:string)=>{
     if(name==="get_my_professional_access")return {data:{authorized:api.authorized,request:null},error:null};
+    if(name==="get_my_caronaa_whatsapp")return {data:{whatsapp:null,contact_consent:false},error:null};
     if(name==="complete_professional_driver_registration"){api.authorized=true;return {data:"registration-1",error:null};}
     throw Error("Unexpected RPC: "+name);
   });
@@ -69,6 +70,16 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     expect(screen.getByText("25% concluído")).toBeInTheDocument();
     expect(screen.getByText(/Próxima: Dados do veículo/)).toBeInTheDocument();
     expect(screen.queryByLabelText(/senha/i)).toBeNull();
+  });
+  it("prefills old account WhatsApp when the professional contact row is empty",async()=>{
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="get_my_professional_access")return {data:{authorized:false,request:null},error:null};
+      if(name==="get_my_caronaa_whatsapp")return {data:{whatsapp:"+5585999991234",contact_consent:false},error:null};
+      return {data:[],error:null};
+    });
+    render(<Page/>);
+    const field=await screen.findByLabelText(/WhatsApp com DDD/);
+    await waitFor(()=>expect(field).toHaveValue("+5585999991234"));
   });
   it("allows proceeding without WhatsApp when the professional municipality is chosen",async()=>{
     render(<Page/>);
