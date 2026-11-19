@@ -37,6 +37,7 @@ export function PwaInstallNotice() {
   const [safari, setSafari] = useState(false);
   const [busy, setBusy] = useState(false);
   const dismissedRef = useRef(false);
+  const promptRef = useRef<InstallPrompt | null>(null);
 
   useEffect(() => {
     if (installed()) return;
@@ -49,29 +50,38 @@ export function PwaInstallNotice() {
     setIos(isIos);
     setSafari(isSafari);
 
-    if (isIos && mobile.matches && window.isSecureContext && !dismissedRef.current && eligibleRoute()) {
-      setVisible(true);
-    }
+    // Check eligibility every 30 seconds, rather than interrupting users
+    // with repeated browser prompts during an active ride.
+    const startedAt = Date.now();
+    const checkEligibility = () => {
+      if (installed() || dismissedRef.current || !eligibleRoute() || document.hidden) {
+        setVisible(false);
+        return;
+      }
+      if (Date.now() - startedAt < 30000) return;
+      if (mobile.matches && window.isSecureContext && (isIos || Boolean(promptRef.current))) setVisible(true);
+    };
+    const eligibilityTimer = window.setInterval(checkEligibility, 30000);
 
     const beforeInstall = (event: Event) => {
       event.preventDefault();
+      promptRef.current = event as InstallPrompt;
       setPrompt(event as InstallPrompt);
-      if (mobile.matches && !dismissedRef.current && !installed() && eligibleRoute()) {
-        setVisible(true);
-      }
+      checkEligibility();
     };
     const onInstalled = () => {
       setVisible(false);
+      promptRef.current = null;
       setPrompt(null);
     };
-    const onNavigation = () => {
-      if (!eligibleRoute() || installed()) setVisible(false);
-    };
+    const onNavigation = () => { checkEligibility(); };
 
     window.addEventListener("beforeinstallprompt", beforeInstall);
     window.addEventListener("appinstalled", onInstalled);
     window.addEventListener("popstate", onNavigation);
     window.addEventListener("hashchange", onNavigation);
+    document.addEventListener("visibilitychange", onNavigation);
+    window.addEventListener("focus", onNavigation);
     const displayMode = window.matchMedia("(display-mode: standalone)");
     displayMode.addEventListener?.("change", onInstalled);
     return () => {
@@ -79,6 +89,9 @@ export function PwaInstallNotice() {
       window.removeEventListener("appinstalled", onInstalled);
       window.removeEventListener("popstate", onNavigation);
       window.removeEventListener("hashchange", onNavigation);
+      document.removeEventListener("visibilitychange", onNavigation);
+      window.removeEventListener("focus", onNavigation);
+      window.clearInterval(eligibilityTimer);
       displayMode.removeEventListener?.("change", onInstalled);
     };
   }, []);
