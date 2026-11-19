@@ -29,7 +29,8 @@ describe("F07 persistent passenger dropoff and bounded review", () => {
     expect(prompt).toContain('rpc("quick_ride_respond_dropoff"');
     expect(prompt).toContain('respond("CONFIRMED")');
     expect(prompt).toContain('respond("NOT_YET")');
-    expect(prompt).toContain('respond("CONTESTED")');
+    expect(prompt).toContain('rpc("quick_ride_open_dropoff_dispute"');
+    expect(prompt).toContain('setDisputeOpen(true)');
     expect(prompt).toContain("window.addEventListener(\"focus\",foreground)");
     expect(prompt).toContain('document.addEventListener("visibilitychange",foreground)');
     expect(appShell).toContain("<QuickRidePendingDropoffPrompt key={user.id} userId={user.id} />");
