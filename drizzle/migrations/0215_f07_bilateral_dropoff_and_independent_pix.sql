@@ -175,7 +175,8 @@ BEGIN
   v_new_status:=CASE WHEN p_response='CONFIRMED' THEN 'COMPLETED'
     WHEN p_response='NOT_YET' THEN 'IN_PROGRESS' ELSE 'PENDING_REVIEW' END;
   UPDATE public.quick_ride_dropoff_reviews
-    SET passenger_response=p_response,resolved_at=now(),updated_at=now()
+    SET passenger_response=p_response,resolved_at=now(),updated_at=now(),
+        participant_only=CASE WHEN p_response='NOT_YET' THEN true ELSE participant_only END
     WHERE ride_id=p_id;
   UPDATE public.professional_quick_rides
     SET status=v_new_status,
