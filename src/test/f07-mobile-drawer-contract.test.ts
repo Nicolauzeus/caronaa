@@ -46,7 +46,7 @@ describe("F07 map-first mobile operational drawers",()=>{
     expect(home).toContain('if(status===previous)return;');
   });
   it("avoids iOS input zoom and keeps checkout actions accessible",()=>{
-    expect(drawer).toContain('rideActive&&snap==="peek"?"64px"');
+    expect(drawer).toContain('rideActive&&snap==="peek"?"calc(64px + env(safe-area-inset-bottom, 0px))"');
     expect(css).toContain("font-size: 16px !important");
     expect(css).toContain('[data-trip-route-details="true"]');
     expect(postTrip).toContain("min-h-0 flex-1 space-y-3 overflow-y-auto");
