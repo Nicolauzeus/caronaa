@@ -20,7 +20,7 @@ describe("F02/F07: optional editable WhatsApp per account",()=>{
     render(<AccountWhatsAppEditor/>);
     expect(await screen.findByLabelText(/WhatsApp para contato/)).toHaveValue("");
     expect(screen.getByText(/não é necessário para fazer ou aceitar corridas/)).toBeInTheDocument();
-    expect(screen.getByRole("button",{name:"Remover contato"})).toBeEnabled();
+    await waitFor(()=>expect(screen.getByRole("button",{name:"Remover contato"})).toBeEnabled());
   });
   it("accepts DDD 55 and saves E.164, without granting CRM consent by default",async()=>{
     api.rpc.mockImplementation(async(name:string)=>{
@@ -30,6 +30,7 @@ describe("F02/F07: optional editable WhatsApp per account",()=>{
     });
     render(<AccountWhatsAppEditor/>);
     const field=await screen.findByLabelText(/WhatsApp para contato/);
+    await waitFor(()=>expect(field).not.toBeDisabled());
     fireEvent.change(field,{target:{value:"(55) 99999-1234"}});
     fireEvent.click(screen.getByRole("button",{name:"Salvar WhatsApp"}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("set_my_caronaa_whatsapp",{
@@ -40,6 +41,7 @@ describe("F02/F07: optional editable WhatsApp per account",()=>{
   it("accepts numbers with country code and does not duplicate 55",async()=>{
     render(<AccountWhatsAppEditor/>);
     const field=await screen.findByLabelText(/WhatsApp para contato/);
+    await waitFor(()=>expect(field).not.toBeDisabled());
     fireEvent.change(field,{target:{value:"+55 (85) 99999-1234"}});
     expect(field).toHaveValue("(85) 99999-1234");
     expect(screen.getByRole("button",{name:"Salvar WhatsApp"})).toBeEnabled();
@@ -47,6 +49,7 @@ describe("F02/F07: optional editable WhatsApp per account",()=>{
   it("rejects invalid DDD without asserting that a WhatsApp account does not exist",async()=>{
     render(<AccountWhatsAppEditor/>);
     const field=await screen.findByLabelText(/WhatsApp para contato/);
+    await waitFor(()=>expect(field).not.toBeDisabled());
     fireEvent.change(field,{target:{value:"(20) 99999-1234"}});
     expect(screen.getByText(/Use um DDD brasileiro válido/)).toBeInTheDocument();
     expect(screen.getByRole("button",{name:"Salvar WhatsApp"})).toBeDisabled();
@@ -59,6 +62,7 @@ describe("F02/F07: optional editable WhatsApp per account",()=>{
     });
     render(<AccountWhatsAppEditor/>);
     const field=await screen.findByLabelText(/WhatsApp para contato/);
+    await waitFor(()=>expect(field).not.toBeDisabled());
     expect(field).toHaveValue("(85) 99999-1234");
     fireEvent.change(field,{target:{value:""}});
     fireEvent.click(screen.getByRole("button",{name:"Remover contato"}));
