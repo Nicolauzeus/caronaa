@@ -76,7 +76,7 @@ export function FlashDriverActiveSheet({
       </div>:
       <>
         <div className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-1 pb-2">
-          <div className="space-y-2 rounded-2xl border border-white/15 bg-white/[0.05] p-3">
+          <div data-trip-route-details="true" className="space-y-2 rounded-2xl border border-white/15 bg-white/[0.05] p-3">
             <div className="flex min-w-0 items-start gap-2">
               <MapPin size={18} className="mt-0.5 shrink-0 text-emerald-300" aria-hidden="true"/>
               <div className="min-w-0">
