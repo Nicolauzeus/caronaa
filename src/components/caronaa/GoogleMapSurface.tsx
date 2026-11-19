@@ -306,7 +306,7 @@ export function GoogleMapSurface({
       let marker = smoothTracking ? trackingMarkers.current.get(markerKey) : null;
       if (marker) {
         const priorRotation=marker.getIcon?.()?.rotation ?? driverHeading ?? 0;
-        marker.setOptions({title: options.title,icon: options.icon,zIndex:options.zIndex});
+        marker.setOptions({title: options.title,icon: markerSymbol && driverHeading !== null ? {...markerSymbol,rotation:priorRotation} : options.icon,zIndex:options.zIndex});
         const oldPosition = marker.getPosition();
         const from = oldPosition ? {lat:oldPosition.lat(),lng:oldPosition.lng()} : {lat:position.lat,lng:position.lng};
         const distance = Math.hypot(from.lat-position.lat,from.lng-position.lng);
