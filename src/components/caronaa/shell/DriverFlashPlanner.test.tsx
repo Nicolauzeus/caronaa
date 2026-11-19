@@ -4,7 +4,7 @@ import { DriverFlashPlanner } from "./DriverFlashPlanner";
 
 const api=vi.hoisted(()=>({
   route:vi.fn(),goOnline:vi.fn(),markOffline:vi.fn(),
-  getOrders:vi.fn(),getRide:vi.fn(),passenger:vi.fn(),respond:vi.fn(),
+  getOrders:vi.fn(),getRide:vi.fn(),snapshot:vi.fn(),passenger:vi.fn(),respond:vi.fn(),
   arrived:vi.fn(),start:vi.fn(),
 }));
 vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
@@ -22,6 +22,7 @@ vi.mock("@/services/flash-driver-service",()=>({
   },
   getFlashDriverRadarOrders:api.getOrders,
   getMyActiveFlashRide:api.getRide,
+  getMyFlashRideSnapshot:api.snapshot,
   getFlashPassengerDetails:api.passenger,
   respondFlashOrder:api.respond,
   markFlashDriverArrived:api.arrived,
@@ -49,6 +50,7 @@ beforeEach(()=>{
   api.markOffline.mockResolvedValue(undefined);
   api.getOrders.mockResolvedValue([]);
   api.getRide.mockResolvedValue(null);
+  api.snapshot.mockResolvedValue({active:null,completed:null});
   api.passenger.mockResolvedValue(null);
   api.respond.mockResolvedValue("ACCEPTED");
 });
@@ -74,6 +76,15 @@ describe("Flash driver shell",()=>{
       routePath:points,
     })));
     expect(api.route).toHaveBeenCalledTimes(1);
+  });
+  it("renders a compact driver trip without the idle destination form",async()=>{
+    api.snapshot.mockResolvedValue({active:{
+      id:"ride-1",status:"ACCEPTED",originLabel:"Praça",destinationLabel:"Universidade",
+      municipality:"Fortaleza",vehicleType:"MOTO",
+    },completed:null});
+    render(<DriverFlashPlanner {...props} snap="peek" vehicleType="MOTO"/>);
+    expect(await screen.findByRole("button",{name:"Cheguei ao embarque"})).toBeInTheDocument();
+    expect(screen.queryByText("Para onde você vai? (opcional)")).not.toBeInTheDocument();
   });
   it("keeps motorcycle occupancy fixed at one",()=>{
     render(<DriverFlashPlanner {...props} vehicleType="MOTO"/>);
