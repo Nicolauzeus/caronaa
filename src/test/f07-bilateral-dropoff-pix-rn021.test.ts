@@ -69,7 +69,8 @@ describe("RN021 bilateral dropoff and exact-price Pix",()=>{
     expect(queue).not.toContain("manualReviewOpen");
     expect(flash).not.toContain("requestManualClose");
     expect(passenger).toContain("Sim, já desembarquei");
-    expect(passenger).toContain("Ainda não / Tenho um problema");
+    expect(passenger).toContain("Ainda estou na viagem");
+    expect(passenger).toContain("Contestar desembarque");
     expect(passenger).toContain('dropoffRide?.id');
     expect(checkout).toContain('copy("payload")');
     expect(checkout).toContain('copy("key")');
