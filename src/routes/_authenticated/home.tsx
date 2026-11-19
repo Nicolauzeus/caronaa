@@ -199,19 +199,28 @@ function Home(){
   const onUrgentDropoff=useCallback((pending:boolean)=>{setUrgentDropoff(pending);if(pending){setTripsPanelOpen(false);setSheetSnap("full");}},[]);
   const previousPassengerPhase=useRef<string|null>(null);
   const onPassengerPhase=useCallback((status:string|null)=>{
-    const wasActive=previousPassengerPhase.current!==null&&
-      ["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(previousPassengerPhase.current);
+    const previous=previousPassengerPhase.current;
+    if(status===previous)return; // Polls must never collapse a drawer the user expanded.
     previousPassengerPhase.current=status;
     setPassengerPhase(status);
+    const wasActive=previous!==null&&
+      ["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(previous);
     if(status&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(status)){
       setTripsPanelOpen(false);
-      // Preserve the user's explicit map view as accepted -> in progress.
-      if(!passengerMapFollowing||status==="SEARCHING")setSheetSnap("full");
+      // Map first while the vehicle is moving; PIN and search need the half sheet.
+      if(status==="SEARCHING"||status==="ARRIVED"){
+        setPassengerMapFollowing(false);
+        setSheetSnap("half");
+      }else{
+        setSheetSnap("peek");
+        if(status==="ACCEPTED")setPassengerMapFollowing(true);
+      }
     }else if(wasActive&&!status){
-      // Once the server ends the ride, release the full-height live panel.
-      setTripsPanelOpen(false);setSheetSnap("peek");setPassengerMapFollowing(false);
+      // Post-trip is a separate checkout layer; do not flash the planning peek
+      // panel behind Pix/rating when the active server row disappears.
+      setTripsPanelOpen(false);setSheetSnap("half");setPassengerMapFollowing(false);
     }
-  },[passengerMapFollowing]);
+  },[]);
   const [vehicleModalOpen,setVehicleModalOpen]=useState(false);
   const [missingVehicleFields,setMissingVehicleFields]=useState<VehicleMissingField[]>([]);
   const [selectingOrigin,setSelectingOrigin]=useState(false);
@@ -548,8 +557,10 @@ function Home(){
           <p>Não foi possível identificar seu perfil ativo. Nenhuma atividade foi alterada.</p>
           <button type="button" onClick={()=>void activeRoleState.refresh().catch(()=>toast.error("Não foi possível consultar o perfil agora."))} className="min-h-11 w-full rounded-xl bg-[#FFBB00] px-4 font-bold text-[#121212]">Tentar novamente</button>
         </div>}
-      {!activeRoleState.loading&&!activeRoleState.roleLoadFailed&&<InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)} title={driverRole?"Painel do motorista CARONAA":"Planejar viagem CARONAA"}
-        headerAction={!tripsPanelOpen&&driverRole&&!driverHomeOpen?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
+      {!activeRoleState.loading&&!activeRoleState.roleLoadFailed&&<InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)}
+        rideActive={Boolean(driverFlashRide||passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
+        title={driverRole?"Painel do motorista CARONAA":"Planejar viagem CARONAA"}
+        headerAction={!tripsPanelOpen&&driverRole&&!driverHomeOpen&&!driverFlashRide?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
         {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
         {tripsPanelOpen&&!driverRole&&<UnifiedMyTripsPanel onClose={closeTrips} refreshKey={tripsRefreshKey} onShowOnMap={(trip:UnifiedTrip)=>{
           if(trip.operationalRideId!==passengerRide?.id){toast.info("O acompanhamento desta viagem no mapa ainda não está disponível.");return;}
