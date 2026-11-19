@@ -25,6 +25,8 @@ export type DrivingRoute = {
   durationMinutes: number;
   routePath: RoadPoint[];
   legs: Array<{ distanceKm: number; durationMinutes: number }>;
+  /** Present only in explicit navigation requests. Not used for fare calculation. */
+  maneuvers?: Array<{start:RoadPoint;end:RoadPoint;maneuver:string;instruction:string}>;
 };
 
 export function validateRoutePoints(points: RoadPoint[]) {
@@ -57,6 +59,7 @@ export async function getDrivingRoute(
   points: RoadPoint[],
   request: typeof fetch = fetch,
   travelMode: "DRIVE" | "WALK" = "DRIVE",
+  navigation = false,
 ): Promise<DrivingRoute> {
   validateRoutePoints(points);
   const key = getGoogleServerKey();
@@ -72,7 +75,8 @@ export async function getDrivingRoute(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "routes.distanceMeters,routes.duration,routes.polyline.geoJsonLinestring,routes.legs.distanceMeters,routes.legs.duration",
+          "routes.distanceMeters,routes.duration,routes.polyline.geoJsonLinestring,routes.legs.distanceMeters,routes.legs.duration" +
+            (navigation ? ",routes.legs.steps.startLocation,routes.legs.steps.endLocation,routes.legs.steps.navigationInstruction" : ""),
       },
       body: JSON.stringify({
         origin: waypoint(points[0]),
@@ -80,7 +84,7 @@ export async function getDrivingRoute(
         intermediates: points.slice(1, -1).map(waypoint),
         travelMode,
         ...(travelMode === "DRIVE"
-          ? { routingPreference: "TRAFFIC_UNAWARE" }
+          ? { routingPreference: navigation ? "TRAFFIC_AWARE" : "TRAFFIC_UNAWARE" }
           : {}),
         computeAlternativeRoutes: false,
         polylineEncoding: "GEO_JSON_LINESTRING",
@@ -97,7 +101,11 @@ export async function getDrivingRoute(
       distanceMeters?: number;
       duration?: string;
       polyline?: { geoJsonLinestring?: { coordinates?: number[][] } };
-      legs?: Array<{ distanceMeters?: number; duration?: string }>;
+      legs?: Array<{ distanceMeters?: number; duration?: string; steps?: Array<{
+        startLocation?: {latLng?: {latitude?:number;longitude?:number}};
+        endLocation?: {latLng?: {latitude?:number;longitude?:number}};
+        navigationInstruction?: {maneuver?:string;instructions?:string};
+      }> }>;
     }>;
   };
   const route = result.routes?.[0];
@@ -142,6 +150,14 @@ export async function getDrivingRoute(
       distanceKm: leg.distanceMeters! / 1000,
       durationMinutes: durationSeconds(leg.duration) / 60,
     })),
+    ...(navigation ? {maneuvers: legs.flatMap(leg => (leg.steps ?? []).flatMap(step => {
+      const a=step.startLocation?.latLng,b=step.endLocation?.latLng;
+      const instruction=step.navigationInstruction?.instructions?.trim();
+      if (!a || !b || !instruction || ![a.latitude,a.longitude,b.latitude,b.longitude].every(Number.isFinite)) return [];
+      const start={lat:a.latitude!,lng:a.longitude!},end={lat:b.latitude!,lng:b.longitude!};
+      if (Math.abs(start.lat)>90||Math.abs(end.lat)>90||Math.abs(start.lng)>180||Math.abs(end.lng)>180)return [];
+      return [{start,end,maneuver:step.navigationInstruction?.maneuver??"MANEUVER_UNSPECIFIED",instruction}];
+    }))} : {}),
   };
 }
 
