@@ -8,6 +8,7 @@ import { readNotificationSettings } from "@/lib/notification-settings";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
 import { QuickRidePassengerIdentity } from "./QuickRidePassengerIdentity";
+import { stopQuickRideRequestView } from "@/lib/quick-rides/request-audience";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -452,6 +453,8 @@ export function QuickRideDriverQueue({
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2">
             <button type="button" disabled={busy} aria-label="Dispensar esta solicitação"
               onClick={()=>{
+                stopLoop(ride.id);
+                void stopQuickRideRequestView(ride.id).catch(()=>undefined);
                 rejected.current.add(ride.id);
                 setQueue(items=>items.filter(item=>item.id!==ride.id));
               }}
