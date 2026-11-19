@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, CarFront, Check, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
-import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { resolvePostOnboardingDestination } from "@/lib/onboarding/research-gate";
 import { completeOnboarding, readOnboarding, saveOnboarding, type UsageRole } from "@/lib/onboarding/progressive-onboarding";
 import { afterUniversalOnboarding, PROFESSIONAL_APPLICATION_PATH } from "@/lib/onboarding/universal-driver-entry";
@@ -37,8 +36,6 @@ function OnboardingPage() {
     try {
       // Account owner explicitly chose this UX preference. This is not a driver permission.
       const saved = await saveOnboarding({ usage_role: selectedRole as UsageRole, current_step: "ROLE" });
-      // Preserve launch-state error handling: a backend failure must not bypass campaign gates.
-      await getMyResearchLaunchState();
       sessionStorage.removeItem("caronaa:oauth-role-preference");
       if (selectedRole === "MOTORISTA") {
         // Do not mark BASIC_COMPLETED until the driver has a verified photo,
