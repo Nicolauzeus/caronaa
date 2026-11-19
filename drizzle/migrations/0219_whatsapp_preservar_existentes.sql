@@ -31,7 +31,11 @@ FROM (
     FROM public.professional_access_requests r
     WHERE r.snapshot->>'whatsapp_e164' IS NOT NULL
 ) legacy
-WHERE whatsapp_e164 ~ '^[+]55[0-9]{11}
+WHERE whatsapp_e164 ~ '^[+]55[0-9]{11}$'
+  AND EXISTS (
+    SELECT 1 FROM auth.users u WHERE u.id=legacy.user_id
+  )
+  AND NOT EXISTS (
     SELECT 1 FROM public.caronaa_account_whatsapp a
     WHERE a.user_id=legacy.user_id AND a.whatsapp_e164 IS NOT NULL
   )
