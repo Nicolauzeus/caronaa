@@ -89,13 +89,21 @@ export async function updateFlashDriverHeartbeatGPS(lat:number,lng:number,accura
 function parseOrder(raw:unknown):FlashDriverOrder|null{
   const x=record(raw);
   if(!x)return null;
-  const id=string(x.ride_id??x.id),mode=x.mode??x.booking_mode;
-  const seats=numeric(x.seats??x.requested_seats);
-  const distanceKm=numeric(x.distance_km);
-  const driverEarnings=numeric(x.driver_earnings??x.driver_receives);
-  const pickupLabel=string(x.pickup_label??x.origin_label);
+  const id=string(x.ride_id??x.id);
+  // The SQL RPC projects service_mode, seats_requested, distance_to_pickup_m,
+  // driver_earnings_cents and expires_in_seconds, not the legacy DTO keys.
+  const mode=x.service_mode??x.mode??x.booking_mode;
+  const seats=numeric(x.seats_requested??x.seats??x.requested_seats);
+  const distanceKm=x.distance_to_pickup_m!=null
+    ?numeric(x.distance_to_pickup_m)/1000:numeric(x.distance_km);
+  const driverEarnings=x.driver_earnings_cents!=null
+    ?numeric(x.driver_earnings_cents)/100:numeric(x.driver_earnings??x.driver_receives);
+  const pickupLabel=string(x.meeting_point_label??x.pickup_label??x.origin_label);
   const dropoffLabel=string(x.dropoff_label??x.destination_label);
-  const expiresAt=string(x.expires_at);
+  const remainingSeconds=numeric(x.expires_in_seconds);
+  const expiresAt=string(x.expires_at)||
+    (Number.isFinite(remainingSeconds)&&remainingSeconds>0
+      ?new Date(Date.now()+Math.min(30,remainingSeconds)*1000).toISOString():"");
   if(!id||!["ON_ROUTE","EXCLUSIVE"].includes(String(mode))||
     !Number.isInteger(seats)||seats<1||seats>4||
     !Number.isFinite(distanceKm)||distanceKm<0||
@@ -127,7 +135,8 @@ export async function respondFlashOrder(rideId:string,accept:boolean):Promise<"A
       if(data===true||status==="ACCEPTED"||record(data)?.accepted===true)return "ACCEPTED";
       throw new FlashDriverError("ALREADY_TAKEN");
     }
-    if(data===true||status==="REJECTED"||record(data)?.rejected===true)return "REJECTED";
+    if(data===true||status==="REJECTED"||record(data)?.rejected===true||
+      (record(data)?.success===true&&record(data)?.action==="SKIPPED"))return "REJECTED";
     throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
