@@ -27,6 +27,15 @@ describe("CARONAA passenger mobile-first UX contract",()=>{
     expect(planner).toContain("fare.customerPaysCents/100");
     expect(planner).not.toContain("Revisar e Continuar");
     expect(quick).toContain('await submitFn({data:{quoteId:currentQuote.quoteId}})');
+    expect(planner).toContain('aria-label="Resumo da viagem antes de solicitar"');
+    expect(planner).toContain("Ao tocar em Solicitar corrida, você confirma");
+    expect(quick).toContain("onApprovePickupForRequest?.(originPoint)");
+    expect(quick).toContain('Solicitar Flash');
+    expect(quick).toContain("submissionInFlight.current=true");
+    expect(home).toContain("onApprovePickupForRequest={approvePickupForFlashRequest}");
+    expect(home).toContain("selected.lat!==plannedPickup.lat");
+    expect(home).toContain("setConfirmedPickupKey(pickupKey)");
+    expect(planner).not.toContain('aria-label="Confirmar viagem"');
     expect(quick).toContain("onFareChange");
     expect(quick).toContain("onDropoffPendingChange");
   });
