@@ -59,3 +59,36 @@ export const getQuickRideApproach = createServerFn({ method: "POST" })
       60_000,
     );
   });
+
+/** Participant-scoped operational navigation. The server owns both endpoints:
+ * a client can never quote an arbitrary route through another rider's quota.
+ * Navigation geometry is display-only and must not update the fare.
+ */
+export const getQuickRideNavigation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => input.parse(value))
+  .handler(async ({ context, data }) => {
+    const ride = await readContext(context.supabase, data.rideId);
+    if (!ride.driver || !["ACCEPTED", "ARRIVED", "IN_PROGRESS"].includes(ride.status))
+      return null;
+    const phase = ride.status === "IN_PROGRESS" ? "DROPOFF" : "PICKUP";
+    const destination = phase === "PICKUP" ? ride.origin : ride.destination;
+    const sampledAt = Date.parse(ride.driver.sampledAt ?? ride.driver.seenAt);
+    if (!Number.isFinite(sampledAt) || Date.now() - sampledAt > 35_000 ||
+      sampledAt - Date.now() > 5000) return null;
+    // A 20-second cell prevents independent tabs from multiplying Google calls.
+    // Geometry is shared for all authorized participants on this server process.
+    const key = ["f07-nav",ride.id,phase,
+      ride.driver.lat.toFixed(4),ride.driver.lng.toFixed(4),
+      destination.lat.toFixed(5),destination.lng.toFixed(5),
+      Math.floor(Date.now()/20000)].join(":");
+    const result = await sessionRequest(key, async () => {
+      const { googleActionFetch } = await import("./google-request.server");
+      return getDrivingRoute(
+        [ride.driver!, destination],
+        googleActionFetch(context.userId, "quote", "getQuickRideNavigation"),
+        "DRIVE", true,
+      );
+    }, 20_000);
+    return { ...result, phase, sampledAt };
+  });

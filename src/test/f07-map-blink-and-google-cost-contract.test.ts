@@ -59,9 +59,9 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
   it("follows the driver GPS in both phases and lets the driver pull the sheet up or down",()=>{
     expect(mapSurface).toContain('followPoint?: {lat:number;lng:number}|null;');
     expect(mapSurface).toContain('map.current.addListener("dragstart"');
-    expect(mapSurface).toContain('map.current.panTo({lat:followPoint.lat,lng:followPoint.lng})');
+    expect(mapSurface).toContain('map.current.panTo(center)');
     expect(mapSurface).toContain("Retomar acompanhamento do GPS");
-    expect(rideMap).toContain('followPoint={driverPhase?driverPoint:null}');
+    expect(rideMap).toContain('followPoint={driverPhase||passengerTracking?driverPoint:null}');
     expect(rideMap).toContain('driverNavigationPhase(statusNow)');
     expect(rideMap).toContain('estimateDriverRouteRemaining(driverPoint,currentDriverRoute)');
     expect(rideMap).toContain('Abrir orientação por voz no Google Maps');
@@ -81,8 +81,8 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
     expect(driverPage).toContain('setNavigationFocusRequest(previous=>previous+1)');
     expect(driverPage).toContain('navigationFocusRequest={navigationFocusRequest}');
     expect(rideMap).toContain('navigationFocusRequest=0');
-    expect(rideMap).toContain('followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:undefined}');
-    expect(mapSurface).toContain('map.current.panTo({lat:fix.lat,lng:fix.lng})');
+    expect(rideMap).toContain('followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:');
+    expect(mapSurface).toContain('map.current.panTo(centered)');
     expect(mapSurface).toContain('followPointRef.current');
   });
 
@@ -101,5 +101,9 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
     expect(realtime).toContain('removeChannel(channel)');
     expect(rideMap).toContain('getQuickRideMapContext');
     expect(rideMap).toContain('getMapDrivingRoute');
+    expect(rideMap).toContain('getQuickRideNavigation');
+    expect(rideMap).toContain('navigationMode={Boolean(driverPhase)}');
+    expect(mapSurface).toContain('map.current.setTilt(45)');
+    expect(mapSurface).toContain('snapVisualDriverPosition');
   });
 });
