@@ -374,6 +374,7 @@ export function DriverFlashPlanner({
       </p>}
       {queueError&&presence.online&&!active&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
+        whatsappUrl={normalizeWhatsapp(passenger?.whatsapp)}
         pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
         manualCloseOpen={manualCloseOpen} onToggleManualClose={()=>setManualCloseOpen(v=>!v)}
         manualCloseReason={manualCloseReason} onManualCloseReason={setManualCloseReason}
