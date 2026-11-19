@@ -13,6 +13,8 @@ export function AccountWhatsAppEditor({onChanged}:Props){
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
   const [success,setSuccess]=useState("");
+  const [originalValue,setOriginalValue]=useState("");
+  const [originalConsent,setOriginalConsent]=useState(false);
 
   const load=async()=>{
     setLoading(true);setLoaded(false);setError("");setSuccess("");
@@ -22,7 +24,9 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       const row=data as ContactState;
       const original=typeof row.whatsapp==="string"?row.whatsapp:"";
       setValue(formatBrazilWhatsapp(original));
+      setOriginalValue(formatBrazilWhatsapp(original));
       setConsent(row.contact_consent===true);
+      setOriginalConsent(row.contact_consent===true);
       setLoaded(true);
       onChanged?.(original);
     }catch{
@@ -32,13 +36,13 @@ export function AccountWhatsAppEditor({onChanged}:Props){
   useEffect(()=>{void load();},[]);
 
   const empty=!value.trim();
-  const valid=empty||validBrazilWhatsapp(value);
+  const valid=!empty&&validBrazilWhatsapp(value);
   const save=async()=>{
-    if(saving||loading||!loaded||!valid)return;
+    if(saving||loading||!loaded||!valid||(value===originalValue&&consent===originalConsent))return;
     setSaving(true);setError("");setSuccess("");
     try{
-      const normalized=empty?null:normalizeBrazilWhatsapp(value);
-      if(!empty&&!normalized)throw new Error("Número inválido");
+      const normalized=normalizeBrazilWhatsapp(value);
+      if(!normalized)throw new Error("Número inválido");
       const {data,error:rpcError}=await (supabase as any).rpc("set_my_caronaa_whatsapp",{
         p_whatsapp:normalized,
         p_contact_consent:Boolean(normalized&&consent),
@@ -46,9 +50,11 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       if(rpcError||!data||typeof data!=="object")throw rpcError??new Error("Falha ao salvar contato");
       const stored=typeof data.whatsapp==="string"?data.whatsapp:"";
       setValue(formatBrazilWhatsapp(stored));
+      setOriginalValue(formatBrazilWhatsapp(stored));
       setConsent(data.contact_consent===true);
+      setOriginalConsent(data.contact_consent===true);
       onChanged?.(stored);
-      setSuccess(stored?"Contato atualizado. Você pode alterá-lo quando quiser.":"Contato removido. Suas corridas continuam disponíveis.");
+      setSuccess("Contato atualizado. Você pode alterá-lo quando quiser.");
     }catch{
       setError("Não foi possível salvar o contato. Revise o DDD ou tente novamente.");
     }finally{setSaving(false);}
@@ -64,10 +70,12 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       className="min-h-12 w-full rounded-xl border border-white/25 bg-[#222] px-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] disabled:opacity-60"/>
     <p className="text-xs text-white/65">
       {empty
-        ?"Você pode deixar em branco. O WhatsApp não é necessário para fazer ou aceitar corridas."
-        :valid
-        ?"Formato brasileiro válido; isso não confirma que o número tem WhatsApp."
-        :"Use um DDD brasileiro válido e nove dígitos, começando por 9."}
+        ? originalValue
+          ? "O WhatsApp cadastrado será preservado. Para alterá-lo, informe o novo número."
+          : "O WhatsApp é opcional para corridas. Para cadastrar um contato, informe um número."
+        : valid
+          ? "Formato brasileiro válido; isso não confirma que o número tem WhatsApp."
+          : "Use um DDD brasileiro válido e nove dígitos, começando por 9."}
     </p>
     <label className="flex items-start gap-2 text-xs leading-relaxed text-white/80">
       <input type="checkbox" checked={consent} disabled={loading||saving||empty}
@@ -80,10 +88,10 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       {!loaded&&<button type="button" onClick={()=>void load()} className="min-h-10 text-xs font-semibold text-[#FFBB00] underline">Tentar carregar novamente</button>}
     </div>}
     {success&&<p role="status" className="text-xs text-emerald-300">{success}</p>}
-    <button type="button" disabled={saving||loading||!loaded||!valid}
+    <button type="button" disabled={saving||loading||!loaded||!valid||(value===originalValue&&consent===originalConsent)}
       onClick={()=>void save()}
       className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 text-sm font-extrabold text-[#121212] disabled:opacity-50">
-      {saving?"Salvando contato...":empty?"Remover contato":"Salvar WhatsApp"}
+      {saving?"Salvando contato...":"Salvar WhatsApp"}
     </button>
   </section>;
 }

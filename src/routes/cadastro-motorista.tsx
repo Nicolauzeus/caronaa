@@ -61,7 +61,7 @@ function DriverRegistration() {
       (supabase as any).from("professional_driver_contacts")
         .select("whatsapp_e164,municipality,registration_number").eq("user_id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
-    ]).then(([profile, contact, access]) => {
+    ]).then(async ([profile, contact, access]) => {
       if (!live) return;
       if (profile.error || !profile.data || contact.error || access.error) {
         setLoadFailed(true);
@@ -74,7 +74,12 @@ function DriverRegistration() {
       }
       const p = profile.data, c = contact.data;
       setName(String(p.full_name || user.user_metadata?.full_name || ""));
-      setWhatsapp(String(c?.whatsapp_e164 || ""));
+      // Existing account contact may live outside the professional-contacts table.
+      // Restore it when registration is reopened rather than showing an empty field.
+      const {data:accountContact,error:contactError}=await (supabase as any).rpc("get_my_caronaa_whatsapp");
+      if(!live)return;
+      setWhatsapp(String(!contactError&&accountContact?.whatsapp
+        ? accountContact.whatsapp : c?.whatsapp_e164 || ""));
       const city = String(c?.municipality || p.city || "").trim();
       setMunicipality(["MACICO_BATURITE", "OUTRA_REGIAO"].includes(city.toUpperCase()) ? "" : city);
       setType(p.vehicle_type === "car" ? "CAR" : p.vehicle_type === "moto" ? "MOTO" : "");
