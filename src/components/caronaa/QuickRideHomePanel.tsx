@@ -219,7 +219,7 @@ export function QuickRideHomePanel({
     if(!boardingCode)void issueBoardingCode();
     void playNotificationSound("driver_arrived");
   },[liveRide?.id,liveRide?.status]);
-  async function respondDropoff(response:"CONFIRMED"|"CONTESTED"){
+  async function respondDropoff(response:"CONFIRMED"|"CONTESTED"|"NOT_YET"){
     if(!dropoffRide||busy)return;
     setBusy(true);setError("");
     try{
@@ -228,7 +228,8 @@ export function QuickRideHomePanel({
       const {data}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current)setRides(Array.isArray(data)?data:[]);
       setDropoff(previous=>previous?{...previous,passenger_response:response,resolved_at:new Date().toISOString()}:previous);
-      if(response==="CONTESTED")toast.info("Desembarque contestado. A conclusão ficará suspensa para análise.");
+      if(response==="CONTESTED")toast.info("Contestação registrada. O suporte poderá analisar o caso.");
+      if(response==="NOT_YET")toast.info("O motorista foi informado. A viagem continua até o desembarque.");
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível responder.");}
     finally{setBusy(false);}
   }
@@ -435,8 +436,10 @@ export function QuickRideHomePanel({
           <div className="grid gap-2">
             <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")}
               className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-extrabold text-[#121212] disabled:opacity-50">Sim, já desembarquei</button>
+            <button type="button" disabled={busy} onClick={()=>void respondDropoff("NOT_YET")}
+              className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda estou na viagem</button>
             <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")}
-              className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda não / Tenho um problema</button>
+              className="min-h-11 w-full text-xs font-semibold text-white/75 underline disabled:opacity-50">Contestar desembarque</button>
           </div>
           <p className="text-xs text-white/65">Se estiver sem internet, você poderá confirmar quando voltar ao CARONAA.</p>
         </section>}
