@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Clock3, Navigation2, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
+import { startLoop, stopLoop, unlockNotificationAudio } from "@/lib/notification-sound";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
 
@@ -64,6 +65,13 @@ export function QuickRideDriverQueue({
   const [dropoffNow,setDropoffNow]=useState(Date.now());
   const visibleQueue=queue.filter(ride=>Number.isFinite(Date.parse(ride.expires_at))&&
     Date.parse(ride.expires_at)>queueNow);
+  const ringingOrderId=!active&&online&&gpsReady?visibleQueue[0]?.id:null;
+  const ringingDeadline=!active&&online&&gpsReady?visibleQueue[0]?.expires_at:null;
+  useEffect(()=>{
+    if(!ringingOrderId||!ringingDeadline)return;
+    startLoop(ringingOrderId,Date.parse(ringingDeadline));
+    return()=>stopLoop(ringingOrderId);
+  },[ringingOrderId,ringingDeadline]);
   useEffect(()=>{
     if(queue.length===0)return;
     const timer=window.setInterval(()=>setQueueNow(Date.now()),1000);
@@ -204,6 +212,7 @@ export function QuickRideDriverQueue({
         return;
       }
     }
+    if(next==="ACCEPT")stopLoop(rideId);
     requestLock.current=true;
     setBusy(true);
     setError("");
