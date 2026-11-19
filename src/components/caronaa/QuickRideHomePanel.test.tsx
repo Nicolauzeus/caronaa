@@ -233,7 +233,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic}/>);
     expect(await screen.findByRole("alert",{name:"Confirmação de desembarque pendente"})).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button",{name:"Ainda não / Tenho um problema"}));
+    fireEvent.click(screen.getByRole("button",{name:"Contestar desembarque"}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{p_id:rideId,p_response:"CONTESTED"}));
   });
   it("entrega ao pai a viagem ativa para usar um único mapa na Home",async()=>{
