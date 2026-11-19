@@ -74,7 +74,8 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(passenger).toContain('quick_ride_respond_dropoff');
     expect(passenger).toContain('onDropoffPendingChange');
     expect(passenger).toContain('Sim, já desembarquei');
-    expect(passenger).toContain('Ainda não / Tenho um problema');
+    expect(passenger).toContain('Ainda estou na viagem');
+    expect(passenger).toContain('Contestar desembarque');
     expect(passenger).not.toContain('Nova corrida');
     expect(queue).not.toContain('Liberar tela para novos chamados');
     expect(driverHistory).toContain('<QuickRideDriverSettlement rideId={ride.id}/>');
