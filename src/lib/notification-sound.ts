@@ -43,7 +43,7 @@ export function isNotificationAudioReady(): boolean {
 export async function unlockNotificationAudio(): Promise<void> {
   if (typeof window === "undefined" || !readNotificationSettings().soundEnabled) return;
   try {
-    const win = window as Window & { webkitAudioContext?: typeof AudioContext };
+    const win = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
     const Audio = win.AudioContext || win.webkitAudioContext;
     if (!Audio) return;
     const ctx: AudioContext = context ?? new Audio();

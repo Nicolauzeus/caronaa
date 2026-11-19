@@ -24,6 +24,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SegurancaRouteImport } from './routes/seguranca'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAguardandoRouteImport } from './routes/_authenticated/aguardando'
+import { Route as AuthenticatedCadastroVeiculoRouteImport } from './routes/_authenticated/cadastro-veiculo'
 import { Route as AuthenticatedDisponibilidadeProfissionalRouteImport } from './routes/_authenticated/disponibilidade-profissional'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedMinhasCaronasRouteImport } from './routes/_authenticated/minhas-caronas'
@@ -144,6 +145,12 @@ const AuthenticatedAguardandoRoute = AuthenticatedAguardandoRouteImport.update({
   path: '/aguardando',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCadastroVeiculoRoute =
+  AuthenticatedCadastroVeiculoRouteImport.update({
+    id: '/cadastro-veiculo',
+    path: '/cadastro-veiculo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDisponibilidadeProfissionalRoute =
   AuthenticatedDisponibilidadeProfissionalRouteImport.update({
     id: '/disponibilidade-profissional',
@@ -396,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
+  '/cadastro-veiculo': typeof AuthenticatedCadastroVeiculoRoute
   '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
@@ -455,6 +463,7 @@ export interface FileRoutesByTo {
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
   '/aguardando': typeof AuthenticatedAguardandoRoute
+  '/cadastro-veiculo': typeof AuthenticatedCadastroVeiculoRoute
   '/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/home': typeof AuthenticatedHomeRoute
   '/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
@@ -518,6 +527,7 @@ export interface FileRoutesById {
   '/seguranca': typeof SegurancaRoute
   '/termos': typeof TermosRoute
   '/_authenticated/aguardando': typeof AuthenticatedAguardandoRoute
+  '/_authenticated/cadastro-veiculo': typeof AuthenticatedCadastroVeiculoRoute
   '/_authenticated/disponibilidade-profissional': typeof AuthenticatedDisponibilidadeProfissionalRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/minhas-caronas': typeof AuthenticatedMinhasCaronasRoute
@@ -581,6 +591,7 @@ export interface FileRouteTypes {
     | '/seguranca'
     | '/termos'
     | '/aguardando'
+    | '/cadastro-veiculo'
     | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
     | '/seguranca'
     | '/termos'
     | '/aguardando'
+    | '/cadastro-veiculo'
     | '/disponibilidade-profissional'
     | '/home'
     | '/minhas-caronas'
@@ -702,6 +714,7 @@ export interface FileRouteTypes {
     | '/seguranca'
     | '/termos'
     | '/_authenticated/aguardando'
+    | '/_authenticated/cadastro-veiculo'
     | '/_authenticated/disponibilidade-profissional'
     | '/_authenticated/home'
     | '/_authenticated/minhas-caronas'
@@ -875,6 +888,13 @@ declare module '@tanstack/react-router' {
       path: '/aguardando'
       fullPath: '/aguardando'
       preLoaderRoute: typeof AuthenticatedAguardandoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cadastro-veiculo': {
+      id: '/_authenticated/cadastro-veiculo'
+      path: '/cadastro-veiculo'
+      fullPath: '/cadastro-veiculo'
+      preLoaderRoute: typeof AuthenticatedCadastroVeiculoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/disponibilidade-profissional': {
@@ -1197,6 +1217,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAguardandoRoute: typeof AuthenticatedAguardandoRoute
+  AuthenticatedCadastroVeiculoRoute: typeof AuthenticatedCadastroVeiculoRoute
   AuthenticatedDisponibilidadeProfissionalRoute: typeof AuthenticatedDisponibilidadeProfissionalRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMinhasCaronasRoute: typeof AuthenticatedMinhasCaronasRoute
@@ -1211,6 +1232,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAguardandoRoute: AuthenticatedAguardandoRoute,
+  AuthenticatedCadastroVeiculoRoute: AuthenticatedCadastroVeiculoRoute,
   AuthenticatedDisponibilidadeProfissionalRoute:
     AuthenticatedDisponibilidadeProfissionalRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
