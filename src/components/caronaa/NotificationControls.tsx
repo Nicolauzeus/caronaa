@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNotifications } from "@/lib/notification-context";
+import { playNotificationSound, startLoop, stopLoop } from "@/lib/notification-sound";
 
 export function NotificationPreferences() {
   const { settings, setSoundEnabled } = useNotifications();
@@ -62,6 +63,15 @@ export function NotificationPreferences() {
             }
           }}
         />
+      </section>
+      <section className="space-y-2 border-b border-border pb-4" aria-label="Testar alertas sonoros">
+        <p className="text-xs font-medium text-muted-foreground">Ouvir alertas no celular</p>
+        <div className="grid grid-cols-3 gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={!settings.soundEnabled} onClick={() => { startLoop("audio-preview", Date.now()+3600); window.setTimeout(()=>stopLoop("audio-preview"),3600); }}>Novo pedido</Button>
+          <Button type="button" variant="outline" size="sm" disabled={!settings.soundEnabled} onClick={() => void playNotificationSound("driver_arrived")}>Chegada</Button>
+          <Button type="button" variant="outline" size="sm" disabled={!settings.soundEnabled} onClick={() => void playNotificationSound("ride_completed")}>Conclusão</Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">O teste toca o aviso de pedido por até 3,6 segundos. Depende de volume e permissão de áudio do navegador.</p>
       </section>
       {error && (
         <p role="alert" className="text-xs text-destructive">
