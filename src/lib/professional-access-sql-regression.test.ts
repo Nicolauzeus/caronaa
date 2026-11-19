@@ -19,6 +19,12 @@ describe("F07 cadastro único e progressivo",()=>{
       "ON CONFLICT (user_id) DO UPDATE","NOTIFY pgrst,'reload schema'",
     ])expect(sql).toContain(expected);
     expect(sql.trim().endsWith("COMMIT;")).toBe(true);
+    // Regression for the malformed 0216: no duplicated PL/pgSQL body or
+    // a dangling AND statement outside $automatic$.
+    expect((sql.match(/CREATE OR REPLACE FUNCTION public\.professional_auto_enable\(/g)||[])).toHaveLength(1);
+    expect((sql.match(/^\$automatic\$;$/gm)||[])).toHaveLength(1);
+    expect(sql.indexOf("AND lower(btrim(c.municipality))")).toBeLessThan(sql.indexOf("$automatic$;"));
+    expect(sql).toContain("REVOKE ALL ON FUNCTION public.professional_auto_enable(");
     expect(sql).not.toContain("set_professional_presence");
   });
   it("exibe progresso e verifica habilitação no servidor antes do cockpit",()=>{

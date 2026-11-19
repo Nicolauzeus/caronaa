@@ -88,117 +88,16 @@ BEGIN
     END IF;
   END IF;
 
-  -- New admissions must carry their validated WhatsApp and exact municipality.
-  -- Previously approved drivers are grandfathered to avoid interrupting rides.
+  -- New professional admissions must have a verified WhatsApp and exact city.
+  -- Keep previously approved drivers authorized, while all existing suspension
+  -- and reversal safeguards below remain effective.
   IF NOT EXISTS (
     SELECT 1 FROM public.professional_driver_authorizations a
     WHERE a.user_id=v_uid AND a.approved IS TRUE
   ) AND NOT EXISTS (
     SELECT 1 FROM public.professional_driver_contacts c
     WHERE c.user_id=v_uid
-      AND c.whatsapp_e164 ~ '^\+55[1-9][0-9]9[0-9]{8}
-  -- reversed by submitting a form again.
-  IF EXISTS (
-    SELECT 1 FROM public.professional_access_requests
-    WHERE user_id=v_uid AND status IN ('REJECTED','CHANGES_REQUESTED')
-  ) THEN
-    RAISE EXCEPTION 'Cadastro bloqueado para revisao. Procure o suporte CARONAA.'
-      USING ERRCODE='42501';
-  END IF;
-  SELECT approved,vehicle_type INTO v_existing_approval,v_existing_vehicle
-    FROM public.professional_driver_authorizations
-    WHERE user_id=v_uid FOR UPDATE;
-  IF FOUND AND (v_existing_approval IS NOT TRUE OR v_existing_vehicle<>p_vehicle_type) THEN
-    RAISE EXCEPTION 'Autorizacao anterior bloqueada ou de outro veiculo. Procure o suporte.'
-      USING ERRCODE='42501';
-  END IF;
-
-  -- A temporary homologation authorization is not promoted into an
-  -- unconditional production authorization by this operation.
-  IF EXISTS (
-    SELECT 1 FROM public.caronaa_f07_pilot_authorization_audit
-    WHERE user_id=v_uid AND was_previously_approved IS FALSE
-      AND revoked_at IS NULL
-  ) THEN
-    RAISE EXCEPTION 'Acesso de homologacao precisa de encerramento antes de habilitar.'
-      USING ERRCODE='42501';
-  END IF;
-
-  SELECT * INTO v_current
-    FROM public.professional_access_requests
-    WHERE user_id=v_uid AND status='PENDING'
-    ORDER BY submitted_at DESC LIMIT 1 FOR UPDATE;
-
-  IF v_current.id IS NOT NULL THEN
-    v_id := v_current.id;
-    UPDATE public.professional_access_requests
-      SET status='APPROVED',vehicle_type=p_vehicle_type,
-          car_category=p_car_category,passenger_seats=p_seats,
-          municipality=p_municipality,snapshot=p_snapshot,access_type=p_access_type,
-          reviewed_by=NULL,reviewed_at=now(),
-          review_reason='AUTO_CADASTRO_COMPLETO_F02',updated_at=now()
-      WHERE id=v_id;
-  ELSE
-    SELECT * INTO v_current
-      FROM public.professional_access_requests
-      WHERE user_id=v_uid AND status='APPROVED'
-        AND vehicle_type=p_vehicle_type AND access_type=p_access_type
-      ORDER BY submitted_at DESC LIMIT 1 FOR UPDATE;
-    IF v_current.id IS NOT NULL THEN
-      v_id := v_current.id;
-      -- Existing active driver editing complete data stays active. Keep the
-      -- snapshot current without producing a duplicate approval event.
-      UPDATE public.professional_access_requests
-        SET municipality=p_municipality,car_category=p_car_category,
-            passenger_seats=p_seats,snapshot=p_snapshot,updated_at=now()
-        WHERE id=v_id
-          AND (municipality,car_category,passenger_seats,snapshot)
-               IS DISTINCT FROM (p_municipality,p_car_category,p_seats,p_snapshot);
-    ELSE
-      INSERT INTO public.professional_access_requests
-        (user_id,status,vehicle_type,car_category,passenger_seats,
-         municipality,snapshot,access_type,reviewed_by,reviewed_at,review_reason)
-      VALUES
-        (v_uid,'APPROVED',p_vehicle_type,p_car_category,p_seats,
-         p_municipality,p_snapshot,p_access_type,NULL,now(),'AUTO_CADASTRO_COMPLETO_F02')
-      RETURNING id INTO v_id;
-      v_new_request := true;
-    END IF;
-  END IF;
-
-  INSERT INTO public.professional_driver_authorizations
-    (user_id,approved,vehicle_type,approved_at,updated_at)
-  VALUES (v_uid,true,p_vehicle_type,now(),now())
-  ON CONFLICT (user_id) DO UPDATE
-    SET approved=true,vehicle_type=EXCLUDED.vehicle_type,
-        approved_at=coalesce(public.professional_driver_authorizations.approved_at,now()),
-        updated_at=now()
-    WHERE public.professional_driver_authorizations.approved IS TRUE
-      AND public.professional_driver_authorizations.vehicle_type=EXCLUDED.vehicle_type;
-  GET DIAGNOSTICS v_rows=ROW_COUNT;
-  IF v_rows<>1 THEN
-    RAISE EXCEPTION 'Nao foi possivel confirmar a autorizacao profissional'
-      USING ERRCODE='42501';
-  END IF;
-
-  -- Event actors are the authenticated initiator; the reason explicitly
-  -- marks a server-issued automatic activation, NOT an administrator review.
-  IF v_new_request THEN
-    INSERT INTO public.professional_access_request_events
-      (request_id,actor_id,action,reason)
-    VALUES (v_id,v_uid,'SUBMITTED','Cadastro profissional completo');
-  END IF;
-  IF v_new_request OR v_current.id IS NULL OR v_current.status='PENDING' THEN
-    INSERT INTO public.professional_access_request_events
-      (request_id,actor_id,action,reason)
-    VALUES (v_id,v_uid,'APPROVED','AUTO_CADASTRO_COMPLETO_F02');
-  END IF;
-
-  RETURN v_id;
-END
-$automatic$;
-
-
+      AND c.whatsapp_e164 ~ '^\+55[1-9][0-9]9[0-9]{8}$'
       AND lower(btrim(c.municipality))=lower(btrim(p_municipality))
       AND length(btrim(c.municipality))>=2
   ) THEN
@@ -308,7 +207,9 @@ $automatic$;
 END
 $automatic$;
 
-
+REVOKE ALL ON FUNCTION public.professional_auto_enable(
+  uuid,text,text,integer,text,jsonb,text
+) FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.complete_professional_driver_registration(
  p_full_name text,p_whatsapp text,p_municipality text,p_vehicle_type text,
