@@ -11,12 +11,12 @@ type Props={
 };
 export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
   // Never reset the deadline on Realtime refresh of the same offer ID.
-  const deadline=useRef(Math.min(Date.parse(order.expiresAt),Date.now()+15000));
+  const deadline=useRef(Math.min(Date.parse(order.expiresAt),Date.now()+30000));
   const [remaining,setRemaining]=useState(()=>Math.max(0,Math.ceil((deadline.current-Date.now())/1000)));
   const answering=useRef(false);
   const answerRef=useRef(onAnswer);answerRef.current=onAnswer;
   useEffect(()=>{
-    deadline.current=Math.min(Date.parse(order.expiresAt),Date.now()+15000);
+    deadline.current=Math.min(Date.parse(order.expiresAt),Date.now()+30000);
     answering.current=false;
     setRemaining(Math.max(0,Math.ceil((deadline.current-Date.now())/1000)));
     startLoop(order.id, deadline.current);
@@ -44,7 +44,7 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
     style={{fontFamily:"Manrope, sans-serif"}}>
     <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
       <div className="h-full bg-[#FFBB00] transition-[width] duration-200"
-        style={{width:remaining/15*100+"%"}}/>
+        style={{width:remaining/30*100+"%"}}/>
     </div>
     <div className="flex items-center justify-between gap-2">
       <span className="rounded-full bg-[#FFBB00] px-3 py-1 text-xs font-black text-[#121212]">
