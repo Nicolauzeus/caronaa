@@ -16,6 +16,7 @@ export const NOTIFICATION_NOTES: Record<NotificationSound, readonly number[]> = 
 };
 
 let context: AudioContext | undefined;
+let audioPrimed = false;
 let loopOwner: string | null = null;
 let loopTimer: ReturnType<typeof setInterval> | undefined;
 let loopExpiry: ReturnType<typeof setTimeout> | undefined;
@@ -29,6 +30,16 @@ function vibrate(pattern: number | number[]): void {
   } catch { /* iOS and restricted browser contexts may not support vibration. */ }
 }
 
+/** Status is read by the incoming-order UI to offer an explicit audio activation when needed. */
+export function isNotificationAudioReady(): boolean {
+  return typeof window !== "undefined" && context?.state === "running";
+}
+
+/**
+ * Call synchronously from a deliberate user gesture (e.g. Ficar Online).
+ * Prime the Safari audio graph with an inaudible oscillator; this is not a queued
+ * notification. A suspended context must never defer a real chime until a later tap.
+ */
 export async function unlockNotificationAudio(): Promise<void> {
   if (typeof window === "undefined" || !readNotificationSettings().soundEnabled) return;
   try {
@@ -36,6 +47,20 @@ export async function unlockNotificationAudio(): Promise<void> {
     const Audio = win.AudioContext || win.webkitAudioContext;
     if (!Audio) return;
     context ??= new Audio();
+    if (!audioPrimed) {
+      audioPrimed = true;
+      const oscillator = context.createOscillator();
+      const silence = context.createGain();
+      silence.gain.value = 0;
+      oscillator.connect(silence);
+      silence.connect(context.destination);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        silence.disconnect();
+      };
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.03);
+    }
     if (context.state === "suspended") await context.resume();
   } catch {
     /* Mobile autoplay or an unavailable audio device must never block a trip. */
@@ -72,7 +97,9 @@ export async function playNotificationSound(
   if (!readNotificationSettings().soundEnabled) return;
   const now = Date.now();
   if (type !== "order_incoming_loop" && now - (lastPlayed.get(type) ?? 0) < 700) return;
-  await unlockNotificationAudio();
+  // Do not await AudioContext.resume() here. Mobile browsers may keep that
+  // promise pending until the driver's next touch (e.g. Recusar), causing
+  // a notification to play seconds or minutes after it was received.
   if (type === "order_incoming_loop" && loopOwnerId !== loopOwner) return;
   if (!readNotificationSettings().soundEnabled) return;
   if (typeof window === "undefined" || document.visibilityState === "hidden") return;
@@ -82,7 +109,7 @@ export async function playNotificationSound(
   else if (type === "driver_arrived") vibrate([150, 80, 150]);
   else if (type === "ride_completed") vibrate([200]);
 
-  if (!context || context.state !== "running") return;
+  if (!isNotificationAudioReady() || !context) return;
   try {
     const incoming = type === "order_incoming_loop";
     const completed = type === "ride_completed";
