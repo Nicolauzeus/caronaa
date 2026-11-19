@@ -60,6 +60,7 @@ export function DriverFlashPlanner({
   const [onlineRoute,setOnlineRoute]=useState<ShellRoute|null>(null);
   const [active,setActive]=useState<FlashDriverRide|null>(null);
   const [completedRide,setCompletedRide]=useState<CompletedQuickRideRef|null>(null);
+  const [pendingRide,setPendingRide]=useState<{id:string;requested_at:string|null}|null>(null);
   const priorRidePhase=useRef<string|null>(null);
   const [passenger,setPassenger]=useState<FlashPassengerDetails|null>(null);
   const [orders,setOrders]=useState<FlashDriverOrder[]>([]);
@@ -96,6 +97,7 @@ export function DriverFlashPlanner({
         const ride=current.value.active;
         setActive(ride);
         setCompletedRide(current.value.completed);
+        setPendingRide(current.value.pending);
         const phase=ride?ride.id+":"+ride.status:null;
         // Avoid recreating the active Google map on every queue heartbeat.
         if(phase!==priorRidePhase.current)onRideRef.current?.(ride);
@@ -354,6 +356,10 @@ export function DriverFlashPlanner({
         <CircleAlert size={16} className="shrink-0 text-[#FFBB00]"/>{presence.error}
       </p>}
       {queueError&&presence.online&&!active&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
+      {!active&&pendingRide&&snap!=="peek"&&<p role="status"
+        className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-xs text-white/80">
+        Desembarque solicitado. Aguarde a confirmação do passageiro; a cobrança Pix aparecerá após a conclusão. Você pode receber novas corridas normalmente.
+      </p>}
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
         whatsappUrl={normalizeWhatsapp(passenger?.whatsapp)}
         pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
@@ -364,7 +370,7 @@ export function DriverFlashPlanner({
       {!presence.online&&snap!=="peek"&&
         <p className="text-xs text-white/65">Para receber chamados, ative o GPS e sua disponibilidade.</p>}
     </section>
-    <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??null} completedRide={completedRide}/>
+    <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??(completedRide?null:pendingRide?.id??null)} completedRide={completedRide}/>
     {canListen&&current&&typeof document!=="undefined"&&createPortal(
       <FlashIncomingOrderCard key={current.id} order={current} busy={acting}
         onAnswer={answer}/>,document.body
