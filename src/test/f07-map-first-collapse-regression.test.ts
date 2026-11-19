@@ -13,8 +13,8 @@ describe("F07 map-first ride controls on Android and iPhone",()=>{
   it("fully collapses the shared drawer in one downward gesture",()=>{
     expect(shell).toContain('rideActive&&delta>32');
     expect(shell).toContain('change("peek")');
-    expect(shell).toContain('rideActive&&snap==="peek"?"64px"');
-    expect(sheetCss).toContain('height: 64px !important');
+    expect(shell).toContain('rideActive&&snap==="peek"?"calc(64px + env(safe-area-inset-bottom, 0px))"');
+    expect(sheetCss).toContain('height: calc(64px + env(safe-area-inset-bottom, 0px)) !important');
     expect(sheetCss).toContain('display: none !important');
     expect(home).toContain('rideStageLabel={driverFlashRide?');
   });
