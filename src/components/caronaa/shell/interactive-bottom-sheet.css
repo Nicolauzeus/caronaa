@@ -90,3 +90,12 @@
     }
   }
 }
+
+/* Small-screen progressive disclosure: do not bury the boarding PIN or
+   accept/confirm buttons under a scrollable recap on an iPhone SE. */
+@media (max-width: 767px) and (max-height: 700px) {
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="half"] [data-trip-route-details="true"],
+  .caronaa-journey-sheet[data-ride-active="true"][data-snap="half"] .manual-status-refresh {
+    display: none;
+  }
+}
