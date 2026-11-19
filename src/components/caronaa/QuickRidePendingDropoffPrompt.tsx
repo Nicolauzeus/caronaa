@@ -50,7 +50,13 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
   useEffect(()=>{
     stillMounted.current=true;
     void refresh();
-    const foreground=()=>{if(!document.hidden)void refresh();};
+    const foreground=()=>{
+      if(document.hidden)return;
+      // "Responder depois" is only a temporary choice: on returning to
+      // the app the pending request must be visible again.
+      deferredRide.current=null;
+      void refresh();
+    };
     const event=()=>{void refresh();};
     window.addEventListener("focus",foreground);
     window.addEventListener("caronaa:quick-ride-dropoff-updated",event);
