@@ -31,7 +31,7 @@ describe("F07 persistent passenger dropoff and bounded review", () => {
     expect(prompt).toContain('respond("CONTESTED")');
     expect(prompt).toContain("window.addEventListener(\"focus\",foreground)");
     expect(prompt).toContain('document.addEventListener("visibilitychange",foreground)');
-    expect(appShell).toContain("<QuickRidePendingDropoffPrompt userId={user.id} />");
+    expect(appShell).toContain("<QuickRidePendingDropoffPrompt key={user.id} userId={user.id} />");
     expect(passenger).toContain('caronaa:quick-ride-dropoff-updated');
   });
 
