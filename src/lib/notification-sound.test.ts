@@ -78,7 +78,7 @@ describe("F07 mobile notification audio timing", () => {
     const primed = oscillators.length;
     expect(audio.isNotificationAudioReady()).toBe(true);
 
-    audio.startLoop("ride-1", Date.now() + 15_000);
+    audio.startLoop("ride-1", Date.now() + 30_000);
     // Two simultaneous oscillator waveforms per each of the two notes.
     expect(oscillators.length).toBe(primed + 4);
     audio.stopLoop("ride-1");
@@ -95,7 +95,7 @@ describe("F07 mobile notification audio timing", () => {
     expect(audio.isNotificationAudioReady()).toBe(false);
     const primed = oscillators.length;
 
-    audio.startLoop("ride-2", Date.now() + 15_000);
+    audio.startLoop("ride-2", Date.now() + 30_000);
     expect(oscillators.length).toBe(primed);
     audio.stopLoop("ride-2");
     unlock.release();
@@ -114,8 +114,8 @@ describe("F07 mobile notification audio timing", () => {
     audio.startLoop("expired", Date.now() - 100);
     expect(oscillators.length).toBe(primed);
 
-    audio.startLoop("ride-3", Date.now() + 15_000);
-    vi.advanceTimersByTime(15_100);
+    audio.startLoop("ride-3", Date.now() + 30_000);
+    vi.advanceTimersByTime(30_100);
     const atDeadline = oscillators.length;
     audio.stopLoop("ride-3");
     vi.advanceTimersByTime(60_000);
