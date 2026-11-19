@@ -187,7 +187,7 @@ AS $posttrip$
       WHERE a.ride_id=q.id AND a.user_id=auth.uid()
     )
   ORDER BY q.completed_at DESC
-  LIMIT 1;
+  LIMIT 20;
 $posttrip$;
 
 CREATE OR REPLACE FUNCTION public.quick_ride_ack_posttrip(p_id uuid)
