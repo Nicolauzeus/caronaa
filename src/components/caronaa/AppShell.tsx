@@ -454,7 +454,7 @@ export function AppShell({
       {/* Persisted dropoff confirmation is accessible after login, app resume
           or navigation to any authenticated route, not only passenger Home. */}
       {!publicPage && !prelaunchMode && user &&
-        <QuickRidePendingDropoffPrompt userId={user.id} />}
+        <QuickRidePendingDropoffPrompt key={user.id} userId={user.id} />}
 
       {/* Navegação inferior acessível para a área autenticada em celulares. */}
       {!publicPage && user && professionalOnly !== null && (
