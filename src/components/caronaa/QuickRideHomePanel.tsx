@@ -183,6 +183,11 @@ export function QuickRideHomePanel({
     const timer=window.setInterval(()=>{if(!document.hidden)void load();},6000);
     return()=>{cancelled=true;window.clearInterval(timer);};
   },[dropoffRide?.id]);
+  useEffect(()=>{
+    if(!dropoff?.deadline_at||!liveRide)return;
+    const timer=window.setInterval(()=>setNowMs(Date.now()),1000);
+    return()=>window.clearInterval(timer);
+  },[dropoff?.deadline_at,liveRide?.id]);
   // Legacy rides may still be IN_PROGRESS during an old 120s review window.
   // Expiry releases the old operational status; it never implies payment.
   useEffect(()=>{
