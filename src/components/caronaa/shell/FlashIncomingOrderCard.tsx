@@ -41,7 +41,7 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
     void answerRef.current(accept);
   };
   return <section aria-label="Novo chamado Flash" role="dialog" aria-modal="false"
-    className="pointer-events-auto absolute left-3 right-3 top-[max(5rem,env(safe-area-inset-top))] z-40 mx-auto max-w-md space-y-3 rounded-3xl border-2 border-[#FFBB00] bg-[#121212]/95 p-4 text-white shadow-2xl backdrop-blur-xl"
+    className="pointer-events-auto absolute left-3 right-3 top-[max(5rem,env(safe-area-inset-top))] z-40 mx-auto max-h-[calc(100dvh-6rem)] max-w-md space-y-3 overflow-y-auto overscroll-contain rounded-3xl border-2 border-[#FFBB00] bg-[#121212]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-xl"
     style={{fontFamily:"Manrope, sans-serif"}}>
     <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
       <div className="h-full bg-[#FFBB00] transition-[width] duration-200"
