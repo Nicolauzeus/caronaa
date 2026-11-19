@@ -1,4 +1,3 @@
-import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 
 /**
@@ -33,6 +32,5 @@ export async function resolvePostOnboardingDestination():
   // and request Flash rides. Professional dispatch remains separately gated.
   const onboarding = await readOnboarding();
   if (onboarding?.status !== "BASIC_COMPLETED") return "/onboarding";
-  const launch = await getMyResearchLaunchState();
-  return launch.locked ? "/aguardando" : "/home";
+  return "/home";
 }
