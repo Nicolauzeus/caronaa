@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getQuickRideApproach, getQuickRideMapContext, getQuickRideNavigation } from "@/lib/quick-ride-map.functions";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
@@ -10,6 +11,7 @@ import {
   distanceToNavigationPathMeters, upcomingNavigationManeuver,
   type NavigationPhase,
 } from "@/lib/quick-rides/driver-navigation";
+import { navigationVoiceKey, navigationVoiceMessage, navigationVoiceStage } from "@/lib/quick-rides/voice-navigation";
 
 type Route = {routePath:Array<{lat:number;lng:number}>;distanceKm:number;durationMinutes:number;maneuvers?:Array<{start:Point;end:Point;instruction:string;maneuver:string}>};
 type Point={lat:number;lng:number};
@@ -79,6 +81,10 @@ export function QuickRideOperationalMap({
   const [routeTick,setRouteTick]=useState(0);
   const [details,setDetails]=useState<DriverDetails|null>(null);
   const [error,setError]=useState("");
+  const [voiceEnabled,setVoiceEnabled]=useState(false);
+  const announcedVoiceCues=useRef<Set<string>>(new Set());
+  const activeUtterance=useRef<SpeechSynthesisUtterance|null>(null);
+  const lastSpokenPhase=useRef<NavigationPhase|null>(null);
   const mounted=useRef(true);
   const latestContextRequest=useRef(0);
   const latestContextApplied=useRef(0);
@@ -331,6 +337,93 @@ export function QuickRideOperationalMap({
   const activeRoute=role==="DRIVER"?currentDriverRoute:passengerRoute;
   const maneuver=role==="DRIVER"&&driverPoint&&activeRoute?.maneuvers
     ?upcomingNavigationManeuver(driverPoint,activeRoute.routePath,activeRoute.maneuvers):null;
+  const speakNavigation=useCallback((message:string)=>{
+    if(typeof window==="undefined"||!("speechSynthesis" in window)||
+      !("SpeechSynthesisUtterance" in window))return false;
+    try{
+      const synth=window.speechSynthesis;
+      const utterance=new SpeechSynthesisUtterance(message);
+      utterance.lang="pt-BR";
+      utterance.rate=1;
+      const voices=synth.getVoices();
+      const portuguese=voices.find(voice=>voice.lang.toLowerCase()==="pt-br")??
+        voices.find(voice=>voice.lang.toLowerCase().startsWith("pt"));
+      if(portuguese)utterance.voice=portuguese;
+      synth.cancel();
+      activeUtterance.current=utterance;
+      synth.speak(utterance);
+      return true;
+    }catch{
+      return false;
+    }
+  },[]);
+  // On iOS, the first utterance must occur synchronously after the driver's
+  // tap. Subsequent cues are driven by the current road maneuver and GPS.
+  const toggleNavigationVoice=useCallback(()=>{
+    if(voiceEnabled){
+      setVoiceEnabled(false);
+      if(typeof window!=="undefined"&&activeUtterance.current){
+        window.speechSynthesis.cancel();
+        activeUtterance.current=null;
+      }
+      return;
+    }
+    if(!speakNavigation("Orientação por voz ativada.")){
+      toast.error("A voz não está disponível neste navegador.");
+      return;
+    }
+    announcedVoiceCues.current.clear();
+    setVoiceEnabled(true);
+  },[voiceEnabled,speakNavigation]);
+  useEffect(()=>{
+    if(lastSpokenPhase.current===driverPhase)return;
+    const previous=lastSpokenPhase.current;
+    lastSpokenPhase.current=driverPhase;
+    // Once boarding is verified, cancel instructions for the old pickup leg.
+    if(previous&&voiceEnabled&&typeof window!=="undefined"&&activeUtterance.current){
+      window.speechSynthesis.cancel();
+      activeUtterance.current=null;
+    }
+    announcedVoiceCues.current.clear();
+  },[driverPhase,voiceEnabled]);
+  useEffect(()=>{
+    // Do not carry guidance, cached announcements or speech into the next trip.
+    announcedVoiceCues.current.clear();
+    setVoiceEnabled(false);
+    return()=>{
+      if(typeof window!=="undefined"&&activeUtterance.current){
+        window.speechSynthesis.cancel();
+        activeUtterance.current=null;
+      }
+    };
+  },[rideId]);
+  useEffect(()=>{
+    if(!voiceEnabled||role!=="DRIVER"||!driverPhase||!driverPoint||
+      !maneuver||document.hidden)return;
+    // Do not call an old/unreliable fix "navigation" or read stale directions.
+    const gpsAccuracy=localFixFresh&&liveDriverFix?liveDriverFix.accuracyM:
+      serverFixFresh?context?.driver?.accuracyM:null;
+    if(typeof gpsAccuracy!=="number"||gpsAccuracy>100)return;
+    const stage=navigationVoiceStage(maneuver.distanceMeters);
+    if(!stage)return;
+    const key=navigationVoiceKey(rideId,driverPhase,maneuver)+":"+stage;
+    if(announcedVoiceCues.current.has(key))return;
+    const message=navigationVoiceMessage(maneuver,stage);
+    if(speakNavigation(message))announcedVoiceCues.current.add(key);
+  },[voiceEnabled,role,driverPhase,driverPoint?.lat,driverPoint?.lng,
+    maneuver?.start.lat,maneuver?.start.lng,maneuver?.instruction,maneuver?.distanceMeters,
+    localFixFresh,liveDriverFix?.accuracyM,serverFixFresh,context?.driver?.accuracyM,
+    speakNavigation,rideId]);
+  useEffect(()=>{
+    if(voiceEnabled&&role==="DRIVER"&&!driverPhase){
+      setVoiceEnabled(false);
+      if(typeof window!=="undefined"&&activeUtterance.current){
+        window.speechSynthesis.cancel();
+        activeUtterance.current=null;
+      }
+    }
+  },[voiceEnabled,driverPhase,role]);
+
   const liveHeading=role==="DRIVER"&&localFixFresh&&liveDriverFix
     ?normalizedHeading(liveDriverFix.heading??directionHeading):directionHeading;
   const etaMinutes=role==="DRIVER"?(remaining?.durationMinutes??currentDriverRoute?.durationMinutes):
@@ -374,8 +467,9 @@ export function QuickRideOperationalMap({
     className="relative h-full w-full overflow-hidden bg-[#121212]">
     <div className="absolute inset-0">{rideMap}</div>
     <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-center">
-      <div className="pointer-events-none flex w-full max-w-sm items-center gap-2 rounded-2xl border border-white/15 bg-[#121212]/90 px-3 py-2 text-white shadow-lg backdrop-blur-md">
-        <div className="min-w-0 flex-1 space-y-0.5">
+      <div className="pointer-events-none flex w-full max-w-sm flex-col gap-2 rounded-2xl border border-white/15 bg-[#121212]/90 px-3 py-2 text-white shadow-lg backdrop-blur-md">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1 space-y-0.5">
           {maneuver&&<p className="flex items-center gap-2 text-sm font-bold text-white" aria-live="polite">
             <span aria-hidden="true" className="text-2xl text-[#FFBB00]">{maneuverSymbol}</span>
             <span className="min-w-0 truncate">{maneuverDistance} · {maneuver.instruction}</span>
@@ -405,22 +499,26 @@ export function QuickRideOperationalMap({
                   {driverPoint?"Acompanhamento GPS ativo":"Aguardando localização"}
                 </p>}
         </div>
-        {etaClock&&<span className="hidden shrink-0 text-[11px] font-bold tabular-nums text-white/80 sm:inline">Chegada {etaClock}</span>}
-        {driverPhase&&mapsNavigationUrl&&<a href={mapsNavigationUrl}
-          target="_blank" rel="noopener noreferrer"
-          aria-label="Abrir orientação por voz no Google Maps" title="Abrir orientação por voz no Google Maps"
-          className="pointer-events-auto flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 px-2.5 text-xs font-bold text-[#FFBB00]">
-          Rota por voz
-        </a>}
-        {driverPhase&&wazeNavigationUrl&&<a href={wazeNavigationUrl} target="_blank" rel="noopener noreferrer"
-          aria-label="Abrir navegação no Waze" title="Abrir navegação no Waze"
-          className="pointer-events-auto hidden min-h-10 shrink-0 items-center rounded-xl border border-white/20 px-2.5 text-xs font-bold text-white/90 sm:flex">Waze</a>}
-        {(error||driverPositionDelayed||showingLastFix||(Boolean(driverPhase)&&!driverPoint))&&
-          <span role="status" title={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
-            aria-label={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
-            className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-1 text-[10px] font-bold text-amber-300">
-            {error?"Rota instável":"GPS atrasado"}
-          </span>}
+          {etaClock&&<span className="hidden shrink-0 text-[11px] font-bold tabular-nums text-white/80 sm:inline">Chegada {etaClock}</span>}
+          {(error||driverPositionDelayed||showingLastFix||(Boolean(driverPhase)&&!driverPoint))&&
+            <span role="status" title={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
+              aria-label={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
+              className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-1 text-[10px] font-bold text-amber-300">
+              {error?"Rota instável":"GPS atrasado"}
+            </span>}
+        </div>
+        {driverPhase&&<div className="pointer-events-auto flex items-center gap-2">
+          <button type="button" onClick={toggleNavigationVoice} aria-pressed={voiceEnabled}
+            aria-label={voiceEnabled?"Desativar orientação por voz no CARONAA":"Ativar orientação por voz no CARONAA"}
+            className="flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 px-2 text-xs font-bold text-[#FFBB00]">
+            {voiceEnabled?"Silenciar voz":"Rota por voz"}
+          </button>
+          {mapsNavigationUrl&&<a href={mapsNavigationUrl} target="_blank" rel="noopener noreferrer"
+            aria-label="Abrir rota no Google Maps" title="Abrir rota no Google Maps"
+            className="flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2 text-xs font-bold text-white">
+            Google Maps
+          </a>}
+        </div>}
       </div>
     </div>
   </section>;
@@ -441,6 +539,16 @@ export function QuickRideOperationalMap({
       </div>
     </div>}
     {rideMap}
+    {driverPhase&&<div className="flex flex-wrap items-center gap-2">
+      <button type="button" onClick={toggleNavigationVoice} aria-pressed={voiceEnabled}
+        className="min-h-11 flex-1 rounded-xl border border-[#FFBB00]/50 bg-[#FFBB00]/10 px-3 text-sm font-semibold text-[#FFBB00]">
+        {voiceEnabled?"Silenciar voz":"Rota por voz"}
+      </button>
+      {mapsNavigationUrl&&<a href={mapsNavigationUrl} target="_blank" rel="noopener noreferrer"
+        className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-white/25 px-3 text-sm font-semibold text-white">
+        Abrir no Google Maps
+      </a>}
+    </div>}
 
     {role==="DRIVER"&&statusNow==="ACCEPTED"&&
       <p className="text-xs text-white/70">

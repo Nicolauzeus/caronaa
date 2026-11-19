@@ -161,7 +161,7 @@ export function snapVisualDriverPosition(
 /** Next road instruction, measured along road geometry rather than as-the-crow-flies. */
 export function upcomingNavigationManeuver(
   fix: NavigationPoint, path: NavigationPoint[], maneuvers: NavigationManeuver[],
-): { maneuver: string; instruction: string; distanceMeters: number } | null {
+): { start: NavigationPoint; maneuver: string; instruction: string; distanceMeters: number } | null {
   if (!Array.isArray(maneuvers) || maneuvers.length === 0) return null;
   const location = projectNavigationPosition(fix, path);
   if (!location || location.distanceMeters > 100) return null;
@@ -173,6 +173,7 @@ export function upcomingNavigationManeuver(
     const remaining = turn.alongMeters - location.alongMeters;
     if (remaining >= -15) {
       return {
+        start: item.start,
         maneuver: item.maneuver,
         instruction: item.instruction.trim(),
         distanceMeters: Math.max(0, remaining),
