@@ -98,7 +98,7 @@ export function QuickRideExperience({
   const [busy, setBusy] = useState(false);
   const [boardingCode,setBoardingCode]=useState("");
   const [driverPin,setDriverPin]=useState("");
-  const [ratingDismissed,setRatingDismissed]=useState<string|null>(null);
+  const [ratingOpenRideId,setRatingOpenRideId]=useState<string|null>(null);
   const [error, setError] = useState("");
   const submitting = useRef(false);
   const routeRequest = useServerFn(getMapDrivingRoute);
@@ -710,13 +710,17 @@ export function QuickRideExperience({
             {r.status==="PENDING_REVIEW" && <p role="status"
               className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
               Aguardando confirmação do desembarque pelo passageiro. O Pix e a comissão serão liberados apenas após a conclusão. Você pode utilizar o CARONAA normalmente.
-              {r.role==="PASSENGER"&&<Link to="/home" className="mt-2 block font-bold underline">Confirmar desembarque</Link>}
+              {r.role==="PASSENGER"&&<Link to="/home" className="mt-2 block font-bold underline">Abrir detalhes da viagem</Link>}
             </p>}
             {r.status==="COMPLETED" && <>
               {r.role==="DRIVER"?<QuickRideDriverSettlement rideId={r.id}/>:<QuickRidePixCard rideId={r.id}/>}
-              {ratingDismissed!==r.id&&<QuickRideRatingModal rideId={r.id}
+              <button type="button" onClick={()=>setRatingOpenRideId(r.id)}
+                className="mt-3 min-h-11 rounded-xl border border-[#FFBB00]/40 px-3 text-sm font-semibold text-[#FFBB00]">
+                Avaliar {r.role==="DRIVER"?"passageiro":"motorista"} (opcional)
+              </button>
+              {ratingOpenRideId===r.id&&<QuickRideRatingModal rideId={r.id}
                 subject={r.role==="DRIVER"?"passageiro":"motorista"}
-                onClose={()=>setRatingDismissed(r.id)}/>}
+                onClose={()=>setRatingOpenRideId(null)}/>}
             </>}
           </article>
         ))}
