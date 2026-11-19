@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { CAR_CATEGORIES, MISSING_LABELS, isValidBrazilianPlate, normalizePlate, parseMissingError, type CarCategory, type MissingCode } from "@/lib/professional-access";
 import { professionalPhotoTypes, professionalPhotoMaxBytes } from "@/lib/mototaxi-registration";
-import { formatBrazilWhatsapp, validBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
+import { formatBrazilWhatsapp, validBrazilWhatsapp, normalizeBrazilWhatsapp } from "@/lib/formulario/research-whatsapp";
 
 export const Route = createFileRoute("/cadastro-motorista")({
   ssr: false, component: DriverRegistration,
@@ -147,7 +147,7 @@ function DriverRegistration() {
         setPhotoUrl(photoData.publicUrl); setPhoto(null);
       }
       const { error: registrationError } = await (supabase as any).rpc("complete_professional_driver_registration", {
-        p_full_name: name.trim(), p_whatsapp: whatsapp.trim(), p_municipality: municipality.trim(),
+        p_full_name: name.trim(), p_whatsapp: whatsapp.trim()?normalizeBrazilWhatsapp(whatsapp):null, p_municipality: municipality.trim(),
         p_vehicle_type: type, p_vehicle_brand: brand.trim(), p_vehicle_model: model.trim(),
         p_vehicle_color: color.trim(), p_vehicle_plate: normalizePlate(plate),
         p_car_category: type === "CAR" ? category : null, p_vehicle_seats: type === "MOTO" ? 1 : seats,
