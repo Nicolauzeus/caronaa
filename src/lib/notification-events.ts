@@ -59,7 +59,7 @@ export function createRideAlert(
     } else if (stage && stage !== oldStage && stage === "AWAITING_BOARDING") {
       title = "Motorista no ponto de encontro";
       description = "O motorista chegou e está aguardando o seu embarque.";
-      sound = "confirmed";
+      sound = row["passenger_user_id"] === userId ? "driver_arrived" : "confirmed";
     } else if (status !== oldStatus) {
       const messages: Record<string, [string, NotificationSound]> = {
         IN_PROGRESS: ["Viagem iniciada", "confirmed"],
@@ -99,7 +99,7 @@ export function createRideAlert(
     } else if (eventName === "DRIVER_ARRIVED") {
       title = "Motorista no ponto de encontro";
       description = "O motorista chegou ao ponto de encontro para o embarque.";
-      sound = "confirmed";
+      sound = "driver_arrived";
     } else if (eventName === "RIDE_CANCELLED") {
       title = "Carona cancelada";
       description = "A viagem foi cancelada pelo outro participante.";
@@ -107,7 +107,7 @@ export function createRideAlert(
     } else if (eventName === "RIDE_COMPLETED") {
       title = "Viagem concluída";
       description = "A viagem foi concluída. Deixe sua avaliação.";
-      sound = "confirmed";
+      sound = "ride_completed";
     } else {
       return null;
     }
@@ -156,7 +156,7 @@ export function readRideAlerts(userId: string): RideAlert[] {
           typeof item.description === "string" &&
           typeof item.createdAt === "string" &&
           typeof item.read === "boolean" &&
-          ["request", "confirmed", "cancelled", "message"].includes(item.sound),
+          ["request", "confirmed", "cancelled", "message", "order_incoming_loop", "driver_arrived", "ride_completed"].includes(item.sound),
       )
       .slice(0, 50);
   } catch {
