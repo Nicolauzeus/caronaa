@@ -9,12 +9,13 @@ export function AccountWhatsAppEditor({onChanged}:Props){
   const [value,setValue]=useState("");
   const [consent,setConsent]=useState(false);
   const [loading,setLoading]=useState(true);
+  const [loaded,setLoaded]=useState(false);
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
   const [success,setSuccess]=useState("");
 
   const load=async()=>{
-    setLoading(true);setError("");setSuccess("");
+    setLoading(true);setLoaded(false);setError("");setSuccess("");
     try{
       const {data,error:rpcError}=await (supabase as any).rpc("get_my_caronaa_whatsapp");
       if(rpcError||!data||typeof data!=="object")throw rpcError??new Error("Contato indisponível");
@@ -22,6 +23,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       const original=typeof row.whatsapp==="string"?row.whatsapp:"";
       setValue(formatBrazilWhatsapp(original));
       setConsent(row.contact_consent===true);
+      setLoaded(true);
       onChanged?.(original);
     }catch{
       setError("Não foi possível carregar o contato. Confira se a atualização 0218 foi aplicada.");
@@ -32,7 +34,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
   const empty=!value.trim();
   const valid=empty||validBrazilWhatsapp(value);
   const save=async()=>{
-    if(saving||loading||!valid)return;
+    if(saving||loading||!loaded||!valid)return;
     setSaving(true);setError("");setSuccess("");
     try{
       const normalized=empty?null:normalizeBrazilWhatsapp(value);
@@ -75,10 +77,10 @@ export function AccountWhatsAppEditor({onChanged}:Props){
     </label>
     {loading&&<p role="status" className="text-xs text-white/70">Carregando contato...</p>}
     {error&&<div role="alert" className="space-y-1"><p className="text-xs text-red-300">{error}</p>
-      <button type="button" onClick={()=>void load()} className="min-h-10 text-xs font-semibold text-[#FFBB00] underline">Tentar carregar novamente</button>
+      {!loaded&&<button type="button" onClick={()=>void load()} className="min-h-10 text-xs font-semibold text-[#FFBB00] underline">Tentar carregar novamente</button>}
     </div>}
     {success&&<p role="status" className="text-xs text-emerald-300">{success}</p>}
-    <button type="button" disabled={saving||loading||!valid||Boolean(error)}
+    <button type="button" disabled={saving||loading||!loaded||!valid}
       onClick={()=>void save()}
       className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 text-sm font-extrabold text-[#121212] disabled:opacity-50">
       {saving?"Salvando contato...":empty?"Remover contato":"Salvar WhatsApp"}
