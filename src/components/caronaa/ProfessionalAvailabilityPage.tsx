@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { unlockNotificationAudio } from "@/lib/notification-sound";
 import "./professional-cockpit.css";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -383,6 +384,7 @@ export function ProfessionalAvailabilityPage() {
   },[sharing]);
 
   async function toggleOnline(next:boolean) {
+    if(next)void unlockNotificationAudio();
     if(busy)return;
     record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized});
     if(next && !authorized && !pilotEnabled){
