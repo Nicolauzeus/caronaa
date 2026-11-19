@@ -50,9 +50,10 @@ describe("optional research after basic registration", () => {
     }
   });
 
-  it("keeps linked campaign waiting restrictions", async () => {
+  it("does not block mobility access when an old research campaign is locked", async () => {
     api.launch.mockResolvedValue({locked:true,launches:[{formId:"pilot"}]});
-    expect(await resolvePostOnboardingDestination()).toBe("/aguardando");
+    expect(await resolvePostOnboardingDestination()).toBe("/home");
+    expect(api.launch).not.toHaveBeenCalled();
   });
 
   it("keeps account setup separate from commercial driver authorization", async () => {
