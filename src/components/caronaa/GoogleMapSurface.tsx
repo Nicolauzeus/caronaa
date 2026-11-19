@@ -8,6 +8,7 @@ import {
 } from "@/lib/google-maps-loader";
 import { MapUnavailable } from "./MapUnavailable";
 import { tripMarkerIcon, type TripMarkerKind } from "./trip-marker-icons";
+import { cameraLookAhead, normalizedHeading, shortestHeadingDelta, snapVisualDriverPosition, type NavigationPoint } from "@/lib/quick-rides/driver-navigation";
 
 export type GoogleMapPoint = {
   /** Stable marker identity: do not key by a title that changes with GPS state. */
@@ -45,6 +46,11 @@ type Props = {
   /** Changes when the ride or navigation leg changes. */
   followKey?: string;
   followZoom?: number;
+  navigationMode?: boolean;
+  followHeading?: number | null;
+  followAccuracyM?: number | null;
+  navigationPath?: NavigationPoint[];
+  navigationVehicle?: "CAR" | "MOTO";
 };
 
 const isValid = (p: { lat: number; lng: number }) =>
@@ -69,6 +75,11 @@ export function GoogleMapSurface({
   followPoint = null,
   followKey,
   followZoom = 16,
+  navigationMode = false,
+  followHeading = null,
+  followAccuracyM = null,
+  navigationPath = [],
+  navigationVehicle = "CAR",
 }: Props) {
   const getKey = useServerFn(getGoogleMapsBrowserKey);
   const container = useRef<HTMLDivElement>(null);
@@ -86,6 +97,15 @@ export function GoogleMapSurface({
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [following, setFollowing] = useState(true);
+  const [overview, setOverview] = useState(false);
+  const [vectorMap, setVectorMap] = useState(false);
+  const headingRef = useRef<number | null>(null);
+  const cameraFrame = useRef<number | null>(null);
+  const programmaticZoom = useRef(false);
+  const controlsRef = useRef({ navigationMode, following, overview });
+  controlsRef.current = { navigationMode, following, overview };
+  const navigationPathRef = useRef(navigationPath);
+  navigationPathRef.current = navigationPath;
   const hasFollowFix = Boolean(followPoint && isValid(followPoint));
   const lastFollow = useRef<{lat:number;lng:number;at:number}|null>(null);
   const followInitialized = useRef(false);
@@ -111,6 +131,9 @@ export function GoogleMapSurface({
       if (!G?.Map) throw new Error("Google Maps JS missing after load");
       const initialPoint = points.find(isValid);
       map.current = new G.Map(container.current, {
+        // Vector rendering is required for perspective and bearing; gracefully
+        // fall back to classic 2D when the browser/key does not support it.
+        renderingType: G.RenderingType?.VECTOR,
         center: initialPoint
           ? { lat: initialPoint.lat, lng: initialPoint.lng }
           : { lat: -3.73, lng: -38.53 },
@@ -122,7 +145,18 @@ export function GoogleMapSurface({
       });
       // A deliberate swipe across the map pauses camera following; GPS and
       // markers continue to update. The recenter control restores following.
-      map.current.addListener("dragstart",()=>{if(active)setFollowing(false);});
+      map.current.addListener("dragstart",()=>{if(active){setFollowing(false);setOverview(false);}});
+      map.current.addListener("zoom_changed",()=>{
+        if(active && !programmaticZoom.current && controlsRef.current.navigationMode && followInitialized.current){
+          setFollowing(false);setOverview(false);
+        }
+      });
+      const detectRendering=()=>{
+        if(active)setVectorMap(Boolean(G.RenderingType?.VECTOR &&
+          map.current?.getRenderingType?.()===G.RenderingType.VECTOR));
+      };
+      map.current.addListener("renderingtype_changed",detectRendering);
+      detectRendering();
       setReady(true);
     };
     void initialize().catch(() => {
@@ -142,6 +176,8 @@ export function GoogleMapSurface({
       lineArtifacts.current.clear();
       movementFrames.current.forEach(frame=>window.cancelAnimationFrame(frame));
       movementFrames.current.clear();
+      if(cameraFrame.current!==null)window.cancelAnimationFrame(cameraFrame.current);
+      cameraFrame.current=null;
       trackingMarkers.current.clear();
       lastBounds.current = null;
       map.current = null;
@@ -203,10 +239,25 @@ export function GoogleMapSurface({
     points.filter(isValid).forEach((point, index) => {
       const markerKey = point.id || point.title || point.kind || point.label || String(index);
       visibleKeys.add(markerKey);
-      const badgeIcon = point.kind && point.kind !== "person" ? tripMarkerIcon(point.kind) : null;
+      const isTrackedDriver = point.id === "assigned-professional" && navigationMode;
+      const badgeIcon = isTrackedDriver ? null : point.kind && point.kind !== "person" ? tripMarkerIcon(point.kind) : null;
+      const snapped = isTrackedDriver && navigationPathRef.current.length >= 2
+        ? snapVisualDriverPosition(point, navigationPathRef.current, followAccuracyM) : null;
+      const position = snapped?.point ?? point;
+      const driverHeading = normalizedHeading(followHeading ?? snapped?.heading);
+      const markerSymbol = isTrackedDriver ? {
+        // North-facing vehicle silhouette; the Google symbol rotates with bearing.
+        path: navigationVehicle === "MOTO"
+          ? "M 0,-15 L 6,-5 L 6,8 Q 0,16 -6,8 L -6,-5 Z"
+          : "M 0,-17 L 9,-7 L 9,10 Q 0,16 -9,10 L -9,-7 Z",
+        scale: 1.15, fillColor: "#FFBB00", fillOpacity: 1,
+        strokeColor: "#121212", strokeWeight: 2.5,
+        rotation: driverHeading ?? 0,
+        anchor: new G.Point(0,0),
+      } : null;
       const options = {
         map: map.current,
-        position: { lat: point.lat, lng: point.lng },
+        position: { lat: position.lat, lng: position.lng },
         title: point.title || "Localização",
         ...(point.label && !badgeIcon
           ? {
@@ -217,7 +268,7 @@ export function GoogleMapSurface({
               },
             }
           : {}),
-        icon: badgeIcon ?? {
+        icon: markerSymbol ?? badgeIcon ?? {
           path:
             point.kind === "person"
               ? "M 0,-9 A 3,3 0 1,1 0,-3 A 3,3 0 1,1 0,-9 M -5,7 L -5,1 Q -5,-2 0,-2 Q 5,-2 5,1 L 5,7 Z"
@@ -235,27 +286,33 @@ export function GoogleMapSurface({
       };
       let marker = smoothTracking ? trackingMarkers.current.get(markerKey) : null;
       if (marker) {
+        const priorRotation=marker.getIcon?.()?.rotation ?? driverHeading ?? 0;
         marker.setOptions({title: options.title,icon: options.icon,zIndex:options.zIndex});
         const oldPosition = marker.getPosition();
-        const from = oldPosition ? {lat:oldPosition.lat(),lng:oldPosition.lng()} : {lat:point.lat,lng:point.lng};
-        const distance = Math.hypot(from.lat-point.lat,from.lng-point.lng);
+        const from = oldPosition ? {lat:oldPosition.lat(),lng:oldPosition.lng()} : {lat:position.lat,lng:position.lng};
+        const distance = Math.hypot(from.lat-position.lat,from.lng-position.lng);
         const pending=movementFrames.current.get(markerKey);
         if (pending!==undefined) window.cancelAnimationFrame(pending);
         const reduceMotion=typeof window.matchMedia==="function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (!reduceMotion && distance > 0 && distance < 0.01) {
           const start=performance.now();
+          const previousRotation=priorRotation;
+          const rotationDelta=driverHeading===null?0:shortestHeadingDelta(previousRotation,driverHeading);
+          const animationDuration=isTrackedDriver?Math.min(6000,Math.max(1500,Math.abs(distance)*450000)):950;
           const animate=(now:number)=>{
-            const t=Math.min(1,(now-start)/950);
+            const t=Math.min(1,(now-start)/animationDuration);
             const eased=t*t*(3-2*t);
             marker.setPosition({
-              lat:from.lat+(point.lat-from.lat)*eased,
-              lng:from.lng+(point.lng-from.lng)*eased,
+              lat:from.lat+(position.lat-from.lat)*eased,
+              lng:from.lng+(position.lng-from.lng)*eased,
             });
+            if(isTrackedDriver && markerSymbol && driverHeading!==null)
+              marker.setIcon({...markerSymbol, rotation:normalizedHeading(previousRotation+rotationDelta*eased) ?? 0});
             if(t<1)movementFrames.current.set(markerKey,window.requestAnimationFrame(animate));
             else movementFrames.current.delete(markerKey);
           };
           movementFrames.current.set(markerKey,window.requestAnimationFrame(animate));
-        } else marker.setPosition({lat:point.lat,lng:point.lng});
+        } else marker.setPosition({lat:position.lat,lng:position.lng});
       } else {
         marker = new G.Marker(options);
         if(smoothTracking)trackingMarkers.current.set(markerKey,marker);
@@ -317,7 +374,7 @@ export function GoogleMapSurface({
     lastFitPointCount.current = validMarkerCount;
     // Navigation owns the camera while GPS following is available. Do not
     // let fitBounds steal focus on route redraws or bottom-sheet movements.
-    if(hasFollowFix)return;
+    if(hasFollowFix){lastBounds.current=bounds;return;}
     if (fitted.current && fitMode === "once" && !newFitKey && !newRoute && !moreMarkers) return;
     if (count > 0) {
       fitted.current = true;
@@ -334,6 +391,7 @@ export function GoogleMapSurface({
 
   useEffect(()=>{
     if(!followKey)return;
+    setOverview(false);
     // An explicit "Acompanhar no mapa" press MUST recenter even if the GPS
     // coordinates have not changed since the last frame. Do not rely on a
     // redundant setFollowing(true) to trigger another React render.
@@ -342,14 +400,19 @@ export function GoogleMapSurface({
     setFollowing(true);
     const fix=followPointRef.current;
     if(ready&&!failed&&map.current&&fix&&isValid(fix)){
-      map.current.panTo({lat:fix.lat,lng:fix.lng});
+      const heading=normalizedHeading(followHeading);
+      const centered=navigationMode && heading!==null?cameraLookAhead(fix,heading):fix;
+      map.current.panTo(centered);
+      if(navigationMode && vectorMap){map.current.setTilt(45);if(heading!==null)map.current.setHeading(heading);}
+      programmaticZoom.current=true;
       map.current.setZoom(Math.max(14,Math.min(19,followZoom)));
+      window.setTimeout(()=>{programmaticZoom.current=false;},0);
       lastFollow.current={lat:fix.lat,lng:fix.lng,at:Date.now()};
       followInitialized.current=true;
     }
-  },[followKey,ready,failed,followZoom]);
+  },[followKey,ready,failed,followZoom,navigationMode,vectorMap]);
   useEffect(()=>{
-    if(!ready||failed||!map.current||!following||!followPoint||!isValid(followPoint))return;
+    if(!ready||failed||!map.current||!following||overview||!followPoint||!isValid(followPoint))return;
     const now=Date.now();
     const prior=lastFollow.current;
     if(prior&&now-prior.at<850)return;
@@ -357,14 +420,24 @@ export function GoogleMapSurface({
       (followPoint.lat-prior.lat)*111195,
       (followPoint.lng-prior.lng)*111195*Math.cos(followPoint.lat*Math.PI/180),
     )>6;
-    if(!moved)return;
+    const heading=normalizedHeading(followHeading);
+    const headingDelta=heading!==null&&headingRef.current!==null
+      ?Math.abs(shortestHeadingDelta(headingRef.current,heading)):0;
+    if(!moved&&headingDelta<8)return;
     lastFollow.current={lat:followPoint.lat,lng:followPoint.lng,at:now};
-    map.current.panTo({lat:followPoint.lat,lng:followPoint.lng});
+    const center=navigationMode && heading!==null?cameraLookAhead(followPoint,heading):followPoint;
+    map.current.panTo(center);
+    if(navigationMode && vectorMap){
+      map.current.setTilt(45);
+      if(heading!==null){map.current.setHeading(heading);headingRef.current=heading;}
+    }
     if(!followInitialized.current){
+      programmaticZoom.current=true;
       map.current.setZoom(Math.max(14,Math.min(19,followZoom)));
+      window.setTimeout(()=>{programmaticZoom.current=false;},0);
       followInitialized.current=true;
     }
-  },[ready,failed,following,followPoint?.lat,followPoint?.lng,followZoom]);
+  },[ready,failed,following,overview,navigationMode,vectorMap,followPoint?.lat,followPoint?.lng,followHeading,followZoom]);
 
   return (
     <div
@@ -389,18 +462,29 @@ export function GoogleMapSurface({
           Carregando Google Maps...
         </div>
       )}
+      {ready && !failed && navigationMode && !vectorMap && <span className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-[#121212]/75 px-2 py-1 text-[10px] text-white/80">Visão 2D</span>}
       {ready && !failed && showControls && !previewOnly && (
         <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">
           <button type="button"
-            aria-label={hasFollowFix?(following?"Centralizar e seguir motorista":"Retomar acompanhamento do GPS"):"Centralizar mapa no motorista"}
-            title={hasFollowFix&&!following?"Retomar acompanhamento automático":"Centralizar"}
+            aria-label={hasFollowFix?(following&&!overview&&navigationMode?"Ver rota completa":following?"Centralizar e seguir motorista":"Retomar acompanhamento do GPS"):"Centralizar mapa no motorista"}
+            title={hasFollowFix&&!following?"Retomar acompanhamento automático":navigationMode?"Alternar navegação e visão geral":"Centralizar"}
             className={"flex size-11 items-center justify-center rounded-full border bg-white text-xl font-bold text-slate-900 shadow-lg "+(hasFollowFix&&following?"border-[#FFBB00] ring-2 ring-[#FFBB00]/40":"border-slate-200")}
             onClick={() => {
               const driver = followPoint&&isValid(followPoint)?followPoint:
                 points.find(point => point.kind === "driver" || point.kind === "availableMoto") ?? points[0];
               if(driver&&isValid(driver)){
-                map.current?.panTo({lat:driver.lat,lng:driver.lng});
-                if(hasFollowFix)map.current?.setZoom(Math.max(14,Math.min(19,followZoom)));
+                const heading=normalizedHeading(followHeading);
+                const alreadyFollowing=following&&!overview;
+                if(navigationMode&&alreadyFollowing){
+                  setFollowing(false);setOverview(true);
+                  map.current?.setTilt?.(0);map.current?.setHeading?.(0);
+                  if(lastBounds.current)map.current?.fitBounds(lastBounds.current,{top:60,right:45,bottom:110,left:45});
+                  return;
+                }
+                setOverview(false);
+                map.current?.panTo(navigationMode&&heading!==null?cameraLookAhead(driver,heading):driver);
+                if(navigationMode&&vectorMap){map.current?.setTilt?.(45);if(heading!==null)map.current?.setHeading?.(heading);}
+                if(hasFollowFix){programmaticZoom.current=true;map.current?.setZoom(Math.max(14,Math.min(19,followZoom)));window.setTimeout(()=>{programmaticZoom.current=false;},0);}
                 lastFollow.current={lat:driver.lat,lng:driver.lng,at:Date.now()};
                 followInitialized.current=true;
                 setFollowing(true);
@@ -408,10 +492,10 @@ export function GoogleMapSurface({
             }}>◎</button>
           <button type="button" aria-label="Aumentar zoom do mapa"
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
-            onClick={() => map.current?.setZoom(Math.min(20, (map.current?.getZoom() ?? 13) + 1))}>+</button>
+            onClick={() => {setFollowing(false);setOverview(false);map.current?.setZoom(Math.min(20, (map.current?.getZoom() ?? 13) + 1));}}>+</button>
           <button type="button" aria-label="Diminuir zoom do mapa"
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
-            onClick={() => map.current?.setZoom(Math.max(3, (map.current?.getZoom() ?? 13) - 1))}>−</button>
+            onClick={() => {setFollowing(false);setOverview(false);map.current?.setZoom(Math.max(3, (map.current?.getZoom() ?? 13) - 1));}}>−</button>
         </div>
       )}
       {ready && !failed && children}
