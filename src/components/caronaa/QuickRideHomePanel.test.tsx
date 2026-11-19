@@ -233,7 +233,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic}/>);
     expect(await screen.findByRole("alert",{name:"Confirmação de desembarque pendente"})).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button",{name:"Ainda não desembarquei / Contestar"}));
+    fireEvent.click(screen.getByRole("button",{name:"Ainda não / Tenho um problema"}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{p_id:rideId,p_response:"CONTESTED"}));
   });
   it("entrega ao pai a viagem ativa para usar um único mapa na Home",async()=>{
@@ -251,7 +251,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
         vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
       :{data:[],error:null});
     render(<QuickRideHomePanel {...basic}/>);
-    expect(await screen.findByText("Encerramento em análise")).toBeInTheDocument();
+    expect(await screen.findByText("Aguardando sua confirmação")).toBeInTheDocument();
     expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
     expect(screen.queryByRole("dialog",{name:"Corrida concluída"})).not.toBeInTheDocument();
     expect(api.rpc.mock.calls.some(([name])=>name==="get_completed_quick_ride_pix")).toBe(false);
