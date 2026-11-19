@@ -345,7 +345,7 @@ export function QuickRideDriverQueue({
         </article>}
         {!active&&pendingReview&&<div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-bold text-[#FFBB00]">Aguardando confirmação do desembarque</p>
-          <p className="mt-1 text-white/75">O passageiro pode confirmar mesmo após reconectar. Você já pode receber novas corridas. O Pix aparece após a confirmação.</p>
+          <p className="mt-1 text-white/75">Corrida fora do mapa operacional. O passageiro poderá confirmar o desembarque; se contestar, o suporte analisará. Você já pode receber novas corridas. O Pix só aparece após a conclusão.</p>
         </div>}
         {!active&&visibleQueue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
