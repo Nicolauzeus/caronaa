@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getQuickRideApproach, getQuickRideMapContext, getQuickRideNavigation } from "@/lib/quick-ride-map.functions";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { GoogleMapSurface } from "./GoogleMapSurface";
+import { useJourneyWakeLock } from "@/lib/quick-rides/use-journey-wake-lock";
 import {
   driverNavigationPhase, validNavigationPoint, needsDriverReroute,
   estimateDriverRouteRemaining, normalizedHeading, navigationBearing, navigationDistanceMeters,
@@ -141,10 +142,14 @@ export function QuickRideOperationalMap({
     const timer=window.setInterval(()=>{if(!document.hidden)void reload();},10000);
     const foreground=()=>{if(!document.hidden)void reload();};
     window.addEventListener("focus",foreground);
+    window.addEventListener("pageshow",foreground);
+    window.addEventListener("online",foreground);
     document.addEventListener("visibilitychange",foreground);
     return()=>{
       window.clearInterval(timer);
       window.removeEventListener("focus",foreground);
+      window.removeEventListener("pageshow",foreground);
+      window.removeEventListener("online",foreground);
       document.removeEventListener("visibilitychange",foreground);
     };
   },[reload,role]);
@@ -179,12 +184,16 @@ export function QuickRideOperationalMap({
     },5000);
     const onVisible=()=>{if(!document.hidden)wake();};
     window.addEventListener("focus",onVisible);
+    window.addEventListener("pageshow",onVisible);
+    window.addEventListener("online",onVisible);
     document.addEventListener("visibilitychange",onVisible);
     return()=>{
       disposed=true;
       if(debounce)clearTimeout(debounce);
       window.clearInterval(fallback);
       window.removeEventListener("focus",onVisible);
+      window.removeEventListener("pageshow",onVisible);
+      window.removeEventListener("online",onVisible);
       document.removeEventListener("visibilitychange",onVisible);
       void client.removeChannel(channel);
     };
@@ -228,6 +237,7 @@ export function QuickRideOperationalMap({
   const driverPositionDelayed=role==="PASSENGER"&&
     Boolean(context?.driver)&&!driverPoint;
   const driverPhase=role==="DRIVER"?driverNavigationPhase(statusNow):null;
+  useJourneyWakeLock(["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(statusNow) && (role==="DRIVER" || passengerFollow));
   const navigationTarget=driverPhase==="PICKUP"?origin:
     driverPhase==="DROPOFF"?destination:null;
   const driverPhaseRef=useRef<NavigationPhase|null>(null);
