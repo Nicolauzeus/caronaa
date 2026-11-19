@@ -271,6 +271,11 @@ export function QuickRideHomePanel({
     }
   },[]);
   useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
+  useEffect(()=>{
+    const updated=()=>{void refreshQuickRides();};
+    window.addEventListener("caronaa:quick-ride-dropoff-updated",updated);
+    return()=>window.removeEventListener("caronaa:quick-ride-dropoff-updated",updated);
+  },[refreshQuickRides]);
   useQuickRideRealtime(liveRide?.municipality??coverage?.municipality??"",refreshQuickRides,true);
   // A passenger is not authorized to read the driver-only municipal event
   // channel. Read their own ride state at a bounded cadence while active;
@@ -478,7 +483,7 @@ export function QuickRideHomePanel({
       ):<>
         {pendingReviewRide&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-bold text-[#FFBB00]">Encerramento em análise</p>
-          <p className="text-white/85">O desembarque não foi confirmado ou houve contestação. Não há cobrança Pix nem comissão até uma decisão registrada. Você pode solicitar outra corrida normalmente.</p>
+          <p className="text-white/85">Há uma confirmação de desembarque pendente ou em revisão. Se ainda não respondeu, ela será apresentada ao abrir o aplicativo. O Pix só fica disponível após a conclusão confirmada.</p>
         </section>}
         {shownExpiredRide&&<section role="status"
           className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
