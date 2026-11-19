@@ -102,6 +102,7 @@ export function GoogleMapSurface({
   const headingRef = useRef<number | null>(null);
   const cameraFrame = useRef<number | null>(null);
   const programmaticZoom = useRef(false);
+  const manualCamera = useRef(false);
   const controlsRef = useRef({ navigationMode, following, overview });
   controlsRef.current = { navigationMode, following, overview };
   const navigationPathRef = useRef(navigationPath);
@@ -114,6 +115,7 @@ export function GoogleMapSurface({
 
   useEffect(() => {
     let active = true;
+    let removeTouchListener: (() => void) | undefined;
     const unsubscribe = onGoogleMapsAuthFailure(() => {
       if (active) setFailed(true);
     });
@@ -141,11 +143,27 @@ export function GoogleMapSurface({
         disableDefaultUI: true,
         clickableIcons: false,
         gestureHandling: previewOnly ? "none" : gestureHandling,
+        headingInteractionEnabled: !previewOnly,
+        tiltInteractionEnabled: !previewOnly,
         keyboardShortcuts: !previewOnly,
       });
+      // Keep Google's native pinch/rotation handling. Only relinquish GPS
+      // camera ownership, so the next fix cannot undo a two-finger adjustment.
+      const pauseFollowing = () => {
+        if (!active || previewOnly) return;
+        manualCamera.current = true;
+        setFollowing(false);
+        setOverview(false);
+      };
+      const handleTouchStart = (event: TouchEvent) => {
+        if (event.touches.length >= 2) pauseFollowing();
+      };
+      const mapContainer = container.current;
+      mapContainer.addEventListener("touchstart", handleTouchStart, { passive: true, capture: true });
+      removeTouchListener = () => mapContainer.removeEventListener("touchstart", handleTouchStart, true);
       // A deliberate swipe across the map pauses camera following; GPS and
       // markers continue to update. The recenter control restores following.
-      map.current.addListener("dragstart",()=>{if(active){setFollowing(false);setOverview(false);}});
+      map.current.addListener("dragstart", pauseFollowing);
       map.current.addListener("zoom_changed",()=>{
         if(active && !programmaticZoom.current && controlsRef.current.navigationMode && followInitialized.current){
           setFollowing(false);setOverview(false);
@@ -169,6 +187,7 @@ export function GoogleMapSurface({
     });
     return () => {
       active = false;
+      removeTouchListener?.();
       unsubscribe();
       artifacts.current.forEach((item) => item.setMap(null));
       artifacts.current = [];
@@ -375,6 +394,7 @@ export function GoogleMapSurface({
     // Navigation owns the camera while GPS following is available. Do not
     // let fitBounds steal focus on route redraws or bottom-sheet movements.
     if(hasFollowFix){lastBounds.current=bounds;return;}
+    if (manualCamera.current && !newFitKey) { lastBounds.current = bounds; return; }
     if (fitted.current && fitMode === "once" && !newFitKey && !newRoute && !moreMarkers) return;
     if (count > 0) {
       fitted.current = true;
@@ -391,6 +411,7 @@ export function GoogleMapSurface({
 
   useEffect(()=>{
     if(!followKey)return;
+    manualCamera.current=false;
     setOverview(false);
     // An explicit "Acompanhar no mapa" press MUST recenter even if the GPS
     // coordinates have not changed since the last frame. Do not rely on a
@@ -412,7 +433,7 @@ export function GoogleMapSurface({
     }
   },[followKey,ready,failed,followZoom,navigationMode,vectorMap]);
   useEffect(()=>{
-    if(!ready||failed||!map.current||!following||overview||!followPoint||!isValid(followPoint))return;
+    if(!ready||failed||!map.current||manualCamera.current||!following||overview||!followPoint||!isValid(followPoint))return;
     const now=Date.now();
     const prior=lastFollow.current;
     if(prior&&now-prior.at<850)return;
@@ -482,6 +503,7 @@ export function GoogleMapSurface({
                   return;
                 }
                 setOverview(false);
+                manualCamera.current=false;
                 map.current?.panTo(navigationMode&&heading!==null?cameraLookAhead(driver,heading):driver);
                 if(navigationMode&&vectorMap){map.current?.setTilt?.(45);if(heading!==null)map.current?.setHeading?.(heading);}
                 if(hasFollowFix){programmaticZoom.current=true;map.current?.setZoom(Math.max(14,Math.min(19,followZoom)));window.setTimeout(()=>{programmaticZoom.current=false;},0);}
