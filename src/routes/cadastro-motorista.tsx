@@ -61,7 +61,7 @@ function DriverRegistration() {
       (supabase as any).from("professional_driver_contacts")
         .select("whatsapp_e164,municipality,registration_number").eq("user_id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
-    ]).then(([profile, contact, access]) => {
+    ]).then(async ([profile, contact, access]) => {
       if (!live) return;
       if (profile.error || !profile.data || contact.error || access.error) {
         setLoadFailed(true);
