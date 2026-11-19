@@ -34,7 +34,8 @@ describe("RN021 bilateral dropoff and exact-price Pix",()=>{
     expect(respond).toContain("q.status NOT IN ('IN_PROGRESS','PENDING_REVIEW')");
     expect(respond).toContain("d.admin_decision IS NOT NULL");
     expect(respond).not.toContain("d.deadline_at<=now()");
-    expect(respond).toContain("THEN 'COMPLETED' ELSE 'PENDING_REVIEW'");
+    expect(respond).toContain("THEN 'COMPLETED'");
+    expect(respond).toContain("WHEN p_response='NOT_YET' THEN 'IN_PROGRESS'");
     expect(respond).toContain("ON CONFLICT (ride_id,event_type) DO NOTHING");
   });
   it("does not flood the admin dispute queue with regular unanswered confirmations",()=>{
