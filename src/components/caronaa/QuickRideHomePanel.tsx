@@ -482,7 +482,7 @@ export function QuickRideHomePanel({
         onExpand={()=>onOpenOperational?.()}/>
       ):<>
         {pendingReviewRide&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-          <p className="font-bold text-[#FFBB00]">Encerramento em análise</p>
+          <p className="font-bold text-[#FFBB00]">Confirmação de desembarque pendente</p>
           <p className="text-white/85">Há uma confirmação de desembarque pendente ou em revisão. Se ainda não respondeu, ela será apresentada ao abrir o aplicativo. O Pix só fica disponível após a conclusão confirmada.</p>
         </section>}
         {shownExpiredRide&&<section role="status"
