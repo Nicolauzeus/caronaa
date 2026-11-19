@@ -5,6 +5,7 @@ import { isNotificationAudioReady, playNotificationSound, startLoop, stopLoop, u
 import { readNotificationSettings } from "@/lib/notification-settings";
 import type { FlashDriverOrder } from "@/services/flash-driver-service";
 import { QuickRidePassengerIdentity } from "../QuickRidePassengerIdentity";
+import { stopQuickRideRequestView } from "@/lib/quick-rides/request-audience";
 
 type Props={
   order:FlashDriverOrder;onAnswer:(accept:boolean)=>Promise<void>;
@@ -26,6 +27,7 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
       setRemaining(left);
       if(left===0&&!answering.current){
         stopLoop(order.id);
+        void stopQuickRideRequestView(order.id).catch(()=>undefined);
         answering.current=true;
         void answerRef.current(false);
       }
@@ -38,6 +40,7 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
     if(answering.current||busy)return;
     answering.current=true;
     stopLoop(order.id);
+    void stopQuickRideRequestView(order.id).catch(()=>undefined);
     void answerRef.current(accept);
   };
   return <section aria-label="Novo chamado Flash" role="dialog" aria-modal="false"
