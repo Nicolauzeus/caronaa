@@ -25,6 +25,12 @@ describe("F07 cadastro único e progressivo",()=>{
     expect((sql.match(/^\$automatic\$;$/gm)||[])).toHaveLength(1);
     expect(sql.indexOf("AND lower(btrim(c.municipality))")).toBeLessThan(sql.indexOf("$automatic$;"));
     expect(sql).toContain("REVOKE ALL ON FUNCTION public.professional_auto_enable(");
+    // Guard 42883 from repeated literal function signatures in ACL statements.
+    expect(sql).toContain("v_routine regprocedure");
+    expect(sql).toContain("p.pronargs=11");
+    expect(sql).toContain("CREATE FUNCTION nao executado");
+    expect(sql).toContain("REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated");
+    expect(sql).toContain("GRANT EXECUTE ON FUNCTION %s TO authenticated");
     expect(sql).not.toContain("set_professional_presence");
   });
   it("exibe progresso e verifica habilitação no servidor antes do cockpit",()=>{

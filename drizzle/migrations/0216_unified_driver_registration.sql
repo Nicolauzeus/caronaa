@@ -333,14 +333,29 @@ BEGIN
   RETURN v_request_id;
 END
 $register$;
-REVOKE ALL ON FUNCTION public.complete_professional_driver_registration(
- text,text,text,text,text,text,text,text,text,integer,text
-) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.complete_professional_driver_registration(
- text,text,text,text,text,text,text,text,text,text,integer,text
-) TO authenticated;
-COMMENT ON FUNCTION public.complete_professional_driver_registration(
- text,text,text,text,text,text,text,text,text,text,integer,text
-) IS 'Cadastro unificado e habilitacao atomica; nenhum consentimento GPS ou presenca implicito.';
+-- Resolve the just-created function from the PostgreSQL catalogue.
+-- If only the final SQL lines were run, fail with an actionable diagnostic.
+DO $driver_acl$
+DECLARE
+  v_routine regprocedure;
+BEGIN
+  SELECT p.oid::regprocedure INTO v_routine
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public'
+    AND p.proname='complete_professional_driver_registration'
+    AND p.pronargs=11;
+  IF v_routine IS NULL THEN
+    RAISE EXCEPTION '0216 incompleta: CREATE FUNCTION nao executado. Selecione todo o SQL, de BEGIN ate COMMIT.'
+      USING ERRCODE='42883';
+  END IF;
+  EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',v_routine);
+  EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION %s TO authenticated',v_routine);
+  EXECUTE pg_catalog.format(
+    'COMMENT ON FUNCTION %s IS %L',v_routine,
+    'Cadastro unificado e habilitacao atomica; nenhum consentimento GPS ou presenca implicito.'
+  );
+END;
+$driver_acl$;
 NOTIFY pgrst,'reload schema';
 COMMIT;
