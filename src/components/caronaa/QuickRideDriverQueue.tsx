@@ -169,12 +169,13 @@ export function QuickRideDriverQueue({
 
 
   useEffect(()=>{
-    if(!active?.id || active.status!=="IN_PROGRESS"){
+    const rideId=active?.status==="IN_PROGRESS"?active.id:pendingReview?.id;
+    if(!rideId){
       setDropoffDeadline(null);setDropoffResponse(null);return;
     }
     let alive=true;
     const load=async()=>{
-      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:active.id});
+      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:rideId});
       if(!alive||error)return;
       const entry=Array.isArray(data)?data[0]:null;
       setDropoffDeadline(entry?.deadline_at??null);
@@ -182,14 +183,14 @@ export function QuickRideDriverQueue({
       if(entry?.deadline_at && !entry?.resolved_at && !entry?.passenger_response
         && Date.parse(entry.deadline_at)<=Date.now()){
         const {data:finished,error:finalError}=await (supabase as any).rpc(
-          "quick_ride_finalize_after_timeout",{p_id:active.id});
+          "quick_ride_finalize_after_timeout",{p_id:rideId});
         if(!finalError && finished===true && alive)void refresh();
       }
     };
     void load();
     const timer=window.setInterval(load,5000);
     return()=>{alive=false;window.clearInterval(timer);};
-  },[active?.id,active?.status,refresh]);
+  },[active?.id,active?.status,pendingReview?.id,refresh]);
   useEffect(()=>{
     if(!online||!gpsReady||active?.status!=="ACCEPTED")return;
     let alive=true;
@@ -382,7 +383,7 @@ export function QuickRideDriverQueue({
                 GPS indisponível? Solicitar revisão do encerramento
               </button>
               {manualReviewOpen&&<div className="mt-2 space-y-2">
-                <p className="text-xs text-white/70">A confirmação será enviada ao passageiro por até 120 segundos. Se não houver resposta ou houver contestação, a corrida irá para análise sem cobrança automática.</p>
+                <p className="text-xs text-white/70">A confirmação será apresentada ao passageiro por 10 minutos e ficará acessível quando ele retornar. Sem resposta, poderá entrar em análise, sem cobrança automática.</p>
                 <label htmlFor="quick-manual-review-reason" className="block text-xs font-semibold">Explique por que não foi possível confirmar o destino</label>
                 <textarea id="quick-manual-review-reason" rows={3} maxLength={1000}
                   value={manualReason} onChange={event=>setManualReason(event.target.value)}
@@ -398,8 +399,14 @@ export function QuickRideDriverQueue({
           </>}
         </article>}
         {!active&&pendingReview&&<div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-          <p className="font-bold text-[#FFBB00]">Encerramento em análise</p>
-          <p className="mt-1 text-white/75">Esta corrida aguarda decisão administrativa. Sem cobrança ou comissão até a conclusão confirmada. Sua disponibilidade para novos chamados não depende desta revisão.</p>
+          <p className="font-bold text-[#FFBB00]">{dropoffDeadline&&remainingDropoffSeconds>0
+            ?"Aguardando confirmação do passageiro":"Encerramento pendente"}</p>
+          <p className="mt-1 text-white/75">
+            {dropoffDeadline&&remainingDropoffSeconds>0
+              ?`O passageiro tem mais ${Math.ceil(remainingDropoffSeconds/60)} min para responder. A solicitação permanece disponível quando ele abrir o app.`
+              :"Aguardando confirmação do passageiro ou análise após o prazo. Não há cobrança nem comissão até a conclusão confirmada."}
+            {" "}Você pode continuar recebendo novos chamados.
+          </p>
         </div>}
         {!active&&visibleQueue.length===0&&<p role="status" className="text-sm text-white/70">
           Nenhuma corrida aguardando motorista neste momento.
