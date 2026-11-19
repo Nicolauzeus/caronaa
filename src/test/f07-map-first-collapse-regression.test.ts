@@ -21,8 +21,16 @@ describe("F07 map-first ride controls on Android and iPhone",()=>{
   it("collapses the separate Android professional cockpit into a narrow tab",()=>{
     expect(pro).toContain('data-active-ride={activeRide?"true":"false"}');
     expect(pro).toContain('setSheetExpanded(last<start)');
-    expect(proCss).toContain('flex: 0 0 56px');
-    expect(proCss).toContain('max-height: 56px');
+    expect(pro).toContain('sheetIgnoreClickUntil.current=Date.now()+450');
+    expect(pro).toContain('ChevronUp size={20}');
+    expect(pro).toContain('Em viagem · abrir controles');
+    expect(pro).toContain('const sheetOpen=activeRide||activeQuickRide?sheetExpanded:');
+    expect(proCss).toContain('position: fixed;');
+    expect(proCss).toContain('bottom: max(8px, env(safe-area-inset-bottom, 0px))');
+    expect(proCss).toContain('height: 76px;');
+    expect(proCss).toContain('min-height: 76px;');
+    expect(proCss).toContain('.professional-cockpit__sheet-chevron');
+    expect(proCss).toContain('pointer-events: auto;');
     expect(proCss).toContain('data-active-ride="true"');
     expect(proCss).toContain("max-width: 767px");
   });

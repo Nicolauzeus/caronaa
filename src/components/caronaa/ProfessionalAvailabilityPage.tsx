@@ -15,7 +15,7 @@ import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, MapPin } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
 type Fix = { lat:number; lng:number; at:Date; simulated:boolean; accuracyM?:number; heading?:number|null };
@@ -38,7 +38,7 @@ export function ProfessionalAvailabilityPage() {
   const [sheetExpanded,setSheetExpanded]=useState(false);
   const [navigationFocusRequest,setNavigationFocusRequest]=useState(0);
   const sheetTouchStart=useRef<number|null>(null);
-  const sheetSwiped=useRef(false);
+  const sheetIgnoreClickUntil=useRef(0);
   const lastRidePhase=useRef<string|null>(null);
   const [activeRide,setActiveRide]=useState<ActiveDriverRide|null>(null);
   const activeRideRef=useRef<ActiveDriverRide|null>(null);
@@ -451,7 +451,7 @@ export function ProfessionalAvailabilityPage() {
       setSheetExpanded(false);
   },[activeRide?.id,activeRide?.status]);
   // The professional cockpit has its own sheet; map-first collapse takes priority.
-  const sheetOpen=activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
+  const sheetOpen=activeRide||activeQuickRide?sheetExpanded:(hasPendingCalls||sheetExpanded);
   const followRideOnMap=useCallback((rideId:string)=>{
     // The driver explicitly asks to see the map: do not wait for another
     // automatic phase transition or force the user to leave this screen.
@@ -616,26 +616,30 @@ export function ProfessionalAvailabilityPage() {
               ? "FICAR ONLINE AGORA" : sheetOpen ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
           aria-expanded={sheetOpen}
           onTouchStart={event=>{sheetTouchStart.current=event.touches[0]?.clientY??null;}}
+          onTouchCancel={()=>{sheetTouchStart.current=null;}}
           onTouchEnd={event=>{
             const last=event.changedTouches[0]?.clientY;
             const start=sheetTouchStart.current;sheetTouchStart.current=null;
             if(start===null||last===undefined||Math.abs(last-start)<36)return;
-            sheetSwiped.current=true;
+            // A swipe must not be undone by a delayed Android synthetic click.
+            // Do not consume the next intentional tap when click is suppressed.
+            sheetIgnoreClickUntil.current=Date.now()+450;
             setSheetExpanded(last<start);
-            // Android may suppress the synthetic click after a swipe. Never
-            // consume the user's next intentional tap because a flag stayed set.
-            window.setTimeout(()=>{sheetSwiped.current=false;},0);
           }}
           onClick={()=>{
-            if(sheetSwiped.current){sheetSwiped.current=false;return;}
+            if(Date.now()<sheetIgnoreClickUntil.current)return;
             if (ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded && !activeRide) void toggleOnline(true);
             else setSheetExpanded(v=>!v);
           }}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
           <span className="professional-cockpit__sheet-label">{activeRide
-            ? activeRide.status==="ARRIVED" ? "Embarque · ver código" :
-              activeRide.status==="IN_PROGRESS" ? "Em viagem · abrir controles" : "A caminho · ver detalhes"
+            ? sheetOpen ? "Recolher controles" :
+              activeRide.status==="ARRIVED" ? "Embarque · abrir código" :
+              activeRide.status==="IN_PROGRESS" ? "Em viagem · abrir controles" : "A caminho · abrir detalhes"
             : hasPendingCalls ? "Novos chamados" : ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
+          {activeRide&&<span className="professional-cockpit__sheet-chevron" aria-hidden="true">
+            {sheetOpen?<ChevronDown size={20}/>:<ChevronUp size={20}/>}
+          </span>}
         </button>
         {!activeRide&&<div className="professional-cockpit__mobile-connection">
           <Button variant={enabled ? "outline" : "default"}
