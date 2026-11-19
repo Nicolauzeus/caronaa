@@ -41,7 +41,6 @@ import {
 } from "@/lib/pitch/types";
 import {
   getPitchContacts,
-  normalizePhoneNumber,
   updatePitchSuggestionStatus,
 } from "@/lib/pitch/pitch-service";
 import { cn } from "@/lib/utils";
