@@ -23,7 +23,7 @@ function DriverProfile({driver,confirmed}:{driver:RideParticipantSummary;confirm
 }
 
 /** Show real live viewers, not a count of all online drivers or fictitious rotation. */
-export function QuickRideSearchActivity({rideId,status}:{rideId:string;status:string}){
+export function QuickRideSearchActivity({rideId,status,compact=false}:{rideId:string;status:string;compact?:boolean}){
   const [audience,setAudience]=useState<QuickRideAudience>(empty);
   const [failed,setFailed]=useState(false);
   const [index,setIndex]=useState(0);
@@ -65,6 +65,21 @@ export function QuickRideSearchActivity({rideId,status}:{rideId:string;status:st
   const searching=status==="SEARCHING";
   const driver=searching ? audience.viewers[index%Math.max(1,audience.viewers.length)] : audience.acceptedDriver;
 
+  if(compact){
+    return <div aria-label="Resumo do acompanhamento da corrida"
+      className="flex min-w-0 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.045] p-2">
+      {searching?
+        <>
+          <Eye size={20} className="shrink-0 text-[#FFBB00]" aria-hidden="true"/>
+          <p className="min-w-0 flex-1 truncate text-xs font-bold text-white/85">Motoristas visualizando</p>
+          <span role="status" className="rounded-full bg-[#FFBB00]/15 px-2.5 py-1 text-sm font-black text-[#FFBB00]">
+            {failed?"—":audience.watchingCount}
+          </span>
+        </>:
+        driver?<DriverProfile driver={driver} confirmed/>:
+        <p role="status" className="truncate text-xs text-white/70">Confirmando os dados do motorista…</p>}
+    </div>;
+  }
   return <section aria-label="Acompanhamento da procura por motorista"
     className="mt-3 space-y-3 rounded-2xl border border-white/15 bg-[#121212] p-3 text-white">
     {searching?<div className="flex items-center justify-between gap-2">
