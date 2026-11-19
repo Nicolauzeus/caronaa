@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Eye, UserRound } from "lucide-react";
 import { getQuickRideRequestAudience, type QuickRideAudience, type RideParticipantSummary } from "@/lib/quick-rides/request-audience";
 
@@ -27,10 +27,15 @@ export function QuickRideSearchActivity({rideId,status}:{rideId:string;status:st
   const [audience,setAudience]=useState<QuickRideAudience>(empty);
   const [failed,setFailed]=useState(false);
   const [index,setIndex]=useState(0);
+  const previousRide=useRef(rideId);
   useEffect(()=>{
     let active=true;
     let running=false;
-    setAudience(empty);setFailed(false);setIndex(0);
+    if(previousRide.current!==rideId){
+      previousRide.current=rideId;
+      setAudience(empty);setIndex(0);
+    }
+    setFailed(false);
     const refresh=async()=>{
       if(!active||running||document.hidden)return;
       running=true;
