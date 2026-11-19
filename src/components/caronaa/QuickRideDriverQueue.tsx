@@ -7,6 +7,7 @@ import { isNotificationAudioReady, playNotificationSound, startLoop, stopLoop, u
 import { readNotificationSettings } from "@/lib/notification-settings";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
+import { QuickRidePassengerIdentity } from "./QuickRidePassengerIdentity";
 
 type DriverQueueRide={
   id:string;vehicle_type:"CAR"|"MOTO";origin_label:string;
@@ -423,6 +424,7 @@ export function QuickRideDriverQueue({
               className="min-h-11 w-full rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 px-3 text-xs font-semibold text-[#FFBB00]">
               Ativar som dos chamados
             </button>}
+          <QuickRidePassengerIdentity rideId={ride.id}/>
           <div className="professional-cockpit__timeline rounded-xl bg-white/[0.035] p-3" aria-label="Trajeto solicitado">
             <span className="professional-cockpit__timeline-marker" aria-hidden="true"/>
             <p className="min-w-0 break-words text-sm"><span className="font-bold text-emerald-300">Embarque</span> · {ride.origin_label}</p>
