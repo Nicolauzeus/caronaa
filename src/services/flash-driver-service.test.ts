@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  FlashDriverError,getFlashDriverRadarOrders,getMyActiveFlashRide,
+  FlashDriverError,getFlashDriverRadarOrders,getMyActiveFlashRide,getMyFlashRideSnapshot,
   respondFlashOrder,setFlashDriverOffline,setFlashDriverOnline,
   startFlashRideWithPin,updateFlashDriverHeartbeatGPS,
 } from "./flash-driver-service";
@@ -99,6 +99,19 @@ describe("Flash driver RPC boundaries",()=>{
       p_id:"ride-1",p_code:"1234",
     });
     await expect(startFlashRideWithPin("ride-1","12345")).rejects.toMatchObject({code:"INVALID"});
+  });
+  it("keeps pending bilateral dropoff outside the active cockpit while retrieving next ride",async()=>{
+    api.rpc.mockResolvedValue({data:[
+      {id:"old-pending",role:"DRIVER",status:"PENDING_REVIEW",requested_at:"2026-11-19T12:00:00Z"},
+      {id:"new-active",role:"DRIVER",status:"ACCEPTED",requested_at:"2026-11-19T12:10:00Z",
+       origin_label:"Origem",destination_label:"Destino",vehicle_type:"CAR",municipality:"Fortaleza"},
+      {id:"completed-trip",role:"DRIVER",status:"COMPLETED",requested_at:"2026-11-19T11:50:00Z"},
+    ],error:null});
+    const state=await getMyFlashRideSnapshot();
+    expect(state.active?.id).toBe("new-active");
+    expect(state.pending?.id).toBe("old-pending");
+    expect(state.completed?.id).toBe("completed-trip");
+    expect(api.rpc).toHaveBeenCalledWith("quick_ride_my_requests");
   });
   it("reads active ride through existing F07 participant RPC",async()=>{
     api.rpc.mockResolvedValue({data:[{
