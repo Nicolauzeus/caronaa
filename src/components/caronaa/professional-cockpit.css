@@ -394,3 +394,82 @@
     margin-bottom: 0 !important;
   }
 }
+
+/* F07 active ride: a viewport-anchored sheet must never be pushed below the
+   Android/iOS visual viewport by the flex/grid dashboard or bottom navigation.
+   Keep a full-size, tappable peek affordance above the device safe area. */
+@media (max-width: 767px) {
+  .professional-cockpit[data-active-ride="true"] .professional-cockpit__columns {
+    /* Map is the background; only this one fixed sheet handles touches. */
+    pointer-events: none;
+  }
+  .professional-cockpit__right[data-active-ride="true"] {
+    position: fixed;
+    z-index: 50;
+    left: 50%;
+    right: auto;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: min(calc(100vw - 16px), 560px);
+    max-width: calc(100vw - 16px);
+    max-height: min(76dvh, 660px);
+    pointer-events: auto;
+    overflow-x: hidden;
+    border: 1px solid rgba(255, 187, 0, .48);
+    border-radius: 20px;
+    box-shadow: 0 -12px 38px rgba(0, 0, 0, .48);
+  }
+  .professional-cockpit__right[data-active-ride="true"][data-expanded="false"] {
+    flex: none;
+    height: 76px;
+    min-height: 76px;
+    max-height: 76px;
+    overflow: hidden;
+    background: rgba(18, 18, 18, .97);
+  }
+  .professional-cockpit__right[data-active-ride="true"][data-expanded="true"] {
+    flex: none;
+    height: auto;
+    min-height: 76px;
+    max-height: min(76dvh, 660px);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .professional-cockpit__right[data-active-ride="true"] .professional-cockpit__sheet-toggle {
+    position: sticky;
+    z-index: 3;
+    top: 0;
+    display: flex;
+    flex: 0 0 76px;
+    min-height: 76px;
+    max-height: 76px;
+    height: 76px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    touch-action: none;
+    background: #181818;
+    color: #fff;
+  }
+  .professional-cockpit__right[data-active-ride="true"] .professional-cockpit__sheet-handle {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 5px;
+    background: #ffbb00;
+  }
+  .professional-cockpit__right[data-active-ride="true"] .professional-cockpit__sheet-label {
+    flex: 0 1 auto;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .professional-cockpit__right[data-active-ride="true"] .professional-cockpit__sheet-chevron {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    color: #ffbb00;
+  }
+}
