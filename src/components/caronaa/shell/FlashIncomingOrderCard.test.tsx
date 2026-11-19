@@ -20,11 +20,11 @@ describe("Flash Incoming Order overlay",()=>{
     expect(onAnswer).toHaveBeenCalledWith(true);
     expect(onAnswer).toHaveBeenCalledTimes(1);
   });
-  it("declines automatically at 15 seconds, exactly once",async()=>{
+  it("declines automatically at 30 seconds, exactly once",async()=>{
     vi.useFakeTimers();
     const onAnswer=vi.fn().mockResolvedValue(undefined);
     render(<FlashIncomingOrderCard order={order} onAnswer={onAnswer}/>);
-    await act(async()=>{vi.advanceTimersByTime(15_500);});
+    await act(async()=>{vi.advanceTimersByTime(30_500);});
     expect(onAnswer).toHaveBeenCalledTimes(1);
     expect(onAnswer).toHaveBeenCalledWith(false);
     await act(async()=>{vi.advanceTimersByTime(1000);});
@@ -35,7 +35,7 @@ describe("Flash Incoming Order overlay",()=>{
     const onAnswer=vi.fn().mockResolvedValue(undefined);
     render(<FlashIncomingOrderCard order={order} onAnswer={onAnswer}/>);
     fireEvent.click(screen.getByRole("button",{name:"Recusar"}));
-    await act(async()=>{vi.advanceTimersByTime(17_000);});
+    await act(async()=>{vi.advanceTimersByTime(32_000);});
     expect(onAnswer).toHaveBeenCalledTimes(1);
     expect(onAnswer).toHaveBeenCalledWith(false);
   });
