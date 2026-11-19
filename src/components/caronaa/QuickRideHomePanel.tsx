@@ -35,7 +35,7 @@ type ExistingQuickRide = {id:string;role:string;status:RideStatus;vehicle_type:s
 export function QuickRideHomePanel({
   origin, destination, originPoint, destinationPoint, vehicle, onVehicleChange,
   driverCount, driverCounts, driverLoading=false, driverError="", gpsOriginIsImprecise=false,
-  locating=false, pickupNeedsConfirmation=false, onConfirmPickup, actionContainer,
+  locating=false, pickupNeedsConfirmation=false, onConfirmPickup, onApprovePickupForRequest, actionContainer,
   onFaresChange, onFarePendingChange, onCoverage, onCoveragesChange, onOperationalRideChange,
   onRidePhaseChange, onDropoffPendingChange, onFareChange, onFollowMap,
   shellMode=false, shellSnap="full", onOpenOperational,
@@ -47,8 +47,12 @@ export function QuickRideHomePanel({
   gpsOriginIsImprecise?:boolean;
   locating?:boolean;
   pickupNeedsConfirmation?:boolean;
-  /** Open the parent's explicit pickup dialog; this never creates a ride. */
+  /** Open pickup editor if its coordinates are missing or no longer match. */
   onConfirmPickup?:()=>void;
+  /** Approve the exact quoted pickup on the single final request click.
+   * Returning false prevents submission and allows the user to adjust it.
+   */
+  onApprovePickupForRequest?:(pickup:FormLocationDetails)=>boolean;
   actionContainer?:HTMLElement|null;
   onFaresChange?:(value:Partial<Record<QuickVehicle,QuickRideFarePreview>>)=>void;
   onFarePendingChange?:(pending:boolean)=>void;
@@ -351,9 +355,13 @@ export function QuickRideHomePanel({
     if(!hasOrigin){onConfirmPickup?.();return;}
     if(!covered||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
       !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
-    // Approximate coordinates may calculate a preview, but never dispatch
-    // until a separate explicit action confirms the selected pickup.
-    if(pickupNeedsConfirmation){onConfirmPickup?.();return;}
+    // The final tap explicitly approves the reviewed origin, destination,
+    // vehicle and price together. Do not ask for a second ride confirmation.
+    // Approval must match the same coordinates as the server-priced quote.
+    if(pickupNeedsConfirmation &&
+      (!originPoint || !onApprovePickupForRequest?.(originPoint))){
+      onConfirmPickup?.();return;
+    }
     void unlockNotificationAudio();
     submissionInFlight.current=true;setBusy(true);setError("");
     try{
@@ -410,7 +418,7 @@ export function QuickRideHomePanel({
       {busy?"Enviando pedido…":waitingForOrigin?"Obtendo sua localização…":!hasOrigin?"Definir ponto de embarque":
         !hasDestination?"Escolha seu destino":!currentQuote?(quoteLoading||coverageLoading?"Consultando preços…":"Preço indisponível"):
         driverCount<1?"Aguardando motorista disponível":
-        (shellMode?`Confirmar Flash ${vehicle==="MOTO"?"Moto":"Carro"} — `:"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
+        (shellMode?`Solicitar Flash ${vehicle==="MOTO"?"Moto":"Carro"} — `:"Solicitar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
     </Button>
     {priceFailure&&!quoteLoading&&<div role="alert" className="space-y-2">
       <p className="text-sm text-white/80">{priceFailure}</p>
