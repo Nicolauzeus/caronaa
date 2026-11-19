@@ -34,7 +34,8 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
   };
   return <section aria-label={title} data-ride-active={rideActive?"true":"false"} data-snap={snap}
     className="caronaa-journey-sheet pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-[28px] border border-primary/20 bg-secondary/95 text-secondary-foreground shadow-[0_-12px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-[height] duration-200 ease-out motion-reduce:transition-none"
-    style={{height:heights[snap].fallback, minHeight:heights[snap].dynamic,
+    style={{height:rideActive&&snap==="peek"?"205px":heights[snap].fallback,
+      minHeight:heights[snap].dynamic,
       maxHeight:"calc(100% - 70px)"}}>
     <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center border-b border-caronaa-white/10">
     <Button variant="ghost" type="button" aria-label="Alça do painel: toque ou arraste para expandir ou recolher"
