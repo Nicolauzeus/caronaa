@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
 import { CircleAlert, MapPin, Navigation, Radio, Signal, UserRound } from "lucide-react";
 import { toast } from "sonner";
+import { stopLoop, unlockNotificationAudio } from "@/lib/notification-sound";
 import { supabase } from "@/integrations/supabase/client";
 import { getMapDrivingRoute } from "@/lib/map-routing.functions";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
@@ -131,6 +132,7 @@ export function DriverFlashPlanner({
     if(valid(details))onSnapChange("half");
   };
   const activate=async()=>{
+    void unlockNotificationAudio();
     if(presence.busy||presence.online)return;
     if(mode==="ON_ROUTE"&&!valid(destPoint)){
       toast.info("Escolha um destino para receber chamadas Na Rota.");
@@ -199,6 +201,7 @@ export function DriverFlashPlanner({
     if(!orders.length||answerLock.current)return;
     const candidate=orders.find(order=>!ignored.current.has(order.id));
     if(!candidate)return;
+    stopLoop(candidate.id);
     answerLock.current=true;setActing(true);
     try{
       const result=await respondFlashOrder(candidate.id,accept);
