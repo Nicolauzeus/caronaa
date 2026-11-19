@@ -358,7 +358,7 @@ export function DriverFlashPlanner({
       {queueError&&presence.online&&!active&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
       {!active&&pendingRide&&snap!=="peek"&&<p role="status"
         className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-xs text-white/80">
-        Desembarque solicitado. Aguarde a confirmação do passageiro; a cobrança Pix aparecerá após a conclusão. Você pode receber novas corridas normalmente.
+        Desembarque pendente: o passageiro poderá confirmar ao voltar ao app. Em caso de contestação, o suporte poderá analisar. O Pix só aparece após conclusão; novos chamados continuam disponíveis.
       </p>}
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
         whatsappUrl={normalizeWhatsapp(passenger?.whatsapp)}
