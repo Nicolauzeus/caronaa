@@ -172,6 +172,17 @@ BEGIN
      d.passenger_response IS NOT NULL THEN
     RAISE EXCEPTION 'Dropoff response is closed' USING ERRCODE='42501';
   END IF;
+  -- A delayed NOT_YET cannot resurrect a second simultaneous active trip
+  -- if the driver was already assigned to a different passenger. Raise a
+  -- recoverable conflict; passenger may explicitly contest instead.
+  IF p_response='NOT_YET' AND EXISTS (
+    SELECT 1 FROM public.professional_quick_rides other
+    WHERE other.id<>p_id AND other.driver_id=q.driver_id
+      AND other.status IN ('ACCEPTED','ARRIVED','IN_PROGRESS')
+  ) THEN
+    RAISE EXCEPTION 'DROPOFF_DRIVER_ALREADY_REASSIGNED'
+      USING ERRCODE='23514';
+  END IF;
   v_new_status:=CASE WHEN p_response='CONFIRMED' THEN 'COMPLETED'
     WHEN p_response='NOT_YET' THEN 'IN_PROGRESS' ELSE 'PENDING_REVIEW' END;
   UPDATE public.quick_ride_dropoff_reviews
