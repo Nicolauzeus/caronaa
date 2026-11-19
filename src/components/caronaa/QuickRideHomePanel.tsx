@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { playNotificationSound, unlockNotificationAudio } from "@/lib/notification-sound";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
@@ -211,18 +212,7 @@ export function QuickRideHomePanel({
     notifiedArrival.current=liveRide.id;
     toast.success("Seu motorista chegou! Informe o código de embarque.");
     if(!boardingCode)void issueBoardingCode();
-    try{
-      const AudioContextType=window.AudioContext;
-      if(AudioContextType){
-        const ctx=new AudioContextType();
-        if(ctx.state==="running"){
-          const oscillator=ctx.createOscillator();const gain=ctx.createGain();
-          oscillator.type="sine";oscillator.frequency.value=880;gain.gain.value=0.035;
-          oscillator.connect(gain);gain.connect(ctx.destination);oscillator.start();oscillator.stop(ctx.currentTime+0.15);
-          oscillator.onended=()=>{void ctx.close();};
-        }else void ctx.close();
-      }
-    }catch{ /* visual alert remains available */ }
+    void playNotificationSound("driver_arrived");
   },[liveRide?.id,liveRide?.status]);
   async function respondDropoff(response:"CONFIRMED"|"CONTESTED"){
     if(!liveRide||busy||remainingDropoffSeconds===0)return;
@@ -362,6 +352,7 @@ export function QuickRideHomePanel({
     // Approximate coordinates may calculate a preview, but never dispatch
     // until a separate explicit action confirms the selected pickup.
     if(pickupNeedsConfirmation){onConfirmPickup?.();return;}
+    void unlockNotificationAudio();
     submissionInFlight.current=true;setBusy(true);setError("");
     try{
       const submitted=await submitFn({data:{quoteId:currentQuote.quoteId}});
