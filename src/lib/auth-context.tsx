@@ -19,23 +19,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      setUser(data.user ?? null);
-      setLoading(false);
-    });
-
+    // Supabase emits INITIAL_SESSION from persistent storage. A transient
+    // network error in getUser must never overwrite that restored identity.
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      setUser(session?.user ?? null);
+      if (!active) return;
+      if (!["INITIAL_SESSION","TOKEN_REFRESHED","SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)) return;
+      setUser(previous => {
+        const next = session?.user ?? null;
+        return previous?.id === next?.id ? (next ?? previous) : next;
+      });
       setLoading(false);
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") leaveAdminAppPreview();
       if (event === "SIGNED_OUT") clearPendingLaunchReceipts();
-      void router.invalidate();
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") void router.invalidate();
     });
 
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (!error) setUser(previous => data.session?.user ?? previous);
+      setLoading(false);
+    }).catch(() => { if (active) setLoading(false); });
+
+    let lastResume = 0;
+    const resume = () => {
+      if (!active || document.hidden || Date.now() - lastResume < 1500) return;
+      lastResume = Date.now();
+      void supabase.auth.getSession().then(({ data, error }) => {
+        if (!active || error) return;
+        // A temporarily unavailable auth endpoint is NOT a sign-out.
+        if (data.session?.user) setUser(data.session.user);
+        void router.invalidate();
+      }).catch(() => {});
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    window.addEventListener("pageshow", resume);
+    window.addEventListener("online", resume);
     return () => {
       active = false;
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("pageshow", resume);
+      window.removeEventListener("online", resume);
       listener.subscription.unsubscribe();
     };
   }, [router]);
