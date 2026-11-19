@@ -124,8 +124,8 @@ export function QuickRidePostTripFlow({
       <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 px-2 py-3 sm:items-center sm:px-4"
         role="presentation">
         <section role="dialog" aria-modal="true" aria-labelledby="quick-post-trip-title"
-          className="w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain rounded-3xl border border-[#FFBB00]/40 bg-[#121212] px-4 pt-5 pb-[max(1rem,env(safe-area-inset-bottom))] text-white shadow-2xl sm:p-6">
-          <div className="mb-4 flex items-start justify-between gap-3">
+          className="flex w-full max-w-lg max-h-[calc(100dvh-0.5rem)] flex-col overflow-hidden rounded-t-[28px] border border-[#FFBB00]/40 bg-[#121212] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white shadow-2xl sm:max-h-[calc(100dvh-1.5rem)] sm:rounded-3xl sm:p-6">
+          <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-2 text-emerald-300">
                 <CheckCircle2 size={20} aria-hidden="true" />
@@ -145,7 +145,7 @@ export function QuickRidePostTripFlow({
               <X size={20} />
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-2">
             <div className="flex items-center gap-2 text-sm font-bold text-[#FFBB00]">
               <Wallet size={18} aria-hidden="true" />
               {role === "PASSENGER" ? "Pagamento da corrida" : "Cobrança e recebimento"}
@@ -176,15 +176,16 @@ export function QuickRidePostTripFlow({
                   Tentar consultar avaliação novamente
                 </button>
               )}
-              <button type="button" onClick={dismiss}
-                className="min-h-12 w-full rounded-xl border border-white/25 px-3 text-sm font-semibold text-white">
-                Continuar no CARONAA
-              </button>
-              <p className="text-center text-xs leading-relaxed text-white/55">
-                Você pode consultar o Pix e avaliar depois em Minhas viagens.
-                Fechar esta tela não registra pagamento nem avaliação.
-              </p>
             </div>
+          </div>
+          <div className="shrink-0 space-y-1 border-t border-white/15 bg-[#121212] pt-2">
+            <button type="button" onClick={dismiss}
+              className="min-h-12 w-full rounded-xl border border-white/25 px-3 text-sm font-semibold text-white">
+              Continuar no CARONAA
+            </button>
+            <p className="text-center text-[11px] leading-tight text-white/50">
+              Consulte o Pix e a avaliação depois em Minhas viagens.
+            </p>
           </div>
         </section>
       </div>,
