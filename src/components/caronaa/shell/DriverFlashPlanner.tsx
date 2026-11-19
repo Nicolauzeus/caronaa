@@ -96,8 +96,9 @@ export function DriverFlashPlanner({
         const ride=current.value.active;
         setActive(ride);
         setCompletedRide(current.value.completed);
-        onRideRef.current?.(ride);
         const phase=ride?ride.id+":"+ride.status:null;
+        // Avoid recreating the active Google map on every queue heartbeat.
+        if(phase!==priorRidePhase.current)onRideRef.current?.(ride);
         // Do not snap shut again on every Realtime/heartbeat refresh.
         if(ride && phase!==priorRidePhase.current){
           onSnapChange(ride.status==="ARRIVED"?"half":"peek");
@@ -293,7 +294,8 @@ export function DriverFlashPlanner({
   const visibleOrders=orders.filter(order=>!ignored.current.has(order.id));
   const current=visibleOrders[0]??null;
   return <>
-    <section aria-label="CARONAA Flash motorista" className="space-y-2 pb-3 text-white"
+    <section aria-label="CARONAA Flash motorista"
+      className={active?"flex h-full min-h-0 flex-col overflow-hidden text-white":"space-y-2 pb-3 text-white"}
       style={{fontFamily:"Manrope, sans-serif"}}>
       {!active&&snap==="peek"&&<>
         <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
@@ -370,7 +372,7 @@ export function DriverFlashPlanner({
       {presence.error&&<p role="alert" className="flex items-start gap-2 rounded-xl border border-[#FFBB00]/50 p-3 text-xs">
         <CircleAlert size={16} className="shrink-0 text-[#FFBB00]"/>{presence.error}
       </p>}
-      {queueError&&presence.online&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
+      {queueError&&presence.online&&!active&&<p role="status" className="text-xs text-white/70">{queueError}</p>}
       {active&&<FlashDriverActiveSheet ride={active} passenger={passenger} snap={snap}
         pin={pin} onPinChange={setPin} busy={busyRide} dropoffSent={dropoffSent}
         manualCloseOpen={manualCloseOpen} onToggleManualClose={()=>setManualCloseOpen(v=>!v)}
@@ -380,10 +382,6 @@ export function DriverFlashPlanner({
         onDropoff={()=>void requestDropoff()}
         onManualClose={()=>void requestManualClose()}
         onSnapChange={onSnapChange}/>}
-      {canListen&&active?.status==="IN_PROGRESS"&&
-        <p className="rounded-xl border border-[#FFBB00]/25 p-2 text-xs text-white/65">
-          Você continua recebendo oportunidades Na Rota enquanto houver vagas confirmadas pelo servidor.
-        </p>}
       {!presence.online&&snap!=="peek"&&
         <p className="text-xs text-white/65">Para receber chamados, ative o GPS e sua disponibilidade.</p>}
     </section>
