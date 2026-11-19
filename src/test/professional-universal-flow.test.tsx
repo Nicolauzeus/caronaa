@@ -70,12 +70,12 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     expect(screen.getByText(/Próxima: Dados do veículo/)).toBeInTheDocument();
     expect(screen.queryByLabelText(/senha/i)).toBeNull();
   });
-  it("blocks navigation until mandatory WhatsApp is provided",async()=>{
+  it("allows proceeding without WhatsApp when the professional municipality is chosen",async()=>{
     render(<Page/>);
     await screen.findByRole("heading",{name:"Contato e município"});
+    fireEvent.click(screen.getByRole("button",{name:"Escolher Fortaleza"}));
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
-    expect(await screen.findByText("Informe WhatsApp com DDD.")).toBeInTheDocument();
-    expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
+    expect(await screen.findByRole("heading",{name:"Dados do veículo"})).toBeInTheDocument();
     expect(api.rpc).not.toHaveBeenCalledWith("complete_professional_driver_registration",expect.anything());
   });
   it("reuses stored vehicle and moves from the review to the cockpit only after server authorization",async()=>{
@@ -93,7 +93,7 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     fireEvent.click(screen.getByRole("button",{name:/Concluir e ver corridas/i}));
     await waitFor(()=>expect(api.navigate).toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true}));
     expect(api.rpc).toHaveBeenCalledWith("complete_professional_driver_registration",expect.objectContaining({
-      p_whatsapp:"85999999999",p_municipality:"Fortaleza",
+      p_whatsapp:"+5585999999999",p_municipality:"Fortaleza",
       p_vehicle_type:"MOTO",p_vehicle_plate:"ABC1D23",p_registration_number:"MTX100",
     }));
     expect(api.rpc).not.toHaveBeenCalledWith("set_professional_presence",expect.anything());
