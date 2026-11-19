@@ -231,7 +231,7 @@ export function QuickRideOperationalMap({
     ?{lat:liveDriverFix.lat,lng:liveDriverFix.lng}:
     serverFixFresh&&context?.driver
       ?{lat:context.driver.lat,lng:context.driver.lng}:null;
-  const visibleDriver=role==="DRIVER"?(driverPoint??context?.driver??null):context?.driver??null;
+  const visibleDriver=driverPoint??context?.driver??null;
   const passengerTracking=role==="PASSENGER"&&passengerFollow&&
     ["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(statusNow);
   const driverPositionDelayed=role==="PASSENGER"&&
@@ -289,7 +289,7 @@ export function QuickRideOperationalMap({
 
 
   useEffect(()=>{
-    if(role!=="DRIVER"||!driverPoint||!driverPhase)return;
+    if(!driverPoint||!["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(statusNow))return;
     const previous=previousDriverPosition.current;
     if(previous?.rideId===rideId){
       // Ignore sub-8m GPS jitter; stationary vehicles should not spin.
@@ -299,7 +299,7 @@ export function QuickRideOperationalMap({
       }
     }
     previousDriverPosition.current={rideId,point:driverPoint};
-  },[rideId,role,driverPhase,driverPoint?.lat,driverPoint?.lng]);
+  },[rideId,statusNow,driverPoint?.lat,driverPoint?.lng]);
 
   useEffect(()=>{
     if(!rideId||!["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(statusNow)){
@@ -467,7 +467,7 @@ export function QuickRideOperationalMap({
       followZoom={17} navigationMode={Boolean(driverPhase)}
       navigationPath={activeRoute?.routePath??[]}
       navigationVehicle={isMoto?"MOTO":"CAR"}
-      followHeading={driverPhase?liveHeading:null}
+      followHeading={driverPhase?liveHeading:directionHeading}
       followAccuracyM={role==="DRIVER"&&localFixFresh&&liveDriverFix?liveDriverFix.accuracyM:context?.driver?.accuracyM}
       ariaLabel={role==="PASSENGER"
         ?"Mapa com acompanhamento da localização do motorista durante a corrida"
