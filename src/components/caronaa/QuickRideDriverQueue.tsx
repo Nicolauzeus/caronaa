@@ -369,7 +369,12 @@ export function QuickRideDriverQueue({
               className="professional-cockpit__primary-action w-full">Validar código e iniciar viagem</button>
           </>}
           {active.status==="IN_PROGRESS"&&<>
-            {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado. Aguarde atendimento da plataforma.</p>:
+            {dropoffResponse==="CONTESTED"?<p role="status" className="text-sm text-red-200">Desembarque contestado pelo passageiro. Cobrança suspensa; aguarde a decisão da plataforma.</p>:
+             dropoffResponse==="NOT_YET"?<div className="space-y-2">
+               <p role="status" className="text-sm text-white/90">O passageiro informou que ainda está na corrida. Continue até o desembarque.</p>
+               <button type="button" disabled={busy} onClick={()=>void action(active.id,"COMPLETED")}
+                 className="professional-cockpit__primary-action w-full">Solicitar desembarque novamente</button>
+             </div>:
              dropoffDeadline?<p role="status" className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm text-white/90">
                {remainingDropoffSeconds>0?`Aguardando confirmação do passageiro (${String(Math.floor(remainingDropoffSeconds/60)).padStart(2,"0")}:${String(remainingDropoffSeconds%60).padStart(2,"0")})`:
                  "Prazo encerrado. Aguardando conclusão confirmada pelo servidor."}
@@ -399,12 +404,14 @@ export function QuickRideDriverQueue({
           </>}
         </article>}
         {!active&&pendingReview&&<div role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-          <p className="font-bold text-[#FFBB00]">{dropoffDeadline&&remainingDropoffSeconds>0
-            ?"Aguardando confirmação do passageiro":"Encerramento pendente"}</p>
+          <p className="font-bold text-[#FFBB00]">{dropoffResponse==="CONTESTED"?"Desembarque contestado":dropoffDeadline&&remainingDropoffSeconds>0
+            ?"Aguardando confirmação do passageiro":"Sem resposta ao desembarque"}</p>
           <p className="mt-1 text-white/75">
-            {dropoffDeadline&&remainingDropoffSeconds>0
-              ?`O passageiro tem mais ${Math.ceil(remainingDropoffSeconds/60)} min para responder. A solicitação permanece disponível quando ele abrir o app.`
-              :"Aguardando confirmação do passageiro ou análise após o prazo. Não há cobrança nem comissão até a conclusão confirmada."}
+            {dropoffResponse==="CONTESTED"?
+              "O passageiro discordou do encerramento. A plataforma avaliará o caso; sem Pix ou comissão enquanto estiver em análise.":
+              dropoffDeadline&&remainingDropoffSeconds>0
+              ? "O passageiro tem mais "+Math.ceil(remainingDropoffSeconds/60)+" min para responder. A solicitação permanece disponível quando ele abrir o app."
+              :"O prazo terminou sem resposta, o que não é contestação. Aguardando confirmação tardia ou análise; sem cobrança automática."}
             {" "}Você pode continuar recebendo novos chamados.
           </p>
         </div>}
