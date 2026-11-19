@@ -16,6 +16,7 @@ import {
 import { AppShell } from "@/components/caronaa/AppShell";
 import { ProfessionalAccountDashboard } from "@/components/caronaa/ProfessionalAccountDashboard";
 import { PassengerAccountDashboard } from "@/components/caronaa/PassengerAccountDashboard";
+import { AccountWhatsAppEditor } from "@/components/caronaa/AccountWhatsAppEditor";
 import {
   NotificationControls,
   NotificationPreferences,
@@ -176,7 +177,7 @@ function Perfil() {
 
         const verificationRows = await getMyUserVerifications();
         // Existing professional data defines the UI variant; it never grants access.
-        const [mototaxiRow, professionalAccess, onboarding, roleRow] = await Promise.all([
+        const [mototaxiRow, professionalAccess, onboarding, roleRow, whatsappContact] = await Promise.all([
           (supabase as any).from("professional_mototaxi_profiles")
             .select("registration_number,whatsapp_e164")
             .eq("user_id", user.id).maybeSingle(),
@@ -184,6 +185,7 @@ function Perfil() {
           (supabase as any).from("user_onboarding_progress")
             .select("usage_role").eq("user_id",user.id).maybeSingle(),
           (supabase as any).from("profiles").select("active_role").eq("id",user.id).maybeSingle(),
+          Promise.resolve((supabase as any).rpc("get_my_caronaa_whatsapp")).catch(()=>({data:null,error:true})),
         ]);
         if (cancelled) return;
         const access = !professionalAccess.error ? professionalAccess.data : null;
@@ -196,7 +198,9 @@ function Perfil() {
         setProfessionalAuthorized(access?.authorized === true);
         setActiveProfileRole(roleRow?.data?.active_role==="MOTORISTA"||roleRow?.data?.active_role==="PASSAGEIRO"?roleRow.data.active_role:null);
         setMotoRegistration(String(mototaxiRow.data?.registration_number ?? ""));
-        setMotoWhatsapp(String(mototaxiRow.data?.whatsapp_e164 ?? ""));
+        setMotoWhatsapp(String(!whatsappContact?.error && whatsappContact?.data
+          ? (whatsappContact.data.whatsapp ?? "")
+          : (mototaxiRow.data?.whatsapp_e164 ?? "")));
 
         const profileData = data as ProfileData;
 
@@ -646,6 +650,9 @@ function Perfil() {
               <option value="MASCULINO">Masculino</option>
             </select>
           </label>
+          <div className="sm:col-span-2">
+            <AccountWhatsAppEditor onChanged={setMotoWhatsapp}/>
+          </div>
           <Field label="E-mail" value={email} readOnly/>
         </div>}
         securityContent={<div className="space-y-3">
@@ -708,15 +715,9 @@ function Perfil() {
                 </select>
               </label>
 
-              {isMotoProfile && (
-                <div className="md:col-span-2 rounded-xl border border-white/15 bg-white/5 p-3">
-                  <p className="text-xs font-bold text-white/65">WHATSAPP PROFISSIONAL</p>
-                  <p className="mt-1 text-sm text-white">{motoWhatsapp || "Não informado"}</p>
-                  <Link to="/cadastro-motorista" className="mt-1 inline-flex min-h-11 items-center text-xs font-bold text-[#FFBB00] underline">
-                    Consultar cadastro de mototaxista
-                  </Link>
-                </div>
-              )}
+              <div className="md:col-span-2">
+                <AccountWhatsAppEditor onChanged={setMotoWhatsapp}/>
+              </div>
               <div className="md:col-span-2">
                 <Field label="E-mail" value={email} readOnly />
 
