@@ -11,7 +11,7 @@ type FakeOscillator = {
 };
 
 let oscillators: FakeOscillator[];
-const unlock = { release: () => undefined };
+const unlock: { release: () => void } = { release: () => undefined };
 
 function mockAudioContext(initialState: "running" | "suspended") {
   return class {
