@@ -11,7 +11,7 @@ vi.mock("./QuickRidePixCard", () => ({
   QuickRidePixCard: ({rideId}: {rideId:string}) => <div>Pix autorizado para {rideId}</div>,
 }));
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.resetAllMocks(); api.rpc.mockResolvedValue({data:[],error:null}); });
 afterEach(cleanup);
 
 describe("Corridas Rápidas no histórico", () => {
