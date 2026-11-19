@@ -392,7 +392,7 @@ export function ShellJourneyPlanner({
       onClick={()=>{if(routeBusy)return;routeCache.current.delete(selectedKey.current);setRouteAttempt(value=>value+1);}}
       className="min-h-12 w-full border-[#FFBB00]/40 text-[#FFBB00]">Recalcular rota</Button>
   </div>;
-  const fixedFlash=serviceType==="FLASH"&&snap!=="peek";
+  const fixedFlash=serviceType==="FLASH"&&(snap!=="peek"||flashRideActive);
   const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
     <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
     {originControl}
@@ -400,7 +400,7 @@ export function ShellJourneyPlanner({
     {(serviceType!=="FLASH"||!valid(destinationPoint))&&<ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>}
   </div>;
   return <div className={fixedFlash?"flex h-full min-h-0 flex-col font-sans":snap==="peek"?"space-y-1":"space-y-4 pb-4"}>
-    {snap==="peek"&&<>
+    {snap==="peek"&&!flashRideActive&&<>
       <h2 className="px-1 font-[Sora] text-lg font-black text-white">Para onde vamos?</h2>
       <div className="flex min-w-0 gap-1">
         <button type="button" aria-label="Para onde vamos?" onClick={()=>{setFocusDestination(true);onSnapChange?.("half");}}
@@ -496,9 +496,9 @@ export function ShellJourneyPlanner({
         The previous conditional placements unmounted QuickRideHomePanel on
         each sheet transition, causing state resets, flicker and RPC bursts. */}
     {serviceType==="FLASH"&&<div className={
-      fixedFlash&&(flashRideActive||mode==="EXCLUSIVE"&&flashStep==="confirm")
-        ?flashRideActive?"min-h-0 flex-1 overflow-y-auto overscroll-contain"
-          :"min-h-0 max-h-[55dvh] shrink-0 overflow-y-auto overscroll-contain"
+      flashRideActive?"min-h-0 flex-1 overflow-hidden":
+      fixedFlash&&mode==="EXCLUSIVE"&&flashStep==="confirm"
+        ?"min-h-0 max-h-[55dvh] shrink-0 overflow-y-auto overscroll-contain"
         :"hidden"
     }>{flashOperationalPanel}</div>}
   </div>;
