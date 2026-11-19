@@ -25,7 +25,7 @@ const rideStatus: Record<string, string> = {
   ACCEPTED: "Aceita",
   ARRIVED: "Chegada confirmada",
   IN_PROGRESS: "Em andamento",
-  PENDING_REVIEW: "Encerramento em análise",
+  PENDING_REVIEW: "Aguardando confirmação / análise",
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   EXPIRED: "Expirada",
@@ -110,8 +110,10 @@ function ProfessionalTripsPage() {
       </p>}
       {ride.status === "PENDING_REVIEW" && <p role="status"
         className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm text-white/80">
-        Corrida encerrada operacionalmente. A conclusão e a comissão estão suspensas
-        até a decisão administrativa. Você pode receber novos chamados, se estiver habilitado.
+        O motorista solicitou o desembarque. O passageiro poderá confirmar ao retornar ao
+        aplicativo; caso não responda dentro do prazo, a plataforma poderá analisar.
+        Até a conclusão confirmada não há cobrança Pix nem comissão. Você pode
+        continuar recebendo novos chamados, se estiver habilitado.
       </p>}
       {ride.status === "COMPLETED" && <div className="space-y-2 border-t border-white/15 pt-3">
         <button type="button" aria-expanded={expandedSettlement===ride.id}
