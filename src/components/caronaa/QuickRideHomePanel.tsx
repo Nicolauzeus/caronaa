@@ -453,11 +453,11 @@ export function QuickRideHomePanel({
       {!liveRide&&(shellMode
         ?(actionContainer?createPortal(requestControls,actionContainer):requestControls)
         :!currentQuote?requestControls:null)}
-      {!hasOrigin&&!waitingForOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
+      {!liveRide&&!hasOrigin&&!waitingForOrigin&&<p role="status" className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-xs">
         {gpsOriginIsImprecise?"GPS impreciso. Defina o ponto de embarque no mapa ou pelo endereço.":"Defina seu ponto de embarque para consultar os preços."}
       </p>}
-      {hasOrigin&&coverageLoading&&<p role="status" className="text-xs text-gray-300">Verificando cobertura a partir do embarque…</p>}
-      {hasOrigin&&!coverageLoading&&coverageResolvedKey===coveragePointKey&&!covered&&<div className="min-w-0 break-words rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
+      {!liveRide&&hasOrigin&&coverageLoading&&<p role="status" className="text-xs text-gray-300">Verificando cobertura a partir do embarque…</p>}
+      {!liveRide&&hasOrigin&&!coverageLoading&&coverageResolvedKey===coveragePointKey&&!covered&&<div className="min-w-0 break-words rounded-xl border border-white/20 bg-white/5 p-3 text-xs">
         <p className="font-semibold">{coverage?.municipality??"Região não identificada"}</p>
         <p className="mt-1 text-gray-300">{shellMode?"Corrida não disponível neste local. Escolha uma origem ou modalidade atendida.":inactiveText}</p>
         {coverage?.municipality&&<button type="button" disabled={busy||interestSent} onClick={()=>void registerInterest()}
@@ -510,7 +510,7 @@ export function QuickRideHomePanel({
         </div>}
       </>}
       <QuickRidePostTripFlow role="PASSENGER" activeRideId={liveRide?.id??pendingReviewRide?.id??null} completedRide={completedRide??null}/>
-      {error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
+      {!liveRide&&error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
       {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">{retryLabel}</Button>}
     </section>
   );
