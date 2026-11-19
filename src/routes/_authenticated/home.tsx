@@ -617,7 +617,7 @@ function Home(){
               onCoveragesChange={onQuickCoverages} onOperationalRideChange={onPassengerRide} onRidePhaseChange={onPassengerPhase}
               onDropoffPendingChange={onUrgentDropoff} onFareChange={setFlashFare}
               onFollowMap={onPassengerFollowMap}
-              onOpenOperational={()=>setSheetSnap("full")} shellMode shellSnap={sheetSnap}/>}
+              onOpenOperational={()=>setSheetSnap("half")} shellMode shellSnap={sheetSnap}/>}
             onAdjustOrigin={openPickupDialog} onRouteChange={handleShellRouteChange}
             onOnRouteMatchSelected={setSelectedOnRouteMatch} onDestinationChange={handleDestinationChange}
             onScheduled={()=>setTripsRefreshKey(value=>value+1)}/>}
