@@ -6,7 +6,7 @@ export type FlashVehicle="CAR"|"MOTO";
 export type FlashDriverOrder={
   id:string;mode:"ON_ROUTE"|"EXCLUSIVE";seats:number;distanceKm:number;
   driverEarnings:number;pickupLabel:string;dropoffLabel:string;
-  expiresAt:string;
+  expiresAt:string;passengerName?:string;passengerPhoto?:string|null;
 };
 export type FlashDriverRide={
   id:string;status:"ACCEPTED"|"ARRIVED"|"IN_PROGRESS";
@@ -102,7 +102,9 @@ function parseOrder(raw:unknown):FlashDriverOrder|null{
     !Number.isFinite(driverEarnings)||driverEarnings<0||
     !pickupLabel||!dropoffLabel||!Number.isFinite(Date.parse(expiresAt)))return null;
   return {id,mode:mode as FlashDriverOrder["mode"],seats,distanceKm,
-    driverEarnings,pickupLabel,dropoffLabel,expiresAt};
+    driverEarnings,pickupLabel,dropoffLabel,expiresAt,
+    passengerName:string(x.passenger_name)||undefined,
+    passengerPhoto:string(x.passenger_avatar)||null};
 }
 export async function getFlashDriverRadarOrders():Promise<FlashDriverOrder[]>{
   try{
