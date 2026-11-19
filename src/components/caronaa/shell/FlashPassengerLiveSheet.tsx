@@ -100,7 +100,7 @@ export function FlashPassengerLiveSheet({
             </button>}
           <p className="text-xs text-white/75">Diga estes quatro números ao motorista.</p>
         </div>}
-        {!compact&&<div className="space-y-2 rounded-xl border border-white/15 bg-white/[0.045] p-3">
+        {!compact&&<div data-trip-route-details="true" className="space-y-2 rounded-xl border border-white/15 bg-white/[0.045] p-3">
           <div className="flex min-w-0 items-start gap-2">
             <MapPin size={16} className="mt-0.5 shrink-0 text-emerald-300" aria-hidden="true"/>
             <div className="min-w-0"><p className="text-[11px] text-white/60">Embarque</p>
@@ -134,7 +134,7 @@ export function FlashPassengerLiveSheet({
           <Navigation2 size={17} className="mr-1 inline" aria-hidden="true"/> Acompanhar no mapa
           </button>}
         {searching&&<button type="button" onClick={onRefresh}
-          className="min-h-11 w-full text-xs font-semibold text-white/65">
+          className="manual-status-refresh min-h-11 w-full text-xs font-semibold text-white/65">
           Atualizar situação
           </button>}
       </div>
