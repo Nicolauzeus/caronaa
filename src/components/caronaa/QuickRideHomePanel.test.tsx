@@ -251,7 +251,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
         vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
       :{data:[],error:null});
     render(<QuickRideHomePanel {...basic}/>);
-    expect(await screen.findByText("Encerramento em análise")).toBeInTheDocument();
+    expect(await screen.findByText("Confirmação de desembarque pendente")).toBeInTheDocument();
     expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
     expect(screen.queryByRole("dialog",{name:"Corrida concluída"})).not.toBeInTheDocument();
     expect(api.rpc.mock.calls.some(([name])=>name==="get_completed_quick_ride_pix")).toBe(false);
