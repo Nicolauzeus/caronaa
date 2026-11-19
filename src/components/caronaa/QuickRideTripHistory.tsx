@@ -37,7 +37,7 @@ function statusLabel(status: string): string {
     case "ACCEPTED": return "Motorista a caminho";
     case "ARRIVED": return "Motorista chegou";
     case "IN_PROGRESS": return "Em andamento";
-    case "PENDING_REVIEW": return "Encerramento em análise";
+    case "PENDING_REVIEW": return "Desembarque pendente";
     case "COMPLETED": return "Concluída";
     case "CANCELLED": return "Cancelada";
     case "EXPIRED": return "Expirada";
@@ -132,8 +132,8 @@ export function QuickRideTripHistory() {
             )}
             {ride.status === "PENDING_REVIEW" && <p role="status"
               className="mt-3 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm">
-              O encerramento está aguardando análise. Nenhum Pix ou comissão será gerado
-              antes da decisão registrada pela plataforma. Você pode continuar usando o CARONAA.
+              Aguardando confirmação do desembarque. Se estiver tudo certo, confirme na página inicial. O Pix aparecerá após essa confirmação. Se houver contestação, o atendimento poderá analisar o caso.
+              <Link to="/home" className="mt-2 block font-semibold underline">Abrir confirmação de desembarque</Link>
             </p>}
             {ride.status === "COMPLETED" && (
               <div className="mt-3">
