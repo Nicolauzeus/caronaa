@@ -361,12 +361,15 @@ export function QuickRideExperience({
           ?"GPS não atualizado. Ative a localização precisa e mantenha o aplicativo aberto."
           :/caronaa_quick_queue_events|column .*ride_id.*does not exist/i.test(message)
             ?"O serviço de aceitação precisa ser atualizado. Tente novamente após a correção do sistema."
-            :"Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
+            :status==="COMPLETED"
+              ?"Não foi possível solicitar o desembarque. Confira a conexão e atualize a corrida."
+              :"Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
         await refreshQueue();
         return;
       }
       if (!accept && data===false){setError("Código inválido ou solicitação não permitida.");return;}
       if(status==="IN_PROGRESS")setDriverPin("");
+      if(status==="COMPLETED")toast.info("Desembarque solicitado. A confirmação pertence ao passageiro; você pode receber novos chamados.");
       if (accept && data === false) {
         // SQL accepts are atomic. The losing client must not keep a stale
         // actionable card while another driver already owns the ride.
