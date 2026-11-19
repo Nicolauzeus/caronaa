@@ -6,12 +6,41 @@ BEGIN;
 ALTER TABLE public.quick_ride_dropoff_reviews
   ADD COLUMN IF NOT EXISTS participant_only boolean NOT NULL DEFAULT false;
 ALTER TABLE public.quick_ride_dropoff_reviews
+  ADD COLUMN IF NOT EXISTS request_count integer NOT NULL DEFAULT 1
+    CHECK (request_count>=1);
+ALTER TABLE public.quick_ride_dropoff_reviews
+  DROP CONSTRAINT IF EXISTS quick_ride_dropoff_reviews_passenger_response_check;
+ALTER TABLE public.quick_ride_dropoff_reviews
+  ADD CONSTRAINT quick_ride_dropoff_reviews_passenger_response_check
+    CHECK (passenger_response IN ('CONFIRMED','CONTESTED','NOT_YET'));
+ALTER TABLE public.quick_ride_completion_events
+  DROP CONSTRAINT IF EXISTS quick_ride_completion_events_event_type_check;
+ALTER TABLE public.quick_ride_completion_events
+  ADD CONSTRAINT quick_ride_completion_events_event_type_check
+    CHECK (event_type IN ('DROPOFF_REQUESTED','PASSENGER_CONFIRMED',
+      'PASSENGER_CONTESTED','PASSENGER_NOT_YET','TIMEOUT_PENDING_REVIEW',
+      'MANUAL_REVIEW_REQUESTED','ADMIN_COMPLETE','ADMIN_CANCEL'));
+ALTER TABLE public.quick_ride_dropoff_reviews
   DROP CONSTRAINT IF EXISTS quick_dropoff_request_method_check;
 ALTER TABLE public.quick_ride_dropoff_reviews
   ADD CONSTRAINT quick_dropoff_request_method_check CHECK (
     completion_request_method IS NULL OR
     completion_request_method IN ('GPS_VERIFIED','MANUAL_REVIEW','PARTICIPANT_REQUEST')
   );
+
+-- Repeated denials/retries are separately recorded, preserving a trace.
+CREATE TABLE IF NOT EXISTS public.quick_ride_dropoff_interactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ride_id uuid NOT NULL REFERENCES public.professional_quick_rides(id) ON DELETE RESTRICT,
+  actor_id uuid NOT NULL REFERENCES auth.users(id),
+  action text NOT NULL CHECK (action IN ('REQUESTED','RE_REQUESTED','NOT_YET','CONFIRMED','CONTESTED')),
+  occurred_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS quick_ride_dropoff_interactions_ride_idx
+  ON public.quick_ride_dropoff_interactions(ride_id,occurred_at);
+ALTER TABLE public.quick_ride_dropoff_interactions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.quick_ride_dropoff_interactions FROM PUBLIC,anon,authenticated;
+GRANT ALL ON public.quick_ride_dropoff_interactions TO service_role;
 
 -- Reuse the existing PENDING_REVIEW database status as a non-operational,
 -- bilateral waiting state, marked participant_only=true. The driver is freed
@@ -46,6 +75,23 @@ BEGIN
     RAISE EXCEPTION 'DROPOFF_NOT_ALLOWED' USING ERRCODE='42501';
   END IF;
   IF FOUND THEN
+    IF d.participant_only AND d.passenger_response='NOT_YET'
+       AND d.admin_decision IS NULL THEN
+      -- Avoid the driver spamming the passenger with repeated requests.
+      IF d.resolved_at>now()-interval '20 seconds' THEN RETURN false; END IF;
+      UPDATE public.quick_ride_dropoff_reviews SET
+        passenger_response=NULL,resolved_at=NULL,
+        requested_at=now(),deadline_at=now()+interval '120 seconds',
+        completion_request_method='PARTICIPANT_REQUEST',
+        finish_distance_m=NULL,finish_accuracy_m=NULL,
+        request_count=request_count+1,updated_at=now() WHERE ride_id=p_id;
+      UPDATE public.professional_quick_rides
+        SET status='PENDING_REVIEW',completed_at=NULL,updated_at=now()
+        WHERE id=p_id AND status='IN_PROGRESS';
+      INSERT INTO public.quick_ride_dropoff_interactions(ride_id,actor_id,action)
+      VALUES(p_id,auth.uid(),'RE_REQUESTED');
+      RETURN true;
+    END IF;
     RETURN d.passenger_response IS NULL AND d.admin_decision IS NULL;
   END IF;
 
@@ -79,6 +125,8 @@ BEGIN
   VALUES(p_id,auth.uid(),'DROPOFF_REQUESTED','IN_PROGRESS','PENDING_REVIEW',
     'Bilateral dropoff requested; awaiting passenger')
   ON CONFLICT (ride_id,event_type) DO NOTHING;
+  INSERT INTO public.quick_ride_dropoff_interactions(ride_id,actor_id,action)
+  VALUES(p_id,auth.uid(),'REQUESTED');
   RETURN true;
 END;
 $request$;
@@ -105,7 +153,7 @@ DECLARE
   v_new_status text;
 BEGIN
   IF auth.uid() IS NULL OR p_response IS NULL OR
-     p_response NOT IN ('CONFIRMED','CONTESTED') THEN
+     p_response NOT IN ('CONFIRMED','CONTESTED','NOT_YET') THEN
     RAISE EXCEPTION 'Invalid dropoff response' USING ERRCODE='42501';
   END IF;
   SELECT * INTO q FROM public.professional_quick_rides WHERE id=p_id FOR UPDATE;
@@ -124,8 +172,8 @@ BEGIN
      d.passenger_response IS NOT NULL THEN
     RAISE EXCEPTION 'Dropoff response is closed' USING ERRCODE='42501';
   END IF;
-  v_new_status:=CASE WHEN p_response='CONFIRMED'
-    THEN 'COMPLETED' ELSE 'PENDING_REVIEW' END;
+  v_new_status:=CASE WHEN p_response='CONFIRMED' THEN 'COMPLETED'
+    WHEN p_response='NOT_YET' THEN 'IN_PROGRESS' ELSE 'PENDING_REVIEW' END;
   UPDATE public.quick_ride_dropoff_reviews
     SET passenger_response=p_response,resolved_at=now(),updated_at=now()
     WHERE ride_id=p_id;
@@ -138,9 +186,12 @@ BEGIN
     (ride_id,actor_id,event_type,previous_status,new_status,detail)
   VALUES(p_id,auth.uid(),
     CASE WHEN p_response='CONFIRMED' THEN 'PASSENGER_CONFIRMED'
+         WHEN p_response='NOT_YET' THEN 'PASSENGER_NOT_YET'
          ELSE 'PASSENGER_CONTESTED' END,
     q.status,v_new_status,'Passenger responded to bilateral dropoff')
   ON CONFLICT (ride_id,event_type) DO NOTHING;
+  INSERT INTO public.quick_ride_dropoff_interactions(ride_id,actor_id,action)
+  VALUES(p_id,auth.uid(),p_response);
   RETURN true;
 END;
 $respond$;
