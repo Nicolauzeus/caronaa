@@ -90,6 +90,18 @@ BEGIN
 END;
 $view$;
 
+-- A driver can immediately remove their own viewer receipt on dismiss.
+CREATE OR REPLACE FUNCTION public.quick_ride_stop_view(p_ride_id uuid)
+RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path TO ''
+AS $stop$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  DELETE FROM public.quick_ride_driver_views
+  WHERE ride_id=p_ride_id AND driver_id=auth.uid();
+  RETURN true;
+END;
+$stop$;
+
 -- Only the request's passenger can learn who actually viewed their own ride.
 -- A view expires after 12s without a visible-card heartbeat. The accepted
 -- driver is returned separately, even if their last view has expired.
@@ -150,8 +162,8 @@ END;
 $audience$;
 
 REVOKE ALL ON FUNCTION public.quick_ride_view_request(uuid),
-  public.quick_ride_request_audience(uuid) FROM PUBLIC,anon;
+  public.quick_ride_stop_view(uuid),public.quick_ride_request_audience(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.quick_ride_view_request(uuid),
-  public.quick_ride_request_audience(uuid) TO authenticated;
+  public.quick_ride_stop_view(uuid),public.quick_ride_request_audience(uuid) TO authenticated;
 NOTIFY pgrst,'reload schema';
 COMMIT;
