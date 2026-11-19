@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { CheckCircle2, Star, Wallet, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QuickRidePixCard } from "./QuickRidePixCard";
+import { playNotificationSound } from "@/lib/notification-sound";
 import { QuickRideDriverSettlement } from "./QuickRideDriverSettlement";
 import { QuickRideRatingModal } from "./QuickRideRatingModal";
 import {
@@ -54,6 +55,7 @@ export function QuickRidePostTripFlow({
 
     if (shouldPresentQuickPostTrip(completedRide, lastActiveId, alreadySeen)) {
       setOpenRideId(rideId);
+      void playNotificationSound("ride_completed");
     }
   }, [role, rideId, activeRideId, completedRide?.requested_at]);
 
