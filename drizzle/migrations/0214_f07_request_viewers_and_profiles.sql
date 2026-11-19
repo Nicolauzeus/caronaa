@@ -147,7 +147,9 @@ BEGIN
       'id',p.id,
       'name',coalesce(nullif(btrim(p.full_name),''),'Motorista CARONAA'),
       'photo',CASE WHEN p.avatar_url LIKE 'https://%' THEN p.avatar_url ELSE NULL END,
-      'registration',nullif(btrim(mp.registration_number),'')
+      'registration',nullif(btrim(mp.registration_number),''),
+      'vehicle',nullif(btrim(concat_ws(' ',p.vehicle_brand,p.vehicle_description)),''),
+      'plate',nullif(btrim(p.vehicle_plate),'')
     ) INTO v_accepted
     FROM public.profiles p
     LEFT JOIN public.professional_mototaxi_profiles mp ON mp.user_id=p.id
