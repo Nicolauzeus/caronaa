@@ -10,7 +10,7 @@ import {
   readNotificationSettings,
   type NotificationSettings,
 } from "./notification-settings";
-import { playNotificationSound, unlockNotificationAudio } from "./notification-sound";
+import { playNotificationSound, stopLoop, unlockNotificationAudio } from "./notification-sound";
 import {
   createRideAlert,
   readRideAlerts,
@@ -229,6 +229,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
     setSettings(next);
     if (soundEnabled) void unlockNotificationAudio();
+    else stopLoop();
   };
   const markAllRead = () => {
     if (!userId) return;
