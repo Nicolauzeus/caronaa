@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTraceId, type SafeF07RadarEvent } from "@/lib/professional-radar-diagnostics";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
+import { tryAcquireProfessionalRadarLease } from "@/lib/professional-radar-lease";
 import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
@@ -162,6 +163,13 @@ export function ProfessionalAvailabilityPage() {
     // Revalidate the driver's actual city with the existing Google-backed
     // pipeline every 25s. Frequent active-ride updates never replace it.
     if(sending.current||livePublishing.current||!needsFullMunicipalityCheck)return;
+    const releaseLease=tryAcquireProfessionalRadarLease(userId);
+    if(!releaseLease){
+      // Another tab is publishing. Retry soon without paying for duplicate
+      // Google lookups or tripping the 12s SQL rate gate.
+      lastAttempt.current=Date.now()-25000+13000;
+      return;
+    }
     sending.current=true;
     lastAttempt.current=now;
     const ref=f07RadarTraceId();
@@ -219,7 +227,7 @@ export function ProfessionalAvailabilityPage() {
           :code==="GPS_INVALID_FIX"
             ?"O sinal GPS foi rejeitado por precisão inválida. Ative a localização precisa."
           :"Não foi possível publicar o GPS. Consulte o diagnóstico técnico F07.");
-    }finally{sending.current=false;}
+    }finally{sending.current=false;releaseLease();}
   },[publishVerified,clearTest,userId,discardWatch,record]);
   positionHandler.current=position=>{void onFix(position);};
 
