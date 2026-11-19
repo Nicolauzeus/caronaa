@@ -258,7 +258,7 @@ export function GoogleMapSurface({
     points.filter(isValid).forEach((point, index) => {
       const markerKey = point.id || point.title || point.kind || point.label || String(index);
       visibleKeys.add(markerKey);
-      const isTrackedDriver = point.id === "assigned-professional" && navigationMode;
+      const isTrackedDriver = point.id === "assigned-professional" && (navigationMode || navigationPathRef.current.length >= 2);
       const badgeIcon = isTrackedDriver ? null : point.kind && point.kind !== "person" ? tripMarkerIcon(point.kind) : null;
       const snapped = isTrackedDriver && navigationPathRef.current.length >= 2
         ? snapVisualDriverPosition(point, navigationPathRef.current, followAccuracyM) : null;
