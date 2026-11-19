@@ -168,16 +168,17 @@ export function QuickRideHomePanel({
     setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);
   }
   useEffect(()=>{if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))setBoardingCode("");},[liveRide?.id,liveRide?.status]);
+  const reviewRideId=liveRide?.status==="IN_PROGRESS"?liveRide.id:pendingReviewRide?.id;
   useEffect(()=>{
-    if(!liveRide||liveRide.status!=="IN_PROGRESS"){setDropoff(null);return;}
+    if(!reviewRideId){setDropoff(null);return;}
     let cancelled=false;
     const load=async()=>{
-      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:liveRide.id});
+      const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:reviewRideId});
       if(!cancelled&&!error)setDropoff(Array.isArray(data)?data[0]??null:null);
     };
     void load();const timer=window.setInterval(load,5000);
     return()=>{cancelled=true;window.clearInterval(timer);};
-  },[liveRide?.id,liveRide?.status]);
+  },[reviewRideId]);
   useEffect(()=>{
     if(!dropoff?.deadline_at)return;
     const timer=window.setInterval(()=>setNowMs(Date.now()),1000);
@@ -482,8 +483,8 @@ export function QuickRideHomePanel({
         onExpand={()=>onOpenOperational?.()}/>
       ):<>
         {pendingReviewRide&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
-          <p className="font-bold text-[#FFBB00]">Confirmação de desembarque pendente</p>
-          <p className="text-white/85">Há uma confirmação de desembarque pendente ou em revisão. Se ainda não respondeu, ela será apresentada ao abrir o aplicativo. O Pix só fica disponível após a conclusão confirmada.</p>
+          <p className="font-bold text-[#FFBB00]">{dropoff?.passenger_response==="CONTESTED"?"Contestação em análise":dropoff?.deadline_at&&Date.parse(dropoff.deadline_at)<=nowMs?"Prazo encerrado sem resposta":"Aguardando sua confirmação de desembarque"}</p>
+          <p className="text-white/85">{dropoff?.passenger_response==="CONTESTED"?"O problema informado será analisado pela plataforma. Não há cobrança enquanto estiver em análise.":dropoff?.deadline_at&&Date.parse(dropoff.deadline_at)<=nowMs?"O prazo inicial terminou, mas você ainda pode responder quando abrir a solicitação. O silêncio não confirma o desembarque.":"O motorista solicitou o desembarque. Responda à confirmação apresentada no app; ainda estar na corrida não é contestação."}</p>
         </section>}
         {shownExpiredRide&&<section role="status"
           className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
