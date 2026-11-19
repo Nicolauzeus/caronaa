@@ -95,6 +95,7 @@ describe("account-scoped ride notifications", () => {
     expect(alert).not.toBeNull();
     expect(alert?.notificationId).toBe("notification");
     expect(alert?.rideId).toBe("ride");
+    if(eventName==="RIDE_COMPLETED")expect(alert?.sound).toBe("ride_completed");
     expect(
       createRideAlert(
         "ride_notifications",
