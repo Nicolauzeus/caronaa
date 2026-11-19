@@ -559,6 +559,12 @@ function Home(){
         </div>}
       {!activeRoleState.loading&&!activeRoleState.roleLoadFailed&&<InteractiveBottomSheet value={urgentDropoff?"full":sheetSnap} onChange={snap=>setSheetSnap(urgentDropoff?"full":snap)}
         rideActive={Boolean(driverFlashRide||passengerPhase&&["SEARCHING","ACCEPTED","ARRIVED","IN_PROGRESS"].includes(passengerPhase))}
+        rideStageLabel={driverFlashRide?
+          driverFlashRide.status==="ARRIVED"?"Embarque · informar código":
+          driverFlashRide.status==="IN_PROGRESS"?"Em viagem · detalhes":"Motorista · a caminho":
+          passengerPhase==="ARRIVED"?"Motorista chegou · ver código":
+          passengerPhase==="IN_PROGRESS"?"Em viagem · acompanhar":
+          passengerPhase==="ACCEPTED"?"Motorista a caminho":"Procurando motorista"}
         title={driverRole?"Painel do motorista CARONAA":"Planejar viagem CARONAA"}
         headerAction={!tripsPanelOpen&&driverRole&&!driverHomeOpen&&!driverFlashRide?<button type="button" onClick={showTrips} className="min-h-11 rounded-lg px-2 text-xs font-semibold text-[#FFBB00]">Agendados</button>:undefined}>
         {tripsPanelOpen&&driverRole&&<DriverScheduledTripsPanel onClose={closeTrips} refreshKey={driverTripsRefreshKey}/>}
