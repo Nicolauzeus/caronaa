@@ -217,5 +217,44 @@ COMMENT ON FUNCTION public.quick_ride_ack_posttrip(uuid) IS
 COMMENT ON COLUMN public.quick_ride_dropoff_reviews.passenger_dispute_reason_code
   IS 'Set only for a passenger-initiated dispute; NOT_YET is not a dispute.';
 
+
+-- Participant-scoped case status for both histories (one batch read).
+-- Never leaks a dispute belonging to another passenger or driver.
+CREATE OR REPLACE FUNCTION public.quick_ride_my_case_updates()
+RETURNS TABLE(
+  ride_id uuid,
+  case_kind text,
+  passenger_dispute_reason_code text,
+  passenger_dispute_note text,
+  admin_decision text,
+  admin_reason text,
+  admin_resolved_at timestamptz,
+  deadline_at timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO ''
+AS $cases_for_user$
+  SELECT q.id,
+    CASE
+      WHEN d.admin_decision IS NOT NULL THEN 'RESOLVED'::text
+      WHEN d.passenger_response='CONTESTED' THEN 'DISPUTED'::text
+      WHEN d.passenger_response IS NULL AND d.deadline_at<=now()
+        THEN 'NO_RESPONSE'::text
+      ELSE 'AWAITING_PASSENGER'::text
+    END,
+    d.passenger_dispute_reason_code, d.passenger_dispute_note,
+    d.admin_decision, d.admin_reason, d.admin_resolved_at, d.deadline_at
+  FROM public.quick_ride_dropoff_reviews d
+  JOIN public.professional_quick_rides q ON q.id=d.ride_id
+  WHERE auth.uid() IS NOT NULL
+    AND (q.passenger_id=auth.uid() OR q.driver_id=auth.uid())
+    AND (q.status='PENDING_REVIEW' OR d.admin_decision IS NOT NULL)
+  ORDER BY d.requested_at DESC
+  LIMIT 30;
+$cases_for_user$;
+REVOKE ALL ON FUNCTION public.quick_ride_my_case_updates()
+  FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.quick_ride_my_case_updates()
+  TO authenticated;
+
 NOTIFY pgrst,'reload schema';
 COMMIT;
