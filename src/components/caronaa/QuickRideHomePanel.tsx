@@ -5,7 +5,7 @@ import { playNotificationSound, unlockNotificationAudio } from "@/lib/notificati
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
-import { Bike, CarFront, ChevronDown, Clock3, Loader2, MapPin, Navigation2, ShieldCheck, Users } from "lucide-react";
+import { Bike, CarFront, Clock3, Loader2, MapPin, Navigation2, ShieldCheck, Users } from "lucide-react";
 import type { FormLocationDetails } from "@/lib/location/types";
 import { validPoint } from "@/lib/location/use-user-location";
 import { useAuth } from "@/lib/auth-context";
@@ -83,8 +83,7 @@ export function QuickRideHomePanel({
   const [interestSent,setInterestSent]=useState(false);
   const [rides,setRides]=useState<ExistingQuickRide[]>([]);
   const [boardingCode,setBoardingCode]=useState("");
-  const [dropoff,setDropoff]=useState<{rideId:string;deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
-  const [dropoffHelpOpen,setDropoffHelpOpen]=useState(false);
+  const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
   const [expiredHidden,setExpiredHidden]=useState<string|null>(null);
   const [rideRefreshError,setRideRefreshError]=useState(false);
@@ -172,36 +171,29 @@ export function QuickRideHomePanel({
   // Normal dropoff is bilateral and can be answered after reconnecting.
   // The status PENDING_REVIEW is non-operational, not an automatic admin case.
   const dropoffRide=liveRide?.status==="IN_PROGRESS"?liveRide:pendingReviewRide;
-  // Bind each prompt to the ride whose server state was queried. An old GPS
-  // polling result must not expose confirmation controls for another ride.
-  const currentDropoff=dropoff?.rideId===dropoffRide?.id?dropoff:null;
-  const dropoffIsPending=Boolean(dropoffRide&&currentDropoff?.deadline_at&&!currentDropoff.passenger_response);
-  useEffect(()=>{setDropoffHelpOpen(false);},[dropoffRide?.id,currentDropoff?.passenger_response]);
   useEffect(()=>{
     if(!dropoffRide){setDropoff(null);return;}
     let cancelled=false;
     setDropoff(null);
     const load=async()=>{
       const {data,error}=await (supabase as any).rpc("quick_ride_dropoff_state",{p_id:dropoffRide.id});
-      if(!cancelled&&!error){const state=Array.isArray(data)?data[0]??null:null;
-        setDropoff(state?{...state,rideId:dropoffRide.id}:null);
-      }
+      if(!cancelled&&!error)setDropoff(Array.isArray(data)?data[0]??null:null);
     };
     void load();
     const timer=window.setInterval(()=>{if(!document.hidden)void load();},6000);
     return()=>{cancelled=true;window.clearInterval(timer);};
   },[dropoffRide?.id]);
   useEffect(()=>{
-    if(!currentDropoff?.deadline_at||!liveRide)return;
+    if(!dropoff?.deadline_at||!liveRide)return;
     const timer=window.setInterval(()=>setNowMs(Date.now()),1000);
     return()=>window.clearInterval(timer);
-  },[currentDropoff?.deadline_at,liveRide?.id]);
+  },[dropoff?.deadline_at,liveRide?.id]);
   // Legacy rides may still be IN_PROGRESS during an old 120s review window.
   // Expiry releases the old operational status; it never implies payment.
   useEffect(()=>{
-    if(!liveRide||liveRide.status!=="IN_PROGRESS"||!currentDropoff?.deadline_at||
-       currentDropoff.passenger_response||currentDropoff.resolved_at||
-       Date.parse(currentDropoff.deadline_at)>nowMs)return;
+    if(!liveRide||liveRide.status!=="IN_PROGRESS"||!dropoff?.deadline_at||
+       dropoff.passenger_response||dropoff.resolved_at||
+       Date.parse(dropoff.deadline_at)>nowMs)return;
     let alive=true;
     void (supabase as any).rpc("quick_ride_finalize_after_timeout",{p_id:liveRide.id})
       .then(async({data,error:rpcError}:{data:any;error:any})=>{
@@ -210,7 +202,9 @@ export function QuickRideHomePanel({
         if(alive&&mounted.current)setRides(Array.isArray(ridesData)?ridesData:[]);
       });
     return()=>{alive=false;};
-  },[liveRide?.id,liveRide?.status,currentDropoff?.deadline_at,currentDropoff?.passenger_response,currentDropoff?.resolved_at,nowMs]);
+  },[liveRide?.id,liveRide?.status,dropoff?.deadline_at,dropoff?.passenger_response,dropoff?.resolved_at,nowMs]);
+  const dropoffIsPending=liveRide?.status==="IN_PROGRESS"&&Boolean(dropoff?.deadline_at)&&
+    !dropoff?.resolved_at&&!dropoff?.passenger_response;
   useEffect(()=>{onDropoffPendingChange?.(Boolean(dropoffIsPending));},[dropoffIsPending,onDropoffPendingChange]);
   async function issueBoardingCode(){
     if(!liveRide||busy)return;
@@ -240,9 +234,7 @@ export function QuickRideHomePanel({
         :"Não foi possível registrar a resposta.");
       const {data}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current)setRides(Array.isArray(data)?data:[]);
-      setDropoff(previous=>previous?.rideId===dropoffRide.id?
-        {...previous,passenger_response:response,resolved_at:new Date().toISOString()}:previous);
-      setDropoffHelpOpen(false);
+      setDropoff(previous=>previous?{...previous,passenger_response:response,resolved_at:new Date().toISOString()}:previous);
       if(response==="CONTESTED")toast.info("Contestação registrada. O suporte poderá analisar o caso.");
       if(response==="NOT_YET")toast.info("O motorista foi informado. A viagem continua até o desembarque.");
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível responder.");}
@@ -441,38 +433,22 @@ export function QuickRideHomePanel({
   return (
     <section aria-label="Corrida Rápida no mapa" className={shellMode&&liveRide?"flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden text-white":shellMode?"min-w-0 w-full space-y-3 text-white":
       "min-w-0 w-full max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-[#FFBB00]/25 bg-white/[0.04] p-3 text-white"}>
-      {dropoffIsPending&&
+      {dropoffRide&&dropoff?.deadline_at&&!dropoff.passenger_response&&
         <section role="alert" aria-label="Confirmação de desembarque pendente"
           className="space-y-3 rounded-2xl border-2 border-[#FFBB00] bg-[#FFBB00]/15 p-4">
           <h2 className="font-[Sora] text-lg font-black text-[#FFBB00]">Você já desembarcou?</h2>
-          <p className="text-sm leading-relaxed text-white/85">
-            O motorista solicitou o encerramento. Confirme apenas se a viagem realmente terminou.
+          <p className="text-sm leading-relaxed text-white/90">
+            Confirme somente quando estiver em segurança no destino. O Pix do valor aceito aparecerá após sua confirmação; nenhum pagamento é feito neste botão.
           </p>
-          <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")}
-            className="min-h-14 w-full rounded-xl bg-[#FFBB00] px-3 text-base font-extrabold text-[#121212] disabled:opacity-50">
-            {busy?"Registrando...":"Confirmar desembarque"}
-          </button>
-          <div className="border-t border-white/15 pt-2">
-            <button type="button" disabled={busy} aria-expanded={dropoffHelpOpen}
-              aria-controls="caronaa-dropoff-help" onClick={()=>setDropoffHelpOpen(value=>!value)}
-              className="flex min-h-11 w-full items-center justify-center gap-2 text-sm font-semibold text-white/85 disabled:opacity-50">
-              Não desembarquei ou preciso de ajuda
-              <ChevronDown size={16} aria-hidden="true" className={dropoffHelpOpen?"rotate-180 transition-transform":"transition-transform"}/>
-            </button>
-            {dropoffHelpOpen&&<div id="caronaa-dropoff-help" className="space-y-2 pt-2">
-              <button type="button" disabled={busy} onClick={()=>void respondDropoff("NOT_YET")}
-                className="min-h-12 w-full rounded-xl border border-white/35 bg-[#121212] px-3 text-sm font-semibold text-white disabled:opacity-50">
-                Ainda estou na viagem
-              </button>
-              <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")}
-                className="min-h-12 w-full rounded-xl border border-rose-300/45 bg-[#121212] px-3 text-sm font-semibold text-rose-200 disabled:opacity-50">
-                Relatar problema no desembarque
-              </button>
-            </div>}
+          <div className="grid gap-2">
+            <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONFIRMED")}
+              className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-extrabold text-[#121212] disabled:opacity-50">Sim, já desembarquei</button>
+            <button type="button" disabled={busy} onClick={()=>void respondDropoff("NOT_YET")}
+              className="min-h-12 w-full rounded-xl border border-white/40 bg-[#121212] px-3 font-semibold text-white disabled:opacity-50">Ainda estou na viagem</button>
+            <button type="button" disabled={busy} onClick={()=>void respondDropoff("CONTESTED")}
+              className="min-h-11 w-full text-xs font-semibold text-white/75 underline disabled:opacity-50">Contestar desembarque</button>
           </div>
-          <p className="text-xs text-white/65">
-            Esta confirmação encerra a corrida, não efetua pagamento. O Pix aparecerá em seguida.
-          </p>
+          <p className="text-xs text-white/65">Se estiver sem internet, você poderá confirmar quando voltar ao CARONAA.</p>
         </section>}
       {!shellMode&&<div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0 flex-1"><p className="text-sm font-bold text-[#FFBB00]">Viajar agora</p><p className="text-xs text-gray-300">Mesmo mapa, embarque no local escolhido, sem troca de página.</p></div>
@@ -518,11 +494,11 @@ export function QuickRideHomePanel({
         onFollowMap={onFollowMap?()=>onFollowMap(liveRide.id):undefined}
         onExpand={()=>onOpenOperational?.()}/>
       ):<>
-        {pendingReviewRide&&!dropoffIsPending&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
+        {pendingReviewRide&&<section role="status" className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-bold text-[#FFBB00]">{dropoff?.passenger_response==="CONTESTED"?"Encerramento em análise":"Aguardando sua confirmação"}</p>
           <p className="text-white/85">{dropoff?.passenger_response==="CONTESTED"
             ?"Você contestou o desembarque. O caso pode ser analisado com registro de evidências; nenhum Pix será liberado enquanto não houver conclusão."
-            :"Buscando confirmação da viagem. Se estava sem internet, aguarde a atualização para confirmar. Você pode pedir outra corrida normalmente."}</p>
+            :"Você poderá confirmar o desembarque mesmo depois de reconectar. A cobrança Pix será liberada apenas após confirmar. Uma nova corrida não depende desta resposta."}</p>
         </section>}
         {shownExpiredRide&&<section role="status"
           className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
