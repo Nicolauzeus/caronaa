@@ -37,7 +37,7 @@ const labels: Record<string, string> = {
   ACCEPTED: "Motorista confirmado",
   ARRIVED: "Motorista chegou",
   IN_PROGRESS: "Em viagem",
-  PENDING_REVIEW: "Encerramento em análise",
+  PENDING_REVIEW: "Desembarque pendente",
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   EXPIRED: "Busca encerrada",
@@ -361,12 +361,15 @@ export function QuickRideExperience({
           ?"GPS não atualizado. Ative a localização precisa e mantenha o aplicativo aberto."
           :/caronaa_quick_queue_events|column .*ride_id.*does not exist/i.test(message)
             ?"O serviço de aceitação precisa ser atualizado. Tente novamente após a correção do sistema."
-            :"Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
+            :status==="COMPLETED"
+              ?"Não foi possível solicitar o desembarque. Confira a conexão e atualize a corrida."
+              :"Não foi possível aceitar ou atualizar a corrida. Verifique sua disponibilidade e GPS.");
         await refreshQueue();
         return;
       }
       if (!accept && data===false){setError("Código inválido ou solicitação não permitida.");return;}
       if(status==="IN_PROGRESS")setDriverPin("");
+      if(status==="COMPLETED")toast.info("Desembarque solicitado. A confirmação pertence ao passageiro; você pode receber novos chamados.");
       if (accept && data === false) {
         // SQL accepts are atomic. The losing client must not keep a stale
         // actionable card while another driver already owns the ride.
@@ -702,12 +705,12 @@ export function QuickRideExperience({
             )}
             {r.role==="DRIVER" && r.status==="IN_PROGRESS" && (
               <button disabled={busy} onClick={()=>void action(r.id,"COMPLETED")}
-                className="rounded-lg border px-3 py-2 text-sm">Concluir Corrida</button>
+                className="rounded-lg border px-3 py-2 text-sm">Solicitar desembarque</button>
             )}
             {r.status==="PENDING_REVIEW" && <p role="status"
               className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
-              Desembarque sob análise. Sem Pix ou comissão até decisão registrada.
-              Você pode usar o CARONAA normalmente.
+              Aguardando confirmação do desembarque pelo passageiro. O Pix e a comissão serão liberados apenas após a conclusão. Você pode utilizar o CARONAA normalmente.
+              {r.role==="PASSENGER"&&<Link to="/home" className="mt-2 block font-bold underline">Confirmar desembarque</Link>}
             </p>}
             {r.status==="COMPLETED" && <>
               {r.role==="DRIVER"?<QuickRideDriverSettlement rideId={r.id}/>:<QuickRidePixCard rideId={r.id}/>}

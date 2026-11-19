@@ -104,10 +104,12 @@ describe("F07 lifecycle: transport end != payment or customer confirmation",()=>
     expect(passenger).toContain('r.status==="PENDING_REVIEW"');
     expect(passenger).toContain("Encerramento em análise");
     expect(driver).toContain('r.status==="PENDING_REVIEW"');
-    expect(driver).toContain("quick_ride_request_manual_review");
-    expect(flashDriver).toContain("quick_ride_request_manual_review");
+    expect(driver).not.toContain("quick_ride_request_manual_review");
+    expect(flashDriver).not.toContain("quick_ride_request_manual_review");
+    expect(driver).toContain("quick_ride_complete_ride");
+    expect(flashDriver).toContain("quick_ride_complete_ride");
     expect(passengerHistory).toContain('case "PENDING_REVIEW"');
-    expect(driverHistory).toContain('PENDING_REVIEW: "Encerramento em análise"');
+    expect(driverHistory).toContain('PENDING_REVIEW: "Desembarque pendente"');
     expect(admin).toContain('item.status==="PENDING_REVIEW"');
   });
 

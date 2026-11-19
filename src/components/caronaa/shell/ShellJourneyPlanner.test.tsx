@@ -106,7 +106,7 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
     expect(screen.queryByRole("radio",{name:/Carona Na Rota/})).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio",{name:/Flash Moto/}));
-    expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"Confira sua viagem"})).toBeInTheDocument();
     expect(screen.getByText(/R\\$\\s*10,00/)).toBeInTheDocument();
     expect(api.route).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button",{name:/Voltar às opções/}));
@@ -155,7 +155,7 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(moto).toHaveTextContent("8.4 km");
     expect(car).toHaveTextContent("8.4 km");
     fireEvent.click(moto);
-    expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"Confira sua viagem"})).toBeInTheDocument();
     expect(screen.getByText(/R\$\s*10,00/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:/Voltar às opções/}));
     expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();

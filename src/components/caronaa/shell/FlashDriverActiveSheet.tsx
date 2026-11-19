@@ -6,9 +6,7 @@ type Props={
   ride:FlashDriverRide;passenger:FlashPassengerDetails|null;snap:SheetSnap;whatsappUrl?:string|null;
   pin:string;onPinChange:(pin:string)=>void;
   busy:boolean;dropoffSent:boolean;
-  manualCloseOpen:boolean;onToggleManualClose:()=>void;
-  manualCloseReason:string;onManualCloseReason:(value:string)=>void;
-  onArrived:()=>void;onStart:()=>void;onDropoff:()=>void;onManualClose:()=>void;
+  onArrived:()=>void;onStart:()=>void;onDropoff:()=>void;
   onSnapChange:(value:SheetSnap)=>void;
 };
 const status={
@@ -19,8 +17,7 @@ const status={
 
 export function FlashDriverActiveSheet({
   ride,passenger,snap,whatsappUrl,pin,onPinChange,busy,dropoffSent,
-  manualCloseOpen,onToggleManualClose,manualCloseReason,onManualCloseReason,
-  onArrived,onStart,onDropoff,onManualClose,onSnapChange,
+  onArrived,onStart,onDropoff,onSnapChange,
 }:Props){
   const compact=snap==="peek";
   const name=passenger?.name||"Passageiro confirmado";
@@ -105,27 +102,8 @@ export function FlashDriverActiveSheet({
           </div>}
           {ride.status==="IN_PROGRESS"&&<p className="rounded-xl bg-white/[0.06] p-2.5 text-xs text-white/75">
             {dropoffSent?"Desembarque solicitado. Aguarde a confirmação do passageiro.":
-              "Siga a rota no mapa. Solicite o desembarque ao chegar ao destino."}
+              "Ao chegar, toque em Cheguei ao destino. O passageiro poderá confirmar depois, mesmo offline."}
           </p>}
-          {ride.status==="IN_PROGRESS"&&!dropoffSent&&
-            <div className="space-y-2">
-              <button type="button" aria-expanded={manualCloseOpen} onClick={onToggleManualClose}
-                className="min-h-11 w-full rounded-xl border border-white/20 px-3 text-sm font-semibold text-white/80">
-                Sem GPS no destino? Solicitar revisão
-              </button>
-              {manualCloseOpen&&<div className="space-y-2 rounded-xl border border-[#FFBB00]/30 p-3">
-                <p className="text-xs text-white/70">Descreva o problema para análise. Não haverá cobrança automática durante a revisão.</p>
-                <label htmlFor="flash-close-reason" className="block text-sm font-semibold">Motivo da revisão</label>
-                <textarea id="flash-close-reason" rows={2} maxLength={1000}
-                  value={manualCloseReason} onChange={e=>onManualCloseReason(e.target.value)}
-                  className="w-full resize-none rounded-xl border border-white/25 bg-[#121212] p-3 text-base text-white"/>
-                <button type="button" disabled={busy||manualCloseReason.trim().length<20}
-                  onClick={onManualClose}
-                  className="min-h-12 w-full rounded-xl border border-[#FFBB00]/50 font-bold text-[#FFBB00] disabled:opacity-50">
-                  Enviar para análise
-                </button>
-              </div>}
-            </div>}
           {snap==="full"&&whatsappUrl&&<a href={whatsappUrl}
             target="_blank" rel="noopener noreferrer"
             className="flex min-h-12 items-center justify-center rounded-xl border border-[#FFBB00]/40 px-3 text-sm font-bold text-[#FFBB00]">

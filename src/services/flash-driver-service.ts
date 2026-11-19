@@ -143,6 +143,7 @@ export async function respondFlashOrder(rideId:string,accept:boolean):Promise<"A
 export type FlashRideSnapshot={
   active:FlashDriverRide|null;
   completed:{id:string;requested_at:string|null}|null;
+  pending:{id:string;requested_at:string|null}|null;
 };
 /** One guarded participant RPC returns both the active trip and a recently
  * completed one. This keeps post-trip Pix/rating available when the active
@@ -153,6 +154,7 @@ export async function getMyFlashRideSnapshot():Promise<FlashRideSnapshot>{
     if(error||!Array.isArray(data))throw new FlashDriverError("UNAVAILABLE");
     const mine=data.map(record).filter((x):x is Record<string,unknown>=>x!==null&&x.role==="DRIVER");
     const row=mine.find(r=>["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(string(r.status).toUpperCase()));
+    const pending=mine.find(r=>string(r.status).toUpperCase()==="PENDING_REVIEW"&&!!string(r.id));
     const completed=mine.filter(r=>string(r.status).toUpperCase()==="COMPLETED"&&!!string(r.id))
       .sort((a,b)=>Date.parse(string(b.requested_at)||"1970-01-01")-
         Date.parse(string(a.requested_at)||"1970-01-01"))[0];
@@ -171,6 +173,7 @@ export async function getMyFlashRideSnapshot():Promise<FlashRideSnapshot>{
     return {
       active,completed:completed?
         {id:string(completed.id),requested_at:string(completed.requested_at)||null}:null,
+      pending:pending?{id:string(pending.id),requested_at:string(pending.requested_at)||null}:null,
     };
   }catch(error){
     if(error instanceof FlashDriverError)throw error;

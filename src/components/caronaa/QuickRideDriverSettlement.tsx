@@ -56,22 +56,25 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
   setBusy(false);
  }
  async function acknowledge(){
-  if(busy||!declared)return;
-  if(!window.confirm("Você conferiu o extrato bancário e realmente recebeu o Pix desta corrida?"))return;
+  if(busy||received||!pix?.available)return;
+  if(!window.confirm("Você conferiu seu extrato bancário e recebeu o valor total desta corrida? Esta declaração não substitui a conciliação do banco."))return;
   setBusy(true);setError("");
-  const {data,error:problem}=await (supabase as any).rpc("quick_ride_acknowledge_manual_pix",{p_id:rideId});
-  if(problem||data!==true)setError(problem?.message||"Confirmação indisponível.");
-  else setReceived(true);
-  setBusy(false);
+  try{
+   const {data,error:problem}=await (supabase as any).rpc("quick_ride_acknowledge_manual_pix",{p_id:rideId});
+   if(problem||data!==true)throw new Error(problem?.message||"Confirmação indisponível.");
+   setReceived(true);
+  }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível registrar o recebimento.");}
+  finally{setBusy(false);}
  }
  async function copy(value:string){
   try{await navigator.clipboard.writeText(value);}catch{setError("Não foi possível copiar. Selecione o código manualmente.");}
  }
  return <section aria-label="Liquidação Pix do motorista"
   className="space-y-2 rounded-xl border border-[#FFBB00]/40 bg-[#121212] p-3 text-white">
-  <p className="font-bold text-[#FFBB00]">Corrida concluída — cobrança ao passageiro</p>
-  {pix&&<><p className="text-xs text-white/70">Valor total devido pelo passageiro</p>
+  <p className="font-bold text-[#FFBB00]">Mostre este QR Pix ao passageiro</p>
+  {pix&&<><p className="text-xs text-white/70">Valor contratado da corrida</p>
    <p className="text-2xl font-black text-[#FFBB00]">{formatBrl(pix.amountCents/100)}</p></>}
+  {pix?.pilotOnly&&<p role="alert" className="rounded-lg border border-amber-300/50 p-2 text-xs text-amber-200">Homologação: não realize transferências reais.</p>}
   {!pix?.available?<div className="space-y-2 rounded-xl border border-[#FFBB00]/40 p-3">
    <label htmlFor="quick-driver-pix" className="block text-sm font-semibold">Cadastre sua chave Pix para gerar a cobrança</label>
    <input id="quick-driver-pix" className="min-h-12 w-full rounded-lg border border-white/20 bg-white/10 p-3 text-base text-white"
@@ -79,16 +82,16 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
    <button type="button" disabled={busy||key.trim().length<6} onClick={()=>void saveKey()}
     className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">Salvar Pix e gerar QR automaticamente</button>
   </div>:<div className="space-y-2">
-   <p className="text-xs">Compartilhe esta cobrança com o passageiro. Confirme nome e chave antes da transferência.</p>
-   {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48"/>}
+   <p className="text-xs">O passageiro pode escanear com o aplicativo do banco ou copiar o Pix no próprio celular.</p>
+   {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-52 w-52 rounded-xl bg-white p-2 sm:h-56 sm:w-56"/>}
    <p className="break-all text-xs">Chave Pix: {pix.key}</p>
    <button type="button" className="min-h-11 w-full rounded-xl border border-[#FFBB00] text-[#FFBB00]" onClick={()=>void copy(pix.key!)}>Copiar chave Pix</button>
    {payload&&<button type="button" className="min-h-11 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]" onClick={()=>void copy(payload)}>Copiar Pix copia e cola</button>}
   </div>}
   <p role="status" className="text-sm text-white/80">
-   {received?"Recebimento declarado por você. Isso não é conciliação bancária.":declared?"Passageiro declarou pagamento. Confira o extrato antes de confirmar.":"Aguardando o passageiro declarar o pagamento."}
+   {received?"Você declarou recebimento após verificar o banco. Isso não é conciliação automática.":declared?"Passageiro declarou pagamento. Confira o extrato antes de confirmar.":"Aguardando pagamento. Você pode confirmar após conferir seu banco, mesmo sem declaração do passageiro."}
   </p>
-  {declared&&!received&&<button type="button" disabled={busy} onClick={()=>void acknowledge()}
+  {pix?.available&&!received&&<button type="button" disabled={busy} onClick={()=>void acknowledge()}
    className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">Recebi o Pix no banco</button>}
   <p className="text-xs text-white/60">A confirmação das partes não substitui um comprovante bancário e não quita automaticamente a comissão da plataforma.</p>
   {error&&<p role="alert" className="text-sm text-red-300">{error}</p>}

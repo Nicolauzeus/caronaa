@@ -459,8 +459,8 @@ export function ShellJourneyPlanner({
             <ArrowLeft size={18}/> Voltar às opções
           </button>}
         {!flashRideActive&&flashStep==="confirm"&&mode==="EXCLUSIVE"&&
-          <section aria-label="Confirmar viagem" className="space-y-3">
-            <h2 className="font-[Sora] text-lg font-extrabold text-white">Confirmar viagem</h2>
+          <section aria-label="Resumo da viagem antes de solicitar" className="space-y-3">
+            <h2 className="font-[Sora] text-lg font-extrabold text-white">Confira sua viagem</h2>
             <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/5 p-3">
               <img src={exclusiveVehicle==="MOTO"?"/flash-moto.png":"/flash-carro.png"} alt="" aria-hidden="true"
                 className="h-16 w-24 object-contain"/>
@@ -476,6 +476,11 @@ export function ShellJourneyPlanner({
             <div className="space-y-2 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm">
               <p className="text-xs uppercase tracking-wide text-white/60">Embarque</p>
               <p className="break-words font-semibold">{originLabel||"Localização de embarque"}</p>
+              {!valid(originPoint)&&<p role="alert" className="text-xs text-amber-200">Defina um ponto de embarque válido antes de solicitar.</p>}
+              {onAdjustOrigin&&<button type="button" onClick={onAdjustOrigin}
+                className="min-h-11 text-xs font-semibold text-[#FFBB00] underline underline-offset-2">
+                Ajustar embarque no mapa
+              </button>}
               <div className="border-t border-white/10 pt-2">
                 <p className="text-xs uppercase tracking-wide text-white/60">Destino</p>
                 <p className="break-words font-semibold">{destination}</p>
@@ -484,7 +489,7 @@ export function ShellJourneyPlanner({
                 <p className="text-xs text-white/65">
                   {flashFares[exclusiveVehicle]!.distanceKm.toFixed(1)} km · aproximadamente {Math.round(flashFares[exclusiveVehicle]!.durationMinutes)} min
                 </p>}
-              <p className="border-t border-white/10 pt-2 text-xs text-white/65">Pagamento direto ao motorista, conforme a operação da viagem. Revise o preço antes de confirmar.</p>
+              <p className="border-t border-white/10 pt-2 text-xs text-white/65">Ao tocar em Solicitar corrida, você confirma o veículo, o ponto de embarque, o destino e o preço apresentados acima. O pagamento será feito diretamente ao motorista.</p>
             </div>
           </section>}
         {!flashRideActive&&flashStep==="shared"&&flashOnRoute}

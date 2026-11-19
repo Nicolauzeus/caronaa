@@ -45,27 +45,35 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     })),{timeout:3500});
     expect(api.preview).toHaveBeenCalledTimes(2);
     rerender(<QuickRideHomePanel {...basic} shellMode vehicle="CAR" onFaresChange={changed}/>);
-    fireEvent.click(await screen.findByRole("button",{name:/Confirmar Flash Carro/}));
+    fireEvent.click(await screen.findByRole("button",{name:/Solicitar Flash Carro/}));
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({data:{quoteId:"CAR"}}));
     expect(api.preview).toHaveBeenCalledTimes(2);
   });
-  it("abre confirmação de embarque somente no CTA e não envia antes do consentimento",async()=>{
-    const confirm=vi.fn();
-    const {rerender}=render(<QuickRideHomePanel {...basic} pickupNeedsConfirmation onConfirmPickup={confirm}/>);
-    const request=await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500});
-    expect(request).toBeEnabled();expect(confirm).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button",{name:"Confirmar local"})).not.toBeInTheDocument();
-    fireEvent.click(request);
-    expect(confirm).toHaveBeenCalledOnce();expect(api.submit).not.toHaveBeenCalled();
-    // Closing the dialog without approval leaves the gate active.
-    rerender(<QuickRideHomePanel {...basic} pickupNeedsConfirmation onConfirmPickup={confirm}/>);
-    fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));
-    expect(confirm).toHaveBeenCalledTimes(2);expect(api.submit).not.toHaveBeenCalled();
-    // The parent only clears the gate after explicit confirmation of this point.
-    rerender(<QuickRideHomePanel {...basic} pickupNeedsConfirmation={false} onConfirmPickup={confirm}/>);
+  it("solicita a corrida F07 uma única vez: confirmação final inclui o ponto de embarque exibido",async()=>{
+    const edit=vi.fn();
+    const approve=vi.fn().mockReturnValue(true);
+    render(<QuickRideHomePanel {...basic} shellMode pickupNeedsConfirmation
+      onConfirmPickup={edit} onApprovePickupForRequest={approve}/>);
+    const button=await screen.findByRole("button",{name:/Solicitar Flash Moto/},{timeout:3500});
+    expect(button).toBeEnabled();
     expect(api.submit).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));
+    fireEvent.click(button);
     await waitFor(()=>expect(api.submit).toHaveBeenCalledOnce());
+    expect(approve).toHaveBeenCalledOnce();
+    expect(approve).toHaveBeenCalledWith(origin);
+    expect(edit).not.toHaveBeenCalled();
+    expect(api.submit).toHaveBeenCalledWith({data:{quoteId:fare.quoteId}});
+  });
+  it("não envia a solicitação se o pickup exibido não corresponder ao ponto aprovado",async()=>{
+    const edit=vi.fn();
+    const approve=vi.fn().mockReturnValue(false);
+    render(<QuickRideHomePanel {...basic} pickupNeedsConfirmation
+      onConfirmPickup={edit} onApprovePickupForRequest={approve}/>);
+    const button=await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3500});
+    fireEvent.click(button);
+    expect(approve).toHaveBeenCalledWith(origin);
+    expect(edit).toHaveBeenCalledOnce();
+    expect(api.submit).not.toHaveBeenCalled();
   });
   it("mostra GPS pendente no CTA sem consultar cobertura ou preço com coordenadas ausentes",()=>{
     const pending=vi.fn();
@@ -108,7 +116,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     render(<QuickRideHomePanel {...basic} shellMode={false}/>);
     expect(await screen.findByText("Não foi possível calcular o preço agora.",{},{timeout:3500})).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:"Tentar novamente"}));
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar corrida por/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar corrida por/})).toBeEnabled(),{timeout:3500});
     expect(api.preview).toHaveBeenCalledTimes(2);expect(api.submit).not.toHaveBeenCalled();
     expect(api.coverage).toHaveBeenCalledTimes(1);
   });
@@ -120,10 +128,10 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     const changed=vi.fn();
     const {rerender}=render(<QuickRideHomePanel {...basic} shellMode onFaresChange={changed}/>);
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Moto/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Moto/})).toBeEnabled(),{timeout:3500});
     rerender(<QuickRideHomePanel {...basic} shellMode vehicle="CAR" onFaresChange={changed}/>);
     fireEvent.click(await screen.findByRole("button",{name:"Tentar novamente"}));
-    await waitFor(()=>expect(screen.getByRole("button",{name:/Confirmar Flash Carro/})).toBeEnabled(),{timeout:3500});
+    await waitFor(()=>expect(screen.getByRole("button",{name:/Solicitar Flash Carro/})).toBeEnabled(),{timeout:3500});
     expect(api.preview.mock.calls.filter(([arg])=>arg.data.vehicleType==="MOTO")).toHaveLength(1);
     expect(api.preview.mock.calls.filter(([arg])=>arg.data.vehicleType==="CAR")).toHaveLength(2);
     expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({CAR:expect.any(Object),MOTO:expect.any(Object)}));
@@ -134,7 +142,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
       if(data.vehicleType==="CAR")throw new Error("unavailable");return {...fare,quoteId:"moto"};
     });
     render(<QuickRideHomePanel {...basic} shellMode/>);
-    expect(await screen.findByRole("button",{name:/Confirmar Flash Moto/},{timeout:3500})).toBeEnabled();
+    expect(await screen.findByRole("button",{name:/Solicitar Flash Moto/},{timeout:3500})).toBeEnabled();
     expect(api.submit).not.toHaveBeenCalled();
   });
   it("não consulta radar nem cotação sem saída válida",()=>{
@@ -166,14 +174,14 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     expect(screen.queryByRole("button",{name:/Calcular preço/})).not.toBeInTheDocument();
     expect(await screen.findByText(/R\$\s*7,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({data:{origin:{lat:origin.lat,lng:origin.lng},destination:{lat:destination.lat,lng:destination.lng},originLabel:basic.origin,destinationLabel:basic.destination,vehicleType:"MOTO"}});
-    fireEvent.click(screen.getByRole("button",{name:/Confirmar corrida por/}));
+    fireEvent.click(screen.getByRole("button",{name:/Solicitar corrida por/}));
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({data:{quoteId:fare.quoteId}}));
   });
   it("invalida cotação anterior quando o destino muda",async()=>{
     const {rerender}=render(<QuickRideHomePanel {...basic}/>);
-    await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3000});
+    await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3000});
     rerender(<QuickRideHomePanel {...basic} destination="Novo destino" destinationPoint={{rawText:"Novo destino",lat:-4.26,lng:-38.75}}/>);
-    expect(screen.queryByRole("button",{name:/Confirmar corrida por/})).not.toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:/Solicitar corrida por/})).not.toBeInTheDocument();
     await waitFor(()=>expect(api.preview).toHaveBeenCalledTimes(2),{timeout:3000});expect(api.submit).not.toHaveBeenCalled();
   });
   it("permite cotação de Carro com destino intermunicipal validado no servidor",async()=>{
@@ -199,7 +207,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
       :{data:[],error:null});
     render(<QuickRideHomePanel {...basic}/>);
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_my_requests"));
-    const request=await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500});
+    const request=await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3500});
     await waitFor(()=>expect(request).toBeEnabled(),{timeout:3500});
     expect(screen.queryByRole("button",{name:"Nova corrida"})).not.toBeInTheDocument();
     expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
@@ -215,11 +223,11 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     render(<QuickRideHomePanel {...basic}/>);
     expect(await screen.findByText("Busca encerrada")).toBeInTheDocument();
     expect(screen.queryByText(/Procurando um profissional autorizado/)).not.toBeInTheDocument();
-    expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
+    expect(await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3500})).toBeEnabled();
   });
   it("mostra SEARCHING somente após retorno de ID autorizado pelo servidor",async()=>{
     render(<QuickRideHomePanel {...basic} shellMode shellSnap="full"/>);
-    const button=await screen.findByRole("button",{name:/Confirmar Flash Moto/i},{timeout:3500});
+    const button=await screen.findByRole("button",{name:/Solicitar Flash Moto/i},{timeout:3500});
     expect(api.submit).not.toHaveBeenCalled();fireEvent.click(button);
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({data:{quoteId:fare.quoteId}}));
     expect(await screen.findByText("Procurando motorista")).toBeInTheDocument();
@@ -233,7 +241,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic}/>);
     expect(await screen.findByRole("alert",{name:"Confirmação de desembarque pendente"})).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button",{name:"Ainda não desembarquei / Contestar"}));
+    fireEvent.click(screen.getByRole("button",{name:"Contestar desembarque"}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{p_id:rideId,p_response:"CONTESTED"}));
   });
   it("entrega ao pai a viagem ativa para usar um único mapa na Home",async()=>{
@@ -251,10 +259,48 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
         vehicle_type:"MOTO",municipality:"Redenção"}],error:null}
       :{data:[],error:null});
     render(<QuickRideHomePanel {...basic}/>);
-    expect(await screen.findByText("Encerramento em análise")).toBeInTheDocument();
-    expect(await screen.findByRole("button",{name:/Confirmar corrida por/},{timeout:3500})).toBeEnabled();
+    expect(await screen.findByText("Aguardando sua confirmação")).toBeInTheDocument();
+    expect(await screen.findByRole("button",{name:/Solicitar corrida por/},{timeout:3500})).toBeEnabled();
     expect(screen.queryByRole("dialog",{name:"Corrida concluída"})).not.toBeInTheDocument();
     expect(api.rpc.mock.calls.some(([name])=>name==="get_completed_quick_ride_pix")).toBe(false);
+  });
+  it("passageiro que ainda está na viagem não abre contestação administrativa",async()=>{
+    const rideId="a04c83e6-9114-46eb-b402-3c2d29c92eb3";
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="quick_ride_my_requests")return {data:[{
+        id:rideId,role:"PASSENGER",status:"PENDING_REVIEW",vehicle_type:"CAR",
+        municipality:"Fortaleza"}],error:null};
+      if(name==="quick_ride_dropoff_state")return {data:[{
+        deadline_at:new Date(Date.now()-120000).toISOString(),
+        passenger_response:null,resolved_at:null}],error:null};
+      if(name==="quick_ride_respond_dropoff")return {data:true,error:null};
+      return {data:[],error:null};
+    });
+    render(<QuickRideHomePanel {...basic}/>);
+    fireEvent.click(await screen.findByRole("button",{name:"Ainda estou na viagem"}));
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{
+      p_id:rideId,p_response:"NOT_YET"}));
+    expect(api.rpc.mock.calls.some(([name])=>name==="admin_resolve_quick_ride_dispute")).toBe(false);
+  });
+  it("permite ao passageiro confirmar desembarque mesmo após o prazo antigo, sem chamar o admin",async()=>{
+    const rideId="fc782126-1834-4a0a-82ad-f146eb3b27e6";
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="quick_ride_my_requests")return {data:[{
+        id:rideId,role:"PASSENGER",status:"PENDING_REVIEW",
+        vehicle_type:"MOTO",municipality:"Redenção"}],error:null};
+      if(name==="quick_ride_dropoff_state")return {data:[{
+        deadline_at:new Date(Date.now()-180000).toISOString(),
+        passenger_response:null,resolved_at:null}],error:null};
+      if(name==="quick_ride_respond_dropoff")return {data:true,error:null};
+      return {data:[],error:null};
+    });
+    render(<QuickRideHomePanel {...basic}/>);
+    const confirm=await screen.findByRole("button",{name:"Sim, já desembarquei"});
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{
+      p_id:rideId,p_response:"CONFIRMED"}));
+    expect(api.rpc.mock.calls.some(([name])=>name==="admin_resolve_quick_ride_dispute")).toBe(false);
   });
   it("mantém dispensada a corrida concluída após remontar painel",async()=>{
     const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";window.localStorage.setItem("caronaa-completed-dismissed:"+completed,"1");
@@ -263,6 +309,6 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_my_requests"));
     await waitFor(()=>expect(api.preview).toHaveBeenCalled(),{timeout:3500});
     expect(screen.queryByText("QR Pix pronto: "+completed)).not.toBeInTheDocument();
-    expect(await screen.findByRole("button",{name:/Confirmar corrida por/})).toBeEnabled();
+    expect(await screen.findByRole("button",{name:/Solicitar corrida por/})).toBeEnabled();
   });
 });
