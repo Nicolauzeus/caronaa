@@ -14,6 +14,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
   const [error,setError]=useState("");
   const [success,setSuccess]=useState("");
   const [originalValue,setOriginalValue]=useState("");
+  const [originalConsent,setOriginalConsent]=useState(false);
 
   const load=async()=>{
     setLoading(true);setLoaded(false);setError("");setSuccess("");
@@ -25,6 +26,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       setValue(formatBrazilWhatsapp(original));
       setOriginalValue(formatBrazilWhatsapp(original));
       setConsent(row.contact_consent===true);
+      setOriginalConsent(row.contact_consent===true);
       setLoaded(true);
       onChanged?.(original);
     }catch{
@@ -36,7 +38,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
   const empty=!value.trim();
   const valid=!empty&&validBrazilWhatsapp(value);
   const save=async()=>{
-    if(saving||loading||!loaded||!valid||value===originalValue)return;
+    if(saving||loading||!loaded||!valid||(value===originalValue&&consent===originalConsent))return;
     setSaving(true);setError("");setSuccess("");
     try{
       const normalized=normalizeBrazilWhatsapp(value);
@@ -50,6 +52,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       setValue(formatBrazilWhatsapp(stored));
       setOriginalValue(formatBrazilWhatsapp(stored));
       setConsent(data.contact_consent===true);
+      setOriginalConsent(data.contact_consent===true);
       onChanged?.(stored);
       setSuccess("Contato atualizado. Você pode alterá-lo quando quiser.");
     }catch{
@@ -85,7 +88,7 @@ export function AccountWhatsAppEditor({onChanged}:Props){
       {!loaded&&<button type="button" onClick={()=>void load()} className="min-h-10 text-xs font-semibold text-[#FFBB00] underline">Tentar carregar novamente</button>}
     </div>}
     {success&&<p role="status" className="text-xs text-emerald-300">{success}</p>}
-    <button type="button" disabled={saving||loading||!loaded||!valid||value===originalValue}
+    <button type="button" disabled={saving||loading||!loaded||!valid||(value===originalValue&&consent===originalConsent)}
       onClick={()=>void save()}
       className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 text-sm font-extrabold text-[#121212] disabled:opacity-50">
       {saving?"Salvando contato...":"Salvar WhatsApp"}
