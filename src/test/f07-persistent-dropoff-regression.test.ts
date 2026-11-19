@@ -15,7 +15,8 @@ describe("F07 persistent passenger dropoff and bounded review", () => {
     expect(migration).toContain("now()+interval '10 minutes'");
     expect(migration).toContain("requested_at+interval '10 minutes'");
     expect(migration).not.toContain("now()+interval '120 seconds'");
-    expect(migration).toContain("d.passenger_response IS NULL AND d.resolved_at IS NULL");
+    expect(migration).toContain("d.passenger_response IS NULL");
+    expect(migration).toContain("Includes already timed-out requests");
     expect(migration).toContain("d.admin_decision IS NULL");
   });
 
