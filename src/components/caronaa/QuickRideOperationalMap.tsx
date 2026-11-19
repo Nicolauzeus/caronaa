@@ -317,7 +317,7 @@ export function QuickRideOperationalMap({
         statusNow==="IN_PROGRESS"&&route?[{points:route.routePath,color:"#FFBB00"}]:
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&approach?[{points:approach.routePath,color:"#2563eb"}]:[]}
       fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}:${Boolean(currentDriverRoute)}`}
-      smoothTracking showControls={immersive} gestureHandling={immersive?"greedy":"cooperative"}
+      smoothTracking showControls={!immersive} gestureHandling={immersive?"greedy":"cooperative"}
       followPoint={driverPhase||passengerTracking?driverPoint:null}
       followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:
         passengerTracking?`${rideId}:PASSENGER:${statusNow}:${navigationFocusRequest}`:undefined}
@@ -328,36 +328,45 @@ export function QuickRideOperationalMap({
   if(immersive) return <section aria-label="Mapa operacional da Corrida Rápida"
     className="relative h-full w-full overflow-hidden bg-[#121212]">
     <div className="absolute inset-0">{rideMap}</div>
-    <div className="pointer-events-none absolute left-3 right-3 top-20 z-10 max-w-sm space-y-1 rounded-2xl border border-[#FFBB00]/50 bg-[#121212]/90 p-3 text-sm text-white shadow-xl">
-      <p className="font-bold text-[#FFBB00]" aria-live="polite">{driverPhase==="PICKUP"
-        ?statusNow==="ARRIVED"?"No embarque · aguarde o código":"Navegando até o passageiro"
-        :driverPhase==="DROPOFF"?"Navegando até o destino":
-          statusNow==="IN_PROGRESS"?"Em viagem — destino":statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}</p>
-      {details&&<p>{details.name} · {details.vehicle||details.vehicleType}{details.plate?" · "+details.plate:""}</p>}
-      {role==="PASSENGER"&&<p role="status" aria-live="polite"
-        className={"text-xs "+(driverPoint?"text-emerald-200":"text-amber-200")}>
-        {driverPoint?"Motorista no mapa · localização recebida pelo GPS":
-          driverPositionDelayed||showingLastFix
-            ?"Sinal GPS atrasado · última posição conhecida":
-            "Aguardando a posição GPS do motorista. O mapa atualizará automaticamente."}
-      </p>}
-      {role==="PASSENGER"&&passengerRemaining&&<p className="text-xs text-white/85">
-        {passengerRemaining.distanceKm.toFixed(1)} km restantes · cerca de {Math.max(1,Math.round(passengerRemaining.durationMinutes))} min (estimativa)
-      </p>}
-      {driverPhase&&currentDriverRoute&&<p className="font-semibold">
-        {(remaining?.distanceKm??currentDriverRoute.distanceKm).toFixed(1)} km {remaining?"restantes (estimativa)":""} · cerca de {Math.max(1,Math.round(remaining?.durationMinutes??currentDriverRoute.durationMinutes))} min
-      </p>}
-      {driverPhase&&!currentDriverRoute&&!error&&<p className="text-xs text-white/75">Calculando rota rodoviária…</p>}
-      {driverPhase&&!driverPoint&&<p role="status" className="text-xs text-amber-200">Sem GPS recente. Confira a permissão de localização.</p>}
-      {!driverPhase&&showingLastFix&&<p role="status" className="text-xs text-amber-200">
-        GPS do motorista em atualização · última posição conhecida (não ao vivo).
-      </p>}
-      {!driverPhase&&approach&&statusNow!=="IN_PROGRESS"&&<p>{approach.distanceKm.toFixed(1)} km · {Math.max(1,Math.round(approach.durationMinutes))} min para embarque</p>}
-      {driverPhase&&mapsNavigationUrl&&<a href={mapsNavigationUrl} target="_blank" rel="noopener noreferrer"
-        className="pointer-events-auto inline-flex min-h-10 items-center rounded-xl border border-[#FFBB00]/60 bg-[#FFBB00]/15 px-3 text-xs font-bold text-[#FFBB00]">
-        Abrir orientação por voz no Google Maps
-      </a>}
-      {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-center">
+      <div className="pointer-events-none flex w-full max-w-sm items-center gap-2 rounded-2xl border border-white/15 bg-[#121212]/90 px-3 py-2 text-white shadow-lg backdrop-blur-md">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="truncate text-xs font-extrabold text-[#FFBB00]" aria-live="polite">
+            {driverPhase==="PICKUP"
+              ?statusNow==="ARRIVED"?"No embarque":"Até o passageiro":
+              driverPhase==="DROPOFF"?"Rota até o destino":
+              statusNow==="IN_PROGRESS"?"Viagem em andamento":
+              statusNow==="ARRIVED"?"Motorista chegou":"Motorista a caminho"}
+          </p>
+          {driverPhase&&currentDriverRoute
+            ?<p className="truncate text-xs tabular-nums text-white/85">
+              {(remaining?.distanceKm??currentDriverRoute.distanceKm).toFixed(1)} km ·
+              {Math.max(1,Math.round(remaining?.durationMinutes??currentDriverRoute.durationMinutes))} min estimados
+            </p>
+            :!driverPhase&&passengerRemaining
+              ?<p className="truncate text-xs text-white/80">
+                {passengerRemaining.distanceKm.toFixed(1)} km ·
+                {Math.max(1,Math.round(passengerRemaining.durationMinutes))} min estimados
+              </p>
+              :!driverPhase&&approach
+                ?<p className="truncate text-xs text-white/80">
+                  {approach.distanceKm.toFixed(1)} km até o embarque
+                </p>
+                :<p className="truncate text-xs text-white/65">
+                  {driverPoint?"Acompanhamento GPS ativo":"Aguardando localização"}
+                </p>}
+        </div>
+        {driverPhase&&mapsNavigationUrl&&<a href={mapsNavigationUrl}
+          target="_blank" rel="noopener noreferrer"
+          aria-label="Abrir orientação por voz no Google Maps" title="Abrir orientação por voz no Google Maps"
+          className="pointer-events-auto flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 px-2.5 text-xs font-bold text-[#FFBB00]">
+          Rota por voz
+        </a>}
+        {(error||(!driverPoint&&(driverPositionDelayed||showingLastFix)))&&
+          <span role="status" title={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
+            aria-label={error||"Sinal GPS atrasado: mostrando última posição conhecida"}
+            className="shrink-0 text-amber-300">!</span>}
+      </div>
     </div>
   </section>;
   return <section className="space-y-3 rounded-2xl border border-[#FFBB00]/30 bg-[#121212] p-3 text-white"
