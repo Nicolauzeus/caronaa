@@ -33,6 +33,9 @@ describe("notification preferences and sounds", () => {
       confirmed: [523, 659, 783],
       cancelled: [440, 349],
       message: [800],
+      order_incoming_loop: [587, 880],
+      driver_arrived: [523, 659, 784],
+      ride_completed: [698, 1046],
     });
   });
   it("does not fail when Web Audio is unavailable", async () => {
