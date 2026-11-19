@@ -37,7 +37,7 @@ const labels: Record<string, string> = {
   ACCEPTED: "Motorista confirmado",
   ARRIVED: "Motorista chegou",
   IN_PROGRESS: "Em viagem",
-  PENDING_REVIEW: "Encerramento em análise",
+  PENDING_REVIEW: "Desembarque pendente",
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   EXPIRED: "Busca encerrada",
@@ -702,12 +702,12 @@ export function QuickRideExperience({
             )}
             {r.role==="DRIVER" && r.status==="IN_PROGRESS" && (
               <button disabled={busy} onClick={()=>void action(r.id,"COMPLETED")}
-                className="rounded-lg border px-3 py-2 text-sm">Concluir Corrida</button>
+                className="rounded-lg border px-3 py-2 text-sm">Solicitar desembarque</button>
             )}
             {r.status==="PENDING_REVIEW" && <p role="status"
               className="rounded-xl border border-[#FFBB00]/40 p-3 text-sm">
-              Desembarque sob análise. Sem Pix ou comissão até decisão registrada.
-              Você pode usar o CARONAA normalmente.
+              Aguardando confirmação do desembarque pelo passageiro. O Pix e a comissão serão liberados apenas após a conclusão. Você pode utilizar o CARONAA normalmente.
+              {r.role==="PASSENGER"&&<Link to="/home" className="mt-2 block font-bold underline">Confirmar desembarque</Link>}
             </p>}
             {r.status==="COMPLETED" && <>
               {r.role==="DRIVER"?<QuickRideDriverSettlement rideId={r.id}/>:<QuickRidePixCard rideId={r.id}/>}
