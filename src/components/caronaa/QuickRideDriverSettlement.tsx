@@ -68,19 +68,19 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
   try{await navigator.clipboard.writeText(value);}catch{setError("Não foi possível copiar. Selecione o código manualmente.");}
  }
  return <section aria-label="Liquidação Pix do motorista"
-  className="space-y-3 rounded-xl border border-[#FFBB00]/40 bg-[#121212] p-4 text-white">
+  className="space-y-2 rounded-xl border border-[#FFBB00]/40 bg-[#121212] p-3 text-white">
   <p className="font-bold text-[#FFBB00]">Corrida concluída — cobrança ao passageiro</p>
   {pix&&<><p className="text-xs text-white/70">Valor total devido pelo passageiro</p>
    <p className="text-2xl font-black text-[#FFBB00]">{formatBrl(pix.amountCents/100)}</p></>}
   {!pix?.available?<div className="space-y-2 rounded-xl border border-[#FFBB00]/40 p-3">
    <label htmlFor="quick-driver-pix" className="block text-sm font-semibold">Cadastre sua chave Pix para gerar a cobrança</label>
-   <input id="quick-driver-pix" className="min-h-12 w-full rounded-lg border border-white/20 bg-white/10 p-3 text-white"
+   <input id="quick-driver-pix" className="min-h-12 w-full rounded-lg border border-white/20 bg-white/10 p-3 text-base text-white"
     placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value={key} maxLength={77} onChange={e=>setKey(e.target.value)}/>
    <button type="button" disabled={busy||key.trim().length<6} onClick={()=>void saveKey()}
     className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">Salvar Pix e gerar QR automaticamente</button>
   </div>:<div className="space-y-2">
    <p className="text-xs">Compartilhe esta cobrança com o passageiro. Confirme nome e chave antes da transferência.</p>
-   {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-56 w-56 rounded-lg bg-white p-2"/>}
+   {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48"/>}
    <p className="break-all text-xs">Chave Pix: {pix.key}</p>
    <button type="button" className="min-h-11 w-full rounded-xl border border-[#FFBB00] text-[#FFBB00]" onClick={()=>void copy(pix.key!)}>Copiar chave Pix</button>
    {payload&&<button type="button" className="min-h-11 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]" onClick={()=>void copy(payload)}>Copiar Pix copia e cola</button>}
