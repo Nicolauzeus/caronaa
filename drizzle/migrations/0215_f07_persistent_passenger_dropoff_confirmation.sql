@@ -119,8 +119,7 @@ BEGIN
   VALUES(p_id,auth.uid(),'REQUESTED');
   RETURN true;
 END;
-$function$
-;
+$function$;
 
 -- Reconcile operationally released PENDING_REVIEW after timeout.
 CREATE OR REPLACE FUNCTION public.quick_ride_finalize_after_timeout(p_id uuid)
@@ -156,8 +155,7 @@ BEGIN
   ON CONFLICT (ride_id,event_type) DO NOTHING;
   RETURN true;
 END;
-$function$
-;
+$function$;
 
 -- A participant reopening the app reconciles elapsed deadlines.
 CREATE OR REPLACE FUNCTION public.quick_ride_my_requests()
@@ -193,8 +191,7 @@ BEGIN
   ORDER BY q.requested_at DESC
   LIMIT 20;
 END;
-$function$
-;
+$function$;
 
 -- The admin list shows only contestations, elapsed deadlines or decisions.
 CREATE OR REPLACE FUNCTION public.admin_quick_ride_disputes()
@@ -234,8 +231,7 @@ BEGIN
       OR d.admin_decision IS NOT NULL
   ),'[]'::jsonb);
 END;
-$function$
-;
+$function$;
 
 -- An administrator can decide expired cases even if both parties were offline.
 CREATE OR REPLACE FUNCTION public.admin_resolve_quick_ride_dispute(p_ride_id uuid, p_decision text, p_reason text)
@@ -293,8 +289,7 @@ BEGIN
   ON CONFLICT (ride_id,event_type) DO NOTHING;
   RETURN true;
 END;
-$function$
-;
+$function$;
 
 -- One participant-scoped read, regardless of which page the passenger opens.
 -- A pending request remains answerable until a passenger response or admin
