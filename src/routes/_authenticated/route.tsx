@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyResearchLaunchState } from "@/lib/research-launch";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
 import { FirstRunTutorial } from "@/components/onboarding/FirstRunTutorial";
 import { claimPendingParticipations,readPendingParticipations } from "@/lib/formulario/research-participation";
@@ -65,15 +64,9 @@ export const Route = createFileRoute("/_authenticated")({
           onboarding?.usage_role === "MOTORISTA")) {
       throw redirect({ to: "/onboarding", replace: true });
     }
-    const launch = await getMyResearchLaunchState();
-    // New campaign participants may personalize their account before launch.
-    // All other app routes remain restricted, backed by the database ride guards.
-    const accessibleWhileWaiting = location.pathname === "/aguardando" ||
-      location.pathname === "/perfil" || vehicleRegistration;
-    if (launch.locked && !accessibleWhileWaiting && !approvedProfessional) {
-      throw redirect({ to: "/aguardando", replace: true });
-    }
-    return { user: data.user, launchLocked: launch.locked };
+    // Old research campaigns are optional and must not gate the mobility app.
+    // Professional dispatch, account confirmation and vehicle guards remain enforced above.
+    return { user: data.user, launchLocked: false };
   },
   component: () => <><Outlet /><FirstRunTutorial /></>,
 });
