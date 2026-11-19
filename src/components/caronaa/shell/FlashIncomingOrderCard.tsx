@@ -4,6 +4,7 @@ import { formatBrl } from "@/lib/ride-cost";
 import { isNotificationAudioReady, playNotificationSound, startLoop, stopLoop, unlockNotificationAudio } from "@/lib/notification-sound";
 import { readNotificationSettings } from "@/lib/notification-settings";
 import type { FlashDriverOrder } from "@/services/flash-driver-service";
+import { QuickRidePassengerIdentity } from "../QuickRidePassengerIdentity";
 
 type Props={
   order:FlashDriverOrder;onAnswer:(accept:boolean)=>Promise<void>;
@@ -54,6 +55,7 @@ export function FlashIncomingOrderCard({order,onAnswer,busy=false}:Props){
         <Clock3 size={16}/>{remaining}s
       </span>
     </div>
+    <QuickRidePassengerIdentity rideId={order.id} initialName={order.passengerName} initialPhoto={order.passengerPhoto}/>
     <p className="flex items-center gap-2 text-sm text-white/75">
       <Users size={15}/> {order.seats} {order.seats===1?"vaga solicitada":"vagas solicitadas"}
       <span>· {order.distanceKm.toFixed(1)} km até o passageiro</span>
