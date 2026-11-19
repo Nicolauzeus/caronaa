@@ -10,7 +10,7 @@
 2. O banco passa de `IN_PROGRESS` para `PENDING_REVIEW` com `quick_ride_dropoff_reviews.participant_only=true` **imediatamente**. Este é um estado técnico não operacional de **aguardando confirmação**, não uma demanda administrativa.
 3. O motorista pode aceitar outros chamados, mas o transporte ainda **não foi declarado concluído** para fins financeiros.
 4. O passageiro pode confirmar quando voltar a ficar online, sem expiração da permissão. O servidor valida que é o participante da corrida.
-5. Confirmação explícita do passageiro muda para `COMPLETED` e libera a cobrança Pix/avaliação. Contestação muda a pendência para um caso administrativo auditável.
+5. O passageiro pode escolher **Já desembarquei**, **Ainda estou na viagem** ou **Contestar desembarque**. A primeira resposta muda para `COMPLETED` e libera Pix/avaliação. A segunda restaura `IN_PROGRESS` e permite nova solicitação após 20 segundos, sem envolver o suporte. Só uma contestação real entra na fila administrativa.
 6. Silêncio, ausência de GPS, abandono de formulário e clique no QR **nunca** são pagamento, consentimento de desembarque ou evento de comissão.
 7. Eventos são idempotentes sob lock por corrida. Os registros anteriores de `PENDING_REVIEW` permanecem preservados.
 8. A fila administrativa mostra contestações verdadeiras e casos legados, não todas as solicitações novas.
@@ -38,6 +38,7 @@
 |---|---|
 | GPS fraco ou a mais de 250 m | Pedido é enviado ao passageiro; a discrepância só é evidência |
 | Passageiro confirma logo | Status `COMPLETED`, comissão uma vez, Pix acessível a ambos |
+| Passageiro responde **Ainda estou na viagem** | Volta a `IN_PROGRESS`; motorista pode continuar e solicitar novamente sem justificativa; as interações ficam auditadas |
 | Passageiro offline por 2 min, 1h ou dias | Motorista livre; passageiro pode confirmar quando reconectar |
 | Passageiro contesta | Suporte recebe contestação; Pix bloqueado até resolução |
 | Motorista clica duas vezes | Uma linha de confirmação, sem duplicar evento, tarifa ou comissão |
@@ -51,6 +52,7 @@
 ## Alertas operacionais
 
 - Um desembarque pendente **não é cobrança vencida confirmada nem pagamento recebido**.
+- `NOT_YET` não é contestação. O passageiro apenas avisa que continua no trajeto; o motorista vê o estado e pode solicitar novamente depois da chegada.
 - Um motorista pode declarar recebimento após conferir o banco, mas o CARONAA não pode provar bancariamente essa afirmação sem integração autorizada.
 - Se uma pessoa nunca confirmar o desembarque, a pendência continua disponível no histórico; qualquer cobrança coercitiva ou conclusão administrativa precisa de evidências e procedimento próprio.
 - O nome legado `PENDING_REVIEW` é mantido por compatibilidade de RPCs. `participant_only` distingue o aguardo bilateral da revisão administrativa.
