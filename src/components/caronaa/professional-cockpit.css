@@ -384,3 +384,13 @@
     text-overflow: ellipsis;
   }
 }
+
+@media (max-width: 767px) {
+  body:has(.professional-cockpit[data-active-ride="true"]) nav[aria-label="Navegação profissional mobile"],
+  body:has(.professional-cockpit[data-active-ride="true"]) nav[aria-label="Navegação principal mobile"] {
+    display: none !important;
+  }
+  body:has(.professional-cockpit[data-active-ride="true"]) main {
+    margin-bottom: 0 !important;
+  }
+}
