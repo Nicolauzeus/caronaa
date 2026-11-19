@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { QuickRideSearchActivity } from "./QuickRideSearchActivity";
 import { playNotificationSound, unlockNotificationAudio } from "@/lib/notification-sound";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -470,6 +471,7 @@ export function QuickRideHomePanel({
             :"Procurando um profissional autorizado…"+(searchSecondsLeft!==null?" · "+searchSecondsLeft+" s restantes":"")
           :liveRide.status==="ACCEPTED"?"Motorista a caminho."
           :liveRide.status==="ARRIVED"?"Seu motorista chegou!":"Viagem em andamento."}</p>
+        <QuickRideSearchActivity rideId={liveRide.id} status={liveRide.status}/>
         {["ACCEPTED","ARRIVED","IN_PROGRESS"].includes(liveRide.status)&&onFollowMap&&
           <button type="button" onClick={()=>onFollowMap(liveRide.id)}
             aria-label="Acompanhar motorista no mapa em tempo real"
