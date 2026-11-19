@@ -112,4 +112,31 @@
   .driver-account__support {padding:15px;flex-wrap:wrap;gap:12px}
   .driver-account__support-button {width:100%}
 }
+@media(max-width:767px){
+  .driver-account{padding:12px;border-radius:20px}
+  .driver-account__heading{margin-bottom:10px}
+  .driver-account__heading h1{font-size:1.25rem;margin-top:2px}
+  .driver-account__heading span{display:none}
+  .driver-account__hero{padding:12px}
+  .driver-account__hero-row{gap:12px}
+  .driver-account__avatar,.driver-account__avatar-button{width:60px;height:60px}
+  .driver-account__camera{width:24px;height:24px}
+  .driver-account__camera svg{width:13px;height:13px}
+  .driver-account__identity h2{font-size:16px;line-height:1.2}
+  .driver-account__identity p{margin-top:2px}
+  .driver-account__approval{margin-top:5px;padding:3px 7px}
+  .driver-account__hero-actions{grid-template-columns:1fr 1fr;margin-top:12px;gap:8px}
+  .driver-account__action-primary,.driver-account__action-outline{min-height:42px;padding:8px 10px;font-size:12px;border-radius:12px;gap:6px}
+  .driver-account__grid{gap:0;margin-top:10px;border:1px solid rgba(255,255,255,.14);border-radius:16px;overflow:hidden;background:#161616}
+  .driver-account__card{padding:11px 13px;border:0;border-radius:0;background:transparent;box-shadow:none}
+  .driver-account__card + .driver-account__card{border-top:1px solid rgba(255,255,255,.1)}
+  .driver-account__card-icon{width:20px;height:20px}
+  .driver-account__card-header strong{font-size:14px}
+  .driver-account__card-header small{font-size:11px}
+  .driver-account__support{margin-top:10px;padding:11px 13px;gap:10px;flex-wrap:nowrap;border-radius:16px}
+  .driver-account__support-icon{flex-basis:34px;width:34px;height:34px}
+  .driver-account__support p{display:none}
+  .driver-account__card-title{font-size:14px}
+  .driver-account__support-button{width:auto;min-height:38px;padding:6px 11px;margin-left:auto}
+}
 @media(prefers-reduced-motion: reduce) {.driver-account__card-trigger > svg:last-child {transition:none}}

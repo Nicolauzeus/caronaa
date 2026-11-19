@@ -620,9 +620,9 @@ function Perfil() {
   return (
     <AppShell prelaunchMode={launchLocked}>
       {!launchLocked && (
-        <div className="mb-3 flex justify-end">
+        <div className="mb-2 flex justify-end">
           <button type="button" onClick={() => window.dispatchEvent(new Event("caronaa:replay-intro"))}
-            className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:border-caronaa-primary">
+            className="min-h-9 rounded-lg px-2 text-xs font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline">
             Rever tutorial de primeiros passos
           </button>
         </div>
