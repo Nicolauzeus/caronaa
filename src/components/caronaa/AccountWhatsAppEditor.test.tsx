@@ -54,6 +54,30 @@ describe("F02/F07: optional editable WhatsApp per account",()=>{
     expect(screen.getByText(/Use um DDD brasileiro válido/)).toBeInTheDocument();
     expect(screen.getByRole("button",{name:"Salvar WhatsApp"})).toBeDisabled();
   });
+  it("preserves the typed phone when saving fails and permits retry",async()=>{
+    let attempts=0;
+    api.rpc.mockImplementation(async(name:string)=>{
+      if(name==="get_my_caronaa_whatsapp")return {data:{whatsapp:null,contact_consent:false},error:null};
+      if(name==="set_my_caronaa_whatsapp"){
+        attempts++;
+        return attempts===1
+          ?{data:null,error:{message:"network unavailable"}}
+          :{data:{whatsapp:"+5511999991234",contact_consent:false},error:null};
+      }
+      return {data:null,error:{message:"unexpected"}};
+    });
+    render(<AccountWhatsAppEditor/>);
+    const field=await screen.findByLabelText(/WhatsApp para contato/);
+    await waitFor(()=>expect(field).not.toBeDisabled());
+    fireEvent.change(field,{target:{value:"(11) 99999-1234"}});
+    fireEvent.click(screen.getByRole("button",{name:"Salvar WhatsApp"}));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Não foi possível salvar/);
+    expect(field).toHaveValue("(11) 99999-1234");
+    expect(screen.getByRole("button",{name:"Salvar WhatsApp"})).toBeEnabled();
+    fireEvent.click(screen.getByRole("button",{name:"Salvar WhatsApp"}));
+    expect(await screen.findByText(/Contato atualizado/)).toBeInTheDocument();
+    expect(attempts).toBe(2);
+  });
   it("allows removing an existing phone and explicit opt-out",async()=>{
     api.rpc.mockImplementation(async(name:string)=>{
       if(name==="get_my_caronaa_whatsapp")return {data:{whatsapp:"+5585999991234",contact_consent:true},error:null};
