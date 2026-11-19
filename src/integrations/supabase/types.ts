@@ -1292,6 +1292,7 @@ export type Database = {
           last_gps_at: string | null
           last_lat: number | null
           last_lng: number | null
+          last_sampled_at: string | null
           route_geom: unknown
           route_polyline: string | null
           updated_at: string
@@ -1310,6 +1311,7 @@ export type Database = {
           last_gps_at?: string | null
           last_lat?: number | null
           last_lng?: number | null
+          last_sampled_at?: string | null
           route_geom?: unknown
           route_polyline?: string | null
           updated_at?: string
@@ -1328,6 +1330,7 @@ export type Database = {
           last_gps_at?: string | null
           last_lat?: number | null
           last_lng?: number | null
+          last_sampled_at?: string | null
           route_geom?: unknown
           route_polyline?: string | null
           updated_at?: string
@@ -3127,6 +3130,47 @@ export type Database = {
           },
         ]
       }
+      quick_ride_completion_events: {
+        Row: {
+          actor_id: string
+          detail: string | null
+          event_type: string
+          id: string
+          new_status: string
+          occurred_at: string
+          previous_status: string
+          ride_id: string
+        }
+        Insert: {
+          actor_id: string
+          detail?: string | null
+          event_type: string
+          id?: string
+          new_status: string
+          occurred_at?: string
+          previous_status: string
+          ride_id: string
+        }
+        Update: {
+          actor_id?: string
+          detail?: string | null
+          event_type?: string
+          id?: string
+          new_status?: string
+          occurred_at?: string
+          previous_status?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_completion_events_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_ride_dispute_audit: {
         Row: {
           action: string
@@ -3168,14 +3212,81 @@ export type Database = {
           },
         ]
       }
+      quick_ride_driver_views: {
+        Row: {
+          driver_id: string
+          first_viewed_at: string
+          last_viewed_at: string
+          ride_id: string
+        }
+        Insert: {
+          driver_id: string
+          first_viewed_at?: string
+          last_viewed_at?: string
+          ride_id: string
+        }
+        Update: {
+          driver_id?: string
+          first_viewed_at?: string
+          last_viewed_at?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_driver_views_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_dropoff_interactions: {
+        Row: {
+          action: string
+          actor_id: string
+          id: string
+          occurred_at: string
+          ride_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          id?: string
+          occurred_at?: string
+          ride_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          id?: string
+          occurred_at?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_dropoff_interactions_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_ride_dropoff_reviews: {
         Row: {
           admin_decision: string | null
           admin_reason: string | null
           admin_resolved_at: string | null
           admin_resolved_by: string | null
+          completion_request_method: string | null
           deadline_at: string
+          driver_review_reason: string | null
+          finish_accuracy_m: number | null
+          finish_distance_m: number | null
+          participant_only: boolean
           passenger_response: string | null
+          request_count: number
           requested_at: string
           resolved_at: string | null
           ride_id: string
@@ -3186,8 +3297,14 @@ export type Database = {
           admin_reason?: string | null
           admin_resolved_at?: string | null
           admin_resolved_by?: string | null
+          completion_request_method?: string | null
           deadline_at: string
+          driver_review_reason?: string | null
+          finish_accuracy_m?: number | null
+          finish_distance_m?: number | null
+          participant_only?: boolean
           passenger_response?: string | null
+          request_count?: number
           requested_at?: string
           resolved_at?: string | null
           ride_id: string
@@ -3198,8 +3315,14 @@ export type Database = {
           admin_reason?: string | null
           admin_resolved_at?: string | null
           admin_resolved_by?: string | null
+          completion_request_method?: string | null
           deadline_at?: string
+          driver_review_reason?: string | null
+          finish_accuracy_m?: number | null
+          finish_distance_m?: number | null
+          participant_only?: boolean
           passenger_response?: string | null
+          request_count?: number
           requested_at?: string
           resolved_at?: string | null
           ride_id?: string
@@ -3242,6 +3365,38 @@ export type Database = {
             foreignKeyName: "quick_ride_payment_events_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_pix_checkout_snapshot: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          recipient_key: string
+          recipient_name: string
+          ride_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          recipient_key: string
+          recipient_name: string
+          ride_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          recipient_key?: string
+          recipient_name?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_pix_checkout_snapshot_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
             referencedRelation: "professional_quick_rides"
             referencedColumns: ["id"]
           },
@@ -6702,6 +6857,18 @@ export type Database = {
         }
         Returns: string[]
       }
+      professional_auto_enable: {
+        Args: {
+          p_access_type: string
+          p_car_category: string
+          p_municipality: string
+          p_seats: number
+          p_snapshot: Json
+          p_uid: string
+          p_vehicle_type: string
+        }
+        Returns: string
+      }
       professional_location_opt_in: {
         Args: {
           p_accuracy_m: number
@@ -6761,6 +6928,17 @@ export type Database = {
           p_lat: number
           p_lng: number
           p_municipality: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      publish_verified_professional_position_v2: {
+        Args: {
+          p_accuracy_m: number
+          p_lat: number
+          p_lng: number
+          p_municipality: string
+          p_sampled_at_ms: number
           p_user_id: string
         }
         Returns: boolean
@@ -6857,7 +7035,15 @@ export type Database = {
         }
         Returns: string
       }
+      quick_ride_request_audience: {
+        Args: { p_ride_id: string }
+        Returns: Json
+      }
       quick_ride_request_dropoff: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_request_manual_review: {
+        Args: { p_id: string; p_reason: string }
+        Returns: boolean
+      }
       quick_ride_respond_dropoff: {
         Args: { p_id: string; p_response: string }
         Returns: boolean
@@ -6867,6 +7053,7 @@ export type Database = {
         Args: { p_code: string; p_id: string }
         Returns: boolean
       }
+      quick_ride_stop_view: { Args: { p_ride_id: string }; Returns: boolean }
       quick_ride_transition: {
         Args: { p_id: string; p_status: string }
         Returns: boolean
@@ -6875,6 +7062,7 @@ export type Database = {
         Args: { p_id: string; p_pin: string }
         Returns: boolean
       }
+      quick_ride_view_request: { Args: { p_ride_id: string }; Returns: Json }
       rate_quick_ride: {
         Args: { p_comment?: string; p_ride_id: string; p_score: number }
         Returns: boolean
@@ -7808,6 +7996,15 @@ export type Database = {
           p_lat: number
           p_lng: number
           p_municipality?: string
+        }
+        Returns: Json
+      }
+      update_flash_driver_heartbeat_gps_v2: {
+        Args: {
+          p_accuracy_m: number
+          p_lat: number
+          p_lng: number
+          p_sampled_at_ms: number
         }
         Returns: Json
       }
