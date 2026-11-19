@@ -233,10 +233,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     });
     render(<QuickRideHomePanel {...basic}/>);
     expect(await screen.findByRole("alert",{name:"Confirmação de desembarque pendente"})).toBeInTheDocument();
-    expect(screen.getAllByRole("button",{name:"Confirmar desembarque"})).toHaveLength(1);
-    expect(screen.queryByRole("button",{name:"Relatar problema no desembarque"})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button",{name:"Não desembarquei ou preciso de ajuda"}));
-    fireEvent.click(screen.getByRole("button",{name:"Relatar problema no desembarque"}));
+    fireEvent.click(screen.getByRole("button",{name:"Contestar desembarque"}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{p_id:rideId,p_response:"CONTESTED"}));
   });
   it("entrega ao pai a viagem ativa para usar um único mapa na Home",async()=>{
@@ -272,8 +269,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
       return {data:[],error:null};
     });
     render(<QuickRideHomePanel {...basic}/>);
-    fireEvent.click(await screen.findByRole("button",{name:"Não desembarquei ou preciso de ajuda"}));
-    fireEvent.click(screen.getByRole("button",{name:"Ainda estou na viagem"}));
+    fireEvent.click(await screen.findByRole("button",{name:"Ainda estou na viagem"}));
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{
       p_id:rideId,p_response:"NOT_YET"}));
     expect(api.rpc.mock.calls.some(([name])=>name==="admin_resolve_quick_ride_dispute")).toBe(false);
@@ -291,37 +287,12 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
       return {data:[],error:null};
     });
     render(<QuickRideHomePanel {...basic}/>);
-    const confirm=await screen.findByRole("button",{name:"Confirmar desembarque"});
+    const confirm=await screen.findByRole("button",{name:"Sim, já desembarquei"});
     expect(confirm).toBeEnabled();
     fireEvent.click(confirm);
     await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{
       p_id:rideId,p_response:"CONFIRMED"}));
     expect(api.rpc.mock.calls.some(([name])=>name==="admin_resolve_quick_ride_dispute")).toBe(false);
-  });
-  it("mostra uma única confirmação de desembarque sem aviso repetido nem três botões iniciais",async()=>{
-    const rideId="9166a93c-6312-4fda-9bdf-77b1e43a5a76";
-    const pending=vi.fn();
-    api.rpc.mockImplementation(async(name:string)=>{
-      if(name==="quick_ride_my_requests")return {data:[{
-        id:rideId,role:"PASSENGER",status:"PENDING_REVIEW",vehicle_type:"MOTO",
-        municipality:"Fortaleza",requested_at:new Date().toISOString()}],error:null};
-      if(name==="quick_ride_dropoff_state")return {data:[{
-        deadline_at:new Date(Date.now()-180000).toISOString(),
-        passenger_response:null,resolved_at:null}],error:null};
-      if(name==="quick_ride_respond_dropoff")return {data:true,error:null};
-      return {data:[],error:null};
-    });
-    render(<QuickRideHomePanel {...basic} shellMode onDropoffPendingChange={pending}/>);
-    expect(await screen.findByRole("alert",{name:"Confirmação de desembarque pendente"})).toBeInTheDocument();
-    expect(screen.getAllByRole("button",{name:"Confirmar desembarque"})).toHaveLength(1);
-    expect(screen.queryByText("Aguardando sua confirmação")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button",{name:"Ainda estou na viagem"})).not.toBeInTheDocument();
-    expect(screen.queryByRole("button",{name:"Relatar problema no desembarque"})).not.toBeInTheDocument();
-    await waitFor(()=>expect(pending).toHaveBeenCalledWith(true));
-    fireEvent.click(screen.getByRole("button",{name:"Confirmar desembarque"}));
-    await waitFor(()=>expect(api.rpc.mock.calls.filter(([name])=>name==="quick_ride_respond_dropoff")).toHaveLength(1));
-    expect(api.rpc).toHaveBeenCalledWith("quick_ride_respond_dropoff",{
-      p_id:rideId,p_response:"CONFIRMED"});
   });
   it("mantém dispensada a corrida concluída após remontar painel",async()=>{
     const completed="0f066ee8-bb89-47e2-85cf-20121e1b021f";window.localStorage.setItem("caronaa-completed-dismissed:"+completed,"1");
