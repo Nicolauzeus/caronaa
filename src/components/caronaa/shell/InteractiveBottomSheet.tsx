@@ -4,7 +4,7 @@ import { ChevronUp } from "lucide-react";
 import "./interactive-bottom-sheet.css";
 
 export type SheetSnap = "peek" | "half" | "full";
-type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void;title?:string;headerAction?:ReactNode};
+type Props={children:ReactNode;value?:SheetSnap;onChange?:(snap:SheetSnap)=>void;title?:string;headerAction?:ReactNode;rideActive?:boolean};
 // A percentage fallback is understood by jsdom/older browsers; dynamic viewport
 // units remain the final CSS value in supported mobile browsers.
 const heights:Record<SheetSnap,{fallback:string;dynamic:string}>={
@@ -13,7 +13,7 @@ const heights:Record<SheetSnap,{fallback:string;dynamic:string}>={
   full:{fallback:"92%",dynamic:"0px"},
 };
 const order:SheetSnap[]=["peek","half","full"];
-export function InteractiveBottomSheet({children,value,onChange,title="Planejar viagem",headerAction}:Props){
+export function InteractiveBottomSheet({children,value,onChange,title="Planejar viagem",headerAction,rideActive=false}:Props){
   const [internal,setInternal]=useState<SheetSnap>("peek");
   const snap=value??internal;
   const start=useRef<{y:number;id:number}|null>(null);
@@ -32,7 +32,7 @@ export function InteractiveBottomSheet({children,value,onChange,title="Planejar 
     const index=order.indexOf(snap);
     change(order[Math.min(2,Math.max(0,index+(delta<0?1:-1)))]);
   };
-  return <section aria-label={title}
+  return <section aria-label={title} data-ride-active={rideActive?"true":"false"} data-snap={snap}
     className="caronaa-journey-sheet pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-t-[28px] border border-primary/20 bg-secondary/95 text-secondary-foreground shadow-[0_-12px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-[height] duration-200 ease-out motion-reduce:transition-none"
     style={{height:heights[snap].fallback, minHeight:heights[snap].dynamic,
       maxHeight:"calc(100% - 70px)"}}>
