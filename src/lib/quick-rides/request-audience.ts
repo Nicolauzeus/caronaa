@@ -38,6 +38,13 @@ export async function markQuickRideRequestViewed(rideId:string):Promise<RideRequ
   return {name:text(row.name)||"Passageiro CARONAA",photo:safePhoto(row.photo)};
 }
 
+/** Remove just the current driver's view; never touches the customer's ride. */
+export async function stopQuickRideRequestView(rideId:string):Promise<void>{
+  if(!rideId)return;
+  const {error}=await (supabase as any).rpc("quick_ride_stop_view",{p_ride_id:rideId});
+  if(error)throw error;
+}
+
 /** Passenger-only projection: no GPS, phone, PIN, emails or payment data. */
 export async function getQuickRideRequestAudience(rideId:string):Promise<QuickRideAudience>{
   const {data,error}=await (supabase as any).rpc("quick_ride_request_audience",{p_ride_id:rideId});
