@@ -510,6 +510,16 @@ function Home(){
   // Live GPS is rendered separately by the map; it is never a fallback pickup.
   const mapOrigin=validPoint(plannedPickup)?plannedPickup:undefined;
   const currentDestination=shellSelectedDestination?shellDestinationLocation:undefined;
+  // Non-destructive application refresh: keep the mounted map, GPS watcher and sheet.
+  useEffect(()=>{
+    const onRefresh=()=>{
+      void activeRoleState.refresh().catch(()=>undefined);
+      setDriverTripsRefreshKey(value=>value+1);
+      setTripsRefreshKey(value=>value+1);
+    };
+    window.addEventListener("caronaa:app-refresh",onRefresh);
+    return()=>window.removeEventListener("caronaa:app-refresh",onRefresh);
+  },[activeRoleState.refresh]);
   const driverRole=activeRoleState.activeRole==="MOTORISTA";
   const shouldShowOperationalMap=driverRole&&serviceType==="FLASH"&&driverFlashRide!=null;
   const shouldShowPassengerMap=!driverRole&&serviceType==="FLASH"&&passengerRide!==null;
