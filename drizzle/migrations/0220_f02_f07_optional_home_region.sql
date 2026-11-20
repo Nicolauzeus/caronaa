@@ -296,6 +296,22 @@ BEGIN
     RAISE EXCEPTION 'Dados pendentes: FULL_NAME' USING ERRCODE='22023';
   END IF;
   v_phone:=public.caronaa_normalize_whatsapp(p_whatsapp);
+  -- Preserve a previously registered WhatsApp if this optional field is blank.
+  -- Keep the 0219 protection; registration must not erase an existing contact.
+  IF v_phone IS NULL THEN
+    SELECT coalesce(
+      (SELECT a.whatsapp_e164 FROM public.caronaa_account_whatsapp a
+       WHERE a.user_id=v_uid AND a.whatsapp_e164 IS NOT NULL),
+      (SELECT c.whatsapp_e164 FROM public.professional_driver_contacts c
+       WHERE c.user_id=v_uid AND c.whatsapp_e164 IS NOT NULL),
+      (SELECT m.whatsapp_e164 FROM public.professional_mototaxi_profiles m
+       WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL),
+      (SELECT r.snapshot->>'whatsapp_e164'
+       FROM public.professional_access_requests r
+       WHERE r.user_id=v_uid AND r.snapshot->>'whatsapp_e164' IS NOT NULL
+       ORDER BY r.submitted_at DESC LIMIT 1)
+    ) INTO v_phone;
+  END IF;
   IF v_city IS NOT NULL AND (
     length(v_city) NOT BETWEEN 2 AND 120
     OR upper(v_city) IN ('MACICO_BATURITE','OUTRA_REGIAO')
@@ -425,6 +441,22 @@ BEGIN
     RAISE EXCEPTION 'Informe a matricula/registro' USING ERRCODE='22023';
   END IF;
   v_phone:=public.caronaa_normalize_whatsapp(p_whatsapp);
+  -- Preserve a previously registered WhatsApp if this optional field is blank.
+  -- Keep the 0219 protection; registration must not erase an existing contact.
+  IF v_phone IS NULL THEN
+    SELECT coalesce(
+      (SELECT a.whatsapp_e164 FROM public.caronaa_account_whatsapp a
+       WHERE a.user_id=v_uid AND a.whatsapp_e164 IS NOT NULL),
+      (SELECT c.whatsapp_e164 FROM public.professional_driver_contacts c
+       WHERE c.user_id=v_uid AND c.whatsapp_e164 IS NOT NULL),
+      (SELECT m.whatsapp_e164 FROM public.professional_mototaxi_profiles m
+       WHERE m.user_id=v_uid AND m.whatsapp_e164 IS NOT NULL),
+      (SELECT r.snapshot->>'whatsapp_e164'
+       FROM public.professional_access_requests r
+       WHERE r.user_id=v_uid AND r.snapshot->>'whatsapp_e164' IS NOT NULL
+       ORDER BY r.submitted_at DESC LIMIT 1)
+    ) INTO v_phone;
+  END IF;
 
   SELECT avatar_url INTO v_photo FROM public.profiles WHERE id=v_uid FOR UPDATE;
   v_avatar_path := split_part(split_part(coalesce(v_photo,''), '/avatars/', 2), '?', 1);
