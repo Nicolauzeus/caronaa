@@ -500,11 +500,14 @@ function Home(){
     void refresh();
     const timer=window.setInterval(()=>{void refresh();},15000);
     const onVisible=()=>{if(!document.hidden)void refresh();};
+    const onManualRefresh=()=>void refresh();
     document.addEventListener("visibilitychange",onVisible);
+    window.addEventListener("caronaa:app-refresh",onManualRefresh);
     return()=>{
       alive=false;
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange",onVisible);
+      window.removeEventListener("caronaa:app-refresh",onManualRefresh);
     };
   },[activeRoleState.activeRole,serviceType,quickMunicipality,radarLat,radarLng,passengerRide?.id]);
   // Live GPS is rendered separately by the map; it is never a fallback pickup.
