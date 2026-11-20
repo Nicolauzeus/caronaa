@@ -64,6 +64,8 @@ export interface FareQuoteInput {
   officialActivity?: OfficialActivityEvidence | null;
   /** Server quote creation timestamp. */
   quotedAt: string;
+  /** Server-verified intramunicipal Macico F07 ride only. */
+  waiveLocalMacicoCommission?: boolean;
 }
 
 export interface ProposedFareQuote {
@@ -116,6 +118,9 @@ function commissionRate(
   input: FareQuoteInput,
   config: FarePolicyConfig,
 ): Pick<ProposedFareQuote, "commissionSource" | "commissionBps"> {
+  if (input.region === "MACICO_BATURITE" && input.waiveLocalMacicoCommission === true) {
+    return { commissionSource: "MACICO", commissionBps: 0 };
+  }
   if (activityIsEligible(input.officialActivity, input.quotedAt)) {
     return {
       commissionSource: "OFFICIAL_ACTIVITY",
@@ -212,7 +217,10 @@ export function quoteProposedCaronaaFare(
   );
   const count = input.mode.startsWith("EXCLUSIVE") ? 1 : input.occupiedSeats;
   const standardTotal = fare * count;
-  const processingFeeCents = integerCents(config.processingFeeCents, "processingFeeCents");
+  // During the temporary local Macico waiver the platform absorbs any processing cost.
+  const processingFeeCents = input.waiveLocalMacicoCommission === true &&
+    input.region === "MACICO_BATURITE"
+    ? 0 : integerCents(config.processingFeeCents, "processingFeeCents");
   if (commission < processingFeeCents) {
     throw new Error("Taxa de processamento supera a receita disponível para a plataforma.");
   }
