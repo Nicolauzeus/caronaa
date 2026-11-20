@@ -460,7 +460,8 @@ export function QuickRideOperationalMap({
         statusNow==="IN_PROGRESS"&&passengerRoute?[{points:passengerRoute.routePath,color:"#FFBB00"}]:
         ["ACCEPTED","ARRIVED"].includes(statusNow)&&passengerRoute?[{points:passengerRoute.routePath,color:"#2563eb"}]:[]}
       fitMode="once" fitKey={`${rideId}:${statusNow}:${Boolean(approach?.routePath?.length)}:${Boolean(route?.routePath?.length)}:${Boolean(currentDriverRoute)}`}
-      smoothTracking showControls={Boolean(driverPhase)||!immersive} gestureHandling={immersive?"greedy":"cooperative"}
+      smoothTracking showControls gestureHandling={immersive?"greedy":"cooperative"}
+      onRefresh={reload}
       followPoint={driverPhase||passengerTracking?driverPoint:null}
       followKey={driverPhase?`${rideId}:${driverPhase}:${navigationFocusRequest}`:
         passengerTracking?`${rideId}:PASSENGER:${statusNow}:${navigationFocusRequest}`:undefined}
