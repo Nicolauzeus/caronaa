@@ -28,6 +28,7 @@ export function FlashPassengerLiveSheet({
   const compact=snap==="peek";
   const searching=ride.status==="SEARCHING";
   const arrival=ride.status==="ARRIVED";
+  const boardingReady=ride.status==="ACCEPTED"||arrival;
   const traveling=ride.status==="IN_PROGRESS";
   const vehicle=ride.vehicle_type==="MOTO";
   return <section aria-label="Painel da Corrida Rápida" data-passenger-live="true"
@@ -52,7 +53,7 @@ export function FlashPassengerLiveSheet({
       </span>
     </div>
     {compact ? <>
-      {arrival?
+      {boardingReady?
         <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-2">
           <div className="min-w-0">
             <p className="text-xs text-white/70">Seu PIN de embarque</p>
@@ -88,8 +89,8 @@ export function FlashPassengerLiveSheet({
     </>:<>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-1">
         <QuickRideSearchActivity rideId={ride.id} status={ride.status} compact={false}/>
-        {arrival&&<div className="space-y-1 rounded-2xl border border-[#FFBB00]/65 bg-[#FFBB00]/10 p-3 text-center">
-          <p className="text-sm font-bold text-white">Seu código de embarque</p>
+        {boardingReady&&<div className="space-y-1 rounded-2xl border border-[#FFBB00]/65 bg-[#FFBB00]/10 p-3 text-center">
+          <p className="text-sm font-bold text-white">{arrival?"Seu código de embarque":"Código para quando o motorista chegar"}</p>
           {boardingCode?
             <p role="status" className="font-[family-name:var(--font-display)] text-5xl font-black tracking-[0.15em] text-[#FFBB00]">
               {boardingCode}
@@ -98,7 +99,7 @@ export function FlashPassengerLiveSheet({
               className="min-h-12 w-full rounded-xl bg-[#FFBB00] text-sm font-extrabold text-[#121212] disabled:opacity-60">
               Gerar código de embarque
             </button>}
-          <p className="text-xs text-white/75">Diga estes quatro números ao motorista.</p>
+          <p className="text-xs text-white/75">Guarde estes quatro números. Informe ao motorista somente quando estiver no veículo.</p>
         </div>}
         {!compact&&<div data-trip-route-details="true" className="space-y-2 rounded-xl border border-white/15 bg-white/[0.045] p-3">
           <div className="flex min-w-0 items-start gap-2">
