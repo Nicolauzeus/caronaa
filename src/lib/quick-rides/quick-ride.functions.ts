@@ -154,6 +154,8 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     if(commissionBps>4000||
        (coverage.region==="MACICO_BATURITE"&&commissionBps!==2000))
       throw new Error("Política de comissão profissional inconsistente.");
+    const waiveLocalMacicoCommission=coverage.region==="MACICO_BATURITE" &&
+      destinationCity.municipality===coverage.municipality;
     const quotedAt=new Date().toISOString();
     const {data:events,error:eventsError}=await admin.from("caronaa_quick_official_activities")
       .select("id,starts_at,ends_at,center_lat,center_lng,radius_m,published")
@@ -214,6 +216,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       occupiedSeats:1,
       party:"INDIVIDUAL",
       quotedAt,
+      waiveLocalMacicoCommission,
       // Pilot rates are the four approved matrices. Event campaigns must not
       // silently override their explicit 15%/20% commission decisions.
       officialActivity:!String(policy.policy_version).endsWith("-piloto")&&matchingEvent?{
@@ -223,7 +226,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
         pickupInsideApprovedArea:true,
       }:null,
     },config);
-    if(q.platformNetBeforeTaxesCents < safeCents(policy.minimum_platform_margin_cents))
+    if(!waiveLocalMacicoCommission && q.platformNetBeforeTaxesCents < safeCents(policy.minimum_platform_margin_cents))
       throw new Error("Esta tarifa não cobre a margem operacional mínima. A operação precisa revisar o preço antes de abrir solicitações.");
     // Prices are only inserted from this authenticated SERVER function.
     const {data:record,error:saveError}=await admin.from("caronaa_quick_fare_quotes")
@@ -243,7 +246,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
         platform_processing_fee_cents:q.processingFeeCents,
         commission_bps:q.commissionBps,
         policy_version:String(policy.policy_version),
-        activity_id:matchingEvent?.id??null,
+        activity_id:waiveLocalMacicoCommission?null:(matchingEvent?.id??null),
       }).select("id,expires_at").single();
     if(saveError||!record)throw new Error("Não foi possível registrar a cotação da corrida.");
     return {
