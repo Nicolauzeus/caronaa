@@ -112,12 +112,14 @@ export function useFlashDriverPresence(){
         const age=Date.now()-lastGpsAt.current;
         const backendAge=Date.now()-lastSentAt.current;
         if(age>FLASH_GPS_STALE_MS||backendAge>FLASH_GPS_STALE_MS){
-          active.current=false;
-          stopWatch();
-          setState(s=>({...s,gpsConnected:false,error:"Sem GPS por mais de 60 segundos. Disponibilidade encerrada."}));
-          void setFlashDriverOffline().then(()=>setState(s=>({...s,online:false}))).catch(()=>
-            setState(s=>({...s,error:"GPS expirado; o servidor deve encerrar a presença por TTL."})));
-        }else if(currentFix.current&&Date.now()-lastSentAt.current>=FLASH_GPS_THROTTLE_MS){
+          // No network or stale GPS is NOT a user-initiated offline action.
+          // Keep watchPosition and the active ride mounted; the backend TTL
+          // handles dispatch eligibility until fresh GPS is acknowledged.
+          setState(s=>s.gpsConnected?({...s,gpsConnected:false,
+            error:"Localização temporariamente indisponível. Reconectando…"}):s);
+        }
+        if(navigator.onLine&&currentFix.current&&age<30000&&
+          Date.now()-lastSentAt.current>=FLASH_GPS_THROTTLE_MS){
           void sendHeartbeat(currentFix.current);
         }
       },4000);
@@ -137,6 +139,33 @@ export function useFlashDriverPresence(){
   },[sendHeartbeat,stopWatch]);
 
   useEffect(()=>{
+    const resume=()=>{
+      if(!active.current||!navigator.onLine)return;
+      const recent=currentFix.current;
+      if(recent&&Date.now()-recent.at<30000){
+        void sendHeartbeat(recent,true);
+      }else if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(position=>{
+          if(!active.current)return;
+          const fix=sample(position);
+          if(!Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>150)return;
+          currentFix.current=fix;lastGpsAt.current=fix.at;
+          setState(s=>({...s,gps:fix}));
+          void sendHeartbeat(fix,true);
+        },()=>undefined,{enableHighAccuracy:true,maximumAge:10000,timeout:12000});
+      }
+    };
+    window.addEventListener("online",resume);
+    window.addEventListener("pageshow",resume);
+    window.addEventListener("focus",resume);
+    return()=>{
+      window.removeEventListener("online",resume);
+      window.removeEventListener("pageshow",resume);
+      window.removeEventListener("focus",resume);
+    };
+  },[sendHeartbeat]);
+
+  useEffect(()=>{
     const close=()=>{
       if(!active.current)return;
       active.current=false;
@@ -144,10 +173,10 @@ export function useFlashDriverPresence(){
       // The backend TTL is the authoritative defense against ghost drivers.
       void setFlashDriverOffline().catch(()=>undefined);
     };
-    window.addEventListener("pagehide",close);
+    // pagehide also fires on mobile backgrounding: never explicitly log out
+    // a driver merely because the PWA is suspended. Server TTL stays authoritative.
     window.addEventListener("beforeunload",close);
     return()=>{
-      window.removeEventListener("pagehide",close);
       window.removeEventListener("beforeunload",close);
       const wasActive=active.current;
       active.current=false;
