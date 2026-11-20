@@ -219,6 +219,27 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_account_whatsapp: {
+        Row: {
+          contact_consent: boolean
+          updated_at: string
+          user_id: string
+          whatsapp_e164: string | null
+        }
+        Insert: {
+          contact_consent?: boolean
+          updated_at?: string
+          user_id: string
+          whatsapp_e164?: string | null
+        }
+        Update: {
+          contact_consent?: boolean
+          updated_at?: string
+          user_id?: string
+          whatsapp_e164?: string | null
+        }
+        Relationships: []
+      }
       caronaa_coverage_interest: {
         Row: {
           created_at: string
@@ -2746,6 +2767,33 @@ export type Database = {
           },
         ]
       }
+      professional_driver_contacts: {
+        Row: {
+          created_at: string
+          municipality: string
+          registration_number: string | null
+          updated_at: string
+          user_id: string
+          whatsapp_e164: string | null
+        }
+        Insert: {
+          created_at?: string
+          municipality: string
+          registration_number?: string | null
+          updated_at?: string
+          user_id: string
+          whatsapp_e164?: string | null
+        }
+        Update: {
+          created_at?: string
+          municipality?: string
+          registration_number?: string | null
+          updated_at?: string
+          user_id?: string
+          whatsapp_e164?: string | null
+        }
+        Relationships: []
+      }
       professional_driver_locations: {
         Row: {
           accuracy_m: number
@@ -2800,7 +2848,7 @@ export type Database = {
           registration_number: string
           updated_at: string
           user_id: string
-          whatsapp_e164: string
+          whatsapp_e164: string | null
         }
         Insert: {
           created_at?: string
@@ -2810,7 +2858,7 @@ export type Database = {
           registration_number: string
           updated_at?: string
           user_id: string
-          whatsapp_e164: string
+          whatsapp_e164?: string | null
         }
         Update: {
           created_at?: string
@@ -2820,7 +2868,7 @@ export type Database = {
           registration_number?: string
           updated_at?: string
           user_id?: string
-          whatsapp_e164?: string
+          whatsapp_e164?: string | null
         }
         Relationships: []
       }
@@ -3285,6 +3333,8 @@ export type Database = {
           finish_accuracy_m: number | null
           finish_distance_m: number | null
           participant_only: boolean
+          passenger_dispute_note: string | null
+          passenger_dispute_reason_code: string | null
           passenger_response: string | null
           request_count: number
           requested_at: string
@@ -3303,6 +3353,8 @@ export type Database = {
           finish_accuracy_m?: number | null
           finish_distance_m?: number | null
           participant_only?: boolean
+          passenger_dispute_note?: string | null
+          passenger_dispute_reason_code?: string | null
           passenger_response?: string | null
           request_count?: number
           requested_at?: string
@@ -3321,6 +3373,8 @@ export type Database = {
           finish_accuracy_m?: number | null
           finish_distance_m?: number | null
           participant_only?: boolean
+          passenger_dispute_note?: string | null
+          passenger_dispute_reason_code?: string | null
           passenger_response?: string | null
           request_count?: number
           requested_at?: string
@@ -3441,6 +3495,32 @@ export type Database = {
             foreignKeyName: "quick_ride_pix_declarations_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_posttrip_acknowledgements: {
+        Row: {
+          ride_id: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          ride_id: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          ride_id?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_posttrip_acknowledgements_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
             referencedRelation: "professional_quick_rides"
             referencedColumns: ["id"]
           },
@@ -5883,6 +5963,7 @@ export type Database = {
         Returns: boolean
       }
       caronaa_f07_test_dispatch_allowed: { Args: never; Returns: boolean }
+      caronaa_normalize_whatsapp: { Args: { p_value: string }; Returns: string }
       caronaa_quick_driver_queue: {
         Args: { p_municipality: string }
         Returns: {
@@ -5945,6 +6026,22 @@ export type Database = {
       claim_research_participation: {
         Args: { p_submission_key: string }
         Returns: Json
+      }
+      complete_professional_driver_registration: {
+        Args: {
+          p_car_category: string
+          p_full_name: string
+          p_municipality: string
+          p_registration_number: string
+          p_vehicle_brand: string
+          p_vehicle_color: string
+          p_vehicle_model: string
+          p_vehicle_plate: string
+          p_vehicle_seats: number
+          p_vehicle_type: string
+          p_whatsapp: string
+        }
+        Returns: string
       }
       confirm_form_account_activation: {
         Args: { p_changes?: Json; p_submission_id: string }
@@ -6534,6 +6631,7 @@ export type Database = {
       get_municipal_research_overview: { Args: never; Returns: Json }
       get_my_admin_scope: { Args: never; Returns: Json }
       get_my_caronaa_commission_ledger: { Args: never; Returns: Json }
+      get_my_caronaa_whatsapp: { Args: never; Returns: Json }
       get_my_driver_platform_fees: { Args: never; Returns: Json }
       get_my_onboarding_research_suggestions: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
@@ -6947,6 +7045,7 @@ export type Database = {
       purge_google_public_request_budgets: { Args: never; Returns: undefined }
       purge_google_wrapper_tables: { Args: never; Returns: undefined }
       quick_ride_accept: { Args: { p_id: string }; Returns: boolean }
+      quick_ride_ack_posttrip: { Args: { p_id: string }; Returns: boolean }
       quick_ride_acknowledge_manual_pix: {
         Args: { p_id: string }
         Returns: boolean
@@ -6963,6 +7062,10 @@ export type Database = {
       }
       quick_ride_detect_arrival: { Args: { p_id: string }; Returns: boolean }
       quick_ride_driver_details: { Args: { p_id: string }; Returns: Json }
+      quick_ride_driver_near_dropoff: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
       quick_ride_driver_queue: {
         Args: { p_municipality: string }
         Returns: {
@@ -6989,6 +7092,27 @@ export type Database = {
       quick_ride_issue_boarding_pin: { Args: { p_id: string }; Returns: string }
       quick_ride_issue_payment_code: { Args: { p_id: string }; Returns: string }
       quick_ride_map_context: { Args: { p_id: string }; Returns: Json }
+      quick_ride_my_case_updates: {
+        Args: never
+        Returns: {
+          admin_decision: string
+          admin_reason: string
+          admin_resolved_at: string
+          case_kind: string
+          deadline_at: string
+          passenger_dispute_note: string
+          passenger_dispute_reason_code: string
+          ride_id: string
+        }[]
+      }
+      quick_ride_my_posttrip_pending: {
+        Args: never
+        Returns: {
+          completed_at: string
+          ride_id: string
+          role: string
+        }[]
+      }
       quick_ride_my_rating: {
         Args: { p_id: string }
         Returns: {
@@ -7010,6 +7134,10 @@ export type Database = {
           status: string
           vehicle_type: string
         }[]
+      }
+      quick_ride_open_dropoff_dispute: {
+        Args: { p_id: string; p_note?: string; p_reason_code: string }
+        Returns: boolean
       }
       quick_ride_payment_declaration_state: {
         Args: { p_id: string }
@@ -7292,6 +7420,10 @@ export type Database = {
           p_route_geojson?: Json
           p_route_polyline?: string
         }
+        Returns: Json
+      }
+      set_my_caronaa_whatsapp: {
+        Args: { p_contact_consent?: boolean; p_whatsapp: string }
         Returns: Json
       }
       set_professional_presence: {
