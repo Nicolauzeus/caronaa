@@ -23,6 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // network error in getUser must never overwrite that restored identity.
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
+      // A network interruption must not masquerade as a deliberate sign-out.
+      if (event === "SIGNED_OUT" && !navigator.onLine) return;
       if (!["INITIAL_SESSION","TOKEN_REFRESHED","SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)) return;
       setUser(previous => {
         const next = session?.user ?? null;
@@ -48,7 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!active || error) return;
         // A temporarily unavailable auth endpoint is NOT a sign-out.
         if (data.session?.user) setUser(data.session.user);
-        void router.invalidate();
+        // Route invalidation on a normal reconnect can invoke auth redirects;
+        // live screens are reconciled in place by caronaa:app-refresh.
       }).catch(() => {});
     };
     document.addEventListener("visibilitychange", resume);
