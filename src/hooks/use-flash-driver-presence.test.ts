@@ -14,7 +14,7 @@ vi.mock("@/services/flash-driver-service",()=>({
     constructor(public code:string){super(code);}
   },
 }));
-const config={online:true as const,mode:"EXCLUSIVE" as const,seats:1,vehicleType:"MOTO" as const};
+const config={online:true as const,mode:"EXCLUSIVE" as const,seats:1,vehicleType:"MOTO" as const,municipality:"Acarape"};
 const coords={latitude:-3.731,longitude:-38.521,accuracy:21};
 const pos={coords} as GeolocationPosition;
 beforeEach(()=>{
@@ -36,7 +36,7 @@ describe("Flash driver GPS presence",()=>{
     const {result}=renderHook(()=>useFlashDriverPresence());
     await act(async()=>{await result.current.goOnline(config);});
     expect(api.online).toHaveBeenCalledOnce();
-    expect(api.heartbeat).toHaveBeenCalledWith(-3.731,-38.521,21);
+    expect(api.heartbeat).toHaveBeenCalledWith(-3.731,-38.521,21,"Acarape");
     expect(api.watch).toHaveBeenCalledTimes(1);
     expect(result.current.online).toBe(true);
     expect(result.current.gpsConnected).toBe(true);
