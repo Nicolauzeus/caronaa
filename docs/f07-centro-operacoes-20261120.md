@@ -31,6 +31,7 @@ Uma pendencia de revisao de encerramento nao bloqueia automaticamente novas corr
 - Abrir ocorrencia por motorista/corrida, com categoria, prioridade e descricao
 - Assumir e resolver ocorrencia com justificativa persistida e trilha de auditoria
 - Regularizar apenas busca SEARCHING cujo prazo passou e sem motorista, mudando para EXPIRED
+- Cancelar atribuição travada de ACCEPTED/ARRIVED após 15 min sem mudança de estado, apenas sem embarque/pagamento e com justificativa administrativa auditada
 - Navegar a contestacoes para avaliar encerramento com as regras existentes
 - Consultar acessos ao radar sem conceder autorizacao silenciosa
 
