@@ -116,6 +116,7 @@ export function DriverFlashPlanner({
   },[presence.online,presence.gpsConnected,onSnapChange]);
   refreshCallback.current=refresh;
   useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{const onRefresh=()=>void refreshCallback.current();window.addEventListener("caronaa:app-refresh",onRefresh);return()=>window.removeEventListener("caronaa:app-refresh",onRefresh);},[]);
   useQuickRideRealtime(municipality,()=>{
     void refreshCallback.current();
   },Boolean((presence.online&&presence.gpsConnected)||active));
@@ -243,8 +244,25 @@ export function DriverFlashPlanner({
       await refresh();
     }catch{
       toast.error(next==="ARRIVED"?
-        "Chegada não confirmada. Confira a precisão GPS e a distância ao embarque.":
+        "Não foi possível registrar a chegada. Atualize o estado da corrida.":
         "PIN inválido ou não autorizado. Confira com o passageiro.");
+    }finally{setBusyRide(false);}
+  };
+  const cancelRide=async(reason:string)=>{
+    if(!active||busyRide)return;
+    setBusyRide(true);
+    try{
+      const {data,error}=await (supabase as any).rpc("quick_ride_cancel_by_driver",{
+        p_id:active.id,p_reason:reason.trim()||null,
+      });
+      if(error||data!==true)throw error??new Error("Cancellation was not confirmed");
+      setPin("");setPassenger(null);setDropoffSent(false);
+      toast.success("Corrida cancelada. Passageiro notificado pelo estado da solicitação.");
+      window.dispatchEvent(new Event("caronaa:app-refresh"));
+      await refresh();
+    }catch(error){
+      console.warn("[CARONAA/flash] cancelamento não confirmado",error);
+      toast.error("Não foi possível cancelar. Confira o estado da corrida.");
     }finally{setBusyRide(false);}
   };
   const [dropoffSent,setDropoffSent]=useState(false);
@@ -379,6 +397,7 @@ export function DriverFlashPlanner({
         onStart={()=>void transition("IN_PROGRESS")}
         onDropoff={()=>void requestDropoff()}
         onManualClose={()=>void requestManualClose()}
+        onCancel={reason=>void cancelRide(reason)}
         onSnapChange={onSnapChange}/>}
       {!presence.online&&snap!=="peek"&&
         <p className="text-xs text-white/65">Para receber chamados, ative o GPS e sua disponibilidade.</p>}
