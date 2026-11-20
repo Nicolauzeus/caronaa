@@ -174,6 +174,7 @@ export function DriverFlashPlanner({
       if(effectiveMode!==mode)setMode(effectiveMode);
       const config={
         online:true as const,mode:effectiveMode,seats:vehicleType==="MOTO"?1:seats,vehicleType,
+        municipality,
         destination:valid(destPoint)?{lat:destPoint.lat!,lng:destPoint.lng!,label:destination}:null,
         routePath:route?.routePath??null,
       };
