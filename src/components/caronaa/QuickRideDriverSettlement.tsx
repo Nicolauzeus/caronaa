@@ -80,8 +80,9 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
     className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">Salvar Pix e gerar QR automaticamente</button>
   </div>:<div className="space-y-2">
    <p className="text-xs">Compartilhe esta cobrança com o passageiro. Confirme nome e chave antes da transferência.</p>
-   {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48"/>}
+   {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-48 w-48 rounded-xl bg-white p-2 sm:h-56 sm:w-56"/>}
    <p className="break-all text-xs">Chave Pix: {pix.key}</p>
+   <button type="button" className="min-h-11 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]" onClick={()=>void copy(payload)}>Copiar código Pix (copia e cola)</button>
    <button type="button" className="min-h-11 w-full rounded-xl border border-[#FFBB00] text-[#FFBB00]" onClick={()=>void copy(pix.key!)}>Copiar chave Pix</button>
   </div>}
   <p role="status" className="text-sm text-white/80">
