@@ -92,6 +92,7 @@ export function F07OperationsCommandCenter({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [view, setView] = useState<View>("attention");
+  const [rideFilter, setRideFilter] = useState("active");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -152,6 +153,12 @@ export function F07OperationsCommandCenter({
   const filteredRides = useMemo(() => rides.filter(r =>
     matchesQuery([r.id, r.driver_name, r.passenger_name, r.municipality, r.status], normalizedQuery)
   ), [rides, normalizedQuery]);
+  const visibleRides = filteredRides.filter(r => rideFilter === "all"
+    || (rideFilter === "active" && activeStatuses.has(r.status))
+    || (rideFilter === "searching" && r.status === "SEARCHING" && r.issue_code !== "SEARCH_EXPIRED")
+    || (rideFilter === "review" && r.status === "PENDING_REVIEW")
+    || (rideFilter === "expired" && r.issue_code === "SEARCH_EXPIRED")
+    || (rideFilter === "closed" && ["COMPLETED", "CANCELLED", "EXPIRED"].includes(r.status)));
   const filteredDrivers = useMemo(() => drivers.filter(d =>
     matchesQuery([d.user_id, d.display_name, d.gps_municipality, d.status_code], normalizedQuery)
   ), [drivers, normalizedQuery]);
@@ -360,11 +367,11 @@ export function F07OperationsCommandCenter({
     { id: "incidents", label: "Ocorrências" },
   ];
   const cards = [
-    { label: "Em corrida", value: activeRides.length, icon: Truck },
-    { label: "Disponíveis", value: readyDrivers.length, icon: ShieldCheck },
-    { label: "Sinais de atenção", value: issueCount, icon: AlertTriangle },
-    { label: "Em revisão", value: reviews.length, icon: ClipboardList },
-    { label: "Buscas vencidas", value: rides.filter(r => r.issue_code === "SEARCH_EXPIRED").length, icon: AlertTriangle },
+    { label: "Em corrida", value: activeRides.length, icon: Truck, target: "rides" as View, filter: "active" },
+    { label: "Disponíveis", value: readyDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
+    { label: "Sinais de atenção", value: issueCount, icon: AlertTriangle, target: "attention" as View, filter: "" },
+    { label: "Em revisão", value: reviews.length, icon: ClipboardList, target: "rides" as View, filter: "review" },
+    { label: "Buscas vencidas", value: rides.filter(r => r.issue_code === "SEARCH_EXPIRED").length, icon: AlertTriangle, target: "rides" as View, filter: "expired" },
   ];
 
   return <section className="space-y-4" aria-label="Central de operações de corridas rápidas">
@@ -386,10 +393,12 @@ export function F07OperationsCommandCenter({
     {!data && loading && <p role="status" className="p-4 text-sm text-muted-foreground">Consultando situação operacional…</p>}
 
     {data && <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-      {cards.map(card => <article key={card.label} className="rounded-xl border bg-card p-3">
+      {cards.map(card => <button type="button" key={card.label}
+        className="rounded-xl border bg-card p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
+        onClick={() => { setView(card.target); if (card.filter) setRideFilter(card.filter); }}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground"><card.icon size={14}/>{card.label}</div>
         <p className="mt-2 text-2xl font-bold">{card.value}</p>
-      </article>)}
+      </button>)}
     </div>}
 
     {subject && <form className="space-y-3 rounded-xl border border-amber-400/50 bg-card p-4"
@@ -480,10 +489,24 @@ export function F07OperationsCommandCenter({
       </div>}
 
       {view === "rides" && <div className="space-y-3">
-        <h3 className="font-semibold">Corridas em aberto e histórico recente</h3>
-        {filteredRides.slice(0, 50).map(renderRide)}
-        {filteredRides.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma corrida neste filtro.</p>}
-        {filteredRides.length > 50 && <p className="text-xs text-muted-foreground">Mostrando 50 de {filteredRides.length} corridas. Refine a busca.</p>}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">Corridas em aberto e histórico recente</h3>
+          <label className="text-sm">Situação
+            <select className="ml-2 min-h-11 rounded-lg border bg-background px-3"
+              aria-label="Filtrar corridas por situação" value={rideFilter}
+              onChange={e => setRideFilter(e.target.value)}>
+              <option value="active">Em andamento</option>
+              <option value="searching">Buscando motorista</option>
+              <option value="review">Em revisão</option>
+              <option value="expired">Buscas vencidas</option>
+              <option value="closed">Finalizadas</option>
+              <option value="all">Todas</option>
+            </select>
+          </label>
+        </div>
+        {visibleRides.slice(0, 50).map(renderRide)}
+        {visibleRides.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma corrida neste filtro.</p>}
+        {visibleRides.length > 50 && <p className="text-xs text-muted-foreground">Mostrando 50 de {visibleRides.length} corridas. Refine a busca.</p>}
       </div>}
 
       {view === "available" && <div className="space-y-3">
