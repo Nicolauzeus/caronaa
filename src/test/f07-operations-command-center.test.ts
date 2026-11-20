@@ -52,6 +52,13 @@ describe("F07 command center - real operations and guardrails", () => {
     }
     expect(sql).toContain("admin_f07_update_incident");
     expect(sql).toContain("admin_f07_open_incident");
+    expect(sql).toContain("admin_f07_cancel_stale_assignment");
+    expect(sql).toContain("v_ride.status NOT IN ('ACCEPTED','ARRIVED')");
+    expect(sql).toContain("v_ride.pickup_confirmed_at IS NOT NULL");
+    expect(sql).toContain("v_ride.in_trip_at IS NOT NULL");
+    expect(sql).toContain("v_ride.updated_at>now()-interval '15 minutes'");
+    expect(sql).toContain("STALE_ASSIGNMENT_CANCELLED");
+    expect(center).toContain("Cancelar atribuição com auditoria");
     expect(center).toContain("Marcar ocorrência resolvida");
     expect(center).toContain("não conclui a corrida");
     expect(center).toContain("onGoToDisputes");
