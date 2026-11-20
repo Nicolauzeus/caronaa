@@ -82,6 +82,12 @@ Esta autorização de GPS automático é da Home operacional; F01 mantém GPS ap
 
 Não exigir que o passageiro entenda o algoritmo de matching para viajar.
 
+### Destaque pontual de destino — estreia Kaluanda Night (20/11/2026)
+
+Em 20/11/2026, a festa **Kaluanda Night (PUB vibe)** ocorre no endereço informado pelos organizadores: **Rua Edmilson Medeiros, 23, Redenção — CE**. Apresentar um único atalho discreto em campos de **destino** nos fluxos de mobilidade de passageiros e motoristas, sem banners, pop-ups, etapas extras, anúncios, alteração da gaveta ou interferência no mapa. Não destacar no campo **origem**, nem em formulários de pesquisa e rotinas recorrentes.
+
+A recomendação é visível para qualquer usuário em 20/11/2026 (fuso America/Fortaleza) e, para viagens de saída após a festa, até 06:00 de 21/11/2026; então desaparece automaticamente. Nunca cobrar uma busca Google para apenas exibir o card. Somente após toque explícito no destaque, buscar o endereço no Google Places do servidor; não usar coordenadas inventadas nem centroide de rua. Se o número 23, a rua, Redenção ou CE não forem confirmados, solicitar busca manual, sem selecionar destino nem disparar precificação. O uso do destaque não altera o orçamento, os filtros territoriais de cobertura, o GPS, as tarifas, a modalidade ou a seleção livre de outros destinos.
+
 ### Identidade visual obrigatória
 
 - Primária: **`#FFBB00`**; dark: **`#121212`**; fontes **Sora / Manrope**.

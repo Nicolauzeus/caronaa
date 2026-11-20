@@ -683,7 +683,7 @@ function Oferecer() {
                             Destino
                           </p>
                           <LocationAutocomplete
-                            id="oferecer-destino"
+                            id="oferecer-destino" featuredEvent="kaluanda-night"
                             label="Destino"
                             value={form.destination}
                             onChange={(v, details) =>

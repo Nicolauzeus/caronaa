@@ -489,7 +489,7 @@ export function QuickRideExperience({
           Usar minha localização
         </button>
         <LocationAutocomplete
-          id="quick-destination"
+          id="quick-destination" featuredEvent="kaluanda-night"
           label="Destino"
           value={destination}
           variant="simple"

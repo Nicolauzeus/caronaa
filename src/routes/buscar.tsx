@@ -223,7 +223,7 @@ function Buscar() {
             variant="simple"
           />
           <LocationAutocomplete
-            id="buscar-destino"
+            id="buscar-destino" featuredEvent="kaluanda-night"
             label="DESTINO"
             value={destination}
             onChange={(val, details) => {

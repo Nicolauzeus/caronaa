@@ -394,7 +394,7 @@ export function ShellJourneyPlanner({
   </div>;
   const fixedFlash=serviceType==="FLASH"&&(snap!=="peek"||flashRideActive);
   const itinerary=<div className="shrink-0 space-y-2 border-b border-caronaa-white/15 bg-secondary px-1 pb-3">
-    <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
+    <LocationAutocomplete id="shell-destination" featuredEvent="kaluanda-night" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou local de destino" autoFocus={focusDestination} onChange={pickDestination}/>
     {originControl}
     {gpsFeedback}
     {(serviceType!=="FLASH"||!valid(destinationPoint))&&<ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>}
@@ -417,7 +417,7 @@ export function ShellJourneyPlanner({
       </div><ServiceTypeDock compact value={serviceType} onChange={onServiceTypeChange}/>
     </>}
     {snap==="half"&&serviceType!=="FLASH"&&<>
-      <LocationAutocomplete id="shell-destination" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou destino" autoFocus={focusDestination} onChange={pickDestination}/>
+      <LocationAutocomplete id="shell-destination" featuredEvent="kaluanda-night" label="Para onde vamos?" value={destination} selectedLocation={destinationPoint} variant="glass" placeholder="Rua, bairro ou destino" autoFocus={focusDestination} onChange={pickDestination}/>
       {originControl}{gpsFeedback}<ServiceTypeDock value={serviceType} onChange={onServiceTypeChange}/>
       {serviceType==="AGENDADA"&&<label className="block space-y-2 rounded-2xl border border-white/20 bg-white/5 p-3 text-sm">
         <span className="flex items-center gap-2 font-bold"><Clock3 size={18} className="text-[#FFBB00]"/> Data e hora da viagem</span>

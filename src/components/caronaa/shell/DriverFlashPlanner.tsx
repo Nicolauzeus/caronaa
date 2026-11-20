@@ -295,7 +295,7 @@ export function DriverFlashPlanner({
       className={active?"flex h-full min-h-0 flex-col overflow-hidden text-white":"space-y-2 pb-3 text-white"}
       style={{fontFamily:"Manrope, sans-serif"}}>
       {!active&&snap==="peek"&&<>
-        <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
+        <LocationAutocomplete id="flash-driver-destination" featuredEvent={!presence.online ? "kaluanda-night" : undefined} label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"
           placeholder="Para onde você vai?" onChange={pickDestination}/>
         <p className="text-[11px] leading-snug text-white/70">
@@ -317,7 +317,7 @@ export function DriverFlashPlanner({
         <ServiceTypeDock value={serviceType} onChange={changeService} compact/>
       </>}
       {!active&&snap==="half"&&<>
-        <LocationAutocomplete id="flash-driver-dest-edit" label="Para onde você vai? (opcional)"
+        <LocationAutocomplete id="flash-driver-dest-edit" featuredEvent={!presence.online ? "kaluanda-night" : undefined} label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"
           placeholder="Destino opcional" onChange={pickDestination}/>
         <fieldset className="space-y-2"><legend className="font-bold">Modo de atendimento</legend>

@@ -366,7 +366,7 @@ export function DriverScheduledPlanner({
     </>:
     <>
       {plannerSnap==="half"&&<>
-        <LocationAutocomplete id="driver-scheduled-destination" label="Destino"
+        <LocationAutocomplete id="driver-scheduled-destination" featuredEvent="kaluanda-night" label="Destino"
           value={destination} selectedLocation={destPoint} placeholder="Para onde vamos?"
           variant="glass" onChange={chooseDestination}/>
         <button type="button" onClick={onAdjustOrigin}

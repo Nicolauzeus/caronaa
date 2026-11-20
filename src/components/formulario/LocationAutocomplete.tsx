@@ -1,11 +1,13 @@
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { MapPin, Search, CheckCircle2, X, Loader2, Edit2 } from "lucide-react";
+import { MapPin, Search, CheckCircle2, X, Loader2, Edit2, Martini } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   searchLocationsServerFn,
   getLocationDetailsServerFn,
+  geocodeAddressServerFn,
 } from "@/lib/location.functions";
+import { KALUANDA_NIGHT, isKaluandaNightActive, isExactKaluandaAddress, kaluandaCaption, makeKaluandaLocation } from "@/lib/location/kaluanda-night";
 import { searchCatalogLocations } from "@/lib/location/ceara-catalog";
 import type {
   FormLocationDetails,
@@ -26,6 +28,8 @@ export interface LocationAutocompleteProps {
   required?: boolean;
   variant?: "card" | "simple" | "glass";
   autoFocus?: boolean;
+  /** One compact, time-limited venue suggestion in mobility destination fields only. */
+  featuredEvent?: "kaluanda-night";
 }
 
 function formatSelectedTitle(loc: FormLocationDetails): string {
@@ -85,6 +89,7 @@ export function LocationAutocomplete({
   required = false,
   variant = "card",
   autoFocus = false,
+  featuredEvent,
 }: LocationAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -92,9 +97,12 @@ export function LocationAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectionWarning, setSelectionWarning] = useState("");
+  const [featuredBusy, setFeaturedBusy] = useState(false);
+  const [featuredStillActive, setFeaturedStillActive] = useState(true);
 
   const searchServerFn = useServerFn(searchLocationsServerFn);
   const detailsServerFn = useServerFn(getLocationDetailsServerFn);
+  const geocodeFeaturedServerFn = useServerFn(geocodeAddressServerFn);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +119,16 @@ export function LocationAutocomplete({
     },
     [],
   );
+
+  // The launch suggestion expires automatically; no polling or Google requests.
+  useEffect(() => {
+    if (featuredEvent !== "kaluanda-night") return;
+    setFeaturedStillActive(isKaluandaNightActive());
+    const remaining = Date.parse(KALUANDA_NIGHT.endAt) - Date.now();
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setFeaturedStillActive(false), remaining);
+    return () => window.clearTimeout(timer);
+  }, [featuredEvent]);
 
   // Sincroniza query local com valor externo se alterado
   useEffect(() => {
@@ -356,6 +374,46 @@ export function LocationAutocomplete({
     setIsLoading(false);
   };
 
+  const selectFeaturedEvent = async () => {
+    if (featuredBusy || !isKaluandaNightActive()) return;
+    const requestId = ++latestRequestIdRef.current;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    sessionTokenRef.current = null;
+    setFeaturedBusy(true);
+    setSelectionWarning("");
+    setIsLoading(true);
+    setIsOpen(false);
+    try {
+      // Server-authorized Google Places Text Search, once per explicit tap.
+      // Never use a fabricated pin or street centre for pricing.
+      const geocoded = await geocodeFeaturedServerFn({
+        data: { address: KALUANDA_NIGHT.googleQuery },
+      });
+      if (requestId !== latestRequestIdRef.current) return;
+      if (!isExactKaluandaAddress(geocoded)) {
+        setSelectionWarning(
+          "Não foi possível confirmar o nº 23 em Redenção. Busque o endereço manualmente antes de confirmar.",
+        );
+        return;
+      }
+      const { label, details } = makeKaluandaLocation(geocoded);
+      setQuery(label);
+      setSuggestions([]);
+      setIsEditing(false);
+      onChange(label, details);
+      onSelect?.(label, details);
+    } catch {
+      if (requestId === latestRequestIdRef.current) {
+        setSelectionWarning(
+          "Endereço do evento indisponível no Google Maps. Pesquise o local manualmente.",
+        );
+      }
+    } finally {
+      if (requestId === latestRequestIdRef.current) setIsLoading(false);
+      setFeaturedBusy(false);
+    }
+  };
+
   const handleClear = () => {
     sessionTokenRef.current = null;
     latestRequestIdRef.current += 1;
@@ -385,6 +443,10 @@ export function LocationAutocomplete({
       selectedLocation.providerId ||
       (selectedLocation.neighborhood && selectedLocation.city)),
   );
+
+  const showFeatured = featuredEvent === "kaluanda-night" &&
+    featuredStillActive && isKaluandaNightActive() &&
+    !query.trim() && !hasConfirmedSelection && !isOpen;
 
   return (
     <div className="relative space-y-1.5" ref={wrapperRef}>
@@ -522,6 +584,39 @@ export function LocationAutocomplete({
               </button>
             ) : null}
           </div>
+
+
+          {showFeatured && (
+            <button
+              type="button"
+              onClick={() => void selectFeaturedEvent()}
+              disabled={isLoading || featuredBusy}
+              aria-label="Selecionar Kaluanda Night (PUB vibe), Rua Edmilson Medeiros 23, Redenção"
+              aria-busy={featuredBusy}
+              className={
+                "group flex min-h-14 w-full items-center gap-2.5 rounded-xl border border-[#FFBB00]/25 bg-[#FFBB00]/[.06] px-3 py-2 text-left transition-colors hover:border-[#FFBB00]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] disabled:opacity-65 " +
+                (variant === "glass" ? "text-white" : "text-foreground")
+              }
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#FFBB00]/10 text-[#FFBB00]">
+                {featuredBusy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" /> : <Martini size={17} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-bold sm:text-sm">
+                  {KALUANDA_NIGHT.name}
+                </span>
+                <span className={variant === "glass" ? "block truncate text-[11px] text-white/70" : "block truncate text-[11px] text-muted-foreground"}>
+                  {KALUANDA_NIGHT.address} · Redenção, CE
+                </span>
+                <span className={variant === "glass" ? "block truncate text-[10px] text-white/50" : "block truncate text-[10px] text-muted-foreground/80"}>
+                  {kaluandaCaption()}
+                </span>
+              </span>
+              <span className="hidden shrink-0 rounded-full border border-[#FFBB00]/35 px-2 py-1 text-[10px] font-semibold text-[#FFBB00] min-[360px]:inline-flex">
+                Para todos
+              </span>
+            </button>
+          )}
 
           <div className="flex items-center justify-between gap-2">
             {helperText ? (
