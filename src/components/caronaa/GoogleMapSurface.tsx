@@ -524,7 +524,7 @@ export function GoogleMapSurface({
           <button type="button" aria-label="Diminuir zoom do mapa"
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
             onClick={() => {setFollowing(false);setOverview(false);map.current?.setZoom(Math.max(3, (map.current?.getZoom() ?? 13) - 1));}}>−</button>
-          <button type="button" aria-label="Atualizar mapa" title="Atualizar posição e percurso"
+          <button type="button" aria-label="Atualizar aplicativo e mapa" title="Atualizar corridas, dados do aplicativo e mapa"
             disabled={refreshing}
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-lg disabled:opacity-60"
             onClick={async () => {
@@ -537,6 +537,9 @@ export function GoogleMapSurface({
                 const G=(window as any).google?.maps;
                 if(map.current)G?.event?.trigger?.(map.current,"resize");
                 await onRefresh?.();
+                window.dispatchEvent(new Event("caronaa:app-refresh"));
+                // Check a newer PWA version without replacing an active journey.
+                void navigator.serviceWorker?.getRegistration?.().then(registration=>registration?.update()).catch(()=>undefined);
                 const point=followPointRef.current;
                 if(map.current&&point&&isValid(point)){
                   manualCamera.current=false;
