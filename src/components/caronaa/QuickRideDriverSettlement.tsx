@@ -83,7 +83,6 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
    {image&&<img src={image} alt="QR Code Pix estático da corrida" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48"/>}
    <p className="break-all text-xs">Chave Pix: {pix.key}</p>
    <button type="button" className="min-h-11 w-full rounded-xl border border-[#FFBB00] text-[#FFBB00]" onClick={()=>void copy(pix.key!)}>Copiar chave Pix</button>
-   {payload&&<button type="button" className="min-h-11 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]" onClick={()=>void copy(payload)}>Copiar Pix copia e cola</button>}
   </div>}
   <p role="status" className="text-sm text-white/80">
    {received?"Recebimento declarado por você. Isso não é conciliação bancária.":declared?"Passageiro declarou pagamento. Confira o extrato antes de confirmar.":"Aguardando o passageiro declarar o pagamento."}
