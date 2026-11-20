@@ -16,6 +16,7 @@ export type FlashDriverRide={
 };
 export type FlashDriverOnlineInput={
   online:true;mode:FlashDriverMode;seats:number;vehicleType:FlashVehicle;
+  municipality:string;
   destination?:{lat:number;lng:number;label:string}|null;
   routePath?:RoadPoint[]|null;
 };
@@ -44,7 +45,7 @@ const rpcError=(error:unknown):FlashDriverError=>{
 /** New Flash-specific RPCs: fail closed when migration is unavailable. */
 export async function setFlashDriverOnline(input:FlashDriverOnlineInput):Promise<void>{
   const {mode,seats,vehicleType,destination,routePath}=input;
-  if(!["ALL","ON_ROUTE","EXCLUSIVE"].includes(mode)||
+  if(!input.municipality.trim()||!["ALL","ON_ROUTE","EXCLUSIVE"].includes(mode)||
     !["CAR","MOTO"].includes(vehicleType)||!Number.isInteger(seats)||
     seats<1||seats>(vehicleType==="MOTO"?1:4)||
     (mode==="ON_ROUTE"&&!destination)||
