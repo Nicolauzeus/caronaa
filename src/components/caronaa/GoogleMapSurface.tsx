@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { RefreshCw } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps-browser.functions";
 import { resolveGoogleMapsBrowserKey } from "@/lib/google-maps-key";
@@ -40,6 +41,8 @@ type Props = {
   /** Preserve markers and ease their GPS positions without camera jumps. */
   smoothTracking?: boolean;
   showControls?: boolean;
+  /** Optional parent refresh of current ride state; map itself stays mounted. */
+  onRefresh?: () => void | Promise<void>;
   gestureHandling?: "cooperative" | "greedy";
   /** Live GPS camera following, opt-in only for an active driver trip. */
   followPoint?: {lat:number;lng:number}|null;
@@ -71,6 +74,7 @@ export function GoogleMapSurface({
   fitKey,
   smoothTracking = false,
   showControls = false,
+  onRefresh,
   gestureHandling = "cooperative",
   followPoint = null,
   followKey,
@@ -95,6 +99,8 @@ export function GoogleMapSurface({
   const lastFitRouteCount = useRef(0);
   const lastBounds = useRef<any>(null);
   const [ready, setReady] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const lastRefreshAt = useRef(0);
   const [failed, setFailed] = useState(false);
   const [following, setFollowing] = useState(true);
   const [overview, setOverview] = useState(false);
@@ -518,6 +524,30 @@ export function GoogleMapSurface({
           <button type="button" aria-label="Diminuir zoom do mapa"
             className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
             onClick={() => {setFollowing(false);setOverview(false);map.current?.setZoom(Math.max(3, (map.current?.getZoom() ?? 13) - 1));}}>−</button>
+          <button type="button" aria-label="Atualizar mapa" title="Atualizar posição e percurso"
+            disabled={refreshing}
+            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-lg disabled:opacity-60"
+            onClick={async () => {
+              const now=Date.now();
+              if(refreshing || now-lastRefreshAt.current<3000)return;
+              lastRefreshAt.current=now;
+              setRefreshing(true);
+              try {
+                // Refresh existing Google Maps objects without rebuilding the map.
+                const G=(window as any).google?.maps;
+                if(map.current)G?.event?.trigger?.(map.current,"resize");
+                await onRefresh?.();
+                const point=followPointRef.current;
+                if(map.current&&point&&isValid(point)){
+                  manualCamera.current=false;
+                  setOverview(false);
+                  setFollowing(true);
+                  map.current.panTo(point);
+                }
+              } finally {setRefreshing(false);}
+            }}>
+            <RefreshCw size={19} className={refreshing?"animate-spin motion-reduce:animate-none":""}/>
+          </button>
         </div>
       )}
       {ready && !failed && children}
