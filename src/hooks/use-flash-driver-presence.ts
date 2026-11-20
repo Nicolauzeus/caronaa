@@ -5,8 +5,9 @@ export type DriverGpsFix={lat:number;lng:number;accuracyM:number;at:number};
 export type FlashPresenceState={
   online:boolean;busy:boolean;gps:DriverGpsFix|null;
   gpsConnected:boolean;error:string|null;
+  phase:"idle"|"connecting"|"publishing"|"online";
 };
-const INITIAL:FlashPresenceState={online:false,busy:false,gps:null,gpsConnected:false,error:null};
+const INITIAL:FlashPresenceState={online:false,busy:false,gps:null,gpsConnected:false,error:null,phase:"idle"};
 export const FLASH_GPS_THROTTLE_MS=4000;
 export const FLASH_GPS_STALE_MS=60000;
 function gpsFailure(error:unknown):string{
@@ -20,7 +21,7 @@ function gpsFailure(error:unknown):string{
 }
 const sample=(pos:GeolocationPosition):DriverGpsFix=>({
   lat:pos.coords.latitude,lng:pos.coords.longitude,
-  accuracyM:pos.coords.accuracy,at:Date.now(),
+  accuracyM:pos.coords.accuracy,at:pos.timestamp,
 });
 export function useFlashDriverPresence(){
   const [state,setState]=useState<FlashPresenceState>(INITIAL);
@@ -31,6 +32,7 @@ export function useFlashDriverPresence(){
   const sending=useRef(false);
   const active=useRef(false);
   const inFlightStart=useRef(false);
+  const unmounted=useRef(false);
   const currentFix=useRef<DriverGpsFix|null>(null);
   const stopWatch=useCallback(()=>{
     if(watch.current!==null && typeof navigator!=="undefined"&&navigator.geolocation)
@@ -58,7 +60,7 @@ export function useFlashDriverPresence(){
     stopWatch();
     setState(s=>({...s,busy:true,gpsConnected:false}));
     try{await setFlashDriverOffline();
-      setState(s=>({...s,online:false,busy:false,error:null}));
+      setState(s=>({...s,online:false,busy:false,error:null,phase:"idle"}));
     }catch{
       // Do not claim offline was committed if the server rejected the change.
       setState(s=>({...s,busy:false,error:"Não foi possível confirmar o modo indisponível no servidor."}));
@@ -71,16 +73,29 @@ export function useFlashDriverPresence(){
       setState(s=>({...s,error:"O GPS precisa de HTTPS e permissão de localização."}));return false;
     }
     inFlightStart.current=true;
-    setState(s=>({...s,busy:true,error:null,gpsConnected:false}));
+    setState(s=>({...s,busy:true,error:null,gpsConnected:false,phase:"connecting"}));
+    let serverActivated=false;
     try{
-      const position=await new Promise<GeolocationPosition>((resolve,reject)=>
-        navigator.geolocation.getCurrentPosition(resolve,reject,{
-          enableHighAccuracy:true,timeout:15000,maximumAge:0,
-        }));
-      const initial=sample(position);
-      if(!Number.isFinite(initial.accuracyM)||initial.accuracyM<=0||initial.accuracyM>5000)
+      // Warm GPS and authorized server presence concurrently. The map/radar
+      // stays unavailable until a fresh, real sample is acknowledged by SQL.
+      const [presenceResult,gpsResult]=await Promise.allSettled([
+        setFlashDriverOnline(input),
+        new Promise<GeolocationPosition>((resolve,reject)=>
+          navigator.geolocation.getCurrentPosition(resolve,reject,{
+            enableHighAccuracy:true,timeout:15000,maximumAge:10000,
+          })),
+      ]);
+      if(presenceResult.status==="rejected")throw presenceResult.reason;
+      serverActivated=true;
+      if(unmounted.current)throw new FlashDriverError("UNAVAILABLE");
+      if(gpsResult.status==="rejected")throw gpsResult.reason;
+      const initial=sample(gpsResult.value);
+      const age=Date.now()-initial.at;
+      if(!Number.isFinite(initial.lat)||!Number.isFinite(initial.lng)||
+         !Number.isFinite(initial.accuracyM)||initial.accuracyM<=0||initial.accuracyM>5000||
+         !Number.isFinite(age)||age< -5000||age>10000)
         throw new FlashDriverError("INVALID");
-      await setFlashDriverOnline(input);
+      setState(s=>({...s,phase:"publishing"}));
       active.current=true;
       lastGpsAt.current=Date.now();
       currentFix.current=initial;
@@ -88,12 +103,15 @@ export function useFlashDriverPresence(){
       // A successful online RPC is not sufficient to claim connected GPS:
       // GPS publication must still be acknowledged.
       const published=await sendHeartbeat(initial,true);
-      if(!published)throw new FlashDriverError("UNAVAILABLE");
-      setState(s=>({...s,online:true,gpsConnected:true}));
+      if(!published||unmounted.current)throw new FlashDriverError("UNAVAILABLE");
+      setState(s=>({...s,online:true,gpsConnected:true,phase:"online"}));
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;
         const fix=sample(pos);
-        if(!Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>5000){
+        const age=Date.now()-fix.at;
+        if(!Number.isFinite(fix.lat)||!Number.isFinite(fix.lng)||
+           !Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>5000||
+           !Number.isFinite(age)||age< -5000||age>25000){
           setState(state=>({...state,gpsConnected:false,
             error:"O GPS está impreciso. Aguardando uma localização válida."}));
           return;
@@ -104,7 +122,7 @@ export function useFlashDriverPresence(){
         void sendHeartbeat(fix);
       },()=>{
         setState(s=>({...s,gpsConnected:false,error:"Sinal GPS perdido. Verifique a localização."}));
-      },{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+      },{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
       staleTimer.current=setInterval(()=>{
         if(!active.current)return;
         const age=Date.now()-lastGpsAt.current;
@@ -123,10 +141,10 @@ export function useFlashDriverPresence(){
     }catch(error){
       active.current=false;
       stopWatch();
-      setState(s=>({...s,online:false,gpsConnected:false,error:gpsFailure(error)}));
-      // The activation RPC may have succeeded before a browser GPS exception.
-      // Best-effort rollback; the server must also enforce a 60-second TTL.
-      void setFlashDriverOffline().catch(()=>undefined);
+      setState(s=>({...s,online:false,gpsConnected:false,phase:"idle",error:gpsFailure(error)}));
+      // Only rollback a presence transition confirmed by this attempt.
+      // SQL still enforces its TTL in case the compensating RPC fails.
+      if(serverActivated)void setFlashDriverOffline().catch(()=>undefined);
       return false;
     }finally{
       inFlightStart.current=false;
@@ -135,18 +153,12 @@ export function useFlashDriverPresence(){
   },[sendHeartbeat,stopWatch]);
 
   useEffect(()=>{
-    const close=()=>{
-      if(!active.current)return;
-      active.current=false;
-      // Browsers do not guarantee asynchronous RPC completion on page unload.
-      // The backend TTL is the authoritative defense against ghost drivers.
-      void setFlashDriverOffline().catch(()=>undefined);
-    };
-    window.addEventListener("pagehide",close);
-    window.addEventListener("beforeunload",close);
+    unmounted.current=false;
+    // Display lock / backgrounding alone must never mark the user offline.
+    // Unmounting the driver surface stops this hook's sole GPS publisher,
+    // so close server presence to prevent ghost drivers until it remounts.
     return()=>{
-      window.removeEventListener("pagehide",close);
-      window.removeEventListener("beforeunload",close);
+      unmounted.current=true;
       const wasActive=active.current;
       active.current=false;
       stopWatch();

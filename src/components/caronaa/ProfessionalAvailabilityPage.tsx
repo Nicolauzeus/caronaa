@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTraceId, type SafeF07RadarEvent } from "@/lib/professional-radar-diagnostics";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
+import { tryAcquireProfessionalRadarLease } from "@/lib/professional-radar-lease";
 import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
@@ -31,6 +32,7 @@ export function ProfessionalAvailabilityPage() {
   const clearTest = useServerFn(clearF07TestLocation);
   const [ready,setReady]=useState(false);
   const [busy,setBusy]=useState(false);
+  const [activationStage,setActivationStage]=useState<"idle"|"gps"|"presence"|"publishing"|"online">("idle");
   const [enabled,setEnabled]=useState(false);
   const [activeQuickRide,setActiveQuickRide]=useState(false);
   const [hasPendingCalls,setHasPendingCalls]=useState(false);
@@ -62,6 +64,9 @@ export function ProfessionalAvailabilityPage() {
   const mounted=useRef(true);
   const watch=useRef<number|null>(null);
   const tracking=useRef(false);
+  const presenceConfirmed=useRef(false);
+  const queuedInitialFix=useRef<GeolocationPosition|null>(null);
+  const transitioning=useRef(false);
   const sending=useRef(false);
   const simulating=useRef(false);
   const lastAttempt=useRef(0);
@@ -132,6 +137,13 @@ export function ProfessionalAvailabilityPage() {
         " m). Ative a localização precisa e aproxime-se de uma janela ou área aberta.");
       return;
     }
+    if(!presenceConfirmed.current){
+      // Sensor warmup and the authenticated presence RPC run in parallel.
+      // Never publish before the database acknowledges presence.
+      queuedInitialFix.current=position;
+      record("GPS_FIX_WAITING_FOR_PRESENCE");
+      return;
+    }
     const now=Date.now();
     const needsFullMunicipalityCheck=now-lastAttempt.current>=25000;
     const currentRide=activeRideRef.current;
@@ -151,10 +163,18 @@ export function ProfessionalAvailabilityPage() {
     // Revalidate the driver's actual city with the existing Google-backed
     // pipeline every 25s. Frequent active-ride updates never replace it.
     if(sending.current||livePublishing.current||!needsFullMunicipalityCheck)return;
+    const releaseLease=tryAcquireProfessionalRadarLease(userId);
+    if(!releaseLease){
+      // Another tab is publishing. Retry soon without paying for duplicate
+      // Google lookups or tripping the 12s SQL rate gate.
+      lastAttempt.current=Date.now()-25000+13000;
+      return;
+    }
     sending.current=true;
     lastAttempt.current=now;
     const ref=f07RadarTraceId();
     record("SERVER_PUBLISH_REQUEST",{ref,accuracy:f07RadarAccuracyBand(accuracy)});
+    if(mounted.current)setActivationStage("publishing");
     try{
       const result=await publishVerified({data:{lat:latitude,lng:longitude,accuracyM:accuracy,sampledAtMs,traceId:ref}});
       if(!tracking.current){
@@ -171,6 +191,7 @@ export function ProfessionalAvailabilityPage() {
           setFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false,
             accuracyM:accuracy,heading:position.coords.heading});
           setError("");
+          setActivationStage("online");
         }
         void clearTest().catch(()=>undefined);
       }else{
@@ -192,9 +213,11 @@ export function ProfessionalAvailabilityPage() {
       const code=f07RadarFailureCode(e);
       record("SERVER_PUBLISH_ERROR",{ref,code},"warn");
       if(code==="RATE_LIMITED")
-        lastAttempt.current=Date.now()+20000; // 45s total to reduce cross-tab contention
+        // SQL uses a 12-second gate. Retry after a bounded 12-15s delay,
+        // not a client-side 45-second penalty.
+        lastAttempt.current=Date.now()-25000+12500+Math.random()*2000;
       if(mounted.current)setError(code==="RATE_LIMITED"
-        ?"Publicação temporariamente limitada. O GPS continuará ativo e tentará novamente em até 45 segundos."
+        ?"Radar sincronizando. Nova tentativa automática de GPS em cerca de 15 segundos."
         :code==="GOOGLE_REVERSE_FAILED"
           ?"Não foi possível confirmar seu município agora. O GPS continuará tentando."
           :code==="GPS_STALE_SAMPLE"
@@ -204,7 +227,7 @@ export function ProfessionalAvailabilityPage() {
           :code==="GPS_INVALID_FIX"
             ?"O sinal GPS foi rejeitado por precisão inválida. Ative a localização precisa."
           :"Não foi possível publicar o GPS. Consulte o diagnóstico técnico F07.");
-    }finally{sending.current=false;}
+    }finally{sending.current=false;releaseLease();}
   },[publishVerified,clearTest,userId,discardWatch,record]);
   positionHandler.current=position=>{void onFix(position);};
 
@@ -239,7 +262,8 @@ export function ProfessionalAvailabilityPage() {
     tracking.current=true;
     if(mounted.current){
       setSharing(true);
-      setError("Buscando GPS e enviando o primeiro sinal...");
+      setError("");
+      setActivationStage("gps");
     }
     const fail=(reason:GeolocationPositionError)=>{
       if(!tracking.current)return;
@@ -303,7 +327,8 @@ export function ProfessionalAvailabilityPage() {
         setPilotVehicle(registeredVehicle);
       setPilotEnabled(pilot.enabled===true);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
-      setEnabled(presence.data?.is_available===true && access.data?.authorized===true);
+      presenceConfirmed.current=presence.data?.is_available===true && access.data?.authorized===true;
+      setEnabled(presenceConfirmed.current);
       record("INITIAL_STATE",{
         city:String(presence.data?.municipality||profile.data?.city||candidate).trim()||undefined,
         authorized:access.data?.authorized===true,
@@ -383,14 +408,19 @@ export function ProfessionalAvailabilityPage() {
 
   async function toggleOnline(next:boolean) {
     if(next)void unlockNotificationAudio();
-    if(busy)return;
+    if(busy||transitioning.current)return;
     record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized});
     if(next && !authorized && !pilotEnabled){
       setError("Conclua o cadastro profissional para ficar online.");return;
     }
+    transitioning.current=true;
     setBusy(true);setError("");
+    let activatedOnServer=false;
     try{
       if(!next){
+        presenceConfirmed.current=false;
+        queuedInitialFix.current=null;
+        setActivationStage("idle");
         if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
         await stop();
         const {error}=await (supabase as any).rpc("set_professional_presence",{
@@ -400,6 +430,14 @@ export function ProfessionalAvailabilityPage() {
         setEnabled(false);
         return;
       }
+      // One tap starts GPS immediately; a valid fix waits locally until
+      // authenticated presence is confirmed by SQL.
+      presenceConfirmed.current=false;
+      queuedInitialFix.current=null;
+      lastAttempt.current=0;
+      setActivationStage("gps");
+      if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
+      startGps(municipality,pilotVehicle,userId);
       if(!authorized){
         const result=await activatePilot({data:{vehicleType:pilotVehicle}});
         if(!result.approved)throw new Error("Piloto não autorizado.");
@@ -413,15 +451,29 @@ export function ProfessionalAvailabilityPage() {
         record("PRESENCE_ENABLE_FAILED",{code:String(error.code??"PRESENCE_RPC_ERROR")},"warn");
         throw error;
       }
+      activatedOnServer=true;
+      presenceConfirmed.current=true;
       record("PRESENCE_ENABLED",{city:municipality,presenceOnline:true});
       setEnabled(true);
-      // The user explicitly chose availability + GPS in ONE labeled button.
-      if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
-      startGps(municipality,pilotVehicle,userId);
+      setActivationStage("publishing");
+      const queued=queuedInitialFix.current;
+      queuedInitialFix.current=null;
+      if(queued)positionHandler.current(queued);
     }catch(e){
+      if(next){
+        presenceConfirmed.current=false;
+        queuedInitialFix.current=null;
+        discardWatch();
+        if(userId)window.localStorage.removeItem(professionalRadarConsentKey(userId));
+        if(activatedOnServer)void (supabase as any).rpc("set_professional_presence",{
+          p_available:false,p_municipality:null,
+        }).catch(()=>undefined);
+        setEnabled(false);
+      }
+      setActivationStage("idle");
       record("PRESENCE_TRANSITION_FAILED",{code:f07RadarFailureCode(e)},"warn");
       setError(e instanceof Error?e.message:"Não foi possível mudar a disponibilidade.");
-    }finally{setBusy(false);}
+    }finally{transitioning.current=false;setBusy(false);}
   }
 
   // Mobile keeps GPS feedback legible without exposing raw database errors.
@@ -584,7 +636,7 @@ export function ProfessionalAvailabilityPage() {
           : "bg-[#FFBB00] text-[#121212] hover:bg-[#eeb000]"}`}
         disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(!authorized&&!pilotEnabled))}
         onClick={()=>void toggleOnline(!enabled)}>
-        {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
+        {busy ? activationStage==="gps" ? "Obtendo GPS..." : activationStage==="publishing" ? "Sincronizando radar..." : "Conectando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
       </Button>
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
@@ -646,7 +698,7 @@ export function ProfessionalAvailabilityPage() {
               : "bg-[#FFBB00] text-[#121212]"}`}
             disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(!authorized&&!pilotEnabled))}
             onClick={()=>void toggleOnline(!enabled)}>
-            {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
+            {busy ? activationStage==="gps" ? "Obtendo GPS..." : activationStage==="publishing" ? "Sincronizando radar..." : "Conectando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
           {!authorized && ready && <p role="alert" className="mt-2 text-xs text-amber-300">Finalize os dados profissionais para receber corridas.</p>}
         </div>}

@@ -49,6 +49,9 @@ export function DriverFlashPlanner({
   onDestinationChange,onActiveRideChange,
 }:Props){
   const presence=useFlashDriverPresence();
+  const activationLabel=presence.phase==="publishing"?"Sincronizando com o radar...":
+    presence.phase==="connecting"?"Conectando e obtendo GPS...":
+    "Conectando...";
   const [destination,setDestination]=useState("");
   const [destPoint,setDestPoint]=useState<FormLocationDetails>();
   const [mode,setMode]=useState<FlashDriverMode>("ALL");
@@ -311,7 +314,7 @@ export function DriverFlashPlanner({
         </div>:
           <button type="button" disabled={presence.busy} onClick={()=>void activate()}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-            {presence.busy?"Ativando GPS...":"Ficar Disponível"}
+            {presence.busy?activationLabel:"Ficar Disponível"}
           </button>}
         <ServiceTypeDock value={serviceType} onChange={changeService} compact/>
       </>}
@@ -351,7 +354,7 @@ export function DriverFlashPlanner({
         <ServiceTypeDock value={serviceType} onChange={changeService}/>
         <button type="button" disabled={presence.busy} onClick={()=>void (presence.online?deactivate():activate())}
           className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
-          {presence.online?"Ficar Indisponível":"Ficar Disponível"}
+          {presence.busy?activationLabel:presence.online?"Ficar Indisponível":"Ficar Disponível"}
         </button>
       </>}
       {!active&&snap==="full"&&<>
@@ -362,7 +365,7 @@ export function DriverFlashPlanner({
         <p className="text-sm">{vehicleType==="MOTO"?1:seats} vaga(s) · {destination||"Sem destino definido"}</p>
         <button type="button" disabled={presence.busy} onClick={()=>void(presence.online?deactivate():activate())}
           className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
-          {presence.online?"Ficar Indisponível":"Ficar Disponível"}
+          {presence.busy?activationLabel:presence.online?"Ficar Indisponível":"Ficar Disponível"}
         </button>
       </>}
       {presence.error&&<p role="alert" className="flex items-start gap-2 rounded-xl border border-[#FFBB00]/50 p-3 text-xs">

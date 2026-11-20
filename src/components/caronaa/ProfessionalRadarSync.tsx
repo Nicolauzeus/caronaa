@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
+import { tryAcquireProfessionalRadarLease } from "@/lib/professional-radar-lease";
 import { f07RadarAccuracyBand, f07RadarFailureCode, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
 
 /**
@@ -68,6 +69,8 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         return;
       }
       if (Date.now() - lastGpsAttemptAt < 25000) return;
+      const releaseLease=tryAcquireProfessionalRadarLease(userId);
+      if(!releaseLease)return; // Other tab/page already owns this publication.
       log("SYNC_GPS_FIX",undefined,{accuracy:f07RadarAccuracyBand(accuracy)});
       lastGpsAttemptAt = Date.now();
       publishing = true;
@@ -106,6 +109,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         if (!disposed && epoch === generation) log("SYNC_RETRY_SCHEDULED",f07RadarFailureCode(e),{ref});
       } finally {
         publishing = false;
+        releaseLease();
       }
     };
 
@@ -173,7 +177,8 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
               .eq("user_id", userId).maybeSingle();
             if (stateError || state?.is_available !== true || disposed) {
               log("SYNC_HEARTBEAT_STOPPED",stateError?"PRESENCE_RPC_ERROR":"DRIVER_OFFLINE");
-              stop();
+              // Transient network errors are not consent withdrawal.
+              stop(!stateError);
               return;
             }
             const { error: heartbeatError } = await (supabase as any)
