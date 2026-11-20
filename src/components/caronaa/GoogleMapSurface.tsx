@@ -544,6 +544,8 @@ export function GoogleMapSurface({
                   setFollowing(true);
                   map.current.panTo(point);
                 }
+              } catch (error) {
+                console.warn("[CARONAA/maps] Atualização manual indisponível", error);
               } finally {setRefreshing(false);}
             }}>
             <RefreshCw size={19} className={refreshing?"animate-spin motion-reduce:animate-none":""}/>
