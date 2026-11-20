@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS public.caronaa_f07_operations_audit (
   ride_id uuid REFERENCES public.professional_quick_rides(id) ON DELETE RESTRICT,
   actor_id uuid NOT NULL REFERENCES auth.users(id),
   action text NOT NULL CHECK (action IN
-    ('INCIDENT_OPENED','INCIDENT_STARTED','INCIDENT_RESOLVED','SEARCH_EXPIRED')),
+    ('INCIDENT_OPENED','INCIDENT_STARTED','INCIDENT_RESOLVED',
+    'SEARCH_EXPIRED','STALE_ASSIGNMENT_CANCELLED')),
   previous_status text,
   new_status text,
   detail text NOT NULL,
@@ -341,6 +342,48 @@ BEGIN
 END;
 $ops$;
 
+
+-- Atribuicao anterior ao embarque, sem progresso por 15 min ou mais:
+-- cancelamento excepcional so pelo administrador, com justificativa e auditoria.
+-- Nunca cancelar IN_PROGRESS nem viagem paga/embarque confirmado.
+CREATE OR REPLACE FUNCTION public.admin_f07_cancel_stale_assignment(
+  p_ride_id uuid, p_reason text
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $ops$
+DECLARE v_ride public.professional_quick_rides%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+    RAISE EXCEPTION 'Acesso restrito' USING ERRCODE='42501';
+  END IF;
+  IF length(btrim(coalesce(p_reason,''))) NOT BETWEEN 20 AND 2000 THEN
+    RAISE EXCEPTION 'Informe justificativa de 20 a 2000 caracteres'
+      USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_ride FROM public.professional_quick_rides
+  WHERE id=p_ride_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Corrida nao encontrada' USING ERRCODE='22023';
+  END IF;
+  IF v_ride.status NOT IN ('ACCEPTED','ARRIVED')
+     OR v_ride.driver_id IS NULL
+     OR v_ride.pickup_confirmed_at IS NOT NULL
+     OR v_ride.in_trip_at IS NOT NULL
+     OR v_ride.updated_at>now()-interval '15 minutes'
+     OR coalesce(v_ride.payment_status,'PENDING')<>'PENDING' THEN
+    RAISE EXCEPTION 'Atribuicao ativa ou com viagem/pagamento: somente revisao manual'
+      USING ERRCODE='23514';
+  END IF;
+  UPDATE public.professional_quick_rides
+  SET status='CANCELLED', updated_at=now()
+  WHERE id=v_ride.id;
+  INSERT INTO public.caronaa_f07_operations_audit
+    (ride_id,actor_id,action,previous_status,new_status,detail)
+  VALUES (v_ride.id,auth.uid(),'STALE_ASSIGNMENT_CANCELLED',
+    v_ride.status,'CANCELLED',btrim(p_reason));
+  RETURN true;
+END;
+$ops$;
+
 REVOKE ALL ON FUNCTION public.admin_f07_operations_snapshot() FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.admin_f07_open_incident(uuid,uuid,text,text,text)
   FROM PUBLIC,anon;
@@ -348,12 +391,16 @@ REVOKE ALL ON FUNCTION public.admin_f07_update_incident(uuid,text,text)
   FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.admin_f07_expire_stale_search(uuid)
   FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.admin_f07_cancel_stale_assignment(uuid,text)
+  FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_f07_operations_snapshot() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_f07_open_incident(uuid,uuid,text,text,text)
   TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_f07_update_incident(uuid,text,text)
   TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_f07_expire_stale_search(uuid)
+  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_f07_cancel_stale_assignment(uuid,text)
   TO authenticated;
 
 NOTIFY pgrst,'reload schema';
