@@ -298,6 +298,8 @@ Passageiro → Viajar agora → Origem/destino → Carro ou moto elegível
 
 **Aceite F07:** simular disponibilidade, pedido, despacho, aceite, corrida, estados, cancelamento e ausência de profissional; validar conformidade antes de habilitar operação real.
 
+**Controle administrativo de corridas profissionais (20/11/2026):** o Centro de Operações em `/admin/operacoes` abre em "Central ao vivo" e distingue motoristas em corrida, a caminho do embarque, disponíveis para pedidos e com falhas de GPS/cobertura ou habilitação. A fila de "Acessos ao radar" não representa corridas ativas. A migration incremental `0221_f07_operations_command_center.sql` fornece a consulta protegida, incidentes e auditoria. Operações podem registrar, assumir e resolver incidentes sem alterar status da viagem; expirar buscas `SEARCHING` sem motorista após o prazo; e cancelar excepcionalmente `ACCEPTED/ARRIVED` travadas há 15 minutos ou mais **somente antes do embarque, sem pagamento e com justificativa administrativa**. `IN_PROGRESS`, `PENDING_REVIEW`, conclusão, pagamentos e contestações continuam protegidos pelos fluxos existentes. Jamais expor latitude/longitude exata na consulta administrativa resumida. A central é observabilidade e atendimento, não substitui homologação de transporte. Aplicar 0221 no banco antes de publicar a UI.
+
 ### F08 — Acompanhar viagem, notificações, pagamentos e avaliação
 
 ```text
