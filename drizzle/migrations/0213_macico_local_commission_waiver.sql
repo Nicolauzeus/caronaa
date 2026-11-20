@@ -1,5 +1,5 @@
 -- Temporary Macico de Baturite local quick-ride commission waiver.
--- Applies ONLY to NEW server-signed intramunicipal F07 fare snapshots.
+-- Applies to NEW intramunicipal Macico F07 rides and Acarape <-> Redencao rides.
 -- Existing quotes, debt, pricing tables and payment history remain untouched.
 -- Requires applied migrations 0140 and destination_municipality (0143/0147).
 BEGIN;
@@ -27,7 +27,11 @@ BEGIN
      v_quote.platform_commission_cents < 0 OR
      (v_quote.platform_commission_cents = 0 AND NOT (
        v_quote.pricing_region = 'MACICO_BATURITE'
-       AND v_quote.destination_municipality = v_quote.municipality
+       AND (
+         v_quote.destination_municipality = v_quote.municipality
+         OR (v_quote.municipality IN ('Acarape','Redenção')
+             AND v_quote.destination_municipality IN ('Acarape','Redenção'))
+       )
        AND v_quote.commission_bps = 0
        AND v_quote.driver_receives_cents = v_quote.customer_pays_cents
      )) THEN
