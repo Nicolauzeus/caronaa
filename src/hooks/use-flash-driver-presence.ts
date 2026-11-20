@@ -32,6 +32,7 @@ export function useFlashDriverPresence(){
   const active=useRef(false);
   const inFlightStart=useRef(false);
   const currentFix=useRef<DriverGpsFix|null>(null);
+  const currentMunicipality=useRef("");
   const stopWatch=useCallback(()=>{
     if(watch.current!==null && typeof navigator!=="undefined"&&navigator.geolocation)
       navigator.geolocation.clearWatch(watch.current);
@@ -44,7 +45,7 @@ export function useFlashDriverPresence(){
     if(!force && Date.now()-lastSentAt.current<FLASH_GPS_THROTTLE_MS)return true;
     sending.current=true;
     try{
-      await updateFlashDriverHeartbeatGPS(fix.lat,fix.lng,fix.accuracyM);
+      await updateFlashDriverHeartbeatGPS(fix.lat,fix.lng,fix.accuracyM,currentMunicipality.current);
       lastSentAt.current=Date.now();
       setState(s=>({...s,gpsConnected:true,error:null}));
       return true;
@@ -78,8 +79,9 @@ export function useFlashDriverPresence(){
           enableHighAccuracy:true,timeout:15000,maximumAge:0,
         }));
       const initial=sample(position);
-      if(!Number.isFinite(initial.accuracyM)||initial.accuracyM<=0||initial.accuracyM>5000)
+      if(!Number.isFinite(initial.accuracyM)||initial.accuracyM<=0||initial.accuracyM>150)
         throw new FlashDriverError("INVALID");
+      currentMunicipality.current=input.municipality;
       await setFlashDriverOnline(input);
       active.current=true;
       lastGpsAt.current=Date.now();
@@ -93,7 +95,7 @@ export function useFlashDriverPresence(){
       watch.current=navigator.geolocation.watchPosition(pos=>{
         if(!active.current)return;
         const fix=sample(pos);
-        if(!Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>5000){
+        if(!Number.isFinite(fix.accuracyM)||fix.accuracyM<=0||fix.accuracyM>150){
           setState(state=>({...state,gpsConnected:false,
             error:"O GPS está impreciso. Aguardando uma localização válida."}));
           return;
