@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getOperationalMetrics, type OperationalMetrics } from "@/lib/operational-metrics";
 import { InsightChart } from "@/components/admin/InsightChart";
 import { statusTextClass } from "@/lib/admin/chart-utils";
-import { ProfessionalLiveMonitor } from "@/components/admin/ProfessionalLiveMonitor";
+import { F07OperationsCommandCenter } from "@/components/admin/F07OperationsCommandCenter";
 import { QuickRideAdminPanel } from "@/components/admin/QuickRideAdminPanel";
 import { QuickRideDisputesAdmin } from "@/components/admin/QuickRideDisputesAdmin";
 import { ProfessionalAccessQueue } from "@/components/admin/ProfessionalAccessQueue";
@@ -31,6 +31,7 @@ function MobilityOperationsCenter() {
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [requestCount, setRequestCount] = useState<number | null>(null);
+  const [operationTab, setOperationTab] = useState("live");
   useEffect(() => {
     let active = true;
     setPending(true);
@@ -88,13 +89,20 @@ function MobilityOperationsCenter() {
   );
   return (
     <main className="space-y-6">
-      <Tabs defaultValue="requests" className="space-y-5">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
-          <TabsTrigger value="requests" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Solicitações{requestCount !== null ? ` (${requestCount})` : ""}</TabsTrigger>
-          <TabsTrigger value="indicators" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Painel e indicadores</TabsTrigger>
-          <TabsTrigger value="pilot" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Configuração do piloto</TabsTrigger>
+      <Tabs value={operationTab} onValueChange={setOperationTab} className="space-y-5">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-5">
+          <TabsTrigger value="live" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Central ao vivo</TabsTrigger>
+          <TabsTrigger value="requests" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Acessos ao radar{requestCount !== null ? " (" + requestCount + ")" : ""}</TabsTrigger>
           <TabsTrigger value="disputes" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Contestações</TabsTrigger>
+          <TabsTrigger value="indicators" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Indicadores</TabsTrigger>
+          <TabsTrigger value="pilot" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Configuração do piloto</TabsTrigger>
         </TabsList>
+        <TabsContent value="live" className="space-y-4">
+          <F07OperationsCommandCenter
+            onGoToDisputes={() => setOperationTab("disputes")}
+            onGoToAccess={() => setOperationTab("requests")}
+          />
+        </TabsContent>
         <TabsContent value="requests" forceMount className="data-[state=inactive]:hidden">
           <ProfessionalAccessQueue onCountChange={setRequestCount} />
         </TabsContent>
@@ -208,7 +216,7 @@ function MobilityOperationsCenter() {
         </div>
       </section>
 
-      <ProfessionalLiveMonitor />
+      {/* Operational availability moved to the live command center. */}
         </TabsContent>
         <TabsContent value="disputes" className="space-y-6">
           <QuickRideDisputesAdmin />
