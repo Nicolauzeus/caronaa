@@ -55,7 +55,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
   useEffect(() => {
-    if (recoverStaleChunk(error, window.sessionStorage, () => window.location.reload())) return;
+    if (navigator.onLine && recoverStaleChunk(error, window.sessionStorage, () => window.location.reload())) return;
     reportLovableError(error, {
       boundary: "tanstack_root_error_component",
     });
@@ -219,6 +219,28 @@ function RouteNavigationProgress() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [offline,setOffline]=useState(false);
+  const [recovering,setRecovering]=useState(false);
+
+  useEffect(()=>{
+    let alive=true;
+    let lastRefresh=0;
+    const reconnect=()=>{
+      if(!alive)return;
+      setOffline(false);
+      if(Date.now()-lastRefresh<2000)return;
+      lastRefresh=Date.now();
+      setRecovering(true);
+      // Preserve location, mounted map and drawer. Each view revalidates its own state.
+      window.dispatchEvent(new Event("caronaa:app-refresh"));
+      window.setTimeout(()=>{if(alive)setRecovering(false);},3000);
+    };
+    const disconnected=()=>{if(alive){setOffline(true);setRecovering(false);}};
+    setOffline(!navigator.onLine);
+    window.addEventListener("online",reconnect);
+    window.addEventListener("offline",disconnected);
+    return()=>{alive=false;window.removeEventListener("online",reconnect);window.removeEventListener("offline",disconnected);};
+  },[]);
 
   useEffect(() => {
     void registerPwa();
@@ -235,7 +257,7 @@ function RootComponent() {
   // a blank page; recover from the global signal too.
   useEffect(() => {
     const recover = (event: PromiseRejectionEvent) => {
-      recoverStaleChunk(event.reason, window.sessionStorage, () => window.location.reload());
+      if(navigator.onLine)recoverStaleChunk(event.reason, window.sessionStorage, () => window.location.reload());
     };
     window.addEventListener("unhandledrejection", recover);
     return () => window.removeEventListener("unhandledrejection", recover);
@@ -249,6 +271,11 @@ function RootComponent() {
           <NotificationProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <RouteNavigationProgress />
+          {(offline||recovering)&&<div role="status" aria-live="polite"
+            className="pointer-events-none fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[120] mx-auto max-w-sm rounded-xl border border-[#FFBB00]/50 bg-[#121212]/95 px-3 py-2 text-center text-xs font-semibold text-white shadow-lg">
+            {offline?"Sem internet. Sua corrida e esta tela serão preservadas.":
+              "Conexão restabelecida. Sincronizando a corrida…"}
+          </div>}
           <Outlet />
           <PwaInstallNotice />
 
