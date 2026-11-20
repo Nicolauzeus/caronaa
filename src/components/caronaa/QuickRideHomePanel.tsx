@@ -89,6 +89,7 @@ export function QuickRideHomePanel({
   const [rideRefreshError,setRideRefreshError]=useState(false);
   const mounted=useRef(true);
   const rideRefreshVersion=useRef(0);
+  const rideRefreshInFlight=useRef(false);
   const boardingPending=useRef(false);
   const lastBoardingAttempt=useRef(0);
   const submissionInFlight=useRef(false);
@@ -174,8 +175,11 @@ export function QuickRideHomePanel({
     if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status)){
       setBoardingCode("");return;
     }
-    try{setBoardingCode(sessionStorage.getItem("caronaa:boarding:"+liveRide.id)??"");}
-    catch{setBoardingCode("");}
+    try{
+      const value=sessionStorage.getItem("caronaa:boarding:"+liveRide.id)??"";
+      const issued=Number(sessionStorage.getItem("caronaa:boarding-at:"+liveRide.id)??"0");
+      setBoardingCode(issued>0&&Date.now()-issued<14*60_000?value:"");
+    }catch{setBoardingCode("");}
   },[liveRide?.id,liveRide?.status==="IN_PROGRESS"]);
   useEffect(()=>{
     if(!liveRide||liveRide.status!=="IN_PROGRESS"){setDropoff(null);return;}
@@ -221,13 +225,26 @@ export function QuickRideHomePanel({
       const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_issue_boarding_pin",{p_id:rideId});
       if(rpcError||typeof data!=="string")throw rpcError??new Error("PIN unavailable");
       if(!mounted.current)return;
-      try{sessionStorage.setItem("caronaa:boarding:"+rideId,data);}catch{}
+      try{sessionStorage.setItem("caronaa:boarding:"+rideId,data);
+        sessionStorage.setItem("caronaa:boarding-at:"+rideId,String(Date.now()));}catch{}
       setBoardingCode(data);
       setError("");
     }catch{
       if(mounted.current)setError("Código temporariamente indisponível. Reconecte e tente novamente.");
     }finally{boardingPending.current=false;}
   }
+  useEffect(()=>{
+    if(!liveRide||!boardingCode||!["ACCEPTED","ARRIVED"].includes(liveRide.status))return;
+    const check=()=>{
+      const issued=Number(sessionStorage.getItem("caronaa:boarding-at:"+liveRide.id)??"0");
+      if(!issued||Date.now()-issued>=14*60_000){
+        setBoardingCode("");
+        try{sessionStorage.removeItem("caronaa:boarding:"+liveRide.id);}catch{}
+      }
+    };
+    const timer=window.setInterval(check,15000);
+    return()=>window.clearInterval(timer);
+  },[liveRide?.id,liveRide?.status,boardingCode]);
   const notifiedArrival=useRef<string|null>(null);
   useEffect(()=>{
     if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))return;
@@ -298,18 +315,26 @@ export function QuickRideHomePanel({
   },[coveragePointKey,coverageRefresh]);
   const refreshQuickRides=useCallback(async()=>{
     if(!navigator.onLine){if(mounted.current)setRideRefreshError(true);return;}
+    // One authoritative request at a time. A timed-out response cannot
+    // overwrite a newer status, and slow connections cannot starve polling.
+    if(rideRefreshInFlight.current)return;
+    rideRefreshInFlight.current=true;
     const version=++rideRefreshVersion.current;
     try{
-      const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
+      const outcome=await Promise.race([
+        (supabase as any).rpc("quick_ride_my_requests"),
+        new Promise<{data:null;error:Error}>(resolve=>
+          setTimeout(()=>resolve({data:null,error:new Error("TIMEOUT")}),9000)),
+      ]);
       if(!mounted.current||version!==rideRefreshVersion.current)return;
-      if(error){setRideRefreshError(true);return;}
-      // Keep the last confirmed ride during transient failures; accept only current replies.
-      if(!Array.isArray(data)){setRideRefreshError(true);return;}
-      setRides(data);
+      if(outcome.error||!Array.isArray(outcome.data)){
+        setRideRefreshError(true);return;
+      }
+      setRides(outcome.data);
       setRideRefreshError(false);
     }catch{
       if(mounted.current&&version===rideRefreshVersion.current)setRideRefreshError(true);
-    }
+    }finally{rideRefreshInFlight.current=false;}
   },[]);
   useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
   useEffect(()=>{const onRefresh=()=>void refreshQuickRides();window.addEventListener("caronaa:app-refresh",onRefresh);return()=>window.removeEventListener("caronaa:app-refresh",onRefresh);},[refreshQuickRides]);
