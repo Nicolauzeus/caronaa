@@ -154,8 +154,14 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
     if(commissionBps>4000||
        (coverage.region==="MACICO_BATURITE"&&commissionBps!==2000))
       throw new Error("Política de comissão profissional inconsistente.");
+    const macicoPair=["Acarape","Redenção"];
+    const redencaoAcarapePair=macicoPair.includes(coverage.municipality) &&
+      macicoPair.includes(destinationCity.municipality);
     const waiveLocalMacicoCommission=coverage.region==="MACICO_BATURITE" &&
-      destinationCity.municipality===coverage.municipality;
+      (destinationCity.municipality===coverage.municipality || redencaoAcarapePair);
+    const localMotoFixedFareCents=data.vehicleType==="MOTO" && redencaoAcarapePair
+      ? (destinationCity.municipality===coverage.municipality ? 500 : 600)
+      : undefined;
     const quotedAt=new Date().toISOString();
     const {data:events,error:eventsError}=await admin.from("caronaa_quick_official_activities")
       .select("id,starts_at,ends_at,center_lat,center_lng,radius_m,published")
@@ -217,6 +223,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       party:"INDIVIDUAL",
       quotedAt,
       waiveLocalMacicoCommission,
+      localMotoFixedFareCents,
       // Pilot rates are the four approved matrices. Event campaigns must not
       // silently override their explicit 15%/20% commission decisions.
       officialActivity:!String(policy.policy_version).endsWith("-piloto")&&matchingEvent?{
