@@ -88,6 +88,9 @@ export function QuickRideHomePanel({
   const [expiredHidden,setExpiredHidden]=useState<string|null>(null);
   const [rideRefreshError,setRideRefreshError]=useState(false);
   const mounted=useRef(true);
+  const rideRefreshVersion=useRef(0);
+  const boardingPending=useRef(false);
+  const lastBoardingAttempt=useRef(0);
   const submissionInFlight=useRef(false);
   const retryInFlight=useRef(false);
   const originLat=originPoint?.lat, originLng=originPoint?.lng;
@@ -167,7 +170,13 @@ export function QuickRideHomePanel({
     setError("");
     setQuote(null);setCurrentQuoteKey("");setQuoteRefresh(value=>value+1);
   }
-  useEffect(()=>{if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))setBoardingCode("");},[liveRide?.id,liveRide?.status]);
+  useEffect(()=>{
+    if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status)){
+      setBoardingCode("");return;
+    }
+    try{setBoardingCode(sessionStorage.getItem("caronaa:boarding:"+liveRide.id)??"");}
+    catch{setBoardingCode("");}
+  },[liveRide?.id,liveRide?.status==="IN_PROGRESS"]);
   useEffect(()=>{
     if(!liveRide||liveRide.status!=="IN_PROGRESS"){setDropoff(null);return;}
     let cancelled=false;
@@ -199,23 +208,51 @@ export function QuickRideHomePanel({
   const dropoffIsPending=liveRide?.status==="IN_PROGRESS"&&Boolean(dropoff?.deadline_at)&&!dropoff?.resolved_at&&!dropoff?.passenger_response;
   useEffect(()=>{onDropoffPendingChange?.(Boolean(dropoffIsPending));},[dropoffIsPending,onDropoffPendingChange]);
   async function issueBoardingCode(){
-    if(!liveRide||busy)return;
-    setBusy(true);setError("");
+    if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status)||
+      boardingPending.current||!navigator.onLine)return;
+    const rideId=liveRide.id;
+    const cached=(()=>{try{return sessionStorage.getItem("caronaa:boarding:"+rideId);}catch{return null;}})();
+    if(cached&&/^\\d{4}$/.test(cached)){setBoardingCode(cached);return;}
+    // Avoid multiple server reissues caused by reconnect, focus and realtime events.
+    if(Date.now()-lastBoardingAttempt.current<4000)return;
+    lastBoardingAttempt.current=Date.now();
+    boardingPending.current=true;
     try{
-      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_issue_boarding_pin",{p_id:liveRide.id});
-      if(rpcError||typeof data!=="string")throw new Error("Não foi possível emitir o código de embarque.");
+      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_issue_boarding_pin",{p_id:rideId});
+      if(rpcError||typeof data!=="string")throw rpcError??new Error("PIN unavailable");
+      if(!mounted.current)return;
+      try{sessionStorage.setItem("caronaa:boarding:"+rideId,data);}catch{}
       setBoardingCode(data);
-    }catch(cause){setError(cause instanceof Error?cause.message:"Falha ao gerar código.");}
-    finally{setBusy(false);}
+      setError("");
+    }catch{
+      if(mounted.current)setError("Código temporariamente indisponível. Reconecte e tente novamente.");
+    }finally{boardingPending.current=false;}
   }
   const notifiedArrival=useRef<string|null>(null);
   useEffect(()=>{
-    if(!liveRide||liveRide.status!=="ARRIVED"||notifiedArrival.current===liveRide.id)return;
-    notifiedArrival.current=liveRide.id;
-    toast.success("Seu motorista chegou! Informe o código de embarque.");
+    if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status))return;
+    // Pre-fetch on ACCEPTED: the passenger does not wait for the arrival event.
     if(!boardingCode)void issueBoardingCode();
-    void playNotificationSound("driver_arrived");
-  },[liveRide?.id,liveRide?.status]);
+    if(liveRide.status==="ARRIVED"&&notifiedArrival.current!==liveRide.id){
+      notifiedArrival.current=liveRide.id;
+      toast.success("Seu motorista chegou! Informe o código de embarque.");
+      void playNotificationSound("driver_arrived");
+    }
+  },[liveRide?.id,liveRide?.status,boardingCode]);
+  useEffect(()=>{
+    if(!liveRide||!["ACCEPTED","ARRIVED"].includes(liveRide.status)||boardingCode)return;
+    const retry=()=>{if(!document.hidden&&navigator.onLine)void issueBoardingCode();};
+    const timer=window.setInterval(retry,6000);
+    window.addEventListener("online",retry);
+    window.addEventListener("focus",retry);
+    window.addEventListener("pageshow",retry);
+    document.addEventListener("visibilitychange",retry);
+    return()=>{
+      window.clearInterval(timer);window.removeEventListener("online",retry);
+      window.removeEventListener("focus",retry);window.removeEventListener("pageshow",retry);
+      document.removeEventListener("visibilitychange",retry);
+    };
+  },[liveRide?.id,liveRide?.status,boardingCode]);
   async function respondDropoff(response:"CONFIRMED"|"CONTESTED"){
     if(!liveRide||busy||remainingDropoffSeconds===0)return;
     setBusy(true);setError("");
@@ -260,14 +297,18 @@ export function QuickRideHomePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[coveragePointKey,coverageRefresh]);
   const refreshQuickRides=useCallback(async()=>{
+    if(!navigator.onLine){if(mounted.current)setRideRefreshError(true);return;}
+    const version=++rideRefreshVersion.current;
     try{
       const {data,error}=await (supabase as any).rpc("quick_ride_my_requests");
-      if(!mounted.current)return;
+      if(!mounted.current||version!==rideRefreshVersion.current)return;
       if(error){setRideRefreshError(true);return;}
-      setRides(Array.isArray(data)?data:[]);
+      // Keep the last confirmed ride during transient failures; accept only current replies.
+      if(!Array.isArray(data)){setRideRefreshError(true);return;}
+      setRides(data);
       setRideRefreshError(false);
     }catch{
-      if(mounted.current)setRideRefreshError(true);
+      if(mounted.current&&version===rideRefreshVersion.current)setRideRefreshError(true);
     }
   },[]);
   useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
@@ -290,10 +331,14 @@ export function QuickRideHomePanel({
     },intervalMs);
     const visible=()=>{if(!document.hidden)void refreshQuickRides();};
     window.addEventListener("focus",visible);
+    window.addEventListener("online",visible);
+    window.addEventListener("pageshow",visible);
     document.addEventListener("visibilitychange",visible);
     return()=>{
       window.clearInterval(timer);
       window.removeEventListener("focus",visible);
+      window.removeEventListener("online",visible);
+      window.removeEventListener("pageshow",visible);
       document.removeEventListener("visibilitychange",visible);
     };
   },[liveRide?.id,liveRide?.status,refreshQuickRides]);
