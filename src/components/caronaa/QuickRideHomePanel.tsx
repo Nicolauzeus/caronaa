@@ -271,6 +271,7 @@ export function QuickRideHomePanel({
     }
   },[]);
   useEffect(()=>{void refreshQuickRides();},[refreshQuickRides]);
+  useEffect(()=>{const onRefresh=()=>void refreshQuickRides();window.addEventListener("caronaa:app-refresh",onRefresh);return()=>window.removeEventListener("caronaa:app-refresh",onRefresh);},[refreshQuickRides]);
   useEffect(()=>{
     const updated=()=>{void refreshQuickRides();};
     window.addEventListener("caronaa:quick-ride-dropoff-updated",updated);
