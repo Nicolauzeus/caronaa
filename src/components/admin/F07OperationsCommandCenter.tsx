@@ -98,6 +98,8 @@ export function F07OperationsCommandCenter({
   const [category, setCategory] = useState("OUTRO");
   const [priority, setPriority] = useState("MEDIUM");
   const [description, setDescription] = useState("");
+  const [staleRide, setStaleRide] = useState<Ride | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [resolution, setResolution] = useState<Record<string, string>>({});
   const [allIncidents, setAllIncidents] = useState(false);
   const polling = useRef(false);
@@ -227,6 +229,33 @@ export function F07OperationsCommandCenter({
     setBusy(null);
   }
 
+
+  async function cancelStaleAssignment() {
+    if (!staleRide || busy) return;
+    const note = cancelReason.trim();
+    if (note.length < 20 || note.length > 2000) {
+      setMessage("Informe uma justificativa de 20 a 2000 caracteres.");
+      return;
+    }
+    if (!window.confirm(
+      "Confirmar cancelamento administrativo antes do embarque? A corrida será auditada e não poderá ser retomada."
+    )) return;
+    setBusy(staleRide.id);
+    const { data: ok, error: rpcError } = await (supabase as any).rpc(
+      "admin_f07_cancel_stale_assignment",
+      { p_ride_id: staleRide.id, p_reason: note },
+    );
+    if (rpcError || ok !== true) {
+      setMessage("Não foi possível cancelar: " + (rpcError?.message || "Resposta inesperada."));
+    } else {
+      setMessage("Atribuição pré-embarque cancelada com justificativa e auditoria.");
+      setStaleRide(null);
+      setCancelReason("");
+      await reload();
+    }
+    setBusy(null);
+  }
+
   function renderRide(ride: Ride) {
     const issue = ride.issue_code ? issueLabels[ride.issue_code] : null;
     return <article key={ride.id} className="space-y-2 rounded-xl border bg-card p-3 text-sm">
@@ -245,6 +274,12 @@ export function F07OperationsCommandCenter({
           onClick={onGoToDisputes}>Analisar encerramento</Button>}
         {ride.issue_code === "SEARCH_EXPIRED" && <Button size="sm" variant="outline"
           disabled={busy !== null} onClick={() => void expireRide(ride)}>Regularizar busca</Button>}
+        {ride.issue_code === "NO_PROGRESS" &&
+          (ride.status === "ACCEPTED" || ride.status === "ARRIVED") &&
+          <Button size="sm" variant="outline" onClick={() => {
+            setStaleRide(ride); setCancelReason("");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}>Analisar cancelamento</Button>}
         <Button size="sm" variant="outline"
           onClick={() => startIncident({
             rideId: ride.id, driverId: ride.driver_id,
@@ -390,6 +425,31 @@ export function F07OperationsCommandCenter({
       <p className="text-xs text-muted-foreground">
         O registro será auditado. Nenhum status de corrida será alterado por esta ação.
       </p>
+    </form>}
+
+
+    {staleRide && <form className="space-y-3 rounded-xl border border-amber-400/50 bg-card p-4"
+      onSubmit={event => { event.preventDefault(); void cancelStaleAssignment(); }}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">Cancelamento pré-embarque · Corrida {shortId(staleRide.id)}</h3>
+        <Button type="button" variant="outline" size="sm" disabled={busy !== null}
+          onClick={() => setStaleRide(null)}>Fechar</Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Apenas corridas aceitas ou com chegada registrada, sem embarque, sem pagamento
+        e sem mudança de etapa por pelo menos 15 minutos podem ser canceladas por esta ação.
+        Confirme com as partes antes de decidir.
+      </p>
+      <label className="block text-sm">Justificativa administrativa (obrigatória)
+        <textarea className="mt-1 min-h-24 w-full rounded-lg border bg-background p-3 text-base"
+          value={cancelReason} minLength={20} maxLength={2000} required
+          placeholder="Descreva as evidências do travamento e por que o aceite será cancelado..."
+          onChange={e => setCancelReason(e.target.value)}/>
+      </label>
+      <Button type="submit" variant="destructive"
+        disabled={busy !== null || cancelReason.trim().length < 20}>
+        Cancelar atribuição com auditoria
+      </Button>
     </form>}
 
     {data && <>
