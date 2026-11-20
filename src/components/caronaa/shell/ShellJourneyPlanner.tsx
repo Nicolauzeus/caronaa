@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Bike, CarFront, Clock3, Loader2, MapPin, Search, UserRound } from "lucide-react";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
+import { isKaluandaNightActive } from "@/lib/location/kaluanda-night";
 import { WomenOnlyToggle } from "@/components/caronaa/WomenOnlyToggle";
 import { emptyTravelPreferences, type TravelPreferences } from "@/lib/travel-preferences";
 import { loadTravelPreferences } from "@/lib/travel-preferences-service";
@@ -408,7 +409,7 @@ export function ShellJourneyPlanner({
           <Search size={21} className="shrink-0 text-[#121212]" aria-hidden="true"/>
           <span className="min-w-0 text-left">
             <strong className="block truncate font-[Sora] text-sm font-extrabold">{destination||"Digite seu destino"}</strong>
-            <small className="block truncate text-[11px] font-medium text-[#505050]" aria-live="polite">{waitingForOrigin?"Localizando você…":destination?"Toque para mudar o destino":"Digite seu destino"}</small>
+            <small className="block truncate text-[11px] font-medium text-[#505050]" aria-live="polite">{waitingForOrigin?"Localizando você…":destination?"Toque para mudar o destino":isKaluandaNightActive()?"Sugestão de hoje: Kaluanda Night":"Digite seu destino"}</small>
           </span>
         </button>
         <button type="button" aria-label="Ajustar no mapa a origem" onClick={onAdjustOrigin} title={originText} className="flex min-h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#FFBB00]/45 bg-[#FFBB00]/10 text-[#FFBB00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00]">
