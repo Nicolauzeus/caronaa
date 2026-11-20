@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, LoaderCircle } from "lucide-react";
 
-export function MunicipalitySelect({ value, onChange, disabled = false }: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
+export function MunicipalitySelect({ value, onChange, disabled = false, optional = false }: { value: string; onChange: (value: string) => void; disabled?: boolean; optional?: boolean }) {
   const id = useId();
   const [text, setText] = useState(value);
   const [options, setOptions] = useState<{ placeId: string; label: string }[]>([]);
@@ -43,7 +43,7 @@ export function MunicipalitySelect({ value, onChange, disabled = false }: { valu
     finally { if (current === generation.current) setBusy(false); }
   }
   return <div className="space-y-2">
-    <label htmlFor={id} className="text-sm font-medium">Município</label>
+    <label htmlFor={id} className="text-sm font-medium">Município{optional ? " (opcional)" : ""}</label>
     <div className="relative">
       <Input id={id} role="combobox" aria-expanded={options.length > 0} aria-controls={`${id}-options`} aria-autocomplete="list" autoComplete="off" value={text} disabled={disabled} maxLength={120} placeholder="Buscar município" onChange={e => { generation.current++; setText(e.target.value); setEditing(true); setOptions([]); setError(""); setBusy(false); onChange(""); }} />
       {busy && <LoaderCircle aria-label="Consultando Google" className="absolute right-3 top-3 size-4 animate-spin text-muted-foreground" />}

@@ -67,7 +67,6 @@ export function professionalAccessMissing(i: AccessInput): MissingCode[] {
   else if (type === "CAR" && !CAR_CATEGORIES.some((c) => c.value === i.carCategory)) m.push("CAR_CATEGORY");
   const s = i.seats ?? 0;
   if (!Number.isInteger(s) || s < 1 || s > 7 || s > maxSeatsFor(type, i.carCategory ?? null)) m.push("SEATS");
-  if ((i.municipality ?? "").trim().length < 2) m.push("MUNICIPALITY");
   return m;
 }
 

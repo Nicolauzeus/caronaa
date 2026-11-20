@@ -267,6 +267,8 @@ Oferta publicada → Encontrar demanda próxima → Agrupar interessados
 
 **Aceite F06:** demanda simulada próxima gera alternativas calculadas, com diferenças explícitas; rejeição preserva rota; aceite respeita tempo, vagas e reservas existentes.
 
+**Decisão aprovada em 20/11/2026 — município e macro-região declarados são opcionais para motoristas (substitui a obrigatoriedade prevista em 11, 17 e 18/11):** nenhum motorista de carro ou moto precisa selecionar região ou município residencial/de preferência para concluir o cadastro nem para obter a habilitação automática emitida pelo servidor. Preferências anteriormente salvas são preservadas e não limitam a operação. O município operacional é verificado a partir do GPS consentido ao entrar online, com cobertura habilitada no servidor; receber/aceitar pedidos segue raio de 15 km da origem, tipo de veículo, posição válida e demais filtros operacionais. Não criar GPS fictício, não remover suspensões/negativas, checagens de veículo/foto/e-mail e regras financeiras. A migration incremental `0220_f02_f07_optional_home_region.sql` deve estar aplicada antes de publicar o frontend correspondente. Não converter corridas pendentes em concluídas como parte dessa mudança.
+
 ### F07 — Encontrar viagem imediata (carro e mototáxi)
 
 ```text

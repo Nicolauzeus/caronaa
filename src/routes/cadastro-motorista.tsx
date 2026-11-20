@@ -17,7 +17,7 @@ export const Route = createFileRoute("/cadastro-motorista")({
 
 type Field = "name" | "whatsapp" | "municipality" | "type" | "brand" | "model" | "color" | "category" | "seats" | "plate" | "registration" | "photo";
 type Vehicle = "" | "CAR" | "MOTO";
-const stages = ["Contato e município", "Dados do veículo", "Identificação", "Revisão final"];
+const stages = ["Dados do motorista", "Dados do veículo", "Identificação", "Revisão final"];
 const avatarValid = (url: string, id: string) => url.startsWith("https://") && url.includes("/avatars/" + id + "/");
 const inputStyle = "mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[#252525] p-3 text-base text-white outline-none focus-visible:border-[#FFBB00]";
 const labelStyle = "block text-sm font-semibold text-white/90";
@@ -102,8 +102,6 @@ function DriverRegistration() {
       if (!/^\S{2,}\s+\S{2,}/.test(name.trim()) || name.trim().length > 120) m.name = "Informe nome e sobrenome.";
       if (whatsapp.trim() && !validBrazilWhatsapp(whatsapp))
         m.whatsapp = "Informe um celular com DDD válido e nove dígitos começando por 9.";
-      if (municipality.trim().length < 2 || ["MACICO_BATURITE", "OUTRA_REGIAO"].includes(municipality.toUpperCase()))
-        m.municipality = "Escolha seu município nas sugestões.";
     }
     if (which === 1 || which === 3) {
       if (!type) m.type = "Escolha carro ou moto.";
@@ -152,7 +150,7 @@ function DriverRegistration() {
         setPhotoUrl(photoData.publicUrl); setPhoto(null);
       }
       const { error: registrationError } = await (supabase as any).rpc("complete_professional_driver_registration", {
-        p_full_name: name.trim(), p_whatsapp: whatsapp.trim()?normalizeBrazilWhatsapp(whatsapp):null, p_municipality: municipality.trim(),
+        p_full_name: name.trim(), p_whatsapp: whatsapp.trim()?normalizeBrazilWhatsapp(whatsapp):null, p_municipality: municipality.trim() || null,
         p_vehicle_type: type, p_vehicle_brand: brand.trim(), p_vehicle_model: model.trim(),
         p_vehicle_color: color.trim(), p_vehicle_plate: normalizePlate(plate),
         p_car_category: type === "CAR" ? category : null, p_vehicle_seats: type === "MOTO" ? 1 : seats,
@@ -219,7 +217,7 @@ function DriverRegistration() {
       </div>
       <h1 className="mt-5 font-[Sora] text-2xl font-extrabold">{stages[stage]}</h1>
       <p className="mt-1 text-sm text-white/65">
-        {stage === 0 ? "Confirme seu contato e município principal." :
+        {stage === 0 ? "Confirme seu nome e, se quiser, informe um município de referência." :
           stage === 1 ? "Informe o veículo que atenderá seus passageiros." :
           stage === 2 ? "Está perto do fim: só faltam placa, registro e foto." :
           "Confira seus dados. Depois, será só escolher quando ficar online."}
@@ -238,9 +236,9 @@ function DriverRegistration() {
             <span className="mt-1 block text-xs text-white/55">Contato opcional. Você poderá adicionar, alterar ou remover no Perfil. Não bloqueia corridas.</span>
           </label>
           <div className="rounded-xl border border-white/15 bg-white/[0.03] p-3">
-            <MunicipalitySelect value={municipality} onChange={value => { setMunicipality(value); clear("municipality"); }} />
+            <MunicipalitySelect optional value={municipality} onChange={value => { setMunicipality(value); clear("municipality"); }} />
             <FieldError field="municipality" />
-            <p className="mt-2 text-xs text-white/55">Escolha um município específico. O GPS real será verificado quando você ficar online.</p>
+            <p className="mt-2 text-xs text-white/55">Esse campo não é obrigatório nem limita suas corridas. A cobertura é verificada pelo GPS quando você ficar online.</p>
           </div>
         </>}
         {stage === 1 && <>
@@ -315,7 +313,7 @@ function DriverRegistration() {
         {stage === 3 && <>
           <div className="space-y-3 rounded-2xl border border-white/15 bg-white/[0.03] p-4 text-sm">
             <div><span className="text-xs text-white/55">Nome e contato</span><p className="font-semibold">{name} · {whatsapp||"WhatsApp não informado (opcional)"}</p></div>
-            <div><span className="text-xs text-white/55">Município</span><p className="font-semibold">{municipality}</p></div>
+            {municipality && <div><span className="text-xs text-white/55">Município de referência</span><p className="font-semibold">{municipality}</p></div>}
             <div><span className="text-xs text-white/55">Veículo</span><p className="font-semibold">{type === "CAR" ? "Carro" : "Moto"} · {brand} {model} · {color} · {normalizePlate(plate)}</p></div>
             <div><span className="text-xs text-white/55">Vagas</span><p className="font-semibold">{seats}</p></div>
             {type === "MOTO" && <div><span className="text-xs text-white/55">Matrícula</span><p className="font-semibold">{registration}</p></div>}

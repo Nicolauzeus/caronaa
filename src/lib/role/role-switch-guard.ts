@@ -16,11 +16,15 @@ export function isQuickRideActive(status:unknown):boolean {
  * Fail closed if the existing RPC is unavailable; never mutate the F07 system.
  */
 export async function canSwitchCaronaaRole(
-  operationalRide:{id:string;status:string}|null|undefined,
+  operationalRide:{id:string;status:string;expires_at?:string|null}|null|undefined,
 ):Promise<QuickRideGuardResult> {
   // A mounted operational ride with any nonterminal/unknown status blocks
   // switching, even if its status isn't listed in the known F07 enum.
-  if(operationalRide && !new Set(["COMPLETED","CANCELLED","CANCELED","EXPIRED","REJECTED","FINISHED","PENDING_REVIEW"])
+  const timedOutSearch=operationalRide?.status?.toUpperCase()==="SEARCHING"
+    && operationalRide.expires_at!=null
+    && Number.isFinite(Date.parse(operationalRide.expires_at))
+    && Date.parse(operationalRide.expires_at)<=Date.now();
+  if(operationalRide && !timedOutSearch && !new Set(["COMPLETED","CANCELLED","CANCELED","EXPIRED","REJECTED","FINISHED","PENDING_REVIEW"])
     .has(operationalRide.status.toUpperCase()))
     return {allowed:false,reason:"ACTIVE_RIDE"};
   try {

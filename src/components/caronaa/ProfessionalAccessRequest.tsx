@@ -12,7 +12,7 @@ import {
 type State = {
   authorized: boolean;
   profileMissing: MissingCode[];
-  request: null | { status: AccessStatus; access_type?: "STANDARD" | "MOTOTAXI_SIMPLE"; vehicle_type: VehicleType; car_category: CarCategory | null; passenger_seats: number; municipality: string; review_reason: string | null; submitted_at: string };
+  request: null | { status: AccessStatus; access_type?: "STANDARD" | "MOTOTAXI_SIMPLE"; vehicle_type: VehicleType; car_category: CarCategory | null; passenger_seats: number; municipality: string | null; review_reason: string | null; submitted_at: string };
 };
 
 type InitialVehicle = {type:VehicleType;seats:number;municipality:string};
@@ -41,7 +41,7 @@ export function ProfessionalAccessRequest({
       setSeats(initialVehicle?.seats!=null
         ?(actualType==="MOTO"?1:Math.min(3,Math.max(1,initialVehicle.seats)))
         :r.passenger_seats);
-      setCity(initialVehicle?.municipality||r.municipality);
+      setCity(initialVehicle?.municipality||r.municipality||"");
     } else if(initialVehicle) {
       // Reuse the universal registration instead of making a new application.
       setType(initialVehicle.type);
@@ -61,13 +61,12 @@ export function ProfessionalAccessRequest({
     if(!Number.isInteger(seats)||seats<1||
       seats>(type==="CAR"?Math.min(3,maxSeatsFor(type,category||null)):1))
       local.push("SEATS");
-    if(!city.trim())local.push("MUNICIPALITY");
     if(local.length){setMissing(local);return;}
     // The actual profile, photo, car plate, past approvals and permissions
     // are checked atomically by submit_professional_access_request in SQL.
     setBusy(true);
     const { error } = await (supabase as any).rpc("submit_professional_access_request", {
-      p_vehicle_type: type, p_car_category: type === "CAR" ? category : null, p_seats: seats, p_municipality: city.trim(),
+      p_vehicle_type: type, p_car_category: type === "CAR" ? category : null, p_seats: seats, p_municipality: city.trim() || null,
     });
     setBusy(false);
     if (error) { const codes = parseMissingError(error.message); if (codes.length) setMissing(codes); else setError(error.message); return; }
@@ -129,9 +128,9 @@ export function ProfessionalAccessRequest({
           <label className="block text-sm">Vagas para passageiros (1 a {maxSeats})
             <input type="number" min={1} max={maxSeats} value={seats} disabled={type === "MOTO"} onChange={(e) => {setSeats(Number(e.target.value));setMissing([]);}} className="mt-1 w-full rounded-lg border bg-background p-3" />
           </label>
-          <MunicipalitySelect value={city} onChange={value=>{setCity(value);setMissing([]);}} disabled={busy} />
+          <MunicipalitySelect optional value={city} onChange={value=>{setCity(value);setMissing([]);}} disabled={busy} />
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Button type="button" disabled={busy || !city} onClick={() => void submit()} className="min-h-12 w-full">
+          <Button type="button" disabled={busy} onClick={() => void submit()} className="min-h-12 w-full">
             {busy ? "Validando dados…" : "Confirmar dados e habilitar corridas"}
           </Button>
           <p className="text-xs text-muted-foreground">O sistema habilita sua conta após verificar os dados obrigatórios. O GPS só é compartilhado quando você ativar a disponibilidade.</p>

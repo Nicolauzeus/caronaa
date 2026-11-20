@@ -48,6 +48,17 @@ describe("Mototaxi confirmado na tela de corridas", () => {
     expect(screen.queryByRole("link",{name:/Corrigir dados profissionais/i})).toBeNull();
     expect(screen.queryByText(/Solicitar autorização/i)).toBeNull();
   });
+  it("does not block submission when the registered municipality is absent",async()=>{
+    api.rpc.mockImplementation(async(name:string)=> name==="get_my_professional_access"
+      ? {data:{authorized:false,profileMissing:[],request:null},error:null}
+      : {data:"approved",error:null});
+    render(<ProfessionalAccessRequest initialVehicle={{type:"MOTO",seats:1,municipality:""}}/>);
+    await screen.findByText(/Tipo confirmado no cadastro/i);
+    fireEvent.click(screen.getByRole("button",{name:/Confirmar dados e habilitar corridas/i}));
+    await waitFor(()=>expect(api.rpc).toHaveBeenCalledWith("submit_professional_access_request",{
+      p_vehicle_type:"MOTO",p_car_category:null,p_seats:1,p_municipality:null,
+    }));
+  });
   it("submits complete car data without the fabricated missing vehicle color",async()=>{
     api.rpc.mockImplementation(async (name:string)=>{
       if(name==="get_my_professional_access")return {

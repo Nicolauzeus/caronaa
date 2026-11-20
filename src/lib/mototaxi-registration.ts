@@ -5,7 +5,7 @@ export const detailsSchema = z.object({
   lastName: z.string().trim().min(2, "Informe seu último sobrenome.").max(70).regex(/^\S+$/, "Use apenas o último sobrenome."),
   whatsapp: z.string().transform(v => v.replace(/\D/g, "").replace(/^55(?=\d{11}$)/, ""))
     .refine(v => /^[1-9][0-9]9[0-9]{8}$/.test(v), "Informe WhatsApp com DDD."),
-  region: z.enum(["MACICO_BATURITE", "FORTALEZA"]),
+  region: z.union([z.enum(["MACICO_BATURITE", "FORTALEZA"]), z.literal("")]).nullish(),
   registrationNumber: z.string().trim().min(2, "Informe sua matrícula/registro.").max(80),
 });
 
@@ -19,7 +19,7 @@ type ProfessionalData = {
   firstName: string;
   lastName: string;
   whatsapp: string;
-  region: string;
+  region?: string | null;
   registrationNumber: string;
   photo: { type: string; size: number } | null;
   photoUrl: string;
@@ -42,7 +42,7 @@ export function professionalFormCorrections(data: ProfessionalData): Professiona
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       const key = issue.path[0] as ProfessionalField;
-      if (key in professionalFieldLabels && !errors[key]) errors[key] = key === "region" ? "Selecione a região de atuação." : issue.message;
+      if (key in professionalFieldLabels && !errors[key]) errors[key] = key === "region" ? "Região opcional inválida." : issue.message;
     }
   }
   const isStoredPhoto = Boolean(data.photoUrl && data.userId &&

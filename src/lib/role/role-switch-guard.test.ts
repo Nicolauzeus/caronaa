@@ -18,6 +18,12 @@ describe("role switch operational safety",()=>{
     mock.rpc.mockResolvedValue({data:[{role:"DRIVER",status:"SEARCHING"}],error:null});
     expect(await canSwitchCaronaaRole(null)).toEqual({allowed:false,reason:"ACTIVE_RIDE"});
   });
+  it("does not block on a locally stale expired SEARCHING request",async()=>{
+    const expired=new Date(Date.now()-60000).toISOString();
+    mock.rpc.mockResolvedValue({data:[{status:"EXPIRED"}],error:null});
+    expect(await canSwitchCaronaaRole({id:"old",status:"SEARCHING",expires_at:expired}))
+      .toEqual({allowed:true});
+  });
   it("allows switching after all rides have ended",async()=>{
     mock.rpc.mockResolvedValue({data:[{status:"COMPLETED"},{status:"CANCELLED"}],error:null});
     expect(await canSwitchCaronaaRole(null)).toEqual({allowed:true});

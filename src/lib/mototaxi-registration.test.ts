@@ -15,6 +15,10 @@ describe("mototaxi simplified registration", () => {
   it("normalizes country prefix and phone mask", () => {
     expect(detailsSchema.parse({ ...valid, whatsapp: "+55 (85) 99999-9999" }).whatsapp).toBe("85999999999");
   });
+  it("accepts absent or blank region without blocking driver registration", () => {
+    expect(detailsSchema.parse({ ...valid, region: "" }).region).toBe("");
+    expect(detailsSchema.parse({ ...valid, region: undefined }).region).toBeUndefined();
+  });
   it("accepts the selected Fortaleza region", () => {
     expect(detailsSchema.parse({ ...valid, region: "FORTALEZA" }).region).toBe("FORTALEZA");
   });
@@ -45,9 +49,9 @@ describe("confirmação automática dos dados profissionais", () => {
       registrationNumber: "", photoUrl: "",
     });
     expect(Object.keys(errors).sort()).toEqual([
-      "firstName","lastName","photo","region","registrationNumber","whatsapp",
+      "firstName","lastName","photo","registrationNumber","whatsapp",
     ].sort());
-    expect(errors.region).toMatch(/Selecione a região/i);
+    expect(errors.region).toBeUndefined();
   });
   it("reuses a valid photo stored in the account's own avatar folder", () => {
     expect(professionalFormCorrections(complete)).toEqual({});
