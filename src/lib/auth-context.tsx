@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { useRouter } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {claimPendingParticipations,readPendingParticipations,clearPendingLaunchReceipts} from "@/lib/formulario/research-participation";
 import { leaveAdminAppPreview } from "@/lib/admin/entry";
@@ -16,6 +16,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastIdentity=useRef<string|null>(null);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // A network interruption must not masquerade as a deliberate sign-out.
       if (event === "SIGNED_OUT" && !navigator.onLine) return;
       if (!["INITIAL_SESSION","TOKEN_REFRESHED","SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)) return;
+      const identity=session?.user?.id??null;
+      const identityChanged=lastIdentity.current!==identity;
+      lastIdentity.current=identity;
       setUser(previous => {
         const next = session?.user ?? null;
         return previous?.id === next?.id ? (next ?? previous) : next;
@@ -33,7 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") leaveAdminAppPreview();
       if (event === "SIGNED_OUT") clearPendingLaunchReceipts();
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") void router.invalidate();
+      if ((event === "SIGNED_IN" || event === "SIGNED_OUT") && identityChanged)
+        void router.invalidate();
     });
 
     void supabase.auth.getSession().then(({ data, error }) => {
