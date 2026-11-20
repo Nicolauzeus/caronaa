@@ -97,11 +97,11 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
     {pix&&<>
       <p className="text-xs text-white/70">Valor total da corrida</p>
       <p className="text-3xl font-black text-[#FFBB00]">{formatBrl(pix.data.amountCents/100)}</p>
-      <img src={pix.image} alt="QR Pix estático com o valor da viagem concluída" className="mx-auto h-36 w-36 rounded-xl bg-white p-2 sm:h-48 sm:w-48" />
+      <img src={pix.image} alt="QR Pix estático com o valor da viagem concluída" className="mx-auto h-48 w-48 rounded-xl bg-white p-2 sm:h-56 sm:w-56" />
       <p className="break-all text-xs">Chave do motorista: {pix.data.key}</p>
       <button type="button" onClick={()=>void copy()}
         className="min-h-11 w-full rounded-lg bg-[#FFBB00] p-2 font-bold text-[#121212]">
-        Copiar chave Pix / código copia e cola
+        Copiar código Pix (copia e cola)
       </button>
       <p className="text-xs text-white/65">Pagamento direto ao motorista. A declaração não substitui a confirmação no banco.</p>
       {declared ? <p role="status" className="rounded-xl border border-[#FFBB00]/40 p-3">
