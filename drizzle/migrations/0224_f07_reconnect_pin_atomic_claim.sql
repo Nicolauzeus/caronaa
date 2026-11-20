@@ -7,7 +7,7 @@ DO $check$
 BEGIN
  IF EXISTS (
    SELECT passenger_id FROM public.professional_quick_rides
-   WHERE status IN ('SEARCHING','ACCEPTED','ARRIVED','IN_PROGRESS','PENDING_REVIEW')
+   WHERE status IN ('ACCEPTED','ARRIVED','IN_PROGRESS','PENDING_REVIEW')
    GROUP BY passenger_id HAVING count(*)>1
  ) THEN
    RAISE EXCEPTION 'F07_ACTIVE_PASSENGER_DUPLICATES: resolve conflicting active rides before 0224';
@@ -21,12 +21,13 @@ BEGIN
  END IF;
 END $check$;
 
--- The row-level lock in both acceptance RPCs already serializes claims to the
+-- Searching/expired requests may coexist historically; exactly one assigned
+-- active journey per passenger is enforced. The row-level lock in both acceptance RPCs already serializes claims to the
 -- SAME request. These constraints also prevent concurrent claims to DIFFERENT
 -- requests by a driver/passenger, regardless of which RPC is used.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_f07_one_active_ride_per_passenger
  ON public.professional_quick_rides(passenger_id)
- WHERE status IN ('SEARCHING','ACCEPTED','ARRIVED','IN_PROGRESS','PENDING_REVIEW');
+ WHERE status IN ('ACCEPTED','ARRIVED','IN_PROGRESS','PENDING_REVIEW');
 CREATE UNIQUE INDEX IF NOT EXISTS uq_f07_one_active_ride_per_driver
  ON public.professional_quick_rides(driver_id)
  WHERE driver_id IS NOT NULL AND status IN ('ACCEPTED','ARRIVED','IN_PROGRESS','PENDING_REVIEW');
