@@ -57,32 +57,32 @@ export async function setFlashDriverOnline(input:FlashDriverOnlineInput):Promise
   }
   try{
     const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{
-      p_online:true,p_booking_mode:mode,p_seats:seats,p_vehicle_type:vehicleType,
+      p_is_online:true,p_dispatch_mode:mode,p_available_seats:seats,
       p_destination_lat:destination?.lat??null,p_destination_lng:destination?.lng??null,
-      p_destination_label:destination?.label??null,p_route_path:geometry,
+      p_destination_label:destination?.label??null,p_route_geojson:geometry,
     });
     if(error)throw rpcError(error);
-    if(data!==true && record(data)?.online!==true && record(data)?.success!==true)
+    if(record(data)?.is_online!==true)
       throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
 export async function setFlashDriverOffline():Promise<void>{
   try{
-    const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{p_online:false});
+    const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{p_is_online:false});
     if(error)throw rpcError(error);
-    if(data!==true&&record(data)?.online!==false&&record(data)?.success!==true)
+    if(record(data)?.is_online!==false)
       throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
-export async function updateFlashDriverHeartbeatGPS(lat:number,lng:number,accuracyM:number):Promise<void>{
-  if(!coordinatesValid({lat,lng})||!Number.isFinite(accuracyM)||accuracyM<=0||accuracyM>5000)
+export async function updateFlashDriverHeartbeatGPS(lat:number,lng:number,accuracyM:number,municipality:string):Promise<void>{
+  if(!coordinatesValid({lat,lng})||!Number.isFinite(accuracyM)||accuracyM<=0||accuracyM>5000||!municipality.trim())
     throw new FlashDriverError("INVALID");
   try{
     const {data,error}=await (supabase as any).rpc("update_flash_driver_heartbeat_gps",{
-      p_lat:lat,p_lng:lng,p_accuracy_m:accuracyM,
+      p_lat:lat,p_lng:lng,p_accuracy_m:accuracyM,p_municipality:municipality,
     });
     if(error)throw rpcError(error);
-    if(data!==true && record(data)?.success!==true && record(data)?.published!==true)
+    if(record(data)?.success!==true)
       throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
