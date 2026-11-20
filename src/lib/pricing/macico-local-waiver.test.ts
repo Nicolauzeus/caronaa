@@ -27,6 +27,14 @@ describe("temporary Macico intra-municipal commission waiver",()=>{
     expect(q.commissionBps).toBe(0);
     expect(q.processingFeeCents).toBe(0);
   });
+  it("R$5 within Acarape/Redencao and R$6 across the two towns",()=>{
+    for(const amount of [500,600] as const){
+      const q=quoteProposedCaronaaFare({...base,waiveLocalMacicoCommission:true,localMotoFixedFareCents:amount},config);
+      expect(q.customerPaysCents).toBe(amount);
+      expect(q.driverReceivesCents).toBe(amount);
+      expect(q.commissionBps).toBe(0);
+    }
+  });
   it("does not waive another region or unmarked intercity Macico ride",()=>{
     const intercity=quoteProposedCaronaaFare(base,{...config,processingFeeCents:0});
     expect(intercity.commissionBps).toBe(2000);
