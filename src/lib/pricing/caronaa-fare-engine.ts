@@ -66,6 +66,8 @@ export interface FareQuoteInput {
   quotedAt: string;
   /** Server-verified intramunicipal Macico F07 ride only. */
   waiveLocalMacicoCommission?: boolean;
+  /** Temporary server-authorized mototaxi tariff for Redencao/Acarape. */
+  localMotoFixedFareCents?: 500 | 600;
 }
 
 export interface ProposedFareQuote {
@@ -209,7 +211,13 @@ export function quoteProposedCaronaaFare(
       input.mode === "SHARED_CAR")
     throw new Error("Mais de uma vaga sob uma conta exige reserva de amigos.");
 
-  const { fare, floor } = referenceFare(input, config);
+  const reference = referenceFare(input, config);
+  if (input.localMotoFixedFareCents !== undefined &&
+      (input.region !== "MACICO_BATURITE" || input.mode !== "EXCLUSIVE_MOTO" ||
+       input.waiveLocalMacicoCommission !== true))
+    throw new Error("Tarifa local de mototaxi nao autorizada.");
+  const fare = input.localMotoFixedFareCents ?? reference.fare;
+  const floor = input.localMotoFixedFareCents ?? reference.floor;
   const { commissionBps, commissionSource } = commissionRate(input, config);
   const commission = Math.round(
     (input.mode.startsWith("EXCLUSIVE") ? fare : fare * input.occupiedSeats) *
@@ -245,7 +253,7 @@ export function quoteProposedCaronaaFare(
     throw new Error("Cotação financeira inválida.");
   }
   if (input.region === "MACICO_BATURITE" && input.mode.endsWith("MOTO") &&
-      driverReceives < 600) {
+      driverReceives < (input.localMotoFixedFareCents ?? 600)) {
     throw new Error("A remuneração do mototaxista no Maciço não pode ser inferior a R$ 6.");
   }
   return {
