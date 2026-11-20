@@ -5,7 +5,7 @@ import type { SheetSnap } from "./InteractiveBottomSheet";
 type Props={
   ride:FlashDriverRide;passenger:FlashPassengerDetails|null;snap:SheetSnap;whatsappUrl?:string|null;
   pin:string;onPinChange:(pin:string)=>void;
-  busy:boolean;dropoffSent:boolean;
+  busy:boolean;dropoffSent:boolean;nearDestination?:boolean;
   manualCloseOpen:boolean;onToggleManualClose:()=>void;
   manualCloseReason:string;onManualCloseReason:(value:string)=>void;
   onArrived:()=>void;onStart:()=>void;onDropoff:()=>void;onManualClose:()=>void;
@@ -18,7 +18,7 @@ const status={
 } as const;
 
 export function FlashDriverActiveSheet({
-  ride,passenger,snap,whatsappUrl,pin,onPinChange,busy,dropoffSent,
+  ride,passenger,snap,whatsappUrl,pin,onPinChange,busy,dropoffSent,nearDestination=false,
   manualCloseOpen,onToggleManualClose,manualCloseReason,onManualCloseReason,
   onArrived,onStart,onDropoff,onManualClose,onSnapChange,
 }:Props){
@@ -105,6 +105,7 @@ export function FlashDriverActiveSheet({
           </div>}
           {ride.status==="IN_PROGRESS"&&<p className="rounded-xl bg-white/[0.06] p-2.5 text-xs text-white/75">
             {dropoffSent?"Desembarque solicitado. Aguarde a confirmação do passageiro.":
+              nearDestination?"GPS indica proximidade do destino. Se o passageiro desembarcou, solicite a confirmação. GPS não conclui a viagem.":
               "Siga a rota no mapa. Solicite o desembarque ao chegar ao destino."}
           </p>}
           {ride.status==="IN_PROGRESS"&&!dropoffSent&&

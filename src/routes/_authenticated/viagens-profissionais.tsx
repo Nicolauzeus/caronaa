@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRideDriverSettlement } from "@/components/caronaa/QuickRideDriverSettlement";
 import { QuickRideRatingModal } from "@/components/caronaa/QuickRideRatingModal";
+import { QuickRideCaseStatusCard, quickRideCasesById, type QuickRideCaseUpdate } from "@/components/caronaa/QuickRideCaseStatusCard";
 
 type ProfessionalRide = {
   id: string;
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/viagens-profissionais")({
 
 function ProfessionalTripsPage() {
   const [rides, setRides] = useState<ProfessionalRide[]>([]);
+  const [caseUpdates,setCaseUpdates]=useState<Record<string,QuickRideCaseUpdate>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedSettlement,setExpandedSettlement] = useState<string|null>(null);
@@ -49,7 +51,12 @@ function ProfessionalTripsPage() {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fetchError } = await (supabase as any).rpc("quick_ride_my_requests");
+      const [requestResult,caseResult]=await Promise.all([
+        (supabase as any).rpc("quick_ride_my_requests"),
+        (supabase as any).rpc("quick_ride_my_case_updates"),
+      ]);
+      const {data,error:fetchError}=requestResult;
+      if(!caseResult.error)setCaseUpdates(quickRideCasesById(caseResult.data));
       if (fetchError) throw fetchError;
       const items: ProfessionalRide[] = Array.isArray(data) ? data : [];
       setRides(items.filter((ride) => ride.role === "DRIVER")
@@ -60,7 +67,12 @@ function ProfessionalTripsPage() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+    const onVisible=()=>{if(!document.hidden)void reload();};
+    window.addEventListener("focus",onVisible);
+    return()=>window.removeEventListener("focus",onVisible);
+  }, [reload]);
 
   const active = rides.filter((ride) => activeStatuses.includes(ride.status));
   const completed = rides.filter((ride) => ride.status === "COMPLETED");
@@ -108,7 +120,8 @@ function ProfessionalTripsPage() {
       {ride.requested_at && <p className="text-xs text-white/55">
         {new Date(ride.requested_at).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" })}
       </p>}
-      {ride.status === "PENDING_REVIEW" && <p role="status"
+      {caseUpdates[ride.id]&&<QuickRideCaseStatusCard entry={caseUpdates[ride.id]}/>}
+      {ride.status === "PENDING_REVIEW" && !caseUpdates[ride.id] && <p role="status"
         className="rounded-xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm text-white/80">
         O motorista solicitou o desembarque. O passageiro poderá confirmar ao retornar ao
         aplicativo; caso não responda dentro do prazo, a plataforma poderá analisar.

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
 import { QuickRidePixCard } from "./QuickRidePixCard";
 import { QuickRideRatingModal } from "./QuickRideRatingModal";
+import { QuickRideCaseStatusCard, quickRideCasesById, type QuickRideCaseUpdate } from "./QuickRideCaseStatusCard";
 
 type PassengerQuickRide = {
   id: string;
@@ -47,6 +48,7 @@ function statusLabel(status: string): string {
 
 export function QuickRideTripHistory() {
   const [rides,setRides] = useState<PassengerQuickRide[]>([]);
+  const [caseUpdates,setCaseUpdates] = useState<Record<string,QuickRideCaseUpdate>>({});
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
   const [expandedPix,setExpandedPix] = useState<string | null>(null);
@@ -56,7 +58,12 @@ export function QuickRideTripHistory() {
     if (withSpinner) setLoading(true);
     setError("");
     try {
-      const { data, error: requestError } = await (supabase as any).rpc("quick_ride_my_requests");
+      const [requestResult,caseResult]=await Promise.all([
+        (supabase as any).rpc("quick_ride_my_requests"),
+        (supabase as any).rpc("quick_ride_my_case_updates"),
+      ]);
+      const {data,error:requestError}=requestResult;
+      if(!caseResult.error)setCaseUpdates(quickRideCasesById(caseResult.data));
       if (requestError || !Array.isArray(data)) throw new Error("UNAVAILABLE");
       const results = data.map(asPassengerRide).filter(
         (item: PassengerQuickRide | null): item is PassengerQuickRide => item !== null,
@@ -130,7 +137,8 @@ export function QuickRideTripHistory() {
                 Acompanhar no mapa
               </Link>
             )}
-            {ride.status === "PENDING_REVIEW" && <p role="status"
+            {caseUpdates[ride.id]&&<QuickRideCaseStatusCard entry={caseUpdates[ride.id]}/>}
+            {ride.status === "PENDING_REVIEW" && !caseUpdates[ride.id] && <p role="status"
               className="mt-3 rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 p-3 text-sm">
               O motorista solicitou o desembarque. Se você ainda não respondeu, a confirmação reaparecerá ao abrir o app.
               Sem Pix ou comissão até a conclusão confirmada ou decisão administrativa. Você pode continuar usando o CARONAA.

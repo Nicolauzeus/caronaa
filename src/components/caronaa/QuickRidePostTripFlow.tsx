@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, Star, Wallet, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,11 +29,48 @@ type Props = {
 export function QuickRidePostTripFlow({
   role, activeRideId = null, completedRide = null,
 }: Props) {
-  const rideId = completedRide?.id ?? null;
+  const [serverPending,setServerPending]=useState<CompletedQuickRideRef|null>(null);
+  const [serverLoaded,setServerLoaded]=useState(false);
+  const [checkoutError,setCheckoutError]=useState("");
+  const [ackBusy,setAckBusy]=useState(false);
+  const lastNotified=useRef<string|null>(null);
+  const rideId=serverLoaded?serverPending?.id??null:completedRide?.id??null;
   const [openRideId, setOpenRideId] = useState<string | null>(null);
   const [ratingRideId, setRatingRideId] = useState<string | null>(null);
   const [ratingStatus, setRatingStatus] = useState<"checking" | "available" | "rated" | "error">("checking");
   const [ratingRetry, setRatingRetry] = useState(0);
+
+  // Server-side post-trip receipt survives reload, Safari suspension and devices.
+  // If 0217 is not installed yet, retain the legacy local prompt as fallback.
+  useEffect(()=>{
+    let alive=true;
+    const refresh=async()=>{
+      if(document.hidden)return;
+      try{
+        const {data,error}=await (supabase as any).rpc("quick_ride_my_posttrip_pending");
+        if(!alive)return;
+        if(error){setServerLoaded(false);return;}
+        const rows=Array.isArray(data)?data:[];
+        const own=rows.find((item:{role?:string})=>item.role===role);
+        setServerPending(own?.ride_id?{id:own.ride_id,requested_at:own.completed_at??null}:null);
+        setServerLoaded(true);
+      }catch{if(alive)setServerLoaded(false);}
+    };
+    void refresh();
+    const foreground=()=>{if(!document.hidden)void refresh();};
+    const timer=window.setInterval(foreground,30000);
+    window.addEventListener("focus",foreground);
+    window.addEventListener("online",foreground);
+    window.addEventListener("pageshow",foreground);
+    document.addEventListener("visibilitychange",foreground);
+    return()=>{
+      alive=false;window.clearInterval(timer);
+      window.removeEventListener("focus",foreground);
+      window.removeEventListener("online",foreground);
+      window.removeEventListener("pageshow",foreground);
+      document.removeEventListener("visibilitychange",foreground);
+    };
+  },[role,completedRide?.id,activeRideId]);
 
   // Persist the active ride so that a refresh, Safari tab suspension or
   // navigation during completion cannot silently skip the checkout prompt.
@@ -46,6 +83,14 @@ export function QuickRidePostTripFlow({
 
   useEffect(() => {
     if (!rideId || activeRideId) return;
+    if(serverLoaded){
+      setOpenRideId(rideId);
+      if(lastNotified.current!==rideId){
+        lastNotified.current=rideId;
+        void playNotificationSound("ride_completed");
+      }
+      return;
+    }
     let lastActiveId: string | null = null;
     let alreadySeen = false;
     try {
@@ -57,7 +102,7 @@ export function QuickRidePostTripFlow({
       setOpenRideId(rideId);
       void playNotificationSound("ride_completed");
     }
-  }, [role, rideId, activeRideId, completedRide?.requested_at]);
+  }, [role, rideId, activeRideId, completedRide?.requested_at, serverLoaded]);
 
   useEffect(() => {
     if (!rideId || openRideId !== rideId) return;
@@ -91,7 +136,20 @@ export function QuickRidePostTripFlow({
         window.localStorage.removeItem(quickPostTripActiveKey(role));
     } catch { /* Do not block the passenger or driver. */ }
   };
-  const dismiss = () => {
+  const dismiss = async () => {
+    if(!rideId||ackBusy)return;
+    setCheckoutError("");
+    if(serverLoaded){
+      setAckBusy(true);
+      try{
+        const {data,error}=await (supabase as any).rpc("quick_ride_ack_posttrip",{p_id:rideId});
+        if(error||data!==true)throw error??new Error("Ack unavailable");
+        setServerPending(null);
+      }catch{
+        setCheckoutError("Não foi possível salvar a leitura do pós-corrida. Tente novamente.");
+        return;
+      }finally{setAckBusy(false);}
+    }
     markPresented();
     setOpenRideId(null);
     setRatingRideId(null);
@@ -107,7 +165,7 @@ export function QuickRidePostTripFlow({
   useEffect(() => {
     if (!isOpen) return;
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dismiss();
+      if (event.key === "Escape") void dismiss();
     };
     document.addEventListener("keydown", onEscape);
     return () => document.removeEventListener("keydown", onEscape);
@@ -140,7 +198,7 @@ export function QuickRidePostTripFlow({
                   : "Confira a cobrança, compartilhe seu Pix e acompanhe o recebimento do passageiro."}
               </p>
             </div>
-            <button type="button" aria-label="Fechar pós-corrida" onClick={dismiss}
+            <button type="button" aria-label="Fechar pós-corrida" disabled={ackBusy} onClick={()=>void dismiss()}
               className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-white/20 text-white/80">
               <X size={20} />
             </button>
@@ -179,12 +237,13 @@ export function QuickRidePostTripFlow({
             </div>
           </div>
           <div className="shrink-0 space-y-1 border-t border-white/15 bg-[#121212] pt-2">
-            <button type="button" onClick={dismiss}
-              className="min-h-12 w-full rounded-xl border border-white/25 px-3 text-sm font-semibold text-white">
-              Continuar no CARONAA
+            {checkoutError&&<p role="alert" className="text-sm text-red-300">{checkoutError}</p>}
+            <button type="button" disabled={ackBusy} onClick={()=>void dismiss()}
+              className="min-h-12 w-full rounded-xl border border-white/25 px-3 text-sm font-semibold text-white disabled:opacity-60">
+              {ackBusy?"Salvando...":"Continuar no CARONAA"}
             </button>
             <p className="text-center text-[11px] leading-tight text-white/50">
-              Consulte o Pix e a avaliação depois em Minhas viagens.
+              O reconhecimento desta tela não confirma pagamento. Pix e avaliação continuam disponíveis em Minhas viagens.
             </p>
           </div>
         </section>

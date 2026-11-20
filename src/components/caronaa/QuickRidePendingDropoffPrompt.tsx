@@ -5,6 +5,13 @@ import { CheckCircle2, Clock3, MapPin, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+type DisputeReason="DRIVER_ENDED_EARLY"|"WRONG_LOCATION"|"UNSAFE_STOP"|"OTHER";
+const disputeReasons:Record<DisputeReason,string>={
+  DRIVER_ENDED_EARLY:"Motorista encerrou antes de eu desembarcar",
+  WRONG_LOCATION:"Local de desembarque diferente do combinado",
+  UNSAFE_STOP:"Parada em local inseguro",
+  OTHER:"Outro problema",
+};
 type PendingDropoff = {
   ride_id: string;
   origin_label: string | null;
@@ -25,6 +32,10 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
   const [now,setNow]=useState(Date.now());
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
+  const [disputeOpen,setDisputeOpen]=useState(false);
+  const [disputeReason,setDisputeReason]=useState<DisputeReason>("DRIVER_ENDED_EARLY");
+  const [disputeNote,setDisputeNote]=useState("");
+  const [syncError,setSyncError]=useState("");
   const inFlight=useRef(false);
   const stillMounted=useRef(true);
   const deferredRide=useRef<string|null>(null);
@@ -32,19 +43,26 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
   const refresh=useCallback(async()=>{
     if(inFlight.current||document.hidden)return;
     inFlight.current=true;
+    let timeout:ReturnType<typeof setTimeout>|undefined;
     try{
-      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_pending_dropoff");
+      const {data,error:rpcError}=await Promise.race([
+        Promise.resolve((supabase as any).rpc("quick_ride_pending_dropoff")),
+        new Promise<never>((_,reject)=>{
+          timeout=window.setTimeout(()=>reject(new Error("REQUEST_TIMEOUT")),12000);
+        }),
+      ]) as {data:PendingDropoff[]|null;error:unknown};
       if(rpcError)throw rpcError;
       if(!stillMounted.current)return;
       const next=Array.isArray(data)?data[0]??null:null;
       setPending(next);
       if(!next||next.ride_id!==deferredRide.current)deferredRide.current=null;
-      setError("");
+      setSyncError("");
     }catch{
-      // The guard is a separate RPC deployed by migration 0215.
-      // No guessed ride is ever presented when the database is unavailable.
-      if(stillMounted.current&&pending)setError("Não foi possível atualizar a confirmação. Tente novamente.");
-    }finally{inFlight.current=false;}
+      if(stillMounted.current)setSyncError("Não foi possível verificar o desembarque. Confira a conexão.");
+    }finally{
+      if(timeout!==undefined)window.clearTimeout(timeout);
+      inFlight.current=false;
+    }
   },[userId,pending?.ride_id]);
 
   useEffect(()=>{
@@ -59,11 +77,15 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
     };
     const event=()=>{void refresh();};
     window.addEventListener("focus",foreground);
+    window.addEventListener("online",foreground);
+    window.addEventListener("pageshow",foreground);
     window.addEventListener("caronaa:quick-ride-dropoff-updated",event);
     document.addEventListener("visibilitychange",foreground);
     return()=>{
       stillMounted.current=false;
       window.removeEventListener("focus",foreground);
+      window.removeEventListener("online",foreground);
+      window.removeEventListener("pageshow",foreground);
       window.removeEventListener("caronaa:quick-ride-dropoff-updated",event);
       document.removeEventListener("visibilitychange",foreground);
     };
@@ -119,7 +141,35 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
     }finally{setBusy(false);}
   };
 
-  if(typeof document==="undefined"||!visible||!pending)return null;
+  const submitDispute=async()=>{
+    if(!pending||busy)return;
+    if(disputeReason==="OTHER"&&disputeNote.trim().length<10){
+      setError("Descreva o outro motivo em pelo menos 10 caracteres.");
+      return;
+    }
+    setBusy(true);setError("");
+    try{
+      const {data,error:rpcError}=await (supabase as any).rpc("quick_ride_open_dropoff_dispute",{
+        p_id:pending.ride_id,
+        p_reason_code:disputeReason,
+        p_note:disputeNote.trim()||null,
+      });
+      if(rpcError||data!==true)throw rpcError??new Error("Contestação não registrada.");
+      setPending(null);setDisputeOpen(false);deferredRide.current=null;
+      window.dispatchEvent(new Event("caronaa:quick-ride-dropoff-updated"));
+      toast.info("Contestação registrada. Pagamento suspenso até a decisão.");
+    }catch{
+      setError("Não foi possível registrar a contestação. Verifique a conexão e tente novamente.");
+      void refresh();
+    }finally{setBusy(false);}
+  };
+
+  if(typeof document==="undefined")return null;
+  if(!visible||!pending)return syncError?
+    <div role="alert" className="fixed inset-x-3 bottom-20 z-[145] mx-auto max-w-md rounded-xl border border-red-400/40 bg-[#121212] p-3 text-sm text-white shadow-xl">
+      <p>{syncError}</p>
+      <button type="button" className="mt-2 min-h-10 w-full rounded-lg bg-[#FFBB00] font-bold text-[#121212]" onClick={()=>void refresh()}>Tentar novamente</button>
+    </div>:null;
   const seconds=Math.max(0,Math.ceil((Date.parse(pending.deadline_at)-now)/1000));
   const deadlineElapsed=seconds===0;
 
@@ -132,13 +182,13 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
         style={{maxHeight:"calc(100dvh - 20px)"}}>
         <div className="flex items-center gap-2 text-[#FFBB00]">
           <ShieldCheck size={20} aria-hidden="true"/>
-          <span className="text-xs font-extrabold uppercase tracking-wider">Confirmação de corrida</span>
+          <span className="text-xs font-extrabold uppercase tracking-wider">{disputeOpen?"Abrir contestação":"Confirmação de desembarque"}</span>
         </div>
         <h2 id="f07-dropoff-prompt-title" className="font-[Sora] text-xl font-black text-white">
-          Você já desembarcou?
+          {disputeOpen?"O que aconteceu?":"Você já desembarcou?"}
         </h2>
         <p id="f07-dropoff-prompt-description" className="text-sm leading-relaxed text-white/80">
-          O motorista solicitou o encerramento da viagem. Confirme apenas se realmente chegou ao destino.
+          {disputeOpen?"Escolha o motivo do problema. Estar ainda na viagem não é uma contestação.":"O motorista solicitou o encerramento. Confirme somente se realmente desembarcou."}
         </p>
         <div className="rounded-xl border border-white/15 bg-white/[0.055] p-3">
           <p className="flex items-start gap-2 text-sm font-semibold">
@@ -149,36 +199,60 @@ export function QuickRidePendingDropoffPrompt({userId}:{userId:string}) {
             {pending.vehicle_type==="MOTO"?"Mototáxi":"Carro"} · solicitação registrada no CARONAA
           </p>
         </div>
-        <p role="status" className="flex items-center gap-2 text-xs font-semibold text-white/70">
+        {!disputeOpen&&<p role="status" className="flex items-center gap-2 text-xs font-semibold text-white/70">
           <Clock3 size={15} aria-hidden="true"/>
           {deadlineElapsed
-            ?"Prazo inicial encerrado. Sua resposta ainda pode ser registrada antes de uma decisão administrativa."
-            :`Tempo para responder antes da análise: ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")}`}
-        </p>
+            ?"Prazo inicial encerrado. Ainda é possível responder antes da decisão administrativa."
+            :"Tempo antes da análise: "+Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")}
+        </p>}
+        {syncError&&<p role="status" className="text-xs text-amber-200">{syncError}</p>}
         {error&&<p role="alert" className="rounded-lg border border-red-400/40 bg-red-500/10 p-2 text-xs text-red-200">{error}</p>}
-        <div className="grid gap-2">
-          <button type="button" disabled={busy} onClick={()=>void respond("CONFIRMED")}
-            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-3 text-sm font-extrabold text-[#121212] disabled:opacity-50">
-            <CheckCircle2 size={19} aria-hidden="true"/>
-            {busy?"Registrando resposta...":"Sim, já desembarquei"}
+        {disputeOpen?<div className="grid gap-2">
+          <label htmlFor="quick-dispute-reason" className="text-sm font-semibold">Motivo da contestação</label>
+          <select id="quick-dispute-reason" value={disputeReason}
+            onChange={event=>setDisputeReason(event.target.value as DisputeReason)}
+            className="min-h-12 w-full rounded-xl border border-white/30 bg-[#121212] p-2 text-base text-white">
+            {(Object.keys(disputeReasons) as DisputeReason[]).map(key=>
+              <option key={key} value={key}>{disputeReasons[key]}</option>)}
+          </select>
+          <label htmlFor="quick-dispute-note" className="text-sm text-white/80">
+            Detalhes {disputeReason==="OTHER"?"(obrigatórios)":"(opcionais)"}
+          </label>
+          <textarea id="quick-dispute-note" value={disputeNote} maxLength={1000} rows={2}
+            onChange={event=>setDisputeNote(event.target.value)}
+            placeholder="Descreva o ocorrido, se necessário"
+            className="w-full rounded-xl border border-white/30 bg-white/10 p-2 text-base text-white"/>
+          <button type="button" disabled={busy||(disputeReason==="OTHER"&&disputeNote.trim().length<10)}
+            onClick={()=>void submitDispute()}
+            className="min-h-12 w-full rounded-xl bg-[#FFBB00] text-sm font-extrabold text-[#121212] disabled:opacity-50">
+            {busy?"Registrando...":"Enviar contestação"}
           </button>
-          <button type="button" disabled={busy} onClick={()=>void respond("NOT_YET")}
-            className="min-h-12 rounded-xl border border-white/35 bg-white/10 px-3 text-sm font-bold disabled:opacity-50">
-            Ainda estou na corrida
+          <button type="button" disabled={busy} onClick={()=>{setDisputeOpen(false);setError("");}}
+            className="min-h-10 w-full rounded-xl border border-white/30 text-sm font-semibold">Voltar</button>
+        </div>:<>
+          <div className="grid gap-2">
+            <button type="button" disabled={busy} onClick={()=>void respond("CONFIRMED")}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#FFBB00] px-3 text-sm font-extrabold text-[#121212] disabled:opacity-50">
+              <CheckCircle2 size={19} aria-hidden="true"/>
+              {busy?"Registrando resposta...":"Sim, já desembarquei"}
+            </button>
+            <button type="button" disabled={busy} onClick={()=>void respond("NOT_YET")}
+              className="min-h-12 rounded-xl border border-white/35 bg-white/10 px-3 text-sm font-bold disabled:opacity-50">
+              Ainda estou na corrida
+            </button>
+            <button type="button" disabled={busy} onClick={()=>{setDisputeOpen(true);setError("");}}
+              className="min-h-11 rounded-xl border border-white/20 px-3 text-sm font-bold text-white/80">
+              Tenho um problema com o encerramento
+            </button>
+          </div>
+          <button type="button" disabled={busy} onClick={()=>{
+            deferredRide.current=pending.ride_id;setPending(null);setDisputeOpen(false);
+          }} className="min-h-10 w-full text-xs font-semibold text-white/60 underline">
+            Responder depois
           </button>
-          <button type="button" disabled={busy} onClick={()=>void respond("CONTESTED")}
-            className="min-h-11 rounded-xl border border-white/20 px-3 text-xs font-bold text-white/80 disabled:opacity-50">
-            Contestar encerramento
-          </button>
-        </div>
-        <button type="button" disabled={busy} onClick={()=>{
-          deferredRide.current=pending.ride_id;
-          setPending(null);
-        }} className="min-h-10 w-full text-xs font-semibold text-white/60 underline">
-          Responder depois
-        </button>
+        </>}
         <p className="text-center text-[11px] leading-relaxed text-white/55">
-          Sem confirmação, não é gerada cobrança Pix nem comissão da plataforma.
+          GPS não confirma desembarque. Sem consentimento, não há Pix nem comissão automática.
           Sua solicitação fica salva e reaparece ao retornar ao aplicativo.
         </p>
       </section>

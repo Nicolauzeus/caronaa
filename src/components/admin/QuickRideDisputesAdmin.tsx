@@ -10,27 +10,38 @@ type Dispute = {
  finish_distance_m?:number|null;finish_accuracy_m?:number|null;
  admin_decision:string|null; admin_reason:string|null;
  admin_resolved_at:string|null; admin_resolved_by:string|null; audit_at:string|null;
+ passenger_dispute_reason_code?:string|null; passenger_dispute_note?:string|null;
+ case_kind?:"DISPUTED"|"NO_RESPONSE"|"AWAITING_PASSENGER";
 };
 
 export function QuickRideDisputesAdmin() {
  const [items,setItems]=useState<Dispute[]>([]);
- const [filter,setFilter]=useState<"pending"|"all">("pending");
+ const [filter,setFilter]=useState<"pending"|"contested"|"noresponse"|"all">("pending");
  const [reasons,setReasons]=useState<Record<string,string>>({});
  const [busy,setBusy]=useState<string|null>(null);
  const [error,setError]=useState("");
  const [notice,setNotice]=useState("");
  const [loading,setLoading]=useState(true);
- const refresh=useCallback(async()=>{
-  setLoading(true);
+ const refresh=useCallback(async(silent=false)=>{
+  if(!silent)setLoading(true);
   const {data,error:rpcError}=await (supabase as any).rpc("admin_quick_ride_disputes");
   if(rpcError){setError("Não foi possível consultar contestações: "+rpcError.message);}
   else {setItems(Array.isArray(data)?data:[]);setError("");}
-  setLoading(false);
+  if(!silent)setLoading(false);
  },[]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{
+   void refresh();
+   const foreground=()=>{if(!document.hidden)void refresh(true);};
+   const timer=window.setInterval(foreground,15000);
+   window.addEventListener("focus",foreground);
+   document.addEventListener("visibilitychange",foreground);
+   return()=>{window.clearInterval(timer);window.removeEventListener("focus",foreground);document.removeEventListener("visibilitychange",foreground);};
+ },[refresh]);
  const pending=items.filter(item=>(item.status==="PENDING_REVIEW"||
    item.status==="IN_PROGRESS"&&item.passenger_response==="CONTESTED")&&!item.admin_decision);
- const visible=filter==="pending"?pending:items;
+ const contested=pending.filter(item=>item.passenger_response==="CONTESTED");
+ const unanswered=pending.filter(item=>item.passenger_response===null);
+ const visible=filter==="pending"?pending:filter==="contested"?contested:filter==="noresponse"?unanswered:items;
  async function decide(ride:Dispute,decision:"COMPLETE"|"CANCEL"){
   const reason=(reasons[ride.ride_id]||"").trim();
   if(reason.length<20||reason.length>2000){setError("Escreva uma justificativa de 20 a 2000 caracteres.");return;}
@@ -51,8 +62,10 @@ export function QuickRideDisputesAdmin() {
    </div>
    <Button type="button" variant="outline" onClick={()=>void refresh()} disabled={loading||busy!==null}>Atualizar</Button>
   </div>
-  <div className="flex gap-2" role="group" aria-label="Filtrar contestações">
+  <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar contestações">
    <Button type="button" variant={filter==="pending"?"default":"outline"} onClick={()=>setFilter("pending")}>Pendentes ({pending.length})</Button>
+   <Button type="button" variant={filter==="contested"?"default":"outline"} onClick={()=>setFilter("contested")}>Contestadas ({contested.length})</Button>
+   <Button type="button" variant={filter==="noresponse"?"default":"outline"} onClick={()=>setFilter("noresponse")}>Sem resposta ({unanswered.length})</Button>
    <Button type="button" variant={filter==="all"?"default":"outline"} onClick={()=>setFilter("all")}>Todas ({items.length})</Button>
   </div>
   {error&&<p role="alert" className="rounded-lg border border-destructive p-3 text-sm text-destructive">{error}</p>}
@@ -77,6 +90,10 @@ export function QuickRideDisputesAdmin() {
             ?"Pedido manual do motorista (GPS sem verificação)"
             :"Prazo de confirmação encerrado sem resposta do passageiro"}
       </p>
+      {ride.passenger_response==="CONTESTED"&&<div className="space-y-1 rounded-lg border border-amber-400/30 p-3 text-sm">
+        <p><strong>Motivo do passageiro:</strong> {({DRIVER_ENDED_EARLY:"Motorista encerrou antes do desembarque",WRONG_LOCATION:"Local diferente do combinado",UNSAFE_STOP:"Parada em local inseguro",OTHER:"Outro problema"} as Record<string,string>)[ride.passenger_dispute_reason_code??""]??"Não informado (registro antigo)"}</p>
+        {ride.passenger_dispute_note&&<p className="break-words"><strong>Descrição:</strong> {ride.passenger_dispute_note}</p>}
+      </div>}
       {ride.driver_review_reason&&<p className="break-words text-sm">
         <strong>Justificativa do motorista:</strong> {ride.driver_review_reason}
       </p>}
@@ -93,7 +110,7 @@ export function QuickRideDisputesAdmin() {
         placeholder="Descreva as evidências analisadas e o motivo da decisão."
         maxLength={2000} value={reasons[ride.ride_id]||""}
         onChange={e=>setReasons(prev=>({...prev,[ride.ride_id]:e.target.value}))}/>
-       <p className="text-xs text-muted-foreground">Analise evidências e ouça as partes antes de decidir. A decisão não confirma pagamentos.</p>
+       <p className="text-xs text-muted-foreground">Confira GPS, relato e informações das partes. Prazo encerrado sem resposta não significa contestação. Esta decisão não confirma pagamentos.</p>
        <div className="flex flex-wrap gap-2">
         <Button type="button" disabled={busy!==null||(reasons[ride.ride_id]||"").trim().length<20} onClick={()=>void decide(ride,"COMPLETE")}>Confirmar conclusão</Button>
         <Button type="button" variant="destructive" disabled={busy!==null||(reasons[ride.ride_id]||"").trim().length<20} onClick={()=>void decide(ride,"CANCEL")}>Cancelar corrida</Button>
