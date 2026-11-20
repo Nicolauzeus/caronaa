@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CircleCheck, Clock3, ChevronUp, MapPin, Navigation2, Radio, UserRound } from "lucide-react";
 import type { FlashDriverRide, FlashPassengerDetails } from "@/services/flash-driver-service";
 import type { SheetSnap } from "./InteractiveBottomSheet";
@@ -9,6 +10,7 @@ type Props={
   manualCloseOpen:boolean;onToggleManualClose:()=>void;
   manualCloseReason:string;onManualCloseReason:(value:string)=>void;
   onArrived:()=>void;onStart:()=>void;onDropoff:()=>void;onManualClose:()=>void;
+  onCancel:(reason:string)=>void;
   onSnapChange:(value:SheetSnap)=>void;
 };
 const status={
@@ -20,8 +22,10 @@ const status={
 export function FlashDriverActiveSheet({
   ride,passenger,snap,whatsappUrl,pin,onPinChange,busy,dropoffSent,
   manualCloseOpen,onToggleManualClose,manualCloseReason,onManualCloseReason,
-  onArrived,onStart,onDropoff,onManualClose,onSnapChange,
+  onArrived,onStart,onDropoff,onManualClose,onCancel,onSnapChange,
 }:Props){
+  const [confirmCancel,setConfirmCancel]=useState(false);
+  const [cancelReason,setCancelReason]=useState("");
   const compact=snap==="peek";
   const name=passenger?.name||"Passageiro confirmado";
   const actionLabel=ride.status==="ACCEPTED"?"Cheguei ao embarque":
@@ -126,6 +130,24 @@ export function FlashDriverActiveSheet({
                 </button>
               </div>}
             </div>}
+          <div className="rounded-xl border border-white/15 p-2">
+            {!confirmCancel?<button type="button" disabled={busy}
+              onClick={()=>setConfirmCancel(true)}
+              className="min-h-11 w-full text-xs font-semibold text-rose-300">
+              Cancelar corrida
+            </button>:<div className="space-y-2" role="group" aria-label="Confirmar cancelamento da corrida">
+              <p className="text-xs text-white/90">Cancelar esta corrida? O passageiro será avisado.</p>
+              <input value={cancelReason} maxLength={500} aria-label="Motivo do cancelamento (opcional)"
+                placeholder="Motivo (opcional)" onChange={e=>setCancelReason(e.target.value)}
+                className="min-h-11 w-full rounded-lg border border-white/30 bg-[#121212] px-3 text-base text-white"/>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>{setConfirmCancel(false);setCancelReason("");}}
+                  className="min-h-11 rounded-lg border border-white/30 text-sm">Voltar</button>
+                <button type="button" disabled={busy} onClick={()=>onCancel(cancelReason)}
+                  className="min-h-11 rounded-lg bg-rose-700 text-sm font-bold disabled:opacity-50">Confirmar cancelamento</button>
+              </div>
+            </div>}
+          </div>
           {snap==="full"&&whatsappUrl&&<a href={whatsappUrl}
             target="_blank" rel="noopener noreferrer"
             className="flex min-h-12 items-center justify-center rounded-xl border border-[#FFBB00]/40 px-3 text-sm font-bold text-[#FFBB00]">
