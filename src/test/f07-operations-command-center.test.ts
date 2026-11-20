@@ -64,3 +64,47 @@ describe("F07 command center - real operations and guardrails", () => {
     expect(center).toContain("onGoToDisputes");
   });
 });
+
+
+describe("0222 - indicadores reais de pedidos e corridas", () => {
+  const metricsSql = readFileSync("drizzle/migrations/0222_admin_mobility_lifecycle_metrics.sql","utf8");
+  it("protege as contagens em uma RPC restrita a administradores", () => {
+    expect(metricsSql).toContain("CREATE OR REPLACE FUNCTION public.admin_mobility_lifecycle_metrics(");
+    expect(metricsSql).toContain("public.has_role(auth.uid(),'admin')");
+    expect(metricsSql).toContain("SECURITY DEFINER");
+    expect(metricsSql).toContain("FROM PUBLIC,anon");
+    expect(metricsSql).toContain("TO authenticated");
+  });
+  it("conta pedidos Flash, pedidos compartilhados e corridas de maneira separada", () => {
+    expect(metricsSql).toContain("FROM public.professional_quick_rides");
+    expect(metricsSql).toContain("FROM public.ride_requests");
+    expect(metricsSql).toContain("FROM public.rides");
+    expect(metricsSql).toContain("driver_id IS NOT NULL");
+    expect(metricsSql).toContain("'flash_orders',f.orders_total");
+    expect(metricsSql).toContain("'shared_orders',o.total");
+    expect(metricsSql).toContain("'flash_trips',f.trips_total");
+    expect(metricsSql).toContain("'shared_trips',t.total");
+  });
+  it("mostra os cancelamentos, em andamento e conclusões reais, sem inventar pagamentos", () => {
+    for (const key of ["'in_progress'","'completed'","'cancelled'",
+      "'searching'","'expired'","'in_review'"]) {
+      expect(metricsSql).toContain(key);
+    }
+    expect(metricsSql).toContain("completed_at IS NOT NULL");
+    expect(metricsSql).toContain("completed_flash_without_confirmed_payment");
+    expect(metricsSql).not.toMatch(/UPDATE public\.professional_quick_rides/);
+    expect(metricsSql).not.toMatch(/SET status=/);
+    expect(center).toContain("Concluídas com sucesso");
+    expect(center).toContain("Concluída com sucesso significa encerramento registrado, não pagamento recebido.");
+  });
+  it("suporta os filtros por período sem utilizar a lista paginada da central", () => {
+    for (const p of ["today","7d","30d","all"]) {
+      expect(metricsSql).toContain("'"+p+"'");
+    }
+    expect(metricsSql).toContain("America/Fortaleza");
+    expect(center).toContain("Período dos pedidos e corridas");
+    expect(center).toContain("admin_mobility_lifecycle_metrics");
+    expect(center).toContain('option value="completed"');
+    expect(center).toContain('option value="cancelled"');
+  });
+});

@@ -57,3 +57,27 @@ Uma pendencia de revisao de encerramento nao bloqueia automaticamente novas corr
 - Se a migration 0221 nao for aplicada, o frontend exibira o erro explicito da consulta.
 - A consulta nao substitui auditoria regulatoria nem verificacao de licencas/seguro exigidos.
 - Nao foi executado pagamento real, aceite de corrida real nem deploy automatico.
+
+
+## Indicadores de ciclo operacional (migration 0222)
+A Central ao vivo inclui dois grupos separados: **Pedidos registrados** (uma linha por
+solicitação, Flash + ride_requests) e **Corridas atribuídas** (Flash somente após
+motorista atribuído + registros de rides compartilhadas). Não somar pedidos e corridas
+para obter viagens, porque uma viagem pertence a um pedido. Totais vêm da RPC protegida
+admin_mobility_lifecycle_metrics(p_period), sem depender do limite de 400 itens da
+admin_f07_operations_snapshot. Períodos: hoje (America/Fortaleza), 7 dias,
+30 dias, todo o histórico. Critério de período: criação do pedido ou corrida,
+não a data de pagamento.
+
+Pedidos: em busca, atendidos, cancelados e expirados. Corridas: em andamento
+(aceitas/chegada/em viagem), concluídas com sucesso (COMPLETED com completed_at),
+canceladas (Flash com motorista atribuído + rides canceladas) e em revisão.
+Uma solicitação cancelada sem motorista não é uma corrida cancelada. Encerramento
+não implica liquidação do pagamento: mostrar a quantidade Flash de encerradas
+sem status confirmado de pagamento, sem marcar como paga.
+
+A RPC é somente leitura, restrita a administrador; NÃO modifica tarifas, GPS,
+repasses, corridas ou movimentações financeiras. Os indicadores são globais ao
+período, enquanto a lista operacional detalhada contém apenas as últimas corridas
+Flash retornadas pela RPC anterior. Não tratar filtros locais da lista como
+paginação integral de todos os serviços.

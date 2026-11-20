@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ClipboardList, RefreshCw, ShieldCheck, Truck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Clock3, RefreshCw, ShieldCheck, Truck, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -38,6 +38,19 @@ type Snapshot = {
   generated_at: string; drivers: Driver[]; rides: Ride[];
   incidents: Incident[]; audit: Audit[];
 };
+type MetricsPeriod = "today" | "7d" | "30d" | "all";
+type MobilityLifecycleMetrics = {
+  generated_at: string;
+  period: MetricsPeriod;
+  orders: { total: number; searching: number; matched: number; cancelled: number; expired: number };
+  trips: { total: number; in_progress: number; completed: number; cancelled: number; in_review: number };
+  payment: { completed_flash_without_confirmed_payment: number };
+  sources: { flash_orders: number; shared_orders: number; flash_trips: number; shared_trips: number };
+};
+const lifecyclePeriodLabels: Record<MetricsPeriod,string> = {
+  today: "Hoje", "7d": "7 dias", "30d": "30 dias", all: "Todo o histórico",
+};
+const lifecycleCount = (value: number) => value.toLocaleString("pt-BR");
 type View = "attention" | "rides" | "available" | "drivers" | "incidents";
 type Subject = { rideId: string | null; driverId: string | null; label: string };
 
@@ -88,6 +101,11 @@ export function F07OperationsCommandCenter({
   onGoToDisputes, onGoToAccess,
 }: { onGoToDisputes: () => void; onGoToAccess: () => void }) {
   const [data, setData] = useState<Snapshot | null>(null);
+  const [metricsPeriod,setMetricsPeriod] = useState<MetricsPeriod>("all");
+  const [lifecycle,setLifecycle] = useState<MobilityLifecycleMetrics|null>(null);
+  const [lifecycleLoading,setLifecycleLoading] = useState(true);
+  const [lifecycleError,setLifecycleError] = useState("");
+  const lifecycleVersion = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -104,6 +122,36 @@ export function F07OperationsCommandCenter({
   const [resolution, setResolution] = useState<Record<string, string>>({});
   const [allIncidents, setAllIncidents] = useState(false);
   const polling = useRef(false);
+
+  const loadLifecycle = useCallback(async (period: MetricsPeriod) => {
+    const version=++lifecycleVersion.current;
+    setLifecycleLoading(true);
+    try {
+      const {data:payload,error:rpcError}=await (supabase as any).rpc(
+        "admin_mobility_lifecycle_metrics",{p_period:period},
+      );
+      if(version!==lifecycleVersion.current)return;
+      if(rpcError)throw new Error("Indicadores indisponíveis: " + rpcError.message);
+      const amounts=[payload?.orders?.total,payload?.orders?.searching,
+        payload?.orders?.matched,payload?.orders?.cancelled,payload?.orders?.expired,
+        payload?.trips?.total,payload?.trips?.in_progress,payload?.trips?.completed,
+        payload?.trips?.cancelled,payload?.trips?.in_review,
+        payload?.payment?.completed_flash_without_confirmed_payment,
+        payload?.sources?.flash_orders,payload?.sources?.shared_orders,
+        payload?.sources?.flash_trips,payload?.sources?.shared_trips];
+      if(payload?.period!==period ||
+         amounts.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||v<0))
+        throw new Error("Resposta dos indicadores inválida. Confira a migration 0222.");
+      setLifecycle(payload as MobilityLifecycleMetrics);
+      setLifecycleError("");
+    }catch(error){
+      if(version!==lifecycleVersion.current)return;
+      setLifecycle(null);
+      setLifecycleError(error instanceof Error ? error.message : "Indicadores indisponíveis.");
+    }finally{
+      if(version===lifecycleVersion.current)setLifecycleLoading(false);
+    }
+  },[]);
 
   const reload = useCallback(async () => {
     if (polling.current) return;
@@ -132,11 +180,18 @@ export function F07OperationsCommandCenter({
   }, []);
   useEffect(() => {
     void reload();
+    void loadLifecycle(metricsPeriod);
     const interval = window.setInterval(() => {
-      if (document.visibilityState !== "hidden") void reload();
+      if (document.visibilityState !== "hidden") {
+        void reload();
+        void loadLifecycle(metricsPeriod);
+      }
     }, 20000);
-    return () => window.clearInterval(interval);
-  }, [reload]);
+    return () => {
+      window.clearInterval(interval);
+      lifecycleVersion.current+=1; // Drop responses after unmount or period change.
+    };
+  }, [reload,loadLifecycle,metricsPeriod]);
 
   const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
   const drivers = data?.drivers ?? [];
@@ -158,7 +213,9 @@ export function F07OperationsCommandCenter({
     || (rideFilter === "searching" && r.status === "SEARCHING" && r.issue_code !== "SEARCH_EXPIRED")
     || (rideFilter === "review" && r.status === "PENDING_REVIEW")
     || (rideFilter === "expired" && r.issue_code === "SEARCH_EXPIRED")
-    || (rideFilter === "closed" && ["COMPLETED", "CANCELLED", "EXPIRED"].includes(r.status)));
+    || (rideFilter === "completed" && r.status === "COMPLETED" && Boolean(r.completed_at))
+    || (rideFilter === "cancelled" && ["CANCELLED", "CANCELED"].includes(r.status))
+    || (rideFilter === "closed" && ["COMPLETED", "CANCELLED", "CANCELED", "EXPIRED"].includes(r.status)));
   const filteredDrivers = useMemo(() => drivers.filter(d =>
     matchesQuery([d.user_id, d.display_name, d.gps_municipality, d.status_code], normalizedQuery)
   ), [drivers, normalizedQuery]);
@@ -383,7 +440,7 @@ export function F07OperationsCommandCenter({
         </p>
         {data?.generated_at && <p className="mt-1 text-xs text-muted-foreground">Última leitura: {dateLabel(data.generated_at)}</p>}
       </div>
-      <Button variant="outline" onClick={() => void reload()} disabled={loading || busy !== null}>
+      <Button variant="outline" onClick={() => {void reload();void loadLifecycle(metricsPeriod);}} disabled={loading || busy !== null}>
         <RefreshCw size={16} className="mr-2" /> Atualizar
       </Button>
     </header>
@@ -391,6 +448,100 @@ export function F07OperationsCommandCenter({
     {error && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
     {message && <p role="status" className="rounded-lg border p-3 text-sm">{message}</p>}
     {!data && loading && <p role="status" className="p-4 text-sm text-muted-foreground">Consultando situação operacional…</p>}
+
+
+    <section aria-labelledby="mobility-lifecycle-heading" className="space-y-3 rounded-2xl border bg-card/50 p-3 sm:p-4">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 id="mobility-lifecycle-heading" className="font-[Sora] text-base font-bold">
+            Pedidos e corridas
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Situação real dos registros. Pedidos não são somados como corridas.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-xs font-semibold">
+          Período
+          <select
+            aria-label="Período dos pedidos e corridas"
+            className="min-h-11 rounded-lg border bg-background px-3 text-sm text-foreground"
+            value={metricsPeriod}
+            onChange={e=>setMetricsPeriod(e.target.value as MetricsPeriod)}
+          >
+            {Object.entries(lifecyclePeriodLabels).map(([value,label])=>
+              <option key={value} value={value}>{label}</option>
+            )}
+          </select>
+        </label>
+      </header>
+      {lifecycleError && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
+        {lifecycleError}
+      </p>}
+      {lifecycleLoading && !lifecycle && !lifecycleError &&
+        <p role="status" className="text-sm text-muted-foreground">Calculando pedidos e corridas…</p>}
+      {lifecycle && <div className="grid grid-cols-1 gap-3 lg:grid-cols-2" aria-live="polite">
+        <div className="rounded-xl border bg-card p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pedidos registrados</p>
+              <p className="mt-1 text-3xl font-extrabold tabular-nums">{lifecycleCount(lifecycle.orders.total)}</p>
+            </div>
+            <ClipboardList aria-hidden="true" size={20} className="text-[#FFBB00]"/>
+          </div>
+          <dl className="mt-3 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">
+            {([
+              {label:"Em busca",value:lifecycle.orders.searching,icon:Clock3},
+              {label:"Atendidos",value:lifecycle.orders.matched,icon:CheckCircle2},
+              {label:"Cancelados",value:lifecycle.orders.cancelled,icon:XCircle},
+              {label:"Expirados",value:lifecycle.orders.expired,icon:AlertTriangle},
+            ] as const).map(item=>
+              <div key={item.label} className="rounded-lg bg-muted/35 p-2.5">
+                <dt className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <item.icon size={13} aria-hidden="true"/>{item.label}
+                </dt>
+                <dd className="mt-1 text-xl font-bold tabular-nums">{lifecycleCount(item.value)}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+        <div className="rounded-xl border bg-card p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Corridas atribuídas</p>
+              <p className="mt-1 text-3xl font-extrabold tabular-nums">{lifecycleCount(lifecycle.trips.total)}</p>
+            </div>
+            <Truck aria-hidden="true" size={20} className="text-[#FFBB00]"/>
+          </div>
+          <dl className="mt-3 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">
+            {([
+              {label:"Em andamento",value:lifecycle.trips.in_progress,icon:Clock3},
+              {label:"Concluídas com sucesso",value:lifecycle.trips.completed,icon:CheckCircle2},
+              {label:"Canceladas",value:lifecycle.trips.cancelled,icon:XCircle},
+              {label:"Em revisão",value:lifecycle.trips.in_review,icon:AlertTriangle},
+            ] as const).map(item=>
+              <div key={item.label} className="rounded-lg bg-muted/35 p-2.5">
+                <dt className="flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground">
+                  <item.icon size={13} className="shrink-0" aria-hidden="true"/>{item.label}
+                </dt>
+                <dd className="mt-1 text-xl font-bold tabular-nums">{lifecycleCount(item.value)}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      </div>}
+      {lifecycle && <p className="text-[11px] leading-snug text-muted-foreground">
+        Fonte: {lifecycleCount(lifecycle.sources.flash_orders)} pedidos Flash + {lifecycleCount(lifecycle.sources.shared_orders)} pedidos compartilhados;
+        {" "}{lifecycleCount(lifecycle.sources.flash_trips)} corridas Flash atribuídas + {lifecycleCount(lifecycle.sources.shared_trips)} compartilhadas.
+        {" "}Concluída com sucesso significa encerramento registrado, não pagamento recebido.
+        {lifecycle.payment.completed_flash_without_confirmed_payment>0 &&
+          <> Há {lifecycleCount(lifecycle.payment.completed_flash_without_confirmed_payment)} corrida(s) Flash concluída(s) sem pagamento confirmado.</>}
+        {" "}Período conforme a data de criação do pedido ou corrida.
+        {" "}Atualizado: {dateLabel(lifecycle.generated_at)}.
+      </p>}
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        Totais calculados no servidor, sem limite de paginação. A lista operacional abaixo exibe apenas corridas Flash recentes.
+      </p>
+    </section>
 
     {data && <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
       {cards.map(card => <button type="button" key={card.label}
@@ -499,6 +650,8 @@ export function F07OperationsCommandCenter({
               <option value="searching">Buscando motorista</option>
               <option value="review">Em revisão</option>
               <option value="expired">Buscas vencidas</option>
+              <option value="completed">Concluídas com sucesso</option>
+              <option value="cancelled">Canceladas</option>
               <option value="closed">Finalizadas</option>
               <option value="all">Todas</option>
             </select>
