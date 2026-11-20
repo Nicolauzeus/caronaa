@@ -75,7 +75,6 @@ type RidePix = {
 export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driver" | "passenger" }) {
   const [data, setData] = useState<RidePix | null>(null);
   const [image, setImage] = useState("");
-  const [payload, setPayload] = useState("");
   const [error, setError] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<{
     passengerConfirmed: boolean; driverConfirmed: boolean; bothConfirmed: boolean;
@@ -106,7 +105,6 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
     });
     setData(null);
     setImage("");
-    setPayload("");
     setError("");
     void (async () => {
       const { data: result, error: queryError } = await supabase.rpc("get_ride_pix", { p_ride_id: rideId });
@@ -124,7 +122,7 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
       if (pix.key) {
         const code = buildPixPayload(pix.key, pix.name || "Motorista", Number(pix.amount));
         const qr = await QRCode.toDataURL(code, { width: 240, margin: 2 });
-        if (active) { setPayload(code); setImage(qr); }
+        if (active) setImage(qr);
       }
     })().catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : "Não foi possível carregar o Pix da viagem.");
@@ -171,7 +169,6 @@ export function CompletedRidePix({ rideId, role }: { rideId: string; role: "driv
       <p className="max-w-full break-all text-center font-mono text-sm">{data.key}</p>
       <div className="flex w-full flex-wrap justify-center gap-2">
         <Button type="button" size="sm" variant="outline" onClick={() => void copy(data.key!)}>Copiar chave Pix</Button>
-        {payload && <Button type="button" size="sm" onClick={() => void copy(payload)}>Copiar Pix copia e cola</Button>}
       </div>
       <div className="w-full space-y-3 rounded-xl border border-border bg-muted/30 p-3">
         <p className="text-sm font-semibold">Confirmação rápida do Pix</p>
