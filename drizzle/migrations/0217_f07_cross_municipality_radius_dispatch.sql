@@ -143,5 +143,54 @@ $function$
 
 REVOKE ALL ON FUNCTION public.quick_ride_driver_queue(text),public.quick_ride_view_request(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.quick_ride_driver_queue(text),public.quick_ride_view_request(uuid) TO authenticated;
+CREATE OR REPLACE FUNCTION public.discover_caronaa_quick_drivers(p_lat double precision, p_lng double precision, p_vehicle text, p_radius_km double precision DEFAULT 15.0)
+ RETURNS TABLE(driver_key text, lat double precision, lng double precision, seen_at timestamp with time zone, distance_km double precision)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE v_radius double precision:=least(greatest(coalesce(p_radius_km,15),1),15);
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_vehicle NOT IN ('CAR','MOTO') OR
+     NOT (p_lat BETWEEN -90 AND 90) OR NOT (p_lng BETWEEN -180 AND 180)
+  THEN RETURN; END IF;
+  RETURN QUERY
+  WITH c AS(
+    SELECT md5(l.user_id::text||current_date::text) AS k,
+      round(l.lat::numeric,3)::double precision AS approx_lat,
+      round(l.lng::numeric,3)::double precision AS approx_lng,
+      l.updated_at AS seen,
+      (6371.0*2*asin(least(1.0,sqrt(
+        power(sin(radians((l.lat-p_lat)/2)),2)+
+        cos(radians(p_lat))*cos(radians(l.lat))*
+        power(sin(radians((l.lng-p_lng)/2)),2)
+      )))) AS km
+    FROM public.professional_driver_locations l
+    JOIN public.professional_presence p
+      ON p.user_id=l.user_id AND p.is_available
+      AND p.municipality=l.municipality
+    JOIN public.professional_driver_authorizations a
+      ON a.user_id=l.user_id AND a.approved AND a.vehicle_type=p_vehicle
+    JOIN public.professional_service_regions r
+      ON r.municipality=l.municipality AND r.public_discovery_enabled AND r.dispatch_enabled
+    JOIN public.caronaa_service_municipalities cm
+      ON cm.municipality=l.municipality
+      AND CASE WHEN p_vehicle='MOTO' THEN cm.moto_enabled ELSE cm.car_enabled END
+    WHERE l.user_id<>auth.uid()
+      AND public.driver_platform_access_allowed(l.user_id)
+      AND l.accuracy_m<=150 AND l.sampled_at>now()-interval '90 seconds'
+      AND l.updated_at>now()-interval '90 seconds'
+      AND p.last_seen_at>now()-interval '90 seconds'
+  )
+  SELECT k,approx_lat,approx_lng,seen,round(km::numeric,1)::double precision
+    FROM c WHERE km<=v_radius ORDER BY km LIMIT 50;
+END
+$function$
+
+
+REVOKE ALL ON FUNCTION public.discover_caronaa_quick_drivers(double precision,double precision,text,double precision) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.discover_caronaa_quick_drivers(double precision,double precision,text,double precision) TO authenticated;
+
 NOTIFY pgrst,'reload schema';
 COMMIT;
