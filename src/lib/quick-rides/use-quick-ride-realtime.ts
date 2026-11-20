@@ -42,11 +42,10 @@ export function useQuickRideRealtime(
       subscribed=status==="SUBSCRIBED";
       if(subscribed)signal();
     }):null;
-    // With a healthy WebSocket there is no polling. If the subscription fails,
-    // recover dispatch visibility within a few seconds rather than 1 minute.
-    // The fallback reads one authorized Supabase RPC; it never calls Google APIs.
+    // Reconcile even on a connected socket: delivery of change events is not guaranteed.
+    // This reads an authorized Supabase RPC only; it never invokes Google APIs.
     const fallback=window.setInterval(()=>{
-      if(!subscribed && !document.hidden)signal();
+      if(!document.hidden)signal();
     },6_000);
     signal(); // initial authorized RPC after mounting
     return ()=>{
