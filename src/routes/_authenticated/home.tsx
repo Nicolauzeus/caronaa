@@ -442,6 +442,13 @@ function Home(){
       setQuickDriverLoading(false);
       return;
     }
+    if(radarLat==null||radarLng==null){
+      // No reliable 15km query exists until pickup coordinates are verified.
+      // The old municipality-only fallback hid valid nearby drivers across city borders.
+      setQuickDriverCounts({CAR:0,MOTO:0});setQuickDriverErrors({});
+      setQuickDrivers([]);setQuickDriverError("Confirme o local de embarque para localizar motoristas em até 15 km.");
+      setQuickDriverLoading(false);return;
+    }
     let alive=true;
     let inFlight=false;
     let loadedOnce=false;
@@ -452,13 +459,9 @@ function Home(){
       // Two independent authorized radar queries: a failure in one fleet must
       // not hide the other fleet on the map or in the quote selector.
       const results=await Promise.allSettled((["CAR","MOTO"] as const).map(async type=>{
-        const {data,error}=radarLat!=null&&radarLng!=null
-          ?await (supabase as any).rpc("discover_caronaa_quick_drivers",{
-            p_lat:radarLat,p_lng:radarLng,p_vehicle:type,p_radius_km:QUICK_RADAR_RADIUS_KM,
-          })
-          :await (supabase as any).rpc("discover_caronaa_quick_drivers",{
-            p_municipality:quickMunicipality,p_vehicle:type,
-          });
+        const {data,error}=await (supabase as any).rpc("discover_caronaa_quick_drivers",{
+          p_lat:radarLat,p_lng:radarLng,p_vehicle:type,p_radius_km:QUICK_RADAR_RADIUS_KM,
+        });
         if(error)throw error;
         return {type,drivers:mapQuickRadarDrivers(data,type)};
       }));
