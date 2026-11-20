@@ -78,7 +78,7 @@ BEGIN
         SELECT
           c.user_id,
           coalesce(p.full_name,'Motorista sem nome') AS display_name,
-          coalesce(a.vehicle_type,access.vehicle_type) AS vehicle_type,
+          coalesce(a.vehicle_type,latest_access.vehicle_type) AS vehicle_type,
           coalesce(a.approved,false) AS approved,
           coalesce(fl.is_online,false) AS flash_online,
           coalesce(pr.is_available,false) AS presence_online,
@@ -134,7 +134,7 @@ BEGIN
           SELECT vehicle_type
           FROM public.professional_access_requests a2 WHERE a2.user_id=c.user_id
           ORDER BY submitted_at DESC LIMIT 1
-        ) access ON true
+        ) latest_access ON true
         LEFT JOIN LATERAL (
           SELECT id,status,updated_at FROM public.professional_quick_rides ar2
           WHERE ar2.driver_id=c.user_id
@@ -241,6 +241,8 @@ BEGIN
     SELECT 1 FROM public.professional_driver_authorizations a WHERE a.user_id=p_driver_id
     UNION
     SELECT 1 FROM public.professional_presence p WHERE p.user_id=p_driver_id
+    UNION
+    SELECT 1 FROM public.flash_driver_presence f WHERE f.user_id=p_driver_id
   ) THEN
     RAISE EXCEPTION 'Motorista nao encontrado' USING ERRCODE='22023';
   END IF;
@@ -285,6 +287,10 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Ocorrencia nao encontrada' USING ERRCODE='22023'; END IF;
   IF v_incident.status='RESOLVED' THEN
     RAISE EXCEPTION 'Ocorrencia ja resolvida; abra uma nova se necessario'
+      USING ERRCODE='23514';
+  END IF;
+  IF p_status='OPEN' AND v_incident.status<>'OPEN' THEN
+    RAISE EXCEPTION 'Use nova ocorrencia para reabrir um atendimento'
       USING ERRCODE='23514';
   END IF;
   IF v_incident.status=p_status THEN RETURN true; END IF;
