@@ -56,14 +56,14 @@ BEGIN
            SELECT jsonb_agg(to_jsonb(t) ORDER BY t.seen_at DESC)
            FROM (
              SELECT e.user_id::text AS id,
-               CASE WHEN e.fresh_flash AND
-                 (NOT e.fresh_professional OR e.last_sampled_at>=e.sampled_at)
+               CASE WHEN coalesce(e.fresh_flash,false) AND
+                 (NOT coalesce(e.fresh_professional,false) OR e.last_sampled_at>=e.sampled_at)
                   THEN e.last_lat ELSE e.lat END AS lat,
-               CASE WHEN e.fresh_flash AND
-                 (NOT e.fresh_professional OR e.last_sampled_at>=e.sampled_at)
+               CASE WHEN coalesce(e.fresh_flash,false) AND
+                 (NOT coalesce(e.fresh_professional,false) OR e.last_sampled_at>=e.sampled_at)
                   THEN e.last_lng ELSE e.lng END AS lng,
-               CASE WHEN e.fresh_flash AND
-                 (NOT e.fresh_professional OR e.last_sampled_at>=e.sampled_at)
+               CASE WHEN coalesce(e.fresh_flash,false) AND
+                 (NOT coalesce(e.fresh_professional,false) OR e.last_sampled_at>=e.sampled_at)
                   THEN e.last_sampled_at ELSE e.sampled_at END AS seen_at,
                e.vehicle_type,
                EXISTS (SELECT 1 FROM public.professional_quick_rides q
