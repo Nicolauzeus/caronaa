@@ -30,6 +30,8 @@ export type GoogleMapLine = {
 
 type Props = {
   points: GoogleMapPoint[];
+  /** Adaptive road styling is opt-in and only used by the admin cockpit. */
+  appearance?: "standard" | "adaptive";
   lines?: GoogleMapLine[];
   className?: string;
   ariaLabel?: string;
@@ -56,6 +58,17 @@ type Props = {
   navigationVehicle?: "CAR" | "MOTO";
 };
 
+const adminDarkRoadStyles = [
+  { elementType:"geometry", stylers:[{color:"#111923"}] },
+  { elementType:"labels.text.fill", stylers:[{color:"#a6b2c2"}] },
+  { elementType:"labels.text.stroke", stylers:[{color:"#111923"}] },
+  { featureType:"road", elementType:"geometry", stylers:[{color:"#243344"}] },
+  { featureType:"road.highway", elementType:"geometry", stylers:[{color:"#374c61"}] },
+  { featureType:"water", elementType:"geometry", stylers:[{color:"#09131d"}] },
+  { featureType:"poi", stylers:[{visibility:"off"}] },
+  { featureType:"transit", stylers:[{visibility:"off"}] },
+];
+
 const isValid = (p: { lat: number; lng: number }) =>
   Number.isFinite(p.lat) &&
   Math.abs(p.lat) <= 90 &&
@@ -66,6 +79,7 @@ const isValid = (p: { lat: number; lng: number }) =>
 export function GoogleMapSurface({
   points,
   lines = [],
+  appearance = "standard",
   className = "h-72 w-full",
   ariaLabel = "Mapa do percurso",
   children,
@@ -148,6 +162,7 @@ export function GoogleMapSurface({
         zoom: 13,
         disableDefaultUI: true,
         clickableIcons: false,
+        styles: appearance==="adaptive" && document.documentElement.classList.contains("dark")? adminDarkRoadStyles:undefined,
         gestureHandling: previewOnly ? "none" : gestureHandling,
         headingInteractionEnabled: !previewOnly,
         tiltInteractionEnabled: !previewOnly,
@@ -210,6 +225,19 @@ export function GoogleMapSurface({
     // Initialize exactly once; update markers and polylines separately.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The admin cockpit follows the current theme without reconstructing a map,
+  // while navigation/passenger maps keep their existing styling.
+  useEffect(()=>{
+    if(appearance!=="adaptive"||!ready||!map.current)return;
+    const update=()=>map.current?.setOptions?.({
+      styles:document.documentElement.classList.contains("dark")?adminDarkRoadStyles:[],
+    });
+    update();
+    const observer=new MutationObserver(update);
+    observer.observe(document.documentElement,{attributes:true,attributeFilter:["class"]});
+    return()=>observer.disconnect();
+  },[appearance,ready]);
 
   useEffect(() => {
     if (!ready || !map.current || failed || !container.current ||
