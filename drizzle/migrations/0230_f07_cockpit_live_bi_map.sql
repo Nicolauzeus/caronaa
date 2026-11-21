@@ -123,6 +123,7 @@ BEGIN
           q.destination_lat,q.destination_lng,q.requested_at,q.expires_at,
           q.payment_status,
           coalesce(pp.full_name,'Passageiro') AS passenger_name,
+          pp.avatar_url AS passenger_avatar,
           CASE WHEN pw.contact_consent=true THEN pw.whatsapp_e164 ELSE NULL END AS passenger_whatsapp,
           fq.customer_pays_cents
         FROM public.professional_quick_rides q
@@ -141,6 +142,7 @@ BEGIN
           q.destination_lat,q.destination_lng,q.requested_at,q.accepted_at,q.expires_at,
           q.payment_status,
           coalesce(pp.full_name,'Passageiro') AS passenger_name,
+          pp.avatar_url AS passenger_avatar,
           coalesce(dp.full_name,'Motorista') AS driver_name,
           CASE WHEN pw.contact_consent=true THEN pw.whatsapp_e164 ELSE NULL END AS passenger_whatsapp,
           fq.customer_pays_cents
@@ -159,6 +161,7 @@ BEGIN
         SELECT q.id,q.vehicle_type,q.status,q.origin_label,q.destination_label,
           q.completed_at,q.updated_at,coalesce(q.completed_at,q.updated_at) AS closed_at,
           coalesce(pp.full_name,'Passageiro') AS passenger_name,
+          pp.avatar_url AS passenger_avatar,
           coalesce(dp.full_name,'Não atribuído') AS driver_name,
           fq.customer_pays_cents,q.payment_status
         FROM public.professional_quick_rides q
