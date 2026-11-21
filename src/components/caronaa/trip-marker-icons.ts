@@ -5,7 +5,7 @@
  */
 export type TripMarkerKind =
   | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "availableDriver" | "availableMoto"
-  | "adminAvailableCar" | "adminAvailableMoto" | "adminInTripCar" | "adminWaitingPassenger";
+  | "adminAvailableCar" | "adminAvailableMoto" | "adminInTripCar" | "adminInTripMoto" | "adminWaitingPassenger";
 
 type MarkerDesign = {
   text: string;
@@ -17,7 +17,7 @@ type MarkerDesign = {
   glyph: "person" | "car" | "moto" | "flag" | "pin";
 };
 
-const designs: Record<Exclude<TripMarkerKind, "availableDriver" | "availableMoto" | "adminAvailableCar" | "adminAvailableMoto" | "adminInTripCar" | "adminWaitingPassenger">, MarkerDesign> = {
+const designs: Record<Exclude<TripMarkerKind, "availableDriver" | "availableMoto" | "adminAvailableCar" | "adminAvailableMoto" | "adminInTripCar" | "adminInTripMoto" | "adminWaitingPassenger">, MarkerDesign> = {
   you: {
     text: "Você", background: "#2563EB", foreground: "#FFFFFF",
     border: "#FFFFFF", iconBackground: "#FFFFFF", iconForeground: "#2563EB", glyph: "person",
@@ -63,13 +63,13 @@ function glyphPath(glyph: MarkerDesign["glyph"]): string {
 
 export function tripMarkerSvg(kind: TripMarkerKind): string {
   if (kind === "adminAvailableCar" || kind === "adminAvailableMoto" ||
-      kind === "adminInTripCar" || kind === "adminWaitingPassenger") {
-    const fill=kind==="adminInTripCar"?"#2563EB":
+      kind === "adminInTripCar" || kind === "adminInTripMoto" || kind === "adminWaitingPassenger") {
+    const fill=kind==="adminInTripCar"||kind==="adminInTripMoto"?"#2563EB":
       kind==="adminWaitingPassenger"?"#FFBB00":"#16A34A";
     const ink=kind==="adminWaitingPassenger"?"#121212":"#FFFFFF";
-    const glyph=kind==="adminAvailableMoto"?"moto":
+    const glyph=kind==="adminAvailableMoto"||kind==="adminInTripMoto"?"moto":
       kind==="adminWaitingPassenger"?"person":"car";
-    const glyphMarkup=kind==="adminAvailableMoto"
+    const glyphMarkup=kind==="adminAvailableMoto"||kind==="adminInTripMoto"
       ? '<g fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round">' +
         '<circle cx="16" cy="28" r="4.5"/><circle cx="32" cy="28" r="4.5"/>' +
         '<path d="M16 28l5-8h7l4 8m-11-8l4 8m1-12h5"/></g>'
