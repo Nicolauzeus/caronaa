@@ -45,17 +45,15 @@ const rpcError=(error:unknown):FlashDriverError=>{
 /** New Flash-specific RPCs: fail closed when migration is unavailable. */
 export async function setFlashDriverOnline(input:FlashDriverOnlineInput):Promise<void>{
   const {mode,seats,vehicleType,destination,routePath}=input;
-  if(!input.municipality.trim()||!["ALL","ON_ROUTE","EXCLUSIVE"].includes(mode)||
+  if(!["ALL","ON_ROUTE","EXCLUSIVE"].includes(mode)||
     !["CAR","MOTO"].includes(vehicleType)||!Number.isInteger(seats)||
     seats<1||seats>(vehicleType==="MOTO"?1:4)||
-    (mode==="ON_ROUTE"&&!destination)||
-    (destination&&(!coordinatesValid(destination)||!routePath?.length)))
+    (mode==="ON_ROUTE"&&(!destination||!routePath?.length))||
+    (destination&&(!coordinatesValid(destination)||
+      (routePath&&routePath.length<2))))
     throw new FlashDriverError("INVALID");
   let geometry:null|ReturnType<typeof formatGeoJsonLineString>=null;
-  if(destination){
-    if(!routePath)throw new FlashDriverError("INVALID");
-    geometry=formatGeoJsonLineString(routePath);
-  }
+  if(destination&&routePath?.length)geometry=formatGeoJsonLineString(routePath);
   try{
     const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{
       p_is_online:true,p_dispatch_mode:mode,p_available_seats:seats,
@@ -67,6 +65,11 @@ export async function setFlashDriverOnline(input:FlashDriverOnlineInput):Promise
       throw new FlashDriverError("UNAVAILABLE");
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
+export async function pingFlashDriverPresence():Promise<boolean>{
+  const {data,error}=await (supabase as any).rpc("driver_presence_ping");
+  if(error)throw rpcError(error);
+  return data===true;
+}
 export async function setFlashDriverOffline():Promise<void>{
   try{
     const {data,error}=await (supabase as any).rpc("set_flash_driver_online",{p_is_online:false});
@@ -76,7 +79,7 @@ export async function setFlashDriverOffline():Promise<void>{
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
 export async function updateFlashDriverHeartbeatGPS(lat:number,lng:number,accuracyM:number,municipality:string):Promise<void>{
-  if(!coordinatesValid({lat,lng})||!Number.isFinite(accuracyM)||accuracyM<=0||accuracyM>5000||!municipality.trim())
+  if(!coordinatesValid({lat,lng})||!Number.isFinite(accuracyM)||accuracyM<=0||accuracyM>5000)
     throw new FlashDriverError("INVALID");
   try{
     const {data,error}=await (supabase as any).rpc("update_flash_driver_heartbeat_gps",{
