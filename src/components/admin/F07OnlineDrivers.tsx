@@ -31,7 +31,7 @@ function Portrait({driver,size="md"}:{driver:OnlineDriver;size?:"sm"|"md"}){
       <span className="text-lg">{driver.name.trim().slice(0,1).toUpperCase()||"M"}</span>}
   </div>;
 }
-export function OnlineDriverDirectory({drivers,selectedId,onSelect,query="")}:{
+export function OnlineDriverDirectory({drivers,selectedId,onSelect,query=""}:{
   drivers:OnlineDriver[];selectedId:string|null;onSelect:(id:string)=>void;query?:string;
 }){
   const q=query.trim().toLocaleLowerCase("pt-BR");
