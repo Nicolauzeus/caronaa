@@ -97,5 +97,24 @@ $function$
 
 REVOKE ALL ON FUNCTION public.set_flash_driver_online(boolean,text,integer,text,double precision,double precision,text,jsonb,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.set_flash_driver_online(boolean,text,integer,text,double precision,double precision,text,jsonb,text) TO authenticated;
+-- Lightweight presence heartbeat even while the GPS sensor is pending.
+-- No GPS coordinate is fabricated; online remains independent from dispatch readiness.
+CREATE OR REPLACE FUNCTION public.driver_presence_ping()
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $ping$
+DECLARE v_uid uuid:=auth.uid();
+BEGIN
+ IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+ UPDATE public.professional_presence
+ SET last_seen_at=now(),updated_at=now()
+ WHERE user_id=v_uid AND is_available=true;
+ IF NOT FOUND THEN RETURN false; END IF;
+ UPDATE public.flash_driver_presence SET updated_at=now()
+ WHERE user_id=v_uid AND is_online=true;
+ RETURN true;
+END;
+$ping$;
+REVOKE ALL ON FUNCTION public.driver_presence_ping() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.driver_presence_ping() TO authenticated;
 NOTIFY pgrst,'reload schema';
 COMMIT;
