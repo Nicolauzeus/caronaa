@@ -16,7 +16,7 @@ describe("online driver cockpit and presence",()=>{
     expect(ui).toContain("<OnlineDriverDirectory");
     expect(ui).toContain("<OnlineDriverDetails");
     expect(ui).toContain('onFocus={followDriver}');
-    expect(ui).toContain("mapTab===\\\"drivers\\\"");
+    expect(ui).toContain('mapTab==="drivers"');
     expect(ui).toContain("GoogleMapSurface");
   });
   it("shows real identity data and privacy-safe details only to admin",()=>{
