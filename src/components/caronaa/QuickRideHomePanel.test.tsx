@@ -183,10 +183,13 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     expect(await screen.findByText(/R\$\s*173,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
     expect(api.preview).toHaveBeenCalledWith({data:expect.objectContaining({vehicleType:"CAR",destination:{lat:-3.73,lng:-38.52}})});
   });
-  it("calcula sem clique mas não confirma sem motorista online",async()=>{
+  it("permite criar um pedido com tarifa confirmada mesmo sem motoristas online",async()=>{
     render(<QuickRideHomePanel {...basic} driverCount={0}/>);
     expect(await screen.findByText(/R\$\s*7,50/,{selector:"p"},{timeout:3000})).toBeInTheDocument();
-    expect(screen.getByRole("button",{name:"Aguardando motorista disponível"})).toBeDisabled();expect(api.submit).not.toHaveBeenCalled();
+    const action=screen.getByRole("button",{name:/Solicitar e aguardar motorista/});
+    expect(action).toBeEnabled();
+    fireEvent.click(action);
+    await waitFor(()=>expect(api.submit).toHaveBeenCalledOnce());
   });
   it("não realiza cotação antes de destino válido",async()=>{
     render(<QuickRideHomePanel {...basic} destination="" destinationPoint={undefined}/>);
