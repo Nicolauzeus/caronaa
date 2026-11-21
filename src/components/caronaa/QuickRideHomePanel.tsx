@@ -285,6 +285,29 @@ export function QuickRideHomePanel({
   }
   useEffect(()=>{if(shellMode){const selected=coverages[vehicle]??null;setCoverage(selected);onCoverage?.(selected);}},[shellMode,coverages,vehicle,onCoverage]);
   const covered=coverage?.status==="ENABLED"&&coverageResolvedKey===coveragePointKey;
+  // Foreground intent pulse lets operations distinguish preparing from waiting.
+  // Does not reveal location or create an order; the server expires it after 90s.
+  useEffect(()=>{
+    if(!user?.id||!hasOrigin||!hasDestination||liveRide)return;
+    let busyPulse=false;
+    const ping=async()=>{
+      if(document.hidden||!navigator.onLine||busyPulse)return;
+      busyPulse=true;
+      try{await (supabase as any).rpc("caronaa_passenger_demand_heartbeat",{p_vehicle:vehicle});}
+      catch{/* Intent must not interrupt a real quote or trip. */}
+      finally{busyPulse=false;}
+    };
+    void ping();
+    const timer=window.setInterval(()=>void ping(),30000);
+    const wake=()=>void ping();
+    window.addEventListener("online",wake);
+    document.addEventListener("visibilitychange",wake);
+    return()=>{
+      window.clearInterval(timer);window.removeEventListener("online",wake);
+      document.removeEventListener("visibilitychange",wake);
+    };
+  },[user?.id,vehicle,hasOrigin,hasDestination,liveRide?.id]);
+
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
     setQuote(null);setFares({});setQuoteErrors({});setCurrentQuoteKey("");setInterestSent(false);setError("");
@@ -437,7 +460,7 @@ export function QuickRideHomePanel({
       quickQuoteCoordinator.forget();
       const acknowledged:ExistingQuickRide={id:submitted.rideId,role:"PASSENGER",status:"SEARCHING",
         municipality:coverage?.municipality??"",vehicle_type:vehicle,
-        expires_at:new Date(Date.now()+120000).toISOString()};
+        expires_at:new Date(Date.now()+30*60*1000).toISOString()};
       const {data,error:reloadError}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current){
         const fromServer:ExistingQuickRide[]=!reloadError&&Array.isArray(data)?data:[];
@@ -474,8 +497,8 @@ export function QuickRideHomePanel({
       :"Este município está no nosso plano de expansão, mas a Corrida Rápida ainda não foi habilitada."):
     coverage?.status==="UNKNOWN"?"Não foi possível identificar o município do embarque.":"Informe um ponto de saída verificado para consultar a cobertura.";
   const canOpenOrigin=!waitingForOrigin&&!hasOrigin&&Boolean(onConfirmPickup);
-  const requestDisabled=busy||waitingForOrigin||(!canOpenOrigin&&(!hasOrigin||!covered||quoteLoading||driverLoading||
-    Boolean(driverError)||driverCount<1||!currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now()));
+  const requestDisabled=busy||waitingForOrigin||(!canOpenOrigin&&(!hasOrigin||!covered||quoteLoading||
+    !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now()));
   const priceFailure=!currentQuote?quoteErrors[vehicle]:undefined;
   const retryDisabled=busy||quoteLoading||coverageLoading||cooldownSeconds>0;
   const retryLabel=cooldownSeconds>0?`Tentar novamente em ${cooldownSeconds}s`:"Tentar novamente";
@@ -485,7 +508,7 @@ export function QuickRideHomePanel({
       {waitingForOrigin&&<Loader2 size={18} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none"/>}
       {busy?"Enviando pedido…":waitingForOrigin?"Obtendo sua localização…":!hasOrigin?"Definir ponto de embarque":
         !hasDestination?"Escolha seu destino":!currentQuote?(quoteLoading||coverageLoading?"Consultando preços…":"Preço indisponível"):
-        driverCount<1?"Aguardando motorista disponível":
+        driverCount<1?"Solicitar e aguardar motorista — "+formatBrl(currentQuote.customerPaysCents/100):
         (shellMode?`Confirmar Flash ${vehicle==="MOTO"?"Moto":"Carro"} — `:"Confirmar corrida por ")+formatBrl(currentQuote.customerPaysCents/100)}
     </Button>
     {priceFailure&&!quoteLoading&&<div role="alert" className="space-y-2">
