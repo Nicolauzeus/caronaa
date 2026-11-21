@@ -335,6 +335,113 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_f07_operations_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          detail: string
+          id: string
+          incident_id: string | null
+          new_status: string | null
+          occurred_at: string
+          previous_status: string | null
+          ride_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          detail: string
+          id?: string
+          incident_id?: string | null
+          new_status?: string | null
+          occurred_at?: string
+          previous_status?: string | null
+          ride_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          detail?: string
+          id?: string
+          incident_id?: string | null
+          new_status?: string | null
+          occurred_at?: string
+          previous_status?: string | null
+          ride_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_f07_operations_audit_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "caronaa_f07_operations_incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caronaa_f07_operations_audit_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caronaa_f07_operations_incidents: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          driver_id: string | null
+          id: string
+          priority: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          ride_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          description: string
+          driver_id?: string | null
+          id?: string
+          priority?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          ride_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          driver_id?: string | null
+          id?: string
+          priority?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          ride_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_f07_operations_incidents_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caronaa_f07_pilot_authorization_audit: {
         Row: {
           activated_at: string
@@ -383,6 +490,24 @@ export type Database = {
           expires_at?: string | null
           id?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_passenger_demand_presence: {
+        Row: {
+          last_seen_at: string
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          last_seen_at?: string
+          user_id: string
+          vehicle_type: string
+        }
+        Update: {
+          last_seen_at?: string
+          user_id?: string
+          vehicle_type?: string
         }
         Relationships: []
       }
@@ -627,6 +752,29 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "caronaa_service_municipalities"
             referencedColumns: ["municipality"]
+          },
+        ]
+      }
+      caronaa_quick_position_updates: {
+        Row: {
+          changed_at: string
+          ride_id: string
+        }
+        Insert: {
+          changed_at?: string
+          ride_id: string
+        }
+        Update: {
+          changed_at?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_quick_position_updates_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2689,7 +2837,7 @@ export type Database = {
           access_type: string
           car_category: string | null
           id: string
-          municipality: string
+          municipality: string | null
           passenger_seats: number
           review_reason: string | null
           reviewed_at: string | null
@@ -2705,7 +2853,7 @@ export type Database = {
           access_type?: string
           car_category?: string | null
           id?: string
-          municipality: string
+          municipality?: string | null
           passenger_seats: number
           review_reason?: string | null
           reviewed_at?: string | null
@@ -2721,7 +2869,7 @@ export type Database = {
           access_type?: string
           car_category?: string | null
           id?: string
-          municipality?: string
+          municipality?: string | null
           passenger_seats?: number
           review_reason?: string | null
           reviewed_at?: string | null
@@ -2770,7 +2918,7 @@ export type Database = {
       professional_driver_contacts: {
         Row: {
           created_at: string
-          municipality: string
+          municipality: string | null
           registration_number: string | null
           updated_at: string
           user_id: string
@@ -2778,7 +2926,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          municipality: string
+          municipality?: string | null
           registration_number?: string | null
           updated_at?: string
           user_id: string
@@ -2786,7 +2934,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          municipality?: string
+          municipality?: string | null
           registration_number?: string | null
           updated_at?: string
           user_id?: string
@@ -2844,7 +2992,7 @@ export type Database = {
           created_at: string
           first_name: string
           last_name: string
-          region_code: string
+          region_code: string | null
           registration_number: string
           updated_at: string
           user_id: string
@@ -2854,7 +3002,7 @@ export type Database = {
           created_at?: string
           first_name: string
           last_name: string
-          region_code: string
+          region_code?: string | null
           registration_number: string
           updated_at?: string
           user_id: string
@@ -2864,7 +3012,7 @@ export type Database = {
           created_at?: string
           first_name?: string
           last_name?: string
-          region_code?: string
+          region_code?: string | null
           registration_number?: string
           updated_at?: string
           user_id?: string
@@ -3255,6 +3403,41 @@ export type Database = {
             foreignKeyName: "quick_ride_dispute_audit_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
+            referencedRelation: "professional_quick_rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_ride_driver_cancellations: {
+        Row: {
+          cancelled_at: string
+          driver_id: string
+          id: string
+          previous_status: string
+          reason: string | null
+          ride_id: string
+        }
+        Insert: {
+          cancelled_at?: string
+          driver_id: string
+          id?: string
+          previous_status: string
+          reason?: string | null
+          ride_id: string
+        }
+        Update: {
+          cancelled_at?: string
+          driver_id?: string
+          id?: string
+          previous_status?: string
+          reason?: string | null
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_ride_driver_cancellations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: true
             referencedRelation: "professional_quick_rides"
             referencedColumns: ["id"]
           },
@@ -5824,6 +6007,34 @@ export type Database = {
       admin_caronaa_fee_statement_claims: { Args: never; Returns: Json }
       admin_caronaa_quick_commercial_overview: { Args: never; Returns: Json }
       admin_driver_fee_audit: { Args: { p_ride_id: string }; Returns: Json }
+      admin_f07_cancel_stale_assignment: {
+        Args: { p_reason: string; p_ride_id: string }
+        Returns: boolean
+      }
+      admin_f07_cockpit_live: { Args: never; Returns: Json }
+      admin_f07_expire_stale_search: {
+        Args: { p_ride_id: string }
+        Returns: boolean
+      }
+      admin_f07_open_incident: {
+        Args: {
+          p_category?: string
+          p_description?: string
+          p_driver_id?: string
+          p_priority?: string
+          p_ride_id?: string
+        }
+        Returns: string
+      }
+      admin_f07_operations_snapshot: { Args: never; Returns: Json }
+      admin_f07_update_incident: {
+        Args: { p_incident_id: string; p_resolution?: string; p_status: string }
+        Returns: boolean
+      }
+      admin_mobility_lifecycle_metrics: {
+        Args: { p_period?: string }
+        Returns: Json
+      }
       admin_operate_ride: {
         Args: {
           p_action: string
@@ -5930,6 +6141,10 @@ export type Database = {
         Args: { p_form_id: string }
         Returns: boolean
       }
+      can_read_quick_position_update: {
+        Args: { p_ride_id: string }
+        Returns: boolean
+      }
       cancel_scheduled_caronaa_request: {
         Args: { p_request_id: string }
         Returns: Json
@@ -5964,6 +6179,10 @@ export type Database = {
       }
       caronaa_f07_test_dispatch_allowed: { Args: never; Returns: boolean }
       caronaa_normalize_whatsapp: { Args: { p_value: string }; Returns: string }
+      caronaa_passenger_demand_heartbeat: {
+        Args: { p_vehicle: string }
+        Returns: undefined
+      }
       caronaa_quick_driver_queue: {
         Args: { p_municipality: string }
         Returns: {
@@ -6264,6 +6483,7 @@ export type Database = {
         Args: { p_driver: string }
         Returns: boolean
       }
+      driver_presence_ping: { Args: never; Returns: boolean }
       dropgeometrycolumn:
         | {
             Args: {
@@ -6982,6 +7202,16 @@ export type Database = {
         Args: { p_lat: number; p_lng: number; p_path: Json }
         Returns: Json
       }
+      publish_active_quick_ride_gps: {
+        Args: {
+          p_accuracy_m: number
+          p_lat: number
+          p_lng: number
+          p_ride_id: string
+          p_sampled_at_ms: number
+        }
+        Returns: boolean
+      }
       publish_filtered_priced_offer: {
         Args: { p_details: Json; p_preferences?: Json; p_quote_id: string }
         Returns: string
@@ -7048,6 +7278,10 @@ export type Database = {
       quick_ride_ack_posttrip: { Args: { p_id: string }; Returns: boolean }
       quick_ride_acknowledge_manual_pix: {
         Args: { p_id: string }
+        Returns: boolean
+      }
+      quick_ride_cancel_by_driver: {
+        Args: { p_id: string; p_reason?: string }
         Returns: boolean
       }
       quick_ride_complete_ride: { Args: { p_id: string }; Returns: boolean }
@@ -7144,6 +7378,18 @@ export type Database = {
         Returns: {
           driver_acknowledged_at: string
           passenger_declared_at: string
+        }[]
+      }
+      quick_ride_pending_dropoff: {
+        Args: never
+        Returns: {
+          deadline_at: string
+          destination_label: string
+          origin_label: string
+          requested_at: string
+          ride_id: string
+          ride_status: string
+          vehicle_type: string
         }[]
       }
       quick_ride_rate: {
