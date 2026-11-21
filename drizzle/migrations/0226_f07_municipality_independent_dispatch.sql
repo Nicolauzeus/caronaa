@@ -110,7 +110,7 @@ BEGIN
     EXISTS(
       SELECT 1 FROM public.professional_presence p
       JOIN public.professional_driver_locations l ON l.user_id=p.user_id
-      WHERE p.user_id=v_user AND p.is_available AND p.municipality=l.municipality
+      WHERE p.user_id=v_user AND p.is_available
         
         AND p.last_seen_at>now()-interval '90 seconds'
         AND l.updated_at>now()-interval '90 seconds'
@@ -217,7 +217,7 @@ BEGIN
     JOIN public.professional_presence p ON p.user_id=l.user_id
     JOIN public.professional_service_regions sr ON sr.municipality=l.municipality
     WHERE l.user_id=v_uid AND p.is_available
-      AND p.municipality=l.municipality AND sr.public_discovery_enabled
+      AND sr.public_discovery_enabled
       AND p.last_seen_at>now()-interval '90 seconds'
       AND l.accuracy_m<=150
       AND l.sampled_at>now()-interval '90 seconds'
