@@ -215,9 +215,7 @@ BEGIN
   SELECT l.* INTO v_fix
     FROM public.professional_driver_locations l
     JOIN public.professional_presence p ON p.user_id=l.user_id
-    JOIN public.professional_service_regions sr ON sr.municipality=l.municipality
     WHERE l.user_id=v_uid AND p.is_available
-      AND sr.public_discovery_enabled
       AND p.last_seen_at>now()-interval '90 seconds'
       AND l.accuracy_m<=150
       AND l.sampled_at>now()-interval '90 seconds'
