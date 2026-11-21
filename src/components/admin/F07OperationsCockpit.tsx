@@ -267,14 +267,14 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       .filter(driver=>mapTab==="live"||driver.in_trip)
       .map((driver):GoogleMapPoint=>({
         id:"driver:"+driver.id,lat:driver.lat,lng:driver.lng,
-        kind:driver.in_trip?"driver":driver.vehicle_type==="MOTO"?"availableMoto":"availableDriver",
+        kind:driver.in_trip?"adminInTripCar":driver.vehicle_type==="MOTO"?"adminAvailableMoto":"adminAvailableCar",
         title:driver.in_trip?"Motorista em viagem":"Motorista conectado",
       }));
     const requests=mapTab==="tracking"?[]:(data?.waiting??[])
       .filter(ride=>validCoordinate(ride.origin_lat,ride.origin_lng))
       .map((ride):GoogleMapPoint=>({
         id:"request:"+ride.id,lat:ride.origin_lat!,lng:ride.origin_lng!,
-        kind:"passenger",title:"Pedido aguardando · "+ride.passenger_name,
+        kind:"adminWaitingPassenger",title:"Pedido aguardando · "+ride.passenger_name,
       }));
     if(selected&&validCoordinate(selected.origin_lat,selected.origin_lng)
         &&!requests.some(point=>point.id==="request:"+selected.id)){
