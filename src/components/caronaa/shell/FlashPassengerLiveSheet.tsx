@@ -15,7 +15,7 @@ type Props={
   onFollowMap?:()=>void;onExpand:()=>void;
 };
 const stages={
-  SEARCHING:"Procurando motorista",
+  SEARCHING:"Aguardando motorista",
   ACCEPTED:"Motorista a caminho",
   ARRIVED:"Motorista chegou",
   IN_PROGRESS:"Viagem em andamento",
@@ -39,7 +39,7 @@ export function FlashPassengerLiveSheet({
           {stages[ride.status]}
         </h2>
         {!compact&&<p className="text-xs text-white/65">
-          {searching?(searchDeadlinePassed?"Confirmando o resultado da busca…":"Sua solicitação foi enviada"):
+          {searching?(searchDeadlinePassed?"Verificando encerramento da busca…":"Pedido ativo. Aguardando motorista disponível…"):
             arrival?"Informe o PIN ao motorista para iniciar a viagem":
             traveling?"Acompanhe seu trajeto no mapa":"Acompanhe a aproximação no mapa"}
         </p>}
@@ -48,7 +48,7 @@ export function FlashPassengerLiveSheet({
         {searching?<Clock3 size={14} aria-hidden="true"/>:
           arrival?<KeyRound size={14} aria-hidden="true"/>:
           <CheckCircle2 size={14} aria-hidden="true"/>}
-        {searching?(searchSecondsLeft===null?"Buscando":`${searchSecondsLeft}s`):
+        {searching?(searchSecondsLeft===null?"Aguardando":`${Math.ceil(searchSecondsLeft/60)} min`):
           arrival?"No local":traveling?"Em viagem":"Aceita"}
       </span>
     </div>
@@ -89,6 +89,10 @@ export function FlashPassengerLiveSheet({
     </>:<>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-1">
         <QuickRideSearchActivity rideId={ride.id} status={ride.status} compact={false}/>
+        {searching&&<p role="status" className="rounded-xl border border-[#FFBB00]/35 bg-[#FFBB00]/10 px-3 py-2 text-xs text-white/85">
+          O pedido continua visível aos motoristas elegíveis na sua área, mesmo que nenhum esteja online agora.
+          Você pode cancelar a qualquer momento. Sem confirmação de um motorista, não há corrida iniciada.
+        </p>}
         {boardingReady&&<div className="space-y-1 rounded-2xl border border-[#FFBB00]/65 bg-[#FFBB00]/10 p-3 text-center">
           <p className="text-sm font-bold text-white">{arrival?"Seu código de embarque":"Código para quando o motorista chegar"}</p>
           {boardingCode?
