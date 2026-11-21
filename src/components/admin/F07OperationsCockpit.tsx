@@ -7,6 +7,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { GoogleMapSurface, type GoogleMapPoint } from "@/components/caronaa/GoogleMapSurface";
 import { Button } from "@/components/ui/button";
+import { OnlineDriverDirectory, OnlineDriverDetails, type OnlineDriver } from "./F07OnlineDrivers";
 
 type RideStatus = "SEARCHING" | "ACCEPTED" | "ARRIVED" | "IN_PROGRESS" |
   "PENDING_REVIEW" | "COMPLETED" | "CANCELLED" | "EXPIRED";
@@ -33,7 +34,7 @@ type LiveData={
     critical:number;completed_today:number};
   passenger_demand?:{preparing:number;waiting:number};
   waiting:Ride[];active:Ride[];recent:Ride[];
-  drivers:Driver[];map_drivers:MapDriver[];
+  drivers:Driver[];map_drivers:MapDriver[];online_drivers?:OnlineDriver[];
 };
 
 const stateLabel:Record<string,string>={
@@ -195,7 +196,9 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [mobileDetails,setMobileDetails]=useState(false);
   const [queueTab,setQueueTab]=useState<"waiting"|"active">("waiting");
-  const [mapTab,setMapTab]=useState<"live"|"tracking">("live");
+  const [mapTab,setMapTab]=useState<"live"|"tracking"|"drivers">("live");
+  const [selectedDriverId,setSelectedDriverId]=useState<string|null>(null);
+  const [focusDriverId,setFocusDriverId]=useState<string|null>(null);
   const [now,setNow]=useState(Date.now());
   const [focusKey,setFocusKey]=useState<string|undefined>();
   const mapArea=useRef<HTMLDivElement>(null);
@@ -268,11 +271,14 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const visibleWaiting=(data?.waiting??[]).filter(matches);
   const visibleActive=(data?.active??[]).filter(matches);
   const list=queueTab==="waiting"?visibleWaiting:visibleActive;
+  const onlineDrivers=(data?.online_drivers??[]).filter(driver=>driver.online);
+  const selectedDriver=onlineDrivers.find(driver=>driver.id===selectedDriverId)??onlineDrivers[0]??null;
   const points=useMemo(()=>{
     const focus=selected?.id===focusKey?selected:null;
     const drivers=(data?.map_drivers??[])
       .filter(driver=>validCoordinate(driver.lat,driver.lng))
-      .filter(driver=>mapTab==="live"||driver.in_trip)
+      .filter(driver=>mapTab!=="tracking"||driver.in_trip)
+      .filter(driver=>!focusDriverId||driver.id===focusDriverId)
       .filter(driver=>!focus||!validCoordinate(focus.origin_lat,focus.origin_lng)||
         driver.id===focus.driver_id||
         distanceKm({lat:driver.lat,lng:driver.lng},{lat:focus.origin_lat!,lng:focus.origin_lng!})<=15)
@@ -282,26 +288,39 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
           driver.vehicle_type==="MOTO"?"adminAvailableMoto":"adminAvailableCar",
         title:driver.in_trip?"Motorista em viagem":"Motorista conectado",
       }));
-    const requests=mapTab==="tracking"?[]:(data?.waiting??[])
+    const requests=mapTab!=="live"?[]:(data?.waiting??[])
       .filter(ride=>validCoordinate(ride.origin_lat,ride.origin_lng))
       .filter(ride=>!focus||ride.id===focus.id)
       .map((ride):GoogleMapPoint=>({
         id:"request:"+ride.id,lat:ride.origin_lat!,lng:ride.origin_lng!,
         kind:"adminWaitingPassenger",title:"Pedido aguardando · "+ride.passenger_name,
       }));
-    if(selected&&validCoordinate(selected.origin_lat,selected.origin_lng)
+    if(!focusDriverId&&mapTab!=="drivers"&&selected&&validCoordinate(selected.origin_lat,selected.origin_lng)
         &&!requests.some(point=>point.id==="request:"+selected.id)){
       requests.push({id:"selected:"+selected.id,lat:selected.origin_lat!,lng:selected.origin_lng!,
         kind:"origin",title:"Embarque · "+selected.passenger_name});
     }
     return [...drivers,...requests];
-  },[data?.map_drivers,data?.waiting,mapTab,focusKey,selected?.id,selected?.driver_id,selected?.origin_lat,selected?.origin_lng]);
+  },[data?.map_drivers,data?.waiting,mapTab,focusKey,focusDriverId,selected?.id,selected?.driver_id,selected?.origin_lat,selected?.origin_lng]);
   const choose=(ride:Ride)=>{
     setSelectedId(ride.id);setMobileDetails(true);
   };
   const follow=()=>{
+    setFocusDriverId(null);
     setMapTab("live");
     if(selected)setFocusKey(selected.id);
+    setMobileDetails(false);
+    mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});
+  };
+  const chooseDriver=(id:string)=>{
+    setSelectedDriverId(id);
+    setMobileDetails(true);
+  };
+  const followDriver=()=>{
+    if(!selectedDriver)return;
+    setFocusKey(undefined);
+    setFocusDriverId(selectedDriver.id);
+    setMapTab("live");
     setMobileDetails(false);
     mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});
   };
@@ -347,9 +366,9 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       <Metric label="Passageiros aguardando" value={kpis?.waiting} hint="Pedidos ainda sem aceite" icon={Users}
         tone="amber" onClick={()=>{setQueueTab("waiting");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
       <Metric label="Motoristas aptos" value={kpis?.ready_drivers} hint="Online e com GPS válido" icon={ShieldCheck}
-        tone="green" onClick={()=>{setFocusKey(undefined);setMapTab("live");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}}/>
+        tone="green" onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("drivers");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}}/>
       <Metric label="Corridas em andamento" value={kpis?.in_progress} hint="Viagens já iniciadas" icon={Navigation}
-        tone="blue" onClick={()=>{setFocusKey(undefined);setQueueTab("active");setMapTab("tracking");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
+        tone="blue" onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setQueueTab("active");setMapTab("tracking");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
       <Metric label="Situações críticas" value={kpis?.critical} hint={kpis?.critical?"Precisam de análise":"Nenhuma intervenção aberta"}
         icon={AlertTriangle} tone="red" onClick={onOpenTools}/>
     </div>
@@ -408,15 +427,25 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
               className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="live"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Mapa em tempo real</button>
             <button type="button" aria-pressed={mapTab==="tracking"} onClick={()=>{setFocusKey(undefined);setMapTab("tracking");}}
               className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="tracking"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Rastreamento</button>
+            <button type="button" aria-pressed={mapTab==="drivers"}
+              onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("drivers");}}
+              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="drivers"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>
+              Motoristas
+            </button>
           </div>
           <span className="text-xs text-muted-foreground">{time(data?.generated_at)}</span>
         </div>
-        {points.length>0?
+        {mapTab==="drivers"?
+          <div className="h-[300px] overflow-y-auto sm:h-[360px] xl:h-[390px]">
+            <OnlineDriverDirectory drivers={onlineDrivers} selectedId={selectedDriver?.id??null}
+              onSelect={chooseDriver} query={query}/>
+          </div>:
+        points.length>0?
           <GoogleMapSurface className="h-[300px] w-full sm:h-[360px] xl:h-[390px]"
             ariaLabel="Mapa de motoristas e solicitações CARONAA"
             points={points} showControls smoothTracking onRefresh={reload}
             appearance="adaptive" fitMode="once"
-            fitKey={(focusKey??"f07-initial")+":"+mapTab} gestureHandling="cooperative"/>:
+            fitKey={(focusDriverId??focusKey??"f07-initial")+":"+mapTab} gestureHandling="cooperative"/>:
           <div className="flex h-[300px] flex-col items-center justify-center gap-3 bg-muted/20 px-5 text-center sm:h-[360px] xl:h-[390px]">
             <MapPin size={30} className="text-muted-foreground"/>
             <p className="text-sm font-semibold">{loading?"Preparando mapa…":"Nenhuma localização operacional recente"}</p>
@@ -430,7 +459,9 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       </section>
 
       <div className="hidden min-w-0 xl:block" aria-label="Painel lateral de detalhes">
-        <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}/>
+        {mapTab==="drivers"||focusDriverId?
+          <OnlineDriverDetails driver={selectedDriver} onFocus={followDriver} onManage={onOpenTools}/>:
+          <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}/>}
       </div>
     </div>
 
@@ -465,12 +496,16 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       </div>
     </section>
 
-    {mobileDetails&&selected&&<div className="fixed inset-0 z-[120] flex items-end bg-black/55 p-2 xl:hidden sm:items-center sm:justify-center"
+    {mobileDetails&&((mapTab==="drivers"&&selectedDriver)||selected)&&<div className="fixed inset-0 z-[120] flex items-end bg-black/55 p-2 xl:hidden sm:items-center sm:justify-center"
       onClick={event=>{if(event.target===event.currentTarget)setMobileDetails(false);}}>
       <div role="dialog" aria-modal="true" aria-label="Detalhes da solicitação"
         className="max-h-[90dvh] w-full overflow-y-auto rounded-2xl bg-background sm:max-w-lg">
-        <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}
-          onClose={()=>setMobileDetails(false)}/>
+        {mapTab==="drivers"?
+          <OnlineDriverDetails driver={selectedDriver} onFocus={followDriver} onManage={onOpenTools}
+            onClose={()=>setMobileDetails(false)}/>:
+          <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}
+            onClose={()=>setMobileDetails(false)}/>}
+
       </div>
     </div>}
   </section>;
