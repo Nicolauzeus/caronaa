@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, Star, Wallet, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +34,9 @@ export function QuickRidePostTripFlow({
   const [ratingRideId, setRatingRideId] = useState<string | null>(null);
   const [ratingStatus, setRatingStatus] = useState<"checking" | "available" | "rated" | "error">("checking");
   const [ratingRetry, setRatingRetry] = useState(0);
+  const [driverPixReady,setDriverPixReady]=useState(false);
+  const onPixReady=useCallback((ready:boolean)=>setDriverPixReady(ready),[]);
+  useEffect(()=>{if(role==="DRIVER")setDriverPixReady(false);},[rideId,role]);
 
   // Persist the active ride so that a refresh, Safari tab suspension or
   // navigation during completion cannot silently skip the checkout prompt.
@@ -92,6 +95,7 @@ export function QuickRidePostTripFlow({
     } catch { /* Do not block the passenger or driver. */ }
   };
   const dismiss = () => {
+    if(role==="DRIVER"&&!driverPixReady)return;
     markPresented();
     setOpenRideId(null);
     setRatingRideId(null);
@@ -107,13 +111,11 @@ export function QuickRidePostTripFlow({
   useEffect(() => {
     if (!isOpen) return;
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dismiss();
+      if (event.key === "Escape" && (role!=="DRIVER"||driverPixReady)) dismiss();
     };
     document.addEventListener("keydown", onEscape);
     return () => document.removeEventListener("keydown", onEscape);
-    // The active ID is the only resource an Escape listener needs to track.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, rideId, role]);
+  }, [isOpen, rideId, role, driverPixReady]);
 
   if (typeof document === "undefined" || !rideId) return null;
 
@@ -141,6 +143,7 @@ export function QuickRidePostTripFlow({
               </p>
             </div>
             <button type="button" aria-label="Fechar pós-corrida" onClick={dismiss}
+              disabled={role==="DRIVER"&&!driverPixReady}
               className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-white/20 text-white/80">
               <X size={20} />
             </button>
@@ -152,7 +155,7 @@ export function QuickRidePostTripFlow({
             </div>
             {role === "PASSENGER"
               ? <QuickRidePixCard rideId={rideId} />
-              : <QuickRideDriverSettlement rideId={rideId} />}
+              : <QuickRideDriverSettlement rideId={rideId} onPixReady={onPixReady} />}
             <div className="space-y-2 border-t border-white/15 pt-4">
               <div className="flex items-center gap-2 text-sm font-bold">
                 <Star size={18} className="text-[#FFBB00]" aria-hidden="true" />
@@ -180,11 +183,12 @@ export function QuickRidePostTripFlow({
           </div>
           <div className="shrink-0 space-y-1 border-t border-white/15 bg-[#121212] pt-2">
             <button type="button" onClick={dismiss}
+              disabled={role==="DRIVER"&&!driverPixReady}
               className="min-h-12 w-full rounded-xl border border-white/25 px-3 text-sm font-semibold text-white">
-              Continuar no CARONAA
+              {role==="DRIVER"&&!driverPixReady?"Cadastre o Pix para continuar":"Continuar no CARONAA"}
             </button>
             <p className="text-center text-[11px] leading-tight text-white/50">
-              Consulte o Pix e a avaliação depois em Minhas viagens.
+              {role==="DRIVER"&&!driverPixReady?"O passageiro aguarda a geração da cobrança. Informe sua chave Pix sem sair desta tela.":"Consulte o Pix e a avaliação depois em Minhas viagens."}
             </p>
           </div>
         </section>
