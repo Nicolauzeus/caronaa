@@ -521,10 +521,14 @@ export function GoogleMapSurface({
       {ready && !failed && showControls && !previewOnly && (
         <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">
           <button type="button"
-            aria-label={hasFollowFix?(following&&!overview&&navigationMode?"Ver rota completa":following?"Centralizar e seguir motorista":"Retomar acompanhamento do GPS"):"Centralizar mapa no motorista"}
+            aria-label={appearance==="adaptive"?"Centralizar mapa operacional":hasFollowFix?(following&&!overview&&navigationMode?"Ver rota completa":following?"Centralizar e seguir motorista":"Retomar acompanhamento do GPS"):"Centralizar mapa no motorista"}
             title={hasFollowFix&&!following?"Retomar acompanhamento automático":navigationMode?"Alternar navegação e visão geral":"Centralizar"}
-            className={"flex size-11 items-center justify-center rounded-full border bg-white text-xl font-bold text-slate-900 shadow-lg "+(hasFollowFix&&following?"border-[#FFBB00] ring-2 ring-[#FFBB00]/40":"border-slate-200")}
+            className={"flex size-11 items-center justify-center rounded-full border bg-white text-xl font-bold text-slate-900 shadow-lg "+(hasFollowFix&&following?"border-[#FFBB00] ring-2 ring-[#FFBB00]/40":"border-slate-200")+(appearance==="adaptive"?" dark:border-white/20 dark:bg-[#11161D] dark:text-white":"")}
             onClick={() => {
+              if(appearance==="adaptive"){
+                if(lastBounds.current)map.current?.fitBounds?.(lastBounds.current,{top:45,right:45,bottom:45,left:45});
+                return;
+              }
               const driver = followPoint&&isValid(followPoint)?followPoint:
                 points.find(point => point.kind === "driver" || point.kind === "availableMoto") ?? points[0];
               if(driver&&isValid(driver)){
@@ -547,14 +551,14 @@ export function GoogleMapSurface({
               }
             }}>◎</button>
           <button type="button" aria-label="Aumentar zoom do mapa"
-            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
+            className={"flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg "+(appearance==="adaptive"?"dark:border-white/20 dark:bg-[#11161D] dark:text-white":"")}
             onClick={() => {setFollowing(false);setOverview(false);map.current?.setZoom(Math.min(20, (map.current?.getZoom() ?? 13) + 1));}}>+</button>
           <button type="button" aria-label="Diminuir zoom do mapa"
-            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg"
+            className={"flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-bold text-slate-900 shadow-lg "+(appearance==="adaptive"?"dark:border-white/20 dark:bg-[#11161D] dark:text-white":"")}
             onClick={() => {setFollowing(false);setOverview(false);map.current?.setZoom(Math.max(3, (map.current?.getZoom() ?? 13) - 1));}}>−</button>
           <button type="button" aria-label="Atualizar aplicativo e mapa" title="Atualizar corridas, dados do aplicativo e mapa"
             disabled={refreshing}
-            className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-lg disabled:opacity-60"
+            className={"flex size-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-lg disabled:opacity-60 "+(appearance==="adaptive"?"dark:border-white/20 dark:bg-[#11161D] dark:text-white":"")}
             onClick={async () => {
               const now=Date.now();
               if(refreshing || now-lastRefreshAt.current<3000)return;
