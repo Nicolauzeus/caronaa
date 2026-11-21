@@ -303,7 +303,7 @@ export function ProfessionalAvailabilityPage() {
         setPilotVehicle(registeredVehicle);
       setPilotEnabled(pilot.enabled===true);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
-      setEnabled(presence.data?.is_available===true && access.data?.authorized===true);
+      setEnabled(presence.data?.is_available===true);
       record("INITIAL_STATE",{
         city:String(presence.data?.municipality||profile.data?.city||candidate).trim()||undefined,
         authorized:access.data?.authorized===true,
@@ -340,7 +340,7 @@ export function ProfessionalAvailabilityPage() {
   // A previously consented GPS session can resume when returning to this
   // screen, including after a tab switch. No first-visit silent permission.
   useEffect(()=>{
-    if(!ready||!enabled||!authorized||!userId||tracking.current||fix?.simulated)return;
+    if(!ready||!enabled||!userId||tracking.current||fix?.simulated)return;
     if(window.localStorage.getItem(professionalRadarConsentKey(userId))==="yes"){
       startGps(municipality,pilotVehicle,userId);
     }
@@ -385,9 +385,6 @@ export function ProfessionalAvailabilityPage() {
     if(next)void unlockNotificationAudio();
     if(busy)return;
     record(next?"ONLINE_REQUEST":"OFFLINE_REQUEST",{city:municipality,authorized});
-    if(next && !authorized && !pilotEnabled){
-      setError("Conclua o cadastro profissional para ficar online.");return;
-    }
     setBusy(true);setError("");
     try{
       if(!next){
@@ -399,12 +396,6 @@ export function ProfessionalAvailabilityPage() {
         if(error)throw error;
         setEnabled(false);
         return;
-      }
-      if(!authorized){
-        const result=await activatePilot({data:{vehicleType:pilotVehicle}});
-        if(!result.approved)throw new Error("Piloto não autorizado.");
-        setAuthorized(true);
-        setPilotExpiry(result.expiresAt);
       }
       const {error}=await (supabase as any).rpc("set_professional_presence",{
         p_available:true,p_municipality:municipality||null,
@@ -519,7 +510,7 @@ export function ProfessionalAvailabilityPage() {
           <h1 className="professional-cockpit__title text-white">Cockpit Operacional</h1>
           <p className="text-xs leading-relaxed text-white/65">Acompanhe chamados, viagens e disponibilidade.</p>
         </div>
-    {/* GPS, consent and dispatch logic are unchanged; only presentation differs.
+    {/* Online presence is independent from dispatch readiness; GPS and authorization remain mandatory to accept rides.
         The legacy one-tap action "Ficar disponível e compartilhar GPS" remains the
         same operational command; its shorter visible label is "Ficar Disponível". */}
     <section className="professional-cockpit__card space-y-3" aria-label="Controle de disponibilidade">
@@ -543,7 +534,7 @@ export function ProfessionalAvailabilityPage() {
         {!ready ? "Verificando sua disponibilidade." :
           fresh ? "Localização verificada. Você pode receber chamados." :
           enabled ? "Disponibilidade ativada. Aguardando confirmação da localização." :
-          "Ative sua disponibilidade quando estiver pronto para receber chamados."}
+          "Fique online agora. Para receber chamados, conclua a habilitação e permita o GPS."}
       </p>
       {!authorized && ready && (
         <div role="status" className="space-y-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
@@ -582,7 +573,7 @@ export function ProfessionalAvailabilityPage() {
         className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black transition-colors ${enabled
           ? "border-amber-400/55 bg-transparent text-amber-200 hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-100"
           : "bg-[#FFBB00] text-[#121212] hover:bg-[#eeb000]"}`}
-        disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(!authorized&&!pilotEnabled))}
+        disabled={!ready||busy||(enabled&&activeQuickRide)}
         onClick={()=>void toggleOnline(!enabled)}>
         {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
       </Button>
@@ -603,14 +594,14 @@ export function ProfessionalAvailabilityPage() {
     </div>}
 
       </div>
-      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-active-ride={activeRide?"true":"false"} data-can-start={ready && !enabled && (authorized || pilotEnabled) ? "true" : "false"}>
+      <div className="professional-cockpit__right" data-expanded={sheetOpen ? "true" : "false"} data-active-ride={activeRide?"true":"false"} data-can-start={ready && !enabled ? "true" : "false"}>
         <button
           type="button"
           className="professional-cockpit__sheet-toggle"
           aria-label={activeRide ? sheetOpen
             ? "Recolher painel e mostrar navegação"
             : "Expandir painel da corrida e código de embarque"
-            : ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded
+            : ready && !enabled && !sheetExpanded
               ? "FICAR ONLINE AGORA" : sheetOpen ? "Recolher painel de chamados" : "Abrir painel de chamados e disponibilidade"}
           aria-expanded={sheetOpen}
           onTouchStart={event=>{sheetTouchStart.current=event.touches[0]?.clientY??null;}}
@@ -626,7 +617,7 @@ export function ProfessionalAvailabilityPage() {
           }}
           onClick={()=>{
             if(Date.now()<sheetIgnoreClickUntil.current)return;
-            if (ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded && !activeRide) void toggleOnline(true);
+            if (ready && !enabled && !sheetExpanded && !activeRide) void toggleOnline(true);
             else setSheetExpanded(v=>!v);
           }}>
           <span className="professional-cockpit__sheet-handle" aria-hidden="true"/>
@@ -634,7 +625,7 @@ export function ProfessionalAvailabilityPage() {
             ? sheetOpen ? "Recolher controles" :
               activeRide.status==="ARRIVED" ? "Embarque · abrir código" :
               activeRide.status==="IN_PROGRESS" ? "Em viagem · abrir controles" : "A caminho · abrir detalhes"
-            : hasPendingCalls ? "Novos chamados" : ready && !enabled && (authorized || pilotEnabled) && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
+            : hasPendingCalls ? "Novos chamados" : ready && !enabled && !sheetExpanded ? "FICAR ONLINE AGORA" : "Chamados e disponibilidade"}</span>
           {activeRide&&<span className="professional-cockpit__sheet-chevron" aria-hidden="true">
             {sheetOpen?<ChevronDown size={20}/>:<ChevronUp size={20}/>}
           </span>}
@@ -644,11 +635,11 @@ export function ProfessionalAvailabilityPage() {
             className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black ${enabled
               ? "border border-[#FFBB00] bg-[#121212] text-[#FFBB00]"
               : "bg-[#FFBB00] text-[#121212]"}`}
-            disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(!authorized&&!pilotEnabled))}
+            disabled={!ready||busy||(enabled&&activeQuickRide)||false}
             onClick={()=>void toggleOnline(!enabled)}>
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
-          {!authorized && ready && <p role="alert" className="mt-2 text-xs text-amber-300">Finalize os dados profissionais para receber corridas.</p>}
+          {!authorized && ready && <p role="status" className="mt-2 text-xs text-amber-300">Você pode ficar online enquanto completa a habilitação. Corridas são liberadas após aprovação e GPS válido.</p>}
         </div>}
     <QuickRideDriverQueue
       onActiveChange={setActiveQuickRide}
