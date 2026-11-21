@@ -6,13 +6,14 @@ const page = readFileSync("src/routes/admin/operacoes.tsx", "utf8");
 const center = readFileSync("src/components/admin/F07OperationsCommandCenter.tsx", "utf8");
 
 describe("F07 command center - real operations and guardrails", () => {
-  it("is the first tab and distinguishes applications from real ride monitoring", () => {
-    expect(page).toContain('useState("live")');
-    expect(page).toContain('value="live"');
-    expect(page).toContain("Central ao vivo");
-    expect(page).toContain("Acessos ao radar");
+  it("opens a focused BI instead of duplicating separate operational dashboards", () => {
+    expect(page).toContain('useState("bi")');
+    expect(page).toContain('value="bi"');
+    expect(page).toContain("Painel operacional");
+    expect(page).toContain("Gestão e exceções");
     expect(page).toContain("Contestações");
     expect(page).toContain("F07OperationsCommandCenter");
+    expect(page).not.toContain('value="indicators"');
   });
   it("uses a protected admin RPC without publishing coordinates or direct table access", () => {
     expect(sql).toContain("admin_f07_operations_snapshot()");
