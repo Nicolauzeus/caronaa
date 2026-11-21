@@ -53,7 +53,7 @@ const lifecyclePeriodLabels: Record<MetricsPeriod,string> = {
   today: "Hoje", "7d": "7 dias", "30d": "30 dias", all: "Todo o histórico",
 };
 const lifecycleCount = (value: number) => value.toLocaleString("pt-BR");
-type View = "attention" | "rides" | "available" | "drivers" | "incidents";
+type View = "attention" | "rides" | "demand" | "available" | "drivers" | "incidents";
 type Subject = { rideId: string | null; driverId: string | null; label: string };
 
 const driverLabels: Record<string, string> = {
@@ -432,6 +432,7 @@ export function F07OperationsCommandCenter({
 
   const views: Array<{ id: View; label: string }> = [
     { id: "attention", label: "Atenção" },
+    { id: "demand", label: "Passageiros" },
     { id: "rides", label: "Pedidos e corridas" },
     { id: "available", label: "Online agora" },
     { id: "drivers", label: "Todos os motoristas" },
@@ -440,7 +441,7 @@ export function F07OperationsCommandCenter({
   const cards = [
     { label: "Motoristas online agora", value: onlineDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
     { label: "Passageiros preparando", value: data?.passenger_demand?.preparing ?? 0,
-      icon: ClipboardList, target: "rides" as View, filter: "searching" },
+      icon: ClipboardList, target: "demand" as View, filter: "" },
     { label: "Pedidos em espera", value: data?.passenger_demand?.waiting ?? rides.filter(r=>r.status==="SEARCHING"&&r.issue_code!=="SEARCH_EXPIRED").length,
       icon: Clock3, target: "rides" as View, filter: "searching" },
     { label: "Corridas abertas", value: activeRides.length, icon: Truck, target: "rides" as View, filter: "active" },
@@ -670,6 +671,19 @@ export function F07OperationsCommandCenter({
         </p>}
         {issueCount > 60 && <p className="text-xs text-muted-foreground">Exibindo os 20 registros mais recentes de cada grupo; use os filtros para consultar mais.</p>}
       </div>}
+
+      {view === "demand" && <section className="space-y-3">
+        <h3 className="font-semibold">Passageiros aguardando e preparando pedidos</h3>
+        <p className="text-sm text-muted-foreground">
+          {data.passenger_demand?.preparing ?? 0} passageiro(s) preparando uma solicitação nesta janela de 90 segundos.
+          {" "}{data.passenger_demand?.waiting_passengers ?? 0} passageiro(s) aguardando aceite de motorista.
+          A preparação não significa pedido enviado nem disponibilidade garantida.
+        </p>
+        {filteredRides.filter(r=>r.status==="SEARCHING"&&r.issue_code!=="SEARCH_EXPIRED").slice(0,50).map(renderRide)}
+        {data.passenger_demand?.waiting===0&&<p className="text-sm text-muted-foreground">
+          Nenhum pedido aguardando motorista neste momento.
+        </p>}
+      </section>}
 
       {view === "rides" && <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
