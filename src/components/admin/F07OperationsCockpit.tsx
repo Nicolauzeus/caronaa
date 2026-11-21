@@ -12,7 +12,7 @@ type RideStatus = "SEARCHING" | "ACCEPTED" | "ARRIVED" | "IN_PROGRESS" |
   "PENDING_REVIEW" | "COMPLETED" | "CANCELLED" | "EXPIRED";
 type Ride = {
   id:string; passenger_id?:string; driver_id?:string|null;
-  passenger_name:string; passenger_whatsapp?:string|null;driver_name?:string|null;
+  passenger_name:string; passenger_avatar?:string|null; passenger_whatsapp?:string|null;driver_name?:string|null;
   origin_label:string;destination_label:string;vehicle_type:string;status:RideStatus;
   origin_lat?:number;origin_lng?:number;destination_lat?:number;destination_lng?:number;
   municipality?:string;requested_at:string;expires_at?:string;closed_at?:string;
@@ -118,8 +118,9 @@ function DetailPanel({ride,onFollow,onManage,onClose,now}:{
       <p className="text-xs text-muted-foreground">Os detalhes aparecerão aqui, sem sair do mapa.</p>
     </div>:<>
       <div className="flex items-center gap-3">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-amber-100 font-bold text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
-          {(ride.passenger_name?.trim()?.[0]??"P").toUpperCase()}
+        <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-100 font-bold text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
+          {ride.passenger_avatar?<img src={ride.passenger_avatar} alt="" loading="lazy" className="size-full object-cover"/>:
+            (ride.passenger_name?.trim()?.[0]??"P").toUpperCase()}
         </div>
         <div className="min-w-0">
           <p className="truncate font-bold">{ride.passenger_name}</p>
@@ -360,8 +361,9 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
             onClick={()=>choose(ride)} aria-current={selected?.id===ride.id?"true":undefined}
             className={"grid w-full grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border px-2.5 py-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-[#FFBB00] "+
               (selected?.id===ride.id?"border-[#FFBB00] bg-amber-50 dark:bg-[#FFBB00]/10":"border-border bg-background hover:bg-muted/50 dark:border-white/10 dark:bg-[#161C24] dark:hover:bg-white/10")}>
-            <span className="flex size-9 items-center justify-center rounded-full bg-muted font-extrabold text-foreground">
-              {ride.passenger_name.trim().slice(0,1).toUpperCase()||"P"}
+            <span className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted font-extrabold text-foreground">
+              {ride.passenger_avatar?<img src={ride.passenger_avatar} alt="" loading="lazy" className="size-full object-cover"/>:
+                ride.passenger_name.trim().slice(0,1).toUpperCase()||"P"}
             </span>
             <span className="min-w-0 space-y-1">
               <span className="block truncate text-sm font-bold">{ride.passenger_name}</span>
