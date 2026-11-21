@@ -19,6 +19,7 @@ import {
 import { FlashIncomingOrderCard } from "./FlashIncomingOrderCard";
 import { FlashDriverActiveSheet } from "./FlashDriverActiveSheet";
 import { QuickRidePostTripFlow } from "../QuickRidePostTripFlow";
+import { RideConnectionNotice } from "../RideConnectionNotice";
 import type { CompletedQuickRideRef } from "@/lib/quick-rides/post-trip-prompt";
 import { ServiceTypeDock, type ServiceType } from "./ServiceTypeDock";
 import type { SheetSnap } from "./InteractiveBottomSheet";
@@ -402,6 +403,7 @@ export function DriverFlashPlanner({
       {!presence.online&&snap!=="peek"&&
         <p className="text-xs text-white/65">Para receber chamados, ative o GPS e sua disponibilidade.</p>}
     </section>
+    <RideConnectionNotice rideId={active?.id} role="DRIVER"/>
     <QuickRidePostTripFlow role="DRIVER" activeRideId={active?.id??null} completedRide={completedRide}/>
     {canListen&&current&&typeof document!=="undefined"&&createPortal(
       <FlashIncomingOrderCard key={current.id} order={current} busy={acting}
