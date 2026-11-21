@@ -37,6 +37,7 @@ type Audit = {
 };
 type Snapshot = {
   generated_at: string; drivers: Driver[]; rides: Ride[];
+  passenger_demand?: {preparing:number;waiting:number;waiting_passengers:number;oldest_waiting_at:string|null;generated_at:string};
   incidents: Incident[]; audit: Audit[];
 };
 type MetricsPeriod = "today" | "7d" | "30d" | "all";
@@ -429,7 +430,9 @@ export function F07OperationsCommandCenter({
   ];
   const cards = [
     { label: "Motoristas online agora", value: onlineDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
-    { label: "Pedidos em espera", value: rides.filter(r=>r.status==="SEARCHING"&&r.issue_code!=="SEARCH_EXPIRED").length,
+    { label: "Passageiros preparando", value: data?.passenger_demand?.preparing ?? 0,
+      icon: ClipboardList, target: "rides" as View, filter: "searching" },
+    { label: "Pedidos em espera", value: data?.passenger_demand?.waiting ?? rides.filter(r=>r.status==="SEARCHING"&&r.issue_code!=="SEARCH_EXPIRED").length,
       icon: Clock3, target: "rides" as View, filter: "searching" },
     { label: "Corridas abertas", value: activeRides.length, icon: Truck, target: "rides" as View, filter: "active" },
     { label: "Corridas fechadas", value: rides.filter(r=>["COMPLETED","CANCELLED","CANCELED","EXPIRED"].includes(r.status)).length,
@@ -552,13 +555,24 @@ export function F07OperationsCommandCenter({
     </section>
     </details>
 
-    {data && <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+    {data && <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
       {cards.map(card => <button type="button" key={card.label}
         className="rounded-xl border bg-card p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00]"
         onClick={() => { setView(card.target); if (card.filter) setRideFilter(card.filter); }}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground"><card.icon size={14}/>{card.label}</div>
         <p className="mt-2 text-2xl font-bold">{card.value}</p>
       </button>)}
+    </div>}
+
+    {data?.passenger_demand&&<div role="status" className="rounded-xl border bg-card p-3 text-sm">
+      <strong>Demanda de passageiros agora</strong>
+      <p className="mt-1 text-muted-foreground">
+        {data.passenger_demand.preparing} preparando solicitação · {data.passenger_demand.waiting_passengers} passageiro(s) aguardando motorista em {data.passenger_demand.waiting} pedido(s).
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Preparando = aplicativo ativo com origem e destino; aguardando = pedido criado e ainda sem aceite.
+        A presença expira sem sinal recente, e a busca possui prazo definido.
+      </p>
     </div>}
 
     {subject && <form className="space-y-3 rounded-xl border border-amber-400/50 bg-card p-4"
