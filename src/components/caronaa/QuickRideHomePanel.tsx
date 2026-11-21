@@ -18,6 +18,7 @@ import {
 import { formatBrl } from "@/lib/ride-cost";
 import { useQuickRideRealtime } from "@/lib/quick-rides/use-quick-ride-realtime";
 import { QuickRidePostTripFlow } from "./QuickRidePostTripFlow";
+import { RideConnectionNotice } from "./RideConnectionNotice";
 import { toast } from "sonner";
 
 type QuickVehicle = "CAR" | "MOTO";
@@ -608,6 +609,7 @@ export function QuickRideHomePanel({
           {!shellMode&&requestControls}
         </div>}
       </>}
+      <RideConnectionNotice rideId={liveRide?.id} role="PASSENGER"/>
       <QuickRidePostTripFlow role="PASSENGER" activeRideId={liveRide?.id??pendingReviewRide?.id??null} completedRide={completedRide??null}/>
       {!liveRide&&error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
       {error&&!priceFailure&&hasOrigin&&hasDestination&&!currentQuote&&!liveRide&&<Button type="button" variant="outline" disabled={retryDisabled} onClick={retryPrice} className="min-h-12 w-full border-[#FFBB00]/40">{retryLabel}</Button>}
