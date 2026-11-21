@@ -35,11 +35,15 @@ BEGIN
           ((coalesce(fl.is_online,false) AND fl.last_gps_at>now()-interval '90 seconds') OR (coalesce(pr.is_available,false) AND pr.last_seen_at>now()-interval '90 seconds')) AND ((fl.last_sampled_at>now()-interval '90 seconds' AND fl.last_gps_at>now()-interval '90 seconds' AND fl.last_accuracy_m>0 AND fl.last_accuracy_m<=150 AND fl.last_lat BETWEEN -90 AND 90 AND fl.last_lng BETWEEN -180 AND 180) OR (l.sampled_at>now()-interval '90 seconds' AND l.updated_at>now()-interval '90 seconds' AND l.accuracy_m>0 AND l.accuracy_m<=150 AND l.lat BETWEEN -90 AND 90 AND l.lng BETWEEN -180 AND 180)) AND coalesce(a.approved,false)
             AND public.driver_platform_access_allowed(c.user_id) AS dispatch_ready,
           coalesce(l.municipality,pr.municipality,fl.current_municipality) AS gps_municipality,
-          CASE WHEN fl.last_sampled_at IS NOT NULL AND
-                     (l.sampled_at IS NULL OR fl.last_sampled_at>=l.sampled_at)
+          CASE WHEN fl.last_sampled_at>now()-interval '90 seconds'
+                      AND fl.last_gps_at>now()-interval '90 seconds'
+                      AND fl.last_accuracy_m BETWEEN 0.0001 AND 150
+                      AND (l.sampled_at IS NULL OR fl.last_sampled_at>=l.sampled_at)
                THEN fl.last_sampled_at ELSE l.sampled_at END AS gps_sampled_at,
-          CASE WHEN fl.last_sampled_at IS NOT NULL AND
-                     (l.sampled_at IS NULL OR fl.last_sampled_at>=l.sampled_at)
+          CASE WHEN fl.last_sampled_at>now()-interval '90 seconds'
+                      AND fl.last_gps_at>now()-interval '90 seconds'
+                      AND fl.last_accuracy_m BETWEEN 0.0001 AND 150
+                      AND (l.sampled_at IS NULL OR fl.last_sampled_at>=l.sampled_at)
                THEN fl.last_accuracy_m ELSE l.accuracy_m END AS gps_accuracy_m,
           greatest(fl.last_gps_at,pr.last_seen_at,l.updated_at) AS last_seen_at,
           ar.id AS active_ride_id,
