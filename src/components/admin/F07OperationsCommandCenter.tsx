@@ -344,7 +344,7 @@ export function F07OperationsCommandCenter({
       </div>
       <p className="break-words text-muted-foreground">{ride.municipality} · {ride.passenger_name} → {ride.driver_name}</p>
       <p className="text-xs text-muted-foreground">Corrida {shortId(ride.id)} · Última mudança: {dateLabel(ride.updated_at)}</p>
-      {ride.passenger_whatsapp&&<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+ride.passenger_whatsapp.replace(/\\D/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{ride.passenger_whatsapp}</a></p>}
+      {ride.passenger_whatsapp&&<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+ride.passenger_whatsapp.replace(/[^0-9]/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{ride.passenger_whatsapp}</a></p>}
       {issue && <p className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
         <AlertTriangle size={16} className="mt-0.5 shrink-0" />{issue}
       </p>}
@@ -383,7 +383,7 @@ export function F07OperationsCommandCenter({
         {" · "}{driver.gps_municipality || "Município GPS indisponível"}
         {" · "}Último GPS: {dateLabel(driver.gps_sampled_at)}
       </p>
-      {driver.whatsapp&&<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+driver.whatsapp.replace(/\\D/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{driver.whatsapp}</a></p>}
+      {driver.whatsapp&&<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+driver.whatsapp.replace(/[^0-9]/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{driver.whatsapp}</a></p>}
       {driver.active_ride_id && <p>Corrida ativa {shortId(driver.active_ride_id)} · {rideLabels[driver.active_ride_status || ""] || driver.active_ride_status}</p>}
       {driver.has_review && <p className="text-xs text-amber-700 dark:text-amber-300">Possui encerramento pendente de revisão (não bloqueia automaticamente).</p>}
       {driver.open_incidents > 0 && <p className="text-xs font-semibold">{driver.open_incidents} ocorrência(s) aberta(s)</p>}
@@ -686,7 +686,7 @@ export function F07OperationsCommandCenter({
         {(data.passenger_demand?.preparing_details??[]).map(p=><article key={p.user_id} className="rounded-xl border bg-card p-3 text-sm">
           <strong>{p.passenger_name}</strong>
           <p className="text-xs text-muted-foreground">{p.vehicle_type==="MOTO"?"Moto":"Carro"} · Sinal: {dateLabel(p.last_seen_at)}</p>
-          {p.whatsapp?<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+p.whatsapp.replace(/\\D/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{p.whatsapp}</a></p>:
+          {p.whatsapp?<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+p.whatsapp.replace(/[^0-9]/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{p.whatsapp}</a></p>:
             <p className="text-xs text-muted-foreground">WhatsApp não autorizado ou não informado</p>}
         </article>)}
         <h4 className="font-semibold">Solicitações aguardando motorista</h4>
