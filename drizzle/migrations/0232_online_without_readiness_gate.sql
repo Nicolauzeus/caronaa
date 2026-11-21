@@ -93,7 +93,7 @@ BEGIN
     'dispatch_mode',p_dispatch_mode,'available_seats',p_available_seats,
     'has_route',v_route IS NOT NULL);
 END
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.set_flash_driver_online(boolean,text,integer,text,double precision,double precision,text,jsonb,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.set_flash_driver_online(boolean,text,integer,text,double precision,double precision,text,jsonb,text) TO authenticated;
