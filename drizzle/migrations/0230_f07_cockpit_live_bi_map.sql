@@ -48,7 +48,12 @@ BEGIN
       (coalesce(s.flash_connected,false) OR coalesce(s.professional_connected,false))
        AND (coalesce(s.fresh_flash,false) OR coalesce(s.fresh_professional,false))
        AND s.approved
-       AND public.driver_platform_access_allowed(s.user_id) AS ready
+       AND public.driver_platform_access_allowed(s.user_id)
+       AND NOT EXISTS (
+         SELECT 1 FROM public.professional_quick_rides busy
+         WHERE busy.driver_id=s.user_id
+           AND busy.status IN ('ACCEPTED','ARRIVED','IN_PROGRESS','PENDING_REVIEW')
+       ) AS ready
     FROM signals s
   )
   SELECT coalesce(count(*) FILTER (WHERE ready),0)::integer,
@@ -67,11 +72,16 @@ BEGIN
                   THEN e.last_sampled_at ELSE e.sampled_at END AS seen_at,
                e.vehicle_type,
                EXISTS (SELECT 1 FROM public.professional_quick_rides q
-                 WHERE q.driver_id=e.user_id AND q.status='IN_PROGRESS') AS in_trip,
+                 WHERE q.driver_id=e.user_id AND q.status IN ('ACCEPTED','ARRIVED','IN_PROGRESS')) AS in_trip,
                e.ready
              FROM eligible e
              WHERE (coalesce(e.fresh_flash,false) OR coalesce(e.fresh_professional,false))
                AND (coalesce(e.flash_connected,false) OR coalesce(e.professional_connected,false))
+               AND (e.ready OR EXISTS (
+                 SELECT 1 FROM public.professional_quick_rides active
+                 WHERE active.driver_id=e.user_id
+                   AND active.status IN ('ACCEPTED','ARRIVED','IN_PROGRESS')
+               ))
              ORDER BY greatest(e.last_sampled_at,e.sampled_at) DESC NULLS LAST
              LIMIT 80
            ) t
