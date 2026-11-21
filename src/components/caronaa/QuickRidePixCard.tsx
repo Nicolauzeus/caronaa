@@ -73,11 +73,16 @@ export function QuickRidePixCard({ rideId }: { rideId: string }) {
   };
 
   useEffect(()=>{
-    const refresh=()=>{if(!document.hidden)setRefreshKey(v=>v+1);};
-    const timer=window.setInterval(refresh,15000);
+    const refresh=()=>{if(!document.hidden&&navigator.onLine)setRefreshKey(v=>v+1);};
+    const timer=window.setInterval(refresh,pix?15000:5000);
     document.addEventListener("visibilitychange",refresh);
-    return()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",refresh);};
-  },[]);
+    window.addEventListener("online",refresh);
+    window.addEventListener("caronaa:app-refresh",refresh);
+    return()=>{window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",refresh);
+      window.removeEventListener("online",refresh);
+      window.removeEventListener("caronaa:app-refresh",refresh);};
+  },[Boolean(pix)]);
   async function confirmDeclaration(){
     if(submitting||!pix)return;
     setSubmitting(true);setError("");
