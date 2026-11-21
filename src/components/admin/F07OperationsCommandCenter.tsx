@@ -382,6 +382,8 @@ export function F07OperationsCommandCenter({
         {driver.vehicle_type === "MOTO" ? "Moto" : driver.vehicle_type === "CAR" ? "Carro" : "Veículo não definido"}
         {" · "}{driver.gps_municipality || "Município GPS indisponível"}
         {" · "}Último GPS: {dateLabel(driver.gps_sampled_at)}
+        {" · "}Precisão: {driver.gps_accuracy_m==null?"indisponível":Math.round(driver.gps_accuracy_m)+" m"}
+        {" · "}Último sinal: {dateLabel(driver.last_seen_at)}
       </p>
       {driver.whatsapp&&<p className="text-xs">WhatsApp autorizado: <a href={"https://wa.me/"+driver.whatsapp.replace(/[^0-9]/g,"")} target="_blank" rel="noopener noreferrer" className="underline">{driver.whatsapp}</a></p>}
       {driver.active_ride_id && <p>Corrida ativa {shortId(driver.active_ride_id)} · {rideLabels[driver.active_ride_status || ""] || driver.active_ride_status}</p>}
