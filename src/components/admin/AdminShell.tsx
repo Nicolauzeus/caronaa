@@ -370,7 +370,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center md:justify-end">
-                <div className="relative w-full md:max-w-sm">
+                {!pathname.startsWith("/admin/operacoes") && <div className="relative w-full md:max-w-sm">
                   <Search
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                     size={16}
@@ -386,7 +386,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     }}
                     className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
                   />
-                </div>
+                </div>}
 
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
@@ -421,7 +421,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {department && (
+          {department && !pathname.startsWith("/admin/operacoes") && (
             <AdminPageHeader title={department.name} description={department.mission} />
           )}
           <AdminDepartmentTabs />
