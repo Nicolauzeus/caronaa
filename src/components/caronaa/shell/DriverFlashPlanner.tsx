@@ -147,7 +147,7 @@ export function DriverFlashPlanner({
       let from:Point|null=null;
       // Route configuration is optional for going online. Without a verified
       // route choose normal exclusive discovery; never block activation.
-      let effectiveMode:FlashDriverMode=mode==="ON_ROUTE"?"EXCLUSIVE":mode;
+      let effectiveMode:FlashDriverMode=!valid(destPoint) || mode==="ON_ROUTE"?"EXCLUSIVE":mode;
       if(mode==="ON_ROUTE"&&valid(destPoint)){
         const origin=valid(originPoint)?originPoint:
           presence.gps&&valid(presence.gps)?presence.gps:null;
