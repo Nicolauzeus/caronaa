@@ -4,7 +4,8 @@
  * A readable label + distinct pictogram avoids color-only identification.
  */
 export type TripMarkerKind =
-  | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "availableDriver" | "availableMoto";
+  | "you" | "driver" | "passenger" | "destination" | "meeting" | "origin" | "availableDriver" | "availableMoto"
+  | "adminAvailableCar" | "adminAvailableMoto" | "adminInTripCar" | "adminWaitingPassenger";
 
 type MarkerDesign = {
   text: string;
@@ -16,7 +17,7 @@ type MarkerDesign = {
   glyph: "person" | "car" | "moto" | "flag" | "pin";
 };
 
-const designs: Record<Exclude<TripMarkerKind, "availableDriver" | "availableMoto">, MarkerDesign> = {
+const designs: Record<Exclude<TripMarkerKind, "availableDriver" | "availableMoto" | "adminAvailableCar" | "adminAvailableMoto" | "adminInTripCar" | "adminWaitingPassenger">, MarkerDesign> = {
   you: {
     text: "Você", background: "#2563EB", foreground: "#FFFFFF",
     border: "#FFFFFF", iconBackground: "#FFFFFF", iconForeground: "#2563EB", glyph: "person",
@@ -61,6 +62,18 @@ function glyphPath(glyph: MarkerDesign["glyph"]): string {
 }
 
 export function tripMarkerSvg(kind: TripMarkerKind): string {
+  if (kind === "adminAvailableCar" || kind === "adminAvailableMoto" ||
+      kind === "adminInTripCar" || kind === "adminWaitingPassenger") {
+    const fill=kind==="adminInTripCar"?"#2563EB":
+      kind==="adminWaitingPassenger"?"#FFBB00":"#16A34A";
+    const ink=kind==="adminWaitingPassenger"?"#121212":"#FFFFFF";
+    const glyph=kind==="adminAvailableMoto"?"moto":
+      kind==="adminWaitingPassenger"?"person":"car";
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="54" viewBox="0 0 48 54">' +
+      '<path d="M24 52L16 40h16z" fill="'+fill+'" stroke="#FFFFFF" stroke-width="1.5"/>' +
+      '<circle cx="24" cy="23" r="20" fill="'+fill+'" stroke="#FFFFFF" stroke-width="3"/>' +
+      '<g fill="'+ink+'">' + glyphPath(glyph) + '</g></svg>';
+  }
   if (kind === "availableDriver" || kind === "availableMoto") {
     const design = designs.driver;
     return '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="54" viewBox="0 0 48 54" role="img">' +
