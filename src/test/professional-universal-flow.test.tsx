@@ -57,15 +57,14 @@ beforeEach(()=>{
 });
 afterEach(cleanup);
 async function fillContact(){
-  await screen.findByRole("heading",{name:"Contato e município"});
+  await screen.findByRole("heading",{name:"Dados do motorista"});
   fireEvent.change(screen.getByLabelText(/WhatsApp com DDD/),{target:{value:"85999999999"}});
-  fireEvent.click(screen.getByRole("button",{name:"Escolher Fortaleza"}));
   fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
 }
 describe("Cadastro universal do motorista: quatro etapas",()=>{
   it("does not ask for another account and shows current step, next step and percentage",async()=>{
     render(<Page/>);
-    await screen.findByRole("heading",{name:"Contato e município"});
+    await screen.findByRole("heading",{name:"Dados do motorista"});
     expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
     expect(screen.getByText("25% concluído")).toBeInTheDocument();
     expect(screen.getByText(/Próxima: Dados do veículo/)).toBeInTheDocument();
@@ -81,10 +80,10 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     const field=await screen.findByLabelText(/WhatsApp com DDD/);
     await waitFor(()=>expect(field).toHaveValue("+5585999991234"));
   });
-  it("allows proceeding without WhatsApp when the professional municipality is chosen",async()=>{
+  it("allows proceeding without WhatsApp or a selected municipality",async()=>{
+    api.query.mockImplementation(async(table:string)=>({data:table==="profiles"?{...completeProfile,city:""}:null,error:null}));
     render(<Page/>);
-    await screen.findByRole("heading",{name:"Contato e município"});
-    fireEvent.click(screen.getByRole("button",{name:"Escolher Fortaleza"}));
+    await screen.findByRole("heading",{name:"Dados do motorista"});
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
     expect(await screen.findByRole("heading",{name:"Dados do veículo"})).toBeInTheDocument();
     expect(api.rpc).not.toHaveBeenCalledWith("complete_professional_driver_registration",expect.anything());
