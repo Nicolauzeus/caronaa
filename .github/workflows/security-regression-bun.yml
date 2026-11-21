@@ -1,0 +1,25 @@
+name: CARONAA Security and Bun Regression
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bun-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        id: install
+        run: bun install --frozen-lockfile
+      - name: Full Vitest regression
+        if: steps.install.outcome == 'success'
+        run: bunx vitest run
+      - name: TanStack Start production build
+        if: always() && steps.install.outcome == 'success'
+        run: bun run build
