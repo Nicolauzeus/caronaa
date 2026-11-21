@@ -1,9 +1,5 @@
-import { AdminDataError } from "@/components/admin/AdminDataError";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { getOperationalMetrics, type OperationalMetrics } from "@/lib/operational-metrics";
-import { InsightChart } from "@/components/admin/InsightChart";
-import { statusTextClass } from "@/lib/admin/chart-utils";
+import { useState } from "react";
 import { F07OperationsCommandCenter } from "@/components/admin/F07OperationsCommandCenter";
 import { QuickRideAdminPanel } from "@/components/admin/QuickRideAdminPanel";
 import { QuickRideDisputesAdmin } from "@/components/admin/QuickRideDisputesAdmin";
@@ -12,226 +8,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/admin/operacoes")({
   component: MobilityOperationsCenter,
-  head: () => ({ meta: [
-    { title: "Operações e solicitações profissionais | CARONAA" },
-    { name: "description", content: "Controle de solicitações profissionais, indicadores e configuração do piloto CARONAA." },
-    { property: "og:title", content: "Operações e solicitações profissionais | CARONAA" },
-    { property: "og:description", content: "Análise administrativa de motoristas e operação regional CARONAA." },
-    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({meta:[{title:"BI e Operações | CARONAA"},
+    {name:"description",content:"Painel de indicadores, motoristas online, pedidos e corridas CARONAA."}]}),
 });
-const display = (value: number | null | undefined, suffix = "") =>
-  typeof value === "number" && Number.isFinite(value)
-    ? value.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + suffix
-    : "N/D";
-function MobilityOperationsCenter() {
-  const [days, setDays] = useState<7 | 30 | 90>(30);
-  const [metrics, setMetrics] = useState<OperationalMetrics | null>(null);
-  const [pending, setPending] = useState(true);
-  const [error, setError] = useState("");
-  const [refresh, setRefresh] = useState(0);
-  const [requestCount, setRequestCount] = useState<number | null>(null);
-  const [operationTab, setOperationTab] = useState("live");
-  useEffect(() => {
-    let active = true;
-    setPending(true);
-    setError("");
-    const start = new Date();
-    start.setDate(start.getDate() - days);
-    void getOperationalMetrics({ periodStart: start.toISOString() })
-      .then((data) => {
-        if (active) setMetrics(data);
-      })
-      .catch((err) => {
-        if (active) {
-          setMetrics(null);
-          setError(err instanceof Error ? err.message : "Indicadores indisponíveis");
-        }
-      })
-      .finally(() => {
-        if (active) setPending(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [days, refresh]);
-  const totals = useMemo(
-    () =>
-      metrics
-        ? [
-            { label: "Solicitações elegíveis", value: metrics.request.eligibleRequests },
-            { label: "Sem correspondência", value: metrics.request.unmatchedRequests },
-            { label: "Ofertas elegíveis", value: metrics.offer.eligibleOffers },
-            { label: "Combinações", value: metrics.match.total },
-            { label: "Viagens concluídas", value: metrics.match.completed },
-            { label: "Cancelamentos", value: metrics.match.cancelled },
-          ]
-        : [],
-    [metrics],
-  );
-  const comparison = useMemo(
-    () =>
-      metrics
-        ? [
-            {
-              name: "Solicitações",
-              total: metrics.request.eligibleRequests,
-              comMatch: metrics.request.matchedRequests,
-            },
-            {
-              name: "Ofertas",
-              total: metrics.offer.eligibleOffers,
-              comMatch: metrics.offer.utilizedOffers,
-            },
-          ]
-        : [],
-    [metrics],
-  );
-  return (
-    <main className="space-y-6">
-      <Tabs value={operationTab} onValueChange={setOperationTab} className="space-y-5">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-5">
-          <TabsTrigger value="live" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Central ao vivo</TabsTrigger>
-          <TabsTrigger value="requests" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Acessos ao radar{requestCount !== null ? " (" + requestCount + ")" : ""}</TabsTrigger>
-          <TabsTrigger value="disputes" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Contestações</TabsTrigger>
-          <TabsTrigger value="indicators" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Indicadores</TabsTrigger>
-          <TabsTrigger value="pilot" className="min-h-11 whitespace-normal px-1 text-xs sm:text-sm">Configuração do piloto</TabsTrigger>
-        </TabsList>
-        <TabsContent value="live" className="space-y-4">
-          <F07OperationsCommandCenter
-            onGoToDisputes={() => setOperationTab("disputes")}
-            onGoToAccess={() => setOperationTab("requests")}
-          />
-        </TabsContent>
-        <TabsContent value="requests" forceMount className="data-[state=inactive]:hidden">
-          <ProfessionalAccessQueue onCountChange={setRequestCount} />
-        </TabsContent>
-        <TabsContent value="indicators" className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <div className="flex flex-wrap gap-2">
-          <label className="text-sm">
-            Período
-            <select
-              aria-label="Período das operações"
-              className="ml-2 rounded-lg border bg-background p-2"
-              value={days}
-              onChange={(e) => setDays(Number(e.target.value) as 7 | 30 | 90)}
-            >
-              <option value={7}>7 dias</option>
-              <option value={30}>30 dias</option>
-              <option value={90}>90 dias</option>
-            </select>
-          </label>
-          <button
-            className="rounded-lg border px-3 py-2 text-sm"
-            onClick={() => setRefresh((v) => v + 1)}
-          >
-            Atualizar
-          </button>
-        </div>
-      </div>
-      <AdminDataError error={error} />
-      <section
-        aria-label="Indicadores operacionais"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
-      >
-        {(pending
-          ? Array.from({ length: 6 }, (_, i) => ({
-              label: [
-                "Solicitações elegíveis",
-                "Sem correspondência",
-                "Ofertas elegíveis",
-                "Combinações",
-                "Viagens concluídas",
-                "Cancelamentos",
-              ][i],
-              value: null,
-            }))
-          : totals.length
-            ? totals
-            : Array.from({ length: 6 }, (_, i) => ({
-                label: [
-                  "Solicitações elegíveis",
-                  "Sem correspondência",
-                  "Ofertas elegíveis",
-                  "Combinações",
-                  "Viagens concluídas",
-                  "Cancelamentos",
-                ][i],
-                value: null,
-              }))
-        ).map((m) => (
-          <article key={m.label} className="rounded-xl border bg-card p-4">
-            <p className="text-sm text-muted-foreground">{m.label}</p>
-            <p
-              className={
-                "mt-3 text-3xl font-extrabold " + (m.value == null ? "text-foreground" : statusTextClass(m.label))
-              }
-            >
-              {pending ? "…" : display(m.value)}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Eventos operacionais · {days} dias
-            </p>
-          </article>
-        ))}
-      </section>
-      <section className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-        {pending ? (
-          <p className="rounded-lg border p-6 text-sm text-muted-foreground">
-            Carregando indicadores…
-          </p>
-        ) : (
-          <InsightChart
-            title="Oferta e demanda"
-            description="Contagens absolutas: correspondências são parte do total, não devem ser somadas novamente."
-            rows={comparison.flatMap((item) => [
-              { name: item.name + " • total", value: item.total },
-              { name: item.name + " • com match", value: item.comMatch },
-            ])}
-          />
-        )}
 
-        <div className="space-y-3 rounded-xl border bg-card p-4">
-          <h2 className="text-lg font-bold">Eficiência operacional</h2>
-          <dl className="space-y-4 text-sm">
-            {[
-              ["Taxa de correspondência de solicitações", metrics?.request.requestMatchRate, "%"],
-              ["Taxa de utilização das ofertas", metrics?.offer.offerMatchRate, "%"],
-              ["Ocupação dos assentos", metrics?.seats.seatFillRate, "%"],
-              ["Tempo médio até o match", metrics?.match.averageMinutesToMatch, " min"],
-            ].map(([label, value, suffix]) => (
-              <div key={String(label)} className="flex justify-between gap-3 border-b pb-3">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="font-bold">
-                  {pending ? "…" : display(value as number | null | undefined, String(suffix))}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <p className="text-xs text-muted-foreground">
-            Taxas calculadas pela fonte de métricas operacionais. N/D indica ausência de medição
-            válida.
-          </p>
+function MobilityOperationsCenter(){
+  const [tab,setTab]=useState("bi");
+  const [management,setManagement]=useState<"incidents"|"access"|"pilot">("incidents");
+  return <main className="mx-auto w-full max-w-screen-2xl space-y-4 p-2 sm:p-4">
+    <header>
+      <h1 className="font-[Sora] text-2xl font-bold">BI de operações</h1>
+      <p className="text-sm text-muted-foreground">
+        Uma visão da operação: motoristas conectados, pedidos aguardando,
+        corridas abertas e finalizadas. Dados ao vivo separados do histórico.
+      </p>
+    </header>
+    <Tabs value={tab} onValueChange={setTab} className="space-y-3">
+      <TabsList className="grid h-auto w-full grid-cols-2 gap-1">
+        <TabsTrigger value="bi" className="min-h-11">Painel operacional</TabsTrigger>
+        <TabsTrigger value="management" className="min-h-11">Gestão e exceções</TabsTrigger>
+      </TabsList>
+      <TabsContent value="bi" className="mt-0">
+        <F07OperationsCommandCenter onGoToDisputes={()=>{
+          setManagement("incidents");setTab("management");
+        }} onGoToAccess={()=>{setManagement("access");setTab("management");}}/>
+      </TabsContent>
+      <TabsContent value="management" className="space-y-4">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Gestão operacional">
+          <button type="button" aria-pressed={management==="incidents"} onClick={()=>setManagement("incidents")}
+            className="min-h-11 rounded-xl border px-3 text-sm">Contestações</button>
+          <button type="button" aria-pressed={management==="access"} onClick={()=>setManagement("access")}
+            className="min-h-11 rounded-xl border px-3 text-sm">Cadastros e acessos</button>
+          <button type="button" aria-pressed={management==="pilot"} onClick={()=>setManagement("pilot")}
+            className="min-h-11 rounded-xl border px-3 text-sm">Configurações</button>
         </div>
-      </section>
-
-      {/* Operational availability moved to the live command center. */}
-        </TabsContent>
-        <TabsContent value="disputes" className="space-y-6">
-          <QuickRideDisputesAdmin />
-        </TabsContent>
-        <TabsContent value="pilot" className="space-y-6">
-      <QuickRideAdminPanel />
-      <section className="rounded-xl border bg-secondary/20 p-4">
-        <h2 className="font-bold">Mobilidade profissional local</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          A presença profissional já é acompanhada acima. Despacho, coordenadas GPS, rotas e corrida
-          profissional permanecem indisponíveis até homologação específica.
-        </p>
-      </section>
-        </TabsContent>
-      </Tabs>
-    </main>
-  );
+        {management==="incidents"&&<QuickRideDisputesAdmin/>}
+        {management==="access"&&<ProfessionalAccessQueue/>}
+        {management==="pilot"&&<QuickRideAdminPanel/>}
+      </TabsContent>
+    </Tabs>
+  </main>;
 }
