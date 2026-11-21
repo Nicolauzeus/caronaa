@@ -109,7 +109,7 @@ export function F07OperationsCommandCenter({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [view, setView] = useState<View>("attention");
+  const [view, setView] = useState<View>("available");
   const [rideFilter, setRideFilter] = useState("active");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -199,6 +199,9 @@ export function F07OperationsCommandCenter({
   const incidents = data?.incidents ?? [];
   const openIncidents = incidents.filter(x => x.status !== "RESOLVED");
   const activeRides = rides.filter(r => activeStatuses.has(r.status));
+  // Online presence and dispatch readiness are separate KPIs.
+  // Do not conceal a connected driver merely because GPS is stale or incomplete.
+  const onlineDrivers = drivers.filter(d => d.flash_online || d.presence_online);
   const readyDrivers = drivers.filter(d => d.status_code === "READY");
   const flaggedRides = rides.filter(r => Boolean(r.issue_code));
   const flaggedDrivers = drivers.filter(driverIsAttention);
@@ -418,17 +421,19 @@ export function F07OperationsCommandCenter({
 
   const views: Array<{ id: View; label: string }> = [
     { id: "attention", label: "Atenção" },
-    { id: "rides", label: "Corridas" },
-    { id: "available", label: "Disponíveis" },
-    { id: "drivers", label: "Motoristas" },
+    { id: "rides", label: "Pedidos e corridas" },
+    { id: "available", label: "Online" },
+    { id: "drivers", label: "Todos os motoristas" },
     { id: "incidents", label: "Ocorrências" },
   ];
   const cards = [
-    { label: "Em corrida", value: activeRides.length, icon: Truck, target: "rides" as View, filter: "active" },
-    { label: "Disponíveis", value: readyDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
-    { label: "Sinais de atenção", value: issueCount, icon: AlertTriangle, target: "attention" as View, filter: "" },
-    { label: "Em revisão", value: reviews.length, icon: ClipboardList, target: "rides" as View, filter: "review" },
-    { label: "Buscas vencidas", value: rides.filter(r => r.issue_code === "SEARCH_EXPIRED").length, icon: AlertTriangle, target: "rides" as View, filter: "expired" },
+    { label: "Motoristas online", value: onlineDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
+    { label: "Pedidos em espera", value: rides.filter(r=>r.status==="SEARCHING"&&r.issue_code!=="SEARCH_EXPIRED").length,
+      icon: Clock3, target: "rides" as View, filter: "searching" },
+    { label: "Corridas abertas", value: activeRides.length, icon: Truck, target: "rides" as View, filter: "active" },
+    { label: "Corridas fechadas", value: rides.filter(r=>["COMPLETED","CANCELLED","CANCELED","EXPIRED"].includes(r.status)).length,
+      icon: CheckCircle2, target: "rides" as View, filter: "closed" },
+    { label: "Pendências", value: issueCount, icon: AlertTriangle, target: "attention" as View, filter: "" },
   ];
 
   return <section className="space-y-4" aria-label="Central de operações de corridas rápidas">
@@ -663,9 +668,9 @@ export function F07OperationsCommandCenter({
       </div>}
 
       {view === "available" && <div className="space-y-3">
-        <h3 className="font-semibold">Motoristas disponíveis para receber pedidos</h3>
-        {filteredDrivers.filter(d => d.status_code === "READY").slice(0, 50).map(renderDriver)}
-        {!filteredDrivers.some(d => d.status_code === "READY") && <p className="text-sm text-muted-foreground">Nenhum motorista pronto para despacho neste filtro.</p>}
+        <h3 className="font-semibold">Motoristas online · disponibilidade e GPS</h3>
+        {filteredDrivers.filter(d => d.flash_online || d.presence_online).slice(0, 50).map(renderDriver)}
+        {!filteredDrivers.some(d => d.flash_online || d.presence_online) && <p className="text-sm text-muted-foreground">Nenhum motorista com presença online confirmada pelo servidor. Confira horário da última atualização; GPS e disponibilidade para despacho são estados diferentes.</p>}
       </div>}
 
       {view === "drivers" && <div className="space-y-3">
