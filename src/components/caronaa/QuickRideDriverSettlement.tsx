@@ -5,7 +5,7 @@ import { buildPixPayload } from "@/lib/pix";
 import { formatBrl } from "@/lib/ride-cost";
 
 type PixData={available:boolean;key:string|null;name:string;amountCents:number;rideId:string;paymentMethod:string;automaticConfirmation:boolean;pilotOnly:boolean};
-export function QuickRideDriverSettlement({rideId}:{rideId:string}){
+export function QuickRideDriverSettlement({rideId,onPixReady}:{rideId:string;onPixReady?:(ready:boolean)=>void}){
  const [pix,setPix]=useState<PixData|null>(null);
  const [image,setImage]=useState("");
  const [payload,setPayload]=useState("");
@@ -26,6 +26,7 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
    row.automaticConfirmation!==false||!Number.isSafeInteger(row.amountCents)||row.amountCents<450)
    throw new Error("Contrato Pix inválido; consulte o suporte.");
   setPix(row);
+  onPixReady?.(Boolean(row.available&&row.key));
   if(!mine.error&&typeof mine.data==="string")setKey(previous=>previous.trim()?previous:mine.data);
   if(!state.error){
    const detail=Array.isArray(state.data)?state.data[0]:null;
@@ -37,18 +38,23 @@ export function QuickRideDriverSettlement({rideId}:{rideId:string}){
    const qr=await QRCode.toDataURL(code,{width:240,margin:2});
    setPayload(code);setImage(qr);
   }else {setPayload("");setImage("");}
- },[rideId]);
+ },[rideId,onPixReady]);
  useEffect(()=>{
   let live=true;
   const load=async()=>{try{await refresh();if(live)setError("");}
    catch(e){if(live)setError(e instanceof Error?e.message:"Pagamento indisponível.");}};
   void load();
-  const timer=window.setInterval(()=>{if(!document.hidden)void load();},10000);
-  return()=>{live=false;window.clearInterval(timer);};
+  const timer=window.setInterval(()=>{if(!document.hidden)void load();},5000);
+  const reconnect=()=>{if(!document.hidden)void load();};
+  window.addEventListener("online",reconnect);
+  window.addEventListener("caronaa:app-refresh",reconnect);
+  return()=>{live=false;window.clearInterval(timer);
+    window.removeEventListener("online",reconnect);
+    window.removeEventListener("caronaa:app-refresh",reconnect);};
  },[refresh]);
  async function saveKey(){
   const value=key.trim();
-  if(value.length<6||value.length>77){setError("Informe uma chave Pix válida (6 a 77 caracteres).");return;}
+  if(value.length<6||value.length>77){setError("Informe CPF de 11 dígitos ou uma chave Pix válida.");return;}
   setBusy(true);setError("");
   const {error:problem}=await (supabase as any).rpc("save_my_pix_key",{p_key:value});
   if(problem)setError(problem.message);
