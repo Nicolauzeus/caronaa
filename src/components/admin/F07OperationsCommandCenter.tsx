@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 type Driver = {
   user_id: string; display_name: string; vehicle_type: string | null;
   approved: boolean; flash_online: boolean; presence_online: boolean;
+  connected_recent: boolean; gps_valid: boolean; dispatch_ready: boolean;
   gps_municipality: string | null; gps_sampled_at: string | null;
   gps_accuracy_m: number | null; last_seen_at: string | null;
   active_ride_id: string | null; active_ride_status: string | null;
@@ -201,8 +202,8 @@ export function F07OperationsCommandCenter({
   const activeRides = rides.filter(r => activeStatuses.has(r.status));
   // Online presence and dispatch readiness are separate KPIs.
   // Do not conceal a connected driver merely because GPS is stale or incomplete.
-  const onlineDrivers = drivers.filter(d => d.flash_online || d.presence_online);
-  const readyDrivers = drivers.filter(d => d.status_code === "READY");
+  const onlineDrivers = drivers.filter(d => d.connected_recent === true);
+  const readyDrivers = drivers.filter(d => d.dispatch_ready === true);
   const flaggedRides = rides.filter(r => Boolean(r.issue_code));
   const flaggedDrivers = drivers.filter(driverIsAttention);
   const reviews = rides.filter(r => r.status === "PENDING_REVIEW");
@@ -363,7 +364,7 @@ export function F07OperationsCommandCenter({
     return <article key={driver.user_id} className="space-y-2 rounded-xl border bg-card p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <strong className="break-words">{driver.display_name}</strong>
-        <span className="font-semibold">{driver.flash_online || driver.presence_online ? "Online" : "Offline"} · {driverLabels[driver.status_code] || driver.status_code}</span>
+        <span className="font-semibold">{driver.connected_recent ? "Online agora" : "Sem conexão recente"} · {driver.gps_valid ? "GPS válido" : driver.connected_recent ? "GPS pendente/desatualizado" : "Último GPS conhecido"}{driver.dispatch_ready ? " · Apto a receber" : ""}</span>
       </div>
       <p className="text-xs text-muted-foreground">
         {driver.vehicle_type === "MOTO" ? "Moto" : driver.vehicle_type === "CAR" ? "Carro" : "Veículo não definido"}
@@ -422,12 +423,12 @@ export function F07OperationsCommandCenter({
   const views: Array<{ id: View; label: string }> = [
     { id: "attention", label: "Atenção" },
     { id: "rides", label: "Pedidos e corridas" },
-    { id: "available", label: "Online" },
+    { id: "available", label: "Online agora" },
     { id: "drivers", label: "Todos os motoristas" },
     { id: "incidents", label: "Ocorrências" },
   ];
   const cards = [
-    { label: "Motoristas online", value: onlineDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
+    { label: "Motoristas online agora", value: onlineDrivers.length, icon: ShieldCheck, target: "available" as View, filter: "" },
     { label: "Pedidos em espera", value: rides.filter(r=>r.status==="SEARCHING"&&r.issue_code!=="SEARCH_EXPIRED").length,
       icon: Clock3, target: "rides" as View, filter: "searching" },
     { label: "Corridas abertas", value: activeRides.length, icon: Truck, target: "rides" as View, filter: "active" },
@@ -671,9 +672,9 @@ export function F07OperationsCommandCenter({
       </div>}
 
       {view === "available" && <div className="space-y-3">
-        <h3 className="font-semibold">Motoristas online · disponibilidade e GPS</h3>
-        {filteredDrivers.filter(d => d.flash_online || d.presence_online).slice(0, 50).map(renderDriver)}
-        {!filteredDrivers.some(d => d.flash_online || d.presence_online) && <p className="text-sm text-muted-foreground">Nenhum motorista com presença online confirmada pelo servidor. Confira horário da última atualização; GPS e disponibilidade para despacho são estados diferentes.</p>}
+        <h3 className="font-semibold">Motoristas com sinal recente · {readyDrivers.length} aptos a receber pedidos</h3>
+        {filteredDrivers.filter(d => d.connected_recent === true).slice(0, 50).map(renderDriver)}
+        {!filteredDrivers.some(d => d.connected_recent === true) && <p className="text-sm text-muted-foreground">Nenhum motorista com presença online confirmada pelo servidor. Confira horário da última atualização; GPS e disponibilidade para despacho são estados diferentes.</p>}
       </div>}
 
       {view === "drivers" && <div className="space-y-3">
