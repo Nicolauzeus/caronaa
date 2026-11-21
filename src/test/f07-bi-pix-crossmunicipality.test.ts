@@ -16,7 +16,7 @@ describe("BI operations and recovered Pix",()=>{
     for(const label of ["Motoristas online","Pedidos em espera","Corridas abertas","Corridas fechadas"]){
       expect(center).toContain(label);
     }
-    expect(center).toContain("d.flash_online || d.presence_online");
+    expect(center).toContain("d.connected_recent === true");
   });
   it("counts online separately from readiness and does not require registered municipality",()=>{
     expect(online).toContain("coalesce(fl.is_online,false)=false AND coalesce(pr.is_available,false)=false");
