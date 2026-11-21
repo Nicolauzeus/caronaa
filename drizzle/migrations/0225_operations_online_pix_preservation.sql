@@ -1,10 +1,5 @@
--- 0225 - BI online visibility and non-destructive Pix configuration.
--- Does not delete existing drivers, rides or Pix settings.
+-- 0225: correct online BI status and preserve existing Pix keys.
 BEGIN;
--- Online refers to server presence, not GPS eligibility. Do not hide online
--- drivers because one of the two heartbeat tables has an older state.
--- Municipality is diagnostic metadata only, never an authorization gate here.
-
 CREATE OR REPLACE FUNCTION public.admin_f07_operations_snapshot()
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO ''
 AS $ops$
@@ -153,41 +148,21 @@ BEGIN
   );
 END;
 $ops$;
--- An empty client field or stale form must not erase a saved Pix key.
--- Explicit deletion of a Pix key is not supported by this RPC.
 CREATE OR REPLACE FUNCTION public.save_my_pix_key(p_key text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $pix$
 DECLARE v_key text:=btrim(coalesce(p_key,''));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
- -- Only normalize formatted CPF/CNPJ; never strip dots from email addresses.
- IF v_key ~ '^[0-9. /-]+
- IF v_key='' THEN
-   RAISE EXCEPTION 'Chave Pix vazia: nenhum cadastro existente foi alterado' USING ERRCODE='22023';
- END IF;
- IF length(v_key)>77 OR v_key !~ '^(\\+[0-9]{10,15}|[0-9]{11}|[0-9]{14}|[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+)$' THEN
-   RAISE EXCEPTION 'Chave Pix inválida: CPF, CNPJ, e-mail, telefone +55 ou chave aleatória'
-     USING ERRCODE='22023';
- END IF;
- INSERT INTO public.driver_pix_settings(user_id,pix_key,updated_at)
- VALUES(auth.uid(),v_key,now())
- ON CONFLICT(user_id) DO UPDATE SET pix_key=EXCLUDED.pix_key,updated_at=now();
-END $pix$;
-REVOKE ALL ON FUNCTION public.save_my_pix_key(text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.save_my_pix_key(text) TO authenticated;
-
-NOTIFY pgrst,'reload schema';
-COMMIT;
- THEN
+ -- Only strip CPF/CNPJ formatting, never punctuation in e-mail or random keys.
+ IF v_key ~ '^[0-9. /-]+$' THEN
    v_key:=regexp_replace(v_key,'[^0-9]','','g');
  END IF;
  IF v_key='' THEN
-   RAISE EXCEPTION 'Chave Pix vazia: nenhum cadastro existente foi alterado' USING ERRCODE='22023';
+   RAISE EXCEPTION 'Chave Pix vazia. Cadastro existente preservado.' USING ERRCODE='22023';
  END IF;
- IF length(v_key)>77 OR v_key !~ '^(\\+[0-9]{10,15}|[0-9]{11}|[0-9]{14}|[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+)$' THEN
-   RAISE EXCEPTION 'Chave Pix inválida: CPF, CNPJ, e-mail, telefone +55 ou chave aleatória'
-     USING ERRCODE='22023';
+ IF length(v_key)>77 OR v_key !~ '^(\+[0-9]{10,15}|[0-9]{11}|[0-9]{14}|[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+)$' THEN
+   RAISE EXCEPTION 'Chave Pix invalida' USING ERRCODE='22023';
  END IF;
  INSERT INTO public.driver_pix_settings(user_id,pix_key,updated_at)
  VALUES(auth.uid(),v_key,now())
@@ -195,6 +170,5 @@ COMMIT;
 END $pix$;
 REVOKE ALL ON FUNCTION public.save_my_pix_key(text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.save_my_pix_key(text) TO authenticated;
-
 NOTIFY pgrst,'reload schema';
 COMMIT;
