@@ -400,8 +400,8 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
         {points.length>0?
           <GoogleMapSurface className="h-[300px] w-full sm:h-[360px] xl:h-[390px]"
             ariaLabel="Mapa de motoristas e solicitações CARONAA"
-            points={points} showControls onRefresh={reload}
-            appearance="adaptive" fitMode="changes"
+            points={points} showControls smoothTracking onRefresh={reload}
+            appearance="adaptive" fitMode="once"
             fitKey={focusKey??"f07-initial"} gestureHandling="cooperative"/>:
           <div className="flex h-[300px] flex-col items-center justify-center gap-3 bg-muted/20 px-5 text-center sm:h-[360px] xl:h-[390px]">
             <MapPin size={30} className="text-muted-foreground"/>
