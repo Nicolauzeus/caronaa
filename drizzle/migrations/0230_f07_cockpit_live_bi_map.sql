@@ -166,7 +166,7 @@ BEGIN
         LEFT JOIN public.profiles pp ON pp.id=q.passenger_id
         LEFT JOIN public.profiles dp ON dp.id=q.driver_id
         LEFT JOIN public.caronaa_quick_fare_quotes fq ON fq.ride_id=q.id
-        WHERE q.status IN ('COMPLETED','CANCELLED')
+        WHERE q.driver_id IS NOT NULL AND q.status IN ('COMPLETED','CANCELLED')
         ORDER BY coalesce(q.completed_at,q.updated_at) DESC LIMIT 12
       ) t
     ),'[]'::jsonb)
