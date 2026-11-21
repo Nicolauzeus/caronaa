@@ -188,9 +188,18 @@ export function F07OperationsCommandCenter({
         void reload();
         void loadLifecycle(metricsPeriod);
       }
-    }, 20000);
+    }, 10000);
+    const wake=()=>{if(!document.hidden&&navigator.onLine){
+      void reload();void loadLifecycle(metricsPeriod);
+    }};
+    window.addEventListener("online",wake);
+    document.addEventListener("visibilitychange",wake);
+    window.addEventListener("focus",wake);
     return () => {
       window.clearInterval(interval);
+      window.removeEventListener("online",wake);
+      document.removeEventListener("visibilitychange",wake);
+      window.removeEventListener("focus",wake);
       lifecycleVersion.current+=1; // Drop responses after unmount or period change.
     };
   }, [reload,loadLifecycle,metricsPeriod]);
@@ -445,7 +454,7 @@ export function F07OperationsCommandCenter({
       <div>
         <h2 className="text-xl font-bold">Central operacional · Corridas Rápidas</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Acompanhe corridas, motoristas, problemas e resoluções. Atualiza a cada 20 segundos enquanto a tela está visível.
+          Acompanhe corridas, motoristas, problemas e resoluções. Atualiza a cada 10 segundos enquanto a tela está visível.
         </p>
         {data?.generated_at && <p className="mt-1 text-xs text-muted-foreground">Última leitura: {dateLabel(data.generated_at)}</p>}
       </div>
