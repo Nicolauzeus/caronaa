@@ -6,13 +6,12 @@ const page = readFileSync("src/routes/admin/operacoes.tsx", "utf8");
 const center = readFileSync("src/components/admin/F07OperationsCommandCenter.tsx", "utf8");
 
 describe("F07 command center - real operations and guardrails", () => {
-  it("opens a focused BI instead of duplicating separate operational dashboards", () => {
-    expect(page).toContain('useState("bi")');
-    expect(page).toContain('value="bi"');
-    expect(page).toContain("Painel operacional");
-    expect(page).toContain("Gestão e exceções");
+  it("shows the consolidated cockpit and preserves operational tools separately", () => {
+    expect(page).toContain("F07OperationsCockpit");
+    expect(page).toContain("Ferramentas administrativas");
     expect(page).toContain("Contestações");
     expect(page).toContain("F07OperationsCommandCenter");
+    expect(page).not.toContain('useState("bi")');
     expect(page).not.toContain('value="indicators"');
   });
   it("uses a protected admin RPC without publishing coordinates or direct table access", () => {
