@@ -25,7 +25,8 @@ describe("F07 demand without online drivers",()=>{
     expect(sql).toContain("'preparing'");
     expect(sql).toContain("'waiting_passengers'");
     expect(sql).toContain("'waiting'");
-    expect(sql).not.toContain("origin_lat");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS public.caronaa_passenger_demand_presence(");
+    expect(sql).toContain("vehicle_type text NOT NULL");
     expect(admin).toContain("Passageiros preparando");
     expect(admin).toContain("passenger_demand.waiting_passengers");
   });
