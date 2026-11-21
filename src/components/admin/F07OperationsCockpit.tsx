@@ -74,6 +74,12 @@ const elapsed=(value:string|undefined,now:number)=>{
 const validCoordinate=(lat?:number,lng?:number)=>
   typeof lat==="number"&&typeof lng==="number"&&Number.isFinite(lat)&&
   Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180;
+const distanceKm=(a:{lat:number;lng:number},b:{lat:number;lng:number})=>{
+  const rad=Math.PI/180;
+  const dLat=(b.lat-a.lat)*rad,dLng=(b.lng-a.lng)*rad;
+  const value=Math.sin(dLat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2;
+  return 6371*2*Math.asin(Math.min(1,Math.sqrt(value)));
+};
 
 const cardShell="rounded-2xl border bg-card shadow-sm dark:bg-[#11161D] dark:border-white/10";
 type MetricProps={label:string;value:number|undefined;hint:string;icon:LucideIcon;
@@ -263,9 +269,13 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const visibleActive=(data?.active??[]).filter(matches);
   const list=queueTab==="waiting"?visibleWaiting:visibleActive;
   const points=useMemo(()=>{
+    const focus=selected?.id===focusKey?selected:null;
     const drivers=(data?.map_drivers??[])
       .filter(driver=>validCoordinate(driver.lat,driver.lng))
       .filter(driver=>mapTab==="live"||driver.in_trip)
+      .filter(driver=>!focus||!validCoordinate(focus.origin_lat,focus.origin_lng)||
+        driver.id===focus.driver_id||
+        distanceKm({lat:driver.lat,lng:driver.lng},{lat:focus.origin_lat!,lng:focus.origin_lng!})<=15)
       .map((driver):GoogleMapPoint=>({
         id:"driver:"+driver.id,lat:driver.lat,lng:driver.lng,
         kind:driver.in_trip?(driver.vehicle_type==="MOTO"?"adminInTripMoto":"adminInTripCar"):
@@ -274,6 +284,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       }));
     const requests=mapTab==="tracking"?[]:(data?.waiting??[])
       .filter(ride=>validCoordinate(ride.origin_lat,ride.origin_lng))
+      .filter(ride=>!focus||ride.id===focus.id)
       .map((ride):GoogleMapPoint=>({
         id:"request:"+ride.id,lat:ride.origin_lat!,lng:ride.origin_lng!,
         kind:"adminWaitingPassenger",title:"Pedido aguardando · "+ride.passenger_name,
@@ -284,7 +295,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
         kind:"origin",title:"Embarque · "+selected.passenger_name});
     }
     return [...drivers,...requests];
-  },[data?.map_drivers,data?.waiting,mapTab,selected?.id,selected?.origin_lat,selected?.origin_lng]);
+  },[data?.map_drivers,data?.waiting,mapTab,focusKey,selected?.id,selected?.driver_id,selected?.origin_lat,selected?.origin_lng]);
   const choose=(ride:Ride)=>{
     setSelectedId(ride.id);setMobileDetails(true);
   };
@@ -336,9 +347,9 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       <Metric label="Passageiros aguardando" value={kpis?.waiting} hint="Pedidos ainda sem aceite" icon={Users}
         tone="amber" onClick={()=>{setQueueTab("waiting");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
       <Metric label="Motoristas aptos" value={kpis?.ready_drivers} hint="Online e com GPS válido" icon={ShieldCheck}
-        tone="green" onClick={()=>{setMapTab("live");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}}/>
+        tone="green" onClick={()=>{setFocusKey(undefined);setMapTab("live");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}}/>
       <Metric label="Corridas em andamento" value={kpis?.in_progress} hint="Viagens já iniciadas" icon={Navigation}
-        tone="blue" onClick={()=>{setQueueTab("active");setMapTab("tracking");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
+        tone="blue" onClick={()=>{setFocusKey(undefined);setQueueTab("active");setMapTab("tracking");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
       <Metric label="Situações críticas" value={kpis?.critical} hint={kpis?.critical?"Precisam de análise":"Nenhuma intervenção aberta"}
         icon={AlertTriangle} tone="red" onClick={onOpenTools}/>
     </div>
@@ -393,9 +404,9 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       <section ref={mapArea} className={cardShell+" min-w-0 overflow-hidden"} aria-label="Mapa operacional">
         <div className="flex flex-wrap items-center justify-between gap-2 p-2 sm:p-3">
           <div className="inline-flex rounded-full border border-border p-0.5 text-xs dark:border-white/10" role="group" aria-label="Modo do mapa">
-            <button type="button" aria-pressed={mapTab==="live"} onClick={()=>setMapTab("live")}
+            <button type="button" aria-pressed={mapTab==="live"} onClick={()=>{setFocusKey(undefined);setMapTab("live");}}
               className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="live"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Mapa em tempo real</button>
-            <button type="button" aria-pressed={mapTab==="tracking"} onClick={()=>setMapTab("tracking")}
+            <button type="button" aria-pressed={mapTab==="tracking"} onClick={()=>{setFocusKey(undefined);setMapTab("tracking");}}
               className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="tracking"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Rastreamento</button>
           </div>
           <span className="text-xs text-muted-foreground">{time(data?.generated_at)}</span>
@@ -405,7 +416,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
             ariaLabel="Mapa de motoristas e solicitações CARONAA"
             points={points} showControls smoothTracking onRefresh={reload}
             appearance="adaptive" fitMode="once"
-            fitKey={focusKey??"f07-initial"} gestureHandling="cooperative"/>:
+            fitKey={(focusKey??"f07-initial")+":"+mapTab} gestureHandling="cooperative"/>:
           <div className="flex h-[300px] flex-col items-center justify-center gap-3 bg-muted/20 px-5 text-center sm:h-[360px] xl:h-[390px]">
             <MapPin size={30} className="text-muted-foreground"/>
             <p className="text-sm font-semibold">{loading?"Preparando mapa…":"Nenhuma localização operacional recente"}</p>
