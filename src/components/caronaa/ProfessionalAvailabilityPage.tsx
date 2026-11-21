@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTraceId, type SafeF07RadarEvent } from "@/lib/professional-radar-diagnostics";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
-import { getF07PilotState, activateF07PilotDriver } from "@/lib/quick-rides/f07-pilot.functions";
+import { getF07PilotState } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
@@ -26,7 +26,6 @@ type Vehicle = "CAR" | "MOTO";
 export function ProfessionalAvailabilityPage() {
   const publishVerified = useServerFn(publishVerifiedProfessionalPosition);
   const getPilot = useServerFn(getF07PilotState);
-  const activatePilot = useServerFn(activateF07PilotDriver);
   const simulateTest = useServerFn(simulateF07TestLocation);
   const clearTest = useServerFn(clearF07TestLocation);
   const [ready,setReady]=useState(false);
@@ -48,7 +47,7 @@ export function ProfessionalAvailabilityPage() {
   const [professionalMissing,setProfessionalMissing]=useState<MissingCode[]>([]);
   const [pilotEnabled,setPilotEnabled]=useState(false);
   const [pilotVehicle,setPilotVehicle]=useState<Vehicle>("MOTO");
-  const [pilotExpiry,setPilotExpiry]=useState("");
+  const [pilotExpiry]=useState("");
   const [userId,setUserId]=useState("");
   const [municipality,setMunicipality]=useState("");
   const [sharing,setSharing]=useState(false);
@@ -635,7 +634,7 @@ export function ProfessionalAvailabilityPage() {
             className={`professional-cockpit__availability-button min-h-14 w-full rounded-2xl font-[Sora] text-base font-black ${enabled
               ? "border border-[#FFBB00] bg-[#121212] text-[#FFBB00]"
               : "bg-[#FFBB00] text-[#121212]"}`}
-            disabled={!ready||busy||(enabled&&activeQuickRide)||false}
+            disabled={!ready||busy||(enabled&&activeQuickRide)}
             onClick={()=>void toggleOnline(!enabled)}>
             {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
           </Button>
