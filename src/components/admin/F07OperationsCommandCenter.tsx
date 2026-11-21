@@ -363,7 +363,7 @@ export function F07OperationsCommandCenter({
     return <article key={driver.user_id} className="space-y-2 rounded-xl border bg-card p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <strong className="break-words">{driver.display_name}</strong>
-        <span className="font-semibold">{driverLabels[driver.status_code] || driver.status_code}</span>
+        <span className="font-semibold">{driver.flash_online || driver.presence_online ? "Online" : "Offline"} · {driverLabels[driver.status_code] || driver.status_code}</span>
       </div>
       <p className="text-xs text-muted-foreground">
         {driver.vehicle_type === "MOTO" ? "Moto" : driver.vehicle_type === "CAR" ? "Carro" : "Veículo não definido"}
