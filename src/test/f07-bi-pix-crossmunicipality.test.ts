@@ -2,21 +2,21 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const page=readFileSync("src/routes/admin/operacoes.tsx","utf8");
-const center=readFileSync("src/components/admin/F07OperationsCommandCenter.tsx","utf8");
+const center=readFileSync("src/components/admin/F07OperationsCockpit.tsx","utf8");
 const online=readFileSync("drizzle/migrations/0225_operations_online_pix_preservation.sql","utf8");
 const dispatch=readFileSync("drizzle/migrations/0226_f07_municipality_independent_dispatch.sql","utf8");
 const checkout=readFileSync("src/components/caronaa/QuickRidePostTripFlow.tsx","utf8");
 const settlement=readFileSync("src/components/caronaa/QuickRideDriverSettlement.tsx","utf8");
 
 describe("BI operations and recovered Pix",()=>{
-  it("shows one BI and separates management operations",()=>{
-    expect(page).toContain("BI de operações");
-    expect(page).toContain("Gestão e exceções");
+  it("shows one source-backed cockpit and moves legacy management into tools",()=>{
+    expect(page).toContain("F07OperationsCockpit");
+    expect(page).toContain("Ferramentas administrativas");
     expect(page).not.toContain('value="indicators"');
-    for(const label of ["Motoristas online","Pedidos em espera","Corridas abertas","Corridas fechadas"]){
+    for(const label of ["Motoristas aptos","Passageiros aguardando","Corridas em andamento","Situações críticas"]){
       expect(center).toContain(label);
     }
-    expect(center).toContain("d.connected_recent === true");
+    expect(center).toContain('rpc("admin_f07_cockpit_live")');
   });
   it("counts online separately from readiness and does not require registered municipality",()=>{
     expect(online).toContain("coalesce(fl.is_online,false)=false AND coalesce(pr.is_available,false)=false");
