@@ -28,8 +28,7 @@ BEGIN
         AND fl.last_sampled_at>now()-interval '90 seconds'
         AND fl.last_accuracy_m BETWEEN 0.0001 AND 150
         AND fl.last_lat BETWEEN -90 AND 90 AND fl.last_lng BETWEEN -180 AND 180 AS fresh_flash,
-      coalesce(p.is_available,false) AND p.last_seen_at>now()-interval '90 seconds'
-        AND l.sampled_at>now()-interval '90 seconds'
+      l.sampled_at>now()-interval '90 seconds'
         AND l.updated_at>now()-interval '90 seconds'
         AND l.accuracy_m BETWEEN 0.0001 AND 150
         AND l.lat BETWEEN -90 AND 90 AND l.lng BETWEEN -180 AND 180 AS fresh_professional,
@@ -76,7 +75,6 @@ BEGIN
                e.ready
              FROM eligible e
              WHERE (coalesce(e.fresh_flash,false) OR coalesce(e.fresh_professional,false))
-               AND (coalesce(e.flash_connected,false) OR coalesce(e.professional_connected,false))
                AND (e.ready OR EXISTS (
                  SELECT 1 FROM public.professional_quick_rides active
                  WHERE active.driver_id=e.user_id
