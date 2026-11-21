@@ -30,7 +30,7 @@ export function FlashDriverActiveSheet({
   const name=passenger?.name||"Passageiro confirmado";
   const actionLabel=ride.status==="ACCEPTED"?"Cheguei ao embarque":
     ride.status==="ARRIVED"?"Inserir código de embarque":
-    dropoffSent?"Aguardando confirmação":"Cheguei ao destino";
+    dropoffSent?"Aguardando passageiro":"Finalizar corrida";
   const primaryAction=()=>{
     if(ride.status==="ACCEPTED")onArrived();
     else if(ride.status==="ARRIVED")onSnapChange("half");
@@ -108,8 +108,8 @@ export function FlashDriverActiveSheet({
             <p className="text-xs text-white/70">Peça o PIN ao passageiro. Não inicie a viagem sem a confirmação.</p>
           </div>}
           {ride.status==="IN_PROGRESS"&&<p className="rounded-xl bg-white/[0.06] p-2.5 text-xs text-white/75">
-            {dropoffSent?"Desembarque solicitado. Aguarde a confirmação do passageiro.":
-              "Siga a rota no mapa. Solicite o desembarque ao chegar ao destino."}
+            {dropoffSent?"Finalização solicitada. Aguarde a confirmação do passageiro.":
+              "Ao chegar ao destino, toque em Finalizar corrida. O passageiro confirmará o desembarque antes da conclusão."}
           </p>}
           {ride.status==="IN_PROGRESS"&&!dropoffSent&&
             <div className="space-y-2">
