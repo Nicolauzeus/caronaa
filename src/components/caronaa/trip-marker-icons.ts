@@ -69,10 +69,15 @@ export function tripMarkerSvg(kind: TripMarkerKind): string {
     const ink=kind==="adminWaitingPassenger"?"#121212":"#FFFFFF";
     const glyph=kind==="adminAvailableMoto"?"moto":
       kind==="adminWaitingPassenger"?"person":"car";
+    const glyphMarkup=kind==="adminAvailableMoto"
+      ? '<g fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round">' +
+        '<circle cx="16" cy="28" r="4.5"/><circle cx="32" cy="28" r="4.5"/>' +
+        '<path d="M16 28l5-8h7l4 8m-11-8l4 8m1-12h5"/></g>'
+      : '<g fill="'+ink+'">' + glyphPath(glyph) + '</g>';
     return '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="54" viewBox="0 0 48 54">' +
       '<path d="M24 52L16 40h16z" fill="'+fill+'" stroke="#FFFFFF" stroke-width="1.5"/>' +
       '<circle cx="24" cy="23" r="20" fill="'+fill+'" stroke="#FFFFFF" stroke-width="3"/>' +
-      '<g fill="'+ink+'">' + glyphPath(glyph) + '</g></svg>';
+      glyphMarkup + '</svg>';
   }
   if (kind === "availableDriver" || kind === "availableMoto") {
     const design = designs.driver;
