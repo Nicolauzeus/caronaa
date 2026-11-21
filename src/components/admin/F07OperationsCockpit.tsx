@@ -268,7 +268,8 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       .filter(driver=>mapTab==="live"||driver.in_trip)
       .map((driver):GoogleMapPoint=>({
         id:"driver:"+driver.id,lat:driver.lat,lng:driver.lng,
-        kind:driver.in_trip?"adminInTripCar":driver.vehicle_type==="MOTO"?"adminAvailableMoto":"adminAvailableCar",
+        kind:driver.in_trip?(driver.vehicle_type==="MOTO"?"adminInTripMoto":"adminInTripCar"):
+          driver.vehicle_type==="MOTO"?"adminAvailableMoto":"adminAvailableCar",
         title:driver.in_trip?"Motorista em viagem":"Motorista conectado",
       }));
     const requests=mapTab==="tracking"?[]:(data?.waiting??[])
@@ -412,7 +413,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
           </div>}
         <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-border p-3 text-xs dark:border-white/10">
           <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-green-500"/>Motoristas aptos ({kpis?.ready_drivers??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Em viagem ({kpis?.in_progress??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Em atendimento no mapa ({data?.map_drivers.filter(driver=>driver.in_trip).length??"—"})</span>
           <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"/>Em espera ({kpis?.waiting??"—"})</span>
         </div>
       </section>
