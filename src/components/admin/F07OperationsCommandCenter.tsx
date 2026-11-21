@@ -455,7 +455,9 @@ export function F07OperationsCommandCenter({
     {!data && loading && <p role="status" className="p-4 text-sm text-muted-foreground">Consultando situação operacional…</p>}
 
 
-    <section aria-labelledby="mobility-lifecycle-heading" className="space-y-3 rounded-2xl border bg-card/50 p-3 sm:p-4">
+    <details className="rounded-2xl border bg-card/50 p-3 sm:p-4">
+      <summary className="min-h-11 cursor-pointer text-sm font-bold">Histórico e indicadores detalhados · pedidos × corridas</summary>
+    <section aria-labelledby="mobility-lifecycle-heading" className="mt-3 space-y-3">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 id="mobility-lifecycle-heading" className="font-[Sora] text-base font-bold">
@@ -547,6 +549,7 @@ export function F07OperationsCommandCenter({
         Totais calculados no servidor, sem limite de paginação. A lista operacional abaixo exibe apenas corridas Flash recentes.
       </p>
     </section>
+    </details>
 
     {data && <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
       {cards.map(card => <button type="button" key={card.label}
