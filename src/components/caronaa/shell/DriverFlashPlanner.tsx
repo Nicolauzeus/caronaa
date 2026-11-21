@@ -142,51 +142,52 @@ export function DriverFlashPlanner({
   const activate=async()=>{
     void unlockNotificationAudio();
     if(presence.busy||presence.online)return;
-    if(mode==="ON_ROUTE"&&!valid(destPoint)){
-      toast.info("Escolha um destino para receber chamadas Na Rota.");
-      onSnapChange("half");return;
-    }
     try{
       let route:ShellRoute|null=null;
       let from:Point|null=null;
-      if(valid(destPoint)){
-        const origin=valid(originPoint)?originPoint:presence.gps&&valid(presence.gps)?presence.gps:null;
-        if(!origin){
-          toast.error("Confirme a origem GPS antes de traçar seu caminho.");
-          onSnapChange("half");return;
+      // Route configuration is optional for going online. Without a verified
+      // route choose normal exclusive discovery; never block activation.
+      let effectiveMode:FlashDriverMode=mode==="ON_ROUTE"?"EXCLUSIVE":mode;
+      if(mode==="ON_ROUTE"&&valid(destPoint)){
+        const origin=valid(originPoint)?originPoint:
+          presence.gps&&valid(presence.gps)?presence.gps:null;
+        if(origin){
+          from={lat:origin.lat,lng:origin.lng};
+          const key=[from.lat,from.lng,destPoint.lat!,destPoint.lng!].map(n=>n.toFixed(6)).join(":");
+          try{
+            let pending=routeCache.current.get(key);
+            if(!pending){
+              pending=routeRef.current({data:{points:[from,{lat:destPoint.lat!,lng:destPoint.lng!}]}}).then(result=>{
+                if(!Array.isArray(result.routePath)||result.routePath.length<2||
+                   !Number.isFinite(result.distanceKm)||result.distanceKm<=0)
+                  throw new Error("ROUTE_UNAVAILABLE");
+                return {routePath:result.routePath,distanceKm:result.distanceKm,
+                  durationMinutes:result.durationMinutes};
+              });
+              routeCache.current.set(key,pending);
+              void pending.catch(()=>routeCache.current.delete(key));
+            }
+            route=await pending;
+            effectiveMode="ON_ROUTE";
+          }catch{routeCache.current.delete(key);}
         }
-        from={lat:origin.lat,lng:origin.lng};
-        const key=[from.lat,from.lng,destPoint.lat!,destPoint.lng!].map(n=>n.toFixed(6)).join(":");
-        let pending=routeCache.current.get(key);
-        if(!pending){
-          pending=routeRef.current({data:{points:[from,{lat:destPoint.lat!,lng:destPoint.lng!}]}}).then(result=>{
-            if(!Array.isArray(result.routePath)||result.routePath.length<2||
-              !Number.isFinite(result.distanceKm)||result.distanceKm<=0)
-              throw new Error("ROUTE_UNAVAILABLE");
-            return {routePath:result.routePath,distanceKm:result.distanceKm,
-              durationMinutes:result.durationMinutes};
-          });
-          routeCache.current.set(key,pending);
-          void pending.catch(()=>routeCache.current.delete(key));
-        }
-        route=await pending;
       }
-      // Without a destination, only EXCLUSIVE bookings can be routed safely.
-      const effectiveMode=valid(destPoint)?mode:"EXCLUSIVE";
-      if(effectiveMode!==mode)setMode(effectiveMode);
+      if(effectiveMode!==mode){
+        setMode(effectiveMode);
+        toast.info("Você pode ficar online sem configurar rota. Modo Exclusivo ativado.");
+      }
       const config={
         online:true as const,mode:effectiveMode,seats:vehicleType==="MOTO"?1:seats,vehicleType,
-        municipality,
-        destination:valid(destPoint)?{lat:destPoint.lat!,lng:destPoint.lng!,label:destination}:null,
+        municipality:municipality??"",
+        destination:route&&valid(destPoint)?
+          {lat:destPoint.lat!,lng:destPoint.lng!,label:destination}:null,
         routePath:route?.routePath??null,
       };
       const enabled=await presence.goOnline(config);
       if(!enabled)return;
-      // A server-acknowledged online state is the only source of truth for map overlay.
-      // Hook state commits asynchronously; refresh on next render after confirmation.
       if(route&&from){lastOnRoute.current={route,from};setOnlineRoute(route);}
     }catch{
-      toast.error("Não foi possível obter a rota. Confira origem e destino.");
+      toast.error("Não foi possível ativar a presença. Verifique sua conexão.");
     }
   };
   useEffect(()=>{
