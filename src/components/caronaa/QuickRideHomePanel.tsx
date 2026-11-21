@@ -448,7 +448,7 @@ export function QuickRideHomePanel({
   async function request(){
     if(waitingForOrigin||busy||submissionInFlight.current)return;
     if(!hasOrigin){onConfirmPickup?.();return;}
-    if(!covered||quoteLoading||driverLoading||driverCount<1||Boolean(driverError)||
+    if(!covered||quoteLoading||
       !currentQuote||Date.parse(currentQuote.expiresAt)<=Date.now())return;
     // Approximate coordinates may calculate a preview, but never dispatch
     // until a separate explicit action confirms the selected pickup.
