@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
 import { OperationsReportSchedules } from "./OperationsReportSchedules";
-import { calculateOperationsDisplay, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
+import { calculateOperationsDisplay, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
 type Summary = {
   orders:number; accepted:number; unaccepted:number; completed:number; cancelled:number;
@@ -64,7 +64,6 @@ export function OperationsHistoryReport(){
   const [from,setFrom]=useState("");const [to,setTo]=useState("");
   const [service,setService]=useState<"all"|"flash"|"shared">("all");
   const [status,setStatus]=useState("all");
-  const [presentationMode,setPresentationMode]=useState(false);
   const [heatMetric,setHeatMetric]=useState<"orders"|"drivers"|"passengers_preparing">("orders");
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
@@ -97,7 +96,8 @@ export function OperationsHistoryReport(){
   const maxHour=Math.max(1,...(report?.hours??[]).map(x=>x.orders));
   const peak=report?.hours?.length?report.hours.reduce((a,b)=>b.orders>a.orders?b:a):null;
   const quiet=report?.hours?.length?report.hours.filter(x=>x.orders>0).sort((a,b)=>a.orders-b.orders)[0]:null;
-  const display=report?calculateOperationsDisplay(report.summary,presentationMode):null;
+  const display=report?calculateOperationsDisplay(report.summary,ENABLE_OPERATIONS_PROJECTION):null;
+  const presentationMode=Boolean(display?.illustrativeOrders);
   const selectedHeat=heatMetric==="orders"?report?.hour_days:report?.presence_hour_days;
   const heatMap=useMemo(()=>{
     const field=heatMetric==="orders"?"orders":heatMetric;
@@ -133,7 +133,7 @@ export function OperationsHistoryReport(){
         <p className="text-sm text-muted-foreground">Pedidos, corridas, engajamento e inteligência de horários · Fuso de Fortaleza.</p>
       </div>
       <div className="flex flex-wrap gap-2 print:hidden">
-        <Button size="sm" variant="outline" onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
+        <Button size="sm" variant="outline" disabled={!report||busy||(ENABLE_OPERATIONS_PROJECTION&&display?.illustrativeOrders!==PRESENTATION_ILLUSTRATIVE_REQUESTS)} onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={sendEmail}><Mail size={15} className="mr-1"/> E-mail</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={share}><MessageCircle size={15} className="mr-1"/> WhatsApp</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={()=>downloadCsv(rows)}><Download size={15} className="mr-1"/> CSV da página</Button>
@@ -152,21 +152,16 @@ export function OperationsHistoryReport(){
         <option value="all">Todos</option><option value="flash">Corridas Rápidas</option><option value="shared">Caronas</option>
       </select></label>
       <Button size="sm" variant="outline" onClick={()=>setReload(x=>x+1)} disabled={busy}><RefreshCw size={14} className="mr-1"/> Atualizar</Button>
-      <button type="button" aria-pressed={presentationMode} disabled={!report||busy} onClick={()=>setPresentationMode(value=>!value)}
-        className={"min-h-10 rounded-xl border px-3 text-xs font-bold transition-colors disabled:opacity-50 "+
-          (presentationMode?"border-amber-600 bg-amber-100 text-amber-900":"border-border bg-card text-foreground")}>
-        {presentationMode?"Cenário simulado ativo · desativar":"Simular +108 pedidos"}
-      </button>
     </section>
-    {presentationMode&&report&&!busy&&display&&display.illustrativeOrders>0&&<section role="note"
-      className="caronaa-demo-banner sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950 shadow-sm">
-      <strong className="font-[Sora]">CENÁRIO SIMULADO · +{PRESENTATION_ILLUSTRATIVE_REQUESTS} pedidos</strong>
-      <span>{fmt(display?.actualOrders)} reais + {PRESENTATION_ILLUSTRATIVE_REQUESTS} simulados = {fmt(display?.orders)} projetados.
-        Acrescimos proporcionais por status; não representam operações reais.</span>
+    {presentationMode&&report&&!busy&&<section role="note"
+      className="caronaa-demo-banner flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+      <strong className="font-[Sora]">CENÁRIO PROJETADO</strong>
+      <span>Base real: {fmt(report.summary.orders)} pedidos + {PRESENTATION_ILLUSTRATIVE_REQUESTS} hipotéticos = <strong>{fmt(display?.orders)} pedidos projetados</strong>.
+        Distribuição proporcional; os adicionais não são operações registradas.</span>
     </section>}
     {presentationMode&&display?.illustrativeOrders===0&&<p role="alert"
       className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-      Cenário indisponível: os status reais ainda não reconciliam. Nenhum pedido simulado foi acrescentado.
+      Projeção indisponível: os status reais ainda não reconciliam. Os valores exibidos permanecem reais.
     </p>}
     {error&&<p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
@@ -229,7 +224,7 @@ export function OperationsHistoryReport(){
     <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
       <article className="rounded-2xl border bg-card p-4">
         <h2 className="font-[Sora] text-lg font-bold">Horários com mais pedidos</h2>
-        <p className="mb-4 text-xs text-muted-foreground">Pedidos reais criados por hora local no período. O cenário demonstrativo não altera este gráfico.</p>
+        <p className="mb-4 text-xs text-muted-foreground">Pedidos reais criados por hora local no período. Gráfico de pedidos efetivamente registrados, sem projeções.</p>
         <div className="grid grid-cols-12 items-end gap-1 sm:grid-cols-24" role="img" aria-label="Histograma de pedidos por hora">
           {(report?.hours??Array.from({length:24},(_,hour)=>({hour,orders:0,passengers:0}))).map(h=>
             <div key={h.hour} className="flex min-w-0 flex-col items-center gap-1">
@@ -313,7 +308,7 @@ export function OperationsHistoryReport(){
     <section className="rounded-2xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div><h2 className="font-[Sora] text-lg font-bold">Histórico de pedidos e corridas</h2>
-          <p className="text-xs text-muted-foreground">{fmt(report?.total_rows)} pedidos reais no período · o cenário simulado não cria registros individuais.</p></div>
+          <p className="text-xs text-muted-foreground">{fmt(report?.total_rows)} pedidos reais no período · histórico transacional sem registros projetados.</p></div>
         <div className="flex flex-wrap gap-2 print:hidden">
           <select aria-label="Status das solicitações" value={status} onChange={e=>setStatus(e.target.value)} className="rounded-lg border bg-background p-2 text-sm">
             <option value="all">Todos os status</option><option value="unaccepted">Sem aceite</option><option value="accepted">Aceitos</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados</option>
@@ -341,7 +336,7 @@ export function OperationsHistoryReport(){
         <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page===0||busy} onClick={()=>setPage(x=>x-1)}>Anterior</Button>
         <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*40)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Os registros desta tabela são reais. PDF: impressão da página; e-mail e WhatsApp compartilham apenas números reais, com envio desativado no modo simulação.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Os registros são reais; os cartões de síntese podem incluir projeções. O PDF imprime os cartões combinados com a identificação do cenário. E-mail, WhatsApp e CSV não compartilham métricas projetadas.</p>
     </section>
     <div className="print:hidden"><OperationsReportSchedules/></div>
   </main>;

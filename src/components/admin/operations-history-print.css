@@ -26,4 +26,6 @@
   .caronaa-report-print table th,
   .caronaa-report-print table td { padding: 3mm !important; }
   .caronaa-report-print .overflow-x-auto { overflow: visible !important; }
+  .caronaa-report-print .caronaa-demo-banner { position: static !important; display: flex !important; break-inside: avoid; border-color: #92400E !important; background: #FFFBEB !important; color: #451A03 !important; }
+  .caronaa-report-print header { break-after: avoid; }
 }

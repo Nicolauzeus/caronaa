@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {allocateProportionally,calculateOperationsDisplay,PRESENTATION_ILLUSTRATIVE_REQUESTS}
+import {allocateProportionally,calculateOperationsDisplay,ENABLE_OPERATIONS_PROJECTION,PRESENTATION_ILLUSTRATIVE_REQUESTS}
 from "./operations-presentation";
 
 const actual={
@@ -7,7 +7,11 @@ const actual={
   expired:16,in_progress:0,searching:1,other:0,
   cancelled_without_acceptance:24,cancelled_after_acceptance:10,
 };
-describe("CARONAA demo scenario remains labeled, separate and mathematically consistent",()=>{
+describe("CARONAA projected report remains labeled, separate and mathematically consistent",()=>{
+  it("defaults to a projected display, with a one-line code rollback",()=>{
+    expect(ENABLE_OPERATIONS_PROJECTION).toBe(true);
+    expect(calculateOperationsDisplay(actual,ENABLE_OPERATIONS_PROJECTION).orders).toBe(180);
+  });
   it("uses exactly the unchanged real numbers in normal mode",()=>{
     const value=calculateOperationsDisplay(actual,false);
     expect(value.orders).toBe(72);

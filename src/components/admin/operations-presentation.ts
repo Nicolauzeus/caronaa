@@ -3,6 +3,8 @@
  * No synthetic records are written, exported, emailed or sent to the CRM.
  */
 export const PRESENTATION_ILLUSTRATIVE_REQUESTS=108;
+/** One-line rollback switch. No control is shown to report viewers. */
+export const ENABLE_OPERATIONS_PROJECTION=true;
 
 export type OperationsBreakdown={
   orders:number; accepted:number; unaccepted:number;
