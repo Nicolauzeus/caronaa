@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import type { GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import type { AppEngagementReport } from "./OperationsAppEngagement";
+import type { PriceQuotesReport } from "./OperationsPriceQuotes";
 
 type Summary = {
   orders:number;accepted:number;unaccepted:number;completed:number;
@@ -17,6 +18,7 @@ type Props = {
   from:string;to:string;service:"all"|"flash"|"shared";generatedAt:string;
   googleUsage:GoogleUsageReport|null;
   appEngagement:AppEngagementReport|null;
+  priceQuotes:PriceQuotesReport|null;
 };
 const nf=(v:number)=>v.toLocaleString("pt-BR");
 const currency=(c:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(c/100);
@@ -30,7 +32,7 @@ function Metric({label,value,kind="normal"}:{label:string;value:string;kind?:str
 function Heading({children}:{children:ReactNode}){
   return <h2 className="opr-pdf-heading">{children}</h2>;
 }
-export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage,appEngagement}:Props){
+export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage,appEngagement,priceQuotes}:Props){
   const count=summary.orders;
   const percent=(n:number)=>count?(100*n/count).toFixed(1).replace(".",",")+"%":"0%";
   const hourValues=Array.from({length:24},(_,hour)=>hours.find(x=>x.hour===hour)?.orders??0);
@@ -82,6 +84,8 @@ export function OperationsPrintableReport({summary,hours,hourDays,from,to,servic
         <Heading>Indicadores complementares</Heading>
         <div className="opr-pdf-small-grid">
           <div><strong>{nf(summary.unique_passengers)}</strong><span>Passageiros solicitantes</span></div>
+          <div><strong>{priceQuotes?nf(priceQuotes.summary.quotes_generated):"—"}</strong><span>Cotações de preço geradas</span></div>
+          <div><strong>{priceQuotes?nf(priceQuotes.summary.unique_quoters):"—"}</strong><span>Pessoas que cotaram</span></div>
           <div><strong>{nf(summary.searching)}</strong><span>Aguardando motorista</span></div>
           <div><strong>{nf(summary.in_progress)}</strong><span>Em atendimento</span></div>
           <div><strong>{currency(summary.completed_fares_cents)}</strong><span>Tarifas de corridas concluídas*</span></div>

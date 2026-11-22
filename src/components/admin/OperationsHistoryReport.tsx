@@ -7,6 +7,7 @@ import { OperationsReportSchedules } from "./OperationsReportSchedules";
 import { OperationsPrintableReport } from "./OperationsPrintableReport";
 import { OperationsGoogleMapsUsage, type GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import { OperationsAppEngagement, type AppEngagementReport } from "./OperationsAppEngagement";
+import { OperationsPriceQuotes, type PriceQuotesReport } from "./OperationsPriceQuotes";
 import { createOperationsReportPdf, saveOperationsPdf } from "./operations-pdf-file";
 import { calculateOperationsDisplay, projectRequestHistogram, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
@@ -72,6 +73,8 @@ export function OperationsHistoryReport(){
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
   const [report,setReport]=useState<Report|null>(null);
+  const [quotes,setQuotes]=useState<PriceQuotesReport|null>(null);
+  const [quotesError,setQuotesError]=useState("");
   const [googleUsage,setGoogleUsage]=useState<GoogleUsageReport|null>(null);
   const [appEngagement,setAppEngagement]=useState<AppEngagementReport|null>(null);
   const [engagementError,setEngagementError]=useState("");
@@ -84,9 +87,9 @@ export function OperationsHistoryReport(){
   const dates=periodDates(preset,from,to);
   const valid=Boolean(dates.from&&dates.to&&dates.from<=dates.to);
   const load=useCallback(async()=>{
-    if(!valid){setReport(null);setGoogleUsage(null);setAppEngagement(null);return;}
+    if(!valid){setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);return;}
     setBusy(true);setError("");
-    const [historyResult,googleResult,engagementResult]=await Promise.all([
+    const [historyResult,googleResult,engagementResult,quotesResult]=await Promise.all([
       (supabase as any).rpc("admin_operations_history_report",{
         p_from:dates.from,p_to:dates.to,p_service:service,p_limit:40,p_offset:page*40,
       }),
@@ -94,9 +97,16 @@ export function OperationsHistoryReport(){
         p_from:dates.from,p_to:dates.to,
       }),
       (supabase as any).rpc("admin_caronaa_app_engagement",{p_from:dates.from,p_to:dates.to}),
+      (supabase as any).rpc("admin_caronaa_price_quotes_report",{p_from:dates.from,p_to:dates.to,p_service:service}),
     ]);
     const {data,error:rpcError}=historyResult;
     const googleData=googleResult.data;
+    if(quotesResult.error||!quotesResult.data?.summary||!Array.isArray(quotesResult.data.daily)){
+      setQuotes(null);
+      setQuotesError("Cotações indisponíveis. Verifique a migration 0238.");
+    }else{
+      setQuotesError("");setQuotes(quotesResult.data as PriceQuotesReport);
+    }
     if(engagementResult.error||!engagementResult.data?.summary||!Array.isArray(engagementResult.data?.daily)){
       setAppEngagement(null);
       setEngagementError("Acessos autenticados indisponíveis. Verifique a migration 0237.");
@@ -157,6 +167,7 @@ export function OperationsHistoryReport(){
       summary:report.summary,hours:report.hours,hour_days:report.hour_days,
       google_usage:googleUsage??undefined,
       app_engagement:appEngagement??undefined,
+      price_quotes:quotes??undefined,
     });
   };
   const shareWhatsApp=async()=>{
@@ -270,6 +281,7 @@ export function OperationsHistoryReport(){
     </p>}
     {error&&<p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
+    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
         hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>
@@ -457,6 +469,7 @@ export function OperationsHistoryReport(){
       generatedAt={report.generated_at}
       googleUsage={googleUsage}
       appEngagement={appEngagement}
+      priceQuotes={quotes}
     />}
   </main>;
 }

@@ -1,6 +1,7 @@
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import type { GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import type { AppEngagementReport } from "./OperationsAppEngagement";
+import type { PriceQuotesReport } from "./OperationsPriceQuotes";
 
 export type PdfReportData = {
   from:string;to:string;service:"all"|"flash"|"shared";generatedAt:string;
@@ -14,6 +15,7 @@ export type PdfReportData = {
   hour_days:Array<{weekday:number;hour:number;orders:number}>;
   google_usage?:GoogleUsageReport;
   app_engagement?:AppEngagementReport;
+  price_quotes?:PriceQuotesReport;
 };
 const BLACK="#121212", YELLOW="#FFBB00", GREY="#657181";
 const serviceNames={all:"Todos os servicos",flash:"Corrida Rapida",shared:"Caronas compartilhadas"};
@@ -88,8 +90,10 @@ function firstPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageEl
   card(ctx,435,618,345,125,"Aguardando motorista",num(s.searching),"#F59E0B","#FFF9EB");
   card(ctx,805,618,345,125,"Em atendimento",num(s.in_progress),"#2563EB","#EFF6FF");
   card(ctx,1175,618,344,125,"Tarifas concluidas*",money(s.completed_fares_cents),"#16A34A","#F0FDF4");
-  text(ctx,"* Tarifas nao representam valores efetivamente pagos.",65,788,16,GREY);
-  text(ctx,"GOOGLE MAPS  |  CONSUMO INTERNO DAS APIS",65,867,23,BLACK,true);
+  text(ctx,"COTACOES DE PRECO GERADAS: "+(d.price_quotes?num(d.price_quotes.summary.quotes_generated):"N/D"),65,773,22,BLACK,true);
+  text(ctx,"Pessoas distintas que cotaram: "+(d.price_quotes?num(d.price_quotes.summary.unique_quoters):"N/D"),65,803,16,GREY);
+  text(ctx,"* Tarifas nao representam valores efetivamente pagos.",65,842,16,GREY);
+  text(ctx,"GOOGLE MAPS  |  CONSUMO INTERNO DAS APIS",65,877,23,BLACK,true);
   if(d.google_usage){
     const usage=d.google_usage.summary;
     const values=[
@@ -98,7 +102,7 @@ function firstPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageEl
       ["Routes API",usage.routes],
       ["Erros internos",usage.errors],
     ] as const;
-    values.forEach(([title,value],i)=>card(ctx,65+370*i,889,345,116,title,num(value),i===0?YELLOW:"#78909C",i===0?"#FFF9E8":"#F8FAFC"));
+    values.forEach(([title,value],i)=>card(ctx,65+370*i,899,345,116,title,num(value),i===0?YELLOW:"#78909C",i===0?"#FFF9E8":"#F8FAFC"));
   }else{
     text(ctx,"Registros de consumo indisponiveis para o intervalo.",65,928,18,GREY);
   }
