@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
 vi.mock("@/lib/offer-pricing.functions",()=>({quoteOfferRoute:api.quote}));
 vi.mock("@/lib/map-routing.functions",()=>({getMapDrivingRoute:vi.fn()}));
 vi.mock("@/lib/pricing/unified-fare-engine",()=>({quoteUnifiedFare:vi.fn()}));
-vi.mock("@/lib/location.functions",()=>({reverseGeocodeServerFn:api.reverse}));
+vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: api.reverse, reversePassengerPickupServerFn: api.reverse }));
 vi.mock("@/lib/location/use-user-location",async original=>({
   ...await original<typeof import("@/lib/location/use-user-location")>(),
   useUserLocation:()=>api.location,

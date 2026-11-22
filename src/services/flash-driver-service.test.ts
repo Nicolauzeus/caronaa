@@ -8,7 +8,7 @@ import {
 const api=vi.hoisted(()=>({rpc:vi.fn()}));
 vi.mock("@/integrations/supabase/client",()=>({supabase:{rpc:api.rpc}}));
 const route=[{lat:-3.731,lng:-38.521},{lat:-3.735,lng:-38.515}];
-beforeEach(()=>{vi.clearAllMocks();api.rpc.mockImplementation(async(name:string)=>({data:name==="set_flash_driver_online"?{is_online:true}:{success:true},error:null}));});
+beforeEach(()=>{vi.clearAllMocks();api.rpc.mockImplementation(async(name:string)=>({data:name==="set_flash_driver_online"?{is_online:true}:name==="quick_ride_start_with_code"||name==="quick_ride_transition"?true:{success:true},error:null}));});
 describe("Flash driver RPC boundaries",()=>{
   it("online with destination sends one server-verified GeoJSON line",async()=>{
     await setFlashDriverOnline({

@@ -37,7 +37,7 @@ describe("Drawer mobile", () => {
   });
   it("abre com título acessível e não exibe administração para usuário comum", async () => {
     render(<MobileAccountDrawer signOut={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menu da conta" }));
     expect(screen.getByRole("dialog", { name: "Participante" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Administração" })).toBeNull();
     expect(screen.getByRole("link", { name: "Minhas viagens" })).toHaveAttribute(
@@ -47,7 +47,7 @@ describe("Drawer mobile", () => {
   });
   it("fecha por Escape e devolve foco ao botão", async () => {
     render(<MobileAccountDrawer signOut={vi.fn()} />);
-    const trigger = screen.getByRole("button", { name: "Abrir menu" });
+    const trigger = screen.getByRole("button", { name: "Abrir menu da conta" });
     fireEvent.click(trigger);
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -56,7 +56,7 @@ describe("Drawer mobile", () => {
   it("exibe administração somente após papel admin confirmado", async () => {
     roles.value = [{ role: "admin" }];
     render(<MobileAccountDrawer signOut={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Abrir menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menu da conta" }));
     expect(await screen.findByRole("link", { name: "Administração" })).toBeInTheDocument();
   });
 });
