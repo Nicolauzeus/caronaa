@@ -14,6 +14,7 @@ Módulos F02/F03/F04/F05/F07/F09. Preservadas: conta única, consentimentos, tar
 ### Banco incremental
 - `0239_admin_shared_operations_live.sql`: read-only, admin-only, ofertas/pedidos futuros com coordenadas válidas. Sem alteração dos contratos de match/despacho.
 - `0240_admin_operations_intelligence.sql`: agregação por pessoa sem inflar com múltiplas chamadas; cotações F02/F03/F07 e pedidos/aceites/conclusões, e lista de municípios para pedidos F07. Origem livre de caronas não implica município.
+- `0242_admin_intelligence_shared_request_dedupe.sql`: evita contagem múltipla de um mesmo pedido compartilhado quando há mais de uma tentativa de matching.
 - `0241_admin_shared_active_ride_map.sql`: amplia snapshot para caronas confirmadas/em andamento com embarques contratados. **Não** infere GPS do motorista.
 
 Instaladas com dry run e queries de verificação no banco do projeto. Todas as RPCs de leitura verificam `auth.uid()` + papel admin e restringem a exposição dos dados a contas autorizadas.

@@ -10,6 +10,7 @@ describe("CARONAA unified operations closeout",()=>{
   const menu=readFileSync("src/lib/admin/module-navigation.ts","utf8");
   const sqlShared=readFileSync("drizzle/migrations/0241_admin_shared_active_ride_map.sql","utf8");
   const sqlIntel=readFileSync("drizzle/migrations/0240_admin_operations_intelligence.sql","utf8");
+  const sqlDedup=readFileSync("drizzle/migrations/0242_admin_intelligence_shared_request_dedupe.sql","utf8");
 
   it("uses six grouped tabs and retains old deep links",()=>{
     expect(getModules("operations").map(x=>x.label)).toEqual([
@@ -56,6 +57,10 @@ describe("CARONAA unified operations closeout",()=>{
     expect(sqlIntel).toContain("p_service IN('all','flash')");
     expect(sqlIntel).toContain("public.has_role(auth.uid(),'admin'");
     expect(sqlIntel).not.toContain("INSERT INTO public.professional_quick_rides");
+    expect(sqlDedup).toContain("LEFT JOIN LATERAL");
+    expect(sqlDedup).toContain("bool_or(r.driver_accepted_at");
+    expect(sqlDedup).toContain("r.request_id=q.request_id");
+    expect(sqlDedup).not.toContain("INSERT INTO public.rides");
   });
   it("adds observed last authenticated access without pretending a registered account is online",()=>{
     expect(people).toContain("admin_caronaa_app_engagement");
