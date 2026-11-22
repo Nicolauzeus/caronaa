@@ -98,7 +98,7 @@ export function OperationsHistoryReport(){
   const selectedHeat=heatMetric==="orders"?report?.hour_days:report?.presence_hour_days;
   const heatMap=useMemo(()=>{
     const field=heatMetric==="orders"?"orders":heatMetric;
-    return new Map((selectedHeat??[]).map(x=>[x.weekday+":"+x.hour,Number((x as unknown as Record<string,number>)[field]??0)]));
+    return new Map<string,number>((selectedHeat??[]).map(x=>[x.weekday+":"+x.hour,Number((x as unknown as Record<string,number>)[field]??0)] as const));
   },[selectedHeat,heatMetric]);
   const heatMax=Math.max(1,...heatMap.values());
   const peakPresence=(kind:"drivers"|"passengers_preparing")=>
