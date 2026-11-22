@@ -36,4 +36,19 @@ describe("CARONAA dedicated colored operations PDF",()=>{
     expect(ui).toContain("generatedAt={report.generated_at}");
     expect(pdf).toContain("Tarifas não equivalem a pagamentos recebidos");
   });
+  it("shares real PDF files through WhatsApp and email rather than only text",()=>{
+    const file=readFileSync("src/components/admin/operations-pdf-file.ts","utf8");
+    const sender=readFileSync("src/routes/api/operations/email-pdf.ts","utf8");
+    expect(file).toContain('type:"application/pdf"');
+    expect(file).toContain('new File([blob]');
+    expect(file).toContain('logoAsset.url');
+    expect(ui).toContain('navigator.share({');
+    expect(ui).toContain('files:[pdf]');
+    expect(ui).toContain('/api/operations/email-pdf');
+    expect(ui).toContain('pdf_base64:b64');
+    expect(sender).toContain('attachments:[{filename:name,content:pdf}]');
+    expect(sender).toContain('supabaseAdmin.auth.getUser(token)');
+    expect(sender).toContain('.eq("role","admin")');
+  });
+
 });

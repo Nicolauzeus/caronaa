@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
 import { OperationsReportSchedules } from "./OperationsReportSchedules";
 import { OperationsPrintableReport } from "./OperationsPrintableReport";
+import { createOperationsReportPdf, saveOperationsPdf } from "./operations-pdf-file";
 import { calculateOperationsDisplay, projectRequestHistogram, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
 type Summary = {
@@ -70,6 +71,10 @@ export function OperationsHistoryReport(){
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
   const [report,setReport]=useState<Report|null>(null);
   const [busy,setBusy]=useState(false);const [error,setError]=useState("");
+  const [sharing,setSharing]=useState(false);
+  const [emailDialog,setEmailDialog]=useState(false);
+  const [emailTo,setEmailTo]=useState("");
+  const [shareNotice,setShareNotice]=useState("");
   const dates=periodDates(preset,from,to);
   const valid=Boolean(dates.from&&dates.to&&dates.from<=dates.to);
   const load=useCallback(async()=>{
@@ -118,20 +123,67 @@ export function OperationsHistoryReport(){
     },null);
   const driverPeak=peakPresence("drivers");
   const passengerPeak=peakPresence("passengers_preparing");
-  const share=()=>{
-    if(!report||presentationMode)return;
-    const msg="CARONAA · Resumo operacional ("+dates.from+" a "+dates.to+")\n"+
-      "Pedidos: "+fmt(report.summary.orders)+"\nSem aceite: "+fmt(report.summary.unaccepted)+
-      "\nConcluídas: "+fmt(report.summary.completed)+"\nCanceladas: "+fmt(report.summary.cancelled);
-    window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank","noopener,noreferrer");
+  const makePdf=async()=>{
+    if(!report||busy||presentationMode)throw new Error("Relatorio real indisponivel");
+    return createOperationsReportPdf({
+      from:dates.from,to:dates.to,service,generatedAt:report.generated_at,
+      summary:report.summary,hours:report.hours,hour_days:report.hour_days,
+    });
   };
-  const sendEmail=()=>{
-    if(!report||presentationMode)return;
-    const body="Resumo operacional CARONAA\nPeríodo: "+dates.from+" a "+dates.to+
-      "\nPedidos: "+fmt(report.summary.orders)+"\nSem aceite: "+fmt(report.summary.unaccepted)+
-      "\nAceitos: "+fmt(report.summary.accepted)+"\nConcluídas: "+fmt(report.summary.completed)+
-      "\nCanceladas: "+fmt(report.summary.cancelled)+"\n\nGerado a partir de dados operacionais.";
-    window.location.href="mailto:?subject="+encodeURIComponent("CARONAA · Resumo operacional")+"&body="+encodeURIComponent(body);
+  const shareWhatsApp=async()=>{
+    if(sharing||!report)return;
+    setSharing(true);setShareNotice("");
+    try{
+      const pdf=await makePdf();
+      if(typeof navigator.share==="function"&&
+        (typeof navigator.canShare!=="function"||navigator.canShare({files:[pdf]}))){
+        await navigator.share({
+          files:[pdf],title:"CARONAA · Relatorio em PDF",
+          text:"Relatorio operacional CARONAA em PDF",
+        });
+      }else{
+        saveOperationsPdf(pdf);
+        window.open("https://wa.me/?text="+encodeURIComponent(
+          "Relatorio CARONAA em PDF. Anexe o arquivo "+pdf.name+" que foi baixado no dispositivo."),
+          "_blank","noopener,noreferrer");
+        setShareNotice("O PDF foi baixado. No WhatsApp, anexe o arquivo na conversa escolhida.");
+      }
+    }catch(e){
+      if((e as Error)?.name!=="AbortError")
+        setShareNotice("Nao foi possivel compartilhar o PDF. Tente novamente.");
+    }finally{setSharing(false);}
+  };
+  const sendEmail=async()=>{
+    if(sharing||!report||!emailTo.trim())return;
+    setSharing(true);setShareNotice("");
+    try{
+      const {data}=await supabase.auth.getSession();
+      const access=data.session?.access_token;
+      if(!access)throw new Error("Sessao expirada; entre novamente");
+      const pdf=await makePdf();
+      if(pdf.size>3_300_000)throw new Error("PDF excedeu o limite do e-mail");
+      const b64=await new Promise<string>((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onerror=()=>reject(new Error("Falha ao ler PDF"));
+        reader.onload=()=>resolve(String(reader.result).split(",")[1]??"");
+        reader.readAsDataURL(pdf);
+      });
+      const response=await fetch("/api/operations/email-pdf",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+access},
+        body:JSON.stringify({to:emailTo.trim(),filename:pdf.name,pdf_base64:b64}),
+      });
+      if(!response.ok){
+        const code=(await response.json().catch(()=>({error:"unknown"}))).error;
+        throw new Error(code==="email_not_configured"?
+          "Configure RESEND_API_KEY e CARONAA_REPORT_FROM no servidor":
+          "Falha no envio do PDF ("+code+")");
+      }
+      setEmailDialog(false);setEmailTo("");
+      setShareNotice("PDF enviado ao provedor de e-mail para entrega ao destinatario.");
+    }catch(e){
+      setShareNotice(e instanceof Error?e.message:"Falha ao enviar o PDF");
+    }finally{setSharing(false);}
   };
   return <main className="min-w-0 space-y-4 pb-8" aria-label="Histórico e relatórios de operações">
     <div className="caronaa-screen-report space-y-4">
@@ -145,11 +197,29 @@ export function OperationsHistoryReport(){
       </div>
       <div className="flex flex-wrap gap-2 print:hidden">
         <Button size="sm" variant="outline" disabled={!report||busy||(ENABLE_OPERATIONS_PROJECTION&&display?.illustrativeOrders!==PRESENTATION_ILLUSTRATIVE_REQUESTS)} onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
-        <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={sendEmail}><Mail size={15} className="mr-1"/> E-mail</Button>
-        <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={share}><MessageCircle size={15} className="mr-1"/> WhatsApp</Button>
+        <Button size="sm" variant="outline" disabled={!report||presentationMode||sharing} onClick={()=>{setShareNotice("");setEmailDialog(true);}}><Mail size={15} className="mr-1"/> E-mail PDF</Button>
+        <Button size="sm" variant="outline" disabled={!report||presentationMode||sharing} onClick={()=>void shareWhatsApp()}><MessageCircle size={15} className="mr-1"/> WhatsApp PDF</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={()=>downloadCsv(rows)}><Download size={15} className="mr-1"/> CSV da página</Button>
       </div>
     </header>
+    {shareNotice&&<p role="status" className="rounded-xl border bg-muted px-3 py-2 text-sm">{shareNotice}</p>}
+    {emailDialog&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 print:hidden"
+      role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!sharing)setEmailDialog(false);}}>
+      <form className="w-full max-w-md space-y-4 rounded-2xl bg-background p-6 shadow-xl"
+        onSubmit={e=>{e.preventDefault();void sendEmail();}}>
+        <h2 className="font-[Sora] text-lg font-bold">Enviar relatório em PDF</h2>
+        <p className="text-sm text-muted-foreground">O PDF colorido do período selecionado será enviado como anexo. O destinatário receberá o arquivo pronto.</p>
+        <label className="block space-y-2 text-sm font-medium">E-mail do destinatário
+          <input type="email" autoFocus required maxLength={254} value={emailTo}
+            onChange={e=>setEmailTo(e.target.value)} placeholder="destinatario@empresa.com"
+            className="w-full rounded-lg border bg-background p-3 text-base"/>
+        </label>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="outline" disabled={sharing} onClick={()=>setEmailDialog(false)}>Cancelar</Button>
+          <Button type="submit" disabled={sharing||!emailTo.trim()}>{sharing?"Enviando…":"Enviar PDF"}</Button>
+        </div>
+      </form>
+    </div>}
     <section className="flex flex-wrap items-end gap-2 rounded-2xl border bg-card p-3 print:hidden" aria-label="Filtros dos relatórios">
       <div className="flex flex-wrap gap-1" role="group" aria-label="Período">
         {(["today","7d","30d","custom"] as const).map((p)=><button key={p} type="button" onClick={()=>{setPreset(p);setPage(0);}}
