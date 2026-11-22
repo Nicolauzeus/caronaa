@@ -54,5 +54,11 @@ describe("F07 admin cockpit consolidation",()=>{
     expect(ui).toContain("Acompanhar no mapa");
     expect(ui).toContain("Contatar");
     expect(ui).toContain("Gerenciar");
+    expect(ui).toContain('serviceLayer==="all"?"Flash + caronas sem aceite"');
+    expect(ui).toContain('kpis.waiting+sharedWaiting');
+    expect(ui).toContain('kpis.in_progress+sharedInProgress');
+    expect(ui).toContain("Rastreamento Flash");
+    expect(ui).toContain("Pedidos Flash em espera");
+
   });
 });

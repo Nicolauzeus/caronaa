@@ -360,6 +360,16 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
     mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});
   };
   const kpis=data?.kpis;
+  const sharedWaiting=shared?.requests.filter(ride=>ride.status==="open").length;
+  const sharedInProgress=shared?.rides.filter(ride=>
+    ["IN_PROGRESS","ONGOING","STARTED"].includes(ride.status.toUpperCase())).length;
+  // Do not silently present a partial Flash-only total when shared mode is selected.
+  const waitingCount=serviceLayer==="flash"?kpis?.waiting:
+    serviceLayer==="shared"?sharedWaiting:
+    kpis&&sharedWaiting!==undefined?kpis.waiting+sharedWaiting:undefined;
+  const inProgressCount=serviceLayer==="flash"?kpis?.in_progress:
+    serviceLayer==="shared"?sharedInProgress:
+    kpis&&sharedInProgress!==undefined?kpis.in_progress+sharedInProgress:undefined;
 
   return <section className="min-w-0 space-y-4 rounded-2xl bg-background text-foreground dark:bg-[#0B0F14] md:space-y-5"
     data-testid="operations-cockpit">
@@ -398,13 +408,28 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       {error}. {data?"Os últimos dados confirmados permanecem visíveis.":"Confira a migration 0230 e a conexão com o servidor."}
     </div>}
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3" aria-label="Indicadores operacionais">
-      <Metric label="Passageiros aguardando" value={kpis?.waiting} hint="Pedidos ainda sem aceite" icon={Users}
-        tone="amber" onClick={()=>{setQueueTab("waiting");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
-      <Metric label="Motoristas aptos" value={kpis?.ready_drivers} hint="Online e com GPS válido" icon={ShieldCheck}
-        tone="green" onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("drivers");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}}/>
-      <Metric label="Corridas em andamento" value={kpis?.in_progress} hint="Viagens já iniciadas" icon={Navigation}
-        tone="blue" onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setQueueTab("active");setMapTab("tracking");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}}/>
-      <Metric label="Situações críticas" value={kpis?.critical} hint={kpis?.critical?"Precisam de análise":"Nenhuma intervenção aberta"}
+      <Metric label="Passageiros aguardando" value={waitingCount}
+        hint={serviceLayer==="all"?"Flash + caronas sem aceite":serviceLayer==="shared"?"Pedidos de carona abertos":"Pedidos Flash sem aceite"}
+        icon={Users} tone="amber" onClick={()=>{
+          if(serviceLayer==="flash"){setQueueTab("waiting");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}
+          else{setMapTab("live");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}
+        }}/>
+      <Metric label={serviceLayer==="shared"?"Ofertas compartilhadas":"Motoristas aptos Flash"}
+        value={serviceLayer==="shared"?shared?.offers.length:kpis?.ready_drivers}
+        hint={serviceLayer==="shared"?"Ofertas futuras com vagas":"Online e com GPS válido"}
+        icon={ShieldCheck} tone="green" onClick={()=>{
+          setFocusKey(undefined);setFocusDriverId(null);
+          setMapTab(serviceLayer==="shared"?"live":"drivers");
+          mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});
+        }}/>
+      <Metric label="Corridas em andamento" value={inProgressCount}
+        hint={serviceLayer==="all"?"Flash + caronas em viagem":serviceLayer==="shared"?"Caronas em viagem":"Corridas Flash iniciadas"}
+        icon={Navigation} tone="blue" onClick={()=>{
+          setFocusKey(undefined);setFocusDriverId(null);
+          if(serviceLayer==="flash"){setQueueTab("active");setMapTab("tracking");queueArea.current?.scrollIntoView({behavior:"smooth",block:"start"});}
+          else{setMapTab("live");mapArea.current?.scrollIntoView({behavior:"smooth",block:"center"});}
+        }}/>
+      <Metric label="Situações críticas Flash" value={kpis?.critical} hint={kpis?.critical?"Precisam de análise":"Nenhuma intervenção Flash aberta"}
         icon={AlertTriangle} tone="red" onClick={onOpenTools}/>
     </div>
 
@@ -412,8 +437,8 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       <section ref={queueArea} className={cardShell+" min-w-0 overflow-hidden p-3 sm:p-4"}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="font-[Sora] text-base font-bold">Pedidos em espera ({data?.kpis.waiting??"—"})</h2>
-            <p className="text-xs text-muted-foreground">Solicitações ainda sem motorista.</p>
+            <h2 className="font-[Sora] text-base font-bold">Pedidos Flash em espera ({data?.kpis.waiting??"—"})</h2>
+            <p className="text-xs text-muted-foreground">Solicitações rápidas ainda sem motorista.</p>
           </div>
           <div className="flex rounded-lg border border-border bg-muted/30 p-0.5 text-xs dark:border-white/10" role="group" aria-label="Filtrar solicitações">
             <button type="button" aria-pressed={queueTab==="waiting"}
@@ -461,11 +486,11 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
             <button type="button" aria-pressed={mapTab==="live"} onClick={()=>{setFocusKey(undefined);setMapTab("live");}}
               className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="live"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Mapa em tempo real</button>
             <button type="button" aria-pressed={mapTab==="tracking"} onClick={()=>{setFocusKey(undefined);setMapTab("tracking");}}
-              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="tracking"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Rastreamento</button>
+              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="tracking"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Rastreamento Flash</button>
             <button type="button" aria-pressed={mapTab==="drivers"}
               onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("drivers");}}
               className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="drivers"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>
-              Motoristas
+              Motoristas Flash
             </button>
           </div>
           <span className="text-xs text-muted-foreground">{time(data?.generated_at)}</span>
