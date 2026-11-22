@@ -22,7 +22,9 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(ui).not.toContain("Simular +108 pedidos");
     expect(ui).not.toContain("setPresentationMode");
     expect(ui).toContain("calculateOperationsDisplay(report.summary,ENABLE_OPERATIONS_PROJECTION)");
-    expect(ui).toContain("Nunca receberam aceite");
+    expect(ui).not.toContain("Entenda a conversão dos pedidos");
+    expect(ui).toContain("Histórico de pedidos e corridas");
+    expect(ui).toContain("aria-expanded={historyExpanded}");
     expect(ui).toContain("cancelled_after_acceptance");
     expect(ui).toContain('disabled={!report||presentationMode}');
     expect(ui).toContain("projectRequestHistogram");

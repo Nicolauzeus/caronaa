@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, CalendarDays, Clock3, Download, Mail, MessageCircle, Printer, RefreshCw, Users, XCircle, CheckCircle2 } from "lucide-react";
+import { Activity, CalendarDays, ChevronDown, ChevronUp, Clock3, Download, Mail, MessageCircle, Printer, RefreshCw, Users, XCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
@@ -73,6 +73,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
   const [heatMetric,setHeatMetric]=useState<"orders"|"drivers"|"passengers_preparing">("orders");
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
+  const [historyExpanded,setHistoryExpanded]=useState(true);
   const [report,setReport]=useState<Report|null>(null);
   const [quotes,setQuotes]=useState<PriceQuotesReport|null>(null);
   const [intelligence,setIntelligence]=useState<MobilityIntelligence|null>(null);
@@ -310,48 +311,6 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <Stat title="Expiradas" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.expired)}
         hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.expired):"Prazo encerrado sem aceite, inclusive buscas vencidas ainda não regularizadas"}/>
     </section>
-    <section className="space-y-3 rounded-2xl border bg-card p-4" aria-label="Composição e reconciliação dos pedidos">
-      <div>
-        <h2 className="font-[Sora] text-lg font-bold">Entenda a conversão dos pedidos</h2>
-        <p className="text-xs text-muted-foreground">
-          Aceite e resultado final são duas leituras diferentes do mesmo pedido. Nunca some os cancelamentos novamente ao total.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-background p-3">
-          <p className="text-xs text-muted-foreground">Nunca receberam aceite</p>
-          <p className="font-[Sora] text-xl font-extrabold">{fmt(display?.unaccepted)}</p>
-          <p className="text-xs text-muted-foreground">{presentationMode?"Distribuição proporcional · reais: "+fmt(report?.summary.unaccepted):"Inclui cancelados antes do aceite, expirados e aguardando"}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-background p-3">
-          <p className="text-xs text-muted-foreground">Receberam aceite de motorista</p>
-          <p className="font-[Sora] text-xl font-extrabold">{fmt(display?.accepted)}</p>
-          <p className="text-xs text-muted-foreground">
-            Taxa {presentationMode?"ilustrativa":"real"} de aceite: {display?display.displayedAcceptanceRate.toFixed(1).replace(".",",")+"%":"—"}
-            {presentationMode&&display?" · taxa real: "+display.realAcceptanceRate.toFixed(1).replace(".",",")+"%":""}
-          </p>
-        </div>
-      </div>
-      {display&&<div className="flex h-3 w-full overflow-hidden rounded-full" role="img"
-        aria-label={display.unaccepted+" sem aceite e "+display.accepted+" com aceite"}>
-        <div className="bg-amber-400" style={{width:(display.orders?100*display.unaccepted/display.orders:0)+"%"}}/>
-        <div className="bg-emerald-500" style={{width:(display.orders?100*display.accepted/display.orders:0)+"%"}}/>
-      </div>}
-      <p className="text-xs text-muted-foreground">
-        Cancelamentos: <strong>{fmt(display?.cancelled_without_acceptance)} antes</strong> +{" "}
-        <strong>{fmt(display?.cancelled_after_acceptance)} após o aceite</strong> ={" "}
-        <strong>{fmt(display?.cancelled)} cancelamentos</strong>. São pedidos já incluídos na contagem total.
-      </p>
-      {display&&!display.outcomesReconcile&&
-        <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-          Os resultados finais ainda não reconciliam com o total (outros estados: {fmt(display.other)}). Revise a classificação no servidor antes de divulgar um relatório fechado.
-        </p>}
-      {display&&!display.acceptanceReconciles&&<p role="alert" className="text-xs text-red-700">Contagens de pedidos aceitos e não aceitos não correspondem ao total. Verifique a consulta.</p>}
-      {display&&!display.cancellationsReconcile&&
-        <p role="alert" className="text-xs text-red-700">
-          Atenção: cancelamentos antes/depois do aceite não reconciliam; verifique o histórico de status.
-        </p>}
-    </section>
     </>}
     {mode==="intelligence"&&<>
     <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
@@ -441,16 +400,23 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     </>}
     {mode==="reports"&&<>
     <section className="rounded-2xl border bg-card p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="font-[Sora] text-lg font-bold">Histórico de pedidos e corridas</h2>
           <p className="text-xs text-muted-foreground">{fmt(report?.total_rows)} pedidos reais no período · histórico transacional sem registros projetados.</p></div>
-        <div className="flex flex-wrap gap-2 print:hidden">
+        <Button type="button" size="sm" variant="outline"
+          aria-expanded={historyExpanded} aria-controls="operations-order-history-content"
+          onClick={()=>setHistoryExpanded(expanded=>!expanded)}
+          className="shrink-0 gap-2 print:hidden">
+          {historyExpanded?<><ChevronUp size={16}/> Recolher</>:<><ChevronDown size={16}/> Expandir</>}
+        </Button>
+      </div>
+      <div id="operations-order-history-content" hidden={!historyExpanded} className="mt-3">
+        <div className="mb-3 flex flex-wrap gap-2 print:hidden">
           <select aria-label="Status das solicitações" value={status} onChange={e=>setStatus(e.target.value)} className="rounded-lg border bg-background p-2 text-sm">
             <option value="all">Todos os status</option><option value="unaccepted">Sem aceite</option><option value="accepted">Aceitos</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados</option>
           </select>
           <input aria-label="Buscar no histórico carregado" placeholder="Buscar nesta página…" value={query} onChange={e=>setQuery(e.target.value)} className="min-w-0 rounded-lg border bg-background p-2 text-sm"/>
         </div>
-      </div>
       <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-xs">
         <thead className="bg-muted/50"><tr>{["Data/hora","Serviço","Passageiro","Motorista","Trajeto","Valor estimado","Status"].map(h=><th key={h} scope="col" className="p-2 font-semibold">{h}</th>)}</tr></thead>
         <tbody className="divide-y">
@@ -472,6 +438,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
         <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*40)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram apenas a página carregada; o CSV exporta essa página. Totais e gráficos usam exclusivamente registros reais do banco. O PDF compartilha indicadores agregados sem dados pessoais.</p>
+      </div>
     </section>
     </>}
     {mode==="intelligence"&&<>
