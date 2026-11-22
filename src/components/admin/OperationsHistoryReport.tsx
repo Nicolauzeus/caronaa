@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
 import { OperationsReportSchedules } from "./OperationsReportSchedules";
+import { OperationsPrintableReport } from "./OperationsPrintableReport";
 import { calculateOperationsDisplay, projectRequestHistogram, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
 type Summary = {
@@ -132,7 +133,8 @@ export function OperationsHistoryReport(){
       "\nCanceladas: "+fmt(report.summary.cancelled)+"\n\nGerado a partir de dados operacionais.";
     window.location.href="mailto:?subject="+encodeURIComponent("CARONAA · Resumo operacional")+"&body="+encodeURIComponent(body);
   };
-  return <main className="caronaa-report-print min-w-0 space-y-4 pb-8" aria-label="Histórico e relatórios de operações">
+  return <main className="min-w-0 space-y-4 pb-8" aria-label="Histórico e relatórios de operações">
+    <div className="caronaa-screen-report space-y-4">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="font-[Sora] text-2xl font-extrabold">Histórico &amp; Relatórios</h1>
@@ -343,5 +345,15 @@ export function OperationsHistoryReport(){
       <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Os registros são reais; os cartões de síntese podem incluir projeções. O PDF imprime os cartões combinados com a identificação do cenário. E-mail, WhatsApp e CSV não compartilham métricas projetadas.</p>
     </section>
     <div className="print:hidden"><OperationsReportSchedules/></div>
+    </div>
+    {report&&!busy&&valid&&<OperationsPrintableReport
+      summary={report.summary}
+      hours={report.hours}
+      hourDays={report.hour_days}
+      from={dates.from}
+      to={dates.to}
+      service={service}
+      generatedAt={report.generated_at}
+    />}
   </main>;
 }

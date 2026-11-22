@@ -23,6 +23,8 @@ describe("CARONAA operations reporting + support contract",()=>{
     expect(report).not.toContain("Simular +108 pedidos");
     expect(report).toContain("ENABLE_OPERATIONS_PROJECTION");
     expect(report).toContain("presentationMode");
+    expect(report).toContain("OperationsPrintableReport");
+    expect(report).toContain("caronaa-screen-report");
   });
   it("uses server-managed support, never a hardcoded Brazilian number",()=>{
     expect(phone).toContain("get_caronaa_support_whatsapp");

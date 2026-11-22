@@ -33,7 +33,9 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(projection).toContain("accepted:actual.accepted+acceptedAdd");
     expect(projection).not.toContain("supabase");
     const printCss=readFileSync("src/components/admin/operations-history-print.css","utf8");
-    expect(printCss).toContain(".caronaa-report-projection-label");
+    expect(printCss).toContain(".caronaa-print-sheet");
+    expect(printCss).toContain("print-color-adjust: exact");
+    expect(printCss).toContain(".caronaa-screen-report { display: none !important; }");
     expect(printCss).toContain("visibility: visible !important");
   });
 });
