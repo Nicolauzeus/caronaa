@@ -17,7 +17,7 @@ export const Route=createFileRoute("/admin/operacoes")({
     {name:"description",content:"Central ao vivo, histórico de pedidos, relatórios e configurações de suporte."},
   ]}),
 });
-type Tool="monitor"|"disputes"|"access"|"settings";
+type Tool="monitor"|"disputes"|"access";
 function MobilityOperationsCenter(){
   const hash=useRouterState({select:s=>s.location.hash});
   const navigate=useNavigate();
@@ -37,7 +37,15 @@ function MobilityOperationsCenter(){
   return <main className="min-w-0 w-full pb-6">
     {showHistory?<OperationsHistoryReport mode="reports"/>:
      showIntelligence?<OperationsHistoryReport mode="intelligence"/>:
-     showSupport?<OperationsSupportSettings/>:
+     showSupport?<section className="min-w-0 space-y-4" aria-label="Configurações operacionais">
+       <header><h1 className="font-[Sora] text-2xl font-extrabold">Configurações</h1>
+         <p className="text-sm text-muted-foreground">Suporte e parâmetros administrativos, separados da operação ao vivo.</p></header>
+       <OperationsSupportSettings/>
+       <details className="rounded-2xl border bg-card p-4">
+         <summary className="cursor-pointer text-sm font-bold">Configurações profissionais avançadas</summary>
+         <div className="mt-4"><QuickRideAdminPanel/></div>
+       </details>
+     </section>:
      showJourneys?<section className="min-w-0 space-y-3" aria-label="Gestão de viagens">
        <header><h1 className="font-[Sora] text-2xl font-extrabold">Viagens</h1>
          <p className="text-sm text-muted-foreground">Ofertas, pedidos de carona e correspondências em um só lugar.</p></header>
@@ -75,7 +83,7 @@ function MobilityOperationsCenter(){
         </header>
         <div role="group" aria-label="Ferramentas administrativas" className="flex flex-wrap gap-2">
           {([{id:"monitor",label:"Auditoria operacional"},{id:"disputes",label:"Contestações"},
-            {id:"access",label:"Habilitação de motoristas"},{id:"settings",label:"Configurações profissionais"}] as const)
+            {id:"access",label:"Habilitação de motoristas"}] as const)
             .map(item=><button key={item.id} type="button" aria-pressed={tool===item.id} onClick={()=>setTool(item.id)}
             className={"min-h-11 rounded-xl border px-3 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-[#FFBB00] "+
               (tool===item.id?"border-[#FFBB00] bg-[#FFBB00] text-[#121212]":"border-border bg-card text-foreground")}>
@@ -84,7 +92,6 @@ function MobilityOperationsCenter(){
         {tool==="monitor"&&<F07OperationsCommandCenter onGoToDisputes={()=>openTools("disputes")} onGoToAccess={()=>openTools("access")}/>}
         {tool==="disputes"&&<QuickRideDisputesAdmin/>}
         {tool==="access"&&<ProfessionalAccessQueue/>}
-        {tool==="settings"&&<QuickRideAdminPanel/>}
       </div>}
   </main>;
 }

@@ -9,7 +9,7 @@ Módulos F02/F03/F04/F05/F07/F09. Preservadas: conta única, consentimentos, tar
 3. Pessoas: subabas Motoristas e Passageiros. Mesma tabela administrativa com último acesso autenticado (últimos 30 dias) quando disponível, sem presumir online quem está apenas cadastrado.
 4. Relatórios: histórico e resultados, exportações e agendamentos por e-mail (infraestrutura obrigatória). Período e serviço permanecem filtros válidos; PDF agrega dados da fonte real.
 5. Inteligência: funil por pessoas distintas, cotações por preço, horários de pico e de menor movimento, mapa de calor, usuários autenticados, consumo Maps, demanda F07 por município.
-6. Configurações: WhatsApp persistido com edição administrativa. Valor verificado no banco: +244944175424 (não hardcode).
+6. Configurações: WhatsApp persistido com edição administrativa e opções profissionais avançadas recolhíveis, sem duplicar a tela em Ferramentas da Central. Valor verificado no banco: +244944175424 (não hardcode).
 
 ### Banco incremental
 - `0239_admin_shared_operations_live.sql`: read-only, admin-only, ofertas/pedidos futuros com coordenadas válidas. Sem alteração dos contratos de match/despacho.

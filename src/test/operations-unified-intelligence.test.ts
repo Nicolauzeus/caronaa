@@ -25,6 +25,10 @@ describe("CARONAA unified operations closeout",()=>{
     expect(route).toContain('<OperationPage kind={peopleTab} embedded/>');
     expect(route).toContain('<OperationsHistoryReport mode="reports"/>');
     expect(route).toContain('<OperationsHistoryReport mode="intelligence"/>');
+    expect(route).toContain("Configurações profissionais avançadas");
+    expect(route).toContain("OperationsSupportSettings");
+    expect(route).not.toContain('tool==="settings"');
+
   });
   it("keeps historical reporting and intelligence isolated, with shared date/service filters",()=>{
     expect(history).toContain('mode==="reports"&&<>');
