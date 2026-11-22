@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
 type Summary = {
   orders:number;accepted:number;unaccepted:number;completed:number;
@@ -38,8 +39,8 @@ export function OperationsPrintableReport({summary,hours,hourDays,from,to,servic
     time.toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}):"—";
   return <article className="caronaa-print-sheet" aria-label="Relatório operacional CARONAA para impressão">
     <header className="opr-pdf-header">
-      <div className="opr-pdf-brand"><span className="opr-pdf-symbol">C</span>
-        <div><strong>caronaa</strong><small>INTELIGÊNCIA OPERACIONAL</small></div>
+      <div className="opr-pdf-brand">
+        <img src={logoAsset.url} alt="CARONAA — logotipo oficial" className="opr-pdf-logo" width={170} height={86}/>
       </div>
       <div className="opr-pdf-heading-meta">
         <strong>Relatório de mobilidade</strong>

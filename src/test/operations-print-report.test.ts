@@ -17,6 +17,11 @@ describe("CARONAA dedicated colored operations PDF",()=>{
     expect(css).toContain("print-color-adjust: exact !important");
     expect(css).toContain("background: #FFF8E4");
     expect(css).toContain("background: #16A34A");
+    expect(pdf).toContain('import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json"');
+    expect(pdf).toContain('src={logoAsset.url}');
+    expect(pdf).toContain("logotipo oficial");
+    expect(pdf).not.toContain('opr-pdf-symbol');
+    expect(css).toContain(".opr-pdf-logo");
     expect(pdf).toContain("Pedidos feitos");
     expect(pdf).toContain("Conversão e atendimento");
     expect(pdf).toContain("Demanda por horário");
