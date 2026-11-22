@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
 import { OperationsReportSchedules } from "./OperationsReportSchedules";
 import { OperationsPrintableReport } from "./OperationsPrintableReport";
+import { OperationsGoogleMapsUsage, type GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import { createOperationsReportPdf, saveOperationsPdf } from "./operations-pdf-file";
 import { calculateOperationsDisplay, projectRequestHistogram, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
@@ -70,6 +71,8 @@ export function OperationsHistoryReport(){
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
   const [report,setReport]=useState<Report|null>(null);
+  const [googleUsage,setGoogleUsage]=useState<GoogleUsageReport|null>(null);
+  const [googleError,setGoogleError]=useState("");
   const [busy,setBusy]=useState(false);const [error,setError]=useState("");
   const [sharing,setSharing]=useState(false);
   const [emailDialog,setEmailDialog]=useState(false);
@@ -78,11 +81,25 @@ export function OperationsHistoryReport(){
   const dates=periodDates(preset,from,to);
   const valid=Boolean(dates.from&&dates.to&&dates.from<=dates.to);
   const load=useCallback(async()=>{
-    if(!valid){setReport(null);return;}
+    if(!valid){setReport(null);setGoogleUsage(null);return;}
     setBusy(true);setError("");
-    const {data,error:rpcError}=await (supabase as any).rpc("admin_operations_history_report",{
-      p_from:dates.from,p_to:dates.to,p_service:service,p_limit:40,p_offset:page*40,
-    });
+    const [historyResult,googleResult]=await Promise.all([
+      (supabase as any).rpc("admin_operations_history_report",{
+        p_from:dates.from,p_to:dates.to,p_service:service,p_limit:40,p_offset:page*40,
+      }),
+      (supabase as any).rpc("admin_google_api_usage_report",{
+        p_from:dates.from,p_to:dates.to,
+      }),
+    ]);
+    const {data,error:rpcError}=historyResult;
+    const googleData=googleResult.data;
+    if(googleResult.error||!googleData?.summary||!Array.isArray(googleData?.daily)){
+      setGoogleUsage(null);
+      setGoogleError("Consumo Google Maps indisponível. Verifique a migration 0236.");
+    }else{
+      setGoogleError("");
+      setGoogleUsage(googleData as GoogleUsageReport);
+    }
     if(rpcError||!data?.summary||!Array.isArray(data?.hours)||!Array.isArray(data?.rows)){
       setError("Relatório indisponível. Aplique a migration 0232 antes de publicar esta tela. "+(rpcError?.message??""));
       setReport(null);
@@ -128,6 +145,7 @@ export function OperationsHistoryReport(){
     return createOperationsReportPdf({
       from:dates.from,to:dates.to,service,generatedAt:report.generated_at,
       summary:report.summary,hours:report.hours,hour_days:report.hour_days,
+      google_usage:googleUsage??undefined,
     });
   };
   const shareWhatsApp=async()=>{
@@ -414,6 +432,7 @@ export function OperationsHistoryReport(){
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Os registros são reais; os cartões de síntese podem incluir projeções. O PDF imprime os cartões combinados com a identificação do cenário. E-mail, WhatsApp e CSV não compartilham métricas projetadas.</p>
     </section>
+    <OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/>
     <div className="print:hidden"><OperationsReportSchedules/></div>
     </div>
     {report&&!busy&&valid&&<OperationsPrintableReport
@@ -424,6 +443,7 @@ export function OperationsHistoryReport(){
       to={dates.to}
       service={service}
       generatedAt={report.generated_at}
+      googleUsage={googleUsage}
     />}
   </main>;
 }

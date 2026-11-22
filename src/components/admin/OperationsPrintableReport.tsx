@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import type { GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 
 type Summary = {
   orders:number;accepted:number;unaccepted:number;completed:number;
@@ -13,6 +14,7 @@ type Cell = {weekday:number;hour:number;orders:number};
 type Props = {
   summary:Summary;hours:Hour[];hourDays:Cell[];
   from:string;to:string;service:"all"|"flash"|"shared";generatedAt:string;
+  googleUsage:GoogleUsageReport|null;
 };
 const nf=(v:number)=>v.toLocaleString("pt-BR");
 const currency=(c:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(c/100);
@@ -26,7 +28,7 @@ function Metric({label,value,kind="normal"}:{label:string;value:string;kind?:str
 function Heading({children}:{children:ReactNode}){
   return <h2 className="opr-pdf-heading">{children}</h2>;
 }
-export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt}:Props){
+export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage}:Props){
   const count=summary.orders;
   const percent=(n:number)=>count?(100*n/count).toFixed(1).replace(".",",")+"%":"0%";
   const hourValues=Array.from({length:24},(_,hour)=>hours.find(x=>x.hour===hour)?.orders??0);
@@ -122,6 +124,16 @@ export function OperationsPrintableReport({summary,hours,hourDays,from,to,servic
       </div>
     </section>
 
+    <section className="opr-pdf-card opr-pdf-google-section">
+      <Heading>Consumo Google Maps · integrações</Heading>
+      {googleUsage?<div className="opr-pdf-google-metrics">
+        <div><span>Chamadas registradas</span><strong>{nf(googleUsage.summary.total)}</strong></div>
+        <div><span>Places API</span><strong>{nf(googleUsage.summary.places)}</strong></div>
+        <div><span>Routes API</span><strong>{nf(googleUsage.summary.routes)}</strong></div>
+        <div><span>Erros internos</span><strong>{nf(googleUsage.summary.errors)}</strong></div>
+      </div>:<p>Consumo indisponível para este período.</p>}
+      <p className="opr-pdf-detail">Fonte: google_api_usage, horário de Fortaleza. Não representa necessariamente as chamadas faturadas pelo Google Cloud.</p>
+    </section>
     <footer className="opr-pdf-footer">
       <span>* Tarifas não equivalem a pagamentos recebidos. Relatório consolidado, sem dados pessoais ou GPS.</span>
       <span>CARONAA · Operações de Mobilidade</span>

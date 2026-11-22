@@ -1,4 +1,5 @@
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
+import type { GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 
 export type PdfReportData = {
   from:string;to:string;service:"all"|"flash"|"shared";generatedAt:string;
@@ -10,6 +11,7 @@ export type PdfReportData = {
   };
   hours:Array<{hour:number;orders:number}>;
   hour_days:Array<{weekday:number;hour:number;orders:number}>;
+  google_usage?:GoogleUsageReport;
 };
 const BLACK="#121212", YELLOW="#FFBB00", GREY="#657181";
 const serviceNames={all:"Todos os servicos",flash:"Corrida Rapida",shared:"Caronas compartilhadas"};
@@ -85,7 +87,20 @@ function firstPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageEl
   card(ctx,805,618,345,125,"Em atendimento",num(s.in_progress),"#2563EB","#EFF6FF");
   card(ctx,1175,618,344,125,"Tarifas concluidas*",money(s.completed_fares_cents),"#16A34A","#F0FDF4");
   text(ctx,"* Tarifas nao representam valores efetivamente pagos.",65,788,16,GREY);
-  text(ctx,"Resumo gerado com dados operacionais consolidados; sem enderecos, GPS ou dados pessoais.",65,823,16,GREY);
+  text(ctx,"GOOGLE MAPS  |  CONSUMO INTERNO DAS APIS",65,867,23,BLACK,true);
+  if(d.google_usage){
+    const usage=d.google_usage.summary;
+    const values=[
+      ["Chamadas registradas",usage.total],
+      ["Places API",usage.places],
+      ["Routes API",usage.routes],
+      ["Erros internos",usage.errors],
+    ] as const;
+    values.forEach(([title,value],i)=>card(ctx,65+370*i,889,345,116,title,num(value),i===0?YELLOW:"#78909C",i===0?"#FFF9E8":"#F8FAFC"));
+  }else{
+    text(ctx,"Registros de consumo indisponiveis para o intervalo.",65,928,18,GREY);
+  }
+  text(ctx,"Chamadas registradas no CARONAA; podem diferir do consumo faturado no Google Cloud.",65,1035,13,GREY);
   footer(ctx,1);
 }
 function secondPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageElement|null){
