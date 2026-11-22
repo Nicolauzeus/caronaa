@@ -40,6 +40,23 @@ export function allocateProportionally(total:number,weights:readonly number[]):n
   return parts;
 }
 
+/**
+ * Reuses the same illustrative increment for each independent aggregation
+ * (hour of day and weekday/hour). Each view reconciles to the same total.
+ * Original historical counts and live GPS presence are untouched.
+ */
+export function projectRequestHistogram<T extends {orders:number}>(
+  actual:readonly T[],
+  illustrativeIncrement:number,
+):T[]{
+  if(illustrativeIncrement===0)return actual.map(item=>({...item}));
+  if(!Number.isSafeInteger(illustrativeIncrement)||illustrativeIncrement<0)
+    throw new Error("Invalid illustrative increment");
+  const weights=actual.map(item=>item.orders);
+  const extras=allocateProportionally(illustrativeIncrement,weights);
+  return actual.map((item,index)=>({...item,orders:item.orders+(extras[index]??0)}));
+}
+
 export function calculateOperationsDisplay(
   actual:OperationsBreakdown,presentationMode:boolean,
 ):OperationsDisplay{

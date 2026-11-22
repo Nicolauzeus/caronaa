@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {allocateProportionally,calculateOperationsDisplay,ENABLE_OPERATIONS_PROJECTION,PRESENTATION_ILLUSTRATIVE_REQUESTS}
+import {allocateProportionally,calculateOperationsDisplay,projectRequestHistogram,ENABLE_OPERATIONS_PROJECTION,PRESENTATION_ILLUSTRATIVE_REQUESTS}
 from "./operations-presentation";
 
 const actual={
@@ -42,6 +42,19 @@ describe("CARONAA projected report remains labeled, separate and mathematically 
     expect(value.acceptanceReconciles).toBe(true);
     expect(value.cancellationsReconcile).toBe(true);
     expect(actual).toEqual(before);
+  });
+  it("distributes the same illustrative increment in 24 hourly bars and 168 heatmap cells",()=>{
+    const hourly=Array.from({length:24},(_,hour)=>({hour,orders:hour+1,passengers:hour}));
+    const cells=Array.from({length:168},(_,index)=>({weekday:Math.floor(index/24),hour:index%24,orders:index%9}));
+    const projectedHourly=projectRequestHistogram(hourly,108);
+    const projectedCells=projectRequestHistogram(cells,108);
+    expect(projectedHourly.reduce((n,x)=>n+x.orders,0)).toBe(408);
+    expect(projectedCells.reduce((n,x)=>n+x.orders,0)).toBe(cells.reduce((n,x)=>n+x.orders,0)+108);
+    expect(hourly[0].orders).toBe(1);
+    expect(cells[0].orders).toBe(0);
+    expect(projectedHourly.map(x=>x.orders)).toEqual(projectRequestHistogram(hourly,108).map(x=>x.orders));
+    expect(projectedCells.every((x,i)=>x.orders>=cells[i].orders)).toBe(true);
+    expect(projectRequestHistogram(hourly,0)).toEqual(hourly);
   });
   it("handles rounding and different operational compositions",()=>{
     expect(allocateProportionally(108,[21,24,10,16,1,0,0])).toEqual([32,36,15,24,1,0,0]);

@@ -25,7 +25,8 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(ui).toContain("Nunca receberam aceite");
     expect(ui).toContain("cancelled_after_acceptance");
     expect(ui).toContain('disabled={!report||presentationMode}');
-    expect(ui).toContain("Gráfico de pedidos efetivamente registrados, sem projeções");
+    expect(ui).toContain("projectRequestHistogram");
+    expect(ui).toContain("Estimativa proporcional sobre a base registrada.");
     expect(projection).toContain("PRESENTATION_ILLUSTRATIVE_REQUESTS=108");
     expect(projection).toContain("ENABLE_OPERATIONS_PROJECTION=true");
     expect(projection).toContain("allocateProportionally");

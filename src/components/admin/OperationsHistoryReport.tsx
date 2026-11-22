@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
 import { OperationsReportSchedules } from "./OperationsReportSchedules";
-import { calculateOperationsDisplay, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
+import { calculateOperationsDisplay, projectRequestHistogram, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
 type Summary = {
   orders:number; accepted:number; unaccepted:number; completed:number; cancelled:number;
@@ -93,12 +93,18 @@ export function OperationsHistoryReport(){
       (!q||[r.id,r.passenger_name,r.driver_name,r.origin,r.destination,r.municipality]
         .some(s=>(s??"").toLocaleLowerCase("pt-BR").includes(q))));
   },[report,status,query]);
-  const maxHour=Math.max(1,...(report?.hours??[]).map(x=>x.orders));
-  const peak=report?.hours?.length?report.hours.reduce((a,b)=>b.orders>a.orders?b:a):null;
-  const quiet=report?.hours?.length?report.hours.filter(x=>x.orders>0).sort((a,b)=>a.orders-b.orders)[0]:null;
   const display=report?calculateOperationsDisplay(report.summary,ENABLE_OPERATIONS_PROJECTION):null;
   const presentationMode=Boolean(display?.illustrativeOrders);
-  const selectedHeat=heatMetric==="orders"?report?.hour_days:report?.presence_hour_days;
+  const projectedHours=useMemo(()=>projectRequestHistogram(
+    report?.hours??[],display?.illustrativeOrders??0
+  ),[report?.hours,display?.illustrativeOrders]);
+  const projectedHourDays=useMemo(()=>projectRequestHistogram(
+    report?.hour_days??[],display?.illustrativeOrders??0
+  ),[report?.hour_days,display?.illustrativeOrders]);
+  const maxHour=Math.max(1,...projectedHours.map(x=>x.orders));
+  const peak=projectedHours.length?projectedHours.reduce((a,b)=>b.orders>a.orders?b:a):null;
+  const quiet=projectedHours.length?projectedHours.filter(x=>x.orders>0).sort((a,b)=>a.orders-b.orders)[0]:null;
+  const selectedHeat=heatMetric==="orders"?projectedHourDays:report?.presence_hour_days;
   const heatMap=useMemo(()=>{
     const field=heatMetric==="orders"?"orders":heatMetric;
     return new Map<string,number>((selectedHeat??[]).map(x=>[x.weekday+":"+x.hour,Number((x as unknown as Record<string,number>)[field]??0)] as const));
@@ -222,9 +228,9 @@ export function OperationsHistoryReport(){
     <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
       <article className="rounded-2xl border bg-card p-4">
         <h2 className="font-[Sora] text-lg font-bold">Horários com mais pedidos</h2>
-        <p className="mb-4 text-xs text-muted-foreground">Pedidos reais criados por hora local no período. Gráfico de pedidos efetivamente registrados, sem projeções.</p>
+        <p className="mb-4 text-xs text-muted-foreground">Distribuição de solicitações por horário local no período selecionado. {presentationMode?"Estimativa proporcional sobre a base registrada.":"Pedidos registrados."}</p>
         <div className="grid grid-cols-12 items-end gap-1 sm:grid-cols-24" role="img" aria-label="Histograma de pedidos por hora">
-          {(report?.hours??Array.from({length:24},(_,hour)=>({hour,orders:0,passengers:0}))).map(h=>
+          {(projectedHours.length?projectedHours:Array.from({length:24},(_,hour)=>({hour,orders:0,passengers:0}))).map(h=>
             <div key={h.hour} className="flex min-w-0 flex-col items-center gap-1">
               <span className="text-[9px] tabular-nums text-muted-foreground">{report?fmt(h.orders):"—"}</span>
               <div title={h.hour+"h: "+h.orders+" pedidos"} className={"w-full rounded-t-sm "+palette[h.orders===maxHour?0:h.orders>maxHour/2?1:h.orders>0?2:3]}
