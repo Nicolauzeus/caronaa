@@ -465,37 +465,6 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       </div>
     </div>
 
-    <section className={cardShell+" min-w-0 overflow-hidden"} aria-label="Histórico recente">
-      <header className="flex items-center justify-between gap-3 border-b border-border p-3 dark:border-white/10 sm:p-4">
-        <div>
-          <h2 className="font-[Sora] text-base font-bold">Últimas corridas</h2>
-          <p className="text-xs text-muted-foreground">{kpis?.completed_today??"—"} concluída(s) hoje · Horário de Fortaleza</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={onOpenTools}>Ver histórico completo <ArrowRight size={14} className="ml-1"/></Button>
-      </header>
-      <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[680px] text-left text-xs sm:text-sm">
-          <thead className="bg-muted/50 text-xs text-muted-foreground dark:bg-white/5">
-            <tr>{["Hora","Passageiro","Motorista","Trajeto","Valor","Status"].map(label=>
-              <th key={label} scope="col" className="px-3 py-2 font-medium">{label}</th>)}</tr>
-          </thead>
-          <tbody className="divide-y divide-border dark:divide-white/10">
-            {(data?.recent??[]).map(ride=><tr key={ride.id} className="hover:bg-muted/30">
-              <td className="whitespace-nowrap px-3 py-3 tabular-nums">{time(ride.closed_at)}</td>
-              <td className="max-w-[140px] truncate px-3 py-3" title={ride.passenger_name}>{ride.passenger_name}</td>
-              <td className="max-w-[140px] truncate px-3 py-3" title={ride.driver_name??""}>{ride.driver_name??"—"}</td>
-              <td className="max-w-[240px] truncate px-3 py-3" title={ride.origin_label+" → "+ride.destination_label}>
-                {ride.origin_label} → {ride.destination_label}
-              </td>
-              <td className="whitespace-nowrap px-3 py-3">{currency(ride.customer_pays_cents)}</td>
-              <td className="px-3 py-3"><Status status={ride.status}/></td>
-            </tr>)}
-            {data&&!data.recent.length&&<tr><td colSpan={6} className="p-6 text-center text-sm text-muted-foreground">Nenhuma corrida concluída ou cancelada no histórico recente.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
     {mobileDetails&&((mapTab==="drivers"&&selectedDriver)||selected)&&<div className="fixed inset-0 z-[120] flex items-end bg-black/55 p-2 xl:hidden sm:items-center sm:justify-center"
       onClick={event=>{if(event.target===event.currentTarget)setMobileDetails(false);}}>
       <div role="dialog" aria-modal="true" aria-label="Detalhes da solicitação"

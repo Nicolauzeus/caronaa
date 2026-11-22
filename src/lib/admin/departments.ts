@@ -29,7 +29,9 @@ export const DEPARTMENTS:readonly Department[]=[
  planned("integrations","Integrações","Estado e dependências das integrações.")
  ]},
  {id:"operations",name:"Operações de Mobilidade",shortName:"Operações",mission:"Operar viagens e equilibrar oferta, demanda e qualidade.",ownerRole:"Gestão de operações",categories:[
- existing("command","Centro de Operações","Indicadores consolidados e navegação operacional.","/admin/operacoes"),
+ existing("command","Centro de Operações","Acompanhamento operacional ao vivo.","/admin/operacoes"),
+ existing("history","Histórico & Relatórios","Pedidos, corridas e picos de demanda.","/admin/operacoes"),
+ existing("support","Configurações","WhatsApp de suporte e parâmetros administrativos.","/admin/operacoes"),
  existing("rides","Caronas","Gestão de ofertas e viagens.","/admin/caronas"),
  existing("requests","Solicitações","Pedidos de passageiros.","/admin/solicitacoes"),
  existing("matches","Correspondências","Correspondências entre ofertas e solicitações.","/admin/matching"),
