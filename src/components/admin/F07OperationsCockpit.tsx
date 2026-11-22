@@ -5,6 +5,7 @@ import {
   UserRound, Users, X, type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "@tanstack/react-router";
 import { GoogleMapSurface, type GoogleMapPoint } from "@/components/caronaa/GoogleMapSurface";
 import { Button } from "@/components/ui/button";
 import { OnlineDriverDirectory, OnlineDriverDetails, type OnlineDriver } from "./F07OnlineDrivers";
@@ -28,6 +29,11 @@ type Driver = {
 };
 type MapDriver={id:string;lat:number;lng:number;seen_at:string;vehicle_type:string;
   in_trip:boolean;ready:boolean};
+type SharedMapItem={
+  id:string;kind:"offer"|"request"|"ride";lat:number;lng:number;
+  origin_label:string;destination_label:string;date:string;time:string;seats:number;status:string;
+};
+type SharedLiveData={generated_at:string;offers:SharedMapItem[];requests:SharedMapItem[];rides:SharedMapItem[]};
 type LiveData={
   generated_at:string;
   kpis:{waiting:number;ready_drivers:number;in_progress:number;
@@ -188,6 +194,9 @@ function DetailPanel({ride,onFollow,onManage,onClose,now}:{
 
 export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const [data,setData]=useState<LiveData|null>(null);
+  const [shared,setShared]=useState<SharedLiveData|null>(null);
+  const [sharedError,setSharedError]=useState("");
+  const [serviceLayer,setServiceLayer]=useState<"all"|"flash"|"shared">("all");
   const [loading,setLoading]=useState(true);
   const [refreshing,setRefreshing]=useState(false);
   const [error,setError]=useState("");
@@ -215,6 +224,23 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
     let timeout:ReturnType<typeof setTimeout>|undefined;
     setRefreshing(true);
     try{
+      // Shared offers/requests are an independent admin-only snapshot. A failure
+      // must not block live Flash polling or motorist availability.
+      void (supabase as any).rpc("admin_shared_operations_live").then(
+        ({data:result,error:sharedRpcError}:{data:SharedLiveData|null;error?:{message:string}})=>{
+          if(!alive.current||version!==activeVersion.current)return;
+          if(sharedRpcError||!result||!Array.isArray(result.offers)||!Array.isArray(result.requests)||!Array.isArray(result.rides)){
+            setShared(null);setSharedError("Mapa de caronas temporariamente indisponível.");
+          }else{
+            setShared(result);setSharedError("");
+          }
+        },
+        ()=>{
+          if(alive.current&&version===activeVersion.current){
+            setShared(null);setSharedError("Mapa de caronas temporariamente indisponível.");
+          }
+        }
+      );
       const outcome=await Promise.race([
         (supabase as any).rpc("admin_f07_cockpit_live"),
         new Promise<{error:Error;data:null}>(resolve=>{
@@ -275,7 +301,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const selectedDriver=onlineDrivers.find(driver=>driver.id===selectedDriverId)??onlineDrivers[0]??null;
   const points=useMemo(()=>{
     const focus=selected?.id===focusKey?selected:null;
-    const drivers=(data?.map_drivers??[])
+    const drivers=(serviceLayer==="shared"?[]:data?.map_drivers??[])
       .filter(driver=>validCoordinate(driver.lat,driver.lng))
       .filter(driver=>mapTab!=="tracking"||driver.in_trip)
       .filter(driver=>!focusDriverId||driver.id===focusDriverId)
@@ -288,20 +314,29 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
           driver.vehicle_type==="MOTO"?"adminAvailableMoto":"adminAvailableCar",
         title:driver.in_trip?"Motorista em viagem":"Motorista conectado",
       }));
-    const requests=mapTab!=="live"?[]:(data?.waiting??[])
+    const requests=mapTab!=="live"||serviceLayer==="shared"?[]:(data?.waiting??[])
       .filter(ride=>validCoordinate(ride.origin_lat,ride.origin_lng))
       .filter(ride=>!focus||ride.id===focus.id)
       .map((ride):GoogleMapPoint=>({
         id:"request:"+ride.id,lat:ride.origin_lat!,lng:ride.origin_lng!,
         kind:"adminWaitingPassenger",title:"Pedido aguardando · "+ride.passenger_name,
       }));
-    if(!focusDriverId&&mapTab!=="drivers"&&selected&&validCoordinate(selected.origin_lat,selected.origin_lng)
+    if(serviceLayer!=="shared"&&!focusDriverId&&mapTab!=="drivers"&&selected&&validCoordinate(selected.origin_lat,selected.origin_lng)
         &&!requests.some(point=>point.id==="request:"+selected.id)){
       requests.push({id:"selected:"+selected.id,lat:selected.origin_lat!,lng:selected.origin_lng!,
         kind:"origin",title:"Embarque · "+selected.passenger_name});
     }
-    return [...drivers,...requests];
-  },[data?.map_drivers,data?.waiting,mapTab,focusKey,focusDriverId,selected?.id,selected?.driver_id,selected?.origin_lat,selected?.origin_lng]);
+    const sharedPoints=(serviceLayer==="flash"||mapTab!=="live"||focusDriverId?[]:
+      [...(shared?.offers??[]),...(shared?.requests??[]),...(shared?.rides??[])])
+      .filter(item=>validCoordinate(item.lat,item.lng))
+      .map((item):GoogleMapPoint=>({
+        id:"shared:"+item.kind+":"+item.id,lat:item.lat,lng:item.lng,
+        kind:item.kind==="offer"?"meeting":item.kind==="ride"?"origin":"passenger",
+        title:(item.kind==="offer"?"Oferta de carona":item.kind==="ride"?
+          "Embarque previsto de carona confirmada (não é GPS ao vivo)":"Pedido de carona")+" · "+item.origin_label+" → "+item.destination_label,
+      }));
+    return [...drivers,...requests,...sharedPoints];
+  },[data?.map_drivers,data?.waiting,shared,serviceLayer,mapTab,focusKey,focusDriverId,selected?.id,selected?.driver_id,selected?.origin_lat,selected?.origin_lng]);
   const choose=(ride:Ride)=>{
     setSelectedId(ride.id);setMobileDetails(true);
   };
@@ -435,6 +470,19 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
           </div>
           <span className="text-xs text-muted-foreground">{time(data?.generated_at)}</span>
         </div>
+        {mapTab!=="drivers"&&<div role="group" aria-label="Camadas de serviços no mapa"
+          className="flex flex-wrap items-center gap-1 border-t border-border/60 px-3 pb-2 pt-2">
+          {([{key:"all",label:"Todos"},{key:"flash",label:"Corrida Rápida"},
+            {key:"shared",label:"Caronas"}] as const).map(item=>
+            <button key={item.key} type="button" aria-pressed={serviceLayer===item.key}
+              onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("live");setServiceLayer(item.key);}}
+              className={"min-h-9 rounded-full px-3 text-xs font-semibold "+(serviceLayer===item.key?"bg-[#FFBB00] text-[#121212]":"bg-muted text-muted-foreground")}>
+              {item.label}</button>)}
+          <span className="ml-auto text-[11px] text-muted-foreground">
+            {(shared?.offers.length??0)} ofertas · {(shared?.requests.length??0)} pedidos · {(shared?.rides.length??0)} viagens compartilhadas
+          </span>
+        </div>}
+        {sharedError&&serviceLayer!=="flash"&&<p role="status" className="px-3 pb-2 text-xs text-amber-700">{sharedError}</p>}
         {mapTab==="drivers"?
           <div className="h-[300px] overflow-y-auto sm:h-[360px] xl:h-[390px]">
             <OnlineDriverDirectory drivers={onlineDrivers} selectedId={selectedDriver?.id??null}
@@ -454,7 +502,11 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
         <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-border p-3 text-xs dark:border-white/10">
           <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-green-500"/>Motoristas aptos ({kpis?.ready_drivers??"—"})</span>
           <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Em atendimento no mapa ({data?.map_drivers.filter(driver=>driver.in_trip).length??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"/>Em espera ({kpis?.waiting??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"/>Flash em espera ({kpis?.waiting??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-[#0F766E]"/>Caronas disponíveis ({shared?.offers.length??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-[#0F766E]"/>Pedidos compartilhados ({shared?.requests.length??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Embarques de carona ({shared?.rides.length??"—"})</span>
+          <Link to="/admin/operacoes" hash="journeys" className="ml-auto font-semibold underline underline-offset-2">Gerenciar viagens</Link>
         </div>
       </section>
 

@@ -8,6 +8,7 @@ import { OperationsPrintableReport } from "./OperationsPrintableReport";
 import { OperationsGoogleMapsUsage, type GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import { OperationsAppEngagement, type AppEngagementReport } from "./OperationsAppEngagement";
 import { OperationsPriceQuotes, type PriceQuotesReport } from "./OperationsPriceQuotes";
+import { OperationsMobilityIntelligence, type MobilityIntelligence } from "./OperationsMobilityIntelligence";
 import { createOperationsReportPdf, saveOperationsPdf } from "./operations-pdf-file";
 import { calculateOperationsDisplay, projectRequestHistogram, ENABLE_OPERATIONS_PROJECTION, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
@@ -64,7 +65,7 @@ function downloadCsv(rows:Order[]) {
   const a=document.createElement("a");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.href=url;a.download="caronaa-historico.csv";a.click();URL.revokeObjectURL(url);
 }
-export function OperationsHistoryReport(){
+export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intelligence"}={}){
   const [preset,setPreset]=useState<Preset>("7d");
   const [from,setFrom]=useState("");const [to,setTo]=useState("");
   const [service,setService]=useState<"all"|"flash"|"shared">("all");
@@ -74,6 +75,8 @@ export function OperationsHistoryReport(){
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
   const [report,setReport]=useState<Report|null>(null);
   const [quotes,setQuotes]=useState<PriceQuotesReport|null>(null);
+  const [intelligence,setIntelligence]=useState<MobilityIntelligence|null>(null);
+  const [intelligenceError,setIntelligenceError]=useState("");
   const [quotesError,setQuotesError]=useState("");
   const [googleUsage,setGoogleUsage]=useState<GoogleUsageReport|null>(null);
   const [appEngagement,setAppEngagement]=useState<AppEngagementReport|null>(null);
@@ -87,9 +90,9 @@ export function OperationsHistoryReport(){
   const dates=periodDates(preset,from,to);
   const valid=Boolean(dates.from&&dates.to&&dates.from<=dates.to);
   const load=useCallback(async()=>{
-    if(!valid){setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);return;}
+    if(!valid){setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);setIntelligence(null);return;}
     setBusy(true);setError("");
-    const [historyResult,googleResult,engagementResult,quotesResult]=await Promise.all([
+    const [historyResult,googleResult,engagementResult,quotesResult,intelligenceResult]=await Promise.all([
       (supabase as any).rpc("admin_operations_history_report",{
         p_from:dates.from,p_to:dates.to,p_service:service,p_limit:40,p_offset:page*40,
       }),
@@ -98,9 +101,15 @@ export function OperationsHistoryReport(){
       }),
       (supabase as any).rpc("admin_caronaa_app_engagement",{p_from:dates.from,p_to:dates.to}),
       (supabase as any).rpc("admin_caronaa_price_quotes_report",{p_from:dates.from,p_to:dates.to,p_service:service}),
+      (supabase as any).rpc("admin_operations_intelligence",{p_from:dates.from,p_to:dates.to,p_service:service}),
     ]);
     const {data,error:rpcError}=historyResult;
     const googleData=googleResult.data;
+    if(intelligenceResult.error||!intelligenceResult.data?.journey||!Array.isArray(intelligenceResult.data.territories)){
+      setIntelligence(null);setIntelligenceError("Inteligência territorial indisponível. Verifique a migration 0240.");
+    }else{
+      setIntelligence(intelligenceResult.data as MobilityIntelligence);setIntelligenceError("");
+    }
     if(quotesResult.error||!quotesResult.data?.summary||!Array.isArray(quotesResult.data.daily)){
       setQuotes(null);
       setQuotesError("Cotações indisponíveis. Verifique a migration 0238.");
@@ -146,7 +155,7 @@ export function OperationsHistoryReport(){
   ),[report?.hour_days,display?.illustrativeOrders]);
   const maxHour=Math.max(1,...projectedHours.map(x=>x.orders));
   const peak=projectedHours.length?projectedHours.reduce((a,b)=>b.orders>a.orders?b:a):null;
-  const quiet=projectedHours.length?projectedHours.filter(x=>x.orders>0).sort((a,b)=>a.orders-b.orders)[0]:null;
+  const quiet=projectedHours.length?projectedHours.reduce((a,b)=>b.orders<a.orders?b:a):null;
   const selectedHeat=heatMetric==="orders"?projectedHourDays:report?.presence_hour_days;
   const heatMap=useMemo(()=>{
     const field=heatMetric==="orders"?"orders":heatMetric;
@@ -225,22 +234,22 @@ export function OperationsHistoryReport(){
       setShareNotice(e instanceof Error?e.message:"Falha ao enviar o PDF");
     }finally{setSharing(false);}
   };
-  return <main className="min-w-0 space-y-4 pb-8" aria-label="Histórico e relatórios de operações">
+  return <main className="min-w-0 space-y-4 pb-8" aria-label={mode==="reports"?"Histórico e relatórios de operações":"Inteligência operacional"}>
     <div className="caronaa-screen-report space-y-4">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="font-[Sora] text-2xl font-extrabold">Histórico &amp; Relatórios</h1>
-        <p className="text-sm text-muted-foreground">Pedidos, corridas, engajamento e inteligência de horários · Fuso de Fortaleza.</p>
+        <h1 className="font-[Sora] text-2xl font-extrabold">{mode==="reports"?"Histórico & Relatórios":"Inteligência de Mobilidade"}</h1>
+        <p className="text-sm text-muted-foreground">{mode==="reports"?"Histórico de pedidos, desempenho e PDFs.":"Cotações, horários, usuários ativos e uso de Google Maps."} · Horário de Fortaleza.</p>
         {presentationMode&&report&&!busy&&<p role="note" className="caronaa-report-projection-label mt-1 text-xs text-muted-foreground">
           <strong>Cenário projetado</strong> · {fmt(report.summary.orders)} pedidos reais + {PRESENTATION_ILLUSTRATIVE_REQUESTS} estimados = {fmt(display?.orders)} no cenário. Os adicionais não são operações registradas.
         </p>}
       </div>
-      <div className="flex flex-wrap gap-2 print:hidden">
+      {mode==="reports"&&<div className="flex flex-wrap gap-2 print:hidden">
         <Button size="sm" variant="outline" disabled={!report||busy||(ENABLE_OPERATIONS_PROJECTION&&display?.illustrativeOrders!==PRESENTATION_ILLUSTRATIVE_REQUESTS)} onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode||sharing} onClick={()=>{setShareNotice("");setEmailDialog(true);}}><Mail size={15} className="mr-1"/> E-mail PDF</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode||sharing} onClick={()=>void shareWhatsApp()}><MessageCircle size={15} className="mr-1"/> WhatsApp PDF</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={()=>downloadCsv(rows)}><Download size={15} className="mr-1"/> CSV da página</Button>
-      </div>
+      </div>}
     </header>
     {shareNotice&&<p role="status" className="rounded-xl border bg-muted px-3 py-2 text-sm">{shareNotice}</p>}
     {emailDialog&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 print:hidden"
@@ -281,7 +290,11 @@ export function OperationsHistoryReport(){
     </p>}
     {error&&<p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
-    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
+    {mode==="intelligence"&&<>
+      <OperationsMobilityIntelligence report={intelligence} error={intelligenceError} loading={busy}/>
+      <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
+    </>}
+    {mode==="reports"&&<>
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
         hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>
@@ -338,6 +351,8 @@ export function OperationsHistoryReport(){
           Atenção: cancelamentos antes/depois do aceite não reconciliam; verifique o histórico de status.
         </p>}
     </section>
+    </>}
+    {mode==="intelligence"&&<>
     <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
       <article className="rounded-2xl border bg-card p-4">
         <h2 className="font-[Sora] text-lg font-bold">Horários com mais pedidos</h2>
@@ -351,7 +366,7 @@ export function OperationsHistoryReport(){
               <span className="text-[9px] text-muted-foreground">{h.hour.toString().padStart(2,"0")}</span>
             </div>)}
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">Maior movimento: {report&&peak&&peak.orders>0?peak.hour+"h ("+peak.orders+" pedidos)":"Sem pedidos no período"} · Menor horário com pedidos: {quiet?quiet.hour+"h ("+quiet.orders+")":"Não identificado"}</p>
+        <p className="mt-4 text-xs text-muted-foreground">Maior movimento: {report&&peak&&peak.orders>0?peak.hour+"h ("+peak.orders+" pedidos)":"Sem pedidos no período"} · Horário de menor demanda: {quiet?quiet.hour+"h ("+quiet.orders+" pedidos)":"Não identificado"}</p>
       </article>
       <article className="rounded-2xl border bg-card p-4">
         <h2 className="font-[Sora] text-lg font-bold">Oferta × demanda</h2>
@@ -422,6 +437,8 @@ export function OperationsHistoryReport(){
         <Stat title="Tarifas de corridas concluídas" value={money(report?.summary.completed_fares_cents)} hint={(presentationMode?"Valor financeiro real (não simulado). ":"")+"Soma das tarifas conhecidas, não pagamentos recebidos. Sem tarifa: "+fmt(report?.summary.completed_unpriced)} icon={<CalendarDays size={16}/>}/>
       </div>
     </section>
+    </>}
+    {mode==="reports"&&<>
     <section className="rounded-2xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div><h2 className="font-[Sora] text-lg font-bold">Histórico de pedidos e corridas</h2>
@@ -453,13 +470,16 @@ export function OperationsHistoryReport(){
         <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page===0||busy} onClick={()=>setPage(x=>x-1)}>Anterior</Button>
         <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*40)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Os registros são reais; os cartões de síntese podem incluir projeções. O PDF imprime os cartões combinados com a identificação do cenário. E-mail, WhatsApp e CSV não compartilham métricas projetadas.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram apenas a página carregada; o CSV exporta essa página. Totais e gráficos usam exclusivamente registros reais do banco. O PDF compartilha indicadores agregados sem dados pessoais.</p>
     </section>
-    <OperationsAppEngagement report={appEngagement} error={engagementError} loading={busy}/>
-    <OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/>
-    <div className="print:hidden"><OperationsReportSchedules/></div>
+    </>}
+    {mode==="intelligence"&&<>
+      <OperationsAppEngagement report={appEngagement} error={engagementError} loading={busy}/>
+      <OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/>
+    </>}
+    {mode==="reports"&&<div className="print:hidden"><OperationsReportSchedules/></div>}
     </div>
-    {report&&!busy&&valid&&<OperationsPrintableReport
+    {mode==="reports"&&report&&!busy&&valid&&<OperationsPrintableReport
       summary={report.summary}
       hours={report.hours}
       hourDays={report.hour_days}

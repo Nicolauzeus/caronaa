@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "./MetricCard";
 import { SavedAnswers } from "./SavedAnswers";
 import { Button } from "@/components/ui/button";
@@ -133,8 +134,10 @@ type DisplayRow = {
   personId?: string;
 };
 
-export function OperationPage({ kind }: { kind: Kind }) {
+export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded?: boolean }) {
   const [data, setData] = useState<OperationData | null>(null);
+  const [recentAccess,setRecentAccess]=useState<Map<string,{last_seen_at:string;active_days:number;as_passenger:boolean;as_driver:boolean}>>(new Map());
+  const [accessNotice,setAccessNotice]=useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -184,9 +187,35 @@ export function OperationPage({ kind }: { kind: Kind }) {
       window.clearInterval(timer);
     };
   }, []);
+  useEffect(()=>{
+    if(kind!=="motoristas"&&kind!=="passageiros")return;
+    let active=true;
+    const end=today();
+    const begin=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"})
+      .format(new Date(Date.now()-29*86400000));
+    void (supabase as any).rpc("admin_caronaa_app_engagement",{p_from:begin,p_to:end})
+      .then(({data:payload,error:rpcError}:{data?:{users?:Array<{
+        user_id:string;last_seen_at:string;active_days:number;as_passenger:boolean;as_driver:boolean
+      }>};error?:{message:string}})=>{
+        if(!active)return;
+        if(rpcError||!Array.isArray(payload?.users)){
+          setAccessNotice("Último acesso indisponível; consulte a migration 0237.");
+          setRecentAccess(new Map());
+        }else{
+          setAccessNotice("");
+          setRecentAccess(new Map(payload.users.map(x=>[x.user_id,x])));
+        }
+      }).catch(()=>{if(active)setAccessNotice("Falha ao consultar acessos autenticados.");});
+    return()=>{active=false;};
+  },[kind]);
   useEffect(() => {
     setPage(0);
   }, [query, status, day]);
+  // Switching the consolidated subtab cannot leave an old action dialog
+  // bound to a record from a different table.
+  useEffect(()=>{
+    setSelected(null);setConfirm(null);setQuery("");setStatus("all");setDay("");setPage(0);
+  },[kind]);
   async function run(action: string, id: string, offerId?: string) {
     setBusy(true);
     try {
@@ -386,8 +415,8 @@ export function OperationPage({ kind }: { kind: Kind }) {
       const driver = kind === "motoristas";
       const people = getOperationPeople(data, driver);
       headers = driver
-        ? ["Motorista", "Veículo / vagas", "Verificação", "Caronas concluídas", "Status"]
-        : ["Passageiro", "Destinos frequentes", "Caronas realizadas", "Cadastro", "Status"];
+        ? ["Motorista", "Veículo / vagas", "Verificação", "Caronas concluídas", "Último acesso", "Status"]
+        : ["Passageiro", "Destinos frequentes", "Caronas realizadas", "Cadastro", "Último acesso", "Status"];
       rows = people.map((p) => ({
         id: p.id,
         status: driver
@@ -407,12 +436,14 @@ export function OperationPage({ kind }: { kind: Kind }) {
                 <div>Veículo: {p.review?.vehicle_verified ? "verificado" : "pendente"}</div>
               </div>,
               p.completed,
+              (()=>{const a=recentAccess.get(p.id);return a?.as_driver?new Date(a.last_seen_at).toLocaleString("pt-BR",{timeZone:"America/Fortaleza"}):"Sem registro recente";})(),
             ]
           : [
               <Person name={p.name} avatar={p.avatar} contact={`${p.email} ${p.phone}`} />,
               p.destinations || "Não informado",
               p.completed,
               date(p.createdAt),
+              (()=>{const a=recentAccess.get(p.id);return a?.as_passenger?new Date(a.last_seen_at).toLocaleString("pt-BR",{timeZone:"America/Fortaleza"}):"Sem registro recente";})(),
             ],
         details: [
           ["Nome", p.name],
@@ -420,6 +451,7 @@ export function OperationPage({ kind }: { kind: Kind }) {
           ["Telefone", p.phone || "Não informado"],
           ["Conta", labels[p.status] || p.status],
           ["Cadastro", date(p.createdAt)],
+          ["Último acesso autenticado",recentAccess.has(p.id)?new Date(recentAccess.get(p.id)!.last_seen_at).toLocaleString("pt-BR",{timeZone:"America/Fortaleza"}):"Sem registro desde o início da coleta"],
           ["Caronas concluídas", String(p.completed)],
           ["Veículo", p.form?.vehicleType || "Não informado"],
           ["Modelo / placa", "Não informado"],
@@ -473,7 +505,7 @@ export function OperationPage({ kind }: { kind: Kind }) {
           ];
     }
     return { rows, headers, metrics };
-  }, [data, kind]);
+  }, [data, kind, recentAccess]);
   const filtered = (model?.rows || []).filter(
     (r) =>
       (status === "all" || r.status === status) &&
@@ -503,8 +535,9 @@ export function OperationPage({ kind }: { kind: Kind }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="mb-1 text-xs font-semibold text-muted-foreground">OPERAÇÃO / CARONAA</p>
-          <h1 className="font-display text-3xl font-bold">{titles[kind]}</h1>
+          {!embedded&&<p className="mb-1 text-xs font-semibold text-muted-foreground">OPERAÇÃO / CARONAA</p>}
+          {embedded?<h2 className="font-[Sora] text-xl font-bold">{titles[kind]}</h2>:
+            <h1 className="font-display text-3xl font-bold">{titles[kind]}</h1>}
           <p className="mt-2 text-xs text-muted-foreground">{updatedAt ? `Atualizado às ${updatedAt.toLocaleTimeString("pt-BR")} · atualização a cada 30 s` : "Aguardando dados"}</p>
         </div>
         <Button
@@ -518,6 +551,7 @@ export function OperationPage({ kind }: { kind: Kind }) {
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
         </Button>
       </div>
+      {accessNotice && (kind==="motoristas"||kind==="passageiros")&&<p role="status" className="text-xs text-amber-700">{accessNotice}</p>}
       {error && (
         <div
           role="alert"

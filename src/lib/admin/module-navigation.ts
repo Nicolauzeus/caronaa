@@ -1,6 +1,6 @@
 import { DEPARTMENTS, type DepartmentId } from "./departments";
 
-export type AdminModule = { id: string; label: string; route: string; department: DepartmentId };
+export type AdminModule = { id: string; label: string; route: string; department: DepartmentId; hidden?: boolean };
 export const adminModules: AdminModule[] = DEPARTMENTS.flatMap((department) =>
   department.categories
     .filter((category) => category.phase === "existing" && category.route)
@@ -9,6 +9,7 @@ export const adminModules: AdminModule[] = DEPARTMENTS.flatMap((department) =>
       label: category.label,
       route: category.route!,
       department: department.id,
+      hidden: category.hidden === true,
     })),
 );
 /** Canonical workspaces avoid sending Growth and Partnerships to the same old Relations page. */
@@ -40,7 +41,7 @@ export function getDepartmentOfPath(pathname: string): DepartmentId | null {
   return matches[0].department;
 }
 export function getModules(id: DepartmentId) {
-  return adminModules.filter((item) => item.department === id);
+  return adminModules.filter((item) => item.department === id && !item.hidden);
 }
 export function normalizeModuleHash(hash: string): string {
   return hash.replace(/^#/, "");
@@ -48,6 +49,14 @@ export function normalizeModuleHash(hash: string): string {
 export function findActiveModule(id: DepartmentId, pathname: string, hash: string) {
   const modules = getModules(id);
   const path = pathname.replace(/\/$/, "");
+  if (id === "operations") {
+    const legacy:Record<string,string>={
+      "/admin/caronas":"journeys","/admin/solicitacoes":"journeys",
+      "/admin/matching":"journeys","/admin/motoristas":"people",
+      "/admin/passageiros":"people",
+    };
+    if(legacy[path])return modules.find(m=>m.id===legacy[path])??modules[0];
+  }
   const key = normalizeModuleHash(hash);
   const canonical = path === "/admin/relacionamento" ? "/admin/relacionamentos" : path;
   const matches = modules

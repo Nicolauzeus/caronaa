@@ -7,7 +7,7 @@ export type DepartmentId =
  | "executive" | "technology" | "operations" | "growth"
  | "research" | "partnerships" | "safety" | "finance" | "compliance";
 export type DepartmentCategory = {
- id:string; label:string; description:string; route?:string; phase:"existing"|"planned";
+ id:string; label:string; description:string; route?:string; phase:"existing"|"planned"; hidden?:boolean;
 };
 export type Department = {
  id:DepartmentId; name:string; shortName:string; mission:string;
@@ -29,15 +29,19 @@ export const DEPARTMENTS:readonly Department[]=[
  planned("integrations","Integrações","Estado e dependências das integrações.")
  ]},
  {id:"operations",name:"Operações de Mobilidade",shortName:"Operações",mission:"Operar viagens e equilibrar oferta, demanda e qualidade.",ownerRole:"Gestão de operações",categories:[
- existing("command","Centro de Operações","Acompanhamento operacional ao vivo.","/admin/operacoes"),
- existing("history","Histórico & Relatórios","Pedidos, corridas e picos de demanda.","/admin/operacoes"),
- existing("support","Configurações","WhatsApp de suporte e parâmetros administrativos.","/admin/operacoes"),
- existing("rides","Caronas","Gestão de ofertas e viagens.","/admin/caronas"),
- existing("requests","Solicitações","Pedidos de passageiros.","/admin/solicitacoes"),
- existing("matches","Correspondências","Correspondências entre ofertas e solicitações.","/admin/matching"),
- existing("drivers","Motoristas","Consulta da base de motoristas.","/admin/motoristas"),
- existing("passengers","Passageiros","Consulta da base de passageiros.","/admin/passageiros"),
- planned("local","Mobilidade local","Operação profissional e municípios.")
+ existing("command","Central","Mapa unificado e operação ao vivo.","/admin/operacoes"),
+ existing("journeys","Viagens","Caronas, solicitações e correspondências sem duplicar telas.","/admin/operacoes"),
+ existing("people","Pessoas","Motoristas e passageiros no mesmo espaço operacional.","/admin/operacoes"),
+ existing("history","Relatórios","Histórico, PDFs e envios agendados.","/admin/operacoes"),
+ existing("intelligence","Inteligência","Cotações, engajamento, horários e Google Maps.","/admin/operacoes"),
+ existing("support","Configurações","WhatsApp de suporte e parâmetros editáveis.","/admin/operacoes"),
+ // Rotas antigas continuam acessíveis por favoritos e links de auditoria,
+ // porém não aparecem no menu principal.
+ {...existing("legacy-rides","Caronas","Compatibilidade de links administrativos.","/admin/caronas"),hidden:true},
+ {...existing("legacy-requests","Solicitações","Compatibilidade de links administrativos.","/admin/solicitacoes"),hidden:true},
+ {...existing("legacy-matches","Correspondências","Compatibilidade de links administrativos.","/admin/matching"),hidden:true},
+ {...existing("legacy-drivers","Motoristas","Compatibilidade de links administrativos.","/admin/motoristas"),hidden:true},
+ {...existing("legacy-passengers","Passageiros","Compatibilidade de links administrativos.","/admin/passageiros"),hidden:true}
  ]},
  {id:"growth",name:"Crescimento, Marketing e CRM",shortName:"Growth e CRM",mission:"Adquirir, converter e reter usuários com origem rastreável.",ownerRole:"Gestão de crescimento",categories:[
  existing("users","Usuários","Contas existentes e situação de cadastro.","/admin/usuarios"),

@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { OperationPage } from "@/components/admin/OperationPage";
 import { ArrowLeft } from "lucide-react";
 import { F07OperationsCockpit } from "@/components/admin/F07OperationsCockpit";
 import { F07OperationsCommandCenter } from "@/components/admin/F07OperationsCommandCenter";
@@ -22,13 +23,46 @@ function MobilityOperationsCenter(){
   const navigate=useNavigate();
   const section=hash.replace(/^#/,"");
   const [tools,setTools]=useState(false);
+  const [journeyTab,setJourneyTab]=useState<"caronas"|"solicitacoes"|"matching">("caronas");
+  const [peopleTab,setPeopleTab]=useState<"motoristas"|"passageiros">("motoristas");
   const [tool,setTool]=useState<Tool>("monitor");
   const showHistory=section==="history";
+  const showIntelligence=section==="intelligence";
+  const showJourneys=section==="journeys";
+  const showPeople=section==="people";
   const showSupport=section==="support";
+  useEffect(()=>{setTools(false);},[section]);
   const openTools=(next:Tool="monitor")=>{setTool(next);setTools(true);};
   const back=()=>{setTools(false);void navigate({hash:"command",search:true});};
   return <main className="min-w-0 w-full pb-6">
-    {showHistory?<OperationsHistoryReport/>:showSupport?<OperationsSupportSettings/>:
+    {showHistory?<OperationsHistoryReport mode="reports"/>:
+     showIntelligence?<OperationsHistoryReport mode="intelligence"/>:
+     showSupport?<OperationsSupportSettings/>:
+     showJourneys?<section className="min-w-0 space-y-3" aria-label="Gestão de viagens">
+       <header><h1 className="font-[Sora] text-2xl font-extrabold">Viagens</h1>
+         <p className="text-sm text-muted-foreground">Ofertas, pedidos de carona e correspondências em um só lugar.</p></header>
+       <nav aria-label="Tipo de operação" className="flex max-w-full gap-2 overflow-x-auto pb-1">
+         {([{id:"caronas",label:"Caronas"},{id:"solicitacoes",label:"Solicitações"},
+            {id:"matching",label:"Correspondências"}] as const).map(item=>
+           <button key={item.id} type="button" aria-pressed={journeyTab===item.id}
+             onClick={()=>setJourneyTab(item.id)}
+             className={"shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold "+(journeyTab===item.id?"bg-[#FFBB00] text-[#121212] border-[#FFBB00]":"bg-card")}>
+             {item.label}</button>)}
+       </nav>
+       <OperationPage kind={journeyTab} embedded/>
+     </section>:
+     showPeople?<section className="min-w-0 space-y-3" aria-label="Gestão de pessoas">
+       <header><h1 className="font-[Sora] text-2xl font-extrabold">Pessoas</h1>
+         <p className="text-sm text-muted-foreground">Motoristas e passageiros com seus registros operacionais.</p></header>
+       <nav aria-label="Perfis operacionais" className="flex max-w-full gap-2 overflow-x-auto pb-1">
+         {([{id:"motoristas",label:"Motoristas"},{id:"passageiros",label:"Passageiros"}] as const).map(item=>
+           <button key={item.id} type="button" aria-pressed={peopleTab===item.id}
+             onClick={()=>setPeopleTab(item.id)}
+             className={"shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold "+(peopleTab===item.id?"bg-[#FFBB00] text-[#121212] border-[#FFBB00]":"bg-card")}>
+             {item.label}</button>)}
+       </nav>
+       <OperationPage kind={peopleTab} embedded/>
+     </section>:
       !tools?<F07OperationsCockpit onOpenTools={()=>openTools()}/>:
       <div className="min-w-0 space-y-4">
         <header className="flex flex-wrap items-center gap-3">

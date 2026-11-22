@@ -25,7 +25,17 @@ describe("Admin department navigation", () => {
     );
     expect(findActiveModule("safety", "/admin/atendimento", "#reports")?.id).toBe("reports");
     expect(findActiveModule("partnerships", "/admin/parcerias", "#pilots")?.id).toBe("pilots");
-    expect(getModules("operations").some((x) => x.label === "Caronas")).toBe(true);
+    expect(getModules("operations").map(x=>x.label)).toEqual([
+      "Central","Viagens","Pessoas","Relatórios","Inteligência","Configurações",
+    ]);
+    expect(findActiveModule("operations","/admin/operacoes","#intelligence")?.id).toBe("intelligence");
+    expect(findActiveModule("operations","/admin/operacoes","#history")?.id).toBe("history");
+    expect(findActiveModule("operations","/admin/caronas","")?.id).toBe("journeys");
+    expect(findActiveModule("operations","/admin/solicitacoes","")?.id).toBe("journeys");
+    expect(findActiveModule("operations","/admin/matching","")?.id).toBe("journeys");
+    expect(findActiveModule("operations","/admin/motoristas","")?.id).toBe("people");
+    expect(findActiveModule("operations","/admin/passageiros","")?.id).toBe("people");
+    expect(getDepartmentOfPath("/admin/matching")).toBe("operations");
   });
   it("keeps the most specific module active in detail pages and aliases", () => {
     expect(findActiveModule("research", "/admin/formularios/respostas/", "rows")?.id).toBe(
