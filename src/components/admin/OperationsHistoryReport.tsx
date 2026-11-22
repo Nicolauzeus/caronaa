@@ -3,7 +3,6 @@ import { Activity, CalendarDays, ChevronDown, ChevronUp, Clock3, Download, Mail,
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
-import { OperationsReportSchedules } from "./OperationsReportSchedules";
 import { OperationsPrintableReport } from "./OperationsPrintableReport";
 import { OperationsGoogleMapsUsage, type GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import { OperationsAppEngagement, type AppEngagementReport } from "./OperationsAppEngagement";
@@ -445,7 +444,6 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <OperationsAppEngagement report={appEngagement} error={engagementError} loading={busy}/>
       <OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/>
     </>}
-    {mode==="reports"&&<div className="print:hidden"><OperationsReportSchedules/></div>}
     </div>
     {mode==="reports"&&report&&!busy&&valid&&<OperationsPrintableReport
       summary={report.summary}

@@ -15,6 +15,7 @@ describe("CARONAA operations reporting + support contract",()=>{
     expect(report).toContain("Horários com mais pedidos");
     expect(report).toContain("Pedidos registrados");
     expect(report).not.toContain("Entenda a conversão dos pedidos");
+    expect(report).not.toContain("<OperationsReportSchedules");
     expect(report).not.toContain('aria-label="Composição e reconciliação dos pedidos"');
     expect(report).toContain("sinais reais de atividade");
     expect(report).toContain("admin_operations_history_report");

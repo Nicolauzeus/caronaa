@@ -36,7 +36,7 @@ describe("CARONAA unified operations closeout",()=>{
     expect(history).toContain('"admin_operations_intelligence"');
     expect(history).toContain("p_from:dates.from,p_to:dates.to,p_service:service");
     expect(history).toContain("OperationsMobilityIntelligence");
-    expect(history).toContain("OperationsReportSchedules");
+    expect(history).not.toContain("OperationsReportSchedules");
     expect(history).toContain("OperationsPrintableReport");
   });
   it("plots real shared requests/offers and booked pickup places without faking GPS",()=>{
