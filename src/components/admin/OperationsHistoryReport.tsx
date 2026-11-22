@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
 import { OperationsReportSchedules } from "./OperationsReportSchedules";
+import { calculateOperationsDisplay, PRESENTATION_ILLUSTRATIVE_REQUESTS } from "./operations-presentation";
 
 type Summary = {
   orders:number; accepted:number; unaccepted:number; completed:number; cancelled:number;
-  expired:number; in_progress:number; unique_passengers:number;
+  expired:number; in_progress:number;searching:number;other:number; unique_passengers:number;
   flash_orders:number;shared_orders:number;completed_fares_cents:number;completed_unpriced?:number;
-  cancelled_without_acceptance:number;expired_without_acceptance:number;
+  cancelled_without_acceptance:number;cancelled_after_acceptance:number;expired_without_acceptance:number;
 };
 type Order = {
   id:string;service:"flash"|"shared";requested_at:string;origin:string;destination:string;
@@ -63,6 +64,7 @@ export function OperationsHistoryReport(){
   const [from,setFrom]=useState("");const [to,setTo]=useState("");
   const [service,setService]=useState<"all"|"flash"|"shared">("all");
   const [status,setStatus]=useState("all");
+  const [presentationMode,setPresentationMode]=useState(false);
   const [heatMetric,setHeatMetric]=useState<"orders"|"drivers"|"passengers_preparing">("orders");
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
@@ -95,7 +97,7 @@ export function OperationsHistoryReport(){
   const maxHour=Math.max(1,...(report?.hours??[]).map(x=>x.orders));
   const peak=report?.hours?.length?report.hours.reduce((a,b)=>b.orders>a.orders?b:a):null;
   const quiet=report?.hours?.length?report.hours.filter(x=>x.orders>0).sort((a,b)=>a.orders-b.orders)[0]:null;
-  const acceptedRate=report?.summary?.orders?100*report.summary.accepted/report.summary.orders:0;
+  const display=report?calculateOperationsDisplay(report.summary,presentationMode):null;
   const selectedHeat=heatMetric==="orders"?report?.hour_days:report?.presence_hour_days;
   const heatMap=useMemo(()=>{
     const field=heatMetric==="orders"?"orders":heatMetric;
@@ -110,14 +112,14 @@ export function OperationsHistoryReport(){
   const driverPeak=peakPresence("drivers");
   const passengerPeak=peakPresence("passengers_preparing");
   const share=()=>{
-    if(!report)return;
+    if(!report||presentationMode)return;
     const msg="CARONAA · Resumo operacional ("+dates.from+" a "+dates.to+")\n"+
       "Pedidos: "+fmt(report.summary.orders)+"\nSem aceite: "+fmt(report.summary.unaccepted)+
       "\nConcluídas: "+fmt(report.summary.completed)+"\nCanceladas: "+fmt(report.summary.cancelled);
     window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank","noopener,noreferrer");
   };
   const sendEmail=()=>{
-    if(!report)return;
+    if(!report||presentationMode)return;
     const body="Resumo operacional CARONAA\nPeríodo: "+dates.from+" a "+dates.to+
       "\nPedidos: "+fmt(report.summary.orders)+"\nSem aceite: "+fmt(report.summary.unaccepted)+
       "\nAceitos: "+fmt(report.summary.accepted)+"\nConcluídas: "+fmt(report.summary.completed)+
@@ -132,9 +134,9 @@ export function OperationsHistoryReport(){
       </div>
       <div className="flex flex-wrap gap-2 print:hidden">
         <Button size="sm" variant="outline" onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
-        <Button size="sm" variant="outline" disabled={!report} onClick={sendEmail}><Mail size={15} className="mr-1"/> E-mail</Button>
-        <Button size="sm" variant="outline" disabled={!report} onClick={share}><MessageCircle size={15} className="mr-1"/> WhatsApp</Button>
-        <Button size="sm" variant="outline" disabled={!report} onClick={()=>downloadCsv(rows)}><Download size={15} className="mr-1"/> CSV da página</Button>
+        <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={sendEmail}><Mail size={15} className="mr-1"/> E-mail</Button>
+        <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={share}><MessageCircle size={15} className="mr-1"/> WhatsApp</Button>
+        <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={()=>downloadCsv(rows)}><Download size={15} className="mr-1"/> CSV da página</Button>
       </div>
     </header>
     <section className="flex flex-wrap items-end gap-2 rounded-2xl border bg-card p-3 print:hidden" aria-label="Filtros dos relatórios">
@@ -150,20 +152,85 @@ export function OperationsHistoryReport(){
         <option value="all">Todos</option><option value="flash">Corridas Rápidas</option><option value="shared">Caronas</option>
       </select></label>
       <Button size="sm" variant="outline" onClick={()=>setReload(x=>x+1)} disabled={busy}><RefreshCw size={14} className="mr-1"/> Atualizar</Button>
+      <button type="button" aria-pressed={presentationMode} disabled={!report||busy} onClick={()=>setPresentationMode(value=>!value)}
+        className={"min-h-10 rounded-xl border px-3 text-xs font-bold transition-colors disabled:opacity-50 "+
+          (presentationMode?"border-amber-600 bg-amber-100 text-amber-900":"border-border bg-card text-foreground")}>
+        {presentationMode?"Sair da demonstração":"Modo apresentação (+108)"}
+      </button>
     </section>
+    {presentationMode&&report&&!busy&&<section role="note" className="caronaa-demo-banner space-y-2 rounded-2xl border-2 border-amber-500 bg-amber-50 p-4 text-amber-950">
+      <h2 className="font-[Sora] text-base font-extrabold">CENÁRIO DEMONSTRATIVO — NÃO SÃO DADOS REAIS</h2>
+      <p className="text-sm">
+        {fmt(display?.actualOrders)} pedidos registrados de verdade + {PRESENTATION_ILLUSTRATIVE_REQUESTS} pedidos hipotéticos,
+        classificados exclusivamente como aguardando motorista = <strong>{fmt(display?.orders)} pedidos neste cenário ilustrativo</strong>.
+      </p>
+      <p className="text-xs">
+        Esta projeção usa o serviço e período selecionados. Banco, clientes, motoristas, histórico, horários e mapa de calor permanecem reais e inalterados.
+        A taxa de aceite do cenário é hipotética. Compartilhamentos e CSV ficam desativados nesta visualização.
+      </p>
+    </section>}
     {error&&<p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Indicadores de pedidos e corridas">
-      <Stat title="Pedidos feitos" icon={<Users size={18}/>} value={busy?"…":fmt(report?.summary.orders)} hint="Solicitações registradas, com ou sem aceite"/>
-      <Stat title="Sem aceite" icon={<XCircle size={18}/>} value={busy?"…":fmt(report?.summary.unaccepted)} hint="Inclui buscas abertas, expiradas e canceladas antes de aceitar"/>
-      <Stat title="Pedidos aceitos" icon={<CheckCircle2 size={18}/>} value={busy?"…":fmt(report?.summary.accepted)} hint={"Taxa de aceite: "+(report?acceptedRate.toFixed(1).replace(".",",")+"%":"—")}/>
-      <Stat title="Corridas concluídas" icon={<CheckCircle2 size={18}/>} value={busy?"…":fmt(report?.summary.completed)} hint="Concluídas com registro confirmado"/>
-      <Stat title="Canceladas" icon={<XCircle size={18}/>} value={busy?"…":fmt(report?.summary.cancelled)} hint="Inclui cancelamentos com e sem aceite"/>
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
+      <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
+        hint={presentationMode?"Real: "+fmt(report?.summary.orders)+" · Simulados: +108":"Total real de solicitações no período"}/>
+      <Stat title="Aguardando motorista" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.searching)}
+        hint={presentationMode?"Real: "+fmt(report?.summary.searching)+" · Simulados: +108":"Solicitações abertas, ainda sem aceite"}/>
+      <Stat title="Em atendimento" icon={<Activity size={18}/>} value={busy?"…":fmt(display?.in_progress)}
+        hint="Aceitas, embarcando, em viagem ou revisão"/>
+      <Stat title="Corridas concluídas" icon={<CheckCircle2 size={18}/>} value={busy?"…":fmt(display?.completed)}
+        hint="Concluídas com registro confirmado"/>
+      <Stat title="Canceladas" icon={<XCircle size={18}/>} value={busy?"…":fmt(display?.cancelled)}
+        hint={fmt(report?.summary.cancelled_without_acceptance)+" antes do aceite · "+fmt(report?.summary.cancelled_after_acceptance)+" depois"}/>
+      <Stat title="Expiradas" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.expired)}
+        hint="Prazo encerrado sem aceite, inclusive buscas vencidas ainda não regularizadas"/>
+    </section>
+    <section className="space-y-3 rounded-2xl border bg-card p-4" aria-label="Composição e reconciliação dos pedidos">
+      <div>
+        <h2 className="font-[Sora] text-lg font-bold">Entenda a conversão dos pedidos</h2>
+        <p className="text-xs text-muted-foreground">
+          Aceite e resultado final são duas leituras diferentes do mesmo pedido. Nunca some os cancelamentos novamente ao total.
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-border bg-background p-3">
+          <p className="text-xs text-muted-foreground">Nunca receberam aceite</p>
+          <p className="font-[Sora] text-xl font-extrabold">{fmt(display?.unaccepted)}</p>
+          <p className="text-xs text-muted-foreground">{presentationMode?"Inclui 108 pedidos hipotéticos":"Inclui cancelados antes do aceite, expirados e aguardando"}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-background p-3">
+          <p className="text-xs text-muted-foreground">Receberam aceite de motorista</p>
+          <p className="font-[Sora] text-xl font-extrabold">{fmt(display?.accepted)}</p>
+          <p className="text-xs text-muted-foreground">
+            Taxa {presentationMode?"ilustrativa":"real"} de aceite: {display?display.displayedAcceptanceRate.toFixed(1).replace(".",",")+"%":"—"}
+            {presentationMode&&display?" · taxa real: "+display.realAcceptanceRate.toFixed(1).replace(".",",")+"%":""}
+          </p>
+        </div>
+      </div>
+      {display&&<div className="flex h-3 w-full overflow-hidden rounded-full" role="img"
+        aria-label={display.unaccepted+" sem aceite e "+display.accepted+" com aceite"}>
+        <div className="bg-amber-400" style={{width:(display.orders?100*display.unaccepted/display.orders:0)+"%"}}/>
+        <div className="bg-emerald-500" style={{width:(display.orders?100*display.accepted/display.orders:0)+"%"}}/>
+      </div>}
+      <p className="text-xs text-muted-foreground">
+        Cancelamentos: <strong>{fmt(display?.cancelled_without_acceptance)} antes</strong> +{" "}
+        <strong>{fmt(display?.cancelled_after_acceptance)} após o aceite</strong> ={" "}
+        <strong>{fmt(display?.cancelled)} cancelamentos</strong>. São pedidos já incluídos na contagem total.
+      </p>
+      {display&&!display.outcomesReconcile&&
+        <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          Os resultados finais ainda não reconciliam com o total (outros estados: {fmt(display.other)}). Revise a classificação no servidor antes de divulgar um relatório fechado.
+        </p>}
+      {display&&!display.acceptanceReconciles&&<p role="alert" className="text-xs text-red-700">Contagens de pedidos aceitos e não aceitos não correspondem ao total. Verifique a consulta.</p>}
+      {display&&!display.cancellationsReconcile&&
+        <p role="alert" className="text-xs text-red-700">
+          Atenção: cancelamentos antes/depois do aceite não reconciliam; verifique o histórico de status.
+        </p>}
     </section>
     <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
       <article className="rounded-2xl border bg-card p-4">
         <h2 className="font-[Sora] text-lg font-bold">Horários com mais pedidos</h2>
-        <p className="mb-4 text-xs text-muted-foreground">Pedidos criados por hora local, no período selecionado. Nenhuma projeção artificial.</p>
+        <p className="mb-4 text-xs text-muted-foreground">Pedidos reais criados por hora local no período. O cenário demonstrativo não altera este gráfico.</p>
         <div className="grid grid-cols-12 items-end gap-1 sm:grid-cols-24" role="img" aria-label="Histograma de pedidos por hora">
           {(report?.hours??Array.from({length:24},(_,hour)=>({hour,orders:0,passengers:0}))).map(h=>
             <div key={h.hour} className="flex min-w-0 flex-col items-center gap-1">
@@ -180,7 +247,7 @@ export function OperationsHistoryReport(){
         <p className="mb-4 text-xs text-muted-foreground">Presença atual e passageiros que prepararam pedidos.</p>
         <Stat title="Motoristas online agora" icon={<Activity size={18}/>} value={busy?"…":fmt(report?.active_now.drivers)} hint="Último sinal válido há até 90 segundos"/>
         <div className="mt-3"><Stat title="Passageiros preparando pedidos" icon={<Users size={18}/>} value={busy?"…":fmt(report?.active_now.passengers_preparing)} hint="Sinal de demanda nos últimos 90 segundos"/></div>
-        <p className="mt-3 text-xs text-muted-foreground">Histórico de motoristas e passageiros ativos por hora: indisponível. É necessária coleta periódica de amostras antes de calcular picos de presença.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Histórico por hora será exibido conforme sinais reais de atividade forem coletados. Ausência de amostras não significa ausência de usuários.</p>
       </article>
     </section>
     <section className="rounded-2xl border bg-card p-4" aria-label="Matriz de calor por hora e dia da semana">

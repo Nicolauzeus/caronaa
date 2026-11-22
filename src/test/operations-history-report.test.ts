@@ -13,10 +13,12 @@ describe("CARONAA operations reporting + support contract",()=>{
   });
   it("uses current and historical demand without fabricated presence history",()=>{
     expect(report).toContain("Horários com mais pedidos");
-    expect(report).toContain("Pedidos feitos");
-    expect(report).toContain("Sem aceite");
-    expect(report).toContain("indisponível. É necessária coleta periódica");
+    expect(report).toContain("Pedidos registrados");
+    expect(report).toContain("Nunca receberam aceite");
+    expect(report).toContain("sinais reais de atividade");
     expect(report).toContain("admin_operations_history_report");
+    expect(report).toContain("CENÁRIO DEMONSTRATIVO — NÃO SÃO DADOS REAIS");
+    expect(report).toContain("presentationMode");
   });
   it("uses server-managed support, never a hardcoded Brazilian number",()=>{
     expect(phone).toContain("get_caronaa_support_whatsapp");
