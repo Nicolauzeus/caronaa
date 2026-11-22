@@ -28,7 +28,7 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(ui).toContain("projectRequestHistogram");
     expect(ui).toContain("Estimativa proporcional sobre a base registrada.");
     expect(projection).toContain("PRESENTATION_ILLUSTRATIVE_REQUESTS=108");
-    expect(projection).toContain("ENABLE_OPERATIONS_PROJECTION=true");
+    expect(projection).toContain("ENABLE_OPERATIONS_PROJECTION=false");
     expect(projection).toContain("allocateProportionally");
     expect(projection).toContain("accepted:actual.accepted+acceptedAdd");
     expect(projection).not.toContain("supabase");

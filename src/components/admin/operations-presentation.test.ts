@@ -8,9 +8,9 @@ const actual={
   cancelled_without_acceptance:24,cancelled_after_acceptance:10,
 };
 describe("CARONAA projected report remains labeled, separate and mathematically consistent",()=>{
-  it("defaults to a projected display, with a one-line code rollback",()=>{
-    expect(ENABLE_OPERATIONS_PROJECTION).toBe(true);
-    expect(calculateOperationsDisplay(actual,ENABLE_OPERATIONS_PROJECTION).orders).toBe(180);
+  it("shows only recorded orders by default",()=>{
+    expect(ENABLE_OPERATIONS_PROJECTION).toBe(false);
+    expect(calculateOperationsDisplay(actual,ENABLE_OPERATIONS_PROJECTION).orders).toBe(72);
   });
   it("uses exactly the unchanged real numbers in normal mode",()=>{
     const value=calculateOperationsDisplay(actual,false);

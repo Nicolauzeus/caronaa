@@ -4,7 +4,7 @@
  */
 export const PRESENTATION_ILLUSTRATIVE_REQUESTS=108;
 /** One-line rollback switch. No control is shown to report viewers. */
-export const ENABLE_OPERATIONS_PROJECTION=true;
+export const ENABLE_OPERATIONS_PROJECTION=false;
 
 export type OperationsBreakdown={
   orders:number; accepted:number; unaccepted:number;
