@@ -1,5 +1,6 @@
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import type { GoogleUsageReport } from "./OperationsGoogleMapsUsage";
+import type { AppEngagementReport } from "./OperationsAppEngagement";
 
 export type PdfReportData = {
   from:string;to:string;service:"all"|"flash"|"shared";generatedAt:string;
@@ -12,6 +13,7 @@ export type PdfReportData = {
   hours:Array<{hour:number;orders:number}>;
   hour_days:Array<{weekday:number;hour:number;orders:number}>;
   google_usage?:GoogleUsageReport;
+  app_engagement?:AppEngagementReport;
 };
 const BLACK="#121212", YELLOW="#FFBB00", GREY="#657181";
 const serviceNames={all:"Todos os servicos",flash:"Corrida Rapida",shared:"Caronas compartilhadas"};
@@ -105,6 +107,13 @@ function firstPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageEl
 }
 function secondPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageElement|null){
   head(ctx,logo,d,"HORARIOS DE MAIOR DEMANDA");
+  text(ctx,"ACESSOS AUTENTICADOS AO APLICATIVO",65,223,23,BLACK,true);
+  if(d.app_engagement){
+    const a=d.app_engagement.summary;
+    const values=[["Pessoas unicas",a.unique_users],["Passageiros",a.passengers],["Motoristas",a.drivers],["Ambos os perfis",Math.max(0,a.passengers+a.drivers-a.unique_users)]] as const;
+    values.forEach(([label,value],i)=>card(ctx,65+i*370,244,345,116,label,num(value),i===0?YELLOW:"#64748B",i===0?"#FFF9E8":"#F8FAFC"));
+  }else text(ctx,"Historico de acessos ainda nao disponivel.",65,297,19,GREY);
+  text(ctx,"Somente sessoes autenticadas medidas apos o inicio da coleta.",65,395,16,GREY);
   const series=Array.from({length:24},(_,hour)=>d.hours.find(x=>x.hour===hour)?.orders??0);
   const max=Math.max(1,...series);
   const chartY=480,chartH=230,barW=44,gap=16;

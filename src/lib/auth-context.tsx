@@ -73,6 +73,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [router]);
 
+  // Authenticated engagement: count unique accounts once per day/role, with
+  // throttled presence signals. No GPS, user agent, IP or raw navigation data.
+  useEffect(()=>{
+    if(!user?.id||typeof window==="undefined")return;
+    let alive=true;
+    let lastSent=0;
+    const mark=()=>{
+      if(!alive||document.hidden||!navigator.onLine||Date.now()-lastSent<60_000)return;
+      lastSent=Date.now();
+      void (supabase as any).rpc("record_caronaa_app_access").then(
+        ({error}:{error?:unknown})=>{if(error)lastSent=0;}
+      ).catch(()=>{lastSent=0;});
+    };
+    mark();
+    const onVisible=()=>mark();
+    const timer=window.setInterval(mark,5*60_000);
+    window.addEventListener("focus",onVisible);
+    window.addEventListener("pageshow",onVisible);
+    window.addEventListener("online",onVisible);
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{
+      alive=false;window.clearInterval(timer);
+      window.removeEventListener("focus",onVisible);
+      window.removeEventListener("pageshow",onVisible);
+      window.removeEventListener("online",onVisible);
+      document.removeEventListener("visibilitychange",onVisible);
+    };
+  },[user?.id]);
+
   useEffect(()=>{
     if(!user?.id||!user.email_confirmed_at||readPendingParticipations().length===0)return;
     // Only claims for receipts explicitly opted into after submission.

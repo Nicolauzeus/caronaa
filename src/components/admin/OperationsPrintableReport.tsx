@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import type { GoogleUsageReport } from "./OperationsGoogleMapsUsage";
+import type { AppEngagementReport } from "./OperationsAppEngagement";
 
 type Summary = {
   orders:number;accepted:number;unaccepted:number;completed:number;
@@ -15,6 +16,7 @@ type Props = {
   summary:Summary;hours:Hour[];hourDays:Cell[];
   from:string;to:string;service:"all"|"flash"|"shared";generatedAt:string;
   googleUsage:GoogleUsageReport|null;
+  appEngagement:AppEngagementReport|null;
 };
 const nf=(v:number)=>v.toLocaleString("pt-BR");
 const currency=(c:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(c/100);
@@ -28,7 +30,7 @@ function Metric({label,value,kind="normal"}:{label:string;value:string;kind?:str
 function Heading({children}:{children:ReactNode}){
   return <h2 className="opr-pdf-heading">{children}</h2>;
 }
-export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage}:Props){
+export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage,appEngagement}:Props){
   const count=summary.orders;
   const percent=(n:number)=>count?(100*n/count).toFixed(1).replace(".",",")+"%":"0%";
   const hourValues=Array.from({length:24},(_,hour)=>hours.find(x=>x.hour===hour)?.orders??0);
@@ -124,6 +126,16 @@ export function OperationsPrintableReport({summary,hours,hourDays,from,to,servic
       </div>
     </section>
 
+    <section className="opr-pdf-card opr-pdf-google-section">
+      <Heading>Pessoas que acessaram o aplicativo</Heading>
+      {appEngagement?<div className="opr-pdf-google-metrics">
+        <div><span>Usuários autenticados únicos</span><strong>{nf(appEngagement.summary.unique_users)}</strong></div>
+        <div><span>Passageiros</span><strong>{nf(appEngagement.summary.passengers)}</strong></div>
+        <div><span>Motoristas</span><strong>{nf(appEngagement.summary.drivers)}</strong></div>
+        <div><span>Ambos os perfis</span><strong>{nf(Math.max(0,appEngagement.summary.passengers+appEngagement.summary.drivers-appEngagement.summary.unique_users))}</strong></div>
+      </div>:<p>Coleta de acessos ainda não disponível.</p>}
+      <p className="opr-pdf-detail">Usuários distintos autenticados; coleta iniciada em {appEngagement?.collection_started_at?new Date(appEngagement.collection_started_at).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza"}):"data ainda não disponível"}. Dados anteriores não foram reconstruídos.</p>
+    </section>
     <section className="opr-pdf-card opr-pdf-google-section">
       <Heading>Consumo Google Maps · integrações</Heading>
       {googleUsage?<div className="opr-pdf-google-metrics">
