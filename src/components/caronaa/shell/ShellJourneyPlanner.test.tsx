@@ -63,7 +63,7 @@ beforeEach(()=>{
 });
 afterEach(()=>{vi.useRealTimers();cleanup();});
 
-function Harness(){
+function Harness({driverCounts={CAR:2,MOTO:3},driverErrors={}}:{driverCounts?:Record<"CAR"|"MOTO",number>;driverErrors?:Partial<Record<"CAR"|"MOTO",string>>}={}){
   const [snap,setSnap]=useState<SheetSnap>("peek");
   const [service,setService]=useState<"FLASH"|"AGENDADA">("FLASH");
   const expiresAt=new Date(Date.now()+60000).toISOString();
@@ -72,7 +72,7 @@ function Harness(){
     commissionSource:"MACICO" as const,policyVersion:"pilot"};
   return <ShellJourneyPlanner {...props} snap={snap}
     serviceType={service} onServiceTypeChange={setService} onSnapChange={setSnap}
-    flashDriverCounts={{CAR:2,MOTO:3}}
+    flashDriverCounts={driverCounts} flashDriverErrors={driverErrors}
     flashFares={{
       CAR:{...common,quoteId:"car-quote",vehicleType:"CAR",customerPaysCents:1800},
       MOTO:{...common,quoteId:"moto-quote",vehicleType:"MOTO",customerPaysCents:1000},
@@ -112,6 +112,40 @@ describe("CARONAA Flash passenger shell",()=>{
     fireEvent.click(screen.getByRole("button",{name:/Voltar às opções/}));
     expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
     expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
+  });
+
+  it("allows priced Flash requests with zero drivers online and keeps server waiting flow",async()=>{
+    render(<Harness driverCounts={{CAR:0,MOTO:0}}/>);
+    fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    await waitFor(()=>expect(api.route).toHaveBeenCalledTimes(1));
+    const car=await screen.findByRole("radio",{name:/Flash Carro/});
+    const moto=screen.getByRole("radio",{name:/Flash Moto/});
+    expect(car).not.toBeDisabled();
+    expect(moto).not.toBeDisabled();
+    expect(car).toHaveTextContent("Sem motorista agora · você pode aguardar");
+    expect(car).toHaveTextContent("Solicitar e aguardar");
+    fireEvent.click(car);
+    expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
+    expect(screen.getByText(/pedido ficará ativo por até 30 minutos/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
+    expect(api.dispatch).toHaveBeenCalledOnce();
+  });
+  it("does not block a priced request when the driver radar has an error",async()=>{
+    render(<Harness driverCounts={{CAR:0,MOTO:0}} driverErrors={{MOTO:"Falha de radar"}}/>);
+    fireEvent.click(screen.getByRole("button",{name:/para onde vamos/i}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    const moto=await screen.findByRole("radio",{name:/Flash Moto/});
+    expect(moto).not.toBeDisabled();
+    expect(moto).toHaveTextContent("Radar indisponível · ainda pode solicitar");
+    fireEvent.click(moto);
+    expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
+  });
+  it("does not allow a request without an authorized quote even when drivers exist",async()=>{
+    render(<ShellJourneyPlanner {...props} snap="half" flashDriverCounts={{CAR:2,MOTO:0}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
+    const car=await screen.findByRole("radio",{name:/Flash Carro/});
+    expect(car).toBeDisabled();
   });
 
   it("does not display a fictitious shared ride or duplicate review",async()=>{

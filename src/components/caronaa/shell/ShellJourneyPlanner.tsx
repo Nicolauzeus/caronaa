@@ -283,8 +283,8 @@ export function ShellJourneyPlanner({
 
   const flashChoices=<section aria-label="Escolha sua carona" className="space-y-3">
     <div className="space-y-1">
-      <h2 className="font-[Sora] text-lg font-extrabold text-white">Opções disponíveis agora</h2>
-      <p className="text-xs leading-relaxed text-white/65">Confira preços, distância e motoristas online para seu destino.</p>
+      <h2 className="font-[Sora] text-lg font-extrabold text-white">Escolha sua Corrida Rápida</h2>
+      <p className="text-xs leading-relaxed text-white/65">Confira o preço. Mesmo sem motorista online, você pode solicitar e aguardar por até 30 minutos.</p>
     </div>
     <div role="radiogroup" aria-label="Opções de viagem" className="space-y-2">
       {(["MOTO","CAR"] as const).map(type=>{
@@ -293,7 +293,7 @@ export function ShellJourneyPlanner({
         const onlineCount=flashDriverCounts[type];
         const radarFailed=Boolean(flashDriverErrors[type]||flashDriverError);
         const available=onlineCount>0&&!radarFailed;
-        const ready=available&&Boolean(price)&&!flashRideActive;
+        const ready=Boolean(price)&&!flashRideActive; // Driver presence is informational; the server holds a valid request for 30 minutes.
         const checked=flashStep==="confirm"&&mode==="EXCLUSIVE"&&exclusiveVehicle===type;
         return <button type="button" key={type} role="radio" aria-checked={checked}
           disabled={!ready}
@@ -313,15 +313,15 @@ export function ShellJourneyPlanner({
             <small className="block text-[11px] text-white/65">{type==="MOTO"?"Mototáxi profissional":"Motorista profissional"}</small>
             <small className="mt-1 block text-[11px] text-white/55">{fare?.durationMinutes?Math.round(fare.durationMinutes)+" min · ":""}{fare?.distanceKm.toFixed(1)??"—"} km</small>
             <small className={`mt-1 block text-[11px] ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
-              {flashDriverLoading?"Consultando motoristas…":radarFailed?"Radar temporariamente indisponível":available
-                ?`${onlineCount} ${type==="MOTO"?"mototaxista(s)":"motorista(s)"} online`:"Nenhum motorista online"}
+              {flashDriverLoading?"Verificando motoristas…":radarFailed?"Radar indisponível · ainda pode solicitar":available
+                ?`${onlineCount} ${type==="MOTO"?"mototaxista(s)":"motorista(s)"} online`:"Sem motorista agora · você pode aguardar"}
             </small>
           </span>
           <span className="shrink-0 text-right">
             <strong className="block font-[Sora] text-sm font-extrabold text-[#FFBB00]">
               {price??(flashFarePending?"Calculando…":"Indisponível")}
             </strong>
-            {ready&&<small className="block text-[10px] text-white/45">Selecionar</small>}
+            {ready&&<small className="block text-[10px] text-white/65">{available?"Selecionar":"Solicitar e aguardar"}</small>}
           </span>
         </button>;
       })}
@@ -486,6 +486,7 @@ export function ShellJourneyPlanner({
                   {flashFares[exclusiveVehicle]!.distanceKm.toFixed(1)} km · aproximadamente {Math.round(flashFares[exclusiveVehicle]!.durationMinutes)} min
                 </p>}
               <p className="border-t border-white/10 pt-2 text-xs text-white/65">Pagamento direto ao motorista, conforme a operação da viagem. Revise o preço antes de confirmar.</p>
+              {(flashDriverCounts[exclusiveVehicle]??0)===0&&<p role="status" className="text-xs text-[#FFBB00]">Nenhum motorista online agora. Seu pedido ficará ativo por até 30 minutos para receber novos motoristas elegíveis.</p>}
             </div>
           </section>}
         {!flashRideActive&&flashStep==="shared"&&flashOnRoute}
