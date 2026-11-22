@@ -137,7 +137,7 @@ describe("CARONAA Flash passenger shell",()=>{
     fireEvent.click(screen.getByRole("button",{name:"Selecionar destino"}));
     const moto=await screen.findByRole("radio",{name:/Flash Moto/});
     expect(moto).not.toBeDisabled();
-    expect(moto).toHaveTextContent("Radar indisponível · ainda pode solicitar");
+    expect(moto).toHaveTextContent("Radar temporariamente indisponível · pode solicitar");
     fireEvent.click(moto);
     expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
   });

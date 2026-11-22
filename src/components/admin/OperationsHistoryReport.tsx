@@ -3,6 +3,7 @@ import { Activity, CalendarDays, Clock3, Download, Mail, MessageCircle, Printer,
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
+import { OperationsReportSchedules } from "./OperationsReportSchedules";
 
 type Summary = {
   orders:number; accepted:number; unaccepted:number; completed:number; cancelled:number;
@@ -276,5 +277,6 @@ export function OperationsHistoryReport(){
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Use os filtros de período e serviço para os totais globais. PDF: impressão da página; e-mail e WhatsApp: compartilhamento manual do resumo, sem envio automático.</p>
     </section>
+    <div className="print:hidden"><OperationsReportSchedules/></div>
   </main>;
 }

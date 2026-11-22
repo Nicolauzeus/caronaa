@@ -313,7 +313,7 @@ export function ShellJourneyPlanner({
             <small className="block text-[11px] text-white/65">{type==="MOTO"?"Mototáxi profissional":"Motorista profissional"}</small>
             <small className="mt-1 block text-[11px] text-white/55">{fare?.durationMinutes?Math.round(fare.durationMinutes)+" min · ":""}{fare?.distanceKm.toFixed(1)??"—"} km</small>
             <small className={`mt-1 block text-[11px] ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
-              {flashDriverLoading?"Verificando motoristas…":radarFailed?"Radar indisponível · ainda pode solicitar":available
+              {flashDriverLoading?"Verificando motoristas…":radarFailed?"Radar temporariamente indisponível · pode solicitar":available
                 ?`${onlineCount} ${type==="MOTO"?"mototaxista(s)":"motorista(s)"} online`:"Sem motorista agora · você pode aguardar"}
             </small>
           </span>

@@ -1,0 +1,33 @@
+name: CARONAA Operational Report Emails
+on:
+  schedule:
+    # Every hour at :17 UTC; backend uses America/Fortaleza and each admin-configured hour.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: caronaa-ops-report-delivery
+  cancel-in-progress: false
+jobs:
+  send-operational-reports:
+    if: ${{ vars.CARONAA_REPORTS_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      REPORT_ENDPOINT: ${{ secrets.CARONAA_REPORT_ENDPOINT }}
+      REPORT_SCHEDULER_TOKEN: ${{ secrets.CARONAA_REPORT_SCHEDULER_TOKEN }}
+    steps:
+      - name: Trigger authenticated CARONAA report sender
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${REPORT_ENDPOINT}" ] || [ -z "${REPORT_SCHEDULER_TOKEN}" ]; then
+            echo "Scheduler endpoint/token not configured." >&2
+            exit 1
+          fi
+          curl --fail-with-body --max-time 45 --retry 2 --retry-delay 2 \
+            -X POST "${REPORT_ENDPOINT}" \
+            -H "Authorization: Bearer ${REPORT_SCHEDULER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}'

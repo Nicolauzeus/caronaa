@@ -341,6 +341,8 @@ Formulários + perfis + ofertas + solicitações + viagens concluídas
 
 **Aceite F09:** participantes de dois formulários aparecem corretamente, BI agrega sem contar a pessoa duas vezes como contato e indicadores distinguem estimativas de resultados reais.
 
+**Resumos operacionais periódicos (22/11/2026):** Histórico & Relatórios oferece resumos de pedidos, aceites, falhas de aceite, cancelamentos, conclusões e picos por hora. Administradores podem configurar envios diários, semanais e mensais por e-mail com destinatários autorizados; nunca incluir dados pessoais, GPS ou Pix nesses e-mails. Os agendamentos começam desligados e exigem serviço de envio, token secreto de agendamento e executor confiável configurados antes de serem considerados operacionais. O estado enviado ao provedor não garante entrega final. O painel mantém impressão/PDF manual e compartilhamento manual separados do envio agendado.
+
 **Ponte BI → CRM:** análises de pesquisa oferecem acesso ao CRM com recorte compartilhável por instituição, perfil e dor. No CRM os filtros de origem, destino, horário e orçamento pertencem à **mesma participação**, evitando juntar a origem de uma resposta com o destino de outra. A quantidade de respostas elegíveis do BI não deve ser apresentada como número de contatos acionáveis; nenhuma autorização de comunicação é inferida. A tela de respostas legadas da STS permanece disponível separadamente, e a operação de contatos fica centralizada em `/admin/relacionamentos`.
 
 
