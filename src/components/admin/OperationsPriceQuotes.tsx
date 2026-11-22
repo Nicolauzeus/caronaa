@@ -1,3 +1,4 @@
+import {formatQuoteDate,groupQuoteDaysForChart} from "./operations-quote-buckets";
 export type PriceQuotesReport={
   from:string;to:string;service:"all"|"flash"|"shared";timezone:string;generated_at:string;
   summary:{quotes_generated:number;unique_quoters:number;flash_quotes:number;shared_quotes:number};
@@ -7,7 +8,9 @@ export function OperationsPriceQuotes({
   report,error,loading
 }:{report:PriceQuotesReport|null;error:string;loading:boolean}){
   const s=report?.summary;
-  const max=Math.max(1,...(report?.daily??[]).map(d=>d.quotes_generated));
+  const bars=groupQuoteDaysForChart(report?.daily??[]);
+  const isGrouped=(report?.daily.length??0)>7;
+  const max=Math.max(1,...bars.map(bar=>bar.quotes));
   return <section className="rounded-2xl border bg-card p-4" aria-label="Cotações de preço">
     <div className="mb-3">
       <h2 className="font-[Sora] text-lg font-bold">Cotações de preço</h2>
@@ -33,16 +36,17 @@ export function OperationsPriceQuotes({
         <p className="mt-1 text-xs text-muted-foreground">Contas distintas no intervalo selecionado</p>
       </article>
       <article className="min-w-0 rounded-xl border bg-background p-4">
-        <p className="mb-2 text-sm font-semibold">Cotações por dia</p>
-        <div className="max-h-[124px] space-y-1.5 overflow-auto">
-          {report?.daily.map(day=><div key={day.day} className="grid grid-cols-[66px_minmax(0,1fr)_45px] items-center gap-2 text-xs">
-            <span>{day.day.slice(8,10)+"/"+day.day.slice(5,7)}</span>
-            <div className="h-3 overflow-hidden rounded-sm bg-muted">
-              <div className="h-full bg-[#FFBB00]" style={{width:(100*day.quotes_generated/max)+"%"}}/>
+        <p className="mb-2 text-sm font-semibold">{isGrouped?"Cotações por período":"Cotações por dia"}</p>
+        <div className="space-y-1" aria-label={isGrouped?"Cotações agrupadas por períodos":"Cotações diárias"}>
+          {bars.map(bar=><div key={bar.startDay} className="grid grid-cols-[minmax(0,112px)_minmax(0,1fr)_42px] items-center gap-2 text-[11px] leading-4">
+            <span className="whitespace-nowrap">{formatQuoteDate(bar.startDay)}{bar.startDay!==bar.endDay?"–"+formatQuoteDate(bar.endDay):""}</span>
+            <div className="h-2.5 overflow-hidden rounded-sm bg-muted">
+              <div className="h-full bg-[#FFBB00]" style={{width:(100*bar.quotes/max)+"%"}}/>
             </div>
-            <strong className="text-right tabular-nums">{day.quotes_generated.toLocaleString("pt-BR")}</strong>
+            <strong className="text-right tabular-nums">{bar.quotes.toLocaleString("pt-BR")}</strong>
           </div>)}
         </div>
+        {isGrouped&&<p className="mt-1 text-[11px] text-muted-foreground">Datas agrupadas em até 7 faixas, sem excluir cotações.</p>}
         {s&&<p className="mt-2 text-xs text-muted-foreground">
           {s.flash_quotes.toLocaleString("pt-BR")} rápidas · {s.shared_quotes.toLocaleString("pt-BR")} compartilhadas
         </p>}

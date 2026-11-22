@@ -1,5 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
+import {groupQuoteDaysForChart} from "@/components/admin/operations-quote-buckets";
 describe("CARONAA price quote card by date and service",()=>{
   const sql=readFileSync("drizzle/migrations/0238_admin_price_quotes_report.sql","utf8");
   const ui=readFileSync("src/components/admin/OperationsHistoryReport.tsx","utf8");
@@ -32,6 +33,27 @@ describe("CARONAA price quote card by date and service",()=>{
     expect(quotesUi).toContain("Cotações de preço geradas");
     expect(quotesUi).toContain("Pessoas que receberam cotação");
     expect(quotesUi).toContain("Cotações por dia");
+  });
+  it("displays no internal scrollbar and preserves all quotes with a maximum of 7 bars",()=>{
+    expect(quotesUi).not.toContain("overflow-auto");
+    expect(quotesUi).not.toContain("max-h-[124px]");
+    expect(quotesUi).toContain("groupQuoteDaysForChart(report?.daily??[])");
+    const seven=Array.from({length:7},(_,i)=>({
+      day:"2026-11-"+String(15+i).padStart(2,"0"),quotes_generated:[15,20,20,85,40,252,134][i],
+    }));
+    const oneWeek=groupQuoteDaysForChart(seven);
+    expect(oneWeek).toHaveLength(7);
+    expect(oneWeek.every(x=>x.startDay===x.endDay)).toBe(true);
+    expect(oneWeek.map(x=>x.quotes)).toEqual(seven.map(x=>x.quotes_generated));
+    const month=Array.from({length:30},(_,i)=>({
+      day:"2026-11-"+String(i+1).padStart(2,"0"),quotes_generated:i+1,
+    }));
+    const monthly=groupQuoteDaysForChart(month);
+    expect(monthly).toHaveLength(7);
+    expect(monthly.reduce((sum,x)=>sum+x.quotes,0)).toBe(465);
+    expect(monthly[0].startDay).toBe("2026-11-01");
+    expect(monthly[6].endDay).toBe("2026-11-30");
+    expect(groupQuoteDaysForChart([])).toEqual([]);
   });
   it("exports recorded quote totals into printable and shareable PDFs",()=>{
     expect(ui).toContain("price_quotes:quotes??undefined");
