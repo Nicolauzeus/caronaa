@@ -295,6 +295,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     </>}
     {mode==="reports"&&<>
+    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
         hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>

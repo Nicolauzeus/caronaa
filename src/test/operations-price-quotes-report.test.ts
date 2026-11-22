@@ -21,6 +21,14 @@ describe("CARONAA price quote card by date and service",()=>{
     expect(ui).toContain('"admin_caronaa_price_quotes_report"');
     expect(ui).toContain("p_from:dates.from,p_to:dates.to,p_service:service");
     expect(ui).toContain("OperationsPriceQuotes");
+    // The consolidated nav must NOT remove quote cards from Histórico & Relatórios.
+    // The same persisted quotes can be explored more deeply in Inteligência.
+    const reportSection=ui.slice(ui.indexOf('{mode==="reports"&&<>'));
+    expect(reportSection).toContain('<OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>');
+    expect(reportSection.indexOf("<OperationsPriceQuotes")).toBeLessThan(reportSection.indexOf('aria-label="Resultados exclusivos das solicitações"'));
+    const intelligenceSection=ui.slice(ui.indexOf('{mode==="intelligence"&&<>'));
+    expect(intelligenceSection).toContain('<OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>');
+    expect(ui).toContain('"admin_caronaa_price_quotes_report"');
     expect(quotesUi).toContain("Cotações de preço geradas");
     expect(quotesUi).toContain("Pessoas que receberam cotação");
     expect(quotesUi).toContain("Cotações por dia");
