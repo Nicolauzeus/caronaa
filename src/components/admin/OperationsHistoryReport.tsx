@@ -131,6 +131,9 @@ export function OperationsHistoryReport(){
       <div>
         <h1 className="font-[Sora] text-2xl font-extrabold">Histórico &amp; Relatórios</h1>
         <p className="text-sm text-muted-foreground">Pedidos, corridas, engajamento e inteligência de horários · Fuso de Fortaleza.</p>
+        {presentationMode&&report&&!busy&&<p role="note" className="caronaa-report-projection-label mt-1 text-xs text-muted-foreground">
+          <strong>Cenário projetado</strong> · {fmt(report.summary.orders)} pedidos reais + {PRESENTATION_ILLUSTRATIVE_REQUESTS} estimados = {fmt(display?.orders)} no cenário. Os adicionais não são operações registradas.
+        </p>}
       </div>
       <div className="flex flex-wrap gap-2 print:hidden">
         <Button size="sm" variant="outline" disabled={!report||busy||(ENABLE_OPERATIONS_PROJECTION&&display?.illustrativeOrders!==PRESENTATION_ILLUSTRATIVE_REQUESTS)} onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
@@ -153,12 +156,7 @@ export function OperationsHistoryReport(){
       </select></label>
       <Button size="sm" variant="outline" onClick={()=>setReload(x=>x+1)} disabled={busy}><RefreshCw size={14} className="mr-1"/> Atualizar</Button>
     </section>
-    {presentationMode&&report&&!busy&&<section role="note"
-      className="caronaa-demo-banner flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-      <strong className="font-[Sora]">CENÁRIO PROJETADO</strong>
-      <span>Base real: {fmt(report.summary.orders)} pedidos + {PRESENTATION_ILLUSTRATIVE_REQUESTS} hipotéticos = <strong>{fmt(display?.orders)} pedidos projetados</strong>.
-        Distribuição proporcional; os adicionais não são operações registradas.</span>
-    </section>}
+
     {presentationMode&&display?.illustrativeOrders===0&&<p role="alert"
       className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
       Projeção indisponível: os status reais ainda não reconciliam. Os valores exibidos permanecem reais.

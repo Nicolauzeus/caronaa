@@ -16,7 +16,9 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(sql).not.toContain("UPDATE public.professional_quick_rides");
   });
   it("keeps actual history and charts while showing a permanently labeled scenario",()=>{
-    expect(ui).toContain("CENÁRIO PROJETADO");
+    expect(ui).toContain("Cenário projetado");
+    expect(ui).toContain("caronaa-report-projection-label");
+    expect(ui).not.toContain("caronaa-demo-banner");
     expect(ui).not.toContain("Simular +108 pedidos");
     expect(ui).not.toContain("setPresentationMode");
     expect(ui).toContain("calculateOperationsDisplay(report.summary,ENABLE_OPERATIONS_PROJECTION)");
@@ -30,7 +32,7 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(projection).toContain("accepted:actual.accepted+acceptedAdd");
     expect(projection).not.toContain("supabase");
     const printCss=readFileSync("src/components/admin/operations-history-print.css","utf8");
-    expect(printCss).toContain(".caronaa-demo-banner");
+    expect(printCss).toContain(".caronaa-report-projection-label");
     expect(printCss).toContain("visibility: visible !important");
   });
 });

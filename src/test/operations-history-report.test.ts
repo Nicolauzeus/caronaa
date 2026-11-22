@@ -17,7 +17,9 @@ describe("CARONAA operations reporting + support contract",()=>{
     expect(report).toContain("Nunca receberam aceite");
     expect(report).toContain("sinais reais de atividade");
     expect(report).toContain("admin_operations_history_report");
-    expect(report).toContain("CENÁRIO PROJETADO");
+    expect(report).toContain("Cenário projetado");
+    expect(report).toContain("caronaa-report-projection-label");
+    expect(report).not.toContain("caronaa-demo-banner");
     expect(report).not.toContain("Simular +108 pedidos");
     expect(report).toContain("ENABLE_OPERATIONS_PROJECTION");
     expect(report).toContain("presentationMode");
