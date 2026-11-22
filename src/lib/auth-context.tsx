@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let alive=true;
     let lastSent=0;
     const mark=()=>{
-      if(!alive||document.hidden||!navigator.onLine||Date.now()-lastSent<60_000)return;
+      if(!alive||document.hidden||!navigator.onLine||window.location.pathname.startsWith("/admin")||Date.now()-lastSent<60_000)return;
       lastSent=Date.now();
       void (supabase as any).rpc("record_caronaa_app_access").then(
         ({error}:{error?:unknown})=>{if(error)lastSent=0;}
