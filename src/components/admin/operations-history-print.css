@@ -1,0 +1,29 @@
+/* Print only the report, not the administrative shell. Client decides whether to save as PDF. */
+@media print {
+  @page { size: A4 landscape; margin: 11mm; }
+  body:has(.caronaa-report-print),
+  body:has(.caronaa-report-print) #root { background: white !important; }
+  body:has(.caronaa-report-print) * { visibility: hidden !important; }
+  body:has(.caronaa-report-print) .caronaa-report-print,
+  body:has(.caronaa-report-print) .caronaa-report-print * { visibility: visible !important; }
+  .caronaa-report-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #121212 !important;
+    font-size: 10pt;
+  }
+  .caronaa-report-print section,
+  .caronaa-report-print article { break-inside: avoid; page-break-inside: avoid; }
+  .caronaa-report-print table { width: 100% !important; border-collapse: collapse; }
+  .caronaa-report-print thead { display: table-header-group; }
+  .caronaa-report-print table tr { break-inside: avoid; }
+  .caronaa-report-print table th,
+  .caronaa-report-print table td { padding: 3mm !important; }
+  .caronaa-report-print .overflow-x-auto { overflow: visible !important; }
+}

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, CalendarDays, Clock3, Download, Mail, MessageCircle, Printer, RefreshCw, Users, XCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import "./operations-history-print.css";
 
 type Summary = {
   orders:number; accepted:number; unaccepted:number; completed:number; cancelled:number;
   expired:number; in_progress:number; unique_passengers:number;
-  flash_orders:number;shared_orders:number;completed_fares_cents:number;
+  flash_orders:number;shared_orders:number;completed_fares_cents:number;completed_unpriced?:number;
   cancelled_without_acceptance:number;expired_without_acceptance:number;
 };
 type Order = {
@@ -18,6 +19,9 @@ type Hour = {hour:number;orders:number;passengers:number};
 type Report = {
   generated_at:string; timezone:string;summary:Summary;hours:Hour[];
   hour_days:Array<{weekday:number;hour:number;orders:number}>;
+  presence_hours?:Array<{hour:number;drivers:number;passengers_preparing:number}>;
+  presence_hour_days?:Array<{weekday:number;hour:number;drivers:number;passengers_preparing:number}>;
+  presence_started_at?:string|null;
   active_now:{drivers:number;passengers_preparing:number};
   history_of_presence_available:boolean;total_rows:number;rows:Order[];
 };
@@ -58,6 +62,7 @@ export function OperationsHistoryReport(){
   const [from,setFrom]=useState("");const [to,setTo]=useState("");
   const [service,setService]=useState<"all"|"flash"|"shared">("all");
   const [status,setStatus]=useState("all");
+  const [heatMetric,setHeatMetric]=useState<"orders"|"drivers"|"passengers_preparing">("orders");
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
   const [report,setReport]=useState<Report|null>(null);
@@ -90,6 +95,19 @@ export function OperationsHistoryReport(){
   const peak=report?.hours?.length?report.hours.reduce((a,b)=>b.orders>a.orders?b:a):null;
   const quiet=report?.hours?.length?report.hours.filter(x=>x.orders>0).sort((a,b)=>a.orders-b.orders)[0]:null;
   const acceptedRate=report?.summary?.orders?100*report.summary.accepted/report.summary.orders:0;
+  const selectedHeat=heatMetric==="orders"?report?.hour_days:report?.presence_hour_days;
+  const heatMap=useMemo(()=>{
+    const field=heatMetric==="orders"?"orders":heatMetric;
+    return new Map((selectedHeat??[]).map(x=>[x.weekday+":"+x.hour,Number((x as unknown as Record<string,number>)[field]??0)]));
+  },[selectedHeat,heatMetric]);
+  const heatMax=Math.max(1,...heatMap.values());
+  const peakPresence=(kind:"drivers"|"passengers_preparing")=>
+    (report?.presence_hours??[]).reduce<{hour:number;value:number}|null>((best,h)=>{
+      const value=h[kind]??0;
+      return !best||value>best.value?{hour:h.hour,value}:best;
+    },null);
+  const driverPeak=peakPresence("drivers");
+  const passengerPeak=peakPresence("passengers_preparing");
   const share=()=>{
     if(!report)return;
     const msg="CARONAA · Resumo operacional ("+dates.from+" a "+dates.to+")\n"+
@@ -105,7 +123,7 @@ export function OperationsHistoryReport(){
       "\nCanceladas: "+fmt(report.summary.cancelled)+"\n\nGerado a partir de dados operacionais.";
     window.location.href="mailto:?subject="+encodeURIComponent("CARONAA · Resumo operacional")+"&body="+encodeURIComponent(body);
   };
-  return <main className="min-w-0 space-y-4 pb-8" aria-label="Histórico e relatórios de operações">
+  return <main className="caronaa-report-print min-w-0 space-y-4 pb-8" aria-label="Histórico e relatórios de operações">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="font-[Sora] text-2xl font-extrabold">Histórico &amp; Relatórios</h1>
@@ -164,13 +182,65 @@ export function OperationsHistoryReport(){
         <p className="mt-3 text-xs text-muted-foreground">Histórico de motoristas e passageiros ativos por hora: indisponível. É necessária coleta periódica de amostras antes de calcular picos de presença.</p>
       </article>
     </section>
+    <section className="rounded-2xl border bg-card p-4" aria-label="Matriz de calor por hora e dia da semana">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-[Sora] text-lg font-bold">Mapa de calor · horários de maior movimento</h2>
+          <p className="text-xs text-muted-foreground">Segunda a domingo, 00h–23h · horário de Fortaleza.</p>
+        </div>
+        <div role="group" aria-label="Indicador do mapa de calor" className="flex flex-wrap gap-1 print:hidden">
+          {([{key:"orders",label:"Pedidos"},{key:"drivers",label:"Motoristas ativos"},{key:"passengers_preparing",label:"Passageiros buscando"}] as const)
+          .map(item=><button key={item.key} type="button" aria-pressed={heatMetric===item.key}
+            onClick={()=>setHeatMetric(item.key)} className={"min-h-9 rounded-full px-3 text-xs font-semibold "+
+              (heatMetric===item.key?"bg-[#FFBB00] text-[#121212]":"bg-muted text-foreground")}>
+            {item.label}</button>)}
+        </div>
+      </div>
+      {heatMetric!=="orders"&&!report?.history_of_presence_available?
+        <p role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Ainda não há histórico de presença neste período. A coleta de sinais começou com a migration 0233.
+          Nenhum valor de presença anterior foi estimado.
+        </p>:
+        <div className="mt-4 overflow-x-auto">
+          <div className="min-w-[850px] space-y-1" role="table" aria-label="Intensidade de atividade por hora e dia">
+            <div className="grid grid-cols-[48px_repeat(24,minmax(0,1fr))] gap-1" role="row">
+              <span role="columnheader" className="text-[10px] text-muted-foreground">Dia</span>
+              {Array.from({length:24},(_,h)=><span key={h} role="columnheader" className="text-center text-[10px] text-muted-foreground">
+                {h.toString().padStart(2,"0")}</span>)}
+            </div>
+            {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map((day,weekday)=>
+              <div key={day} className="grid grid-cols-[48px_repeat(24,minmax(0,1fr))] gap-1" role="row">
+                <span role="rowheader" className="flex items-center text-xs">{day}</span>
+                {Array.from({length:24},(_,hour)=>{
+                  const value=heatMap.get(weekday+":"+hour)??0;
+                  const fraction=value/heatMax;
+                  return <div key={hour} role="cell" title={day+" "+hour+"h: "+fmt(value)}
+                    aria-label={day+", "+hour+" horas: "+value}
+                    style={{backgroundColor:value===0?"#F3F4F6":fraction>.75?"#FFBB00":fraction>.45?"#FFD66B":fraction>.15?"#FFE8A8":"#FFF4D4"}}
+                    className="h-7 rounded-[3px] border border-[#E9E9E9]"/>;
+                })}
+              </div>)}
+          </div>
+        </div>}
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {heatMetric==="orders"?
+          <span>Pico de pedidos: {peak&&peak.orders>0?peak.hour+"h ("+peak.orders+" solicitações)":"Não identificado"}</span>:
+          <span>Contagem de pessoas-hora registradas, não número simultâneo de pessoas online.</span>}
+        <span>Pico de motoristas registrados: {driverPeak?.value?driverPeak.hour+"h ("+driverPeak.value+")":"Aguardando dados"}</span>
+        <span>Pico de passageiros preparando pedidos: {passengerPeak?.value?passengerPeak.hour+"h ("+passengerPeak.value+")":"Aguardando dados"}</span>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Pedidos usam a data da solicitação. Presença usa apenas sinais após a instalação da migration 0233,
+        sem coordenadas GPS e sem reconstrução retroativa. A presença não é filtrada por modalidade.
+      </p>
+    </section>
     <section className="rounded-2xl border bg-card p-4">
       <h2 className="font-[Sora] text-lg font-bold">Engajamento e conversão</h2>
       <p className="text-xs text-muted-foreground">Pessoas distintas que registraram pedidos: {fmt(report?.summary.unique_passengers)}. Isto não representa todos os visitantes do aplicativo; o acesso à Home ainda não possui um evento de sessão operacional comparável.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <Stat title="Pedidos sem aceite expirados" value={fmt(report?.summary.expired_without_acceptance)} hint="Busca encerrada sem motorista" icon={<Clock3 size={16}/>}/>
         <Stat title="Cancelados antes do aceite" value={fmt(report?.summary.cancelled_without_acceptance)} hint="Perda anterior à atribuição" icon={<XCircle size={16}/>}/>
-        <Stat title="Total estimado concluído" value={money(report?.summary.completed_fares_cents)} hint="Valores contratados; NÃO equivalem a pagamentos recebidos" icon={<CalendarDays size={16}/>}/>
+        <Stat title="Tarifas de corridas concluídas" value={money(report?.summary.completed_fares_cents)} hint={"Soma das tarifas conhecidas, não pagamentos recebidos. Sem tarifa: "+fmt(report?.summary.completed_unpriced)} icon={<CalendarDays size={16}/>}/>
       </div>
     </section>
     <section className="rounded-2xl border bg-card p-4">
