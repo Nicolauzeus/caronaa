@@ -155,35 +155,34 @@ export function OperationsHistoryReport(){
       <button type="button" aria-pressed={presentationMode} disabled={!report||busy} onClick={()=>setPresentationMode(value=>!value)}
         className={"min-h-10 rounded-xl border px-3 text-xs font-bold transition-colors disabled:opacity-50 "+
           (presentationMode?"border-amber-600 bg-amber-100 text-amber-900":"border-border bg-card text-foreground")}>
-        {presentationMode?"Sair da demonstração":"Modo apresentação (+108)"}
+        {presentationMode?"Cenário simulado ativo · desativar":"Simular +108 pedidos"}
       </button>
     </section>
-    {presentationMode&&report&&!busy&&<section role="note" className="caronaa-demo-banner space-y-2 rounded-2xl border-2 border-amber-500 bg-amber-50 p-4 text-amber-950">
-      <h2 className="font-[Sora] text-base font-extrabold">CENÁRIO DEMONSTRATIVO — NÃO SÃO DADOS REAIS</h2>
-      <p className="text-sm">
-        {fmt(display?.actualOrders)} pedidos registrados de verdade + {PRESENTATION_ILLUSTRATIVE_REQUESTS} pedidos hipotéticos,
-        classificados exclusivamente como aguardando motorista = <strong>{fmt(display?.orders)} pedidos neste cenário ilustrativo</strong>.
-      </p>
-      <p className="text-xs">
-        Esta projeção usa o serviço e período selecionados. Banco, clientes, motoristas, histórico, horários e mapa de calor permanecem reais e inalterados.
-        A taxa de aceite do cenário é hipotética. Compartilhamentos e CSV ficam desativados nesta visualização.
-      </p>
+    {presentationMode&&report&&!busy&&display&&display.illustrativeOrders>0&&<section role="note"
+      className="caronaa-demo-banner sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950 shadow-sm">
+      <strong className="font-[Sora]">CENÁRIO SIMULADO · +{PRESENTATION_ILLUSTRATIVE_REQUESTS} pedidos</strong>
+      <span>{fmt(display?.actualOrders)} reais + {PRESENTATION_ILLUSTRATIVE_REQUESTS} simulados = {fmt(display?.orders)} projetados.
+        Acrescimos proporcionais por status; não representam operações reais.</span>
     </section>}
+    {presentationMode&&display?.illustrativeOrders===0&&<p role="alert"
+      className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+      Cenário indisponível: os status reais ainda não reconciliam. Nenhum pedido simulado foi acrescentado.
+    </p>}
     {error&&<p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
-        hint={presentationMode?"Real: "+fmt(report?.summary.orders)+" · Simulados: +108":"Total real de solicitações no período"}/>
+        hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>
       <Stat title="Aguardando motorista" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.searching)}
-        hint={presentationMode?"Real: "+fmt(report?.summary.searching)+" · Simulados: +108":"Solicitações abertas, ainda sem aceite"}/>
+        hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.searching):"Solicitações abertas, ainda sem aceite"}/>
       <Stat title="Em atendimento" icon={<Activity size={18}/>} value={busy?"…":fmt(display?.in_progress)}
-        hint="Aceitas, embarcando, em viagem ou revisão"/>
+        hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.in_progress):"Aceitas, embarcando, em viagem ou revisão"}/>
       <Stat title="Corridas concluídas" icon={<CheckCircle2 size={18}/>} value={busy?"…":fmt(display?.completed)}
-        hint="Concluídas com registro confirmado"/>
+        hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.completed):"Concluídas com registro confirmado"}/>
       <Stat title="Canceladas" icon={<XCircle size={18}/>} value={busy?"…":fmt(display?.cancelled)}
-        hint={fmt(report?.summary.cancelled_without_acceptance)+" antes do aceite · "+fmt(report?.summary.cancelled_after_acceptance)+" depois"}/>
+        hint={fmt(display?.cancelled_without_acceptance)+" antes · "+fmt(display?.cancelled_after_acceptance)+" depois"+(presentationMode?" · simulação":"")}/>
       <Stat title="Expiradas" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.expired)}
-        hint="Prazo encerrado sem aceite, inclusive buscas vencidas ainda não regularizadas"/>
+        hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.expired):"Prazo encerrado sem aceite, inclusive buscas vencidas ainda não regularizadas"}/>
     </section>
     <section className="space-y-3 rounded-2xl border bg-card p-4" aria-label="Composição e reconciliação dos pedidos">
       <div>
@@ -196,7 +195,7 @@ export function OperationsHistoryReport(){
         <div className="rounded-xl border border-border bg-background p-3">
           <p className="text-xs text-muted-foreground">Nunca receberam aceite</p>
           <p className="font-[Sora] text-xl font-extrabold">{fmt(display?.unaccepted)}</p>
-          <p className="text-xs text-muted-foreground">{presentationMode?"Inclui 108 pedidos hipotéticos":"Inclui cancelados antes do aceite, expirados e aguardando"}</p>
+          <p className="text-xs text-muted-foreground">{presentationMode?"Distribuição proporcional · reais: "+fmt(report?.summary.unaccepted):"Inclui cancelados antes do aceite, expirados e aguardando"}</p>
         </div>
         <div className="rounded-xl border border-border bg-background p-3">
           <p className="text-xs text-muted-foreground">Receberam aceite de motorista</p>
@@ -306,15 +305,15 @@ export function OperationsHistoryReport(){
       <h2 className="font-[Sora] text-lg font-bold">Engajamento e conversão</h2>
       <p className="text-xs text-muted-foreground">Pessoas distintas que registraram pedidos: {fmt(report?.summary.unique_passengers)}. Isto não representa todos os visitantes do aplicativo; o acesso à Home ainda não possui um evento de sessão operacional comparável.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <Stat title="Pedidos sem aceite expirados" value={fmt(report?.summary.expired_without_acceptance)} hint="Busca encerrada sem motorista" icon={<Clock3 size={16}/>}/>
-        <Stat title="Cancelados antes do aceite" value={fmt(report?.summary.cancelled_without_acceptance)} hint="Perda anterior à atribuição" icon={<XCircle size={16}/>}/>
-        <Stat title="Tarifas de corridas concluídas" value={money(report?.summary.completed_fares_cents)} hint={"Soma das tarifas conhecidas, não pagamentos recebidos. Sem tarifa: "+fmt(report?.summary.completed_unpriced)} icon={<CalendarDays size={16}/>}/>
+        <Stat title="Pedidos sem aceite expirados" value={fmt(presentationMode?display?.expired:report?.summary.expired_without_acceptance)} hint={presentationMode?"Simulação proporcional; reais: "+fmt(report?.summary.expired_without_acceptance):"Busca encerrada sem motorista"} icon={<Clock3 size={16}/>}/>
+        <Stat title="Cancelados antes do aceite" value={fmt(display?.cancelled_without_acceptance)} hint={presentationMode?"Simulação proporcional; reais: "+fmt(report?.summary.cancelled_without_acceptance):"Perda anterior à atribuição"} icon={<XCircle size={16}/>}/>
+        <Stat title="Tarifas de corridas concluídas" value={money(report?.summary.completed_fares_cents)} hint={(presentationMode?"Valor financeiro real (não simulado). ":"")+"Soma das tarifas conhecidas, não pagamentos recebidos. Sem tarifa: "+fmt(report?.summary.completed_unpriced)} icon={<CalendarDays size={16}/>}/>
       </div>
     </section>
     <section className="rounded-2xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div><h2 className="font-[Sora] text-lg font-bold">Histórico de pedidos e corridas</h2>
-          <p className="text-xs text-muted-foreground">{fmt(report?.total_rows)} pedidos no período · registros por solicitação, sem duplicar a viagem.</p></div>
+          <p className="text-xs text-muted-foreground">{fmt(report?.total_rows)} pedidos reais no período · o cenário simulado não cria registros individuais.</p></div>
         <div className="flex flex-wrap gap-2 print:hidden">
           <select aria-label="Status das solicitações" value={status} onChange={e=>setStatus(e.target.value)} className="rounded-lg border bg-background p-2 text-sm">
             <option value="all">Todos os status</option><option value="unaccepted">Sem aceite</option><option value="accepted">Aceitos</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados</option>
@@ -342,7 +341,7 @@ export function OperationsHistoryReport(){
         <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page===0||busy} onClick={()=>setPage(x=>x-1)}>Anterior</Button>
         <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*40)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Use os filtros de período e serviço para os totais globais. PDF: impressão da página; e-mail e WhatsApp: compartilhamento manual do resumo, sem envio automático.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram a página carregada. Os registros desta tabela são reais. PDF: impressão da página; e-mail e WhatsApp compartilham apenas números reais, com envio desativado no modo simulação.</p>
     </section>
     <div className="print:hidden"><OperationsReportSchedules/></div>
   </main>;

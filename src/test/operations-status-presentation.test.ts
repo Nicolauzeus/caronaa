@@ -16,14 +16,14 @@ describe("CARONAA historical outcomes and presentation-only scenario",()=>{
     expect(sql).not.toContain("UPDATE public.professional_quick_rides");
   });
   it("keeps actual history and charts while showing a permanently labeled scenario",()=>{
-    expect(ui).toContain("CENÁRIO DEMONSTRATIVO — NÃO SÃO DADOS REAIS");
+    expect(ui).toContain("CENÁRIO SIMULADO");
     expect(ui).toContain("Nunca receberam aceite");
     expect(ui).toContain("cancelled_after_acceptance");
     expect(ui).toContain('disabled={!report||presentationMode}');
     expect(ui).toContain("O cenário demonstrativo não altera este gráfico");
     expect(projection).toContain("PRESENTATION_ILLUSTRATIVE_REQUESTS=108");
-    expect(projection).toContain("searching:actual.searching+simulated");
-    expect(projection).toContain("unaccepted:actual.unaccepted+simulated");
+    expect(projection).toContain("allocateProportionally");
+    expect(projection).toContain("accepted:actual.accepted+acceptedAdd");
     expect(projection).not.toContain("supabase");
   });
 });
