@@ -147,5 +147,6 @@ export function ProfessionalVehiclesManager({onActivated}:{onActivated?:()=>void
    <p className="flex items-start gap-2 text-xs text-white/60">
      <ShieldCheck size={17} className="shrink-0 text-[#FFBB00]"/>
      Para trocar de veículo, fique offline e conclua corridas ou ofertas abertas. Os pedidos continuam filtrados pelo tipo do veículo ativo.
-   </p>
+    </p>
  </section>;
+}
