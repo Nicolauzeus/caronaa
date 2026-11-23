@@ -240,6 +240,33 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_app_access_days: {
+        Row: {
+          first_seen_at: string
+          last_seen_at: string
+          local_day: string
+          role_at_access: string
+          user_id: string
+          visit_count: number
+        }
+        Insert: {
+          first_seen_at?: string
+          last_seen_at?: string
+          local_day: string
+          role_at_access: string
+          user_id: string
+          visit_count?: number
+        }
+        Update: {
+          first_seen_at?: string
+          last_seen_at?: string
+          local_day?: string
+          role_at_access?: string
+          user_id?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
       caronaa_coverage_interest: {
         Row: {
           created_at: string
@@ -490,6 +517,98 @@ export type Database = {
           expires_at?: string | null
           id?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_operational_presence_hours: {
+        Row: {
+          hour_bucket: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          hour_bucket: string
+          kind: string
+          user_id: string
+        }
+        Update: {
+          hour_bucket?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      caronaa_ops_report_deliveries: {
+        Row: {
+          attempts: number
+          cadence: string
+          created_at: string
+          error_code: string | null
+          recipient: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          attempts?: number
+          cadence: string
+          created_at?: string
+          error_code?: string | null
+          recipient: string
+          sent_at?: string | null
+          status: string
+          updated_at?: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          attempts?: number
+          cadence?: string
+          created_at?: string
+          error_code?: string | null
+          recipient?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caronaa_ops_report_deliveries_cadence_fkey"
+            columns: ["cadence"]
+            isOneToOne: false
+            referencedRelation: "caronaa_ops_report_schedules"
+            referencedColumns: ["cadence"]
+          },
+        ]
+      }
+      caronaa_ops_report_schedules: {
+        Row: {
+          cadence: string
+          enabled: boolean
+          local_hour: number
+          recipients: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cadence: string
+          enabled?: boolean
+          local_hour?: number
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cadence?: string
+          enabled?: boolean
+          local_hour?: number
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -888,6 +1007,51 @@ export type Database = {
           municipality?: string
           pricing_region?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_support_config: {
+        Row: {
+          singleton: number
+          updated_at: string
+          updated_by: string | null
+          whatsapp_e164: string
+        }
+        Insert: {
+          singleton?: number
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_e164: string
+        }
+        Update: {
+          singleton?: number
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_e164?: string
+        }
+        Relationships: []
+      }
+      caronaa_support_config_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: number
+          new_whatsapp: string
+          old_whatsapp: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          new_whatsapp: string
+          old_whatsapp: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          new_whatsapp?: string
+          old_whatsapp?: string
         }
         Relationships: []
       }
@@ -2942,62 +3106,6 @@ export type Database = {
         }
         Relationships: []
       }
-      professional_driver_vehicles: {
-        Row: {
-          id: string
-          user_id: string
-          vehicle_type: string
-          brand: string
-          model: string
-          color: string
-          plate: string
-          car_category: string | null
-          passenger_seats: number
-          approved: boolean
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          vehicle_type: string
-          brand: string
-          model: string
-          color: string
-          plate: string
-          car_category?: string | null
-          passenger_seats: number
-          approved?: boolean
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          vehicle_type?: string
-          brand?: string
-          model?: string
-          color?: string
-          plate?: string
-          car_category?: string | null
-          passenger_seats?: number
-          approved?: boolean
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "professional_driver_vehicles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       professional_driver_locations: {
         Row: {
           accuracy_m: number
@@ -3043,6 +3151,62 @@ export type Database = {
           },
         ]
       }
+      professional_driver_vehicles: {
+        Row: {
+          approved: boolean
+          brand: string
+          car_category: string | null
+          color: string
+          created_at: string
+          id: string
+          is_active: boolean
+          model: string
+          passenger_seats: number
+          plate: string
+          updated_at: string
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          approved?: boolean
+          brand: string
+          car_category?: string | null
+          color: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model: string
+          passenger_seats: number
+          plate: string
+          updated_at?: string
+          user_id: string
+          vehicle_type: string
+        }
+        Update: {
+          approved?: boolean
+          brand?: string
+          car_category?: string | null
+          color?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          passenger_seats?: number
+          plate?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_driver_vehicles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_mototaxi_profiles: {
         Row: {
           created_at: string
@@ -3069,7 +3233,7 @@ export type Database = {
           first_name?: string
           last_name?: string
           region_code?: string | null
-          registration_number?: string
+          registration_number?: string | null
           updated_at?: string
           user_id?: string
           whatsapp_e164?: string | null
@@ -6022,6 +6186,10 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      activate_my_professional_vehicle: {
+        Args: { p_vehicle_id: string }
+        Returns: Json
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
@@ -6060,8 +6228,17 @@ export type Database = {
             }
             Returns: string
           }
+      admin_caronaa_app_engagement: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       admin_caronaa_fee_statement_claims: { Args: never; Returns: Json }
+      admin_caronaa_price_quotes_report: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
       admin_caronaa_quick_commercial_overview: { Args: never; Returns: Json }
+      admin_caronaa_report_schedules: { Args: never; Returns: Json }
       admin_driver_fee_audit: { Args: { p_ride_id: string }; Returns: Json }
       admin_f07_cancel_stale_assignment: {
         Args: { p_reason: string; p_ride_id: string }
@@ -6087,6 +6264,10 @@ export type Database = {
         Args: { p_incident_id: string; p_resolution?: string; p_status: string }
         Returns: boolean
       }
+      admin_google_api_usage_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       admin_mobility_lifecycle_metrics: {
         Args: { p_period?: string }
         Returns: Json
@@ -6102,8 +6283,24 @@ export type Database = {
         }
         Returns: string
       }
+      admin_operations_history_report: {
+        Args: {
+          p_from: string
+          p_limit?: number
+          p_offset?: number
+          p_service?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_operations_intelligence: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operations_people_truth: { Args: never; Returns: Json }
       admin_platform_fee_claims: { Args: never; Returns: Json }
       admin_professional_access_queue: { Args: never; Returns: Json }
+      admin_prune_caronaa_presence_hours: { Args: never; Returns: number }
       admin_quick_ride_disputes: { Args: never; Returns: Json }
       admin_quick_ride_overview: { Args: never; Returns: Json }
       admin_resolve_quick_ride_dispute: {
@@ -6113,6 +6310,15 @@ export type Database = {
       admin_review_professional_access: {
         Args: { p_decision: string; p_reason: string; p_request_id: string }
         Returns: undefined
+      }
+      admin_save_caronaa_report_schedule: {
+        Args: {
+          p_cadence: string
+          p_enabled: boolean
+          p_local_hour?: number
+          p_recipients: string[]
+        }
+        Returns: boolean
       }
       admin_set_caronaa_quick_city: {
         Args: { p_car: boolean; p_moto: boolean; p_municipality: string }
@@ -6135,6 +6341,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_set_caronaa_support_whatsapp: {
+        Args: { p_number: string }
+        Returns: string
+      }
       admin_set_platform_pix: { Args: { p_key: string }; Returns: boolean }
       admin_set_quick_ride_driver: {
         Args: { p_approved: boolean; p_email: string; p_vehicle_type: string }
@@ -6148,6 +6358,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_shared_operations_live: { Args: never; Returns: Json }
       admin_upsert_caronaa_quick_activity: {
         Args: {
           p_city: string
@@ -6783,6 +6994,7 @@ export type Database = {
         }[]
       }
       get_admin_users: { Args: { p_user_id?: string }; Returns: Json }
+      get_caronaa_support_whatsapp: { Args: never; Returns: string }
       get_completed_quick_ride_pix: {
         Args: { p_ride_id: string }
         Returns: Json
@@ -6912,6 +7124,7 @@ export type Database = {
       get_my_onboarding_research_suggestions: { Args: never; Returns: Json }
       get_my_pix_key: { Args: never; Returns: string }
       get_my_professional_access: { Args: never; Returns: Json }
+      get_my_professional_vehicles: { Args: never; Returns: Json }
       get_my_research_launch_state: { Args: never; Returns: Json }
       get_my_research_participation_badges: {
         Args: never
@@ -7505,6 +7718,7 @@ export type Database = {
         Args: { p_offer_id: string }
         Returns: undefined
       }
+      record_caronaa_app_access: { Args: never; Returns: boolean }
       refresh_ride_routine_occurrences: { Args: never; Returns: undefined }
       register_flash_waitlist: {
         Args: {
@@ -7624,6 +7838,18 @@ export type Database = {
         Returns: string
       }
       save_my_pix_key: { Args: { p_key: string }; Returns: undefined }
+      save_my_professional_vehicle: {
+        Args: {
+          p_brand: string
+          p_car_category: string
+          p_color: string
+          p_model: string
+          p_passenger_seats: number
+          p_plate: string
+          p_vehicle_type: string
+        }
+        Returns: Json
+      }
       save_my_travel_preferences: {
         Args: { p_consent: boolean; p_preferences: Json }
         Returns: undefined
@@ -7699,6 +7925,31 @@ export type Database = {
       }
       select_ride_payment_method: {
         Args: { p_method: string; p_ride_id: string }
+        Returns: Json
+      }
+      service_caronaa_report_claim: {
+        Args: {
+          p_cadence: string
+          p_end: string
+          p_recipient: string
+          p_start: string
+        }
+        Returns: boolean
+      }
+      service_caronaa_report_finish: {
+        Args: {
+          p_cadence: string
+          p_end: string
+          p_error_code?: string
+          p_recipient: string
+          p_start: string
+          p_success: boolean
+        }
+        Returns: boolean
+      }
+      service_caronaa_report_jobs: { Args: never; Returns: Json }
+      service_caronaa_report_summary: {
+        Args: { p_from: string; p_to: string }
         Returns: Json
       }
       set_admin_department_assignment: {
