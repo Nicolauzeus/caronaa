@@ -49,3 +49,5 @@ Instaladas com dry run e queries de verificação no banco do projeto. Todas as 
 4. GPS e município: auditoria não substitui habilitação legal/operacional; usar somente os municípios aprovados.
 
 **Status**: alterações de código implementadas, migrações de consulta validadas, E2E e publicação pendentes. Não afirmar conclusão integral antes da homologação.
+
+- A migration `0244_people_access_role_accurate.sql` corrige a contagem de acesso nos últimos 30 dias por `role_at_access`; a função mantém último acesso geral com indicação do perfil utilizado naquele sinal. Mudanças de perfil não reclassificam visitas antigas.

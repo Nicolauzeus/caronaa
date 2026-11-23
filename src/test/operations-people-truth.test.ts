@@ -23,7 +23,10 @@ describe("F09 Pessoas — audited account-backed metrics",()=>{
    expect(sql).toContain("professional_presence pr");
    expect(sql).toContain("professional_driver_locations loc");
    expect(sql).toContain("auth_activity_30");
-   expect(ui).toContain("Acessaram em 30 dias");
+   expect(ui).toContain("Acessaram como passageiro");
+   const roleSql=readFileSync("drizzle/migrations/0244_people_access_role_accurate.sql","utf8");
+   expect(roleSql).toContain("GROUP BY user_id,role_at_access");
+   expect(roleSql).toContain("d30.role_at_access=p.active_role");
    expect(ui).toContain("Ainda não medido");
    expect(ui).toContain("Cadastro não significa presença online ou atividade recente");
    expect(legacy).toContain("Recorte histórico F02:");

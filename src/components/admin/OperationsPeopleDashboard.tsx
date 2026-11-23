@@ -119,11 +119,11 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
    {title:"Passageiros cadastrados",value:summary?.registered_passengers,caption:"Contas autenticadas no perfil PASSAGEIRO",tone:"yellow" as const,icon:Users},
    {title:"Solicitaram viagens",value:summary?.passengers_requested_users,caption:"Pessoas distintas, Flash e carona compartilhada",tone:"green" as const,icon:CheckCircle2},
    {title:"Viagens concluídas",value:summary?.passenger_completed_rides,caption:"Corridas finalizadas vinculadas a passageiros",tone:"blue" as const,icon:CarFront},
-   {title:"Acessaram em 30 dias",value:summary?.passenger_accessed_30,caption:"Somente acessos captados pela nova telemetria",tone:"neutral" as const,icon:Clock3},
+   {title:"Acessaram como passageiro",value:summary?.passenger_accessed_30,caption:"Últimos 30 dias, após início da coleta",tone:"neutral" as const,icon:Clock3},
  ];
  const access=(p:Person)=>p.last_access_at
    ?<div><span className="text-sm">{time(p.last_access_at)}</span>
-     <p className="text-[11px] text-muted-foreground">{p.active_days_30} dia(s) registrado(s) em 30 dias</p></div>
+     <p className="text-[11px] text-muted-foreground">{p.active_days_30} dia(s) neste perfil em 30 dias</p></div>
    :<span className="text-xs text-muted-foreground">Ainda não medido</span>;
  const auth=(p:Person)=>p.professional_authorized
    ?<StatePill status="good">Autorizado Flash</StatePill>
@@ -204,7 +204,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
        </div>
      </footer>
      <p className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
-       Cadastro = conta autenticada e perfil atual. Último acesso = sinal observado desde {report.access_tracking_started_at?date(report.access_tracking_started_at):"o início da coleta"}; ausência de sinal não prova ausência de uso. Os totais combinam Corrida Rápida e caronas compartilhadas.
+       Cadastro = conta autenticada e perfil atual. Último acesso = sinal observado desde {report.access_tracking_started_at?date(report.access_tracking_started_at):"o início da coleta"}; ausência de sinal não prova ausência de uso. As métricas de acesso de 30 dias usam o papel do momento do acesso, não o papel atual para reclassificar registros antigos. Os totais de viagens combinam Corrida Rápida e caronas compartilhadas.
      </p>
      {driver&&<a className="inline-flex min-h-10 items-center text-sm font-medium text-primary underline underline-offset-2"
        href="/admin/motoristas">Abrir revisões antigas de motoristas de carona compartilhada</a>}
@@ -226,6 +226,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
            ["Pedidos como passageiro",String(requested(selected))],
            ["Concluídas como passageiro",String(completed(selected,false))],
            ["Último acesso medido",selected.last_access_at?time(selected.last_access_at):"Ainda não medido"],
+           ["Papel do último acesso",selected.last_access_role||"Não identificado"],
            ["Dias de acesso medido (30d)",String(selected.active_days_30)],
          ] as [string,string][]).map(([name,value])=><div key={name} className="min-w-0">
            <dt className="text-xs text-muted-foreground">{name}</dt><dd className="mt-0.5 break-words font-medium">{value}</dd>
