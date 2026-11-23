@@ -65,6 +65,8 @@ import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
 import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
 import { Route as ApiAsaasWebhookRouteImport } from './routes/api/asaas/webhook'
+import { Route as ApiOperationsEmailPdfRouteImport } from './routes/api/operations/email-pdf'
+import { Route as ApiOperationsReportSchedulerRouteImport } from './routes/api/operations/report-scheduler'
 import { Route as AuthenticatedPerfilViagemRideIdUserIdRouteImport } from './routes/_authenticated/perfil-viagem.$rideId.$userId'
 import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
 import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
@@ -359,6 +361,17 @@ const ApiAsaasWebhookRoute = ApiAsaasWebhookRouteImport.update({
   path: '/api/asaas/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOperationsEmailPdfRoute = ApiOperationsEmailPdfRouteImport.update({
+  id: '/api/operations/email-pdf',
+  path: '/api/operations/email-pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOperationsReportSchedulerRoute =
+  ApiOperationsReportSchedulerRouteImport.update({
+    id: '/api/operations/report-scheduler',
+    path: '/api/operations/report-scheduler',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedPerfilViagemRideIdUserIdRoute =
   AuthenticatedPerfilViagemRideIdUserIdRouteImport.update({
     id: '/perfil-viagem/$rideId/$userId',
@@ -441,6 +454,8 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
+  '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
   '/admin/departamentos/': typeof AdminDepartamentosIndexRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
@@ -501,6 +516,8 @@ export interface FileRoutesByTo {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
+  '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
   '/admin/departamentos': typeof AdminDepartamentosIndexRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
@@ -565,6 +582,8 @@ export interface FileRoutesById {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
+  '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
   '/admin/departamentos/': typeof AdminDepartamentosIndexRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
@@ -629,6 +648,8 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/operations/email-pdf'
+    | '/api/operations/report-scheduler'
     | '/admin/departamentos/'
     | '/admin/formularios/'
     | '/admin/usuarios/'
@@ -689,6 +710,8 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/operations/email-pdf'
+    | '/api/operations/report-scheduler'
     | '/admin/departamentos'
     | '/admin/formularios'
     | '/admin/usuarios'
@@ -752,6 +775,8 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/operations/email-pdf'
+    | '/api/operations/report-scheduler'
     | '/admin/departamentos/'
     | '/admin/formularios/'
     | '/admin/usuarios/'
@@ -779,6 +804,8 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   PesquisasCodeRoute: typeof PesquisasCodeRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
+  ApiOperationsEmailPdfRoute: typeof ApiOperationsEmailPdfRoute
+  ApiOperationsReportSchedulerRoute: typeof ApiOperationsReportSchedulerRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -1177,6 +1204,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAsaasWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/operations/email-pdf': {
+      id: '/api/operations/email-pdf'
+      path: '/api/operations/email-pdf'
+      fullPath: '/api/operations/email-pdf'
+      preLoaderRoute: typeof ApiOperationsEmailPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/operations/report-scheduler': {
+      id: '/api/operations/report-scheduler'
+      path: '/api/operations/report-scheduler'
+      fullPath: '/api/operations/report-scheduler'
+      preLoaderRoute: typeof ApiOperationsReportSchedulerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/perfil-viagem/$rideId/$userId': {
       id: '/_authenticated/perfil-viagem/$rideId/$userId'
       path: '/perfil-viagem/$rideId/$userId'
@@ -1358,6 +1399,8 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   PesquisasCodeRoute: PesquisasCodeRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
+  ApiOperationsEmailPdfRoute: ApiOperationsEmailPdfRoute,
+  ApiOperationsReportSchedulerRoute: ApiOperationsReportSchedulerRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
