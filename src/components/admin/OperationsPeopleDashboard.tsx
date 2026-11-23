@@ -85,7 +85,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
        if(rpcError||!data?.summary||!Array.isArray(data.users))
          throw new Error(rpcError?.message||"Consulta de pessoas inválida. Verifique a migration 0243.");
        if(mounted){setReport(data as PeopleReport);setError("");}
-     }catch(e){if(mounted)setError(e instanceof Error?e.message:"Falha ao consultar as contas");}
+     }catch(e){if(mounted){setReport(null);setError(e instanceof Error?e.message:"Falha ao consultar as contas");}}
      finally{if(mounted)setLoading(false);}
    }
    void fetchPeople();
