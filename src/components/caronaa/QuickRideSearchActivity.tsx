@@ -13,7 +13,7 @@ function DriverProfile({driver,confirmed}:{driver:RideParticipantSummary;confirm
     <div className="min-w-0 flex-1 space-y-0.5">
       <p className="truncate text-base font-extrabold text-white">{driver.name}</p>
       <p className="truncate text-xs text-white/70">
-        {driver.registration?`Matrícula informada: ${driver.registration}`:"Motorista cadastrado no CARONAA"}
+        Motorista cadastrado no CARONAA
       </p>
       {confirmed&&(driver.vehicle||driver.plate)&&
         <p className="truncate text-xs text-white/70">

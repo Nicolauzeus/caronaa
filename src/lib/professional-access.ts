@@ -23,7 +23,7 @@ export const MISSING_LABELS: Record<MissingCode, string> = {
   SEATS: "Vagas para passageiros compatíveis com o veículo",
   MUNICIPALITY: "Município",
   WHATSAPP: "WhatsApp com DDD",
-  REGISTRATION: "Matrícula / registro profissional",
+  REGISTRATION: "Confira os dados de identificação do veículo",
   REGION: "Região de atuação",
 };
 export const PROFILE_CODES: MissingCode[] = ["PHOTO", "FULL_NAME", "VEHICLE_MODEL", "PLATE"];

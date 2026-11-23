@@ -15,7 +15,7 @@ export const Route = createFileRoute("/cadastro-motorista")({
   head: () => ({ meta: [{ title: "Cadastro de motorista | CARONAA" }] }),
 });
 
-type Field = "name" | "whatsapp" | "municipality" | "type" | "brand" | "model" | "color" | "category" | "seats" | "plate" | "registration" | "photo";
+type Field = "name" | "whatsapp" | "municipality" | "type" | "brand" | "model" | "color" | "category" | "seats" | "plate" | "photo";
 type Vehicle = "" | "CAR" | "MOTO";
 const stages = ["Dados do motorista", "Dados do veículo", "Identificação", "Revisão final"];
 const avatarValid = (url: string, id: string) => url.startsWith("https://") && url.includes("/avatars/" + id + "/");
@@ -42,7 +42,6 @@ function DriverRegistration() {
   const [category, setCategory] = useState<CarCategory | "">("");
   const [seats, setSeats] = useState(1);
   const [plate, setPlate] = useState("");
-  const [registration, setRegistration] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
 
@@ -59,7 +58,7 @@ function DriverRegistration() {
         .select("full_name,avatar_url,city,vehicle_type,vehicle_brand,vehicle_description,vehicle_color,vehicle_plate,vehicle_seats")
         .eq("id", user.id).maybeSingle(),
       (supabase as any).from("professional_driver_contacts")
-        .select("whatsapp_e164,municipality,registration_number").eq("user_id", user.id).maybeSingle(),
+        .select("whatsapp_e164,municipality").eq("user_id", user.id).maybeSingle(),
       (supabase as any).rpc("get_my_professional_access"),
     ]).then(async ([profile, contact, access]) => {
       if (!live) return;
@@ -86,7 +85,7 @@ function DriverRegistration() {
       setBrand(String(p.vehicle_brand || "")); setModel(String(p.vehicle_description || ""));
       setColor(String(p.vehicle_color || "")); setPlate(String(p.vehicle_plate || ""));
       setSeats(Number(p.vehicle_seats) > 0 ? Number(p.vehicle_seats) : 1);
-      setPhotoUrl(String(p.avatar_url || "")); setRegistration(String(c?.registration_number || ""));
+      setPhotoUrl(String(p.avatar_url || ""));
       setReady(true);
     }).catch(() => { if (live) { setLoadFailed(true); setError("Falha de conexão. Tente novamente."); setReady(true); } });
     return () => { live = false; };
@@ -115,7 +114,6 @@ function DriverRegistration() {
     if (which === 2 || which === 3) {
       if (!isValidBrazilianPlate(plate) || !/^[A-Z]{3}\d[\dA-J]\d{2}$/.test(normalizePlate(plate)))
         m.plate = "Informe placa válida (ABC1234 ou ABC1D23).";
-      if (type === "MOTO" && registration.trim().length < 2) m.registration = "Informe sua matrícula/registro.";
       if (!photo && !avatarValid(photoUrl, user?.id || "")) m.photo = "Adicione sua foto pessoal.";
       if (photo && (!professionalPhotoTypes.includes(photo.type as typeof professionalPhotoTypes[number]) ||
           photo.size === 0 || photo.size > professionalPhotoMaxBytes))
@@ -154,7 +152,7 @@ function DriverRegistration() {
         p_vehicle_type: type, p_vehicle_brand: brand.trim(), p_vehicle_model: model.trim(),
         p_vehicle_color: color.trim(), p_vehicle_plate: normalizePlate(plate),
         p_car_category: type === "CAR" ? category : null, p_vehicle_seats: type === "MOTO" ? 1 : seats,
-        p_registration_number: type === "MOTO" ? registration.trim() : null,
+        p_registration_number: null, // backwards-compatible RPC signature, no matrícula required
       });
       if (registrationError) {
         const codes = parseMissingError(String(registrationError.message || ""));
@@ -170,7 +168,7 @@ function DriverRegistration() {
       const { data: access, error: checkError } = await (supabase as any).rpc("get_my_professional_access");
       if (checkError || access?.authorized !== true) throw new Error("O servidor ainda não confirmou a habilitação.");
       window.dispatchEvent(new Event("caronaa:role-changed"));
-      toast.success("Cadastro concluído. Ative sua disponibilidade quando quiser.");
+      toast.success("Cadastro concluído. Para adicionar outro veículo, acesse Meu Perfil.");
       await navigate({ to: "/disponibilidade-profissional", replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível concluir o cadastro.");
@@ -219,7 +217,7 @@ function DriverRegistration() {
       <p className="mt-1 text-sm text-white/65">
         {stage === 0 ? "Confirme seu nome e, se quiser, informe um município de referência." :
           stage === 1 ? "Informe o veículo que atenderá seus passageiros." :
-          stage === 2 ? "Está perto do fim: só faltam placa, registro e foto." :
+          stage === 2 ? "Está perto do fim: só faltam placa e foto." :
           "Confira seus dados. Depois, será só escolher quando ficar online."}
       </p>
       <form onSubmit={submit} noValidate className="mt-5 space-y-4">
@@ -293,11 +291,6 @@ function DriverRegistration() {
               placeholder="ABC1D23" onChange={e => { setPlate(e.target.value.toUpperCase()); clear("plate"); }} />
             <FieldError field="plate" />
           </label>
-          {type === "MOTO" && <label className={labelStyle}>Matrícula / registro do mototaxista
-            <input className={inputStyle} value={registration} maxLength={80}
-              onChange={e => { setRegistration(e.target.value); clear("registration"); }} />
-            <FieldError field="registration" />
-          </label>}
           <label className={labelStyle}>Foto do motorista
             {avatarValid(photoUrl, user.id) && !photo &&
               <img className="my-2 size-20 rounded-full object-cover" src={photoUrl} alt="Foto cadastrada" />}
@@ -316,7 +309,6 @@ function DriverRegistration() {
             {municipality && <div><span className="text-xs text-white/55">Município de referência</span><p className="font-semibold">{municipality}</p></div>}
             <div><span className="text-xs text-white/55">Veículo</span><p className="font-semibold">{type === "CAR" ? "Carro" : "Moto"} · {brand} {model} · {color} · {normalizePlate(plate)}</p></div>
             <div><span className="text-xs text-white/55">Vagas</span><p className="font-semibold">{seats}</p></div>
-            {type === "MOTO" && <div><span className="text-xs text-white/55">Matrícula</span><p className="font-semibold">{registration}</p></div>}
           </div>
           <p className="text-xs text-white/60">O servidor validará seu cadastro. Nenhum GPS será ligado automaticamente.</p>
         </>}

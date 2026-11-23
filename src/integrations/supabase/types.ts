@@ -2942,6 +2942,62 @@ export type Database = {
         }
         Relationships: []
       }
+      professional_driver_vehicles: {
+        Row: {
+          id: string
+          user_id: string
+          vehicle_type: string
+          brand: string
+          model: string
+          color: string
+          plate: string
+          car_category: string | null
+          passenger_seats: number
+          approved: boolean
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          vehicle_type: string
+          brand: string
+          model: string
+          color: string
+          plate: string
+          car_category?: string | null
+          passenger_seats: number
+          approved?: boolean
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          vehicle_type?: string
+          brand?: string
+          model?: string
+          color?: string
+          plate?: string
+          car_category?: string | null
+          passenger_seats?: number
+          approved?: boolean
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_driver_vehicles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_driver_locations: {
         Row: {
           accuracy_m: number
@@ -2993,7 +3049,7 @@ export type Database = {
           first_name: string
           last_name: string
           region_code: string | null
-          registration_number: string
+          registration_number: string | null
           updated_at: string
           user_id: string
           whatsapp_e164: string | null
@@ -3003,7 +3059,7 @@ export type Database = {
           first_name: string
           last_name: string
           region_code?: string | null
-          registration_number: string
+          registration_number?: string | null
           updated_at?: string
           user_id: string
           whatsapp_e164?: string | null

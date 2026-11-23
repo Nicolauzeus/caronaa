@@ -6,13 +6,12 @@ export const detailsSchema = z.object({
   whatsapp: z.string().transform(v => v.replace(/\D/g, "").replace(/^55(?=\d{11}$)/, ""))
     .refine(v => /^[1-9][0-9]9[0-9]{8}$/.test(v), "Informe WhatsApp com DDD."),
   region: z.union([z.enum(["MACICO_BATURITE", "FORTALEZA"]), z.literal("")]).nullish(),
-  registrationNumber: z.string().trim().min(2, "Informe sua matrícula/registro.").max(80),
 });
 
 export const professionalPhotoTypes = ["image/jpeg", "image/png", "image/webp"] as const;
 export const professionalPhotoMaxBytes = 5 * 1024 * 1024;
 
-export type ProfessionalField = "firstName" | "lastName" | "whatsapp" | "region" | "registrationNumber" | "photo";
+export type ProfessionalField = "firstName" | "lastName" | "whatsapp" | "region" | "photo";
 export type ProfessionalCorrections = Partial<Record<ProfessionalField, string>>;
 
 type ProfessionalData = {
@@ -20,7 +19,6 @@ type ProfessionalData = {
   lastName: string;
   whatsapp: string;
   region?: string | null;
-  registrationNumber: string;
   photo: { type: string; size: number } | null;
   photoUrl: string;
   userId: string;
@@ -31,7 +29,6 @@ export const professionalFieldLabels: Record<ProfessionalField, string> = {
   lastName: "Último sobrenome",
   whatsapp: "WhatsApp com DDD",
   region: "Região",
-  registrationNumber: "Matrícula / registro",
   photo: "Foto pessoal",
 };
 
@@ -72,7 +69,5 @@ export function professionalServerCorrections(error: unknown): ProfessionalCorre
     errors.whatsapp = "Informe um WhatsApp válido com DDD.";
   if (codes.includes("REGION") || /Regiao invalida/i.test(message))
     errors.region = "Selecione sua região de atuação.";
-  if (codes.includes("REGISTRATION") || /matricula\/registro/i.test(message))
-    errors.registrationNumber = "Informe sua matrícula ou registro.";
   return errors;
 }

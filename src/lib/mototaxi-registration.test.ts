@@ -3,11 +3,11 @@ import { detailsSchema, professionalFormCorrections, professionalServerCorrectio
 
 const valid = {
   firstName: "Maria", lastName: "Silva", whatsapp: "(85) 99999-9999",
-  region: "MACICO_BATURITE", registrationNumber: "MT-1234",
+  region: "MACICO_BATURITE",
 };
 
 describe("mototaxi simplified registration", () => {
-  it("accepts the Maciço registration without plate, CPF, model or university", () => {
+  it("accepts the Maciço identity fields without matrícula", () => {
     expect(detailsSchema.parse(valid)).toEqual({
       ...valid, whatsapp: "85999999999",
     });
@@ -26,7 +26,6 @@ describe("mototaxi simplified registration", () => {
     [{ ...valid, firstName: "A" }, "short first name"],
     [{ ...valid, lastName: "" }, "missing surname"],
     [{ ...valid, whatsapp: "123" }, "invalid phone"],
-    [{ ...valid, registrationNumber: "" }, "missing registration"],
     [{ ...valid, region: "OTHER" }, "unavailable region"],
     [{ ...valid, firstName: "Maria Clara" }, "additional name"],
   ])("rejects %s (%s)", value => {
@@ -38,7 +37,7 @@ describe("mototaxi simplified registration", () => {
 describe("confirmação automática dos dados profissionais", () => {
   const complete = {
     firstName: "Maria", lastName: "Silva", whatsapp: "(85) 99999-9999",
-    region: "MACICO_BATURITE", registrationNumber: "MT-1234",
+    region: "MACICO_BATURITE",
     photo: null,
     photoUrl: "https://storage.example.com/storage/v1/object/public/avatars/driver-1/photo.jpg",
     userId: "driver-1",
@@ -46,10 +45,10 @@ describe("confirmação automática dos dados profissionais", () => {
   it("lists all fields missing without silently choosing a region", () => {
     const errors = professionalFormCorrections({
       ...complete, firstName: "", lastName: "", whatsapp: "", region: "",
-      registrationNumber: "", photoUrl: "",
+      photoUrl: "",
     });
     expect(Object.keys(errors).sort()).toEqual([
-      "firstName","lastName","photo","registrationNumber","whatsapp",
+      "firstName","lastName","photo","whatsapp",
     ].sort());
     expect(errors.region).toBeUndefined();
   });
@@ -65,9 +64,9 @@ describe("confirmação automática dos dados profissionais", () => {
     expect(professionalFormCorrections({...complete,photo:{type:"image/jpeg",size:6*1024*1024}}).photo).toMatch(/5 MB/i);
   });
   it("translates server-side requirements into the precise form fields", () => {
-    const missing=professionalServerCorrections({message:"Dados pendentes: FULL_NAME,PHOTO,WHATSAPP,REGISTRATION,REGION"});
+    const missing=professionalServerCorrections({message:"Dados pendentes: FULL_NAME,PHOTO,WHATSAPP,REGION"});
     expect(Object.keys(missing).sort()).toEqual([
-      "firstName","lastName","photo","region","registrationNumber","whatsapp",
+      "firstName","lastName","photo","region","whatsapp",
     ].sort());
     expect(professionalServerCorrections({message:"Envie uma foto de perfil valida antes de solicitar acesso"}).photo).toBeTruthy();
     expect(professionalServerCorrections({message:"Unexpected network error"})).toEqual({});

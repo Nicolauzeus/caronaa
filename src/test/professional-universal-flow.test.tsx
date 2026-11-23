@@ -96,7 +96,6 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     expect(screen.getByText("50% concluído")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
     await screen.findByRole("heading",{name:"Identificação"});
-    fireEvent.change(screen.getByLabelText(/Matrícula \/ registro do mototaxista/),{target:{value:"MTX100"}});
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
     await screen.findByRole("heading",{name:"Revisão final"});
     expect(screen.getByText("100% concluído")).toBeInTheDocument();
@@ -105,7 +104,7 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     await waitFor(()=>expect(api.navigate).toHaveBeenCalledWith({to:"/disponibilidade-profissional",replace:true}));
     expect(api.rpc).toHaveBeenCalledWith("complete_professional_driver_registration",expect.objectContaining({
       p_whatsapp:"+5585999999999",p_municipality:"Fortaleza",
-      p_vehicle_type:"MOTO",p_vehicle_plate:"ABC1D23",p_registration_number:"MTX100",
+      p_vehicle_type:"MOTO",p_vehicle_plate:"ABC1D23",p_registration_number:null,
     }));
     expect(api.rpc).not.toHaveBeenCalledWith("set_professional_presence",expect.anything());
   });

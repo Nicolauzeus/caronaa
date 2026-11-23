@@ -15,6 +15,7 @@ import {
 
 import { AppShell } from "@/components/caronaa/AppShell";
 import { ProfessionalAccountDashboard } from "@/components/caronaa/ProfessionalAccountDashboard";
+import { ProfessionalVehiclesManager } from "@/components/caronaa/ProfessionalVehiclesManager";
 import { PassengerAccountDashboard } from "@/components/caronaa/PassengerAccountDashboard";
 import { AccountWhatsAppEditor } from "@/components/caronaa/AccountWhatsAppEditor";
 import {
@@ -106,6 +107,7 @@ function Perfil() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
+  const [profileReload,setProfileReload]=useState(0);
   const [saving, setSaving] = useState(false);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">(
@@ -128,7 +130,6 @@ function Perfil() {
   const [isProfessionalProfile, setIsProfessionalProfile] = useState(false);
   const [activeProfileRole,setActiveProfileRole]=useState<"PASSAGEIRO"|"MOTORISTA"|null>(null);
   const [professionalAuthorized, setProfessionalAuthorized] = useState(false);
-  const [motoRegistration, setMotoRegistration] = useState("");
   const [motoWhatsapp, setMotoWhatsapp] = useState("");
 
   const [photo, setPhoto] = useState<string | null>(null);
@@ -179,25 +180,24 @@ function Perfil() {
         // Existing professional data defines the UI variant; it never grants access.
         const [mototaxiRow, professionalAccess, onboarding, roleRow, whatsappContact] = await Promise.all([
           (supabase as any).from("professional_mototaxi_profiles")
-            .select("registration_number,whatsapp_e164")
+            .select("whatsapp_e164")
             .eq("user_id", user.id).maybeSingle(),
           (supabase as any).rpc("get_my_professional_access"),
           (supabase as any).from("user_onboarding_progress")
             .select("usage_role").eq("user_id",user.id).maybeSingle(),
-          (supabase as any).from("profiles").select("active_role").eq("id",user.id).maybeSingle(),
+          (supabase as any).from("profiles").select("active_role,vehicle_type").eq("id",user.id).maybeSingle(),
           Promise.resolve((supabase as any).rpc("get_my_caronaa_whatsapp")).catch(()=>({data:null,error:true})),
         ]);
         if (cancelled) return;
         const access = !professionalAccess.error ? professionalAccess.data : null;
         const motoRegistered = !mototaxiRow.error && Boolean(mototaxiRow.data);
-        setIsMotoProfile(motoRegistered || access?.request?.vehicle_type === "MOTO");
+        setIsMotoProfile(roleRow?.data?.vehicle_type==="moto" || (!roleRow?.data?.vehicle_type && (motoRegistered || access?.request?.vehicle_type==="MOTO")));
         setIsProfessionalProfile(
           motoRegistered || Boolean(access?.authorized) || Boolean(access?.request) ||
           onboarding.data?.usage_role === "MOTORISTA"
         );
         setProfessionalAuthorized(access?.authorized === true);
         setActiveProfileRole(roleRow?.data?.active_role==="MOTORISTA"||roleRow?.data?.active_role==="PASSAGEIRO"?roleRow.data.active_role:null);
-        setMotoRegistration(String(mototaxiRow.data?.registration_number ?? ""));
         setMotoWhatsapp(String(!whatsappContact?.error && whatsappContact?.data
           ? (whatsappContact.data.whatsapp ?? "")
           : (mototaxiRow.data?.whatsapp_e164 ?? "")));
@@ -262,7 +262,7 @@ function Perfil() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profileReload]);
 
   function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -682,7 +682,6 @@ function Perfil() {
             vehicleBrand={vehicleBrand}
             vehicleDescription={vehicleDescription}
             vehiclePlate={vehiclePlate}
-            registration={motoRegistration}
             whatsapp={motoWhatsapp}
             onEditPhoto={() => setAvatarSheetOpen(true)}
             saving={saving}
@@ -728,27 +727,8 @@ function Perfil() {
               </div>
             </div>
             }
-            vehicleForm={
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <Field
-                label={isMotoProfile ? "Modelo e Cor da Moto" : "Modelo e cor do veículo"}
-                value={vehicleDescription}
-                onChange={setVehicleDescription}
-                placeholder={isMotoProfile ? "Ex.: CG 160 Fan - Vermelha" : "Ex.: Honda Fit prata"}
-              />
-              <Field label={isMotoProfile ? "Marca da Moto" : "Marca do carro"}
-                value={vehicleBrand} onChange={setVehicleBrand}
-                placeholder={isMotoProfile ? "Ex.: Honda, Yamaha" : "Ex.: Honda"} />
-              <Field label={isMotoProfile ? "Placa da Moto" : "Placa do carro"}
-                value={vehiclePlate} onChange={(value) => setVehiclePlate(value.toUpperCase())}
-                placeholder="ABC1D23" />
-              {isMotoProfile && <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                <p className="text-xs font-bold text-white/65">MATRÍCULA DE MOTOTAXISTA</p>
-                <p className="mt-2 text-sm font-semibold">{motoRegistration || "Não informada"}</p>
-                <p className="mt-1 text-xs text-white/55">Dados do cadastro profissional; consulte o suporte para atualizar.</p>
-              </div>}
-            </div>
-            }
+            vehicleForm={<ProfessionalVehiclesManager onActivated={() => setProfileReload(value => value+1)}/>}
+            vehicleFormManaged
             financeContent={
               <div className="space-y-4">
                 <DriverPixSettings />

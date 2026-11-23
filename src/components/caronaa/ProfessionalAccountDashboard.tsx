@@ -17,11 +17,11 @@ type DriverAccountProps = {
   vehicleBrand: string;
   vehicleDescription: string;
   vehiclePlate: string;
-  registration: string;
   whatsapp: string;
   onEditPhoto: () => void;
   driverForm: ReactNode;
   vehicleForm: ReactNode;
+  vehicleFormManaged?: boolean;
   financeContent: ReactNode;
   settingsContent: ReactNode;
   onSave: () => void;
@@ -34,8 +34,8 @@ const fallback = (value: string) => value.trim() || "Não informado";
 export function ProfessionalAccountDashboard(props: DriverAccountProps) {
   const {
     name, initials, photo, city, isMoto, authorized,
-    vehicleBrand, vehicleDescription, vehiclePlate, registration, whatsapp,
-    onEditPhoto, driverForm, vehicleForm, financeContent, settingsContent, onSave, saving,
+    vehicleBrand, vehicleDescription, vehiclePlate, whatsapp,
+    onEditPhoto, driverForm, vehicleForm, vehicleFormManaged, financeContent, settingsContent, onSave, saving,
   } = props;
   const [expanded, setExpanded] = useState<PanelId | null>(() =>
     typeof window !== "undefined" && window.location.hash === "#pix-do-motorista" ? "finance" : null
@@ -112,9 +112,9 @@ export function ProfessionalAccountDashboard(props: DriverAccountProps) {
           {expanded === "driver" && <div id="driver-account-driver-edit" className="driver-account__expanded">
             <h3>Editar dados do condutor</h3>
             {driverForm}
-            <button type="button" className="driver-account__save" onClick={onSave} disabled={saving}>
+            {!vehicleFormManaged&&<button type="button" className="driver-account__save" onClick={onSave} disabled={saving}>
               {saving ? "Salvando..." : "Salvar alterações"}
-            </button>
+            </button>}
           </div>}
         </div>
 
@@ -128,10 +128,9 @@ export function ProfessionalAccountDashboard(props: DriverAccountProps) {
             <div><dt>Marca</dt><dd>{fallback(vehicleBrand)}</dd></div>
             <div><dt>Modelo e cor</dt><dd>{fallback(vehicleDescription)}</dd></div>
             <div><dt>Placa</dt><dd>{fallback(vehiclePlate)}</dd></div>
-            {isMoto && <div><dt>Matrícula de mototaxista</dt><dd>{fallback(registration)}</dd></div>}
           </dl>
           {expanded === "vehicle" && <div id="driver-account-vehicle-edit" className="driver-account__expanded">
-            <h3>Editar dados do veículo</h3>
+            <h3>Gerenciar veículos</h3>
             {vehicleForm}
             <button type="button" className="driver-account__save" onClick={onSave} disabled={saving}>
               {saving ? "Salvando..." : "Salvar alterações"}

@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type RideParticipantSummary={
-  id:string;name:string;photo:string|null;registration:string|null;
+  id:string;name:string;photo:string|null;
   vehicle?:string|null;plate?:string|null;
 };
 export type QuickRideAudience={
@@ -25,7 +25,6 @@ function parseDriver(x:unknown):RideParticipantSummary|null{
   return {
     id:text(d.id),name:text(d.name)||"Motorista CARONAA",
     photo:safePhoto(d.photo),
-    registration:text(d.registration)||null,
     vehicle:text(d.vehicle)||null,plate:text(d.plate)||null,
   };
 }
@@ -63,7 +62,7 @@ export async function getQuickRideRequestAudience(rideId:string,status="SEARCHIN
           watchingCount:0,viewers:[],
           acceptedDriver:{
             id:"assigned:"+rideId,name:text(d.name),photo:safePhoto(d.photo),
-            registration:null,vehicle:text(d.vehicle)||null,plate:text(d.plate)||null,
+            vehicle:text(d.vehicle)||null,plate:text(d.plate)||null,
           },
         };
       }
