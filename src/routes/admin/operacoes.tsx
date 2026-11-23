@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { OperationPage } from "@/components/admin/OperationPage";
+import { OperationsPeopleDashboard } from "@/components/admin/OperationsPeopleDashboard";
 import { ArrowLeft } from "lucide-react";
 import { F07OperationsCockpit } from "@/components/admin/F07OperationsCockpit";
 import { F07OperationsCommandCenter } from "@/components/admin/F07OperationsCommandCenter";
@@ -61,7 +62,7 @@ function MobilityOperationsCenter(){
      </section>:
      showPeople?<section className="min-w-0 space-y-3" aria-label="Gestão de pessoas">
        <header><h1 className="font-[Sora] text-2xl font-extrabold">Pessoas</h1>
-         <p className="text-sm text-muted-foreground">Motoristas e passageiros com seus registros operacionais.</p></header>
+         <p className="text-sm text-muted-foreground">Contas reais, habilitação, pedidos e atividade medida por perfil.</p></header>
        <nav aria-label="Perfis operacionais" className="flex max-w-full gap-2 overflow-x-auto pb-1">
          {([{id:"motoristas",label:"Motoristas"},{id:"passageiros",label:"Passageiros"}] as const).map(item=>
            <button key={item.id} type="button" aria-pressed={peopleTab===item.id}
@@ -69,7 +70,7 @@ function MobilityOperationsCenter(){
              className={"shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold "+(peopleTab===item.id?"bg-[#FFBB00] text-[#121212] border-[#FFBB00]":"bg-card")}>
              {item.label}</button>)}
        </nav>
-       <OperationPage kind={peopleTab} embedded/>
+       <OperationsPeopleDashboard kind={peopleTab}/>
      </section>:
       !tools?<F07OperationsCockpit onOpenTools={()=>openTools()}/>:
       <div className="min-w-0 space-y-4">

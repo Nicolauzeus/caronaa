@@ -65,11 +65,11 @@ const labels: Record<string, string> = {
   COMPLETED: "Concluída",
   CANCELLED: "Cancelada",
   NO_SHOW: "Não compareceu",
-  ACTIVE: "Ativa",
+  ACTIVE: "Conta cadastrada",
   DISABLED: "Suspensa",
   FORM_ONLY: "Somente formulário",
-  VERIFIED: "Verificado",
-  UNVERIFIED: "Não verificado",
+  VERIFIED: "Revisão F02 concluída",
+  UNVERIFIED: "Sem revisão F02",
 };
 const date = (value: string) =>
   value
@@ -416,7 +416,7 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
       const people = getOperationPeople(data, driver);
       headers = driver
         ? ["Motorista", "Veículo / vagas", "Verificação", "Caronas concluídas", "Último acesso", "Status"]
-        : ["Passageiro", "Destinos frequentes", "Caronas realizadas", "Cadastro", "Último acesso", "Status"];
+        : ["Passageiro", "Destinos frequentes", "Caronas F02 concluídas", "Cadastro", "Último acesso", "Status"];
       rows = people.map((p) => ({
         id: p.id,
         status: driver
@@ -480,28 +480,28 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
       }));
       metrics = driver
         ? [
-            ["Total de motoristas", String(people.length)],
+            ["Registros F02 (contas e formulários)", String(people.length)],
             [
-              "Documentos verificados",
+              "Revisões documentais F02",
               String(people.filter((p) => p.review?.document_verified).length),
             ],
             [
-              "Caronas oferecidas no mês",
+              "Ofertas compartilhadas no mês",
               String(data.offers.filter((o) => o.created_at.startsWith(month)).length),
             ],
-            ["Avaliação média", "N/D"],
+            ["Motoristas com oferta F02",String(new Set(data.offers.map(o=>o.user_id)).size)],
           ]
         : [
-            ["Passageiros ativos", String(people.filter((p) => p.status === "ACTIVE").length)],
+            ["Registros F02 (contas e formulários)", String(people.filter((p) => p.status === "ACTIVE").length)],
             [
-              "Solicitações no mês",
+              "Pedidos compartilhados no mês",
               String(data.requests.filter((r) => r.created_at.startsWith(month)).length),
             ],
             [
               "Caronas realizadas",
               String(data.rides.filter((r) => r.status === "COMPLETED").length),
             ],
-            ["Taxa de avaliação", "N/D"],
+            ["Pessoas com pedido compartilhado",String(new Set(data.requests.map(r=>r.user_id)).size)],
           ];
     }
     return { rows, headers, metrics };
@@ -537,7 +537,11 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
         <div>
           {!embedded&&<p className="mb-1 text-xs font-semibold text-muted-foreground">OPERAÇÃO / CARONAA</p>}
           {embedded?<h2 className="font-[Sora] text-xl font-bold">{titles[kind]}</h2>:
-            <h1 className="font-display text-3xl font-bold">{titles[kind]}</h1>}
+            <h1 className="font-display text-3xl font-bold">{kind==="motoristas"?"Motoristas — recorte de caronas compartilhadas":kind==="passageiros"?"Passageiros — recorte de caronas compartilhadas":titles[kind]}</h1>}
+          {(kind==="motoristas"||kind==="passageiros")&&<p className="mt-1 text-xs text-muted-foreground">
+            Recorte histórico F02: apenas formulários e atividades de caronas compartilhadas, não o total de contas do CARONAA.
+            <a href="/admin/operacoes#people" className="ml-1 font-semibold text-primary underline">Ver todas as pessoas</a>
+          </p>}
           <p className="mt-2 text-xs text-muted-foreground">{updatedAt ? `Atualizado às ${updatedAt.toLocaleTimeString("pt-BR")} · atualização a cada 30 s` : "Aguardando dados"}</p>
         </div>
         <Button

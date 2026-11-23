@@ -22,7 +22,8 @@ describe("CARONAA unified operations closeout",()=>{
     expect(findActiveModule("operations","/admin/motoristas","")?.id).toBe("people");
     expect(menu).toContain("hidden: category.hidden === true");
     expect(route).toContain('<OperationPage kind={journeyTab} embedded/>');
-    expect(route).toContain('<OperationPage kind={peopleTab} embedded/>');
+    expect(route).toContain('<OperationsPeopleDashboard kind={peopleTab}/>');
+    expect(route).not.toContain('<OperationPage kind={peopleTab} embedded/>');
     expect(route).toContain('<OperationsHistoryReport mode="reports"/>');
     expect(route).toContain('<OperationsHistoryReport mode="intelligence"/>');
     expect(route).toContain("Configurações profissionais avançadas");
