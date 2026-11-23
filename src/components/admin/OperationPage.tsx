@@ -17,7 +17,7 @@ import { SavedAnswers } from "./SavedAnswers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ZoomablePersonPhoto } from "@/components/admin/ZoomablePersonPhoto";
 import {
   Dialog,
   DialogContent,
@@ -112,10 +112,7 @@ function Person({
 }) {
   return (
     <div className="flex min-w-44 items-center gap-2">
-      <Avatar className="h-8 w-8">
-        <AvatarImage src={avatar || undefined} alt={name} />
-        <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <ZoomablePersonPhoto name={name} src={avatar} size="sm" />
       <div>
         <div className="font-medium">{name}</div>
         <div className="text-xs text-muted-foreground">{contact || "Contato não informado"}</div>

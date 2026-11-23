@@ -3,7 +3,7 @@ import {Activity,CarFront,CheckCircle2,Eye,RefreshCw,Search,ShieldCheck,Users,Cl
 import {supabase} from "@/integrations/supabase/client";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
-import {Avatar,AvatarFallback,AvatarImage} from "@/components/ui/avatar";
+import {ZoomablePersonPhoto} from "@/components/admin/ZoomablePersonPhoto";
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 
 type Role="MOTORISTA"|"PASSAGEIRO";
@@ -51,12 +51,8 @@ function StatePill({status,children}:{status:"good"|"warning"|"neutral";children
    "border-border bg-muted/70 text-muted-foreground")}>{children}</span>;
 }
 function Identity({person}:{person:Person}){
- const initials=person.display_name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
  return <div className="flex min-w-0 items-center gap-2.5">
-   <Avatar className="h-10 w-10 shrink-0">
-     <AvatarImage src={person.avatar_url||undefined} alt=""/>
-     <AvatarFallback className="bg-[#FFBB00]/15 text-xs font-bold">{initials}</AvatarFallback>
-   </Avatar>
+   <ZoomablePersonPhoto name={person.display_name} src={person.avatar_url} size="md"/>
    <div className="min-w-0">
      <p className="truncate text-sm font-semibold" title={person.display_name}>{person.display_name}</p>
      <p className="truncate text-xs text-muted-foreground" title={person.email||undefined}>{person.email||"E-mail não informado"}</p>

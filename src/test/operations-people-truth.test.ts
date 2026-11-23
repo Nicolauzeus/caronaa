@@ -41,6 +41,19 @@ describe("F09 Pessoas — audited account-backed metrics",()=>{
    expect(sql).not.toContain("u.phone");
    expect(ui).not.toContain("phone");
  });
+ it("opens the real motorist/passenger photo and preserves initials fallback",()=>{
+   const photo=readFileSync("src/components/admin/ZoomablePersonPhoto.tsx","utf8");
+   expect(ui).toContain('<ZoomablePersonPhoto name={person.display_name} src={person.avatar_url} size="md"/>');
+   expect(legacy).toContain('<ZoomablePersonPhoto name={name} src={avatar} size="sm" />');
+   expect(photo).toContain('aria-label={"Ampliar foto de " + name}');
+   expect(photo).toContain('title={"Ampliar foto de " + name}');
+   expect(photo).toContain('onClick={() => { setPreviewFailed(false); setOpen(true); }}');
+   expect(photo).toContain('<Dialog open={open} onOpenChange={setOpen}>');
+   expect(photo).toContain('alt={"Foto ampliada de " + name}');
+   expect(photo).toContain('if (!isPhotoAvailable) return avatar');
+   expect(photo).toContain('AvatarFallback');
+   expect(photo).not.toContain("window.open");
+ });
  it("shows full People dashboard with no internal list scrolling on mobile",()=>{
    expect(route).toContain("<OperationsPeopleDashboard kind={peopleTab}/>");
    expect(ui).toContain('rpc("admin_operations_people_truth")');
