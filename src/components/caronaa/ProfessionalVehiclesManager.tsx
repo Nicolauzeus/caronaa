@@ -110,7 +110,7 @@ export function ProfessionalVehiclesManager({onActivated}:{onActivated?:()=>void
      <Plus size={17}/> {showForm?"Fechar cadastro":"Adicionar outro veículo"}
    </button>
    {showForm&&<form onSubmit={e=>void save(e)} className="space-y-3 rounded-xl border border-white/15 p-3" noValidate>
-     <p className="text-xs text-white/70">Cada veículo precisa de placa própria. Matrícula profissional não é solicitada.</p>
+     <p className="text-xs text-white/70">Cada veículo precisa de placa própria, marca, modelo e cor.</p>
      <div role="group" aria-label="Tipo do novo veículo" className="grid grid-cols-2 gap-2">
        {(["CAR","MOTO"] as const).map(type=><button key={type} type="button"
          aria-pressed={fields.type===type}
