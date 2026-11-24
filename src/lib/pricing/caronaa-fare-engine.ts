@@ -68,6 +68,8 @@ export interface FareQuoteInput {
   waiveLocalMacicoCommission?: boolean;
   /** Temporary server-authorized mototaxi tariff for Redencao/Acarape. */
   localMotoFixedFareCents?: 500 | 600;
+  /** Server-verified directed F07 route fare (e.g. Acarape/Redenção → Barreira). */
+  routeFixedFareCents?: 3000;
 }
 
 export interface ProposedFareQuote {
@@ -216,8 +218,13 @@ export function quoteProposedCaronaaFare(
       (input.region !== "MACICO_BATURITE" || input.mode !== "EXCLUSIVE_MOTO" ||
        input.waiveLocalMacicoCommission !== true))
     throw new Error("Tarifa local de mototaxi nao autorizada.");
-  const fare = input.localMotoFixedFareCents ?? reference.fare;
-  const floor = input.localMotoFixedFareCents ?? reference.floor;
+  if (input.routeFixedFareCents !== undefined &&
+      (input.region !== "MACICO_BATURITE" || !input.mode.startsWith("EXCLUSIVE") ||
+       input.localMotoFixedFareCents !== undefined))
+    throw new Error("Tarifa fixa de trajeto nao autorizada.");
+  const fixed = input.routeFixedFareCents ?? input.localMotoFixedFareCents;
+  const fare = fixed ?? reference.fare;
+  const floor = fixed ?? reference.floor;
   const { commissionBps, commissionSource } = commissionRate(input, config);
   const commission = Math.round(
     (input.mode.startsWith("EXCLUSIVE") ? fare : fare * input.occupiedSeats) *

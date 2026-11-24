@@ -9,6 +9,7 @@ import {
   type FarePolicyConfig,
   type ExclusiveRateCard,
 } from "@/lib/pricing/caronaa-fare-engine";
+import { flashRouteFixedFareCents } from "@/lib/pricing/flash-route-fixed-fares";
 import { insideApprovedActivityRadius, resolveCorridorMunicipality } from "./corridor-coverage";
 import { quickRideSubmissionError } from "./quick-ride-errors";
 import { quickQuoteGateError } from "./quick-quote-rate-error";
@@ -224,6 +225,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       quotedAt,
       waiveLocalMacicoCommission,
       localMotoFixedFareCents,
+      routeFixedFareCents:flashRouteFixedFareCents(coverage.municipality,destinationCity.municipality),
       // Pilot rates are the four approved matrices. Event campaigns must not
       // silently override their explicit 15%/20% commission decisions.
       officialActivity:!String(policy.policy_version).endsWith("-piloto")&&matchingEvent?{
