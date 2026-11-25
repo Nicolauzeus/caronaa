@@ -86,7 +86,7 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(passenger).toContain('<QuickRidePostTripFlow role="PASSENGER"');
     expect(queue).toContain('<QuickRidePostTripFlow role="DRIVER"');
     expect(checkout).toContain('<QuickRidePixCard rideId={rideId} />');
-    expect(checkout).toContain('<QuickRideDriverSettlement rideId={rideId} />');
+    expect(checkout).toContain('<QuickRideDriverSettlement rideId={rideId} onPixReady={onPixReady} />');
     expect(checkout).toContain('quick_ride_my_rating');
     expect(checkout).toContain("Continuar no CARONAA");
     expect(checkout).toContain('role="dialog" aria-modal="true"');

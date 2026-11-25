@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
+import { PixPaymentCode } from "./PixPaymentCode";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,6 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
   const [busy, setBusy] = useState("");
   const [reference, setReference] = useState<Record<string, string>>({});
   const [selectedStatement, setSelectedStatement] = useState<string | null>(null);
-  const [pix, setPix] = useState<{ image: string; payload: string } | null>(null);
 
   const refresh = useCallback(async () => {
     const { data, error: failure } = await (supabase as any).rpc("get_my_caronaa_commission_ledger");
@@ -109,22 +108,17 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
     [ledger, selectedStatement],
   );
 
-  useEffect(() => {
-    let live = true;
-    setPix(null);
-    if (statement?.status === "SETTLED" || !statement) return;
+  const payload = useMemo(() => {
+    if (!statement || statement.status === "SETTLED" || !statement.txid ||
+        !Number.isSafeInteger(statement.totalCents) || statement.totalCents <= 0) return null;
     try {
-      const code = buildPixPayload(
+      return buildPixPayload(
         statement.pixKey, "CARONAA", statement.totalCents / 100, statement.txid,
       );
-      void QRCode.toDataURL(code, { width: 240, margin: 2 })
-        .then(image => { if (live) setPix({ image, payload: code }); })
-        .catch(() => { if (live) setError("Falha ao gerar a imagem do Pix. Confira o identificador do fechamento."); });
     } catch {
-      setError("Dados do fechamento Pix inválidos. Solicite revisão financeira.");
+      return null;
     }
-    return () => { live = false; };
-  }, [statement?.id, statement?.status, statement?.totalCents, statement?.pixKey, statement?.txid]);
+  }, [statement]);
 
   async function issue(source?: Due["source"], rideId?: string) {
     if (busy) return;
@@ -170,11 +164,6 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
     if (failure) setError(failure.message);
     else await refresh().catch(e => setError(String(e)));
     setBusy("");
-  }
-
-  async function copy(text: string) {
-    try { await navigator.clipboard.writeText(text); }
-    catch { setError("Não foi possível copiar. Use o código exibido."); }
   }
 
   return (
@@ -294,15 +283,8 @@ export function DriverPlatformFees({ compact = false }: { compact?: boolean }) {
                     <p className="text-sm font-bold">
                       Pix CARONAA · Valor fixo {brlCents(item.totalCents)}
                     </p>
-                    {pix ? (
-                      <>
-                        <img src={pix.image} alt={"QR Pix CARONAA de " + brlCents(item.totalCents)}
-                          width={240} height={240} className="mx-auto max-w-full rounded-lg bg-white p-2"/>
-                        <Button type="button" className="w-full" onClick={() => void copy(pix.payload)}>
-                          Copiar Pix copia e cola
-                        </Button>
-                      </>
-                    ) : <p role="status" className="text-sm">Preparando código Pix…</p>}
+                    {payload ? <PixPaymentCode payload={payload} alt={"QR Pix CARONAA de " + brlCents(item.totalCents)} />
+                      : <p role="alert" className="text-sm">Dados do fechamento Pix inválidos. Solicite revisão financeira.</p>}
                     <p className="break-all font-mono text-xs">{item.pixKey}</p>
                     <p className="text-xs text-muted-foreground">
                       Confira no banco a chave oficial, o beneficiário e o valor exato.
