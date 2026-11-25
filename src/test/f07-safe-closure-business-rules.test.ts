@@ -113,7 +113,7 @@ describe("F07 lifecycle: transport end != payment or customer confirmation",()=>
 
   it("only opens Pix and rating on a confirmed COMPLETED status",()=>{
     expect(checkout).toContain("<QuickRidePixCard rideId={rideId} />");
-    expect(checkout).toContain("<QuickRideDriverSettlement rideId={rideId} />");
+    expect(checkout).toContain("<QuickRideDriverSettlement rideId={rideId} onPixReady={onPixReady} />");
     expect(passenger).toContain('r.status==="COMPLETED"');
     expect(driver).toContain('r.status==="COMPLETED"');
     expect(passengerHistory).toContain('ride.status === "COMPLETED"');

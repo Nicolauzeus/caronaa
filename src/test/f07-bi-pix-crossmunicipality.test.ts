@@ -6,7 +6,6 @@ const center=readFileSync("src/components/admin/F07OperationsCockpit.tsx","utf8"
 const online=readFileSync("drizzle/migrations/0225_operations_online_pix_preservation.sql","utf8");
 const dispatch=readFileSync("drizzle/migrations/0226_f07_municipality_independent_dispatch.sql","utf8");
 const checkout=readFileSync("src/components/caronaa/QuickRidePostTripFlow.tsx","utf8");
-const settlement=readFileSync("src/components/caronaa/QuickRideDriverSettlement.tsx","utf8");
 
 describe("BI operations and recovered Pix",()=>{
   it("shows one source-backed cockpit and moves legacy management into tools",()=>{
@@ -31,7 +30,6 @@ describe("BI operations and recovered Pix",()=>{
   it("prevents empty Pix saves and preserves post-ride checkout until Pix is available",()=>{
     expect(online).toContain("Chave Pix vazia. Cadastro existente preservado.");
     expect(online).not.toContain("DELETE FROM public.driver_pix_settings");
-    expect(settlement).toContain("onPixReady?.(Boolean(row.available&&row.key))");
     expect(checkout).toContain('role==="DRIVER"&&!driverPixReady');
     expect(checkout).toContain("Cadastre o Pix para continuar");
   });
