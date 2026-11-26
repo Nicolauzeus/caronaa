@@ -55,6 +55,19 @@ describe("Flash driver GPS presence",()=>{
     expect(api.watch).toHaveBeenCalledOnce();
     expect(api.offline).not.toHaveBeenCalled();
   });
+  it("does not mark expired GPS dispatch-ready after a delayed heartbeat acknowledgement",async()=>{
+    let acknowledge!:()=>void;
+    api.heartbeat.mockImplementationOnce(()=>new Promise<void>(resolve=>{acknowledge=resolve;}));
+    const {result}=renderHook(()=>useFlashDriverPresence());
+    await act(async()=>{await result.current.goOnline(config);});
+    expect(result.current.online).toBe(true);
+    expect(result.current.gpsConnected).toBe(false);
+    await act(async()=>{vi.advanceTimersByTime(FLASH_GPS_STALE_MS+4500);});
+    await act(async()=>{acknowledge();});
+    expect(result.current.gpsConnected).toBe(false);
+    expect(result.current.online).toBe(true);
+    expect(api.offline).not.toHaveBeenCalled();
+  });
   it("does not turn offline simply because GPS is stale",async()=>{
     const {result}=renderHook(()=>useFlashDriverPresence());
     await act(async()=>{await result.current.goOnline(config);});
