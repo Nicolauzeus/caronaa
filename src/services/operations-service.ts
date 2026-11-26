@@ -122,7 +122,7 @@ export const overviewSchema = z.object({
 });
 export const personHistorySchema=scope.extend({
   person_id:uuid,role:z.enum(["driver","passenger"]),
-  summary:z.object({orders:count,accepted:count,completed:count,cancelled:count,recorded_views:optionalCount,recorded_skips:optionalCount,observed_eligible:optionalCount}),
+  summary:z.object({orders:count,accepted:count,completed:count,cancelled:count,recorded_views:optionalCount,recorded_skips:optionalCount,observed_eligible:optionalCount,view_samples:count,mean_view_seconds:optionalNumber,accept_samples:count,mean_accept_seconds:optionalNumber,arrival_samples:count,mean_arrival_seconds:optionalNumber}),
   rows:z.array(z.object({id:uuid,service:orderServiceSchema,requested_at:z.string(),origin:z.string(),destination:z.string(),status:z.string(),fare_cents:z.number().int().nullable(),accepted:z.boolean(),completed:z.boolean(),cancelled:z.boolean(),viewed:z.boolean().nullable(),skipped:z.boolean().nullable(),eligible:z.boolean().nullable()})),
   notes,
 });
