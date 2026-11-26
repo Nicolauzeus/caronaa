@@ -318,8 +318,8 @@ export function ShellJourneyPlanner({
             </small>
           </span>
           <span className="shrink-0 text-right">
-            <strong className="block font-[Sora] text-sm font-extrabold text-[#FFBB00]">
-              {price??(flashFarePending?"Calculando…":"Indisponível")}
+            <strong className="block max-w-[9rem] break-words font-[Sora] text-sm font-extrabold text-[#FFBB00]" aria-live="polite">
+              {price??(waitingForOrigin?"Aguardando localização":flashFarePending?"Calculando…":"Indisponível")}
             </strong>
             {ready&&<small className="block text-[10px] text-white/65">{available?"Selecionar":"Solicitar e aguardar"}</small>}
           </span>
