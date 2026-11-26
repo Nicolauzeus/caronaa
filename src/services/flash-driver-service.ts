@@ -128,7 +128,15 @@ export async function getFlashDriverRadarOrders():Promise<FlashDriverOrder[]>{
     if(error||!Array.isArray(data))throw new FlashDriverError("UNAVAILABLE");
     const items=data.map(parseOrder);
     if(items.some(x=>x===null))throw new FlashDriverError("UNAVAILABLE");
-    return items as FlashDriverOrder[];
+    const parsed=items as FlashDriverOrder[];
+    // Best-effort receipt of the parsed response, not proof of push delivery.
+    // Never await telemetry or make radar depend on its availability.
+    if(parsed.length>0&&parsed.length<=5){
+      try{void Promise.resolve((supabase as any).rpc("caronaa_ack_flash_radar_response",{
+        p_request_ids:[...new Set(parsed.map(x=>x.id))],
+      })).catch(()=>undefined);}catch{/* optional telemetry */}
+    }
+    return parsed;
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
 export async function respondFlashOrder(rideId:string,accept:boolean):Promise<"ACCEPTED"|"REJECTED">{
