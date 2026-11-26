@@ -1,4 +1,4 @@
--- Minimal, disposable source-schema fixture for migrations 0247-0257.
+-- Minimal, disposable source-schema fixture for migrations 0247-0258.
 -- This is NOT the full production schema or a replacement for staging.
 -- Run only in a freshly initialized local cluster via test-operations-db.mjs.
 CREATE TYPE public.app_role AS ENUM ('admin','user');
@@ -64,3 +64,19 @@ AS $$ SELECT q.id,q.origin_label FROM public.professional_quick_rides q
  AND q.id='10000000-0000-0000-0000-000000000003'::uuid AND q.status='SEARCHING' $$;
 REVOKE ALL ON FUNCTION public.get_flash_driver_radar_orders(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_flash_driver_radar_orders(integer) TO authenticated;
+
+-- Existing privacy-safe queue trigger (0148) source contract for 0258.
+CREATE TABLE public.caronaa_quick_queue_events(municipality text PRIMARY KEY,changed_at timestamptz NOT NULL);
+CREATE FUNCTION public.notify_caronaa_quick_queue_change()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF NEW.municipality IS NOT NULL THEN
+  INSERT INTO public.caronaa_quick_queue_events(municipality,changed_at)
+  VALUES(NEW.municipality,clock_timestamp())
+  ON CONFLICT(municipality) DO UPDATE SET changed_at=EXCLUDED.changed_at;
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER caronaa_quick_queue_realtime_event
+ AFTER INSERT OR UPDATE OF status,driver_id ON public.professional_quick_rides
+ FOR EACH ROW EXECUTE FUNCTION public.notify_caronaa_quick_queue_change();
