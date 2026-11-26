@@ -118,6 +118,31 @@ function parseOrder(raw:unknown):FlashDriverOrder|null{
     passengerName:string(x.passenger_name)||undefined,
     passengerPhoto:string(x.passenger_avatar)||null};
 }
+// Suppress repeated acknowledgement traffic from the six-second radar poll.
+// This cache is only a best-effort client optimization, not the evidence store.
+let radarAckInFlight=false;
+let radarAckAccount:string|null=null;
+const radarAckRecent=new Map<string,number>();
+async function acknowledgeParsedRadar(ids:string[]):Promise<void>{
+  if(radarAckInFlight||!ids.length||ids.length>5)return;
+  radarAckInFlight=true;
+  try{
+    const {data}=await supabase.auth.getSession();
+    const account=data.session?.user.id;
+    if(!account)return;
+    if(radarAckAccount!==account){radarAckAccount=account;radarAckRecent.clear();}
+    const now=Date.now();
+    for(const [id,until] of radarAckRecent)if(until<=now)radarAckRecent.delete(id);
+    const pending=[...new Set(ids)].filter(id=>!radarAckRecent.has(id));
+    if(!pending.length)return;
+    const {error}=await (supabase as any).rpc("caronaa_ack_flash_radar_response",{p_request_ids:pending});
+    if(!error){
+      if(radarAckRecent.size>200)radarAckRecent.clear();
+      for(const id of pending)radarAckRecent.set(id,now+60_000);
+    }
+  }catch{/* optional evidence, never a dispatch dependency */}
+  finally{radarAckInFlight=false;}
+}
 export async function getFlashDriverRadarOrders():Promise<FlashDriverOrder[]>{
   try{
     // During incremental rollout only, fall back when PostgREST has not yet
@@ -131,11 +156,7 @@ export async function getFlashDriverRadarOrders():Promise<FlashDriverOrder[]>{
     const parsed=items as FlashDriverOrder[];
     // Best-effort receipt of the parsed response, not proof of push delivery.
     // Never await telemetry or make radar depend on its availability.
-    if(parsed.length>0&&parsed.length<=5){
-      try{void Promise.resolve((supabase as any).rpc("caronaa_ack_flash_radar_response",{
-        p_request_ids:[...new Set(parsed.map(x=>x.id))],
-      })).catch(()=>undefined);}catch{/* optional telemetry */}
-    }
+    void acknowledgeParsedRadar(parsed.map(x=>x.id));
     return parsed;
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
