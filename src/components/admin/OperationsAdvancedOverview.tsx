@@ -43,7 +43,7 @@ export function OperationsAdvancedOverview({data,loading,error}:{data:Operationa
  const segments=[...actors].map(([actor,value])=>{const from=offset;offset+=cancellationTotal?value/cancellationTotal*100:0;return {actor,value,color:actorColors[actor]??"#64748B",from,to:offset};});
  const ring=segments.length&&cancellationTotal>0?"conic-gradient("+segments.map(x=>x.color+" "+x.from+"% "+x.to+"%").join(",")+")":"var(--ops-line,#e4e4e7)";
  return <section className="space-y-4" aria-label="Inteligência operacional avançada">
-  <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" aria-label="Indicadores de atendimento">
+  <dl className="ops-summary-grid grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" aria-label="Indicadores de atendimento">
    {tiles.map(({title,value,hint,icon:Icon,tone})=><div key={title} className="ops-metric p-3 sm:p-4"><div className="flex items-start gap-2"><span className="ops-icon"><Icon size={18} className={tone} aria-hidden="true"/></span><dt className="text-xs font-semibold leading-snug text-muted-foreground">{title}</dt></div><dd className="ops-metric-value mt-3">{value}</dd><p className="mt-1 text-[11px] leading-snug text-muted-foreground">{hint}</p></div>)}
   </dl>
   <div className="grid min-w-0 gap-3 lg:grid-cols-2">
