@@ -59,3 +59,59 @@ self.addEventListener("fetch", (event) => {
     }
   })());
 });
+
+// F07 ride-request push: high-priority alert that opens the order when tapped.
+const PUSH_FALLBACK_BODY = "Nova corrida CARONAA! Toque para ver detalhes.";
+
+function safeRideUrl(raw) {
+  try {
+    const url = new URL(typeof raw === "string" && raw ? raw : "/home", self.location.origin);
+    // Only ever open pages of this app, never an address sent from outside.
+    return url.origin === self.location.origin ? url.href : new URL("/home", self.location.origin).href;
+  } catch {
+    return new URL("/home", self.location.origin).href;
+  }
+}
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = {};
+  }
+  if (!payload || typeof payload !== "object") payload = {};
+  const data = payload.data && typeof payload.data === "object" ? payload.data : {};
+  const title = typeof payload.title === "string" && payload.title ? payload.title : "CARONAA";
+  const body = typeof payload.body === "string" && payload.body ? payload.body : PUSH_FALLBACK_BODY;
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/pwa-icon-192.png",
+      badge: "/pwa-icon-192.png",
+      vibrate: [400, 200, 400, 200, 800, 200, 800],
+      tag: "caronaa-ride-request",
+      renotify: true,
+      requireInteraction: true,
+      data: { url: safeRideUrl(data.url || payload.url), orderId: data.orderId ?? payload.orderId ?? null },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = safeRideUrl(event.notification.data && event.notification.data.url);
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
+    if (existing) {
+      const focused = await existing.focus();
+      const client = focused || existing;
+      if (client.url !== target && typeof client.navigate === "function") {
+        try { await client.navigate(target); } catch { /* uncontrolled tab: focus is enough */ }
+      }
+      return;
+    }
+    await self.clients.openWindow(target);
+  })());
+});
