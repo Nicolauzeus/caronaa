@@ -21,9 +21,12 @@ describe("Administrative first-entry navigation contract", () => {
     expect(home).toContain("getAdminAppPreview(user.id)");
     expect(home).toContain("throw redirect({to:destination");
   });
-  it("preserves institutional prelaunch restrictions and server-side administrative authorization", () => {
-    expect(launchGuard).toContain("getMyResearchLaunchState()");
-    expect(launchGuard).toContain('to: "/aguardando"');
+  it("preserves authenticated onboarding and server-side administrative authorization, without optional campaign gating", () => {
+    expect(launchGuard).toContain("supabase.auth.getUser()");
+    expect(launchGuard).toContain("readOnboarding()");
+    expect(launchGuard).not.toContain("getMyResearchLaunchState()");
+    expect(launchGuard).not.toContain('to: "/aguardando"');
+    expect(launchGuard).toContain('rpc("get_my_professional_access")');
     expect(file("src/components/admin/AdminGuard.tsx")).toContain("getAdminAccess");
     expect(file("src/components/admin/AdminGuard.tsx")).toContain("get_my_admin_scope");
   });
