@@ -1,3 +1,4 @@
+import { Activity, AlertTriangle, BellOff, Clock3, Info, UsersRound } from "lucide-react";
 import type { OperationalOverview } from "@/services/operations-service";
 
 export type OperationalFinding={id:string;title:string;detail:string;next:string};
@@ -15,13 +16,14 @@ export function buildOperationalFindings(data:OperationalOverview):OperationalFi
 }
 export function OperationsAudienceDiagnostics({data}:{data:OperationalOverview}){
  const a=data.audience,findings=buildOperationalFindings(data);
+ const findingIcons={unserved:AlertTriangle,zero:UsersRound,"with-candidates":Activity,unknown:Info,send:BellOff,hour:Clock3} as const;
  const metrics=a?[["Pedidos Flash",a.flash_orders],["Captura conhecida",a.snapshot_known],["Sem candidatos iniciais",a.snapshot_zero],["Com candidatos iniciais",a.snapshot_with_candidates],["Captura indisponível",a.snapshot_unknown],["Pedidos com retorno confirmado pelo app",a.orders_with_app_ack],["Pedidos com sinal de fila",a.orders_with_queue_signal]] as const:[];
- return <section className="rounded-2xl border bg-card p-4 space-y-3" aria-label="Diagnósticos operacionais">
-  <header><h2 className="font-[Sora] text-lg font-bold">Diagnósticos operacionais</h2><p className="text-xs text-muted-foreground">Sinais verificáveis para orientar a investigação; não são causas comprovadas.</p></header>
+ return <section className="ops-panel p-4 space-y-3" aria-label="Diagnósticos operacionais">
+  <header className="flex items-start gap-3"><span className="ops-icon"><Activity size={20} className="text-amber-700 dark:text-yellow-300"/></span><div><h2 className="font-[Sora] text-lg font-bold">Diagnósticos operacionais</h2><p className="text-xs text-muted-foreground">Sinais verificáveis para orientar a investigação; não são causas comprovadas.</p></div></header>
   {a&&<><dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">{metrics.map(([label,value])=><div key={label} className="rounded-xl border bg-muted/20 p-3"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="font-bold tabular-nums text-xl">{value.toLocaleString("pt-BR")}</dd></div>)}</dl>
   <p className="text-xs text-muted-foreground">Candidatos Flash na criação segundo radar 0233, antes do limite individual. Retorno confirmado pelo aplicativo não comprova entrega de push. Zero confirmado é diferente de captura ausente.</p></>}
   {data.kpis.service!=="shared"&&!a&&<p className="text-sm text-muted-foreground">Captura de candidatos e confirmação do app indisponíveis.</p>}
   {!findings.length?<p className="text-sm text-muted-foreground">Nenhum diagnóstico acionável nos registros disponíveis. Isso não comprova ausência de problemas.</p>:
-  <ul className="divide-y">{findings.map(f=><li key={f.id} className="space-y-1 py-3"><h3 className="font-semibold text-sm">{f.title}</h3><p className="text-sm">{f.detail}</p><p className="text-xs text-muted-foreground">{f.next}</p></li>)}</ul>}
+  <ul className="ops-findings">{findings.map(f=>{const Icon=findingIcons[f.id as keyof typeof findingIcons]??Info;return <li key={f.id} className="ops-finding space-y-2"><div className="flex items-start gap-2"><span className="ops-finding-icon"><Icon size={17} className={f.id==="unknown"?"text-muted-foreground":"text-amber-700 dark:text-yellow-300"} aria-hidden="true"/></span><h3 className="font-semibold text-sm">{f.title}</h3></div><p className="text-sm leading-relaxed">{f.detail}</p><p className="border-t pt-2 text-xs leading-relaxed text-muted-foreground"><strong>Investigar:</strong> {f.next}</p></li>;})}</ul>}
  </section>;
 }
