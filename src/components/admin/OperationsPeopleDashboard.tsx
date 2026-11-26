@@ -28,7 +28,7 @@ type PeopleReport={
  summary:Summary;users:Person[];scope:Record<string,string>;
 };
 const fmt=(n:number)=>n.toLocaleString("pt-BR");
-const time=(s:string)=>new Date(s).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"});
+const time=(s:string)=>new Date(s).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const date=(s:string)=>new Date(s).toLocaleDateString("pt-BR",{timeZone:"America/Fortaleza"});
 const completed=(p:Person,isDriver:boolean)=>isDriver?p.quick_driven_completed+p.shared_driven_completed:p.quick_passenger_completed+p.shared_passenger_completed;
 const requested=(p:Person)=>p.quick_requested+p.shared_requested;
@@ -37,11 +37,11 @@ function Metric({title,value,caption,tone,icon:Icon}:{
  icon:typeof Users;
 }){
  const stripe=tone==="yellow"?"#FFBB00":tone==="green"?"#16A34A":tone==="blue"?"#2563EB":"#64748B";
- return <article className="min-w-0 rounded-2xl border border-border bg-card p-3 sm:p-4" style={{borderTop:"3px solid "+stripe}}>
+ return <article className="ops-metric min-w-0 p-3 sm:p-4">
    <div className="flex items-center justify-between gap-2 text-muted-foreground">
-     <p className="text-xs font-medium">{title}</p><Icon size={18} aria-hidden="true"/>
+     <p className="text-xs font-semibold">{title}</p><span className="ops-icon"><Icon size={18} style={{color:stripe}} aria-hidden="true"/></span>
    </div>
-   <p className="mt-1 font-[Sora] text-3xl font-extrabold tabular-nums">{value===undefined?"—":fmt(value)}</p>
+   <p className="ops-metric-value mt-2">{value===undefined?"—":fmt(value)}</p>
    <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{caption}</p>
  </article>;
 }
@@ -144,7 +144,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
        <span><strong className="text-foreground">{fmt(users.length)}</strong> contas no perfil atual · <strong className="text-foreground">{fmt(visible.length)}</strong> com os filtros</span>
        <span>Cadastro não significa presença online ou atividade recente</span>
      </div>
-     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px]">
+     <div className="ops-filterbar grid gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_220px]">
        <div className="relative min-w-0"><Search className="pointer-events-none absolute left-3 top-3 text-muted-foreground" size={17}/>
          <Input aria-label="Buscar por nome ou e-mail" value={query} onChange={e=>setQuery(e.target.value)}
            placeholder="Buscar por nome ou e-mail…" className="h-11 pl-9"/>
@@ -154,7 +154,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
          {filterOptions[role].map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
        </select>
      </div>
-     <div className="hidden min-w-0 overflow-hidden rounded-xl border lg:block">
+     <div className="ops-history-desktop hidden min-w-0 overflow-hidden rounded-xl border bg-card lg:block">
        <table className="w-full table-fixed text-left text-sm">
          <thead className="bg-muted/50 text-xs text-muted-foreground">
            <tr><th className="w-[25%] px-3 py-3 font-semibold">Pessoa</th>
@@ -181,7 +181,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
          </tbody>
        </table>
      </div>
-     <div className="grid gap-2 lg:hidden">
+     <div className="ops-history-mobile grid gap-2 lg:hidden">
        {rows.map(p=><article key={p.user_id} className="space-y-3 rounded-2xl border bg-card p-3">
          <div className="flex items-start justify-between gap-3"><div className="min-w-0 flex-1"><Identity person={p}/></div>
            <Button size="sm" variant="outline" onClick={()=>setSelected(p)} className="shrink-0 gap-1"><Eye size={15}/> Ver</Button></div>
@@ -207,10 +207,17 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
        href="/admin/motoristas">Abrir revisões antigas de motoristas de carona compartilhada</a>}
    </>}
    <Dialog open={!!selected} onOpenChange={open=>{if(!open)setSelected(null);}}>
-     <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
-       <DialogHeader><DialogTitle>{selected?.display_name}</DialogTitle>
-         <DialogDescription>Detalhes da conta autenticada e da atividade registrada</DialogDescription></DialogHeader>
-       {selected&&<dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+     <DialogContent className="ops-dialog flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-none p-4 sm:h-auto sm:max-h-[92dvh] sm:max-w-3xl sm:rounded-2xl sm:p-6">
+       <DialogHeader className="shrink-0 border-b pb-3 pr-8">
+         <DialogTitle>Perfil operacional</DialogTitle>
+         <DialogDescription>Conta autenticada · atividade registrada · horário de Fortaleza</DialogDescription>
+       </DialogHeader>
+       {selected&&<div className="flex shrink-0 items-center gap-3">
+         <div className="min-w-0 flex-1"><Identity person={selected}/></div>
+         <StatePill status={selected.suspended?"warning":"neutral"}>{selected.suspended?"Suspensa":selected.role==="MOTORISTA"?"Motorista":"Passageiro"}</StatePill>
+       </div>}
+       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
+       {selected&&<details className="rounded-xl border ops-dialog-inset"><summary className="cursor-pointer p-3 text-sm font-semibold">Cadastro e habilitação</summary><dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t p-3 text-sm">
          {([
            ["E-mail",selected.email||"Não informado"],["Perfil atual",selected.role],
            ["Cadastro",time(selected.registered_at)],["Conta",selected.suspended?"Suspensa":"Cadastrada"],
@@ -228,8 +235,10 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
          ] as [string,string][]).map(([name,value])=><div key={name} className="min-w-0">
            <dt className="text-xs text-muted-foreground">{name}</dt><dd className="mt-0.5 break-words font-medium">{value}</dd>
          </div>)}
-       </dl>}
+       </dl></details>}
        {selected&&<OperationsPersonActivity key={selected.user_id+":"+selected.role} personId={selected.user_id} role={selected.role==="MOTORISTA"?"driver":"passenger"}/>}
+       </div>
+       <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={()=>setSelected(null)}>Voltar à lista</Button>
      </DialogContent>
    </Dialog>
  </section>;
