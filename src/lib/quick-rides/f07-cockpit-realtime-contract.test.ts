@@ -8,6 +8,7 @@ const hook=readFileSync("src/lib/quick-rides/use-quick-ride-realtime.ts","utf8")
 const home=readFileSync("src/routes/_authenticated/home.tsx","utf8");
 const flash=readFileSync("src/components/caronaa/shell/ShellJourneyPlanner.tsx","utf8");
 const passenger=readFileSync("src/components/caronaa/QuickRideHomePanel.tsx","utf8");
+const operations=readFileSync("src/services/operations-service.ts","utf8");
 const driverHistory=readFileSync("src/routes/_authenticated/viagens-profissionais.tsx","utf8");
 const passengerHistory=readFileSync("src/components/caronaa/QuickRideTripHistory.tsx","utf8");
 const checkout=readFileSync("src/components/caronaa/QuickRidePostTripFlow.tsx","utf8");
@@ -47,7 +48,9 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(sql).toContain("ALTER PUBLICATION supabase_realtime ADD TABLE public.caronaa_quick_queue_events");
     expect(sql).not.toContain("ADD TABLE public.professional_quick_rides");
     expect(hook).toContain('table:"caronaa_quick_queue_events"');
-    expect(hook).toContain('},60_000)');
+    expect(hook).toContain('},6_000)');
+    expect(hook).toContain('if(!document.hidden)signal();');
+    expect(hook).toContain('window.clearInterval(fallback)');
     expect(hook).toContain('visibilitychange');
     expect(hook).toContain('removeChannel(channel)');
   });
@@ -65,7 +68,8 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(passenger).toContain('await submitFn({data:{quoteId:currentQuote.quoteId}})');
     expect(passenger).toContain('id:submitted.rideId');
     expect(passenger).toContain('useQuickRideRealtime(');
-    expect(passenger).toContain('quick_ride_transition');
+    expect(passenger).toContain('await operationsService.cancelFlash(liveRide.id)');
+    expect(operations).toContain('call("quick_ride_transition", { p_id: validate(uuid, id), p_status: "CANCELLED" }, z.boolean())');
   });
   it("retains dropoff confirmation and moves posttrip Pix and ratings into the histories",()=>{
     expect(queue).toContain('quick_ride_dropoff_state');
@@ -82,11 +86,12 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(driverHistory).toContain('Avaliar passageiro (opcional)');
     expect(passengerHistory).toContain('Avaliar motorista (opcional)');
   });
-  it("presents Pix and rating automatically after completion without blocking the next trip",()=>{
+  it("presents Pix and rating after completion and preserves the driver Pix requirement",()=>{
     expect(passenger).toContain('<QuickRidePostTripFlow role="PASSENGER"');
     expect(queue).toContain('<QuickRidePostTripFlow role="DRIVER"');
     expect(checkout).toContain('<QuickRidePixCard rideId={rideId} />');
-    expect(checkout).toContain('<QuickRideDriverSettlement rideId={rideId} />');
+    expect(checkout).toContain('<QuickRideDriverSettlement rideId={rideId} onPixReady={onPixReady} />');
+    expect(checkout).toContain("Cadastre o Pix para continuar");
     expect(checkout).toContain('quick_ride_my_rating');
     expect(checkout).toContain("Continuar no CARONAA");
     expect(checkout).toContain('role="dialog" aria-modal="true"');
