@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { quickQuoteCoordinator, quickQuoteItineraryKey, isQuickQuoteRateLimit } from "@/lib/quick-rides/quick-quote-coordinator";
 import { supabase } from "@/integrations/supabase/client";
 import { operationsService } from "@/services/operations-service";
+import { PassengerCancellationReason } from "./PassengerCancellationReason";
 import {
   getQuickRideCoverage, getQuickRideFarePreview, registerQuickRideRegionInterest,
   submitQuotedQuickRide, type QuickRideCoverage, type QuickRideFarePreview,
@@ -84,6 +85,8 @@ export function QuickRideHomePanel({
   const [error,setError]=useState("");
   const [interestSent,setInterestSent]=useState(false);
   const [rides,setRides]=useState<ExistingQuickRide[]>([]);
+  const [cancelledForReason,setCancelledForReason]=useState<{id:string;account:string}|null>(null);
+  useEffect(()=>{setCancelledForReason(null);},[quoteAccount]);
   const [boardingCode,setBoardingCode]=useState("");
   const [dropoff,setDropoff]=useState<{deadline_at:string;passenger_response:string|null;resolved_at:string|null}|null>(null);
   const [nowMs,setNowMs]=useState(Date.now());
@@ -489,9 +492,17 @@ export function QuickRideHomePanel({
       if(action==="CANCELLED"){
         try{await operationsService.cancelFlash(liveRide.id);}
         catch{throw new Error("Não foi possível atualizar a corrida.");}
+        if(mounted.current){
+          setRides(current=>current.filter(r=>r.id!==liveRide.id));
+          if(quoteAccount)setCancelledForReason({id:liveRide.id,account:quoteAccount});
+        }
       }
-      const {data}=await (supabase as any).rpc("quick_ride_my_requests");
-      if(mounted.current)setRides(Array.isArray(data)?data:[]);
+      // Cancellation is already confirmed. A later refresh failure must not
+      // present it as a failed cancellation or clear unrelated rides.
+      try{
+        const {data,error:refreshError}=await (supabase as any).rpc("quick_ride_my_requests");
+        if(mounted.current&&!refreshError&&Array.isArray(data))setRides(data.filter((r:ExistingQuickRide)=>r.id!==liveRide.id));
+      }catch{/* Next realtime/poll refresh reconciles the state. */}
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível atualizar.");}
     finally{if(mounted.current)setBusy(false);}
   }
@@ -612,6 +623,9 @@ export function QuickRideHomePanel({
           {!shellMode&&requestControls}
         </div>}
       </>}
+      {cancelledForReason&&cancelledForReason.account===quoteAccount&&
+        <PassengerCancellationReason key={cancelledForReason.id} service="flash" requestId={cancelledForReason.id}
+          onClose={()=>setCancelledForReason(current=>current?.id===cancelledForReason.id?null:current)}/>}
       <RideConnectionNotice rideId={liveRide?.id} role="PASSENGER"/>
       <QuickRidePostTripFlow role="PASSENGER" activeRideId={liveRide?.id??pendingReviewRide?.id??null} completedRide={completedRide??null}/>
       {!liveRide&&error&&!priceFailure&&!waitingForOrigin&&<p role="alert" className="rounded-xl border border-[#FFBB00]/35 p-3 text-sm text-white/90">{shellMode?"Não foi possível obter os dados da viagem. Confira o trajeto e tente novamente.":error}</p>}
