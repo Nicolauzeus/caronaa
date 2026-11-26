@@ -65,9 +65,9 @@ BEGIN
  OR p_stage IS NULL OR p_stage NOT IN ('eligible','send_attempted','provider_accepted','delivery_confirmed','send_failed')
  THEN RAISE EXCEPTION 'Invalid receipt' USING ERRCODE='22023'; END IF;
  IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_driver_id) OR
-  NOT CASE WHEN p_service='flash' THEN EXISTS(SELECT 1 FROM public.professional_quick_rides
+  NOT (CASE WHEN p_service='flash' THEN EXISTS(SELECT 1 FROM public.professional_quick_rides
    WHERE id=p_request_id AND passenger_id<>p_driver_id)
-  ELSE EXISTS(SELECT 1 FROM public.ride_requests WHERE request_id=p_request_id AND user_id<>p_driver_id) END
+  ELSE EXISTS(SELECT 1 FROM public.ride_requests WHERE request_id=p_request_id AND user_id<>p_driver_id) END)
  THEN RAISE EXCEPTION 'Unknown request or recipient' USING ERRCODE='22023'; END IF;
  INSERT INTO public.caronaa_order_notification_receipts
   (service,request_id,driver_id,channel,dispatch_key,stage)
