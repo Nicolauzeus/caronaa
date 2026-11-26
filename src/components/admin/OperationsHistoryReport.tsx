@@ -51,11 +51,24 @@ const periodDates=(preset:Preset,from:string,to:string)=>{
 };
 const palette=["bg-[#FFBB00]","bg-[#FFE49B]","bg-[#FFF1CA]","bg-[#F5F5F5]"];
 function Stat({title,value,hint,icon}: {title:string;value:string;hint:string;icon:React.ReactNode}) {
-  return <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">{icon}<span>{title}</span></div>
-    <p className="mt-2 font-[Sora] text-2xl font-extrabold tabular-nums">{value}</p>
+  return <article className="ops-metric min-w-0 p-3 sm:p-4">
+    <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><span className="ops-icon">{icon}</span><span>{title}</span></div>
+    <p className="ops-metric-value mt-2">{value}</p>
     <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
   </article>;
+}
+function orderStatus(r:Order){
+  if(r.completed)return {label:"Concluída",tone:"bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"};
+  if(r.cancelled)return {label:"Cancelada",tone:"bg-red-500/10 text-red-700 dark:text-red-300"};
+  if(r.expired)return {label:"Expirada",tone:"bg-muted text-muted-foreground"};
+  if(r.status==="SEARCHING")return {label:"Aguardando",tone:"bg-amber-500/10 text-amber-800 dark:text-amber-300"};
+  if(r.status==="PENDING_REVIEW")return {label:"Em revisão",tone:"bg-amber-500/10 text-amber-800 dark:text-amber-300"};
+  if(r.accepted)return {label:"Aceita / em curso",tone:"bg-blue-500/10 text-blue-700 dark:text-blue-300"};
+  return {label:"Outro / não classificado",tone:"bg-muted text-muted-foreground"};
+}
+function OrderStatus({order}:{order:Order}){
+ const s=orderStatus(order);
+ return <span className={"inline-flex max-w-full rounded-full px-2 py-1 text-xs font-semibold "+s.tone}>{s.label}</span>;
 }
 function downloadCsv(rows:Order[]) {
   const fields=["Data","Serviço","Passageiro","Motorista","Origem","Destino","Valor estimado","Status"];
@@ -158,7 +171,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     const q=query.trim().toLocaleLowerCase("pt-BR");
     return (report?.rows??[]).filter(r=>
       (status==="all"||(status==="unaccepted"&&!r.accepted)||
-      (status==="completed"&&r.completed)||(status==="cancelled"&&r.cancelled)||
+      (status==="completed"&&r.completed)||(status==="cancelled"&&r.cancelled)||(status==="expired"&&r.expired)||(status==="waiting"&&r.status==="SEARCHING"&&!r.expired)||
       (status==="accepted"&&r.accepted)) &&
       (!q||[r.id,r.passenger_name,r.driver_name,r.origin,r.destination,r.municipality]
         .some(s=>(s??"").toLocaleLowerCase("pt-BR").includes(q))));
@@ -256,8 +269,9 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
   return <main className="min-w-0 space-y-4 pb-8" aria-label={mode==="reports"?"Histórico e relatórios de operações":"Inteligência operacional"}>
     <div className="caronaa-screen-report space-y-4">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="font-[Sora] text-2xl font-extrabold">{mode==="reports"?"Histórico & Relatórios":"Inteligência de Mobilidade"}</h1>
+      <div className="ops-heading">
+        <div className="ops-eyebrow"><Activity size={14}/> {mode==="reports"?"Auditoria e exportações":"Análise e tomada de decisão"}</div>
+        <h1 className="font-[Sora] text-2xl font-extrabold">{mode==="reports"?"Histórico & Relatórios":"Inteligência Operacional"}</h1>
         <p className="text-sm text-muted-foreground">{mode==="reports"?"Histórico de pedidos, desempenho e PDFs.":"Cotações, horários, usuários ativos e uso de Google Maps."} · Horário de Fortaleza.</p>
         {presentationMode&&report&&!busy&&<p role="note" className="caronaa-report-projection-label mt-1 text-xs text-muted-foreground">
           <strong>Cenário projetado</strong> · {fmt(report.summary.orders)} pedidos reais + {PRESENTATION_ILLUSTRATIVE_REQUESTS} estimados = {fmt(display?.orders)} no cenário. Os adicionais não são operações registradas.
@@ -288,7 +302,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
         </div>
       </form>
     </div>}
-    <section className="flex flex-wrap items-end gap-2 rounded-2xl border bg-card p-3 print:hidden" aria-label="Filtros dos relatórios">
+    <section className="ops-filterbar flex flex-wrap items-end gap-2 rounded-2xl border bg-card p-3 print:hidden" aria-label="Filtros dos relatórios">
       <div className="flex flex-wrap gap-1" role="group" aria-label="Período">
         {(["today","7d","30d","custom"] as const).map((p)=><button key={p} type="button" onClick={()=>{setPreset(p);setPage(0);}}
           aria-pressed={preset===p} className={"rounded-full px-3 py-2 text-xs font-semibold "+(preset===p?"bg-[#FFBB00] text-[#121212]":"bg-muted text-foreground")}>
@@ -311,12 +325,11 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
     {mode==="intelligence"&&<>
       <OperationsAdvancedOverview data={advanced.data} loading={advanced.loading} error={advanced.error}/>
-      <OperationsMobilityIntelligence report={intelligence} error={intelligenceError} loading={busy}/>
-      <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
+      <details className="ops-disclosure ops-panel"><summary>Jornada de usuários e demanda territorial</summary><div className="p-3"><OperationsMobilityIntelligence report={intelligence} error={intelligenceError} loading={busy}/></div></details>
     </>}
     {mode==="reports"&&<>
     <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
+    <section className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
         hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>
       <Stat title="Aguardando motorista" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.searching)}
@@ -332,6 +345,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     </section>
     </>}
     {mode==="intelligence"&&<>
+    <details className="ops-disclosure ops-panel"><summary>Horários, oferta e demanda</summary><div className="space-y-3 p-3">
     <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
       <article className="rounded-2xl border bg-card p-4">
         <h2 className="font-[Sora] text-lg font-bold">Horários com mais pedidos</h2>
@@ -416,6 +430,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
         <Stat title="Tarifas de corridas concluídas" value={money(report?.summary.completed_fares_cents)} hint={(presentationMode?"Valor financeiro real (não simulado). ":"")+"Soma das tarifas conhecidas, não pagamentos recebidos. Sem tarifa: "+fmt(report?.summary.completed_unpriced)} icon={<CalendarDays size={16}/>}/>
       </div>
     </section>
+    </div></details>
     </>}
     {mode==="reports"&&<>
     <section className="rounded-2xl border bg-card p-4">
@@ -432,11 +447,11 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <div id="operations-order-history-content" hidden={!historyExpanded} className="mt-3">
         <div className="mb-3 flex flex-wrap gap-2 print:hidden">
           <select aria-label="Status das solicitações" value={status} onChange={e=>setStatus(e.target.value)} className="rounded-lg border bg-background p-2 text-sm">
-            <option value="all">Todos os status</option><option value="unaccepted">Sem aceite</option><option value="accepted">Aceitos</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados</option>
+            <option value="all">Todos os status</option><option value="unaccepted">Sem aceite</option><option value="accepted">Aceitos</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados</option><option value="expired">Expirados</option><option value="waiting">Aguardando</option>
           </select>
-          <input aria-label="Buscar no histórico carregado" placeholder="Buscar nesta página…" value={query} onChange={e=>setQuery(e.target.value)} className="min-w-0 rounded-lg border bg-background p-2 text-sm"/>
+          <input aria-label="Buscar no histórico carregado" placeholder="Buscar nesta página…" value={query} onChange={e=>setQuery(e.target.value)} className="min-w-0 flex-1 rounded-lg border bg-background p-2 text-sm"/>
         </div>
-      <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-xs">
+      <div className="ops-history-desktop hidden overflow-x-auto lg:block"><table className="w-full min-w-[760px] text-left text-xs">
         <thead className="bg-muted/50"><tr>{["Data/hora","Serviço","Passageiro","Motorista","Trajeto","Valor estimado","Status"].map(h=><th key={h} scope="col" className="p-2 font-semibold">{h}</th>)}</tr></thead>
         <tbody className="divide-y">
           {rows.map(r=><tr key={r.service+":"+r.id} className="hover:bg-muted/30">
@@ -445,13 +460,23 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
             <td className="p-2"><button type="button" className="text-left font-medium underline underline-offset-2" onClick={()=>setSelectedOrder({id:r.id,service:r.service})}>{r.passenger_name||"Passageiro não identificado"}</button></td><td className="p-2">{r.driver_name??"Não atribuído"}</td>
             <td className="max-w-[250px] truncate p-2" title={r.origin+" → "+r.destination}>{r.origin} → {r.destination}</td>
             <td className="whitespace-nowrap p-2">{money(r.fare_cents)}</td>
-            <td className="p-2"><span className={"inline-block rounded-full px-2 py-1 font-semibold "+(r.completed?"bg-green-100 text-green-900":r.cancelled?"bg-red-100 text-red-900":r.accepted?"bg-blue-100 text-blue-900":"bg-amber-100 text-amber-900")}>
-              {r.completed?"Concluída":r.cancelled?"Cancelada":r.expired?"Expirada":r.accepted?"Aceita / em curso":"Sem aceite"}
-            </span></td></tr>)}
+            <td className="p-2"><OrderStatus order={r}/></td></tr>)}
           {!rows.length&&<tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{busy?"Carregando…":"Nenhum pedido com estes filtros nesta página."}</td></tr>}
         </tbody>
       </table></div>
-      <div className="mt-3 flex items-center justify-between gap-2 print:hidden">
+      <div className="ops-history-mobile grid gap-2 lg:hidden" aria-label="Pedidos em cartões">
+       {rows.map(r=><article key={r.service+":"+r.id} className="rounded-xl border bg-background p-3">
+        <button type="button" onClick={()=>setSelectedOrder({id:r.id,service:r.service})} className="block w-full space-y-2 text-left">
+         <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold text-muted-foreground">{r.service==="flash"?"Corrida Rápida":"Carona"} · {dateBR(r.requested_at)}</span><OrderStatus order={r}/></div>
+         <p className="break-words font-semibold">{r.passenger_name||"Passageiro não identificado"}</p>
+         <p className="break-words text-sm">{r.origin||"—"} → {r.destination||"—"}</p>
+         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>Motorista: {r.driver_name??"Não atribuído"}</span><strong>{money(r.fare_cents)}</strong></div>
+         <span className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold underline underline-offset-2">Ver histórico individual</span>
+        </button>
+       </article>)}
+       {!rows.length&&<p className="rounded-xl border p-5 text-center text-sm text-muted-foreground">{busy?"Carregando…":"Nenhum pedido com estes filtros nesta página."}</p>}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <span className="text-xs text-muted-foreground">Página {page+1} · até 40 pedidos por página</span>
         <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page===0||busy} onClick={()=>setPage(x=>x-1)}>Anterior</Button>
         <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*40)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
@@ -461,8 +486,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     </section>
     </>}
     {mode==="intelligence"&&<>
-      <OperationsAppEngagement report={appEngagement} error={engagementError} loading={busy}/>
-      <OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/>
+      <details className="ops-disclosure ops-panel"><summary>Acessos autenticados e consumo de Google Maps</summary><div className="space-y-3 p-3"><OperationsAppEngagement report={appEngagement} error={engagementError} loading={busy}/><OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/></div></details>
     </>}
     </div>
     {mode==="reports"&&selectedOrder&&<OperationsOrderEvidenceDialog key={selectedOrder.service+":"+selectedOrder.id} {...selectedOrder} onClose={()=>setSelectedOrder(null)}/>}
