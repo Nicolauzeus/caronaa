@@ -12,7 +12,7 @@ describe("CARONAA passenger mobile experience", () => {
     expect(home).not.toContain("<RoleSwitchHeader");
     expect(menu).toContain("Minha atividade");
     expect(menu).toContain('title: "Pedir carona"');
-    expect(menu).toContain('title: "Oferecer carona"');
+    expect(menu).toContain('title: "Trabalhar como motorista"');
     expect(menu).toContain('intent: "request"');
     expect(menu).toContain('intent: "offer"');
     expect(nav).not.toContain('label: "Oferecer"');
