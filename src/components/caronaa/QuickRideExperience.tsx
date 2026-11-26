@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBrl } from "@/lib/ride-cost";
+import { PassengerCancellationReason } from "./PassengerCancellationReason";
+import { useAuth } from "@/lib/auth-context";
 import { QuickRidePixCard } from "./QuickRidePixCard";
 import { QuickRideRatingModal } from "./QuickRideRatingModal";
 import { QuickRideDriverSettlement } from "./QuickRideDriverSettlement";
@@ -59,6 +61,10 @@ export function QuickRideExperience({
   embedded?: boolean;
   driverOnly?: boolean;
 }) {
+  const {user}=useAuth();
+  const accountId=user?.id??null;
+  const [cancelledForReason,setCancelledForReason]=useState<{id:string;account:string}|null>(null);
+  useEffect(()=>{setCancelledForReason(null);},[accountId]);
   const [municipality, setMunicipality] = useState(initialMunicipality);
   // GPS presence is not client-authoritative. Refresh from the server when
   // returning to the tab and upon realtime queue invalidation.
@@ -366,6 +372,10 @@ export function QuickRideExperience({
         return;
       }
       if (!accept && data===false){setError("Código inválido ou solicitação não permitida.");return;}
+      if(!accept&&status==="CANCELLED"){
+        if(data!==true){setError("Cancelamento não confirmado.");return;}
+        if(accountId&&rides.some(r=>r.id===id&&r.role==="PASSENGER"))setCancelledForReason({id,account:accountId});
+      }
       if(status==="IN_PROGRESS")setDriverPin("");
       if (accept && data === false) {
         // SQL accepts are atomic. The losing client must not keep a stale
@@ -401,6 +411,7 @@ export function QuickRideExperience({
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4">
+      {cancelledForReason&&cancelledForReason.account===accountId&&<PassengerCancellationReason key={cancelledForReason.id} service="flash" requestId={cancelledForReason.id} onClose={()=>setCancelledForReason(null)}/>}
       {!embedded && (
         <Link to={driverOnly ? "/disponibilidade-profissional" : "/home"} className="text-sm font-semibold text-primary">
           ← Início
