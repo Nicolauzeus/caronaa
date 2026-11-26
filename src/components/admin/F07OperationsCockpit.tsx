@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "@tanstack/react-router";
 import { GoogleMapSurface, type GoogleMapPoint } from "@/components/caronaa/GoogleMapSurface";
 import { Button } from "@/components/ui/button";
+import { OperationsOrderEvidenceDialog } from "./OperationsOrderEvidenceDialog";
 import { OnlineDriverDirectory, OnlineDriverDetails, type OnlineDriver } from "./F07OnlineDrivers";
 
 type RideStatus = "SEARCHING" | "ACCEPTED" | "ARRIVED" | "IN_PROGRESS" |
@@ -115,8 +116,8 @@ function Status({status}:{status:string}){
     {stateLabel[status]??status}
   </span>;
 }
-function DetailPanel({ride,onFollow,onManage,onClose,now}:{
-  ride:Ride|null;onFollow:()=>void;onManage:()=>void;onClose?:()=>void;now:number;
+function DetailPanel({ride,onFollow,onManage,onClose,onEvidence,now}:{
+  ride:Ride|null;onFollow:()=>void;onManage:()=>void;onClose?:()=>void;onEvidence:()=>void;now:number;
 }){
   return <section className={"flex h-full min-w-0 flex-col gap-3 p-3 sm:p-4 "+cardShell}
     aria-label="Detalhes da solicitação">
@@ -178,6 +179,7 @@ function DetailPanel({ride,onFollow,onManage,onClose,now}:{
         <Button type="button" onClick={onFollow} className="min-h-11 w-full bg-[#FFBB00] font-bold text-[#121212] hover:bg-[#E6A800]">
           <Navigation size={16} className="mr-2"/> Acompanhar no mapa
         </Button>
+        <Button type="button" variant="outline" onClick={onEvidence} className="min-h-11 w-full">Ver histórico individual</Button>
         <div className="grid grid-cols-2 gap-2">
           {ride.passenger_whatsapp?<Button asChild variant="outline" className="min-h-11 px-2 text-xs">
             <a href={"https://wa.me/"+ride.passenger_whatsapp.replace(/[^0-9]/g,"")}
@@ -204,6 +206,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const [query,setQuery]=useState("");
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [mobileDetails,setMobileDetails]=useState(false);
+  const [evidenceId,setEvidenceId]=useState<string|null>(null);
   const [queueTab,setQueueTab]=useState<"waiting"|"active">("waiting");
   const [mapTab,setMapTab]=useState<"live"|"tracking"|"drivers">("live");
   const [selectedDriverId,setSelectedDriverId]=useState<string|null>(null);
@@ -545,10 +548,18 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
       <div className="ops-detail hidden min-w-0 xl:block" aria-label="Painel lateral de detalhes">
         {mapTab==="drivers"||focusDriverId?
           <OnlineDriverDetails driver={selectedDriver} onFocus={followDriver} onManage={onOpenTools}/>:
-          <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}/>}
+          <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools} onEvidence={()=>{if(selected)setEvidenceId(selected.id);}}/>}
       </div>
     </div>
 
+    <details className="ops-disclosure ops-panel">
+      <summary>Atividade recente · Flash</summary>
+      <div className="space-y-2 p-3"><p className="text-xs text-muted-foreground">Recorte dos registros recentes retornados pela Central, não o total do dia. Concluídas hoje (Flash): {kpis?.completed_today??"—"}.</p>
+      {data?.recent?.length?<ul className="divide-y">{data.recent.slice(0,10).map(ride=><li key={ride.id}><button type="button" onClick={()=>setEvidenceId(ride.id)} className="flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left"><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{ride.passenger_name||"Passageiro não identificado"}</p><p className="break-words text-xs text-muted-foreground">{ride.origin_label} → {ride.destination_label}</p><p className="text-xs text-muted-foreground">Solicitado: {dateTime(ride.requested_at)}</p></div><Status status={ride.status}/></button></li>)}</ul>:<p className="text-sm text-muted-foreground">{loading?"Carregando…":data?"Nenhum registro recente disponível.":"Dados indisponíveis."}</p>}
+      {Boolean(data?.recent?.length)&&<Link to="/admin/operacoes" hash="history" className="inline-flex min-h-10 items-center text-sm font-semibold underline underline-offset-2">Ver histórico completo</Link>}
+      </div>
+    </details>
+    {evidenceId&&<OperationsOrderEvidenceDialog key={evidenceId} service="flash" id={evidenceId} onClose={()=>setEvidenceId(null)}/>}
     {mobileDetails&&((mapTab==="drivers"&&selectedDriver)||selected)&&<div className="fixed inset-0 z-[120] flex items-end bg-black/55 p-2 xl:hidden sm:items-center sm:justify-center"
       onClick={event=>{if(event.target===event.currentTarget)setMobileDetails(false);}}>
       <div role="dialog" aria-modal="true" aria-label="Detalhes da solicitação"
@@ -556,7 +567,7 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
         {mapTab==="drivers"?
           <OnlineDriverDetails driver={selectedDriver} onFocus={followDriver} onManage={onOpenTools}
             onClose={()=>setMobileDetails(false)}/>:
-          <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}
+          <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools} onEvidence={()=>{if(selected){setMobileDetails(false);setEvidenceId(selected.id);}}}
             onClose={()=>setMobileDetails(false)}/>}
 
       </div>
