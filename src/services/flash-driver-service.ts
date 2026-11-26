@@ -120,7 +120,11 @@ function parseOrder(raw:unknown):FlashDriverOrder|null{
 }
 export async function getFlashDriverRadarOrders():Promise<FlashDriverOrder[]>{
   try{
-    const {data,error}=await (supabase as any).rpc("get_flash_driver_radar_orders");
+    // During incremental rollout only, fall back when PostgREST has not yet
+    // installed the observed RPC. Never bypass an authorization failure.
+    let {data,error}=await (supabase as any).rpc("get_flash_driver_radar_orders_observed");
+    if(error?.code==="PGRST202"||error?.code==="42883")
+      ({data,error}=await (supabase as any).rpc("get_flash_driver_radar_orders"));
     if(error||!Array.isArray(data))throw new FlashDriverError("UNAVAILABLE");
     const items=data.map(parseOrder);
     if(items.some(x=>x===null))throw new FlashDriverError("UNAVAILABLE");
