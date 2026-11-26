@@ -326,6 +326,9 @@ export const submitQuotedQuickRide = createServerFn({method:"POST"})
     }
     if(error||typeof rideId!=="string")
       throw new Error(quickRideSubmissionError(error?.message));
+    // Best-effort Web Push to nearby drivers; bounded so ride creation never hangs.
+    const {dispatchPushForQuickRide}=await import("./quick-ride-push.server");
+    await Promise.race([dispatchPushForQuickRide(rideId),new Promise(r=>setTimeout(r,4000))]);
     return {rideId};
   });
 

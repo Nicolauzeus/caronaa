@@ -1,0 +1,179 @@
+// F07 Web Push dispatch: notifies online, nearby, vehicle-compatible drivers
+// when a Flash ride enters SEARCHING. Uses WebCrypto (RFC 8291 aes128gcm +
+// RFC 8292 VAPID) so it runs on the Worker runtime without Node crypto.
+// Never logs coordinates, user IDs or endpoints.
+
+export const PUSH_RADIUS_KM = 15;
+export const PUSH_LOCATION_MAX_AGE_MS = 3 * 60 * 1000;
+
+export type PushDispatchInput = {
+  rideId: string; originLat: number; originLng: number;
+  vehicleType: "CAR" | "MOTO"; fareCents: number | null;
+};
+export type OnlineDriver = { userId: string; lat: number; lng: number };
+export type PushSubscriptionRow = { userId: string; endpoint: string; p256dh: string; auth: string };
+export type PushRepo = {
+  onlineDriversSince(sinceIso: string): Promise<OnlineDriver[]>;
+  approvedDrivers(userIds: string[], vehicleType: string): Promise<string[]>;
+  subscriptions(userIds: string[]): Promise<PushSubscriptionRow[]>;
+  deleteSubscription(endpoint: string): Promise<void>;
+};
+export type PushSender = (sub: PushSubscriptionRow, payload: string) => Promise<{ status: number }>;
+
+export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const r = (d: number) => (d * Math.PI) / 180;
+  const dLat = r(bLat - aLat), dLng = r(bLng - aLng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export function buildRidePushPayload(input: PushDispatchInput, distanceKm: number) {
+  const minutes = Math.max(1, Math.round((distanceKm / 30) * 60)); // ~30 km/h urban estimate
+  const fare = input.fareCents != null && Number.isFinite(input.fareCents)
+    ? `R$ ${(input.fareCents / 100).toFixed(2).replace(".", ",")}` : null;
+  const kind = input.vehicleType === "MOTO" ? "Moto" : "Carro";
+  return JSON.stringify({
+    title: `Nova corrida ${kind} CARONAA`,
+    body: [fare ? `Valor estimado ${fare}` : null, `~${minutes} min até a origem`].filter(Boolean).join(" · ") + ". Toque para abrir.",
+    data: { url: "/home", orderId: input.rideId },
+  });
+}
+
+export async function dispatchPushToEligibleDrivers(
+  input: PushDispatchInput,
+  deps: { repo: PushRepo; send: PushSender; now?: () => number },
+) {
+  const result = { eligible: 0, sent: 0, failed: 0, removed: 0 };
+  if (!Number.isFinite(input.originLat) || !Number.isFinite(input.originLng)) return result;
+  const now = deps.now?.() ?? Date.now();
+  const online = await deps.repo.onlineDriversSince(new Date(now - PUSH_LOCATION_MAX_AGE_MS).toISOString());
+  const near = new Map<string, number>();
+  for (const d of online) {
+    if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) continue;
+    const km = haversineKm(input.originLat, input.originLng, d.lat, d.lng);
+    if (km <= PUSH_RADIUS_KM) near.set(d.userId, km);
+  }
+  if (!near.size) return result;
+  const approved = new Set(await deps.repo.approvedDrivers([...near.keys()], input.vehicleType));
+  const ids = [...near.keys()].filter((id) => approved.has(id));
+  result.eligible = ids.length;
+  if (!ids.length) return result;
+  const subs = await deps.repo.subscriptions(ids);
+  const outcomes = await Promise.allSettled(subs.map(async (s) => {
+    const res = await deps.send(s, buildRidePushPayload(input, near.get(s.userId) ?? PUSH_RADIUS_KM));
+    if (res.status === 404 || res.status === 410) {
+      await deps.repo.deleteSubscription(s.endpoint);
+      result.removed++;
+      throw new Error("gone");
+    }
+    if (res.status < 200 || res.status >= 300) throw new Error(`status ${res.status}`);
+  }));
+  for (const o of outcomes) o.status === "fulfilled" ? result.sent++ : result.failed++;
+  return result;
+}
+
+// ---------- Supabase repository ----------
+export function supabasePushRepo(db: any): PushRepo {
+  return {
+    async onlineDriversSince(since) {
+      const { data, error } = await db.from("flash_driver_presence")
+        .select("user_id,last_lat,last_lng").eq("is_online", true).gte("last_gps_at", since);
+      if (error) throw new Error("presence");
+      return (data ?? []).map((r: any) => ({ userId: r.user_id, lat: Number(r.last_lat), lng: Number(r.last_lng) }));
+    },
+    async approvedDrivers(userIds, vehicleType) {
+      const { data, error } = await db.from("professional_driver_authorizations")
+        .select("user_id").in("user_id", userIds).eq("approved", true).eq("vehicle_type", vehicleType);
+      if (error) throw new Error("authorizations");
+      return (data ?? []).map((r: any) => r.user_id);
+    },
+    async subscriptions(userIds) {
+      const { data, error } = await db.from("driver_push_subscriptions")
+        .select("user_id,endpoint,p256dh,auth").in("user_id", userIds);
+      if (error) throw new Error("subscriptions");
+      return (data ?? []).map((r: any) => ({ userId: r.user_id, endpoint: r.endpoint, p256dh: r.p256dh, auth: r.auth }));
+    },
+    async deleteSubscription(endpoint) {
+      await db.from("driver_push_subscriptions").delete().eq("endpoint", endpoint);
+    },
+  };
+}
+
+// ---------- RFC 8291 / 8292 WebCrypto sender ----------
+const enc = new TextEncoder();
+export function b64urlDecode(s: string) {
+  const b = atob(s.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(s.length / 4) * 4, "="));
+  return Uint8Array.from(b, (c) => c.charCodeAt(0));
+}
+export function b64urlEncode(u: Uint8Array) {
+  let s = ""; for (const c of u) s += String.fromCharCode(c);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+const concat = (...a: Uint8Array[]) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
+
+async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, len: number) {
+  const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, key, len * 8));
+}
+
+export async function encryptAes128gcm(payload: string, p256dh: string, authSecret: string) {
+  const uaPub = b64urlDecode(p256dh), auth = b64urlDecode(authSecret);
+  const eph = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]) as CryptoKeyPair;
+  const asPub = new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", uaPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey } as any, eph.privateKey, 256));
+  const ikm = await hkdf(auth, shared, concat(enc.encode("WebPush: info\0"), uaPub, asPub), 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const cek = await hkdf(salt, ikm, enc.encode("Content-Encoding: aes128gcm\0"), 16);
+  const nonce = await hkdf(salt, ikm, enc.encode("Content-Encoding: nonce\0"), 12);
+  const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, concat(enc.encode(payload), new Uint8Array([2]))));
+  const rs = new Uint8Array([0, 0, 16, 0]);
+  return concat(salt, rs, new Uint8Array([asPub.length]), asPub, ct);
+}
+
+export async function vapidAuthorization(endpoint: string, publicKey: string, privateKey: string, subject: string) {
+  const pub = b64urlDecode(publicKey);
+  const jwk = { kty: "EC", crv: "P-256", d: privateKey, x: b64urlEncode(pub.slice(1, 33)), y: b64urlEncode(pub.slice(33, 65)) };
+  const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sub = /^(mailto:|https:)/.test(subject) ? subject : `mailto:${subject}`;
+  const part = (o: object) => b64urlEncode(enc.encode(JSON.stringify(o)));
+  const unsigned = `${part({ typ: "JWT", alg: "ES256" })}.${part({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub })}`;
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, enc.encode(unsigned)));
+  return `vapid t=${unsigned}.${b64urlEncode(sig)}, k=${publicKey}`;
+}
+
+export function createWebPushSender(cfg: { publicKey: string; privateKey: string; subject: string }): PushSender {
+  return async (sub, payload) => {
+    const body = await encryptAes128gcm(payload, sub.p256dh, sub.auth);
+    const res = await fetch(sub.endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: await vapidAuthorization(sub.endpoint, cfg.publicKey, cfg.privateKey, cfg.subject),
+        "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream",
+        TTL: "60", Urgency: "high",
+      },
+      body,
+    });
+    return { status: res.status };
+  };
+}
+
+/** Best-effort dispatch for a newly created ride; never throws. */
+export async function dispatchPushForQuickRide(rideId: string) {
+  try {
+    const publicKey = process.env["VAPID_PUBLIC_KEY"], privateKey = process.env["VAPID_PRIVATE_KEY"], subject = process.env["VAPID_SUBJECT"];
+    if (!publicKey || !privateKey || !subject) { console.warn("[CARONAA][F07][PUSH] vapid_not_configured"); return; }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ride } = await (supabaseAdmin as any).from("professional_quick_rides")
+      .select("id,origin_lat,origin_lng,vehicle_type,estimated_fare_cents,status").eq("id", rideId).maybeSingle();
+    if (!ride || ride.status !== "SEARCHING" || (ride.vehicle_type !== "CAR" && ride.vehicle_type !== "MOTO")) return;
+    const r = await dispatchPushToEligibleDrivers(
+      { rideId, originLat: Number(ride.origin_lat), originLng: Number(ride.origin_lng), vehicleType: ride.vehicle_type, fareCents: ride.estimated_fare_cents },
+      { repo: supabasePushRepo(supabaseAdmin), send: createWebPushSender({ publicKey, privateKey, subject }) },
+    );
+    console.info("[CARONAA][F07][PUSH] dispatched", r);
+  } catch {
+    console.warn("[CARONAA][F07][PUSH] dispatch_failed");
+  }
+}
