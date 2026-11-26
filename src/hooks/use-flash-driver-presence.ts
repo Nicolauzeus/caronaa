@@ -34,6 +34,21 @@ export function useFlashDriverPresence(){
   const inFlightStart=useRef(false);
   const currentFix=useRef<DriverGpsFix|null>(null);
   const currentMunicipality=useRef("");
+  const wakeLockSentinel=useRef<WakeLockSentinel|null>(null);
+  const acquireWakeLock=useCallback(async()=>{
+    if(typeof navigator==="undefined"||!("wakeLock" in navigator))return;
+    if(wakeLockSentinel.current&&!wakeLockSentinel.current.released)return;
+    try{
+      const sentinel=await navigator.wakeLock.request("screen");
+      if(!active.current){void sentinel.release().catch(()=>undefined);return;}
+      wakeLockSentinel.current=sentinel;
+    }catch{/* denied by system/battery saver: keep working without it */}
+  },[]);
+  const releaseWakeLock=useCallback(()=>{
+    const sentinel=wakeLockSentinel.current;
+    wakeLockSentinel.current=null;
+    if(sentinel&&!sentinel.released)void sentinel.release().catch(()=>undefined);
+  },[]);
   const stopWatch=useCallback(()=>{
     if(watch.current!==null && typeof navigator!=="undefined"&&navigator.geolocation)
       navigator.geolocation.clearWatch(watch.current);
@@ -60,6 +75,7 @@ export function useFlashDriverPresence(){
   const markOffline=useCallback(async()=>{
     active.current=false;
     stopWatch();
+    releaseWakeLock();
     setState(s=>({...s,busy:true,gpsConnected:false}));
     try{await setFlashDriverOffline();
       setState(s=>({...s,online:false,busy:false,error:null}));
@@ -67,7 +83,7 @@ export function useFlashDriverPresence(){
       // Do not claim offline was committed if the server rejected the change.
       setState(s=>({...s,busy:false,error:"Não foi possível confirmar o modo indisponível no servidor."}));
     }
-  },[stopWatch]);
+  },[stopWatch,releaseWakeLock]);
 
   const goOnline=useCallback(async(input:FlashDriverOnlineInput)=>{
     if(active.current||inFlightStart.current)return false;
@@ -161,11 +177,22 @@ export function useFlashDriverPresence(){
     };
   },[sendHeartbeat]);
 
+  useEffect(()=>{
+    if(!state.online){releaseWakeLock();return;}
+    void acquireWakeLock();
+    const onVisible=()=>{
+      if(document.visibilityState==="visible"&&active.current)void acquireWakeLock();
+    };
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>document.removeEventListener("visibilitychange",onVisible);
+  },[state.online,acquireWakeLock,releaseWakeLock]);
+
   useEffect(()=>()=>{// Suspending a PWA or navigating never forces an offline transition.
     // Heartbeats expire naturally; explicit 'Ficar indisponível' remains the
     // only user action that clears presence before server TTL.
     active.current=false;
     stopWatch();
-  },[stopWatch]);
+    releaseWakeLock();
+  },[stopWatch,releaseWakeLock]);
   return {...state,goOnline,markOffline};
 }
