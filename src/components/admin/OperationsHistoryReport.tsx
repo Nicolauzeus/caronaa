@@ -326,9 +326,11 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
     {mode==="intelligence"&&<>
       <OperationsAdvancedOverview data={advanced.data} loading={advanced.loading} error={advanced.error}/>
+      <details className="ops-disclosure ops-panel"><summary>Cotações de preço geradas · distribuição por período</summary><div className="p-3"><OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/></div></details>
       <details className="ops-disclosure ops-panel"><summary>Jornada de usuários e demanda territorial</summary><div className="p-3"><OperationsMobilityIntelligence report={intelligence} error={intelligenceError} loading={busy}/></div></details>
     </>}
     {mode==="reports"&&<>
+    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     <section className="ops-summary-grid grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
         hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>
@@ -343,7 +345,6 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <Stat title="Expiradas" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.expired)}
         hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.expired):"Prazo encerrado sem aceite, inclusive buscas vencidas ainda não regularizadas"}/>
     </section>
-    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     </>}
     {mode==="intelligence"&&<>
     <details className="ops-disclosure ops-panel"><summary>Horários, oferta e demanda</summary><div className="space-y-3 p-3">
