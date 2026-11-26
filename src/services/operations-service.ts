@@ -99,7 +99,7 @@ export const evidenceSchema = z.object({
     event_type: z.string(), occurred_at: z.string(), actor_id: uuid.nullable(), source: z.string(),
     detail: z.record(z.unknown()),
   })),
-  counts: z.record(z.union([count, z.boolean(), z.null()])),
+  counts: z.record(z.union([count, z.boolean(), z.string(), z.null()])),
 }).passthrough();
 export type OperationalKpis = z.infer<typeof kpiSchema>;
 export type OperationalConversion = z.infer<typeof conversionSchema>;
