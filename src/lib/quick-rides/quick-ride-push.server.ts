@@ -100,18 +100,19 @@ export function supabasePushRepo(db: any): PushRepo {
 }
 
 // ---------- RFC 8291 / 8292 WebCrypto sender ----------
-const enc = new TextEncoder();
+const enc = { encode: (s: string) => new TextEncoder().encode(s) as Uint8Array<ArrayBuffer> };
+type Bytes = Uint8Array<ArrayBuffer>;
 export function b64urlDecode(s: string) {
   const b = atob(s.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(s.length / 4) * 4, "="));
-  return Uint8Array.from(b, (c) => c.charCodeAt(0));
+  return Uint8Array.from(b, (c) => c.charCodeAt(0)) as Bytes;
 }
 export function b64urlEncode(u: Uint8Array) {
   let s = ""; for (const c of u) s += String.fromCharCode(c);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-const concat = (...a: Uint8Array[]) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
+const concat = (...a: Uint8Array[]): Bytes => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
 
-async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, len: number) {
+async function hkdf(salt: Bytes, ikm: Bytes, info: Bytes, len: number) {
   const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
   return new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, key, len * 8));
 }
@@ -123,7 +124,7 @@ export async function encryptAes128gcm(payload: string, p256dh: string, authSecr
   const uaKey = await crypto.subtle.importKey("raw", uaPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
   const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey } as any, eph.privateKey, 256));
   const ikm = await hkdf(auth, shared, concat(enc.encode("WebPush: info\0"), uaPub, asPub), 32);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const salt = crypto.getRandomValues(new Uint8Array(16)) as Bytes;
   const cek = await hkdf(salt, ikm, enc.encode("Content-Encoding: aes128gcm\0"), 16);
   const nonce = await hkdf(salt, ikm, enc.encode("Content-Encoding: nonce\0"), 12);
   const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
