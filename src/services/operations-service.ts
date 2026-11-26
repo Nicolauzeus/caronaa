@@ -111,9 +111,17 @@ export const funnelSchema = scope.extend({
     x.quotes_with_acceptance >= x.quotes_with_completion)),
   notes,
 });
+export const audienceSchema=z.object({
+ flash_orders:count,snapshot_known:count,snapshot_unknown:count,snapshot_zero:count,snapshot_with_candidates:count,
+ unserved_snapshot_zero:count,unserved_snapshot_with_candidates:count,unserved_snapshot_unknown:count,
+ orders_with_queue_signal:count,orders_with_app_ack:count,app_ack_driver_order_pairs:count,
+}).refine(x=>x.flash_orders===x.snapshot_known+x.snapshot_unknown&&x.snapshot_known===x.snapshot_zero+x.snapshot_with_candidates&&
+ x.unserved_snapshot_zero<=x.snapshot_zero&&x.unserved_snapshot_with_candidates<=x.snapshot_with_candidates&&x.unserved_snapshot_unknown<=x.snapshot_unknown&&
+ x.orders_with_queue_signal<=x.flash_orders&&x.orders_with_app_ack<=x.flash_orders&&x.app_ack_driver_order_pairs>=x.orders_with_app_ack);
+export type OperationalAudience=z.infer<typeof audienceSchema>;
 export const overviewSchema = z.object({
   kpis: kpiSchema, conversion: conversionSchema, funnel: funnelSchema,
-  cancellations: cancellationSchema, diagnostics: diagnosticSchema,
+  cancellations: cancellationSchema, diagnostics: diagnosticSchema, audience:audienceSchema.nullable().optional(),
 }).refine(x => {
   const k = x.kpis;
   return [x.conversion,x.funnel,x.cancellations,x.diagnostics].every(s =>
