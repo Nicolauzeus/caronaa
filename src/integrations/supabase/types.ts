@@ -1489,6 +1489,47 @@ export type Database = {
           },
         ]
       }
+      driver_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       executive_record_history: {
         Row: {
           action: string
@@ -6683,6 +6724,10 @@ export type Database = {
             }
             Returns: string
           }
+      delete_driver_push_subscription: {
+        Args: { p_endpoint: string }
+        Returns: undefined
+      }
       delete_empty_research_draft: {
         Args: { p_form_id: string }
         Returns: boolean
@@ -7836,6 +7881,15 @@ export type Database = {
       ride_route_inventory_version: {
         Args: { p_offer_id: string }
         Returns: string
+      }
+      save_driver_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent?: string
+        }
+        Returns: undefined
       }
       save_my_pix_key: { Args: { p_key: string }; Returns: undefined }
       save_my_professional_vehicle: {
