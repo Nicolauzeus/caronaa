@@ -33,8 +33,8 @@ try {
   started=true;
   apply("src/test/ride-security-db-bootstrap.sql");
   apply("src/test/operations-db-fixture.sql");
-  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252)_.*\.sql$/.test(n)).sort();
-  if(migrations.length!==6 || new Set(migrations.map(n=>n.slice(0,4))).size!==6) throw new Error("Expected one migration per number 0247-0252.");
+  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255)_.*\.sql$/.test(n)).sort();
+  if(migrations.length!==9 || new Set(migrations.map(n=>n.slice(0,4))).size!==9) throw new Error("Expected one migration per number 0247-0255.");
   for(const m of migrations) {
     apply("drizzle/migrations/"+m);
     console.log("APPLIED: "+m);
@@ -43,7 +43,11 @@ try {
   const checks=r.stderr.split("\n").filter(l=>l.includes("PASS:"));
   for(const check of checks) console.log(check);
   if(checks.length!==9) throw new Error("Expected 9 integration check groups, got "+checks.length);
-  console.log("PASS: 6 migrations and "+checks.length+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
+  const advanced=apply("src/test/operations-advanced.integration.sql");
+  const advancedChecks=advanced.stderr.split("\n").filter(l=>l.includes("PASS:"));
+  for(const check of advancedChecks) console.log(check);
+  if(advancedChecks.length!==8) throw new Error("Expected 8 advanced integration check groups, got "+advancedChecks.length);
+  console.log("PASS: 9 migrations and "+(checks.length+advancedChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
 } finally {
   if(started) run("pg_ctl",["-D",data,"-m","fast","-w","stop"]);
   rmSync(dir,{recursive:true,force:true});
