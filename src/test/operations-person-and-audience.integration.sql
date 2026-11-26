@@ -7,7 +7,8 @@ SET ROLE authenticated;
 DO $$
 DECLARE ids uuid[]:=ARRAY['10000000-0000-0000-0000-000000000003'::uuid];
 BEGIN
- IF public.caronaa_ack_flash_radar_response(ids)<>1 OR public.caronaa_ack_flash_radar_response(ids)<>0 THEN RAISE EXCEPTION 'FAIL: acknowledgement dedup'; END IF;
+ IF public.caronaa_ack_flash_radar_response(ids)<>1 THEN RAISE EXCEPTION 'FAIL: acknowledgement initial'; END IF;
+ IF public.caronaa_ack_flash_radar_response(ids)<>0 THEN RAISE EXCEPTION 'FAIL: acknowledgement dedup'; END IF;
  IF public.caronaa_ack_flash_radar_response(ARRAY['10000000-0000-0000-0000-000000000001'::uuid])<>0 THEN RAISE EXCEPTION 'FAIL: unobserved acknowledgement'; END IF;
  RAISE NOTICE 'PASS: only own prior radar observations can be acknowledged idempotently';
 END $$;
@@ -51,8 +52,8 @@ VALUES('82000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
 SET ROLE authenticated;
 DO $$ BEGIN
- IF NOT public.caronaa_record_shared_attempt_cancel_reason('82000000-0000-4000-8000-000000000001','PRICE')
- OR public.caronaa_record_shared_attempt_cancel_reason('82000000-0000-4000-8000-000000000001','OTHER')
+ IF NOT public.caronaa_record_shared_attempt_cancel_reason('82000000-0000-4000-8000-000000000001','PRICE') THEN RAISE EXCEPTION 'FAIL: first attempt reason'; END IF;
+ IF public.caronaa_record_shared_attempt_cancel_reason('82000000-0000-4000-8000-000000000001','OTHER')
  OR public.caronaa_record_shared_attempt_cancel_reason('30000000-0000-0000-0000-000000000001','OTHER')
  THEN RAISE EXCEPTION 'FAIL: shared attempt reason attribution'; END IF;
  RAISE NOTICE 'PASS: shared cancellation reason requires recorded passenger actor and is immutable';
@@ -115,5 +116,19 @@ BEGIN
  r:=public.admin_operations_order_evidence('flash','81000000-0000-4000-8000-000000000003');
  IF r IS NULL OR r#>>'{counts,creation_radar_candidates}' IS NOT NULL THEN RAISE EXCEPTION 'FAIL: snapshot failure blocked order or fabricated zero %',r; END IF;
  RAISE NOTICE 'PASS: snapshot failure preserves ride creation and unknown audience';
+END $$;
+RESET ROLE;
+
+SET ROLE authenticated;
+DO $$
+DECLARE r jsonb; d date:=(now() AT TIME ZONE 'America/Fortaleza')::date;
+BEGIN
+ r:=public.admin_operational_audience_diagnostics(d,d,'all');
+ IF (r->>'flash_orders')::int IS DISTINCT FROM 3 OR (r->>'snapshot_known')::int IS DISTINCT FROM 2
+ OR (r->>'snapshot_zero')::int IS DISTINCT FROM 1 OR (r->>'snapshot_with_candidates')::int IS DISTINCT FROM 1
+ OR (r->>'snapshot_unknown')::int IS DISTINCT FROM 1
+ OR public.admin_operational_audience_diagnostics(d,d,'shared') IS NOT NULL
+ THEN RAISE EXCEPTION 'FAIL: audience diagnostics %',r; END IF;
+ RAISE NOTICE 'PASS: audience diagnostics reconcile known zero, known candidates and unknown coverage';
 END $$;
 RESET ROLE;
