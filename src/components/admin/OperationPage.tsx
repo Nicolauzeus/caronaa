@@ -529,8 +529,8 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
     setConfirm(row);
   }
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+    <div className={embedded?"min-w-0 space-y-4":"space-y-6"}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           {!embedded&&<p className="mb-1 text-xs font-semibold text-muted-foreground">OPERAÇÃO / CARONAA</p>}
           {embedded?<h2 className="font-[Sora] text-xl font-bold">{titles[kind]}</h2>:
@@ -539,7 +539,7 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
             Recorte histórico F02: apenas formulários e atividades de caronas compartilhadas, não o total de contas do CARONAA.
             <a href="/admin/operacoes#people" className="ml-1 font-semibold text-primary underline">Ver todas as pessoas</a>
           </p>}
-          <p className="mt-2 text-xs text-muted-foreground">{updatedAt ? `Atualizado às ${updatedAt.toLocaleTimeString("pt-BR")} · atualização a cada 30 s` : "Aguardando dados"}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{updatedAt ? `Atualizado às ${updatedAt.toLocaleTimeString("pt-BR",{timeZone:"America/Fortaleza",hour:"2-digit",minute:"2-digit",second:"2-digit"})} · atualização a cada 30 s` : "Aguardando dados"}</p>
         </div>
         <Button
           variant="outline"
@@ -572,12 +572,12 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
       )}
       {model && !loading && !error && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
             {model.metrics.map(([label, value]) => (
               <MetricCard key={label} label={label} value={value} />
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className={embedded?"ops-filterbar flex flex-wrap items-center gap-2 rounded-xl border p-3":"flex flex-wrap items-center gap-3"}>
             <div className="relative min-w-0 flex-1 basis-64">
               <Search size={16} className="absolute left-3 top-3 text-muted-foreground" />
               <Input
@@ -609,7 +609,7 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
               onChange={(e) => setDay(e.target.value)}
             />
           </div>
-          <div className="overflow-x-auto border-y border-border">
+          <div className={embedded?"ops-history-desktop hidden overflow-x-auto rounded-xl border lg:block":"overflow-x-auto border-y border-border"}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -686,7 +686,19 @@ export function OperationPage({ kind, embedded = false }: { kind: Kind; embedded
               </p>
             )}
           </div>
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          {embedded&&<div className="ops-history-mobile grid gap-2 lg:hidden" aria-label="Registros de viagens em cartões">
+            {filtered.slice(currentPage*20,currentPage*20+20).map(row=><article key={row.id} className="rounded-xl border bg-card p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 flex-1">{row.cells[0]}</span><Status value={row.status}/></div>
+              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">{row.cells.slice(1).map((cell,i)=><div key={i} className="min-w-0"><dt className="text-xs text-muted-foreground">{model.headers[i+1]}</dt><dd className="mt-1 break-words">{cell}</dd></div>)}</dl>
+              <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
+                <Button type="button" variant="outline" size="sm" onClick={()=>setSelected(row)}><Eye size={15} className="mr-1"/>Detalhes</Button>
+                {row.action&&<Button type="button" variant="outline" size="sm" disabled={busy} onClick={()=>openAction(row)}>{row.action==="review"?"Revisar documentação":"Cancelar"}</Button>}
+                {kind==="solicitacoes"&&row.status==="open"&&<Button type="button" size="sm" disabled={busy} onClick={()=>void run("match",row.id,data?.requests.find(r=>r.request_id===row.id)?.target_offer_id||undefined)}><Zap size={15} className="mr-1"/>Buscar combinação</Button>}
+              </div>
+            </article>)}
+            {!filtered.length&&<p className="rounded-xl border p-5 text-center text-sm text-muted-foreground">Nenhum registro corresponde aos filtros.</p>}
+          </div>}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               {filtered.length} registros · Página {currentPage + 1} de {totalPages}
             </span>
