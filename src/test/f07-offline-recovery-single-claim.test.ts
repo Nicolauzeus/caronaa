@@ -42,7 +42,12 @@ describe("F07 offline recovery and atomic claims",()=>{
   });
 
   it("does not deliberately mark driver offline due only to failed heartbeat",()=>{
-    expect(driverPresence).toContain("No network or stale GPS is NOT a user-initiated offline action");
+    // The explicit offline action is the only call site, and stale checks never invoke it.
+    expect(driverPresence.match(/\bawait setFlashDriverOffline\(/g)).toHaveLength(1);
+    const staleCheck=driverPresence.slice(driverPresence.indexOf("staleTimer.current=setInterval"),driverPresence.indexOf("},4000)"));
+    expect(staleCheck).toContain("gpsConnected:false");
+    expect(staleCheck).not.toContain("markOffline(");
+    expect(staleCheck).not.toContain("setFlashDriverOffline(");
     expect(driverPresence).toContain('window.addEventListener("online",resume)');
     expect(driverPresence).not.toContain('error:"Sem GPS por mais de 60 segundos. Disponibilidade encerrada."');
   });
