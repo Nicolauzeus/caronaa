@@ -59,6 +59,9 @@
  .operations-workspace .ops-disclosure[open] > summary::after {content:"−"}
  .operations-workspace .ops-disclosure[open] > summary {border-bottom:1px solid var(--ops-line)}
  /* Use available workspace width, not the viewport with its administrative sidebar. */
+ .operations-workspace .ops-summary-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+ @container operations (min-width:600px) {.operations-workspace .ops-summary-grid {grid-template-columns:repeat(3,minmax(0,1fr))}}
+ @container operations (min-width:1320px) {.operations-workspace .ops-summary-grid {grid-template-columns:repeat(6,minmax(0,1fr))}}
  @container operations (max-width:879px) {
   .operations-workspace .ops-history-desktop {display:none}
   .operations-workspace .ops-history-mobile {display:grid}
