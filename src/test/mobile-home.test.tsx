@@ -84,7 +84,8 @@ vi.mock("@/lib/quick-rides/f07-radar-diagnostic.functions", () => ({
 vi.mock("@/components/caronaa/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 }));
-vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: api.reverse }));
+// These component tests isolate both resolvers with the same controlled address fixture.
+vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: api.reverse, reversePassengerPickupServerFn: api.reverse }));
 vi.mock("@/lib/formulario/ride-activation.functions", () => ({
   getStsRideDraft: api.seed,
   publishStsRide: vi.fn(),
