@@ -101,6 +101,27 @@ export const evidenceSchema = z.object({
   })),
   counts: z.record(z.union([count, z.boolean(), z.string(), z.null()])),
 }).passthrough();
+export const funnelSchema = scope.extend({
+  rows: z.array(z.object({
+    service: orderServiceSchema, quotes_issued: count, quotes_with_request: count,
+    quotes_with_acceptance: count, quotes_with_completion: count,
+    request_pct: optionalNumber, completion_pct: optionalNumber,
+  }).refine(x => x.quotes_issued >= x.quotes_with_request &&
+    x.quotes_with_request >= x.quotes_with_acceptance &&
+    x.quotes_with_acceptance >= x.quotes_with_completion)),
+  notes,
+});
+export const overviewSchema = z.object({
+  kpis: kpiSchema, conversion: conversionSchema, funnel: funnelSchema,
+  cancellations: cancellationSchema, diagnostics: diagnosticSchema,
+}).refine(x => {
+  const k = x.kpis;
+  return [x.conversion,x.funnel,x.cancellations,x.diagnostics].every(s =>
+    s.from===k.from && s.to===k.to && s.service===k.service) &&
+    k.summary.cancelled===x.cancellations.total_cancelled;
+});
+export type OperationalFunnel = z.infer<typeof funnelSchema>;
+export type OperationalOverview = z.infer<typeof overviewSchema>;
 export type OperationalKpis = z.infer<typeof kpiSchema>;
 export type OperationalConversion = z.infer<typeof conversionSchema>;
 export type OperationalDrivers = z.infer<typeof driverSchema>;
@@ -141,6 +162,8 @@ export function createOperationsService(db: RpcPort) {
     return parsed.data;
   }
   return {
+    getFunnel: (p: OperationsPeriod) => call("admin_operational_quote_funnel", argsFor(p), funnelSchema),
+    getOverview: (p: OperationsPeriod) => call("admin_operational_overview", argsFor(p), overviewSchema),
     getKpis: (p: OperationsPeriod) => call("admin_operational_order_kpis", argsFor(p), kpiSchema),
     getConversion: (p: OperationsPeriod) => call("admin_operational_conversion_retention", argsFor(p), conversionSchema),
     getDrivers: (p: OperationsPeriod, limit = 50, offset = 0) => call("admin_operational_driver_performance",
