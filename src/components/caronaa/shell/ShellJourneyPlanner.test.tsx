@@ -107,7 +107,7 @@ describe("CARONAA Flash passenger shell",()=>{
     expect(screen.queryByRole("radio",{name:/Carona Na Rota/})).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio",{name:/Flash Moto/}));
     expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
-    expect(screen.getByText(/R\\$\\s*10,00/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s*10,00/)).toBeInTheDocument();
     expect(api.route).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button",{name:/Voltar às opções/}));
     expect(screen.getByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
