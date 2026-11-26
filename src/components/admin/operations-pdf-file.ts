@@ -163,7 +163,7 @@ function jpegBytes(canvas:HTMLCanvasElement):Promise<Uint8Array>{
   });
 }
 /** A4 landscape PDF using embedded canvas JPEG pages, no external SDK. */
-function packPdf(jpegs:Uint8Array[],width:number,height:number):Blob{
+export function packPdf(jpegs:Uint8Array[],width:number,height:number):Blob{
   const encoder=new TextEncoder();
   const chunks:Uint8Array[]=[];const offsets:number[]=[0];let offset=0;
   const append=(bytes:Uint8Array)=>{chunks.push(bytes);offset+=bytes.length;};
