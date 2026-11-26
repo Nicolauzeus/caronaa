@@ -64,7 +64,7 @@ const currency=(cents:number|null|undefined)=>
 const time=(value:string|null|undefined)=>{
   if(!value)return "—";
   const date=new Date(value);
-  return Number.isNaN(date.getTime())?"—":date.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Fortaleza"});
+  return Number.isNaN(date.getTime())?"—":date.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZone:"America/Fortaleza"});
 };
 const dateTime=(value:string|null|undefined)=>{
   if(!value)return "—";
@@ -101,11 +101,11 @@ function Metric({label,value,hint,icon:Icon,tone,onClick}:MetricProps){
   const icons={amber:"text-amber-700 dark:text-amber-300",green:"text-green-700 dark:text-green-300",
     blue:"text-blue-700 dark:text-blue-300",red:"text-red-700 dark:text-red-300"};
   return <button type="button" onClick={onClick}
-    className={"flex min-h-[110px] items-center gap-3 rounded-2xl border p-3 text-left transition-colors hover:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFBB00] dark:hover:brightness-125 sm:p-4 "+tones[tone]}>
-    <Icon size={28} className={"shrink-0 "+icons[tone]} aria-hidden="true"/>
+    className={"ops-metric flex min-h-[112px] flex-col items-start gap-2 p-3 text-left focus-visible:outline-2 focus-visible:outline-[#FFBB00] sm:flex-row sm:items-center sm:p-4 "+tones[tone]}>
+    <span className="ops-icon"><Icon size={20} className={icons[tone]} aria-hidden="true"/></span>
     <span className="min-w-0">
       <span className="block text-xs font-semibold leading-tight text-foreground sm:text-sm">{label}</span>
-      <span className="mt-1 block font-[Sora] text-2xl font-extrabold tabular-nums text-foreground sm:text-3xl">{value==null?"—":value.toLocaleString("pt-BR")}</span>
+      <span className="ops-metric-value mt-1 block text-foreground">{value==null?"—":value.toLocaleString("pt-BR")}</span>
       <span className="block text-[11px] text-muted-foreground">{hint}</span>
     </span>
   </button>;
@@ -297,6 +297,11 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   const visibleWaiting=(data?.waiting??[]).filter(matches);
   const visibleActive=(data?.active??[]).filter(matches);
   const list=queueTab==="waiting"?visibleWaiting:visibleActive;
+  const [queuePage,setQueuePage]=useState(0);
+  const queuePages=Math.max(1,Math.ceil(list.length/5));
+  const currentQueuePage=Math.min(queuePage,queuePages-1);
+  const queueRows=list.slice(currentQueuePage*5,currentQueuePage*5+5);
+  useEffect(()=>setQueuePage(0),[queueTab,query]);
   const onlineDrivers=(data?.online_drivers??[]).filter(driver=>driver.online);
   const selectedDriver=onlineDrivers.find(driver=>driver.id===selectedDriverId)??onlineDrivers[0]??null;
   const points=useMemo(()=>{
@@ -374,11 +379,12 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
   return <section className="min-w-0 space-y-4 rounded-2xl bg-background text-foreground dark:bg-[#0B0F14] md:space-y-5"
     data-testid="operations-cockpit">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-1">
+      <div className="ops-heading">
+        <div className="ops-eyebrow"><Radio size={14}/> Monitoramento operacional</div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-[Sora] text-2xl font-extrabold tracking-tight sm:text-3xl">Centro de Operações</h1>
-          <span className="inline-flex items-center gap-1 rounded-lg bg-[#FFBB00] px-2 py-1 text-[11px] font-extrabold text-[#121212]">
-            <Radio size={12}/> LIVE
+          <h1 className="font-[Sora] text-2xl font-extrabold tracking-tight sm:text-3xl">Central de Operações</h1>
+          <span className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold text-muted-foreground">
+            <Radio size={12}/> {offline?"Offline":error?"Dados anteriores":loading?"Carregando":"Ao vivo"}
           </span>
         </div>
         <p className="text-sm text-muted-foreground">Demanda, motoristas e corridas em um só lugar.</p>
@@ -433,11 +439,66 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
         icon={AlertTriangle} tone="red" onClick={onOpenTools}/>
     </div>
 
-    <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.2fr)_minmax(270px,0.85fr)]">
-      <section ref={queueArea} className={cardShell+" min-w-0 overflow-hidden p-3 sm:p-4"}>
+    <div className="ops-cockpit-grid min-w-0">
+      <section ref={mapArea} className={cardShell+" ops-map ops-panel min-w-0 overflow-hidden"} aria-label="Mapa operacional">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2 sm:p-3">
+          <div className="inline-flex rounded-full border border-border p-0.5 text-xs dark:border-white/10" role="group" aria-label="Modo do mapa">
+            <button type="button" aria-pressed={mapTab==="live"} onClick={()=>{setFocusKey(undefined);setMapTab("live");}}
+              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="live"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Mapa em tempo real</button>
+            <button type="button" aria-pressed={mapTab==="tracking"} onClick={()=>{setFocusKey(undefined);setMapTab("tracking");}}
+              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="tracking"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Rastreamento Flash</button>
+            <button type="button" aria-pressed={mapTab==="drivers"}
+              onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("drivers");}}
+              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="drivers"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>
+              Motoristas Flash
+            </button>
+          </div>
+          <span className="text-xs text-muted-foreground">{time(data?.generated_at)}</span>
+        </div>
+        {mapTab!=="drivers"&&<div role="group" aria-label="Camadas de serviços no mapa"
+          className="flex flex-wrap items-center gap-1 border-t border-border/60 px-3 pb-2 pt-2">
+          {([{key:"all",label:"Todos"},{key:"flash",label:"Corrida Rápida"},
+            {key:"shared",label:"Caronas"}] as const).map(item=>
+            <button key={item.key} type="button" aria-pressed={serviceLayer===item.key}
+              onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("live");setServiceLayer(item.key);}}
+              className={"min-h-9 rounded-full px-3 text-xs font-semibold "+(serviceLayer===item.key?"bg-[#FFBB00] text-[#121212]":"bg-muted text-muted-foreground")}>
+              {item.label}</button>)}
+          <span className="ml-auto text-[11px] text-muted-foreground">
+            {shared?.offers.length??"—"} ofertas · {shared?.requests.length??"—"} pedidos · {shared?.rides.length??"—"} viagens compartilhadas
+          </span>
+        </div>}
+        {sharedError&&serviceLayer!=="flash"&&<p role="status" className="px-3 pb-2 text-xs text-amber-700">{sharedError}</p>}
+        {mapTab==="drivers"?
+          <div className="ops-map-height overflow-y-auto">
+            <OnlineDriverDirectory drivers={onlineDrivers} selectedId={selectedDriver?.id??null}
+              onSelect={chooseDriver} query={query}/>
+          </div>:
+        points.length>0?
+          <GoogleMapSurface className="ops-map-height w-full"
+            ariaLabel="Mapa de motoristas e solicitações CARONAA"
+            points={points} showControls smoothTracking onRefresh={reload}
+            appearance="adaptive" fitMode="once"
+            fitKey={(focusDriverId??focusKey??"f07-initial")+":"+mapTab} gestureHandling="cooperative"/>:
+          <div className="ops-map-height flex flex-col items-center justify-center gap-3 bg-muted/20 px-5 text-center">
+            <MapPin size={30} className="text-muted-foreground"/>
+            <p className="text-sm font-semibold">{loading?"Preparando mapa…":"Nenhuma localização operacional recente"}</p>
+            <p className="max-w-xs text-xs text-muted-foreground">O mapa mostrará somente posições válidas, sem criar marcadores fictícios.</p>
+          </div>}
+        <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-border p-3 text-xs dark:border-white/10">
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-green-500"/>Motoristas aptos ({kpis?.ready_drivers??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Em atendimento no mapa ({data?.map_drivers.filter(driver=>driver.in_trip).length??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"/>Flash em espera ({kpis?.waiting??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-[#0F766E]"/>Caronas disponíveis ({shared?.offers.length??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-[#0F766E]"/>Pedidos compartilhados ({shared?.requests.length??"—"})</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Embarques de carona ({shared?.rides.length??"—"})</span>
+          <Link to="/admin/operacoes" hash="journeys" className="ml-auto font-semibold underline underline-offset-2">Gerenciar viagens</Link>
+        </div>
+      </section>
+
+      <section ref={queueArea} className={cardShell+" ops-queue ops-panel min-w-0 p-3 sm:p-4"}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="font-[Sora] text-base font-bold">Pedidos Flash em espera ({data?.kpis.waiting??"—"})</h2>
+            <h2 className="font-[Sora] text-base font-bold">{queueTab==="waiting"?"Pedidos Flash em espera":"Corridas Flash em curso"} ({queueTab==="waiting"?data?.kpis.waiting??"—":data?.kpis.in_progress??"—"})</h2>
             <p className="text-xs text-muted-foreground">Solicitações rápidas ainda sem motorista.</p>
           </div>
           <div className="flex rounded-lg border border-border bg-muted/30 p-0.5 text-xs dark:border-white/10" role="group" aria-label="Filtrar solicitações">
@@ -447,8 +508,8 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
               onClick={()=>setQueueTab("active")} className={"min-h-9 rounded-md px-2.5 font-semibold "+(queueTab==="active"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Em curso</button>
           </div>
         </div>
-        <div className="space-y-2 xl:max-h-[365px] xl:overflow-y-auto xl:pr-1">
-          {list.map(ride=><button key={ride.id} type="button"
+        <div className="ops-queue-list">
+          {queueRows.map(ride=><button key={ride.id} type="button"
             onClick={()=>choose(ride)} aria-current={selected?.id===ride.id?"true":undefined}
             className={"grid w-full grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border px-2.5 py-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-[#FFBB00] "+
               (selected?.id===ride.id?"border-[#FFBB00] bg-amber-50 dark:bg-[#FFBB00]/10":"border-border bg-background hover:bg-muted/50 dark:border-white/10 dark:bg-[#161C24] dark:hover:bg-white/10")}>
@@ -475,67 +536,13 @@ export function F07OperationsCockpit({onOpenTools}:{onOpenTools:()=>void}){
             <p className="text-xs text-muted-foreground">{queueTab==="waiting"?"Novos pedidos aparecerão automaticamente.":"Acompanhe as corridas no mapa."}</p>
           </div>}
         </div>
+        {queuePages>1&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2" aria-label="Páginas da fila Flash"><span className="text-xs text-muted-foreground">{currentQueuePage+1} / {queuePages} · {list.length} registros carregados</span><div className="flex gap-1"><Button size="sm" variant="outline" disabled={currentQueuePage===0} onClick={()=>setQueuePage(currentQueuePage-1)}>Anterior</Button><Button size="sm" variant="outline" disabled={currentQueuePage+1>=queuePages} onClick={()=>setQueuePage(currentQueuePage+1)}>Próxima</Button></div></div>}
         <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground dark:border-white/10">
-          {(data?.passenger_demand?.preparing??0).toLocaleString("pt-BR")} preparando pedido · Atualização a cada 10 segundos
+          {data?.passenger_demand?.preparing?.toLocaleString("pt-BR")??"—"} preparando pedido · Atualização a cada 10 segundos
         </p>
       </section>
 
-      <section ref={mapArea} className={cardShell+" min-w-0 overflow-hidden"} aria-label="Mapa operacional">
-        <div className="flex flex-wrap items-center justify-between gap-2 p-2 sm:p-3">
-          <div className="inline-flex rounded-full border border-border p-0.5 text-xs dark:border-white/10" role="group" aria-label="Modo do mapa">
-            <button type="button" aria-pressed={mapTab==="live"} onClick={()=>{setFocusKey(undefined);setMapTab("live");}}
-              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="live"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Mapa em tempo real</button>
-            <button type="button" aria-pressed={mapTab==="tracking"} onClick={()=>{setFocusKey(undefined);setMapTab("tracking");}}
-              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="tracking"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>Rastreamento Flash</button>
-            <button type="button" aria-pressed={mapTab==="drivers"}
-              onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("drivers");}}
-              className={"min-h-9 rounded-full px-3 font-bold "+(mapTab==="drivers"?"bg-[#FFBB00] text-[#121212]":"text-muted-foreground")}>
-              Motoristas Flash
-            </button>
-          </div>
-          <span className="text-xs text-muted-foreground">{time(data?.generated_at)}</span>
-        </div>
-        {mapTab!=="drivers"&&<div role="group" aria-label="Camadas de serviços no mapa"
-          className="flex flex-wrap items-center gap-1 border-t border-border/60 px-3 pb-2 pt-2">
-          {([{key:"all",label:"Todos"},{key:"flash",label:"Corrida Rápida"},
-            {key:"shared",label:"Caronas"}] as const).map(item=>
-            <button key={item.key} type="button" aria-pressed={serviceLayer===item.key}
-              onClick={()=>{setFocusKey(undefined);setFocusDriverId(null);setMapTab("live");setServiceLayer(item.key);}}
-              className={"min-h-9 rounded-full px-3 text-xs font-semibold "+(serviceLayer===item.key?"bg-[#FFBB00] text-[#121212]":"bg-muted text-muted-foreground")}>
-              {item.label}</button>)}
-          <span className="ml-auto text-[11px] text-muted-foreground">
-            {(shared?.offers.length??0)} ofertas · {(shared?.requests.length??0)} pedidos · {(shared?.rides.length??0)} viagens compartilhadas
-          </span>
-        </div>}
-        {sharedError&&serviceLayer!=="flash"&&<p role="status" className="px-3 pb-2 text-xs text-amber-700">{sharedError}</p>}
-        {mapTab==="drivers"?
-          <div className="h-[300px] overflow-y-auto sm:h-[360px] xl:h-[390px]">
-            <OnlineDriverDirectory drivers={onlineDrivers} selectedId={selectedDriver?.id??null}
-              onSelect={chooseDriver} query={query}/>
-          </div>:
-        points.length>0?
-          <GoogleMapSurface className="h-[300px] w-full sm:h-[360px] xl:h-[390px]"
-            ariaLabel="Mapa de motoristas e solicitações CARONAA"
-            points={points} showControls smoothTracking onRefresh={reload}
-            appearance="adaptive" fitMode="once"
-            fitKey={(focusDriverId??focusKey??"f07-initial")+":"+mapTab} gestureHandling="cooperative"/>:
-          <div className="flex h-[300px] flex-col items-center justify-center gap-3 bg-muted/20 px-5 text-center sm:h-[360px] xl:h-[390px]">
-            <MapPin size={30} className="text-muted-foreground"/>
-            <p className="text-sm font-semibold">{loading?"Preparando mapa…":"Nenhuma localização operacional recente"}</p>
-            <p className="max-w-xs text-xs text-muted-foreground">O mapa mostrará somente posições válidas, sem criar marcadores fictícios.</p>
-          </div>}
-        <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-border p-3 text-xs dark:border-white/10">
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-green-500"/>Motoristas aptos ({kpis?.ready_drivers??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Em atendimento no mapa ({data?.map_drivers.filter(driver=>driver.in_trip).length??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"/>Flash em espera ({kpis?.waiting??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-[#0F766E]"/>Caronas disponíveis ({shared?.offers.length??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-[#0F766E]"/>Pedidos compartilhados ({shared?.requests.length??"—"})</span>
-          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500"/>Embarques de carona ({shared?.rides.length??"—"})</span>
-          <Link to="/admin/operacoes" hash="journeys" className="ml-auto font-semibold underline underline-offset-2">Gerenciar viagens</Link>
-        </div>
-      </section>
-
-      <div className="hidden min-w-0 xl:block" aria-label="Painel lateral de detalhes">
+      <div className="ops-detail hidden min-w-0 xl:block" aria-label="Painel lateral de detalhes">
         {mapTab==="drivers"||focusDriverId?
           <OnlineDriverDetails driver={selectedDriver} onFocus={followDriver} onManage={onOpenTools}/>:
           <DetailPanel ride={selected} now={now} onFollow={follow} onManage={onOpenTools}/>}
