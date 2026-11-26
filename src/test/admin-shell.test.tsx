@@ -50,7 +50,7 @@ describe("Shared administrative navigation", () => {
       state.pathname = getDepartmentHome(department.id);
       render(
         <AdminAccessProvider value={{ isGlobalAdmin: true, departments: [] }}>
-          <AdminShell><div>Conteúdo</div></AdminShell>
+          <AdminShell>{department.id==="operations"?<h1>Central de Operações</h1>:<div>Conteúdo</div>}</AdminShell>
         </AdminAccessProvider>,
       );
       const nav = screen.getByRole("navigation", { name: "Navegação administrativa" });
@@ -58,7 +58,9 @@ describe("Shared administrative navigation", () => {
       const active = nav.querySelectorAll('[aria-current="page"]');
       expect(active).toHaveLength(1);
       expect(active[0]).toHaveTextContent(department.shortName);
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(department.name);
+      // Operações owns its module heading; the shell must not duplicate it.
+      expect(screen.getAllByRole("heading",{level:1})).toHaveLength(1);
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(department.id==="operations"?"Central de Operações":department.name);
       expect(
         screen.getByRole("navigation", { name: `Módulos de ${department.name}` }),
       ).toBeInTheDocument();
