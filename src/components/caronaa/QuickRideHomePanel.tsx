@@ -11,6 +11,7 @@ import { validPoint } from "@/lib/location/use-user-location";
 import { useAuth } from "@/lib/auth-context";
 import { quickQuoteCoordinator, quickQuoteItineraryKey, isQuickQuoteRateLimit } from "@/lib/quick-rides/quick-quote-coordinator";
 import { supabase } from "@/integrations/supabase/client";
+import { operationsService } from "@/services/operations-service";
 import {
   getQuickRideCoverage, getQuickRideFarePreview, registerQuickRideRegionInterest,
   submitQuotedQuickRide, type QuickRideCoverage, type QuickRideFarePreview,
@@ -485,8 +486,10 @@ export function QuickRideHomePanel({
     if(!liveRide||busy)return;
     setBusy(true);setError("");
     try{
-      const {error:rpcError}=await (supabase as any).rpc("quick_ride_transition",{p_id:liveRide.id,p_status:action});
-      if(rpcError)throw new Error("Não foi possível atualizar a corrida.");
+      if(action==="CANCELLED"){
+        try{await operationsService.cancelFlash(liveRide.id);}
+        catch{throw new Error("Não foi possível atualizar a corrida.");}
+      }
       const {data}=await (supabase as any).rpc("quick_ride_my_requests");
       if(mounted.current)setRides(Array.isArray(data)?data:[]);
     }catch(cause){if(mounted.current)setError(cause instanceof Error?cause.message:"Não foi possível atualizar.");}
