@@ -3,6 +3,9 @@ import { Activity, CalendarDays, ChevronDown, ChevronUp, Clock3, Download, Mail,
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import "./operations-history-print.css";
+import { useOperationalOverview } from "@/hooks/use-operational-overview";
+import { OperationsAdvancedOverview, operationalAggregateRows } from "./OperationsAdvancedOverview";
+import { OperationsOrderEvidenceDialog } from "./OperationsOrderEvidenceDialog";
 import { OperationsPrintableReport } from "./OperationsPrintableReport";
 import { OperationsGoogleMapsUsage, type GoogleUsageReport } from "./OperationsGoogleMapsUsage";
 import { OperationsAppEngagement, type AppEngagementReport } from "./OperationsAppEngagement";
@@ -36,7 +39,7 @@ type Preset = "today"|"7d"|"30d"|"custom";
 const fmt = (v:number|undefined|null)=>typeof v==="number"?v.toLocaleString("pt-BR"):"—";
 const money=(cents:number|undefined)=>typeof cents==="number"?
   new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(cents/100):"—";
-const dateBR=(date:string)=>new Date(date).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const dateBR=(date:string)=>new Date(date).toLocaleString("pt-BR",{timeZone:"America/Fortaleza",year:"numeric",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const localDay=(date:Date)=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
 const periodDates=(preset:Preset,from:string,to:string)=>{
   const now=new Date();
@@ -89,6 +92,9 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
   const [shareNotice,setShareNotice]=useState("");
   const dates=periodDates(preset,from,to);
   const valid=Boolean(dates.from&&dates.to&&dates.from<=dates.to);
+  const advanced=useOperationalOverview({from:dates.from,to:dates.to,service},valid,reload);
+  const [selectedOrder,setSelectedOrder]=useState<{id:string;service:"flash"|"shared"}|null>(null);
+  useEffect(()=>{setSelectedOrder(null);},[dates.from,dates.to,service]);
   const load=useCallback(async()=>{
     if(!valid){setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);setIntelligence(null);return;}
     setBusy(true);setError("");
@@ -177,6 +183,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       google_usage:googleUsage??undefined,
       app_engagement:appEngagement??undefined,
       price_quotes:quotes??undefined,
+      advanced_metrics:advanced.data?operationalAggregateRows(advanced.data):undefined,
     });
   };
   const shareWhatsApp=async()=>{
@@ -291,6 +298,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     {error&&<p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!valid&&<p role="status" className="text-sm text-muted-foreground">Selecione um intervalo válido.</p>}
     {mode==="intelligence"&&<>
+      <OperationsAdvancedOverview data={advanced.data} loading={advanced.loading} error={advanced.error}/>
       <OperationsMobilityIntelligence report={intelligence} error={intelligenceError} loading={busy}/>
       <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     </>}
@@ -422,7 +430,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
           {rows.map(r=><tr key={r.service+":"+r.id} className="hover:bg-muted/30">
             <td className="whitespace-nowrap p-2">{dateBR(r.requested_at)}</td>
             <td className="p-2">{r.service==="flash"?"Rápida":"Caronaa"}</td>
-            <td className="p-2">{r.passenger_name}</td><td className="p-2">{r.driver_name??"Não atribuído"}</td>
+            <td className="p-2"><button type="button" className="text-left font-medium underline underline-offset-2" onClick={()=>setSelectedOrder({id:r.id,service:r.service})}>{r.passenger_name||"Passageiro não identificado"}</button></td><td className="p-2">{r.driver_name??"Não atribuído"}</td>
             <td className="max-w-[250px] truncate p-2" title={r.origin+" → "+r.destination}>{r.origin} → {r.destination}</td>
             <td className="whitespace-nowrap p-2">{money(r.fare_cents)}</td>
             <td className="p-2"><span className={"inline-block rounded-full px-2 py-1 font-semibold "+(r.completed?"bg-green-100 text-green-900":r.cancelled?"bg-red-100 text-red-900":r.accepted?"bg-blue-100 text-blue-900":"bg-amber-100 text-amber-900")}>
@@ -445,6 +453,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <OperationsGoogleMapsUsage report={googleUsage} error={googleError} loading={busy}/>
     </>}
     </div>
+    {mode==="reports"&&selectedOrder&&<OperationsOrderEvidenceDialog key={selectedOrder.service+":"+selectedOrder.id} {...selectedOrder} onClose={()=>setSelectedOrder(null)}/>}
     {mode==="reports"&&report&&!busy&&valid&&<OperationsPrintableReport
       summary={report.summary}
       hours={report.hours}
@@ -456,6 +465,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       googleUsage={googleUsage}
       appEngagement={appEngagement}
       priceQuotes={quotes}
+      advancedMetrics={advanced.data?operationalAggregateRows(advanced.data):undefined}
     />}
   </main>;
 }
