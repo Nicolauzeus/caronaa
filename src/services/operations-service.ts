@@ -145,7 +145,7 @@ type RpcName = "admin_operational_order_kpis" | "admin_operational_conversion_re
   "admin_operational_driver_performance" | "admin_operational_cancellation_breakdown" |
   "admin_operational_diagnostics" | "admin_operations_order_evidence" | "caronaa_record_passenger_cancel_reason" |
   "admin_operational_quote_funnel" | "admin_operational_overview" |
-  "admin_operational_person_history" | "quick_ride_transition";
+  "admin_operational_person_history" | "caronaa_record_shared_attempt_cancel_reason" | "quick_ride_transition";
 type RpcPort = { rpc(name: RpcName, args: Record<string, unknown>): PromiseLike<{
   data: unknown; error: { code?: string } | null;
 }> };
@@ -185,6 +185,8 @@ export function createOperationsService(db: RpcPort) {
     getDiagnostics: (p: OperationsPeriod) => call("admin_operational_diagnostics", argsFor(p), diagnosticSchema),
     getEvidence: (service: OrderService, id: string) => call("admin_operations_order_evidence",
       { p_service: validate(orderServiceSchema, service), p_request_id: validate(uuid, id) }, evidenceSchema.nullable()),
+    recordSharedAttemptReason: (rideId:string,reason:CancellationReason) => call("caronaa_record_shared_attempt_cancel_reason",
+      {p_ride_id:validate(uuid,rideId),p_reason_code:validate(cancellationReasonSchema,reason)},z.boolean()),
     recordCancellationReason: (service: OrderService, id: string, reason: CancellationReason) =>
       call("caronaa_record_passenger_cancel_reason", {
         p_service: validate(orderServiceSchema, service), p_request_id: validate(uuid, id),
