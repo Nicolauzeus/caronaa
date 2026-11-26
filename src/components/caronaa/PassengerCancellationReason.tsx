@@ -14,8 +14,8 @@ const reasons: readonly {code: CancellationReason; label: string}[] = [
 ];
 
 /** Mount only AFTER the original cancellation has succeeded. Closing never writes a reason. */
-export function PassengerCancellationReason({service,requestId,onClose}:{
-  service:OrderService; requestId:string; onClose:()=>void;
+export function PassengerCancellationReason({service,requestId,onClose,sharedAttempt=false}:{
+  service:OrderService; requestId:string; onClose:()=>void; sharedAttempt?:boolean;
 }){
   const [selected,setSelected]=useState<CancellationReason|"">("");
   const [busy,setBusy]=useState(false);
@@ -25,17 +25,17 @@ export function PassengerCancellationReason({service,requestId,onClose}:{
     if(!selected||pending.current)return;
     pending.current=true;setBusy(true);setError("");
     try{
-      const stored=await operationsService.recordCancellationReason(service,requestId,selected);
+      const stored=sharedAttempt?await operationsService.recordSharedAttemptReason(requestId,selected):await operationsService.recordCancellationReason(service,requestId,selected);
       if(stored)onClose();
-      else setError("Não foi possível registrar esta resposta. A corrida continua cancelada.");
+      else setError("Não foi possível registrar esta resposta. O cancelamento continua confirmado.");
     }catch{
       setError("Motivo indisponível no momento. Você pode fechar e continuar.");
     }finally{pending.current=false;setBusy(false);}
   }
   return <Dialog open onOpenChange={open=>{if(!open)onClose();}}>
     <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-2xl bg-[#121212] text-white border-white/15">
-      <DialogTitle>Corrida cancelada</DialogTitle>
-      <DialogDescription className="text-white/70">Se quiser, informe o motivo para nos ajudar a melhorar o atendimento. Sua corrida já foi cancelada.</DialogDescription>
+      <DialogTitle>{sharedAttempt?"Combinação cancelada":"Corrida cancelada"}</DialogTitle>
+      <DialogDescription className="text-white/70">Se quiser, informe o motivo para nos ajudar a melhorar o atendimento. {sharedAttempt?"Esta combinação foi cancelada; seu pedido pode continuar buscando outra carona.":"Sua corrida já foi cancelada."}</DialogDescription>
       <label className="grid gap-2 text-sm font-medium">
         Motivo (opcional)
         <select value={selected} disabled={busy} onChange={e=>setSelected(e.target.value as CancellationReason|"")}
