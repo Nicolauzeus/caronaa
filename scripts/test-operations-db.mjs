@@ -33,8 +33,8 @@ try {
   started=true;
   apply("src/test/ride-security-db-bootstrap.sql");
   apply("src/test/operations-db-fixture.sql");
-  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255|256|257)_.*\.sql$/.test(n)).sort();
-  if(migrations.length!==11 || new Set(migrations.map(n=>n.slice(0,4))).size!==11) throw new Error("Expected one migration per number 0247-0257.");
+  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255|256|257|258)_.*\.sql$/.test(n)).sort();
+  if(migrations.length!==12 || new Set(migrations.map(n=>n.slice(0,4))).size!==12) throw new Error("Expected one migration per number 0247-0258.");
   for(const m of migrations) {
     apply("drizzle/migrations/"+m);
     console.log("APPLIED: "+m);
@@ -51,7 +51,11 @@ try {
   const flowChecks=flow.stderr.split("\n").filter(l=>l.includes("PASS:"));
   for(const check of flowChecks) console.log(check);
   if(flowChecks.length!==7) throw new Error("Expected 7 flow integration check groups, got "+flowChecks.length);
-  console.log("PASS: 11 migrations and "+(checks.length+advancedChecks.length+flowChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
+  const queue=apply("src/test/operations-queue.integration.sql");
+  const queueChecks=queue.stderr.split("\n").filter(l=>l.includes("PASS:"));
+  for(const check of queueChecks) console.log(check);
+  if(queueChecks.length!==3) throw new Error("Expected 3 queue integration check groups, got "+queueChecks.length);
+  console.log("PASS: 12 migrations and "+(checks.length+advancedChecks.length+flowChecks.length+queueChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
 } finally {
   if(started) run("pg_ctl",["-D",data,"-m","fast","-w","stop"]);
   rmSync(dir,{recursive:true,force:true});
