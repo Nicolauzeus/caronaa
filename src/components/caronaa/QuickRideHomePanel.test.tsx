@@ -225,7 +225,7 @@ describe("Corrida Rápida dentro do mapa inicial",()=>{
     const button=await screen.findByRole("button",{name:/Confirmar Flash Moto/i},{timeout:3500});
     expect(api.submit).not.toHaveBeenCalled();fireEvent.click(button);
     await waitFor(()=>expect(api.submit).toHaveBeenCalledWith({data:{quoteId:fare.quoteId}}));
-    expect(await screen.findByText("Procurando motorista")).toBeInTheDocument();
+    expect(await screen.findByText("Aguardando motorista")).toBeInTheDocument();
   });
   it("prioriza desembarque e contesta pela RPC existente",async()=>{
     const rideId="0f066ee8-bb89-47e2-85cf-20121e1b021f";
