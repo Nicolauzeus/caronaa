@@ -113,8 +113,11 @@ export async function confirmOnRouteBooking(
       p_seats:seats,
       p_meeting_details:meetingDetails,
     });
-    const code=String(error?.code??error?.message??"").toUpperCase();
-    if(code.includes("OVERBOOKING_PREVENTED"))throw new OnRouteServiceError("OVERBOOKING_PREVENTED");
+    // PostgREST reports PostgreSQL RAISE EXCEPTION as P0001 with the
+    // application error in message. Do not discard that message when code exists.
+    const overbooking=[error?.code,error?.message].some(value=>
+      typeof value==="string"&&/\bOVERBOOKING_PREVENTED\b/i.test(value));
+    if(overbooking)throw new OnRouteServiceError("OVERBOOKING_PREVENTED");
     if(error)throw new OnRouteServiceError("ON_ROUTE_SERVICE_UNAVAILABLE");
     const row=obj(data);
     const bookingId=typeof data==="string"?data.trim():str(row?.booking_id??row?.ride_id??row?.request_id);
