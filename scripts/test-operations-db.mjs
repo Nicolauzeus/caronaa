@@ -33,8 +33,8 @@ try {
   started=true;
   apply("src/test/ride-security-db-bootstrap.sql");
   apply("src/test/operations-db-fixture.sql");
-  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255|256|257|258|259|260|261|262)_.*\.sql$/.test(n)).sort();
-  if(migrations.length!==16 || new Set(migrations.map(n=>n.slice(0,4))).size!==16) throw new Error("Expected one migration per number 0247-0262.");
+  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255|256|257|258|259|260|261|262|263)_.*\.sql$/.test(n)).sort();
+  if(migrations.length!==17 || new Set(migrations.map(n=>n.slice(0,4))).size!==17) throw new Error("Expected one migration per number 0247-0263.");
   for(const m of migrations) {
     apply("drizzle/migrations/"+m);
     console.log("APPLIED: "+m);
@@ -60,8 +60,8 @@ try {
   const person=apply("src/test/operations-person-and-audience.integration.sql");
   const personChecks=person.stderr.split("\n").filter(l=>l.includes("PASS:"));
   for(const check of personChecks)console.log(check);
-  if(personChecks.length!==9)throw new Error("Expected 9 personal/audience check groups, got "+personChecks.length);
-  console.log("PASS: 16 migrations and "+(checks.length+advancedChecks.length+flowChecks.length+queueChecks.length+personChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
+  if(personChecks.length!==10)throw new Error("Expected 10 personal/audience check groups, got "+personChecks.length);
+  console.log("PASS: 17 migrations and "+(checks.length+advancedChecks.length+flowChecks.length+queueChecks.length+personChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
 } finally {
   if(started) run("pg_ctl",["-D",data,"-m","fast","-w","stop"]);
   rmSync(dir,{recursive:true,force:true});
