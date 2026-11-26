@@ -4,6 +4,8 @@ import { operationsService, type OperationalEvidence, type OrderService } from "
 import { reasonLabels } from "./OperationsAdvancedOverview";
 const eventLabels:Record<string,string>={
  queue_signal_recorded:"Sinal de atualização da fila registrado",
+ radar_client_acknowledged:"Recebimento do radar declarado pelo aplicativo",
+ creation_candidates_snapshot:"Candidatos no momento da criação",
  requested:"Pedido solicitado",accepted:"Aceite registrado",arrived:"Chegada ao embarque",
  pickup_confirmed:"Embarque confirmado",in_trip:"Viagem iniciada",completed:"Corrida concluída",
  passenger_cancelled:"Cancelamento pelo passageiro",driver_cancelled:"Cancelamento pelo motorista",
@@ -29,7 +31,7 @@ export function OperationsOrderEvidenceDialog({service,id,onClose}:{service:Orde
   return()=>{active=false;};
  },[service,id]);
  const order=data?.order;
- const fields=[["Motoristas elegíveis observados","drivers_eligible_observed"],["Visualizações registradas","drivers_with_recorded_view"],["Entregas confirmadas","drivers_delivery_confirmed_observed"],["Falhas de envio observadas","drivers_send_failed_observed"],["Sinais de fila registrados","queue_signals_recorded"]] as const;
+ const fields=[["Motoristas elegíveis observados","drivers_eligible_observed"],["Visualizações registradas","drivers_with_recorded_view"],["Entregas confirmadas","drivers_delivery_confirmed_observed"],["Falhas de envio observadas","drivers_send_failed_observed"],["Sinais de fila registrados","queue_signals_recorded"],["Aplicativos que confirmaram retorno","drivers_radar_acknowledged"],["Candidatos na criação (pré-limite)","creation_radar_candidates"]] as const;
  return <Dialog open onOpenChange={open=>{if(!open)onClose();}}>
   <DialogContent className="flex max-h-[90dvh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl">
    <DialogTitle>Histórico individual do pedido</DialogTitle>
@@ -47,16 +49,17 @@ export function OperationsOrderEvidenceDialog({service,id,onClose}:{service:Orde
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
      {fields.map(([label,key])=><div key={key} className="rounded-xl border p-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="font-bold">{typeof data.counts[key]==="number"?String(data.counts[key]):"N/D"}</dd></div>)}
     </dl>
-    <p className="text-xs text-muted-foreground">Cobertura parcial. Elegibilidade observada não é contagem no instante da solicitação. Sinal de fila é uma atualização no banco, não comprovante de entrega. Ausência de confirmação não significa ausência de entrega.</p>
+    <p className="text-xs text-muted-foreground">Cobertura parcial. Candidatos na criação usam a regra de radar 0233 antes do limite da fila. Elegibilidade observada é uma consulta posterior. Sinal de fila é uma atualização no banco; confirmação do aplicativo não comprova push entregue. Ausência de confirmação não significa ausência de entrega.</p>
     <ol className="divide-y" aria-label="Linha do tempo">
      {data.events.map((event,i)=>{
       const actor=event.actor_id===order.passenger_id?"Passageiro":event.actor_id&&event.actor_id===order.driver_id?"Motorista atribuído":event.actor_id?"Outro participante registrado":"Responsável não comprovado";
       const reason=reasonLabels[string(event.detail.reason_code)];
       const projected=event.detail.evidence==="deadline_not_observed_transition";
+      const candidates=typeof event.detail.candidate_count==="number"?event.detail.candidate_count:null;
       return <li key={event.occurred_at+":"+event.event_type+":"+i} className="space-y-1 py-3 text-sm">
        <time className="block text-xs font-semibold tabular-nums text-muted-foreground" dateTime={event.occurred_at}>{fmtDate(event.occurred_at)}</time>
        <strong>{eventLabels[event.event_type]??event.event_type.replaceAll("_"," ")}</strong>
-       <p className="text-xs text-muted-foreground">{actor}{reason?" · "+reason:""}{projected?" · Prazo calculado, não transição registrada":""}</p>
+       <p className="text-xs text-muted-foreground">{actor}{reason?" · "+reason:""}{projected?" · Prazo calculado, não transição registrada":""}{candidates!==null?" · "+candidates+" candidatos pré-limite":""}</p>
       </li>;
      })}
     </ol>
