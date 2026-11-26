@@ -76,10 +76,16 @@ export async function dispatchPushToEligibleDrivers(
 export function supabasePushRepo(db: any): PushRepo {
   return {
     async onlineDriversSince(since) {
-      const { data, error } = await db.from("flash_driver_presence")
-        .select("user_id,last_lat,last_lng").eq("is_online", true).gte("last_gps_at", since);
-      if (error) throw new Error("presence");
-      return (data ?? []).map((r: any) => ({ userId: r.user_id, lat: Number(r.last_lat), lng: Number(r.last_lng) }));
+      // Real driver GPS is published to professional_driver_locations by both
+      // the Flash panel and the availability radar; flash presence alone misses the latter.
+      const [locs, avail] = await Promise.all([
+        db.from("professional_driver_locations").select("user_id,lat,lng").gte("sampled_at", since),
+        db.from("professional_presence").select("user_id").eq("is_available", true),
+      ]);
+      if (locs.error || avail.error) throw new Error("presence");
+      const online = new Set((avail.data ?? []).map((r: any) => r.user_id));
+      return (locs.data ?? []).filter((r: any) => online.has(r.user_id))
+        .map((r: any) => ({ userId: r.user_id, lat: Number(r.lat), lng: Number(r.lng) }));
     },
     async approvedDrivers(userIds, vehicleType) {
       const { data, error } = await db.from("professional_driver_authorizations")
