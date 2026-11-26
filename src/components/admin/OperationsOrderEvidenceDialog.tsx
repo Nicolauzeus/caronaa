@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { operationsService, type OperationalEvidence, type OrderService } from "@/services/operations-service";
 import { reasonLabels } from "./OperationsAdvancedOverview";
 const eventLabels:Record<string,string>={
+ queue_signal_recorded:"Sinal de atualização da fila registrado",
  requested:"Pedido solicitado",accepted:"Aceite registrado",arrived:"Chegada ao embarque",
  pickup_confirmed:"Embarque confirmado",in_trip:"Viagem iniciada",completed:"Corrida concluída",
  passenger_cancelled:"Cancelamento pelo passageiro",driver_cancelled:"Cancelamento pelo motorista",
@@ -22,13 +23,13 @@ export function OperationsOrderEvidenceDialog({service,id,onClose}:{service:Orde
  useEffect(()=>{
   let active=true;
   setLoading(true);setData(null);setError("");
-  void operationsService.getEvidence(service,id).then(x=>{
+  void Promise.resolve().then(()=>operationsService.getEvidence(service,id)).then(x=>{
    if(active){setData(x);if(!x)setError("Pedido não encontrado.");}
   }).catch(()=>{if(active)setError("Evidências indisponíveis para este pedido.");}).finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[service,id]);
  const order=data?.order;
- const fields=[["Motoristas elegíveis observados","drivers_eligible_observed"],["Visualizações registradas","drivers_with_recorded_view"],["Entregas confirmadas","drivers_delivery_confirmed_observed"],["Falhas de envio observadas","drivers_send_failed_observed"]] as const;
+ const fields=[["Motoristas elegíveis observados","drivers_eligible_observed"],["Visualizações registradas","drivers_with_recorded_view"],["Entregas confirmadas","drivers_delivery_confirmed_observed"],["Falhas de envio observadas","drivers_send_failed_observed"],["Sinais de fila registrados","queue_signals_recorded"]] as const;
  return <Dialog open onOpenChange={open=>{if(!open)onClose();}}>
   <DialogContent className="flex max-h-[90dvh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl">
    <DialogTitle>Histórico individual do pedido</DialogTitle>
@@ -46,7 +47,7 @@ export function OperationsOrderEvidenceDialog({service,id,onClose}:{service:Orde
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
      {fields.map(([label,key])=><div key={key} className="rounded-xl border p-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="font-bold">{typeof data.counts[key]==="number"?String(data.counts[key]):"N/D"}</dd></div>)}
     </dl>
-    <p className="text-xs text-muted-foreground">Cobertura parcial. Elegibilidade observada não é contagem no instante da solicitação. Ausência de confirmação não significa ausência de entrega.</p>
+    <p className="text-xs text-muted-foreground">Cobertura parcial. Elegibilidade observada não é contagem no instante da solicitação. Sinal de fila é uma atualização no banco, não comprovante de entrega. Ausência de confirmação não significa ausência de entrega.</p>
     <ol className="divide-y" aria-label="Linha do tempo">
      {data.events.map((event,i)=>{
       const actor=event.actor_id===order.passenger_id?"Passageiro":event.actor_id&&event.actor_id===order.driver_id?"Motorista atribuído":event.actor_id?"Outro participante registrado":"Responsável não comprovado";
