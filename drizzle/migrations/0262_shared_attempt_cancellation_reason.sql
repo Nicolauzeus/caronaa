@@ -84,8 +84,14 @@ BEGIN
    'detail',jsonb_build_object('recipient_id',n.driver_id,'channel',n.channel))
   FROM public.caronaa_order_notification_receipts n WHERE n.service=p_service AND n.request_id=p_request_id
  )
- SELECT coalesce(jsonb_agg(item ORDER BY (item->>'occurred_at')::timestamptz,item::text),'[]'::jsonb)
- INTO v_events FROM events;
+ SELECT coalesce(jsonb_agg(
+  e.item||jsonb_build_object('detail',(e.item->'detail')||jsonb_strip_nulls(jsonb_build_object(
+   'actor_name_current',nullif(btrim(actor.full_name),''),
+   'recipient_name_current',nullif(btrim(recipient.full_name),'')
+  ))) ORDER BY (e.item->>'occurred_at')::timestamptz,e.item::text),'[]'::jsonb)
+ INTO v_events FROM events e
+ LEFT JOIN public.profiles actor ON actor.id=(e.item->>'actor_id')::uuid
+ LEFT JOIN public.profiles recipient ON recipient.id=(e.item#>>'{detail,recipient_id}')::uuid;
  SELECT jsonb_build_object(
    'drivers_with_recorded_view',CASE WHEN p_service='flash' THEN
     (SELECT count(*) FROM public.caronaa_flash_driver_view_history WHERE ride_id=p_request_id) ELSE NULL END,
