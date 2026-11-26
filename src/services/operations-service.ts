@@ -120,6 +120,13 @@ export const overviewSchema = z.object({
     s.from===k.from && s.to===k.to && s.service===k.service) &&
     k.summary.cancelled===x.cancellations.total_cancelled;
 });
+export const personHistorySchema=scope.extend({
+  person_id:uuid,role:z.enum(["driver","passenger"]),
+  summary:z.object({orders:count,accepted:count,completed:count,cancelled:count,recorded_views:optionalCount,recorded_skips:optionalCount,observed_eligible:optionalCount}),
+  rows:z.array(z.object({id:uuid,service:orderServiceSchema,requested_at:z.string(),origin:z.string(),destination:z.string(),status:z.string(),fare_cents:z.number().int().nullable(),accepted:z.boolean(),completed:z.boolean(),cancelled:z.boolean(),viewed:z.boolean().nullable(),skipped:z.boolean().nullable(),eligible:z.boolean().nullable()})),
+  notes,
+});
+export type OperationalPersonHistory=z.infer<typeof personHistorySchema>;
 export type OperationalFunnel = z.infer<typeof funnelSchema>;
 export type OperationalOverview = z.infer<typeof overviewSchema>;
 export type OperationalKpis = z.infer<typeof kpiSchema>;
@@ -138,7 +145,7 @@ type RpcName = "admin_operational_order_kpis" | "admin_operational_conversion_re
   "admin_operational_driver_performance" | "admin_operational_cancellation_breakdown" |
   "admin_operational_diagnostics" | "admin_operations_order_evidence" | "caronaa_record_passenger_cancel_reason" |
   "admin_operational_quote_funnel" | "admin_operational_overview" |
-  "quick_ride_transition";
+  "admin_operational_person_history" | "quick_ride_transition";
 type RpcPort = { rpc(name: RpcName, args: Record<string, unknown>): PromiseLike<{
   data: unknown; error: { code?: string } | null;
 }> };
@@ -163,6 +170,10 @@ export function createOperationsService(db: RpcPort) {
     return parsed.data;
   }
   return {
+    getPersonHistory: (personId:string, role:"driver"|"passenger",p:OperationsPeriod,limit=20,offset=0) =>
+      call("admin_operational_person_history",{...argsFor(p),p_person_id:validate(uuid,personId),
+        p_role:validate(z.enum(["driver","passenger"]),role),p_limit:validate(z.number().int().min(1).max(100),limit),
+        p_offset:validate(z.number().int().min(0).max(100000),offset)},personHistorySchema.nullable()),
     getFunnel: (p: OperationsPeriod) => call("admin_operational_quote_funnel", argsFor(p), funnelSchema),
     getOverview: (p: OperationsPeriod) => call("admin_operational_overview", argsFor(p), overviewSchema),
     getKpis: (p: OperationsPeriod) => call("admin_operational_order_kpis", argsFor(p), kpiSchema),
