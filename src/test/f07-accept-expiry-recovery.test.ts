@@ -39,7 +39,9 @@ describe("F07 atomic accept and bounded passenger waiting",()=>{
     expect(driver).toContain("visibleQueue.map(ride");
     expect(driver).toContain("Date.parse(offer.expires_at)<=Date.now()");
     expect(driver).toContain("VERIFIED_GPS_REQUIRED");
-    expect(driver).toContain("Acesso profissional ou repasses pendentes");
+    expect(driver).toContain("Acesso profissional não autorizado.");
+    expect(driver).toContain("migration 0212");
+    expect(driver).not.toContain("Acesso profissional ou repasses pendentes");
     expect(driver).toContain("gpsReady");
     expect(driver).toContain("15000");
     expect(cockpit).toContain("at:new Date(sampledAtMs)");
@@ -49,7 +51,7 @@ describe("F07 atomic accept and bounded passenger waiting",()=>{
     expect(passenger).toContain('rpc("quick_ride_my_requests")');
     expect(passenger).toContain('liveRide.status==="SEARCHING"?3000');
     expect(passenger).toContain('["ACCEPTED","ARRIVED"].includes(liveRide.status)?5000:12000');
-    expect(passenger).toContain('liveRide.status!=="SEARCHING"');
+    expect(passenger).toContain('liveRide?.status!=="SEARCHING"');
     expect(passenger).toContain("searchDeadlinePassed");
     expect(passenger).toContain("Busca encerrada");
     expect(passenger).toContain("Tentar outra corrida");
