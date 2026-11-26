@@ -1,4 +1,4 @@
--- Minimal, disposable source-schema fixture for migrations 0247-0252.
+-- Minimal, disposable source-schema fixture for migrations 0247-0255.
 -- This is NOT the full production schema or a replacement for staging.
 -- Run only in a freshly initialized local cluster via test-operations-db.mjs.
 CREATE TYPE public.app_role AS ENUM ('admin','user');
@@ -46,3 +46,11 @@ CREATE TABLE public.caronaa_operational_presence_hours (user_id uuid,kind text,h
 CREATE TABLE public.flash_driver_presence (user_id uuid,is_online boolean,last_gps_at timestamptz);
 CREATE TABLE public.professional_presence (user_id uuid,is_available boolean,last_seen_at timestamptz);
 CREATE TABLE public.caronaa_passenger_demand_presence (user_id uuid,last_seen_at timestamptz);
+
+-- Additional source tables/columns used by advanced F09 analytics.
+ALTER TABLE public.ride_requests ADD COLUMN route_quote_id uuid;
+CREATE TABLE public.ride_offers (offer_id uuid PRIMARY KEY,user_id uuid NOT NULL,route_quote_id uuid,created_at timestamptz NOT NULL);
+CREATE TABLE public.offer_route_quotes (quote_id uuid PRIMARY KEY,user_id uuid NOT NULL,created_at timestamptz NOT NULL);
+CREATE TABLE public.caronaa_f07_operations_audit (ride_id uuid,action text,actor_id uuid,occurred_at timestamptz);
+CREATE TABLE public.caronaa_f07_operations_incidents (category text,status text,created_at timestamptz);
+CREATE TABLE public.quick_ride_payment_events (ride_id uuid,actor_id uuid,event_type text,created_at timestamptz);
