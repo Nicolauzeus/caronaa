@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Share2, PlusSquare, X, Smartphone } from "lucide-react";
 import { toast } from "sonner";
+import { setInstallPrompt } from "@/lib/push/install-prompt";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
 interface InstallPrompt extends Event {
@@ -60,6 +61,7 @@ export function PwaInstallNotice() {
     const beforeInstall = (event: Event) => {
       event.preventDefault();
       promptRef.current = event as InstallPrompt;
+      setInstallPrompt(event as InstallPrompt);
       setPrompt(event as InstallPrompt);
       checkEligibility();
     };

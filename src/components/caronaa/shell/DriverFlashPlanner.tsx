@@ -16,6 +16,9 @@ import {
   startFlashRideWithPin, type FlashDriverMode, type FlashDriverOrder,
   type FlashDriverRide, type FlashPassengerDetails,
 } from "@/services/flash-driver-service";
+import { subscribeDriverToPush } from "@/lib/push/web-push-client";
+import { DriverPwaPromotionCard } from "@/components/caronaa/DriverPwaPromotionCard";
+import { DriverNotificationPermissionDialog, KeepScreenOpenWarning, needsNotificationExplanation, notificationsDenied } from "@/components/caronaa/DriverNotificationPermissionDialog";
 import { FlashIncomingOrderCard } from "./FlashIncomingOrderCard";
 import { FlashDriverActiveSheet } from "./FlashDriverActiveSheet";
 import { QuickRidePostTripFlow } from "../QuickRidePostTripFlow";
@@ -199,6 +202,23 @@ export function DriverFlashPlanner({
       onRouteRef.current(null,null);
     }
   },[presence.online,onlineRoute]);
+  const [askNotify,setAskNotify]=useState(false);
+  const [noAlerts,setNoAlerts]=useState(false);
+  // Explain notifications before the browser prompt; never block going online.
+  const requestActivate=()=>{
+    if(presence.busy||presence.online)return;
+    if(needsNotificationExplanation()){setAskNotify(true);return;}
+    if(notificationsDenied())setNoAlerts(true);
+    else void subscribeDriverToPush();
+    void activate();
+  };
+  const allowNotify=async()=>{
+    setAskNotify(false);
+    const r=await subscribeDriverToPush();
+    setNoAlerts(!r.ok&&r.reason==="DENIED");
+    void activate();
+  };
+  const skipNotify=()=>{setAskNotify(false);setNoAlerts(true);void activate();};
   const deactivate=async()=>{
     if(active){
       toast.info("Finalize a corrida em andamento antes de ficar indisponível.");
@@ -314,6 +334,9 @@ export function DriverFlashPlanner({
     <section aria-label="CARONAA Flash motorista"
       className={active?"flex h-full min-h-0 flex-col overflow-hidden text-white":"space-y-2 pb-3 text-white"}
       style={{fontFamily:"Manrope, sans-serif"}}>
+      <DriverNotificationPermissionDialog open={askNotify} onAllow={()=>void allowNotify()} onSkip={skipNotify}/>
+      {!active&&!presence.online&&<DriverPwaPromotionCard/>}
+      {!active&&presence.online&&noAlerts&&<KeepScreenOpenWarning/>}
       {!active&&snap==="peek"&&<>
         <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"
@@ -330,7 +353,7 @@ export function DriverFlashPlanner({
             Ficar Indisponível
           </button>
         </div>:
-          <button type="button" disabled={presence.busy} onClick={()=>void activate()}
+          <button type="button" disabled={presence.busy} onClick={()=>void requestActivate()}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
             {presence.busy?"Ativando GPS...":"Ficar Disponível"}
           </button>}
@@ -370,7 +393,7 @@ export function DriverFlashPlanner({
           <MapPin size={16}/> Ajustar origem no mapa
         </button>
         <ServiceTypeDock value={serviceType} onChange={changeService}/>
-        <button type="button" disabled={presence.busy} onClick={()=>void (presence.online?deactivate():activate())}
+        <button type="button" disabled={presence.busy} onClick={()=>void (presence.online?deactivate():requestActivate())}
           className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212] disabled:opacity-50">
           {presence.online?"Ficar Indisponível":"Ficar Disponível"}
         </button>
@@ -381,7 +404,7 @@ export function DriverFlashPlanner({
         <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">Disponibilidade Flash</h2>
         <p className="text-sm">Modo: {mode==="ALL"?"Aceito tudo":mode==="ON_ROUTE"?"Apenas Na Rota":"Apenas Exclusiva"}</p>
         <p className="text-sm">{vehicleType==="MOTO"?1:seats} vaga(s) · {destination||"Sem destino definido"}</p>
-        <button type="button" disabled={presence.busy} onClick={()=>void(presence.online?deactivate():activate())}
+        <button type="button" disabled={presence.busy} onClick={()=>void(presence.online?deactivate():requestActivate())}
           className="min-h-12 w-full rounded-xl bg-[#FFBB00] font-bold text-[#121212]">
           {presence.online?"Ficar Indisponível":"Ficar Disponível"}
         </button>
