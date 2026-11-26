@@ -17,7 +17,7 @@ export function quickQuoteItineraryKey(
   return JSON.stringify([origin?.lat, origin?.lng, destination?.lat, destination?.lng, vehicle]);
 }
 
-export function createQuickQuoteCoordinator(now: () => number = Date.now) {
+export function createQuickQuoteCoordinator(now: () => number = () => Date.now()) {
   let scope: string | null = null;
   let generation = 0;
   let cooldownUntil = 0;
