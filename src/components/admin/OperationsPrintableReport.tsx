@@ -19,6 +19,7 @@ type Props = {
   googleUsage:GoogleUsageReport|null;
   appEngagement:AppEngagementReport|null;
   priceQuotes:PriceQuotesReport|null;
+  advancedMetrics?:Array<{label:string;value:string}>;
 };
 const nf=(v:number)=>v.toLocaleString("pt-BR");
 const currency=(c:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(c/100);
@@ -32,7 +33,7 @@ function Metric({label,value,kind="normal"}:{label:string;value:string;kind?:str
 function Heading({children}:{children:ReactNode}){
   return <h2 className="opr-pdf-heading">{children}</h2>;
 }
-export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage,appEngagement,priceQuotes}:Props){
+export function OperationsPrintableReport({summary,hours,hourDays,from,to,service,generatedAt,googleUsage,appEngagement,priceQuotes,advancedMetrics}:Props){
   const count=summary.orders;
   const percent=(n:number)=>count?(100*n/count).toFixed(1).replace(".",",")+"%":"0%";
   const hourValues=Array.from({length:24},(_,hour)=>hours.find(x=>x.hour===hour)?.orders??0);
@@ -150,6 +151,11 @@ export function OperationsPrintableReport({summary,hours,hourDays,from,to,servic
       </div>:<p>Consumo indisponível para este período.</p>}
       <p className="opr-pdf-detail">Fonte: google_api_usage, horário de Fortaleza. Não representa necessariamente as chamadas faturadas pelo Google Cloud.</p>
     </section>
+    {advancedMetrics&&<section className="opr-pdf-card opr-pdf-google-section" aria-label="Indicadores avançados">
+      <Heading>Inteligência operacional</Heading>
+      <div className="opr-pdf-google-metrics">{advancedMetrics.map(x=><div key={x.label}><span>{x.label}</span><strong>{x.value}</strong></div>)}</div>
+      <p className="opr-pdf-detail">Valores cotados não são receita. Pix bilateral não comprova liquidação bancária. Ausência de evidência não comprova falha.</p>
+    </section>}
     <footer className="opr-pdf-footer">
       <span>* Tarifas não equivalem a pagamentos recebidos. Relatório consolidado, sem dados pessoais ou GPS.</span>
       <span>CARONAA · Operações de Mobilidade</span>
