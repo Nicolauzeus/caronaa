@@ -36,6 +36,7 @@ type Report = {
   history_of_presence_available:boolean;total_rows:number;rows:Order[];
 };
 type Preset = "today"|"7d"|"30d"|"custom";
+const HISTORY_PAGE_SIZE=12;
 const fmt = (v:number|undefined|null)=>typeof v==="number"?v.toLocaleString("pt-BR"):"—";
 const money=(cents:number|undefined)=>typeof cents==="number"?
   new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(cents/100):"—";
@@ -120,7 +121,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
     try {
     const [historyResult,googleResult,engagementResult,quotesResult,intelligenceResult]=await Promise.all([
       (supabase as any).rpc("admin_operations_history_report",{
-        p_from:dates.from,p_to:dates.to,p_service:service,p_limit:40,p_offset:page*40,
+        p_from:dates.from,p_to:dates.to,p_service:service,p_limit:HISTORY_PAGE_SIZE,p_offset:page*HISTORY_PAGE_SIZE,
       }),
       (supabase as any).rpc("admin_google_api_usage_report",{
         p_from:dates.from,p_to:dates.to,
@@ -328,8 +329,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <details className="ops-disclosure ops-panel"><summary>Jornada de usuários e demanda territorial</summary><div className="p-3"><OperationsMobilityIntelligence report={intelligence} error={intelligenceError} loading={busy}/></div></details>
     </>}
     {mode==="reports"&&<>
-    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
-    <section className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
+    <section className="ops-summary-grid grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6" aria-label="Resultados exclusivos das solicitações">
       <Stat title="Pedidos registrados" icon={<Users size={18}/>} value={busy?"…":fmt(display?.orders)}
         hint={presentationMode?"Base real: "+fmt(report?.summary.orders)+" · Cenário: +108":"Total real de solicitações no período"}/>
       <Stat title="Aguardando motorista" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.searching)}
@@ -343,6 +343,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       <Stat title="Expiradas" icon={<Clock3 size={18}/>} value={busy?"…":fmt(display?.expired)}
         hint={presentationMode?"Simulação proporcional · real: "+fmt(report?.summary.expired):"Prazo encerrado sem aceite, inclusive buscas vencidas ainda não regularizadas"}/>
     </section>
+    <OperationsPriceQuotes report={quotes} error={quotesError} loading={busy}/>
     </>}
     {mode==="intelligence"&&<>
     <details className="ops-disclosure ops-panel"><summary>Horários, oferta e demanda</summary><div className="space-y-3 p-3">
@@ -477,9 +478,9 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
        {!rows.length&&<p className="rounded-xl border p-5 text-center text-sm text-muted-foreground">{busy?"Carregando…":"Nenhum pedido com estes filtros nesta página."}</p>}
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <span className="text-xs text-muted-foreground">Página {page+1} · até 40 pedidos por página</span>
+        <span className="text-xs text-muted-foreground">Página {page+1} · até {HISTORY_PAGE_SIZE} pedidos por página</span>
         <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page===0||busy} onClick={()=>setPage(x=>x-1)}>Anterior</Button>
-        <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*40)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
+        <Button size="sm" variant="outline" disabled={busy||!report||((page+1)*HISTORY_PAGE_SIZE)>=report.total_rows} onClick={()=>setPage(x=>x+1)}>Próxima</Button></div>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Busca e status filtram apenas a página carregada; o CSV exporta essa página. Totais e gráficos usam exclusivamente registros reais do banco. O PDF compartilha indicadores agregados sem dados pessoais.</p>
       </div>
