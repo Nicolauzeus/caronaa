@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, CalendarDays, ChevronDown, ChevronUp, Clock3, Download, Mail, MessageCircle, Printer, RefreshCw, Users, XCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,9 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
   const [query,setQuery]=useState("");
   const [page,setPage]=useState(0);const [reload,setReload]=useState(0);
   const [historyExpanded,setHistoryExpanded]=useState(true);
-  const [report,setReport]=useState<Report|null>(null);
+  const [storedReport,setReport]=useState<Report|null>(null);
+  const [reportKey,setReportKey]=useState("");
+  const loadVersion=useRef(0);
   const [quotes,setQuotes]=useState<PriceQuotesReport|null>(null);
   const [intelligence,setIntelligence]=useState<MobilityIntelligence|null>(null);
   const [intelligenceError,setIntelligenceError]=useState("");
@@ -85,19 +87,24 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
   const [appEngagement,setAppEngagement]=useState<AppEngagementReport|null>(null);
   const [engagementError,setEngagementError]=useState("");
   const [googleError,setGoogleError]=useState("");
-  const [busy,setBusy]=useState(false);const [error,setError]=useState("");
+  const [legacyBusy,setBusy]=useState(false);const [error,setError]=useState("");
   const [sharing,setSharing]=useState(false);
   const [emailDialog,setEmailDialog]=useState(false);
   const [emailTo,setEmailTo]=useState("");
   const [shareNotice,setShareNotice]=useState("");
   const dates=periodDates(preset,from,to);
   const valid=Boolean(dates.from&&dates.to&&dates.from<=dates.to);
+  const requestKey=JSON.stringify([dates.from,dates.to,service,page,reload]);
+  const report=reportKey===requestKey?storedReport:null;
+  const busy=valid&&(legacyBusy||reportKey!==requestKey);
   const advanced=useOperationalOverview({from:dates.from,to:dates.to,service},valid,reload);
   const [selectedOrder,setSelectedOrder]=useState<{id:string;service:"flash"|"shared"}|null>(null);
   useEffect(()=>{setSelectedOrder(null);},[dates.from,dates.to,service]);
   const load=useCallback(async()=>{
-    if(!valid){setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);setIntelligence(null);return;}
+    const version=++loadVersion.current;
+    if(!valid){setBusy(false);setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);setIntelligence(null);return;}
     setBusy(true);setError("");
+    try {
     const [historyResult,googleResult,engagementResult,quotesResult,intelligenceResult]=await Promise.all([
       (supabase as any).rpc("admin_operations_history_report",{
         p_from:dates.from,p_to:dates.to,p_service:service,p_limit:40,p_offset:page*40,
@@ -109,6 +116,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       (supabase as any).rpc("admin_caronaa_price_quotes_report",{p_from:dates.from,p_to:dates.to,p_service:service}),
       (supabase as any).rpc("admin_operations_intelligence",{p_from:dates.from,p_to:dates.to,p_service:service}),
     ]);
+    if(version!==loadVersion.current)return;
     const {data,error:rpcError}=historyResult;
     const googleData=googleResult.data;
     if(intelligenceResult.error||!intelligenceResult.data?.journey||!Array.isArray(intelligenceResult.data.territories)){
@@ -139,9 +147,13 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
       setError("Relatório indisponível. Aplique a migration 0232 antes de publicar esta tela. "+(rpcError?.message??""));
       setReport(null);
     } else setReport(data as Report);
-    setBusy(false);
-  },[dates.from,dates.to,service,page,valid]);
-  useEffect(()=>{void load();},[load,reload]);
+    }catch{
+      if(version===loadVersion.current){setReport(null);setGoogleUsage(null);setAppEngagement(null);setQuotes(null);setIntelligence(null);setError("Não foi possível consultar o relatório.");}
+    }finally{
+      if(version===loadVersion.current){setReportKey(requestKey);setBusy(false);}
+    }
+  },[dates.from,dates.to,service,page,valid,requestKey]);
+  useEffect(()=>{void load();return()=>{loadVersion.current++;};},[load]);
   const rows=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase("pt-BR");
     return (report?.rows??[]).filter(r=>
@@ -176,7 +188,7 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
   const driverPeak=peakPresence("drivers");
   const passengerPeak=peakPresence("passengers_preparing");
   const makePdf=async()=>{
-    if(!report||busy||presentationMode)throw new Error("Relatorio real indisponivel");
+    if(!report||busy||advanced.loading||presentationMode)throw new Error("Relatorio real indisponivel");
     return createOperationsReportPdf({
       from:dates.from,to:dates.to,service,generatedAt:report.generated_at,
       summary:report.summary,hours:report.hours,hour_days:report.hour_days,
@@ -252,9 +264,9 @@ export function OperationsHistoryReport({mode="reports"}:{mode?:"reports"|"intel
         </p>}
       </div>
       {mode==="reports"&&<div className="flex flex-wrap gap-2 print:hidden">
-        <Button size="sm" variant="outline" disabled={!report||busy||(ENABLE_OPERATIONS_PROJECTION&&display?.illustrativeOrders!==PRESENTATION_ILLUSTRATIVE_REQUESTS)} onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
-        <Button size="sm" variant="outline" disabled={!report||presentationMode||sharing} onClick={()=>{setShareNotice("");setEmailDialog(true);}}><Mail size={15} className="mr-1"/> E-mail PDF</Button>
-        <Button size="sm" variant="outline" disabled={!report||presentationMode||sharing} onClick={()=>void shareWhatsApp()}><MessageCircle size={15} className="mr-1"/> WhatsApp PDF</Button>
+        <Button size="sm" variant="outline" disabled={!report||busy||advanced.loading||(ENABLE_OPERATIONS_PROJECTION&&display?.illustrativeOrders!==PRESENTATION_ILLUSTRATIVE_REQUESTS)} onClick={()=>window.print()}><Printer size={15} className="mr-1"/> Imprimir / PDF</Button>
+        <Button size="sm" variant="outline" disabled={!report||busy||advanced.loading||presentationMode||sharing} onClick={()=>{setShareNotice("");setEmailDialog(true);}}><Mail size={15} className="mr-1"/> E-mail PDF</Button>
+        <Button size="sm" variant="outline" disabled={!report||busy||advanced.loading||presentationMode||sharing} onClick={()=>void shareWhatsApp()}><MessageCircle size={15} className="mr-1"/> WhatsApp PDF</Button>
         <Button size="sm" variant="outline" disabled={!report||presentationMode} onClick={()=>downloadCsv(rows)}><Download size={15} className="mr-1"/> CSV da página</Button>
       </div>}
     </header>
