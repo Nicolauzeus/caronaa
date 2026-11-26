@@ -39,6 +39,8 @@ describe("F07 incoming-call and genuine audience contracts",()=>{
     expect(audience).toContain("audience.viewers");
     expect(audience).toContain("audience.acceptedDriver");
     expect(audience).toContain("index%Math.max(1,audience.viewers.length)");
-    expect(audience).toContain("Matrícula informada");
+    expect(audience).not.toContain("Matrícula informada");
+    expect(audience).toContain("confirmed&&(driver.vehicle||driver.plate)");
+    expect(audience).toContain("[driver.vehicle,driver.plate].filter(Boolean)");
   });
 });
