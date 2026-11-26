@@ -6,6 +6,7 @@ const eventLabels:Record<string,string>={
  queue_signal_recorded:"Sinal de atualização da fila registrado",
  radar_client_acknowledged:"Recebimento do radar declarado pelo aplicativo",
  creation_candidates_snapshot:"Candidatos no momento da criação",
+ shared_attempt_cancel_reason:"Motivo da combinação cancelada",
  requested:"Pedido solicitado",accepted:"Aceite registrado",arrived:"Chegada ao embarque",
  pickup_confirmed:"Embarque confirmado",in_trip:"Viagem iniciada",completed:"Corrida concluída",
  passenger_cancelled:"Cancelamento pelo passageiro",driver_cancelled:"Cancelamento pelo motorista",
@@ -49,17 +50,19 @@ export function OperationsOrderEvidenceDialog({service,id,onClose}:{service:Orde
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
      {fields.map(([label,key])=><div key={key} className="rounded-xl border p-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="font-bold">{typeof data.counts[key]==="number"?String(data.counts[key]):"N/D"}</dd></div>)}
     </dl>
-    <p className="text-xs text-muted-foreground">Cobertura parcial. Candidatos na criação usam a regra de radar 0233 antes do limite da fila. Elegibilidade observada é uma consulta posterior. Sinal de fila é uma atualização no banco; confirmação do aplicativo não comprova push entregue. Ausência de confirmação não significa ausência de entrega.</p>
+    <p className="text-xs text-muted-foreground">Cobertura parcial. Candidatos na criação usam a regra de radar 0233 antes do limite da fila. Elegibilidade observada é uma consulta posterior. Nomes refletem o cadastro atual. Sinal de fila é uma atualização no banco; confirmação do aplicativo não comprova push entregue. Ausência de confirmação não significa ausência de entrega.</p>
     <ol className="divide-y" aria-label="Linha do tempo">
      {data.events.map((event,i)=>{
       const actor=event.actor_id===order.passenger_id?"Passageiro":event.actor_id&&event.actor_id===order.driver_id?"Motorista atribuído":event.actor_id?"Outro participante registrado":"Responsável não comprovado";
       const reason=reasonLabels[string(event.detail.reason_code)];
+      const actorName=string(event.detail.actor_name_current);
+      const recipientName=string(event.detail.recipient_name_current);
       const projected=event.detail.evidence==="deadline_not_observed_transition";
       const candidates=typeof event.detail.candidate_count==="number"?event.detail.candidate_count:null;
       return <li key={event.occurred_at+":"+event.event_type+":"+i} className="space-y-1 py-3 text-sm">
        <time className="block text-xs font-semibold tabular-nums text-muted-foreground" dateTime={event.occurred_at}>{fmtDate(event.occurred_at)}</time>
        <strong>{eventLabels[event.event_type]??event.event_type.replaceAll("_"," ")}</strong>
-       <p className="text-xs text-muted-foreground">{actor}{reason?" · "+reason:""}{projected?" · Prazo calculado, não transição registrada":""}{candidates!==null?" · "+candidates+" candidatos pré-limite":""}</p>
+       <p className="text-xs text-muted-foreground">{actor}{actorName?" · "+actorName:""}{recipientName?" · Destinatário: "+recipientName:""}{reason?" · "+reason:""}{projected?" · Prazo calculado, não transição registrada":""}{candidates!==null?" · "+candidates+" candidatos pré-limite":""}</p>
       </li>;
      })}
     </ol>
