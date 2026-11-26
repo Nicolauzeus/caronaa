@@ -1,3 +1,4 @@
+import { OperationsAudienceDiagnostics } from "./OperationsAudienceDiagnostics";
 import type { OperationalOverview } from "@/services/operations-service";
 
 const count=(v:number|null|undefined)=>v==null?"—":v.toLocaleString("pt-BR");
@@ -48,5 +49,6 @@ export function OperationsAdvancedOverview({data,loading,error}:{data:Operationa
     <p className="mt-3 text-xs text-muted-foreground">Responsável desconhecido não significa cancelamento pelo sistema.</p>
    </article>
   </div>
+  <OperationsAudienceDiagnostics data={data}/>
  </section>;
 }
