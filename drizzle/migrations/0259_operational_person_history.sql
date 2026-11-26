@@ -23,6 +23,7 @@ BEGIN
   SELECT o.*,
    CASE WHEN o.service='flash' THEN EXISTS(SELECT 1 FROM public.caronaa_flash_driver_view_history v WHERE v.ride_id=o.id::uuid AND v.driver_id=p_person_id) ELSE false END AS viewed,
    CASE WHEN o.service='flash' THEN EXISTS(SELECT 1 FROM public.flash_order_driver_skips s WHERE s.ride_id=o.id::uuid AND s.driver_id=p_person_id) ELSE false END AS skipped,
+   EXISTS(SELECT 1 FROM public.caronaa_order_notification_receipts n WHERE n.service=o.service AND n.request_id=o.id::uuid AND n.driver_id=p_person_id) AS has_receipt,
    EXISTS(SELECT 1 FROM public.caronaa_order_notification_receipts n WHERE n.service=o.service AND n.request_id=o.id::uuid AND n.driver_id=p_person_id AND n.stage='eligible') AS eligible,
    CASE WHEN o.service='flash' THEN (o.driver_id IS NOT DISTINCT FROM p_person_id AND o.accepted)
       OR EXISTS(SELECT 1 FROM public.quick_ride_driver_cancellations c WHERE c.ride_id=o.id::uuid AND c.driver_id=p_person_id AND upper(c.previous_status) IN ('ACCEPTED','ARRIVED','IN_PROGRESS'))
@@ -58,7 +59,7 @@ BEGIN
    CASE WHEN p_role='driver' AND o.service='flash' THEN o.skipped ELSE NULL END AS skipped,
    CASE WHEN p_role='driver' THEN CASE WHEN o.eligible THEN true ELSE NULL END ELSE NULL END AS eligible,
    o.view_seconds,o.accept_seconds,o.arrival_seconds
-  FROM observed o WHERE p_role='passenger' OR o.viewed OR o.skipped OR o.eligible OR o.driver_accepted OR o.driver_completed OR o.driver_cancelled
+  FROM observed o WHERE p_role='passenger' OR o.viewed OR o.skipped OR o.has_receipt OR o.eligible OR o.driver_accepted OR o.driver_completed OR o.driver_cancelled
  ), totals AS (
   SELECT count(*) AS orders,count(*) FILTER(WHERE accepted) AS accepted,
    count(*) FILTER(WHERE completed) AS completed,count(*) FILTER(WHERE cancelled) AS cancelled,
