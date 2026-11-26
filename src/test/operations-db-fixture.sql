@@ -1,4 +1,4 @@
--- Minimal, disposable source-schema fixture for migrations 0247-0255.
+-- Minimal, disposable source-schema fixture for migrations 0247-0257.
 -- This is NOT the full production schema or a replacement for staging.
 -- Run only in a freshly initialized local cluster via test-operations-db.mjs.
 CREATE TYPE public.app_role AS ENUM ('admin','user');
@@ -54,3 +54,13 @@ CREATE TABLE public.offer_route_quotes (quote_id uuid PRIMARY KEY,user_id uuid N
 CREATE TABLE public.caronaa_f07_operations_audit (ride_id uuid,action text,actor_id uuid,occurred_at timestamptz);
 CREATE TABLE public.caronaa_f07_operations_incidents (category text,status text,created_at timestamptz);
 CREATE TABLE public.quick_ride_payment_events (ride_id uuid,actor_id uuid,event_type text,created_at timestamptz);
+
+-- Stand-in for the existing authorized radar, only for wrapper contract tests.
+-- Does not reproduce or validate production GPS / eligibility logic.
+CREATE FUNCTION public.get_flash_driver_radar_orders(p_max_distance_m integer DEFAULT 15000)
+RETURNS TABLE(ride_id uuid, origin_label text) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $$ SELECT q.id,q.origin_label FROM public.professional_quick_rides q
+ WHERE auth.uid()='00000000-0000-0000-0000-000000000003'::uuid
+ AND q.id='10000000-0000-0000-0000-000000000003'::uuid AND q.status='SEARCHING' $$;
+REVOKE ALL ON FUNCTION public.get_flash_driver_radar_orders(integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_flash_driver_radar_orders(integer) TO authenticated;
