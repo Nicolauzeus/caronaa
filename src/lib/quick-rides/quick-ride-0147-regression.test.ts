@@ -40,7 +40,7 @@ describe("F07 regression: verified fare, SQL dispatch and driver race", () => {
   it("keeps acceptance atomic and immediately evicts lost races from the UI", () => {
     expect(acceptSql).toContain("WHERE q.id=p_id AND q.status='SEARCHING' AND q.expires_at>now()");
     expect(acceptSql).toContain("IF NOT FOUND THEN RETURN false");
-    expect(driverUi).toContain('const message = "Corrida já aceita por outro motorista da região."');
+    expect(driverUi).toContain('const message = "Solicitação indisponível: pode ter expirado ou sido aceita por outro motorista."');
     expect(driverUi).toContain("rejectedQueueIds.current.add(id)");
     expect(driverUi).toContain("setQueue(items => items.filter(item => item.id !== id))");
     expect(driverUi).toContain("toast.error(message)");
