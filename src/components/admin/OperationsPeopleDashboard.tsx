@@ -3,6 +3,7 @@ import {Activity,CarFront,CheckCircle2,Eye,RefreshCw,Search,ShieldCheck,Users,Cl
 import {supabase} from "@/integrations/supabase/client";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
+import {OperationsPersonActivity} from "./OperationsPersonActivity";
 import {ZoomablePersonPhoto} from "@/components/admin/ZoomablePersonPhoto";
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 
@@ -228,6 +229,7 @@ export function OperationsPeopleDashboard({kind}:{kind:"motoristas"|"passageiros
            <dt className="text-xs text-muted-foreground">{name}</dt><dd className="mt-0.5 break-words font-medium">{value}</dd>
          </div>)}
        </dl>}
+       {selected&&<OperationsPersonActivity key={selected.user_id+":"+selected.role} personId={selected.user_id} role={selected.role==="MOTORISTA"?"driver":"passenger"}/>}
      </DialogContent>
    </Dialog>
  </section>;
