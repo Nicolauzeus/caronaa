@@ -137,6 +137,7 @@ export class OperationsServiceError extends Error {
 type RpcName = "admin_operational_order_kpis" | "admin_operational_conversion_retention" |
   "admin_operational_driver_performance" | "admin_operational_cancellation_breakdown" |
   "admin_operational_diagnostics" | "admin_operations_order_evidence" | "caronaa_record_passenger_cancel_reason" |
+  "admin_operational_quote_funnel" | "admin_operational_overview" |
   "quick_ride_transition";
 type RpcPort = { rpc(name: RpcName, args: Record<string, unknown>): PromiseLike<{
   data: unknown; error: { code?: string } | null;
