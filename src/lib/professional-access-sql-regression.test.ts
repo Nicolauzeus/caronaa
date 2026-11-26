@@ -9,7 +9,9 @@ const optional=read("drizzle/migrations/0218_f02_f07_optional_editable_whatsapp.
 
 describe("F07 cadastro único e progressivo",()=>{
   it("mantém a correção de array das validações de banco",()=>{
-    expect(old).not.toMatch(/v\s*:=\s*v\s*\|\|\s*'[A-Z_]+'/);
+    // The migration documents the broken expression in a comment; check executable SQL.
+    const executable=old.split("\n").filter(line=>!line.trimStart().startsWith("--")).join("\n");
+    expect(executable).not.toMatch(/v\s*:=\s*v\s*\|\|\s*'[A-Z_]+'/);
     expect((old.match(/array_append\(v, '[A-Z_]+'\)/g)||[]).length).toBeGreaterThanOrEqual(12);
   });
   it("não concede nova autorização sem WhatsApp, município e veículo",()=>{
