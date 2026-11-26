@@ -50,7 +50,7 @@ function MobilityOperationsCenter(){
      </section>:
      showJourneys?<section className="min-w-0 space-y-3" aria-label="Gestão de viagens">
        <header className="ops-heading"><div className="ops-eyebrow"><RouteIcon size={14}/> Gestão de mobilidade</div><h1 className="font-[Sora] text-2xl font-extrabold">Viagens</h1>
-         <p className="text-sm text-muted-foreground">Ofertas, pedidos de carona e correspondências em um só lugar.</p></header>
+         <p className="text-sm text-muted-foreground">Ofertas, pedidos de carona e correspondências em um só lugar.</p><button type="button" onClick={()=>void navigate({hash:"history",search:true})} className="w-fit rounded-lg text-sm font-semibold underline underline-offset-4">Consultar histórico de Flash e caronas</button></header>
        <nav aria-label="Tipo de operação" className="ops-subnav flex max-w-full flex-wrap gap-2">
          {([{id:"caronas",label:"Caronas"},{id:"solicitacoes",label:"Solicitações"},
             {id:"matching",label:"Correspondências"}] as const).map(item=>
