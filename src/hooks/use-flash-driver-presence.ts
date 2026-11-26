@@ -31,6 +31,7 @@ export function useFlashDriverPresence(){
   const lastSentAt=useRef(0);
   const sending=useRef(false);
   const active=useRef(false);
+  const presenceGeneration=useRef(0);
   const inFlightStart=useRef(false);
   const currentFix=useRef<DriverGpsFix|null>(null);
   const currentMunicipality=useRef("");
@@ -47,18 +48,28 @@ export function useFlashDriverPresence(){
     if(!active.current||sending.current)return false;
     if(!force && Date.now()-lastSentAt.current<FLASH_GPS_THROTTLE_MS)return true;
     sending.current=true;
+    const generation=presenceGeneration.current;
     try{
       await updateFlashDriverHeartbeatGPS(fix.lat,fix.lng,fix.accuracyM,currentMunicipality.current);
+      if(!active.current||generation!==presenceGeneration.current)return false;
+      // A delayed response cannot make an expired GPS sample dispatch-ready again.
+      if(Date.now()-fix.at>FLASH_GPS_STALE_MS){
+        setState(s=>({...s,gpsConnected:false,error:"Online. GPS desatualizado; reconectando para receber pedidos."}));
+        return false;
+      }
       lastSentAt.current=Date.now();
       setState(s=>({...s,gpsConnected:true,error:null}));
       return true;
     }catch(error){
-      setState(s=>({...s,gpsConnected:false,error:gpsFailure(error)}));
+      if(active.current&&generation===presenceGeneration.current)
+        setState(s=>({...s,gpsConnected:false,error:gpsFailure(error)}));
       return false;
     }finally{sending.current=false;}
   },[]);
   const markOffline=useCallback(async()=>{
     active.current=false;
+    ++presenceGeneration.current;
+    currentFix.current=null;
     stopWatch();
     setState(s=>({...s,busy:true,gpsConnected:false}));
     try{await setFlashDriverOffline();
@@ -81,6 +92,8 @@ export function useFlashDriverPresence(){
       currentMunicipality.current=input.municipality??"";
       await setFlashDriverOnline(input);
       active.current=true;
+      ++presenceGeneration.current;
+      currentFix.current=null;
       lastGpsAt.current=0;
       lastSentAt.current=0;
       setState(s=>({...s,online:true,gpsConnected:false,error:null}));
@@ -165,6 +178,8 @@ export function useFlashDriverPresence(){
     // Heartbeats expire naturally; explicit 'Ficar indisponível' remains the
     // only user action that clears presence before server TTL.
     active.current=false;
+    ++presenceGeneration.current;
+    currentFix.current=null;
     stopWatch();
   },[stopWatch]);
   return {...state,goOnline,markOffline};
