@@ -31,10 +31,10 @@ describe("F07 push dispatch", () => {
     expect(r).toEqual({ eligible: 1, sent: 1, failed: 0, removed: 0 });
   });
 
-  it("asks for presence fresh within the last 3 minutes", async () => {
+  it("asks for the last known location of available drivers within 60 minutes", async () => {
     const since = vi.fn(async () => []);
     await dispatchPushToEligibleDrivers(input, { repo: repo({ onlineDriversSince: since }), send: vi.fn(), now: () => 1_000_000_000 });
-    expect(since).toHaveBeenCalledWith(new Date(1_000_000_000 - 180_000).toISOString());
+    expect(since).toHaveBeenCalledWith(new Date(1_000_000_000 - 3_600_000).toISOString());
   });
 
   it("removes 410/404 subscriptions and tolerates delivery errors", async () => {

@@ -4,7 +4,10 @@
 // Never logs coordinates, user IDs or endpoints.
 
 export const PUSH_RADIUS_KM = 15;
-export const PUSH_LOCATION_MAX_AGE_MS = 3 * 60 * 1000;
+// Wake-up push only: a locked phone stops sending GPS, so the last known fix of a
+// driver still marked available counts for up to 60 min. The 90s cutoff stays
+// for the public radar and dispatch acceptance.
+export const PUSH_LOCATION_MAX_AGE_MS = 60 * 60 * 1000;
 
 export type PushDispatchInput = {
   rideId: string; originLat: number; originLng: number;
@@ -158,7 +161,7 @@ export function createWebPushSender(cfg: { publicKey: string; privateKey: string
       headers: {
         Authorization: await vapidAuthorization(sub.endpoint, cfg.publicKey, cfg.privateKey, cfg.subject),
         "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream",
-        TTL: "60", Urgency: "high",
+        TTL: "300", Urgency: "high", Topic: "caronaa-ride",
       },
       body,
     });

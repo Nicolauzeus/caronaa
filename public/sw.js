@@ -93,6 +93,9 @@ self.addEventListener("push", (event) => {
       tag: "caronaa-ride-request",
       renotify: true,
       requireInteraction: true,
+      silent: false,
+      timestamp: Date.now(),
+      actions: [{ action: "open", title: "Ver corrida" }],
       data: { url: safeRideUrl(data.url || payload.url), orderId: data.orderId ?? payload.orderId ?? null },
     }),
   );
