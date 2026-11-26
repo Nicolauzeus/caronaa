@@ -33,12 +33,14 @@ try {
   started=true;
   apply("src/test/ride-security-db-bootstrap.sql");
   apply("src/test/operations-db-fixture.sql");
-  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255|256|257|258)_.*\.sql$/.test(n)).sort();
-  if(migrations.length!==12 || new Set(migrations.map(n=>n.slice(0,4))).size!==12) throw new Error("Expected one migration per number 0247-0258.");
+  const migrations=readdirSync(join(root,"drizzle/migrations")).filter(n=>/^0(247|248|249|250|251|252|253|254|255|256|257|258|259|260|261|262)_.*\.sql$/.test(n)).sort();
+  if(migrations.length!==16 || new Set(migrations.map(n=>n.slice(0,4))).size!==16) throw new Error("Expected one migration per number 0247-0262.");
   for(const m of migrations) {
     apply("drizzle/migrations/"+m);
     console.log("APPLIED: "+m);
   }
+  const spatialFixture=apply("src/test/operations-creation-candidate-fixture.sql");
+  for(const line of spatialFixture.stdout.split("\n").filter(l=>l.includes("SKIP:")))console.log(line);
   const r=apply("src/test/operations-db.integration.sql");
   const checks=r.stderr.split("\n").filter(l=>l.includes("PASS:"));
   for(const check of checks) console.log(check);
@@ -55,7 +57,11 @@ try {
   const queueChecks=queue.stderr.split("\n").filter(l=>l.includes("PASS:"));
   for(const check of queueChecks) console.log(check);
   if(queueChecks.length!==3) throw new Error("Expected 3 queue integration check groups, got "+queueChecks.length);
-  console.log("PASS: 12 migrations and "+(checks.length+advancedChecks.length+flowChecks.length+queueChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
+  const person=apply("src/test/operations-person-and-audience.integration.sql");
+  const personChecks=person.stderr.split("\n").filter(l=>l.includes("PASS:"));
+  for(const check of personChecks)console.log(check);
+  if(personChecks.length!==9)throw new Error("Expected 9 personal/audience check groups, got "+personChecks.length);
+  console.log("PASS: 16 migrations and "+(checks.length+advancedChecks.length+flowChecks.length+queueChecks.length+personChecks.length)+" integration check groups in isolated PostgreSQL (minimal schema fixture).");
 } finally {
   if(started) run("pg_ctl",["-D",data,"-m","fast","-w","stop"]);
   rmSync(dir,{recursive:true,force:true});
