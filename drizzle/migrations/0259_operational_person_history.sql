@@ -29,6 +29,21 @@ BEGIN
     ELSE EXISTS(SELECT 1 FROM public.rides r WHERE r.request_id=o.id::uuid AND r.driver_user_id=p_person_id AND (r.driver_accepted_at IS NOT NULL OR upper(r.status) IN ('CONFIRMED','IN_PROGRESS','ONGOING','STARTED','COMPLETED','PENDING_REVIEW'))) END AS driver_accepted,
    CASE WHEN o.service='flash' THEN (o.driver_id IS NOT DISTINCT FROM p_person_id AND o.completed)
     ELSE EXISTS(SELECT 1 FROM public.rides r WHERE r.request_id=o.id::uuid AND r.driver_user_id=p_person_id AND upper(r.status)='COMPLETED' AND r.completed_at IS NOT NULL) END AS driver_completed,
+   CASE WHEN p_role='driver' AND o.service='flash' THEN (
+    SELECT extract(epoch FROM v.first_viewed_at-o.requested_at) FROM public.caronaa_flash_driver_view_history v
+    WHERE v.ride_id=o.id::uuid AND v.driver_id=p_person_id AND v.first_viewed_at BETWEEN o.requested_at AND now()
+   ) END AS view_seconds,
+   CASE WHEN p_role='driver' AND o.service='flash' THEN (
+    SELECT extract(epoch FROM q.accepted_at-o.requested_at) FROM public.professional_quick_rides q
+    WHERE q.id=o.id::uuid AND q.driver_id=p_person_id AND q.accepted_at BETWEEN o.requested_at AND now()
+   ) WHEN p_role='driver' AND o.service='shared' THEN (
+    SELECT extract(epoch FROM min(r.driver_accepted_at)-o.requested_at) FROM public.rides r
+    WHERE r.request_id=o.id::uuid AND r.driver_user_id=p_person_id AND r.driver_accepted_at BETWEEN o.requested_at AND now()
+   ) END AS accept_seconds,
+   CASE WHEN p_role='driver' AND o.service='flash' THEN (
+    SELECT extract(epoch FROM q.arrived_at-q.accepted_at) FROM public.professional_quick_rides q
+    WHERE q.id=o.id::uuid AND q.driver_id=p_person_id AND q.accepted_at>=o.requested_at AND q.arrived_at BETWEEN q.accepted_at AND now()
+   ) END AS arrival_seconds,
    CASE WHEN o.service='flash' THEN EXISTS(SELECT 1 FROM public.quick_ride_driver_cancellations c WHERE c.ride_id=o.id::uuid AND c.driver_id=p_person_id)
     ELSE EXISTS(SELECT 1 FROM public.rides r JOIN public.ride_status_history h ON h.ride_id=r.ride_id WHERE r.request_id=o.id::uuid AND r.driver_user_id=p_person_id AND h.actor_user_id=p_person_id AND upper(h.to_status) IN ('CANCELLED','CANCELED')) END AS driver_cancelled
   FROM facts o
@@ -41,14 +56,18 @@ BEGIN
    CASE WHEN p_role='driver' THEN o.driver_cancelled ELSE o.cancelled END AS cancelled,
    CASE WHEN p_role='driver' AND o.service='flash' THEN o.viewed ELSE NULL END AS viewed,
    CASE WHEN p_role='driver' AND o.service='flash' THEN o.skipped ELSE NULL END AS skipped,
-   CASE WHEN p_role='driver' THEN CASE WHEN o.eligible THEN true ELSE NULL END ELSE NULL END AS eligible
+   CASE WHEN p_role='driver' THEN CASE WHEN o.eligible THEN true ELSE NULL END ELSE NULL END AS eligible,
+   o.view_seconds,o.accept_seconds,o.arrival_seconds
   FROM observed o WHERE p_role='passenger' OR o.viewed OR o.skipped OR o.eligible OR o.driver_accepted OR o.driver_completed OR o.driver_cancelled
  ), totals AS (
   SELECT count(*) AS orders,count(*) FILTER(WHERE accepted) AS accepted,
    count(*) FILTER(WHERE completed) AS completed,count(*) FILTER(WHERE cancelled) AS cancelled,
    CASE WHEN p_role='driver' AND p_service IN ('all','flash') THEN count(*) FILTER(WHERE viewed) ELSE NULL END AS recorded_views,
    CASE WHEN p_role='driver' AND p_service IN ('all','flash') THEN count(*) FILTER(WHERE skipped) ELSE NULL END AS recorded_skips,
-   CASE WHEN p_role='driver' THEN nullif(count(*) FILTER(WHERE eligible),0) ELSE NULL END AS observed_eligible
+   CASE WHEN p_role='driver' THEN nullif(count(*) FILTER(WHERE eligible),0) ELSE NULL END AS observed_eligible,
+   count(view_seconds) AS view_samples,round(avg(view_seconds),2) AS mean_view_seconds,
+   count(accept_seconds) AS accept_samples,round(avg(accept_seconds),2) AS mean_accept_seconds,
+   count(arrival_seconds) AS arrival_samples,round(avg(arrival_seconds),2) AS mean_arrival_seconds
   FROM selected
  ), page AS (
   SELECT * FROM selected ORDER BY requested_at DESC,service,id LIMIT p_limit OFFSET p_offset
