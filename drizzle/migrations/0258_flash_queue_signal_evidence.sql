@@ -16,7 +16,7 @@ REVOKE ALL ON public.caronaa_flash_queue_signal_history FROM PUBLIC,anon,authent
 CREATE OR REPLACE FUNCTION public.notify_caronaa_quick_queue_change()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $event$
-DECLARE v_changed_at timestamptz;
+DECLARE v_changed_at timestamptz; v_old_timeout text;
 BEGIN
  IF NEW.municipality IS NOT NULL THEN
   INSERT INTO public.caronaa_quick_queue_events(municipality,changed_at)
@@ -26,8 +26,11 @@ BEGIN
   -- No duplicate history on a status/driver no-op; the original queue write is preserved.
   IF TG_OP='INSERT' OR (OLD.status IS DISTINCT FROM NEW.status OR OLD.driver_id IS DISTINCT FROM NEW.driver_id) THEN
    BEGIN
+    v_old_timeout:=current_setting('lock_timeout');
+    PERFORM set_config('lock_timeout','150ms',true);
     INSERT INTO public.caronaa_flash_queue_signal_history(request_id,recorded_at,operation,status)
     VALUES(NEW.id,v_changed_at,TG_OP,NEW.status);
+    PERFORM set_config('lock_timeout',v_old_timeout,true);
    EXCEPTION WHEN OTHERS THEN
     RAISE WARNING 'CARONAA queue history unavailable';
    END;
