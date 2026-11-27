@@ -3,6 +3,7 @@ import { dispatchFcmToEligibleDrivers, type FcmRepo } from "@/lib/quick-rides/qu
 import { buildFcmRideMessage, isUnregisteredFcmResponse, readFcmConfig, createFcmSender, __resetFcmAccessForTests } from "@/lib/quick-rides/quick-ride-fcm.server";
 
 const input = { rideId: "ride-1", originLat: -3.7319, originLng: -38.5267, vehicleType: "CAR" as const, fareCents: 1500 };
+const alert = { vehicleType: "CAR" as const, fareCents: 1500, distanceKm: 1.5 };
 const rows = [
   { userId: "driver-a", token: "test-a", updatedAt: "2026-11-27T00:00:00Z" },
   { userId: "driver-a", token: "test-b", updatedAt: "2026-11-27T00:00:00Z" },
@@ -18,7 +19,7 @@ function repo(): FcmRepo {
     ]),
     approvedDrivers: vi.fn(async (ids) => ids.filter(id => id === "driver-a")),
     tokens: vi.fn(async () => [...rows, rows[0]!]),
-    deleteToken: vi.fn(async () => {}),
+    deleteToken: vi.fn(async () => true),
   };
 }
 beforeEach(() => __resetFcmAccessForTests());
@@ -30,7 +31,7 @@ describe("native Android FCM dispatch", () => {
     expect(db.approvedDrivers).toHaveBeenCalledWith(["driver-a", "driver-moto"], "CAR");
     expect(db.tokens).toHaveBeenCalledWith(["driver-a"]);
     expect(send).toHaveBeenCalledTimes(2);
-    expect(send).not.toHaveBeenCalledWith(rows[2], expect.anything());
+    expect(send).not.toHaveBeenCalledWith(rows[2], expect.anything(), expect.anything());
   });
   it("only deletes provider-confirmed retired tokens; other devices can still receive", async () => {
     const db = repo();
@@ -56,14 +57,23 @@ describe("native Android FCM dispatch", () => {
     expect(isUnregisteredFcmResponse(403, retired)).toBe(false);
     expect(isUnregisteredFcmResponse(400, { error: { details: [{ errorCode: "INVALID_ARGUMENT" }] } })).toBe(false);
     expect(isUnregisteredFcmResponse(503, null)).toBe(false);
+    const invalid = { error: { message: "The registration token is not a valid FCM registration token", details: [{ "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "INVALID_ARGUMENT" }] } };
+    expect(isUnregisteredFcmResponse(400, invalid)).toBe(true);
+    expect(isUnregisteredFcmResponse(400, { error: { ...invalid.error, message: "Invalid package name" } })).toBe(false);
   });
   it("builds high-priority private Android alerts without precise ride data", () => {
-    const { message } = buildFcmRideMessage("test-a", input.rideId);
+    const { message } = buildFcmRideMessage("test-a", input.rideId, alert);
     expect(message.android).toMatchObject({ priority: "HIGH", ttl: "300s", restricted_package_name: "com.caronaa.app",
-      notification: { channel_id: "corridas_urgentes", visibility: "PRIVATE", sound: "caronaa_ride_alert" } });
-    expect(message.data).toEqual({ route: "/disponibilidade-profissional", kind: "flash_ride" });
+      notification: { channel_id: "corridas_urgentes", visibility: "PRIVATE", sound: "caronaa_ride_alert", notification_priority: "PRIORITY_MAX" } });
+    expect(message.notification.title).toBe("Nova corrida CARONAA");
+    expect(message.notification.body).toContain("R$ 15,00");
+    expect(message.notification.body).toContain("~3 min");
+    expect(message.data).toEqual({ route: "/home", url: "/home", kind: "flash_ride", rideId: input.rideId,
+      vehicleType: "CAR", estimatedFare: "15.00", estimatedPickupMinutes: "3" });
     expect(JSON.stringify(message)).not.toContain("originLat");
+    expect(JSON.stringify(message)).not.toContain("originLng");
     expect(JSON.stringify(message)).not.toContain("fareCents");
+    expect(buildFcmRideMessage("test-a", input.rideId, { ...alert, expiresAtMs: 61_000 }, 1000).message.android.ttl).toBe("60s");
   });
   it("rejects missing/malformed service-account configuration", () => {
     expect(readFcmConfig(undefined)).toBeNull();
@@ -88,7 +98,7 @@ describe("native Android FCM dispatch", () => {
       return Response.json({name:"projects/caronaa-test/messages/test"});
     });
     const send = createFcmSender(cfg!, {fetch:fakeFetch as unknown as typeof fetch});
-    await Promise.all([send(rows[0]!, input.rideId), send(rows[1]!, input.rideId)]);
+    await Promise.all([send(rows[0]!, input.rideId, alert), send(rows[1]!, input.rideId, alert)]);
     expect(fakeFetch.mock.calls.filter(c => c[0] === "https://oauth2.googleapis.com/token")).toHaveLength(1);
     expect(fakeFetch).toHaveBeenCalledTimes(3);
   });

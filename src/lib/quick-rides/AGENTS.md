@@ -3,4 +3,4 @@
 - Commercial coverage, quoted submission and assignment must call the permanent operation control directly, never a retired test RPC; this prevents legacy expiry from disabling real service.
 - Preserve independent quote/search/GPS deadlines and temporary-account provenance guards when changing global service controls; this prevents continuous operation from granting permanent account eligibility.
 
-- Native FCM and Web Push dispatch are independent best-effort channels. Server-only service-account credentials; use the current eligibility gates, private generic Android content, conditional token removal only on provider-confirmed UNREGISTERED, and aggregate counts, never delivery claims or raw tokens.
+- Native FCM and Web Push dispatch are independent best-effort channels. Server-only service-account credentials; use the current eligibility gates, private minimal Android offer summaries (no exact pickup GPS/passenger data), conditional token removal only on provider-confirmed UNREGISTERED or explicit invalid-registration-token error, and aggregate counts, never delivery claims or raw tokens.

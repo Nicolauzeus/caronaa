@@ -10,6 +10,7 @@ on:
       - 'src/integrations/supabase/types.ts'
       - 'src/test/f07-*.test.ts'
       - 'src/test/quick-ride-push-dispatch.test.ts'
+      - 'src/test/quick-ride-fcm-dispatch.test.ts'
       - 'scripts/sql/f07-public-operation-*.sql'
       - 'scripts/test-f07-permanent-operation-db.mjs'
       - 'scripts/tests/f07-permanent-operation.*.sql'
@@ -40,6 +41,7 @@ jobs:
           bunx vitest run
           src/test/f07-retired-controls.test.ts
           src/test/quick-ride-push-dispatch.test.ts
+          src/test/quick-ride-fcm-dispatch.test.ts
           src/test/f07-passenger-demand-waiting.test.ts
           src/lib/quick-rides/f07-homologation.test.ts
           src/test/f07-permanent-operation-types.test.ts

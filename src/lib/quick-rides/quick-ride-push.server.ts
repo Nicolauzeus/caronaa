@@ -3,7 +3,7 @@
 // RFC 8292 VAPID) so it runs on the Worker runtime without Node crypto.
 // Never logs coordinates, user IDs or endpoints.
 
-import { createFcmSender, readFcmConfig, type FcmSender, type FcmTokenRow } from "./quick-ride-fcm.server";
+import { createFcmSender, readFcmConfig, type FcmSender, type FcmTokenRow, type FcmRideAlert } from "./quick-ride-fcm.server";
 
 export const PUSH_RADIUS_KM = 15;
 // Wake-up push only: a locked phone stops sending GPS, so the last known fix of a
@@ -14,6 +14,7 @@ export const PUSH_LOCATION_MAX_AGE_MS = 60 * 60 * 1000;
 export type PushDispatchInput = {
   rideId: string; originLat: number; originLng: number;
   vehicleType: "CAR" | "MOTO"; fareCents: number | null;
+  expiresAtMs?: number;
 };
 export type OnlineDriver = { userId: string; lat: number; lng: number };
 export type PushSubscriptionRow = { userId: string; endpoint: string; p256dh: string; auth: string };
@@ -26,7 +27,7 @@ export type PushRepo = {
 export type PushSender = (sub: PushSubscriptionRow, payload: string) => Promise<{ status: number }>;
 export type FcmRepo = Pick<PushRepo, "onlineDriversSince" | "approvedDrivers"> & {
   tokens(userIds: string[]): Promise<FcmTokenRow[]>;
-  deleteToken(row: FcmTokenRow): Promise<void>;
+  deleteToken(row: FcmTokenRow): Promise<boolean>;
 };
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
@@ -48,12 +49,23 @@ export function buildRidePushPayload(input: PushDispatchInput, distanceKm: numbe
   });
 }
 
-async function eligiblePushDrivers(input: PushDispatchInput, repo: Pick<PushRepo, "onlineDriversSince" | "approvedDrivers">, now: number) {
+type EligibilityRepo = Pick<PushRepo, "onlineDriversSince" | "approvedDrivers">;
+type WebChannel = { repo: Pick<PushRepo, "subscriptions" | "deleteSubscription">; send: PushSender };
+type FcmChannel = { repo: Pick<FcmRepo, "tokens" | "deleteToken">; send: FcmSender };
+type PushCounts = { eligible: number; sent: number; failed: number; removed: number };
+function activeAt(input: PushDispatchInput, now: number) {
+  return input.expiresAtMs === undefined || (Number.isFinite(input.expiresAtMs) && input.expiresAtMs > now);
+}
+function validCoordinates(lat: number, lng: number) {
+  return Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lng) && Math.abs(lng) <= 180;
+}
+
+async function eligiblePushDrivers(input: PushDispatchInput, repo: EligibilityRepo, now: number) {
   const near = new Map<string, number>();
-  if (!Number.isFinite(input.originLat) || !Number.isFinite(input.originLng)) return near;
+  if (!validCoordinates(input.originLat, input.originLng) || !activeAt(input, now)) return near;
   const online = await repo.onlineDriversSince(new Date(now - PUSH_LOCATION_MAX_AGE_MS).toISOString());
   for (const d of online) {
-    if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) continue;
+    if (!validCoordinates(d.lat, d.lng)) continue;
     const km = haversineKm(input.originLat, input.originLng, d.lat, d.lng);
     if (km <= PUSH_RADIUS_KM) near.set(d.userId, km);
   }
@@ -63,17 +75,19 @@ async function eligiblePushDrivers(input: PushDispatchInput, repo: Pick<PushRepo
   return near;
 }
 
-export async function dispatchPushToEligibleDrivers(
-  input: PushDispatchInput,
-  deps: { repo: PushRepo; send: PushSender; now?: () => number },
-) {
+async function dispatchWebForDrivers(input: PushDispatchInput, near: Map<string, number>, deps: WebChannel, now: () => number): Promise<PushCounts> {
   const result = { eligible: 0, sent: 0, failed: 0, removed: 0 };
-  const near = await eligiblePushDrivers(input, deps.repo, deps.now?.() ?? Date.now());
   const ids = [...near.keys()];
   result.eligible = ids.length;
-  if (!ids.length) return result;
-  const subs = await deps.repo.subscriptions(ids);
+  if (!ids.length || !activeAt(input, now())) return result;
+  const seen = new Set<string>();
+  const subs = (await deps.repo.subscriptions(ids)).filter(row => {
+    if (!near.has(row.userId) || !row.endpoint || seen.has(row.endpoint)) return false;
+    seen.add(row.endpoint);
+    return true;
+  });
   const outcomes = await Promise.allSettled(subs.map(async (s) => {
+    if (!activeAt(input, now())) throw new Error("ride_expired");
     const res = await deps.send(s, buildRidePushPayload(input, near.get(s.userId) ?? PUSH_RADIUS_KM));
     if (res.status === 404 || res.status === 410) {
       await deps.repo.deleteSubscription(s.endpoint);
@@ -86,18 +100,17 @@ export async function dispatchPushToEligibleDrivers(
   return result;
 }
 
-/** Independent Android channel: only authenticated-role, nearby approved drivers.
- * FCM provider acceptance is not evidence of display or receipt.
- */
-export async function dispatchFcmToEligibleDrivers(
-  input: PushDispatchInput,
-  deps: { repo: FcmRepo; send: FcmSender; now?: () => number },
-) {
+export async function dispatchPushToEligibleDrivers(input: PushDispatchInput, deps: { repo: PushRepo; send: PushSender; now?: () => number }) {
+  const now = deps.now ?? Date.now;
+  return dispatchWebForDrivers(input, await eligiblePushDrivers(input, deps.repo, now()), deps, now);
+}
+
+/** Independent Android channel. FCM acceptance is not proof of delivery. */
+async function dispatchFcmForDrivers(input: PushDispatchInput, near: Map<string, number>, deps: FcmChannel, now: () => number): Promise<PushCounts> {
   const result = { eligible: 0, sent: 0, failed: 0, removed: 0 };
-  const near = await eligiblePushDrivers(input, deps.repo, deps.now?.() ?? Date.now());
   const ids = [...near.keys()];
   result.eligible = ids.length;
-  if (!ids.length) return result;
+  if (!ids.length || !activeAt(input, now())) return result;
   const seen = new Set<string>();
   const tokens = (await deps.repo.tokens(ids)).filter(row => {
     if (!near.has(row.userId) || !row.token || seen.has(row.token)) return false;
@@ -111,11 +124,15 @@ export async function dispatchFcmToEligibleDrivers(
       const row = tokens[next++];
       if (!row) return;
       try {
-        const response = await deps.send(row, input.rideId);
+        if (!activeAt(input, now())) { result.failed++; continue; }
+        const alert: FcmRideAlert = {
+          vehicleType: input.vehicleType, fareCents: input.fareCents,
+          distanceKm: near.get(row.userId)!, expiresAtMs: input.expiresAtMs,
+        };
+        const response = await deps.send(row, input.rideId, alert);
         if (response.unregistered) {
           // Conditional deletion preserves a token refreshed/reassigned since lookup.
-          await deps.repo.deleteToken(row);
-          result.removed++;
+          if (await deps.repo.deleteToken(row)) result.removed++;
           result.failed++;
         } else if (response.status >= 200 && response.status < 300) result.sent++;
         else result.failed++;
@@ -124,6 +141,25 @@ export async function dispatchFcmToEligibleDrivers(
   };
   await Promise.all(Array.from({ length: Math.min(tokens.length, 8) }, run));
   return result;
+}
+
+export async function dispatchFcmToEligibleDrivers(input: PushDispatchInput, deps: { repo: FcmRepo; send: FcmSender; now?: () => number }) {
+  const now = deps.now ?? Date.now;
+  return dispatchFcmForDrivers(input, await eligiblePushDrivers(input, deps.repo, now()), deps, now);
+}
+
+/** Compute one eligibility snapshot, then isolate both transports. A provider
+ * or subscription-query failure must never suppress the other transport. */
+export async function dispatchRidePushChannels(input: PushDispatchInput, deps: {
+  repo: EligibilityRepo; web?: WebChannel; fcm?: FcmChannel; now?: () => number;
+}) {
+  const now = deps.now ?? Date.now;
+  const near = await eligiblePushDrivers(input, deps.repo, now());
+  const [web, fcm] = await Promise.allSettled([
+    deps.web ? dispatchWebForDrivers(input, near, deps.web, now) : Promise.resolve(null),
+    deps.fcm ? dispatchFcmForDrivers(input, near, deps.fcm, now) : Promise.resolve(null),
+  ]);
+  return { web, fcm };
 }
 
 // ---------- Supabase repository ----------
@@ -138,7 +174,7 @@ export function supabasePushRepo(db: any): PushRepo {
       ]);
       if (locs.error || avail.error) throw new Error("presence");
       const online = new Set((avail.data ?? []).map((r: any) => r.user_id));
-      return (locs.data ?? []).filter((r: any) => online.has(r.user_id))
+      return (locs.data ?? []).filter((r: any) => online.has(r.user_id) && r.lat != null && r.lng != null)
         .map((r: any) => ({ userId: r.user_id, lat: Number(r.lat), lng: Number(r.lng) }));
     },
     async approvedDrivers(userIds, vehicleType) {
@@ -180,9 +216,14 @@ export function supabaseFcmRepo(db: any): FcmRepo {
       }));
     },
     async deleteToken(row) {
-      const { error } = await db.from("driver_fcm_tokens").delete()
-        .eq("token", row.token).eq("user_id", row.userId).eq("updated_at", row.updatedAt);
+      // The public delete_driver_fcm_token RPC is scoped to auth.uid(), i.e.
+      // the driver session. This service-role cleanup intentionally uses a
+      // conditional table delete, never impersonates a driver or changes RLS.
+      const { data, error } = await db.from("driver_fcm_tokens").delete()
+        .eq("token", row.token).eq("user_id", row.userId).eq("updated_at", row.updatedAt)
+        .eq("platform", "android").select("id");
       if (error) throw new Error("fcm_cleanup_failed");
+      return Array.isArray(data) && data.length > 0;
     },
   };
 }
@@ -262,24 +303,27 @@ export async function dispatchPushForQuickRide(rideId: string) {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: ride } = await (supabaseAdmin as any).from("professional_quick_rides")
       .select("id,origin_lat,origin_lng,vehicle_type,estimated_fare_cents,status,expires_at").eq("id", rideId).maybeSingle();
+    const expiresAtMs = Date.parse(ride?.expires_at ?? "");
     if (!ride || ride.status !== "SEARCHING" || (ride.vehicle_type !== "CAR" && ride.vehicle_type !== "MOTO") ||
-        !ride.expires_at || Date.parse(ride.expires_at) <= Date.now()) return;
+        ride.origin_lat == null || ride.origin_lng == null ||
+        !Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) return;
     const input: PushDispatchInput = {
       rideId, originLat: Number(ride.origin_lat), originLng: Number(ride.origin_lng),
-      vehicleType: ride.vehicle_type, fareCents: ride.estimated_fare_cents,
+      vehicleType: ride.vehicle_type, fareCents: ride.estimated_fare_cents, expiresAtMs,
     };
-    const tasks: Promise<void>[] = [];
-    const report = (channel: "web" | "fcm", work: Promise<unknown>) => work.then(result => {
-      // Aggregate provider acceptance only, never token, endpoint, user, coordinates or raw error.
-      console.info("[CARONAA][F07][PUSH] dispatched", { channel, ...(result as object) });
-    }).catch(() => { console.warn("[CARONAA][F07][PUSH] channel_failed", { channel }); });
-    if (publicKey && privateKey && subject) tasks.push(report("web", dispatchPushToEligibleDrivers(input, {
-      repo: supabasePushRepo(supabaseAdmin), send: createWebPushSender({ publicKey, privateKey, subject }),
-    })));
-    if (fcm) tasks.push(report("fcm", dispatchFcmToEligibleDrivers(input, {
-      repo: supabaseFcmRepo(supabaseAdmin), send: createFcmSender(fcm),
-    })));
-    await Promise.allSettled(tasks);
+    const repo = supabasePushRepo(supabaseAdmin);
+    const outcomes = await dispatchRidePushChannels(input, {
+      repo,
+      web: publicKey && privateKey && subject ? { repo, send: createWebPushSender({ publicKey, privateKey, subject }) } : undefined,
+      fcm: fcm ? { repo: supabaseFcmRepo(supabaseAdmin), send: createFcmSender(fcm) } : undefined,
+    });
+    for (const channel of ["web", "fcm"] as const) {
+      const outcome = outcomes[channel];
+      // Aggregate provider acceptance only; never log raw error, IDs, GPS, or token.
+      if (outcome.status === "fulfilled" && outcome.value)
+        console.info("[CARONAA][F07][PUSH] dispatched", { channel, ...outcome.value });
+      else if (outcome.status === "rejected") console.warn("[CARONAA][F07][PUSH] channel_failed", { channel });
+    }
   } catch {
     console.warn("[CARONAA][F07][PUSH] dispatch_failed");
   }

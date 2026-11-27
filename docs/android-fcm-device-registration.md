@@ -51,13 +51,26 @@ Sem esse secret, apenas Web Push continua funcionando; sem VAPID, FCM pode
 funcionar independentemente. A consulta FCM usa somente Android e o papel
 MOTORISTA, autorização/modalidade, presença e a regra existente de proximidade
 15 km / último GPS até 60 min para despertar. A aceitação/radar mantém 90 s.
-O canal corridas_urgentes usa prioridade alta, TTL 300 s e texto genérico privado.
-O token só é removido no retorno FCM tipado UNREGISTERED, com condição por token,
-usuário e updated_at, nunca por 404 genérico, 403, 429 ou falha de rede.
+O canal corridas_urgentes usa prioridade de entrega HIGH e apresentação PRIORITY_MAX,
+som caronaa_ride_alert (recurso Android caronaa_ride_alert.wav, com fallback do SDK),
+vibração, visibilidade PRIVATE e TTL de até 300 s, limitado ao tempo restante
+da corrida SEARCHING. O título é Nova corrida CARONAA; corpo com modalidade,
+valor estimado e aproximação de tempo até a origem (distância em linha reta
+a 30 km/h, não ETA de navegação). Dados textuais: rideId, vehicleType,
+estimatedFare em reais decimais, estimatedPickupMinutes, url e route /home.
+Por privacidade de dispositivos que podem manter tokens após logout offline,
+originLat/originLng e dados pessoais não são enviados no push: a tela autenticada
+consulta os detalhes pela fila normal de corridas. Os logs têm somente agregados.
+Uma única consulta de elegibilidade alimenta os dois transportes independentes.
+O token é removido no retorno FCM tipado UNREGISTERED ou INVALID_ARGUMENT com
+mensagem explícita de token inválido, nunca por 400/404 genérico, 403, 429 ou
+falha de rede. A exclusão pelo backend usa service_role e condição por token,
+usuário, updated_at e plataforma Android (a RPC delete_driver_fcm_token exige
+auth.uid() do motorista e permanece destinada ao logout do próprio aparelho).
 Logout offline não garante invalidação imediata; a API Firebase não conhece a
 sessão Supabase. Retorno UNREGISTERED é esperado apenas quando o token realmente
 se torna inválido. Um logout offline pode receber alerta genérico até a invalidação
-ou até deixar de estar elegível. A notificação não leva detalhes privados da corrida.
+ou até deixar de estar elegível. A notificação contém apenas uma oportunidade resumida, sem localização exata ou identificação de passageiro.
 Sem outbox persistente: o despacho segue best-effort com a janela existente de 4 s;
 uma execução interrompida pelo runtime pode não entregar todas as notificações.
 Aceitação do provedor não comprova entrega no Android. Testar APK real com tela

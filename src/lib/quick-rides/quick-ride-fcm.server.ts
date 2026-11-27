@@ -2,7 +2,10 @@
 // No Firebase private key or OAuth access token is ever shipped to the APK.
 export type FcmTokenRow = { userId: string; token: string; updatedAt: string };
 export type FcmResult = { status: number; unregistered: boolean };
-export type FcmSender = (row: FcmTokenRow, rideId: string) => Promise<FcmResult>;
+export type FcmRideAlert = {
+  vehicleType: "CAR" | "MOTO"; fareCents: number | null; distanceKm: number; expiresAtMs?: number;
+};
+export type FcmSender = (row: FcmTokenRow, rideId: string, alert: FcmRideAlert) => Promise<FcmResult>;
 type FcmConfig = { projectId: string; clientEmail: string; privateKey: string };
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
@@ -78,30 +81,56 @@ async function getAccess(cfg: FcmConfig, fetcher: typeof fetch, now: () => numbe
 }
 export function __resetFcmAccessForTests() { cache = undefined; }
 
-/** Only an explicit Firebase UNREGISTERED error is a token revocation.
- * Generic HTTP 404/410, auth, quota or malformed payload errors are not proof.
+/** Only a provider-confirmed retired/invalid registration token is removable.
+ * An ambiguous 400/404, invalid payload, auth, quota or network error is not proof.
  */
 export function isUnregisteredFcmResponse(status: number, body: unknown): boolean {
-  if (status !== 404 && status !== 410) return false;
   if (!body || typeof body !== "object") return false;
-  const details = (body as { error?: { details?: unknown } }).error?.details;
-  return Array.isArray(details) && details.some(detail =>
-    detail?.["@type"] === "type.googleapis.com/google.firebase.fcm.v1.FcmError" &&
-    detail?.errorCode === "UNREGISTERED");
+  const error = (body as { error?: { message?: unknown; details?: unknown } }).error;
+  const details = error?.details;
+  if (!Array.isArray(details)) return false;
+  const code = (value: string) => details.some(detail =>
+    detail?.["@type"] === "type.googleapis.com/google.firebase.fcm.v1.FcmError" && detail?.errorCode === value);
+  if ((status === 404 || status === 410) && code("UNREGISTERED")) return true;
+  // FCM documents INVALID_ARGUMENT for several unrelated errors. Require its
+  // explicit invalid-registration-token message as well as the typed code.
+  return status === 400 && code("INVALID_ARGUMENT") &&
+    typeof error?.message === "string" &&
+    /^The registration token is not a valid FCM registration token\.?$/i.test(error.message);
 }
 
-export function buildFcmRideMessage(token: string, rideId: string) {
-  // No passenger name, address, fare, GPS or other private ride contents in OS
-  // notifications. An offline logout cannot guarantee immediate revocation.
+function remainingTtl(alert: FcmRideAlert, now: number): number {
+  if (alert.expiresAtMs === undefined) return 300;
+  if (!Number.isFinite(alert.expiresAtMs)) return 0;
+  return Math.max(0, Math.min(300, Math.floor((alert.expiresAtMs - now) / 1000)));
+}
+
+export function buildFcmRideMessage(token: string, rideId: string, alert: FcmRideAlert, now = Date.now()) {
+  const minutes = Math.max(1, Math.round((alert.distanceKm / 30) * 60));
+  const fare = alert.fareCents != null && Number.isSafeInteger(alert.fareCents) && alert.fareCents >= 0
+    ? (alert.fareCents / 100).toFixed(2) : "";
+  const kind = alert.vehicleType === "MOTO" ? "Moto" : "Carro";
+  // A stale device token may outlive an offline logout. Send only a minimal
+  // offer summary; exact pickup coordinates and passenger data are fetched
+  // from the existing authenticated radar when the driver opens the app.
   return { message: {
     token,
-    notification: { title: "CARONAA", body: "Há uma nova oportunidade de corrida. Abra o aplicativo para consultar." },
-    data: { route: "/disponibilidade-profissional", kind: "flash_ride" },
+    notification: {
+      title: "Nova corrida CARONAA",
+      body: [kind, fare ? "Valor estimado R$ " + fare.replace(".", ",") : null,
+        "~" + minutes + " min até a origem"].filter(Boolean).join(" · ") + ". Toque para abrir.",
+    },
+    data: { route: "/home", url: "/home", kind: "flash_ride", rideId,
+      vehicleType: alert.vehicleType, estimatedFare: fare, estimatedPickupMinutes: String(minutes) },
     android: {
-      priority: "HIGH", ttl: "300s", restricted_package_name: "com.caronaa.app",
+      priority: "HIGH", ttl: remainingTtl(alert, now) + "s", restricted_package_name: "com.caronaa.app",
       notification: {
-        channel_id: CHANNEL, sound: "caronaa_ride_alert",
-        notification_priority: "PRIORITY_HIGH", visibility: "PRIVATE",
+        channel_id: CHANNEL,
+        // Android raw resources use the basename; Firebase Android SDK falls
+        // back to the default sound if the resource is missing. On Android 8+
+        // the channel and the user's settings take precedence.
+        sound: "caronaa_ride_alert", notification_priority: "PRIORITY_MAX", visibility: "PRIVATE",
+        vibrate_timings: ["0s", "0.5s", "0.25s", "0.5s"],
         tag: "caronaa-ride-" + rideId,
       },
     },
@@ -111,12 +140,14 @@ export function buildFcmRideMessage(token: string, rideId: string) {
 export function createFcmSender(cfg: FcmConfig, deps: { fetch?: typeof fetch; now?: () => number } = {}): FcmSender {
   const fetcher = deps.fetch ?? fetch;
   const now = deps.now ?? Date.now;
-  return async (row, rideId) => {
+  return async (row, rideId, alert) => {
+    if (!remainingTtl(alert, now())) return { status: 0, unregistered: false };
     const access = await getAccess(cfg, fetcher, now);
+    if (!remainingTtl(alert, now())) return { status: 0, unregistered: false };
     const response = await fetcher("https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(cfg.projectId) + "/messages:send", {
       method: "POST",
       headers: { Authorization: "Bearer " + access.value, "Content-Type": "application/json" },
-      body: JSON.stringify(buildFcmRideMessage(row.token, rideId)),
+      body: JSON.stringify(buildFcmRideMessage(row.token, rideId, alert, now())),
       signal: AbortSignal.timeout(2500),
     });
     // Expired credentials may recover on the next dispatch; don't erase devices.
