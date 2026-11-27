@@ -125,7 +125,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       .eq("pricing_region",coverage.region)
       .eq("vehicle_type",data.vehicleType)
       .eq("published",true).maybeSingle();
-    if(policyError||!policy) throw new Error("Tarifa ainda não homologada pela operação.");
+    if(policyError||!policy) throw new Error("Tarifa ainda não publicada pela operação.");
     // For a point-to-point commercial trip, a destination outside the corridor
     // is not silently assumed to be permitted. Municipal borders may require
     // different authorizations even if Google Routes can calculate the road.
@@ -142,7 +142,7 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       throw new Error("Destino fora da cobertura habilitada. Selecione um destino no eixo Fortaleza–Maciço.");
     if(destinationCity.municipality!==coverage.municipality) {
       if(policy.intermunicipal_enabled!==true)
-        throw new Error("Esta modalidade ainda não foi homologada para corridas entre municípios.");
+        throw new Error("Esta modalidade ainda não está habilitada para corridas entre municípios.");
       const {data:destinationStatus,error:destinationError}=
         await (context.supabase as any).rpc("caronaa_quick_region_status",{
           p_municipality:destinationCity.municipality,p_vehicle:data.vehicleType,

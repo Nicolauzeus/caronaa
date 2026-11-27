@@ -277,6 +277,8 @@ Oferta publicada → Encontrar demanda próxima → Agrupar interessados
 
 ### F07 — Encontrar viagem imediata (carro e mototáxi)
 
+**Decisão vigente de 27/11/2026 — Flash é operação pública:** o proprietário substitui o enquadramento de F07 como produto/ambiente de homologação. Os trabalhos seguintes usam a operação pública e preservam os municípios, modalidades e tarifas já configurados; não exigem um ambiente de homologação como condição de produto. A janela solicitada é de **90 dias**, controlada como operação pública, sem depender de ativações temporárias de teste. Retirar simulação de GPS e atalhos de autorização temporária dos caminhos ativos; preservar os registros históricos e não promover autorizações temporárias a permanentes. Permanecem obrigatórios autenticação, habilitação normal emitida pelo servidor, veículo ativo, suspensões, regras financeiras, GPS real consentido, raio de 15 km, cotação imutável, autorização de origem/destino e busca de até 30 minutos mesmo sem motoristas. Esta decisão substitui as restrições históricas de enquadramento abaixo, mas não libera novas coberturas, altera tarifas, comprova conformidade legal ou autoriza alterações de banco sem apresentação e aprovação do SQL completo. Testes automatizados de segurança/regressão continuam obrigatórios e nunca criam dados fictícios na operação pública.
+
 ```text
 Passageiro → Viajar agora → Origem/destino → Carro ou moto elegível
 → Exibir estimativa de preço → Solicitar

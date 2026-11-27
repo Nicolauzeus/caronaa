@@ -151,7 +151,7 @@ export function AppShell({
           </div>
           {!publicPage && user && (
             <span className="ml-auto hidden min-w-0 truncate text-sm font-bold text-foreground min-[380px]:block lg:hidden" aria-label="Saudação">
-              Olá, {String(user.user_metadata.full_name || user.user_metadata.name || user.email?.split("@")[0] || "você").trim().split(/\s+/)[0]}!
+              Olá, {String(user.user_metadata?.["full_name"] || user.user_metadata?.["name"] || user.email?.split("@")[0] || "você").trim().split(/\s+/)[0]}!
             </span>
           )}
 
@@ -274,7 +274,7 @@ export function AppShell({
                             <UserRound size={16} />
                           </span>
                           <span className="max-w-32 truncate">
-                            {user.user_metadata["full_name"] ||
+                            {user.user_metadata?.["full_name"] ||
                               user.email?.split("@")[0] ||
                               "Minha conta"}
                           </span>

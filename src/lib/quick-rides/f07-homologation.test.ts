@@ -101,9 +101,8 @@ describe("F07 homologation: 17-city corridor and tariff matrices",()=>{
     expect(schema).toContain("GRANT EXECUTE ON FUNCTION public.caronaa_f07_pilot_activate_driver(uuid,text)");
     const block=schema.split("CREATE OR REPLACE FUNCTION public.caronaa_f07_pilot_activate_driver(")[1].split("CREATE OR REPLACE FUNCTION")[0];
     expect(block).not.toContain("professional_driver_locations");
-    const server=readFileSync("src/lib/quick-rides/f07-pilot.functions.ts","utf8");
-    expect(server).toContain('process.env["CARONAA_DEPLOY_ENV"] === "homologacao"');
-    expect(server).toContain('p_user_id: context.userId');
+    // Historical migration contract only. Current retired endpoints are
+    // exercised behaviorally in f07-retired-controls.test.ts.
   });
   it("only permits a quoted completed participant to retrieve a static Pix",()=>{
     expect(schema).toContain("get_completed_quick_ride_pix");

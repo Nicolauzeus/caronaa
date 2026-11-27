@@ -1,0 +1,2 @@
+- Treat the public F07 operation window independently from retired temporary activation and simulation endpoints; keep old endpoints fail-closed for cached clients, because changing a deployment flag must never revive authorization or fabricated GPS shortcuts.
+- Preserve historical SQL and authorization audit rows; change installed controls incrementally only after approval, because deleting or promoting historical temporary grants can change real account eligibility.

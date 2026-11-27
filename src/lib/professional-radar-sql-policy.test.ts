@@ -60,7 +60,7 @@ describe("F07 corridor radar migration safety contracts", () => {
 
 
   it("starts consented GPS from the SAME activation and does not delete it on tab hidden",()=>{
-    expect(page).toContain('startGps(municipality,pilotVehicle,userId)');
+    expect(page).toContain('startGps(municipality,userId)');
     expect(page).toContain('professionalRadarConsentKey(userId)');
     expect(page).toContain('set_professional_presence');
     expect(page).toContain('Ficar disponível e compartilhar GPS');
@@ -72,18 +72,14 @@ describe("F07 corridor radar migration safety contracts", () => {
 
   it("keeps fake GPS out of the public professional locations table",()=>{
     const sql144=readFileSync("drizzle/migrations/0144_f07_radar_diagnostico_proprio.sql","utf8");
-    const diagnostic=readFileSync("src/lib/quick-rides/f07-radar-diagnostic.functions.ts","utf8");
     expect(sql144).toContain("caronaa_f07_simulated_driver_positions");
     expect(sql144).toContain("REVOKE ALL ON public.caronaa_f07_simulated_driver_positions");
     expect(sql144).toContain("TO service_role");
     expect(sql144).toContain("caronaa_f07_test_self_radar");
     expect(sql144).toContain("a.vehicle_type=p_vehicle");
     expect(sql144).toContain("AND s.expires_at>now()");
-    expect(diagnostic).toContain("f07TestEnvironmentConfigured");
-    expect(diagnostic).toContain("p_user_id:context.userId");
-    expect(diagnostic).toContain('geocodeAddressService');
-    expect(diagnostic).toContain("caronaa_f07_simulated_driver_positions");
-    expect(diagnostic).not.toContain('.from("professional_driver_locations")');
+    // Current endpoints cannot simulate positions; behavioral coverage lives
+    // in f07-retired-controls.test.ts. Keep historical SQL audit intact.
     expect(sql).toContain("l.user_id<>auth.uid()");
   });
 

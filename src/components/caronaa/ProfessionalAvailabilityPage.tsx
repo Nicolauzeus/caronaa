@@ -7,8 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTraceId, type SafeF07RadarEvent } from "@/lib/professional-radar-diagnostics";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
-import { getF07PilotState } from "@/lib/quick-rides/f07-pilot.functions";
-import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { enableDriverAlerts } from "@/lib/native/driver-notifications";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
@@ -18,17 +16,14 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { GoogleMapSurface } from "@/components/caronaa/GoogleMapSurface";
 
-type Fix = { lat:number; lng:number; at:Date; simulated:boolean; accuracyM?:number; heading?:number|null };
+type Fix = { lat:number; lng:number; at:Date; accuracyM?:number; heading?:number|null };
 type Vehicle = "CAR" | "MOTO";
 
 /** One explicit activation is consent for online presence AND real GPS.
- * Fake municipality centres are diagnostic-only and NEVER masquerade as GPS.
+ * Municipality centres NEVER substitute a real GPS reading.
  */
 export function ProfessionalAvailabilityPage() {
   const publishVerified = useServerFn(publishVerifiedProfessionalPosition);
-  const getPilot = useServerFn(getF07PilotState);
-  const simulateTest = useServerFn(simulateF07TestLocation);
-  const clearTest = useServerFn(clearF07TestLocation);
   const [ready,setReady]=useState(false);
   const [busy,setBusy]=useState(false);
   const [enabled,setEnabled]=useState(false);
@@ -46,9 +41,7 @@ export function ProfessionalAvailabilityPage() {
   const [simpleMototaxi,setSimpleMototaxi]=useState(false);
   const [professionalReview,setProfessionalReview]=useState("");
   const [professionalMissing,setProfessionalMissing]=useState<MissingCode[]>([]);
-  const [pilotEnabled,setPilotEnabled]=useState(false);
-  const [pilotVehicle,setPilotVehicle]=useState<Vehicle>("MOTO");
-  const [pilotExpiry]=useState("");
+  const [vehicleType,setVehicleType]=useState<Vehicle>("MOTO");
   const [userId,setUserId]=useState("");
   const [municipality,setMunicipality]=useState("");
   const [sharing,setSharing]=useState(false);
@@ -63,7 +56,6 @@ export function ProfessionalAvailabilityPage() {
   const watch=useRef<number|null>(null);
   const tracking=useRef(false);
   const sending=useRef(false);
-  const simulating=useRef(false);
   const lastAttempt=useRef(0);
   const lastLiveAttempt=useRef(0);
   const livePublishing=useRef(false);
@@ -89,11 +81,8 @@ export function ProfessionalAvailabilityPage() {
     record("LOCATION_STOP_REQUEST");
     discardWatch();
     if(mounted.current){setFix(null);setObservedFix(null);setAccuracyWarning(false);}
-    await Promise.allSettled([
-      (supabase as any).rpc("professional_location_stop"),
-      clearTest(),
-    ]);
-  },[discardWatch,clearTest,record]);
+    await (supabase as any).rpc("professional_location_stop");
+  },[discardWatch,record]);
 
   const onFix=useCallback(async(position:GeolocationPosition)=>{
     if(!tracking.current)return;
@@ -119,7 +108,7 @@ export function ProfessionalAvailabilityPage() {
       return;
     }
     if(mounted.current){
-      setObservedFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false,
+      setObservedFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),
         accuracyM:accuracy,heading:position.coords.heading});
       setAccuracyWarning(accuracy>100);
     }
@@ -168,11 +157,10 @@ export function ProfessionalAvailabilityPage() {
         record("SERVER_PUBLISH_SUCCESS",{ref:result.traceId??ref,city:result.municipality});
         if(mounted.current){
           setMunicipality(result.municipality);
-          setFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),simulated:false,
+          setFix({lat:latitude,lng:longitude,at:new Date(sampledAtMs),
             accuracyM:accuracy,heading:position.coords.heading});
           setError("");
         }
-        void clearTest().catch(()=>undefined);
       }else{
         record("SERVER_PUBLISH_NOT_PUBLISHED",{ref:result.traceId??ref,code:result.reason,city:result.municipality??undefined},"warn");
         if(mounted.current){
@@ -205,35 +193,15 @@ export function ProfessionalAvailabilityPage() {
             ?"O sinal GPS foi rejeitado por precisão inválida. Ative a localização precisa."
           :"Não foi possível publicar o GPS. Consulte o diagnóstico técnico F07.");
     }finally{sending.current=false;}
-  },[publishVerified,clearTest,userId,discardWatch,record]);
+  },[publishVerified,userId,discardWatch,record]);
   positionHandler.current=position=>{void onFix(position);};
 
-  const simulationFallback=useCallback(async(city:string,vehicle:Vehicle,reason:string)=>{
-    record("GPS_FALLBACK_REQUEST",{code:"GPS_UNAVAILABLE",city},"warn");
-    if(mounted.current)setError("GPS indisponível: "+reason);
-    if(!pilotEnabled || !city.trim())return;
-    if(simulating.current)return;
-    simulating.current=true;
-    try{
-      const test=await simulateTest({data:{municipality:city,vehicleType:vehicle}});
-      if(!mounted.current)return;
-      setFix({lat:test.lat,lng:test.lng,at:new Date(test.updatedAt),simulated:true});
-      setObservedFix(null);
-      setMunicipality(test.municipality);
-      setError("SIMULAÇÃO de homologação — centro do município; visível só para a própria conta, nunca usado para despachar viagens.");
-      record("SIMULATED_PREVIEW_AVAILABLE",{city:test.municipality});
-    }catch(e){
-      record("SIMULATED_PREVIEW_FAILED",{code:f07RadarFailureCode(e)},"warn");
-      if(mounted.current)setError(
-        "Não foi possível criar a prévia simulada.");
-    }finally{simulating.current=false;}
-  },[pilotEnabled,simulateTest,record]);
-
-  const startGps=useCallback((city:string,vehicle:Vehicle,uid:string)=>{
+  const startGps=useCallback((city:string,uid:string)=>{
     if(tracking.current)return;
     record("GPS_START_REQUEST",{city});
     if(typeof window==="undefined" || !window.isSecureContext || !navigator.geolocation){
-      void simulationFallback(city,vehicle,"precisa de HTTPS e geolocalização permitida.");
+      record("GPS_BROWSER_ERROR",{code:"GPS_UNAVAILABLE"},"warn");
+      if(mounted.current)setError("GPS indisponível. Abra o aplicativo com uma conexão segura e autorize a localização.");
       return;
     }
     tracking.current=true;
@@ -254,7 +222,6 @@ export function ProfessionalAvailabilityPage() {
       if(mounted.current)setError(reason.code===1
         ? "Permissão GPS negada. Ative a localização nas configurações do navegador."
         : "Sinal GPS temporariamente indisponível. Continuaremos tentando automaticamente.");
-      if(reason.code===1)void simulationFallback(city,vehicle,"Ative a permissão nas configurações de localização do navegador.");
     };
     try{
       // First fix immediately after the same click; the watch provides updates.
@@ -264,12 +231,12 @@ export function ProfessionalAvailabilityPage() {
       watch.current=navigator.geolocation.watchPosition(
         position=>positionHandler.current(position),fail,
         {enableHighAccuracy:true,timeout:15000,maximumAge:10000});
-    }catch(e){
+    }catch{
       discardWatch();
-      void simulationFallback(city,vehicle,
-        e instanceof Error?e.message:"O navegador não iniciou o GPS.");
+      record("GPS_BROWSER_ERROR",{code:"GPS_UNAVAILABLE"},"warn");
+      if(mounted.current)setError("GPS indisponível. Verifique a permissão de localização e tente novamente.");
     }
-  },[discardWatch,simulationFallback,record]);
+  },[discardWatch,record]);
 
   useEffect(()=>{
     mounted.current=true;
@@ -277,12 +244,11 @@ export function ProfessionalAvailabilityPage() {
     void (async()=>{
       const {data:{user}}=await supabase.auth.getUser();
       if(!user)throw new Error("Entre na sua conta para usar o radar.");
-      const [presence,access,profile,pilot]=await Promise.all([
+      const [presence,access,profile]=await Promise.all([
         (supabase as any).from("professional_presence")
           .select("is_available,municipality").eq("user_id",user.id).maybeSingle(),
         (supabase as any).rpc("get_my_professional_access"),
         supabase.from("profiles").select("city").eq("id",user.id).maybeSingle(),
-        getPilot().catch(()=>({enabled:false})),
       ]);
       if(!active)return;
       if(presence.error || access.error)throw new Error("Falha ao conferir autorização ou presença.");
@@ -300,8 +266,7 @@ export function ProfessionalAvailabilityPage() {
         : []);
       const registeredVehicle=access.data?.request?.vehicle_type;
       if(registeredVehicle==="CAR"||registeredVehicle==="MOTO")
-        setPilotVehicle(registeredVehicle);
-      setPilotEnabled(pilot.enabled===true);
+        setVehicleType(registeredVehicle);
       setMunicipality(String(presence.data?.municipality||profile.data?.city||candidate).trim());
       setEnabled(presence.data?.is_available===true);
       record("INITIAL_STATE",{
@@ -340,11 +305,11 @@ export function ProfessionalAvailabilityPage() {
   // A previously consented GPS session can resume when returning to this
   // screen, including after a tab switch. No first-visit silent permission.
   useEffect(()=>{
-    if(!ready||!enabled||!userId||tracking.current||fix?.simulated)return;
+    if(!ready||!enabled||!userId||tracking.current)return;
     if(window.localStorage.getItem(professionalRadarConsentKey(userId))==="yes"){
-      startGps(municipality,pilotVehicle,userId);
+      startGps(municipality,userId);
     }
-  },[ready,enabled,authorized,userId,municipality,pilotVehicle,startGps,fix?.simulated]);
+  },[ready,enabled,authorized,userId,municipality,startGps]);
 
   useEffect(()=>{
     if(!enabled)return;
@@ -410,7 +375,7 @@ export function ProfessionalAvailabilityPage() {
       setEnabled(true);
       // The user explicitly chose availability + GPS in ONE labeled button.
       if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
-      startGps(municipality,pilotVehicle,userId);
+      startGps(municipality,userId);
     }catch(e){
       record("PRESENCE_TRANSITION_FAILED",{code:f07RadarFailureCode(e)},"warn");
       setError(e instanceof Error?e.message:"Não foi possível mudar a disponibilidade.");
@@ -418,17 +383,17 @@ export function ProfessionalAvailabilityPage() {
   }
 
   // Mobile keeps GPS feedback legible without exposing raw database errors.
-  const visibleGpsError=/^(GPS |Permissão GPS|Sinal GPS|Localização |O Google|Não foi possível publicar o GPS|Publicação temporariamente|SIMULAÇÃO de homologação)/.test(error)
+  const visibleGpsError=/^(GPS |Permissão GPS|Sinal GPS|Localização |O Google|Não foi possível publicar o GPS|Publicação temporariamente)/.test(error)
     ? error
     : enabled
       ? "Não foi possível confirmar sua posição no radar. Verifique a permissão de GPS e tente novamente."
       : "Não foi possível atualizar sua disponibilidade. Tente novamente.";
-  const fresh=!!fix && !fix.simulated && tick-fix.at.getTime()<90000 && enabled && sharing;
+  const fresh=!!fix && tick-fix.at.getTime()<90000 && enabled && sharing;
   const observedFresh=!!observedFix && tick-observedFix.at.getTime()<90000 && enabled && sharing;
-  const mapFix=fresh ? fix : observedFresh ? observedFix : fix?.simulated ? fix : null;
+  const mapFix=fresh ? fix : observedFresh ? observedFix : null;
   // Local watchPosition updates the driver's camera immediately. The backend
   // remains authoritative for ride states, arrival validation and payments.
-  const liveNavigationFix=[observedFix,fix].find(point=>point&&!point.simulated&&
+  const liveNavigationFix=[observedFix,fix].find(point=>point&&
     (point.accuracyM??Infinity)<=150&&tick-point.at.getTime()<20000)??null;
   useEffect(()=>{
     const next=activeRide?.id+":"+activeRide?.status;
@@ -466,15 +431,13 @@ export function ProfessionalAvailabilityPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seu mapa em tempo real</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${fresh ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
-          {fresh ? "GPS publicado no radar" : observedFresh ? "GPS local · publicação pendente" :
-            mapFix?.simulated ? "SIMULAÇÃO · só você" : "Aguardando GPS"}
+          {fresh ? "GPS publicado no radar" : observedFresh ? "GPS local · publicação pendente" : "Aguardando GPS"}
         </span>
       </div>
       <div className="relative overflow-hidden rounded-xl border">
         <GoogleMapSurface
           points={mapFix ? [{id:"self-professional",lat:mapFix.lat,lng:mapFix.lng,
-            title: mapFix.simulated ? "Prévia simulada, não publicada" :
-              fresh ? "Sua posição publicada" : "Posição apenas neste navegador",
+            title: fresh ? "Sua posição publicada" : "Posição apenas neste navegador",
             kind:"driver",label:"EU"}] : []}
           fitMode="once" smoothTracking
           showControls gestureHandling="greedy"
@@ -489,7 +452,6 @@ export function ProfessionalAvailabilityPage() {
       <p className="text-xs text-muted-foreground">
         {fresh ? `Última publicação confirmada às ${fix?.at.toLocaleTimeString("pt-BR")}. Município verificado: ${municipality}.` :
           observedFresh ? "Localização capturada no aparelho, mas ainda NÃO publicada. Você não está visível no radar." :
-          mapFix?.simulated ? "A posição simulada é apenas para homologação e não recebe pedidos reais." :
           "Nenhuma posição válida publicada. O município do cadastro não substitui o GPS."}
       </p>
     </section>}
@@ -556,14 +518,14 @@ export function ProfessionalAvailabilityPage() {
             </div>
           )}
           {professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED" &&
-            pilotVehicle==="MOTO" && (
+            vehicleType==="MOTO" && (
             <Link to="/cadastro-motorista"
               className="inline-flex min-h-11 items-center rounded-xl bg-[#FFBB00] px-4 py-2 font-bold text-[#121212]">
               {professionalMissing.length ? "Corrigir dados profissionais" : "Concluir cadastro e habilitar corridas"}
             </Link>
           )}
           {professionalReview !== "CHANGES_REQUESTED" && professionalReview !== "REJECTED" &&
-            pilotVehicle==="CAR" && (
+            vehicleType==="CAR" && (
             <p className="text-xs text-amber-100/80">
               Para concluir a habilitação de carro, abra Configurações do motorista e confirme os dados profissionais.
             </p>
@@ -581,7 +543,7 @@ export function ProfessionalAvailabilityPage() {
       </Button>
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
-        startGps(municipality,pilotVehicle,userId);
+        startGps(municipality,userId);
       }} className="min-h-11 w-full rounded-xl border border-white/20 bg-white/5 px-3 text-xs font-semibold text-white hover:bg-white/10">
         Tentar compartilhar GPS novamente
       </button>}
@@ -667,29 +629,17 @@ export function ProfessionalAvailabilityPage() {
         Parar compartilhamento de GPS
       </button>}
     </div>
-    {pilotEnabled&&!authorized&&<section className="space-y-2 rounded-xl border border-primary/30 p-3 text-sm">
-      <strong>Piloto F07 — apenas homologação</strong>
-      <p>Autorização temporária somente no ambiente de testes.</p>
-      <label className="block">Veículo
-        <select className="mt-1 w-full rounded-lg border bg-background p-3"
-          value={pilotVehicle} onChange={e=>setPilotVehicle(e.target.value as Vehicle)}>
-          <option value="MOTO">Moto</option><option value="CAR">Carro</option>
-        </select>
-      </label>
-    </section>}
-    {pilotExpiry&&<p className="text-xs">Piloto autorizado até {new Date(pilotExpiry).toLocaleString("pt-BR")}</p>}
     <details className="rounded-xl border p-3 text-sm"><summary className="cursor-pointer font-semibold">Município inicial e configurações</summary>
       <p className="my-2 text-xs text-muted-foreground">A cidade selecionada não limita sua atuação: o GPS verificado define onde você pode receber pedidos.</p>
       <MunicipalitySelect value={municipality} onChange={setMunicipality} disabled={enabled||busy}/>
     </details>
 
     <section aria-label="Status da localização" className="hidden space-y-2 rounded-xl border p-4 text-sm sm:block">
-      <p className="font-bold">{!ready?"Carregando...":fresh?"Online e transmitindo GPS":fix?.simulated?"SIMULAÇÃO — somente na sua conta":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
+      <p className="font-bold">{!ready?"Carregando...":fresh?"Online e transmitindo GPS":enabled?"Disponível · aguardando sinal GPS":"Offline"}</p>
       <p>Município: <strong>{municipality||"Aguardando verificação"}</strong></p>
-      <p>Coordenadas: <strong>{fix?`${fix.lat.toFixed(5)}, ${fix.lng.toFixed(5)}`:"Não enviadas"}</strong>
-        {fix?.simulated?" (centro simulado do município)":""}</p>
+      <p>Coordenadas: <strong>{fix?`${fix.lat.toFixed(5)}, ${fix.lng.toFixed(5)}`:"Não enviadas"}</strong></p>
       <p>Último sinal: <strong>{fix?fix.at.toLocaleTimeString("pt-BR"):"Aguardando"}</strong></p>
-      {enabled&&!fresh&&!fix?.simulated&&<p className="text-muted-foreground">
+      {enabled&&!fresh&&<p className="text-muted-foreground">
         Sem GPS confirmado recente, o veículo não aparece no radar público.
       </p>}
       {error&&<p role="alert" className="text-destructive">{error}</p>}

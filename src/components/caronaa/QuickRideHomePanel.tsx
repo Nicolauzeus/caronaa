@@ -508,7 +508,7 @@ export function QuickRideHomePanel({
   }
   const inactiveText=coverage?.status==="OUTSIDE"?"Ainda não atendemos embarques nesse município.":
     coverage?.status==="WAITLIST"?(coverage?.radar===true
-      ?"Radar de motoristas em homologação nesta zona. Corridas pagas aguardam tarifa e autorização operacional."
+      ?"O radar está disponível nesta zona, mas esta modalidade ainda não está habilitada para solicitar corridas."
       :"Este município está no nosso plano de expansão, mas a Corrida Rápida ainda não foi habilitada."):
     coverage?.status==="UNKNOWN"?"Não foi possível identificar o município do embarque.":"Informe um ponto de saída verificado para consultar a cobertura.";
   const canOpenOrigin=!waitingForOrigin&&!hasOrigin&&Boolean(onConfirmPickup);
@@ -617,7 +617,7 @@ export function QuickRideHomePanel({
             <p className="break-words text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
             <p className="flex items-center gap-1 text-xs text-gray-200"><Clock3 size={13}/>{currentQuote.distanceKm.toFixed(1)} km • aprox. {Math.round(currentQuote.durationMinutes)} min</p>
             <p className="text-xs text-gray-300">Comissão de {currentQuote.commissionBps/100}% ({currentQuote.commissionSource==="OFFICIAL_ACTIVITY"?"atividade oficial":"política regional"}). O motorista recebe {formatBrl(currentQuote.driverReceivesCents/100)}.</p>
-            <p className="text-[11px] text-gray-300">Fase piloto: sem débito automático. O pagamento e o repasse precisam ser homologados antes da operação comercial.</p>
+            <p className="text-[11px] text-gray-300">Pagamento direto ao motorista após a conclusão. Sem débito automático.</p>
           </>}
           {shellMode&&<p className="text-xs text-white/70">Pix ou dinheiro direto ao motorista · {currentQuote.distanceKm.toFixed(1)} km · aprox. {Math.round(currentQuote.durationMinutes)} min de viagem</p>}
           {!shellMode&&requestControls}

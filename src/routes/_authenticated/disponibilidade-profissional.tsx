@@ -8,6 +8,8 @@ export const Route = createFileRoute("/_authenticated/disponibilidade-profission
     {title:"Disponibilidade profissional | CARONAA"},
     {name:"description",content:"Fique disponível e compartilhe GPS no mesmo toque, com consentimento e status de radar em tempo real."},
     {property:"og:title",content:"Disponibilidade profissional | CARONAA"},
+    {property:"og:description",content:"Acompanhe seus chamados e compartilhe GPS real com consentimento na operação CARONAA."},
     {property:"og:type",content:"website"},
+    {name:"twitter:card",content:"summary_large_image"},
   ]}),
 });

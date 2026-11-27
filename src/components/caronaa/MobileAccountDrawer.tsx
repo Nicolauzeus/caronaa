@@ -48,10 +48,10 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
   }, [user?.id, open]);
 
   const close = () => setOpen(false);
-  const name = String(user?.user_metadata.full_name ||
-    user?.user_metadata.name || user?.email?.split("@")[0] || "Minha conta");
+  const name = String(user?.user_metadata?.["full_name"] ||
+    user?.user_metadata?.["name"] || user?.email?.split("@")[0] || "Minha conta");
   const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "C";
-  const avatar = user?.user_metadata.avatar_url || user?.user_metadata.picture;
+  const avatar = user?.user_metadata?.["avatar_url"] || user?.user_metadata?.["picture"];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
