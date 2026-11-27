@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const read = (p) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
+const manifest = read("android/app/src/main/AndroidManifest.xml");
+const variables = read("android/variables.gradle");
+const gradle = read("android/app/build.gradle");
+const config = read("capacitor.config.ts");
+const pkg = JSON.parse(read("package.json"));
+for (const permission of ["INTERNET","ACCESS_FINE_LOCATION","ACCESS_COARSE_LOCATION","ACCESS_BACKGROUND_LOCATION","POST_NOTIFICATIONS","FOREGROUND_SERVICE","FOREGROUND_SERVICE_LOCATION","WAKE_LOCK","REQUEST_IGNORE_BATTERY_OPTIMIZATIONS","VIBRATE"]) {
+  assert.equal(manifest.split('android:name="android.permission.' + permission + '"').length - 1, 1, permission);
+}
+assert.match(manifest, /android:usesCleartextTraffic="false"/);
+assert.match(manifest, /android:allowBackup="false"/);
+assert.match(read("android/app/src/main/res/xml/network_security_config.xml"), /cleartextTrafficPermitted="false"/);
+assert.match(variables, /minSdkVersion\s*=\s*24\b/);
+assert.match(variables, /compileSdkVersion\s*=\s*34\b/);
+assert.match(variables, /targetSdkVersion\s*=\s*34\b/);
+assert.match(gradle, /applicationId "com\.caronaa\.app"/);
+assert.match(gradle, /minSdkVersion rootProject\.ext\.minSdkVersion/);
+assert.match(gradle, /targetSdkVersion rootProject\.ext\.targetSdkVersion/);
+assert.match(config, /appId: "com\.caronaa\.app"/);
+assert.match(config, /url: "https:\/\/caronaa\.com"/);
+assert.match(config, /cleartext: false/);
+assert.match(config, /allowMixedContent: false/);
+assert.doesNotMatch(config, /allowNavigation\s*:/);
+assert.match(config, /webDir: "native-shell"/);
+assert.match(read("native-shell/index.html"), /Sem conexão/);
+for (const name of ["@capacitor/core", "@capacitor/android"]) assert.equal(pkg.dependencies[name], "6.2.1");
+assert.equal(pkg.devDependencies["@capacitor/cli"], "6.2.1");
+assert.equal(pkg.scripts.build, "vite build");
+assert.equal(pkg.scripts.test, "vitest run");
+assert.equal(pkg.scripts.dev, "vite dev");
+console.log("Android phase 1 static checks passed.");
