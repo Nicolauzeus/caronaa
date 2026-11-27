@@ -10,7 +10,8 @@ vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
 vi.mock("@/lib/offer-pricing.functions",()=>({quoteOfferRoute:api.quote}));
 vi.mock("@/lib/map-routing.functions",()=>({getMapDrivingRoute:vi.fn()}));
 vi.mock("@/lib/pricing/unified-fare-engine",()=>({quoteUnifiedFare:vi.fn()}));
-vi.mock("@/lib/location.functions",()=>({reverseGeocodeServerFn:api.reverse}));
+// Both address providers are isolated; these tests assert pickup behavior, not provider selection.
+vi.mock("@/lib/location.functions",()=>({reverseGeocodeServerFn:api.reverse,reversePassengerPickupServerFn:api.reverse}));
 vi.mock("@/lib/location/use-user-location",async original=>({
   ...await original<typeof import("@/lib/location/use-user-location")>(),
   useUserLocation:()=>api.location,
@@ -121,9 +122,9 @@ describe("Home — origem da carona tradicional",()=>{
 
   it("requires confirmation of a real approximate F03 origin while retaining strict F07 map GPS",async()=>{
     setFix(150);render(<Home/>);
-    expect(lastMap().passengerPreview).toBe(false);
-    expect(lastMap().following).toBe(false);
-    expect(lastMap().origin).toBeUndefined();
+    expect(lastMap().passengerPreview).toBe(true);
+    expect(lastMap().following).toBe(true);
+    expect(lastMap().origin).toEqual(expect.objectContaining({lat:-3.73,lng:-38.53}));
     plan();fireEvent.click(screen.getByRole("button",{name:"Selecionar UNIFOR"}));schedule();
     await waitFor(()=>expect(screen.getByText(/Valor sugerido por vaga/)).toHaveTextContent("6,00"));
     expect(lastMap().passengerPreview).toBe(true);

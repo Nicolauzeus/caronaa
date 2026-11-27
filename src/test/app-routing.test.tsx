@@ -5,16 +5,21 @@ import { describe, expect, it } from "vitest";
 import { routeTree } from "@/routeTree.gen";
 
 describe("CARONAA navigation", () => {
-  it("keeps direct survey links public and removes registration redirect from the directory", () => {
+  it("keeps the formulario layout outlet-only and scopes its legacy redirect to the index", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     const matches = router.matchRoutes("/formulario/unilab-2026-nov");
     expect(matches.at(-1)?.routeId).toBe("/formulario/$code");
-    for (const match of matches) {
-      expect(match.routeId).not.toBe("/_authenticated");
-      expect(router.routesById[match.routeId].options.beforeLoad).toBeUndefined();
-    }
-    expect(router.routesById["/formulario/"].options.beforeLoad).toBeUndefined();
-    expect(router.routesById["/formulario/"].options.component).toBeTypeOf("function");
+    expect(matches.map((match) => match.routeId)).not.toContain("/_authenticated");
+    expect(router.routesById["/formulario"].options.beforeLoad).toBeUndefined();
+    expect(router.routesById["/formulario"].options.component).toBeTypeOf("function");
+    expect(router.routesById["/formulario/"].options.beforeLoad).toBeTypeOf("function");
+    expect(router.routesById["/formulario/$code"].options.beforeLoad).toBeUndefined();
+    const directory = router.matchRoutes("/pesquisas");
+    expect(directory.at(-1)?.routeId).toBe("/pesquisas/");
+    expect(directory.map((match) => match.routeId)).not.toContain("/_authenticated");
+    const alternateSurvey = router.matchRoutes("/pesquisas/unilab-2026-nov");
+    expect(alternateSurvey.at(-1)?.routeId).toBe("/pesquisas/$code");
+    expect(alternateSurvey.map((match) => match.routeId)).not.toContain("/_authenticated");
     expect(router.routesById["/_authenticated"].options.beforeLoad).toBeTypeOf("function");
   });
   it.each([

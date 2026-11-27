@@ -17,6 +17,10 @@ const api = vi.hoisted(() => ({
   selfRadar: vi.fn(),
   offerPanel: vi.fn(),
   preview: null as any,
+  activeRole: "PASSAGEIRO" as "PASSAGEIRO"|"MOTORISTA",
+  roadRoute: vi.fn(),
+  unifiedFare: vi.fn(),
+  roleRefresh: vi.fn(),
 }));
 // Isolated component tests must not initialize authenticated Supabase server middleware.
 vi.mock("@/integrations/supabase/client", () => ({
@@ -53,6 +57,8 @@ vi.mock("@/lib/home.functions", () => ({
 }));
 vi.mock("@/lib/ride-matching.functions", () => ({ createRideRequest: api.request }));
 vi.mock("@/lib/ride-pricing.functions", () => ({ previewRequestFare: api.quote }));
+vi.mock("@/lib/map-routing.functions", () => ({ getMapDrivingRoute: api.roadRoute }));
+vi.mock("@/lib/pricing/unified-fare-engine", () => ({ quoteUnifiedFare: api.unifiedFare }));
 // This is a component test: isolate reverse-geocoding responses per test.
 // The real session-wide request cache is exercised by its own tests.
 vi.mock("@/lib/session-request-cache", () => ({
@@ -84,7 +90,8 @@ vi.mock("@/lib/quick-rides/f07-radar-diagnostic.functions", () => ({
 vi.mock("@/components/caronaa/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 }));
-vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: api.reverse }));
+// These component tests isolate both resolvers with the same controlled address fixture.
+vi.mock("@/lib/location.functions", () => ({ reverseGeocodeServerFn: api.reverse, reversePassengerPickupServerFn: api.reverse }));
 vi.mock("@/lib/formulario/ride-activation.functions", () => ({
   getStsRideDraft: api.seed,
   publishStsRide: vi.fn(),
@@ -96,6 +103,26 @@ vi.mock("@/lib/formulario/account-activation", () => ({
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: { id: "user", user_metadata: {} } }),
 }));
+// Home's role resolution is exercised by dedicated role hook tests. Keep this
+// page suite deterministic and focused on its map and journey interactions.
+vi.mock("@/lib/role/use-active-role", () => ({
+  useActiveRole: () => ({
+    activeRole: api.activeRole,
+    isDriverEligible: false,
+    vehicleStatus: { isComplete: false },
+    vehicleType: "car",
+    vehicleSeats: 1,
+    loading: false,
+    busy: false,
+    roleLoadFailed: false,
+    error: null,
+    refresh: api.roleRefresh,
+    switchRole: vi.fn(),
+    saveVehicle: vi.fn(),
+  }),
+  getVehicleStatus: () => ({ isComplete: false }),
+}));
+vi.mock("@/lib/use-profile-gender", () => ({ useProfileGender: () => null }));
 vi.mock("@/components/caronaa/HomeOfferPanel", () => ({
   HomeOfferPanel: (props: any) => {
     api.offerPanel(props);
@@ -111,7 +138,10 @@ vi.mock("@/components/caronaa/QuickRideHomePanel", () => ({
 vi.mock("@/components/caronaa/HomeRideMap", () => ({
   HomeRideMap: (props: any) => {
     api.map(props);
-    return <div aria-label="Mapa do seu trajeto">{props.userPosition?.lat}</div>;
+    return <div aria-label="Mapa do seu trajeto">
+      <span data-testid="gps-marker">{props.userPosition?.lat}</span>
+      {props.selectingOrigin&&<button type="button" onClick={()=>props.onPickOrigin({lat:-3.755,lng:-38.531})}>Selecionar ponto no mapa</button>}
+    </div>;
   },
 }));
 vi.mock("@/components/formulario/LocationAutocomplete", () => ({
@@ -124,11 +154,13 @@ vi.mock("@/components/formulario/LocationAutocomplete", () => ({
     id: string;
     label: string;
     value: string;
-    onChange: (value: string) => void;
+    onChange: (value: string, details?: any) => void;
   }) => (
     <label>
       {label}
-      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
+      <input id={id} value={value} onChange={(e) => onChange(e.target.value,{
+        rawText:e.target.value,formattedAddress:e.target.value+", Fortaleza",lat:-3.75,lng:-38.50,city:"Fortaleza",
+      })} />
     </label>
   ),
 }));
@@ -146,9 +178,11 @@ describe("Home mobile", () => {
   const position = (lat = -3.73, accuracy = 10) =>
     ({ coords: { latitude: lat, longitude: -38.52, accuracy } }) as GeolocationPosition;
   beforeEach(() => {
+    api.activeRole="PASSAGEIRO";
     vi.spyOn(Route, "useSearch").mockReturnValue({intent:undefined});
     clearRideIntentDraft();
     vi.clearAllMocks();
+    api.roleRefresh.mockResolvedValue(undefined);
     api.load.mockResolvedValue([]);
     api.selfRadar.mockResolvedValue([]);
     api.preview = null;
@@ -159,6 +193,10 @@ describe("Home mobile", () => {
       pricePerPassenger: 6,
       tariffReference: "caronaa-km-6-per-11-v1",
     });
+    api.roadRoute.mockResolvedValue({distanceKm:11,durationMinutes:18,
+      routePath:[{lat:-3.73,lng:-38.52},{lat:-3.75,lng:-38.50}],legs:[]});
+    api.unifiedFare.mockResolvedValue({mode:"EXCLUSIVE",vehicleType:"CAR",distanceKm:11,
+      totalFare:6,totalFareCents:600,perSeatFare:6,seats:1,configSource:"FALLBACK"});
     api.seed.mockResolvedValue(null);
     api.account.mockResolvedValue({ status: "none" });
     api.reverse.mockResolvedValue({
@@ -188,267 +226,179 @@ describe("Home mobile", () => {
       },
     });
   });
-  it("prioriza a ação sem dashboard e não espera o carregamento secundário", () => {
+  it("monta o planner atual sem esperar dados secundários", () => {
     api.load.mockReturnValue(new Promise(() => {}));
     render(<Home />);
-    expect(screen.getByRole("heading", { name: /Encontre sua carona/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pesquisar destino no painel de carona" })).toBeInTheDocument();
-    expect(screen.queryByText("Para onde vamos?")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Vou dirigindo" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Caronas disponíveis")).toBeNull();
-  });
-  it("alterna pedir/oferecer no mesmo mapa e mantém a origem/destino sem navegação", () => {
-    render(<Home />);
-    expect(screen.getByRole("button", { name: "Oferecer carona" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Casa no Maracanaú" } });
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus Redenção" } });
-    fireEvent.click(screen.getByRole("button", { name: "Oferecer carona" }));
-    expect(screen.getByRole("heading", { name: "Ofereça sua carona" })).toBeInTheDocument();
-    expect(screen.getByTestId("home-offer-flow")).toHaveTextContent("Casa no Maracanaú");
-    expect(screen.getByTestId("home-offer-flow")).toHaveTextContent("Campus Redenção");
-    expect(screen.getByLabelText("Saída")).toHaveValue("Casa no Maracanaú");
-    expect(screen.getByLabelText("Destino")).toHaveValue("Campus Redenção");
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"Para onde vamos?"})).toBeInTheDocument();
     expect(screen.getByLabelText("Mapa do seu trajeto")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /Carona Compartilhada/ })).not.toBeInTheDocument();
-    expect(api.navigate).toHaveBeenCalledWith({
-      to: "/home", search: {intent:"offer"}, replace:true,
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Pedir carona" }));
-    expect(screen.getByRole("heading", { name: "Encontre sua carona" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeInTheDocument();
-    expect(screen.getByLabelText("Saída")).toHaveValue("Casa no Maracanaú");
+    expect(screen.getByRole("button",{name:"Ajustar no mapa a origem"})).toBeInTheDocument();
+  });
+
+  it("mostra os modos atuais do passageiro e alterna Agora e Agendar sem trocar de rota",()=>{
+    render(<Home/>);
+    expect(screen.getByRole("navigation",{name:"Tipo de serviço"})).toBeInTheDocument();
+    const now=screen.getByRole("button",{name:"Agora"});
+    const scheduled=screen.getByRole("button",{name:"Agendar"});
+    expect(now).toHaveAttribute("aria-pressed","true");
+    fireEvent.click(scheduled);
+    expect(scheduled).toHaveAttribute("aria-pressed","true");
+    expect(api.navigate).not.toHaveBeenCalled();
+    fireEvent.click(now);
+    expect(now).toHaveAttribute("aria-pressed","true");
+  });
+
+  it("deixa o rascunho de oferta para a rota de oferta, sem consumi-lo na Home passageiro",()=>{
+    const draft={origin:"Centro, Fortaleza",destination:"UNILAB, Redenção",
+      originLocation:{rawText:"Centro",lat:-3.73,lng:-38.52},
+      destinationLocation:{rawText:"UNILAB",lat:-4.23,lng:-38.73},
+      passengerMode:"MOTO" as const,offerVehicle:"MOTO" as const,date:"2026-11-10",time:"15:30"};
+    saveRideIntentDraft(draft);
+    render(<Home/>);
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
+    expect(consumeRideIntentDraft()).toEqual(expect.objectContaining({origin:draft.origin,destination:draft.destination}));
     expect(api.request).not.toHaveBeenCalled();
   });
-  it("recupera o trajeto do motorista ao voltar para pedir carona sem reaproveitar cotação", async () => {
-    saveRideIntentDraft({
-      origin: "Centro, Fortaleza",
-      destination: "UNILAB, Redenção",
-      originLocation: { rawText:"Centro, Fortaleza",lat:-3.73,lng:-38.52 },
-      destinationLocation: { rawText:"UNILAB, Redenção",lat:-4.23,lng:-38.73 },
-      passengerMode: "MOTO",
-      offerVehicle: "MOTO",
-      date: "2026-11-10",
-      time: "15:30",
-    });
-    render(<Home />);
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Centro, Fortaleza"));
-    expect(screen.getByLabelText("Destino")).toHaveValue("UNILAB, Redenção");
-    expect(screen.getByRole("radio",{name:/Carona Moto/})).toBeChecked();
-    expect(screen.getByLabelText("Data da viagem")).toHaveValue("2026-11-10");
-    expect(api.request).not.toHaveBeenCalled();
-    expect(consumeRideIntentDraft()).toBeNull();
+
+  it("expande e recolhe o painel interativo sem cobrir o mapa",()=>{
+    render(<Home/>);
+    const sheet=screen.getByRole("region",{name:"Planejar viagem CARONAA"});
+    expect(sheet).toHaveAttribute("data-snap","peek");
+    const handle=screen.getByRole("button",{name:/Alça do painel/});
+    fireEvent.keyDown(handle,{key:"ArrowUp"});
+    expect(sheet).toHaveAttribute("data-snap","half");
+    expect(screen.getByLabelText("Para onde vamos?")).toBeInTheDocument();
+    fireEvent.keyDown(handle,{key:"ArrowDown"});
+    expect(sheet).toHaveAttribute("data-snap","peek");
+    expect(screen.getByLabelText("Mapa do seu trajeto")).toBeInTheDocument();
   });
-  it("expande e recolhe o painel sem controles de motorista", () => {
-    render(<Home />);
-    expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    expect(screen.getByText("Seus caminhos salvos").closest("details")).not.toHaveAttribute("open");
-    expect(screen.getByRole("radio", { name: /Carona Compartilhada/ })).toBeChecked();
-    expect(screen.getByRole("radio", { name: /Carona Moto/ })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Corrida Rápida/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Recolher detalhes" }));
-    expect(screen.queryByLabelText("Destino")).not.toBeInTheDocument();
+
+  it("seleciona destino e pede cotação de rota pela integração rodoviária",async()=>{
+    render(<Home/>);
+    act(()=>fix(position(-3.73,15)));
+    fireEvent.click(screen.getByRole("button",{name:"Para onde vamos?"}));
+    fireEvent.change(screen.getByLabelText("Para onde vamos?"),{target:{value:"Campus Fortaleza"}});
+    await waitFor(()=>expect(api.roadRoute).toHaveBeenCalled());
+    expect(api.roadRoute).toHaveBeenCalledWith(expect.objectContaining({data:{points:expect.any(Array)}}));
+    expect(api.map.mock.lastCall?.[0].destination).toEqual(expect.objectContaining({lat:-3.75,lng:-38.5}));
   });
-  it("publica a solicitação com os campos informados", async () => {
-    const { container } = render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Aldeota" } });
-    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
-    fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
-    await waitFor(() => expect(api.quote).toHaveBeenCalled());
-    await screen.findByText(/R\$ 6,00 por pessoa/);
-    fireEvent.submit(container.querySelector("form")!);
-    expect(api.request).not.toHaveBeenCalled();
-    expect(screen.getByText("Revise antes de enviar")).toBeInTheDocument();
-    fireEvent.submit(container.querySelector("form")!);
-    await waitFor(() => expect(api.request).toHaveBeenCalledOnce());
-    expect(api.request).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        quoteId: "route-quote",
-        rideDate: "2026-10-15",
-        departureTime: "20:00",
-      }),
-    });
-  });
-  it("não usa um fix de 1029m como origem real nem faz reverse geocode impreciso", async () => {
-    render(<Home />);
-    act(() => fix(position(-3.73, 1029)));
-    expect(await screen.findByText(/GPS impreciso/i)).toBeInTheDocument();
+
+  it("não transforma GPS aproximado em embarque preciso nem geocodifica fix grosseiro",async()=>{
+    render(<Home/>);
+    act(()=>fix(position(-3.73,1029)));
+    await waitFor(()=>expect(api.map.mock.lastCall?.[0].userPosition).toEqual(expect.objectContaining({lat:-3.73,accuracy:1029})));
     expect(api.reverse).not.toHaveBeenCalled();
     expect(api.map.mock.lastCall?.[0].origin).toBeUndefined();
-    expect(screen.getAllByRole("button", { name: "Pesquisar destino no painel de carona" })).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Corrigir saída" }));
-    expect(screen.getByLabelText("Saída")).toHaveValue("");
-    expect(screen.getByText(/O GPS está com precisão de aproximadamente 1029 metros/)).toBeInTheDocument();
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
   });
 
-  it("aceita nova leitura confiável depois de um fix inicial grosseiro", async () => {
-    render(<Home />);
-    act(() => fix(position(-3.73, 1029)));
+  it("recupera localização após fix grosseiro com uma leitura GPS confiável",async()=>{
+    render(<Home/>);
+    act(()=>fix(position(-3.73,1029)));
     expect(api.reverse).not.toHaveBeenCalled();
-    act(() => move(position(-3.731, 25)));
-    await waitFor(() => expect(api.reverse).toHaveBeenCalledWith({
-      data: { lat: -3.731, lng: -38.52 },
-    }));
-    expect(api.map.mock.lastCall?.[0].origin).toEqual(
-      expect.objectContaining({ lat: -3.731, lng: -38.52 }),
-    );
+    act(()=>move(position(-3.731,25)));
+    await waitFor(()=>expect(api.reverse).toHaveBeenCalledWith({data:{lat:-3.731,lng:-38.52}}));
+    expect(api.map.mock.lastCall?.[0].origin).toEqual(expect.objectContaining({lat:-3.731,lng:-38.52}));
   });
 
-  it("permite tocar no Google Maps para escolher uma saída sem usar centro aproximado", async () => {
-    render(<Home />);
-    act(() => fix(position(-3.73, 1029)));
-    fireEvent.click(screen.getByRole("button", { name: "Corrigir saída" }));
-    fireEvent.click(screen.getByRole("button", { name: /Escolher saída tocando no mapa/ }));
-    expect(screen.getByText(/toque no local correto do mapa/i)).toBeInTheDocument();
-    const onPickOrigin = api.map.mock.lastCall?.[0].onPickOrigin as (point: {lat:number;lng:number}) => void;
-    act(() => onPickOrigin({ lat: -3.755, lng: -38.531 }));
-    await waitFor(() => expect(api.map.mock.lastCall?.[0]).toEqual(
-      expect.objectContaining({
-        origin: expect.objectContaining({ lat: -3.755, lng: -38.531 }),
-        originIsCurrent: false,
-      }),
-    ));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
-    expect(api.map.mock.lastCall?.[0].origin).toEqual(
-      expect.objectContaining({ lat: -3.755, lng: -38.531 }),
-    );
+  it("permite selecionar manualmente o embarque tocando no mapa",async()=>{
+    render(<Home/>);
+    fireEvent.click(screen.getByRole("button",{name:"Ajustar no mapa a origem"}));
+    fireEvent.click(screen.getByRole("button",{name:"Escolher no mapa"}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar ponto no mapa"}));
+    await waitFor(()=>expect(api.map.mock.lastCall?.[0].origin).toEqual(expect.objectContaining({lat:-3.755,lng:-38.531})));
+    expect(api.map.mock.lastCall?.[0].originIsCurrent).toBe(false);
   });
 
-  it("preenche saída automaticamente com endereço e coordenadas reais", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({ matches: true }),
-    });
-    render(<Home />);
-    act(() => fix(position()));
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
-    expect(
-      screen.getByRole("button", { name: "Usar minha localização atual" }),
-    ).toBeInTheDocument();
-    expect(api.reverse).toHaveBeenCalledWith({ data: { lat: -3.73, lng: -38.52 } });
+  it("mantém o ponto manual escolhido apesar de novas posições do GPS",async()=>{
+    render(<Home/>);
+    fireEvent.click(screen.getByRole("button",{name:"Ajustar no mapa a origem"}));
+    fireEvent.click(screen.getByRole("button",{name:"Escolher no mapa"}));
+    fireEvent.click(screen.getByRole("button",{name:"Selecionar ponto no mapa"}));
+    await waitFor(()=>expect(api.map.mock.lastCall?.[0].origin).toEqual(expect.objectContaining({lat:-3.755,lng:-38.531})));
+    act(()=>fix(position(-3.73,10)));
+    act(()=>move(position(-3.74,8)));
+    expect(api.map.mock.lastCall?.[0].origin).toEqual(expect.objectContaining({lat:-3.755,lng:-38.531}));
+    expect(api.map.mock.lastCall?.[0].userPosition).toEqual(expect.objectContaining({lat:-3.74}));
   });
-  it("GPS negado permite informar saída sem reload", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({ matches: true }),
-    });
-    render(<Home />);
-    act(() => gpsFailure({ code: 1 } as GeolocationPositionError));
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "CEC" } });
-    expect(screen.getByLabelText("Saída")).toHaveValue("CEC");
-    expect(
-      screen.getByRole("button", { name: "Usar minha localização atual" }),
-    ).toBeInTheDocument();
+
+  it("mantém escolha manual disponível após permissão GPS negada",()=>{
+    render(<Home/>);
+    act(()=>gpsFailure({code:1} as GeolocationPositionError));
+    fireEvent.click(screen.getByRole("button",{name:"Ajustar no mapa a origem"}));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button",{name:"Escolher no mapa"})).toBeEnabled();
+    expect(screen.getByRole("button",{name:"Usar localização atual"})).toBeEnabled();
   });
-  it("movimento atualiza marcador sem sobrescrever saída manual", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({ matches: true }),
-    });
-    render(<Home />);
-    act(() => fix(position()));
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
-    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Centro de Eventos" } });
-    act(() => move(position(-3.74)));
-    expect(screen.getByLabelText("Saída")).toHaveValue("Centro de Eventos");
-    expect(screen.getByLabelText("Mapa do seu trajeto")).toHaveTextContent("-3.74");
-    expect(api.reverse).toHaveBeenCalledOnce();
-  });
-  it("falha no reverse mantém coordenadas utilizáveis na publicação", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({ matches: true }),
-    });
-    api.reverse.mockResolvedValue(null);
-    const { container } = render(<Home />);
-    act(() => fix(position()));
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    await screen.findByText(/Não conseguimos identificar o endereço/);
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "CEC" } });
-    fireEvent.change(screen.getByLabelText("Data da viagem"), { target: { value: "2026-10-15" } });
-    fireEvent.change(screen.getByLabelText("Horário de saída"), { target: { value: "20:00" } });
-    await screen.findByText(/R\$ 6,00 por pessoa/);
-    fireEvent.submit(container.querySelector("form")!);
-    expect(api.request).not.toHaveBeenCalled();
-    fireEvent.submit(container.querySelector("form")!);
-    await waitFor(() =>
-      expect(api.request).toHaveBeenCalledWith({
-        data: expect.objectContaining({ quoteId: "route-quote" }),
-      }),
-    );
-  });
-  it("permanece na mesma home ao escolher Corrida Rápida e preserva coordenadas", async () => {
-    api.quote.mockResolvedValue({
-      quoteId: "gps-quote",
-      pricePerPassenger: 6,
-      distanceKm: 11,
-      originPoint: { lat: -3.73, lng: -38.52 },
-      destinationPoint: { lat: -3.75, lng: -38.5 },
-    });
-    render(<Home />);
-    act(() => fix(position()));
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    await waitFor(() => expect(screen.getByLabelText("Saída")).toHaveValue("Rua A, Fortaleza"));
-    fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Campus" } });
-    await screen.findByText(/R\$ 6,00 por pessoa/);
-    fireEvent.click(screen.getByRole("radio", { name: /Corrida Rápida/ }));
-    expect(screen.getByTestId("quick-ride-home")).toHaveTextContent("Corrida Rápida integrada ao mapa");
+
+  it("retém destino e permite recuperação manual quando reverse geocoding falha",async()=>{
+    api.reverse.mockRejectedValue(new Error("network unavailable"));
+    render(<Home/>);
+    act(()=>fix(position(-3.73,15)));
+    fireEvent.click(screen.getByRole("button",{name:"Para onde vamos?"}));
+    fireEvent.change(screen.getByLabelText("Para onde vamos?"),{target:{value:"Aldeota"}});
+    await waitFor(()=>expect(api.roadRoute).toHaveBeenCalled());
+    expect(screen.getByLabelText("Para onde vamos?")).toHaveValue("Aldeota");
+    expect(api.map.mock.lastCall?.[0].destination).toEqual(expect.objectContaining({lat:-3.75,lng:-38.5}));
     expect(api.navigate).not.toHaveBeenCalled();
+  });
+
+  it("integra Flash Moto e Carro ao painel persistente com os pontos cotados",async()=>{
+    render(<Home/>);
+    act(()=>fix(position(-3.73,15)));
+    fireEvent.click(screen.getByRole("button",{name:"Para onde vamos?"}));
+    fireEvent.change(screen.getByLabelText("Para onde vamos?"),{target:{value:"Campus"}});
+    await waitFor(()=>expect(api.roadRoute).toHaveBeenCalled());
+    await waitFor(()=>expect(api.unifiedFare).toHaveBeenCalled());
+    expect(await screen.findByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
+    expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
+    expect(screen.getAllByText("Sem motorista agora · você pode aguardar")).toHaveLength(2);
     expect(api.quickPanel).toHaveBeenLastCalledWith(expect.objectContaining({
-      origin: "Rua A, Fortaleza",
-      destination: "Campus",
-      originPoint: expect.objectContaining({ lat: -3.73, lng: -38.52 }),
+      originPoint:expect.objectContaining({lat:-3.73,lng:-38.52}),
+      destinationPoint:expect.objectContaining({lat:-3.75,lng:-38.5}),
     }));
-    expect(api.map.mock.lastCall?.[0].professionalDrivers).toEqual([]);
+    expect(api.quickPanel.mock.lastCall?.[0].driverCounts).toEqual({CAR:0,MOTO:0});
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
+    expect(api.navigate).not.toHaveBeenCalled();
   });
-  it("does not overwrite a manually chosen origin when an initial GPS fix arrives late", async () => {
-    render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Expandir e planejar viagem" }));
-    fireEvent.change(screen.getByLabelText("Saída"), { target: { value: "Saída escolhida" } });
-    act(() => fix(position()));
-    expect(screen.getByLabelText("Saída")).toHaveValue("Saída escolhida");
-    expect(api.reverse).not.toHaveBeenCalled();
+
+  it("abre a Home do motorista e preserva o mapa ao alternar o papel ativo",()=>{
+    const view=render(<Home/>);
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
+    api.activeRole="MOTORISTA";
+    view.rerender(<Home/>);
+    expect(screen.getByRole("region",{name:"Painel do motorista CARONAA"})).toBeInTheDocument();
+    expect(screen.getByLabelText("Mapa do seu trajeto")).toBeInTheDocument();
   });
-  it("connects only a matched passenger ride to the suggested pickup and map", async () => {
-    api.preview = {
-      passenger: { lat: -3.73, lng: -38.52 },
-      route: [],
-      pickup: { point: { lat: -3.73, lng: -38.53 } },
-    };
-    api.load.mockResolvedValue([
-      {
-        id: "matched-ride",
-        kind: "ride",
-        role: "passenger",
-        status: "MATCHED",
-        origin: "Origem",
-        destination: "Destino",
-        ride_date: "2099-01-01",
-        departure_time: "09:00",
-      },
-    ]);
-    render(<Home />);
-    expect(await screen.findByTestId("authorized-pickup")).toHaveTextContent("matched-ride");
-    await waitFor(() =>
-      expect(api.map).toHaveBeenLastCalledWith(
-        expect.objectContaining({ pickupPreview: api.preview }),
-      ),
-    );
+
+  it("usa o planejador de carona agendada do motorista sem perder o mapa",()=>{
+    api.activeRole="MOTORISTA";
+    render(<Home/>);
+    fireEvent.click(screen.getByRole("button",{name:"Oferecer carona"}));
+    expect(screen.getByLabelText("Data e hora de saída")).toBeInTheDocument();
+    expect(screen.getByLabelText("Destino")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mapa do seu trajeto")).toBeInTheDocument();
   });
-  it("não inicia mais carregamento de publicação atribuída ao evento", () => {
-    render(<Home />);
+
+  it("recupera o painel e a Home após atualização do estado operacional",async()=>{
+    render(<Home/>);
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
+    api.roleRefresh.mockClear();
+    window.dispatchEvent(new Event("caronaa:app-refresh"));
+    await waitFor(()=>expect(api.roleRefresh).toHaveBeenCalled());
+    expect(screen.getByRole("region",{name:"Planejar viagem CARONAA"})).toBeInTheDocument();
+    expect(screen.getByLabelText("Mapa do seu trajeto")).toBeInTheDocument();
+  });
+
+  it("não inicia novamente o carregamento da publicação de pesquisa encerrada",()=>{
+    render(<Home/>);
     expect(api.seed).not.toHaveBeenCalled();
     expect(screen.queryByText(/trajeto STS/i)).not.toBeInTheDocument();
   });
-  it("não apresenta opções de saída vinculadas à inscrição do evento", () => {
-    render(<Home />);
+
+  it("não mostra opções de saída vinculadas à inscrição antiga do evento",()=>{
+    render(<Home/>);
     expect(screen.queryByText("Opções de saída")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /inscrição STS/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:/inscrição STS/i})).not.toBeInTheDocument();
   });
 });

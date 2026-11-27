@@ -1,0 +1,80 @@
+/* F09 Operations visual system. Scoped: passenger/driver app and printable PDF unchanged. */
+@media screen {
+ .operations-workspace {
+  --ops-accent:#FFBB00;
+  --ops-surface:#fff;
+  --ops-inset:#f5f5f5;
+  --ops-line:#e4e4e7;
+  --ops-muted:#60606b;
+  --ops-shadow:0 1px 2px rgb(18 18 18 / .04);
+  container:operations / inline-size;
+  font-family:Manrope,system-ui,sans-serif;
+  min-width:0;
+ }
+ .dark .operations-workspace,.dark .ops-dialog {
+  --ops-surface:#1a1a1a;
+  --ops-inset:#121212;
+  --ops-line:#333;
+  --ops-muted:#b1b1b1;
+  --ops-shadow:none;
+  color-scheme:dark;
+ }
+ .operations-workspace .ops-heading {display:flex;flex-direction:column;gap:.35rem;min-width:0}
+ .operations-workspace .ops-heading h1 {font-family:Sora,system-ui,sans-serif;font-size:clamp(1.35rem,2.5cqi,2rem);letter-spacing:-.04em;line-height:1.2}
+ .operations-workspace .ops-eyebrow {display:flex;align-items:center;gap:.35rem;font-size:.69rem;font-weight:800;letter-spacing:.065em;text-transform:uppercase;color:var(--ops-muted)}
+ .operations-workspace .ops-eyebrow svg {color:#9b7100}
+ .dark .operations-workspace .ops-eyebrow svg {color:var(--ops-accent)}
+ .operations-workspace .ops-panel,.operations-workspace :is(section,article)[class*="bg-card"] {border-color:var(--ops-line);background-color:var(--ops-surface);box-shadow:var(--ops-shadow)}
+ .operations-workspace .ops-panel {border-radius:1rem;border:1px solid var(--ops-line);min-width:0}
+ .operations-workspace .ops-subnav {padding:.3rem;border-radius:.9rem;border:1px solid var(--ops-line);background:var(--ops-surface);width:fit-content;max-width:100%}
+ .operations-workspace .ops-subnav button {min-height:44px;border-radius:.65rem}
+ .operations-workspace .ops-filterbar {align-items:center;min-width:0;border-radius:1rem;background:var(--ops-surface);border-color:var(--ops-line)}
+ .operations-workspace .ops-filterbar :is(select,input,button) {min-height:40px}
+ .operations-workspace .ops-metric {background:var(--ops-surface);border:1px solid var(--ops-line);border-radius:1rem;min-width:0;box-shadow:var(--ops-shadow);transition:border-color .15s ease}
+ .operations-workspace button.ops-metric:hover {border-color:var(--ops-accent)}
+ .operations-workspace .ops-metric-value {font-family:Sora,system-ui,sans-serif;letter-spacing:-.045em;font-variant-numeric:tabular-nums;font-size:clamp(1.4rem,2.8cqi,2rem);line-height:1.2;font-weight:800;overflow-wrap:anywhere}
+ .operations-workspace .ops-icon {display:inline-grid;place-items:center;width:2.25rem;height:2.25rem;border-radius:.7rem;background:var(--ops-inset);flex-shrink:0}
+ .operations-workspace .ops-cockpit-grid {display:grid;gap:.85rem;grid-template-columns:minmax(0,1fr);grid-template-areas:"map" "queue" "detail"}
+ .operations-workspace .ops-map {grid-area:map;min-width:0}
+ .operations-workspace .ops-queue {grid-area:queue;min-width:0}
+ .operations-workspace .ops-detail {grid-area:detail;min-width:0}
+ .operations-workspace .ops-queue-list {display:grid;gap:.5rem}
+ .operations-workspace .ops-map-height {height:clamp(280px,44vh,480px)}
+ .operations-workspace .ops-timeline-list,.ops-dialog .ops-timeline-list {position:relative;padding-left:1.25rem}
+ .ops-dialog .ops-timeline-list li {position:relative;border-left:1px solid var(--ops-line,#d4d4d8);padding-left:1.2rem}
+ .ops-dialog .ops-timeline-list li::before {content:"";position:absolute;left:-5px;top:1.1rem;width:9px;height:9px;border-radius:50%;background:#FFBB00;box-shadow:0 0 0 3px var(--ops-surface,#fff)}
+ .ops-dialog {--ops-surface:#fff;--ops-inset:#f5f5f5;--ops-line:#e4e4e7}
+ .ops-dialog .ops-dialog-inset {background:var(--ops-inset);border-color:var(--ops-line)}
+ .ops-dialog {font-family:Manrope,system-ui,sans-serif}
+ .ops-dialog [role="dialog"],.ops-dialog dd {overflow-wrap:anywhere}
+ .operations-workspace .ops-findings {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:.65rem}
+ .operations-workspace .ops-finding {border:1px solid var(--ops-line);border-radius:.85rem;background:var(--ops-inset);padding:.85rem;min-width:0}
+ .operations-workspace .ops-finding-icon {display:grid;place-items:center;width:2rem;height:2rem;background:var(--ops-surface);border:1px solid var(--ops-line);border-radius:.65rem;flex-shrink:0}
+ .operations-workspace .ops-filterbar input,.operations-workspace .ops-filterbar select {max-width:100%}
+ .operations-workspace :is(button,a,summary,input,select):focus-visible,.ops-dialog :is(button,a,summary,input,select):focus-visible {outline:2px solid #b18100;outline-offset:2px}
+ .dark .operations-workspace :is(button,a,summary,input,select):focus-visible,.dark .ops-dialog :is(button,a,summary,input,select):focus-visible {outline-color:#FFBB00}
+ .operations-workspace .ops-disclosure > summary {list-style:none;display:flex;align-items:center;justify-content:space-between;gap:.8rem;cursor:pointer;font-weight:700;padding:1rem;min-height:48px}
+ .operations-workspace .ops-disclosure > summary::-webkit-details-marker {display:none}
+ .operations-workspace .ops-disclosure > summary::after {content:"+";font-size:1.35rem;font-weight:400;color:var(--ops-muted)}
+ .operations-workspace .ops-disclosure[open] > summary::after {content:"−"}
+ .operations-workspace .ops-disclosure[open] > summary {border-bottom:1px solid var(--ops-line)}
+ /* Use available workspace width, not the viewport with its administrative sidebar. */
+ .operations-workspace .ops-summary-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+ @container operations (min-width:600px) {.operations-workspace .ops-summary-grid {grid-template-columns:repeat(3,minmax(0,1fr))}}
+ @container operations (min-width:1320px) {.operations-workspace .ops-summary-grid {grid-template-columns:repeat(6,minmax(0,1fr))}}
+ @container operations (max-width:879px) {
+  .operations-workspace .ops-history-desktop {display:none}
+  .operations-workspace .ops-history-mobile {display:grid}
+ }
+ @container operations (min-width:880px) {
+  .operations-workspace .ops-history-desktop {display:block}
+  .operations-workspace .ops-history-mobile {display:none}
+ }
+ @container operations (min-width:860px) {
+  .operations-workspace .ops-cockpit-grid {grid-template-columns:minmax(0,1.85fr) minmax(245px,1fr);grid-template-areas:"map queue" "map detail";align-items:start}
+ }
+ @container operations (min-width:1380px) {
+  .operations-workspace .ops-cockpit-grid {grid-template-columns:minmax(0,1.9fr) minmax(255px,.8fr) minmax(255px,.8fr);grid-template-areas:"map queue detail"}
+ }
+ @media(prefers-reduced-motion:reduce){.operations-workspace .ops-metric{transition:none}}
+}

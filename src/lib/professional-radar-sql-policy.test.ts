@@ -5,6 +5,7 @@ const sql = readFileSync("drizzle/migrations/0142_radar_corredor_localizacao_ver
 const page = readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx", "utf8");
 const sync = readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx", "utf8");
 const server = readFileSync("src/lib/professional-radar.functions.ts", "utf8");
+const homeMap = readFileSync("src/components/caronaa/GoogleHomeRideMap.tsx", "utf8");
 
 describe("F07 corridor radar migration safety contracts", () => {
   it("explicitly approves only the eight requested CE-060 core cities", () => {
@@ -86,12 +87,12 @@ describe("F07 corridor radar migration safety contracts", () => {
     expect(sql).toContain("l.user_id<>auth.uid()");
   });
 
-  it("labels a fake marker and ensures it never becomes a dispatchable public driver",()=>{
+  it("keeps simulation display explicit and outside professional dispatch",()=>{
     const home=readFileSync("src/routes/_authenticated/home.tsx","utf8");
-    const map=readFileSync("src/components/caronaa/GoogleHomeRideMap.tsx","utf8");
-    expect(home).toContain("getF07TestSelfRadar");
-    expect(map).toContain("MINHA SIMULAÇÃO DE HOMOLOGAÇÃO");
-    expect(map).toContain("SIMULAÇÃO F07");
+    expect(home).toContain("professionalDrivers={quickDrivers}");
+    expect(homeMap).toContain('driver.simulated?"MINHA SIMULAÇÃO DE HOMOLOGAÇÃO');
+    expect(homeMap).toContain("SIMULAÇÃO F07 · ponto fictício somente nesta conta · sem despacho");
+    expect(homeMap).not.toContain("getF07TestSelfRadar");
     const sql144=readFileSync("drizzle/migrations/0144_f07_radar_diagnostico_proprio.sql","utf8");
     expect(sql144).not.toMatch(/(?:INSERT INTO|UPDATE) public\.professional_driver_locations/);
   });

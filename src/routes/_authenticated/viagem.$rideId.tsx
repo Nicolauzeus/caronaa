@@ -11,6 +11,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PassengerCancellationReason } from "@/components/caronaa/PassengerCancellationReason";
+import { useAuth } from "@/lib/auth-context";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { RideSafetyPanel } from "@/components/caronaa/RideSafetyPanel";
@@ -35,6 +37,11 @@ export const Route = createFileRoute("/_authenticated/viagem/$rideId")({
 });
 
 function ViagemOperacional() {
+  const {user}=useAuth();
+  const accountId=user?.id??null;
+  const [cancelledAttempt,setCancelledAttempt]=useState<{id:string;account:string}|null>(null);
+  useEffect(()=>{setCancelledAttempt(null);},[accountId]);
+  const cancellationDialog=cancelledAttempt&&cancelledAttempt.account===accountId?<PassengerCancellationReason key={cancelledAttempt.id} service="shared" sharedAttempt requestId={cancelledAttempt.id} onClose={()=>setCancelledAttempt(null)}/>:null;
   const { rideId } = Route.useParams();
   const loadRides = useServerFn(getMyRides);
   const [ride, setRide] = useState<RideSummary | null>(null);
@@ -75,6 +82,7 @@ function ViagemOperacional() {
     setUpdating(status);
     try {
       const result = await transitionRideStatus(ride.rideId, status);
+      if(status==="CANCELLED"&&result==="CANCELLED"&&ride.role==="passenger"&&accountId)setCancelledAttempt({id:ride.rideId,account:accountId});
       if (status === "CONFIRMED") {
         toast.success(
           result === "CONFIRMED" ? "Viagem confirmada" : "Você aceitou — aguardando a outra pessoa",
@@ -98,12 +106,14 @@ function ViagemOperacional() {
   if (loading)
     return (
       <AppShell>
+        {cancellationDialog}
         <div className="p-8 text-center text-muted-foreground">Carregando viagem…</div>
       </AppShell>
     );
   if (error || !ride)
     return (
       <AppShell>
+        {cancellationDialog}
         <PageHeading
           eyebrow="VIAGEM"
           title="Viagem indisponível"
@@ -132,6 +142,7 @@ function ViagemOperacional() {
 
   return (
     <AppShell>
+        {cancellationDialog}
       <div className="mb-4">
         <Button variant="ghost" asChild>
           <Link to="/minhas-caronas">

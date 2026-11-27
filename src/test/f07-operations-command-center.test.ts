@@ -22,7 +22,7 @@ describe("F07 command center - real operations and guardrails", () => {
     expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.admin_f07_operations_snapshot() TO authenticated");
     expect(sql).not.toContain("'gps_lat'");
     expect(sql).not.toContain("'gps_lng'");
-    expect(center).toContain('rpc("admin_f07_operations_snapshot"');
+    expect(center).toMatch(/\.rpc\(\s*["']admin_f07_operations_snapshot["']/);
     expect(center).not.toMatch(/\.from\(["']professional_quick_rides["']\)\.update/);
   });
   it("differentiates available, GPS-stale, active-trip and blocked states", () => {

@@ -33,8 +33,12 @@ export async function fetchGoogleWithDeadline(
 /** Only allowlisted diagnostics. Never emit raw messages, URLs or coordinates. */
 export function googleTransportFailure(cause: unknown):
   "TIMEOUT" | "INVALID_FETCH_RECEIVER" | "DNS_ERROR" | "TLS_ERROR" | "NETWORK_ERROR" {
+  // DOMException may originate in a different realm (browser, Worker, jsdom).
+  // Recognize only the fixed timeout names; never expose the raw exception.
+  const name = cause !== null && typeof cause === "object" && "name" in cause
+    ? cause.name : undefined;
+  if (name === "TimeoutError" || name === "AbortError") return "TIMEOUT";
   if (!(cause instanceof Error)) return "NETWORK_ERROR";
-  if (cause.name === "TimeoutError" || cause.name === "AbortError") return "TIMEOUT";
   if (cause.name === "TypeError" && /illegal invocation|incorrect.*this|invalid.*receiver/i.test(cause.message))
     return "INVALID_FETCH_RECEIVER";
   const nested = (cause as Error & { cause?: { code?: unknown }; code?: unknown });

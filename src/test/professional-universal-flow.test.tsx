@@ -57,7 +57,7 @@ beforeEach(()=>{
 });
 afterEach(cleanup);
 async function fillContact(){
-  await screen.findByRole("heading",{name:"Contato e município"});
+  await screen.findByRole("heading",{name:"Dados do motorista"});
   fireEvent.change(screen.getByLabelText(/WhatsApp com DDD/),{target:{value:"85999999999"}});
   fireEvent.click(screen.getByRole("button",{name:"Escolher Fortaleza"}));
   fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
@@ -65,7 +65,7 @@ async function fillContact(){
 describe("Cadastro universal do motorista: quatro etapas",()=>{
   it("does not ask for another account and shows current step, next step and percentage",async()=>{
     render(<Page/>);
-    await screen.findByRole("heading",{name:"Contato e município"});
+    await screen.findByRole("heading",{name:"Dados do motorista"});
     expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
     expect(screen.getByText("25% concluído")).toBeInTheDocument();
     expect(screen.getByText(/Próxima: Dados do veículo/)).toBeInTheDocument();
@@ -81,12 +81,14 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     const field=await screen.findByLabelText(/WhatsApp com DDD/);
     await waitFor(()=>expect(field).toHaveValue("+5585999991234"));
   });
-  it("allows proceeding without WhatsApp when the professional municipality is chosen",async()=>{
+  it("allows proceeding without optional WhatsApp and municipality",async()=>{
     render(<Page/>);
-    await screen.findByRole("heading",{name:"Contato e município"});
-    fireEvent.click(screen.getByRole("button",{name:"Escolher Fortaleza"}));
+    await screen.findByRole("heading",{name:"Dados do motorista"});
+    expect(screen.getByLabelText(/WhatsApp com DDD/i)).not.toBeRequired();
+    expect(screen.getByText(/Esse campo não é obrigatório nem limita suas corridas/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
     expect(await screen.findByRole("heading",{name:"Dados do veículo"})).toBeInTheDocument();
+    expect(screen.queryByLabelText(/WhatsApp com DDD/i)).toBeNull();
     expect(api.rpc).not.toHaveBeenCalledWith("complete_professional_driver_registration",expect.anything());
   });
   it("reuses stored vehicle and moves from the review to the cockpit only after server authorization",async()=>{
@@ -115,7 +117,7 @@ describe("Cadastro universal do motorista: quatro etapas",()=>{
     await fillContact();
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
     await screen.findByRole("heading",{name:"Identificação"});
-    fireEvent.change(screen.getByLabelText(/Matrícula \/ registro do mototaxista/),{target:{value:"MTX100"}});
+    expect(screen.queryByLabelText(/Matrícula|registro do mototaxista/i)).toBeNull();
     fireEvent.click(screen.getByRole("button",{name:/Continuar/i}));
     await screen.findByRole("heading",{name:"Revisão final"});
     fireEvent.click(screen.getByRole("button",{name:/Concluir e ver corridas/i}));

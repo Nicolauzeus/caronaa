@@ -18,6 +18,7 @@ import { Route as CadastroMotoristaRouteImport } from './routes/cadastro-motoris
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as FormularioRouteImport } from './routes/formulario'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PesquisasRouteImport } from './routes/pesquisas'
 import { Route as PitchRouteImport } from './routes/pitch'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -54,6 +55,7 @@ import { Route as AdminTecnologiaRouteImport } from './routes/admin/tecnologia'
 import { Route as AdminValidacaoRouteImport } from './routes/admin/validacao'
 import { Route as FormularioIndexRouteImport } from './routes/formulario/index'
 import { Route as FormularioCodeRouteImport } from './routes/formulario/$code'
+import { Route as PesquisasIndexRouteImport } from './routes/pesquisas/index'
 import { Route as PesquisasCodeRouteImport } from './routes/pesquisas/$code'
 import { Route as AuthenticatedMinhaCaronaOfferIdRouteImport } from './routes/_authenticated/minha-carona.$offerId'
 import { Route as AuthenticatedViagemRideIdRouteImport } from './routes/_authenticated/viagem.$rideId'
@@ -115,6 +117,11 @@ const FormularioRoute = FormularioRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PesquisasRoute = PesquisasRouteImport.update({
+  id: '/pesquisas',
+  path: '/pesquisas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PitchRoute = PitchRouteImport.update({
@@ -303,10 +310,15 @@ const FormularioCodeRoute = FormularioCodeRouteImport.update({
   path: '/$code',
   getParentRoute: () => FormularioRoute,
 } as any)
+const PesquisasIndexRoute = PesquisasIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PesquisasRoute,
+} as any)
 const PesquisasCodeRoute = PesquisasCodeRouteImport.update({
-  id: '/pesquisas/$code',
-  path: '/pesquisas/$code',
-  getParentRoute: () => rootRouteImport,
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => PesquisasRoute,
 } as any)
 const AuthenticatedMinhaCaronaOfferIdRoute =
   AuthenticatedMinhaCaronaOfferIdRouteImport.update({
@@ -410,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/pesquisas': typeof PesquisasRouteWithChildren
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -447,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/formulario/': typeof FormularioIndexRoute
+  '/pesquisas/': typeof PesquisasIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -509,6 +523,7 @@ export interface FileRoutesByTo {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin': typeof AdminIndexRoute
   '/formulario': typeof FormularioIndexRoute
+  '/pesquisas': typeof PesquisasIndexRoute
   '/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -538,6 +553,7 @@ export interface FileRoutesById {
   '/como-funciona': typeof ComoFuncionaRoute
   '/formulario': typeof FormularioRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/pesquisas': typeof PesquisasRouteWithChildren
   '/pitch': typeof PitchRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -575,6 +591,7 @@ export interface FileRoutesById {
   '/pesquisas/$code': typeof PesquisasCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/formulario/': typeof FormularioIndexRoute
+  '/pesquisas/': typeof PesquisasIndexRoute
   '/_authenticated/minha-carona/$offerId': typeof AuthenticatedMinhaCaronaOfferIdRoute
   '/_authenticated/viagem/$rideId': typeof AuthenticatedViagemRideIdRoute
   '/admin/departamentos/$department': typeof AdminDepartamentosDepartmentRoute
@@ -604,6 +621,7 @@ export interface FileRouteTypes {
     | '/como-funciona'
     | '/formulario'
     | '/onboarding'
+    | '/pesquisas'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
@@ -641,6 +659,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin/'
     | '/formulario/'
+    | '/pesquisas/'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -703,6 +722,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin'
     | '/formulario'
+    | '/pesquisas'
     | '/minha-carona/$offerId'
     | '/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -731,6 +751,7 @@ export interface FileRouteTypes {
     | '/como-funciona'
     | '/formulario'
     | '/onboarding'
+    | '/pesquisas'
     | '/pitch'
     | '/privacidade'
     | '/reset-password'
@@ -768,6 +789,7 @@ export interface FileRouteTypes {
     | '/pesquisas/$code'
     | '/admin/'
     | '/formulario/'
+    | '/pesquisas/'
     | '/_authenticated/minha-carona/$offerId'
     | '/_authenticated/viagem/$rideId'
     | '/admin/departamentos/$department'
@@ -797,12 +819,12 @@ export interface RootRouteChildren {
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   FormularioRoute: typeof FormularioRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  PesquisasRoute: typeof PesquisasRouteWithChildren
   PitchRoute: typeof PitchRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
-  PesquisasCodeRoute: typeof PesquisasCodeRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
   ApiOperationsEmailPdfRoute: typeof ApiOperationsEmailPdfRoute
   ApiOperationsReportSchedulerRoute: typeof ApiOperationsReportSchedulerRoute
@@ -873,6 +895,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pesquisas': {
+      id: '/pesquisas'
+      path: '/pesquisas'
+      fullPath: '/pesquisas'
+      preLoaderRoute: typeof PesquisasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pitch': {
@@ -1127,12 +1156,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormularioCodeRouteImport
       parentRoute: typeof FormularioRoute
     }
+    '/pesquisas/': {
+      id: '/pesquisas/'
+      path: '/'
+      fullPath: '/pesquisas/'
+      preLoaderRoute: typeof PesquisasIndexRouteImport
+      parentRoute: typeof PesquisasRoute
+    }
     '/pesquisas/$code': {
       id: '/pesquisas/$code'
-      path: '/pesquisas/$code'
+      path: '/$code'
       fullPath: '/pesquisas/$code'
       preLoaderRoute: typeof PesquisasCodeRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PesquisasRoute
     }
     '/_authenticated/minha-carona/$offerId': {
       id: '/_authenticated/minha-carona/$offerId'
@@ -1382,6 +1418,20 @@ const FormularioRouteWithChildren = FormularioRoute._addFileChildren(
   FormularioRouteChildren,
 )
 
+interface PesquisasRouteChildren {
+  PesquisasCodeRoute: typeof PesquisasCodeRoute
+  PesquisasIndexRoute: typeof PesquisasIndexRoute
+}
+
+const PesquisasRouteChildren: PesquisasRouteChildren = {
+  PesquisasCodeRoute: PesquisasCodeRoute,
+  PesquisasIndexRoute: PesquisasIndexRoute,
+}
+
+const PesquisasRouteWithChildren = PesquisasRoute._addFileChildren(
+  PesquisasRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -1392,12 +1442,12 @@ const rootRouteChildren: RootRouteChildren = {
   ComoFuncionaRoute: ComoFuncionaRoute,
   FormularioRoute: FormularioRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  PesquisasRoute: PesquisasRouteWithChildren,
   PitchRoute: PitchRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
-  PesquisasCodeRoute: PesquisasCodeRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
   ApiOperationsEmailPdfRoute: ApiOperationsEmailPdfRoute,
   ApiOperationsReportSchedulerRoute: ApiOperationsReportSchedulerRoute,

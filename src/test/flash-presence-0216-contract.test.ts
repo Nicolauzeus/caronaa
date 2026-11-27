@@ -22,7 +22,7 @@ describe("Flash GPS dispatch and queue contract",()=>{
     expect(migration).toContain("is_online=true");
   });
   it("reconciles queue even when realtime reports SUBSCRIBED",()=>{
-    expect(realtime).toContain("if(!document.hidden)signal()");
-    expect(realtime).not.toContain("if(!subscribed && !document.hidden)signal()");
+    expect(realtime).toContain("if(!document.hidden&&Date.now()-lastReconciledAt>=30_000)signal()");
+    expect(realtime).toContain("},10_000)");
   });
 });

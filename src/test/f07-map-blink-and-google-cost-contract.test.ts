@@ -64,7 +64,8 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
     expect(rideMap).toContain('followPoint={driverPhase||passengerTracking?driverPoint:null}');
     expect(rideMap).toContain('driverNavigationPhase(statusNow)');
     expect(rideMap).toContain('estimateDriverRouteRemaining(driverPoint,currentDriverRoute)');
-    expect(rideMap).toContain('Abrir orientação por voz no Google Maps');
+    expect(rideMap).toContain('aria-label={voiceEnabled?"Desativar orientação por voz no CARONAA":"Ativar orientação por voz no CARONAA"}');
+    expect(rideMap).toContain('aria-label="Abrir rota no Google Maps"');
     expect(driverPage).toContain('onTouchStart={event=>');
     expect(driverPage).toContain('onTouchEnd={event=>');
     expect(driverPage).toContain('aria-expanded={sheetOpen}');
@@ -97,7 +98,7 @@ describe("CARONAA F07 - mobile map stability, API costs and subscriptions",()=>{
   it("uses Supabase WebSocket for queue status, not Google or an open browser webhook",()=>{
     expect(realtime).toContain('.on("postgres_changes"');
     expect(realtime).toContain('table:"caronaa_quick_queue_events"');
-    expect(realtime).toContain('if(!subscribed && !document.hidden)signal()');
+    expect(realtime).toContain('if(!document.hidden&&Date.now()-lastReconciledAt>=30_000)signal()');
     expect(realtime).toContain('removeChannel(channel)');
     expect(rideMap).toContain('getQuickRideMapContext');
     expect(rideMap).toContain('getMapDrivingRoute');

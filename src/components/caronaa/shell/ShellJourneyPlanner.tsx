@@ -318,8 +318,8 @@ export function ShellJourneyPlanner({
             </small>
           </span>
           <span className="shrink-0 text-right">
-            <strong className="block font-[Sora] text-sm font-extrabold text-[#FFBB00]">
-              {price??(flashFarePending?"Calculando…":"Indisponível")}
+            <strong className="block max-w-[9rem] break-words font-[Sora] text-sm font-extrabold text-[#FFBB00]" aria-live="polite">
+              {price??(waitingForOrigin?"Aguardando localização":flashFarePending?"Calculando…":"Indisponível")}
             </strong>
             {ready&&<small className="block text-[10px] text-white/65">{available?"Selecionar":"Solicitar e aguardar"}</small>}
           </span>
@@ -498,7 +498,7 @@ export function ShellJourneyPlanner({
         The previous conditional placements unmounted QuickRideHomePanel on
         each sheet transition, causing state resets, flicker and RPC bursts. */}
     {serviceType==="FLASH"&&<div className={
-      flashRideActive?"min-h-0 flex-1 overflow-hidden":
+      flashRideActive?"min-h-0 flex-1 overflow-y-auto overscroll-contain":
       fixedFlash&&mode==="EXCLUSIVE"&&flashStep==="confirm"
         ?"min-h-0 max-h-[55dvh] shrink-0 overflow-y-auto overscroll-contain"
         :"hidden"

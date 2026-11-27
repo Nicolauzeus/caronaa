@@ -16,6 +16,7 @@ export type PdfReportData = {
   google_usage?:GoogleUsageReport;
   app_engagement?:AppEngagementReport;
   price_quotes?:PriceQuotesReport;
+  advanced_metrics?:Array<{label:string;value:string}>;
 };
 const BLACK="#121212", YELLOW="#FFBB00", GREY="#657181";
 const serviceNames={all:"Todos os servicos",flash:"Corrida Rapida",shared:"Caronas compartilhadas"};
@@ -59,10 +60,10 @@ function head(ctx:CanvasRenderingContext2D,logo:HTMLImageElement|null,d:PdfRepor
   ctx.textAlign="left";rect(ctx,65,151,1454,5,YELLOW);
   text(ctx,subtitle,65,195,25,BLACK,true);
 }
-function footer(ctx:CanvasRenderingContext2D,index:number){
+function footer(ctx:CanvasRenderingContext2D,index:number,total=2){
   rect(ctx,65,1054,1454,2,"#E5E7EB");
   text(ctx,"CARONAA  |  Operacoes de Mobilidade  |  Horario de Fortaleza",65,1082,14,GREY);
-  ctx.textAlign="right";text(ctx,index+" / 2",1518,1082,14,GREY);ctx.textAlign="left";
+  ctx.textAlign="right";text(ctx,index+" / "+total,1518,1082,14,GREY);ctx.textAlign="left";
 }
 function card(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,title:string,value:string,accent:string,tint:string){
   rect(ctx,x,y,w,h,tint);rect(ctx,x,y,w,5,accent);
@@ -107,7 +108,7 @@ function firstPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageEl
     text(ctx,"Registros de consumo indisponiveis para o intervalo.",65,928,18,GREY);
   }
   text(ctx,"Chamadas registradas no CARONAA; podem diferir do consumo faturado no Google Cloud.",65,1035,13,GREY);
-  footer(ctx,1);
+  footer(ctx,1,d.advanced_metrics?3:2);
 }
 function secondPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageElement|null){
   head(ctx,logo,d,"HORARIOS DE MAIOR DEMANDA");
@@ -140,7 +141,18 @@ function secondPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageE
     }
   }
   text(ctx,"Cada celula representa pedidos registrados no dia e horario indicados.",65,1026,15,GREY);
-  footer(ctx,2);
+  footer(ctx,2,d.advanced_metrics?3:2);
+}
+function thirdPage(ctx:CanvasRenderingContext2D,d:PdfReportData,logo:HTMLImageElement|null){
+  head(ctx,logo,d,"INTELIGÊNCIA OPERACIONAL");
+  const metrics=d.advanced_metrics??[];
+  metrics.forEach(({label,value},i)=>{
+    const x=65+(i%2)*735,y=232+Math.floor(i/2)*138;
+    card(ctx,x,y,710,120,label,value,i%2===0?YELLOW:"#64748B","#F8FAFC");
+  });
+  text(ctx,"Valores cotados não são receita. Pix bilateral não comprova liquidação bancária.",65,966,17,GREY);
+  text(ctx,"Sem evidência de notificação não significa falha. Taxas sem denominador: indisponíveis.",65,998,17,GREY);
+  footer(ctx,3,3);
 }
 function jpegBytes(canvas:HTMLCanvasElement):Promise<Uint8Array>{
   return new Promise((resolve,reject)=>{
@@ -150,8 +162,8 @@ function jpegBytes(canvas:HTMLCanvasElement):Promise<Uint8Array>{
     },"image/jpeg",0.93);
   });
 }
-/** Two-page A4 landscape PDF using embedded canvas JPEG pages, no external SDK. */
-function packPdf(jpegs:Uint8Array[],width:number,height:number):Blob{
+/** A4 landscape PDF using embedded canvas JPEG pages, no external SDK. */
+export function packPdf(jpegs:Uint8Array[],width:number,height:number):Blob{
   const encoder=new TextEncoder();
   const chunks:Uint8Array[]=[];const offsets:number[]=[0];let offset=0;
   const append=(bytes:Uint8Array)=>{chunks.push(bytes);offset+=bytes.length;};
@@ -160,24 +172,25 @@ function packPdf(jpegs:Uint8Array[],width:number,height:number):Blob{
   const begin=(id:number)=>{offsets[id]=offset;ascii(id+" 0 obj\n");};
   const end=()=>ascii("\nendobj\n");
   begin(1);ascii("<< /Type /Catalog /Pages 2 0 R >>");end();
-  begin(2);ascii("<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>");end();
+  const n=jpegs.length, streamBase=4+2*n, lastId=streamBase+n-1;
+  begin(2);ascii("<< /Type /Pages /Kids ["+jpegs.map((_,i)=>(4+2*i)+" 0 R").join(" ")+"] /Count "+n+" >>");end();
   begin(3);ascii("<< /Producer (CARONAA) >>");end();
   for(let i=0;i<jpegs.length;i++){
-    const pageId=4+2*i, imageId=5+2*i, streamId=8+i, name="/Img"+i;
+    const pageId=4+2*i, imageId=5+2*i, streamId=streamBase+i, name="/Img"+i;
     begin(pageId);ascii("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+width+" "+height+"] /Resources << /XObject << "+name+" "+imageId+" 0 R >> >> /Contents "+streamId+" 0 R >>");end();
     const bytes=jpegs[i];begin(imageId);
     ascii("<< /Type /XObject /Subtype /Image /Width 1584 /Height 1120 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+bytes.length+" >>\nstream\n");
     append(bytes);ascii("\nendstream");end();
   }
   for(let i=0;i<jpegs.length;i++){
-    begin(8+i);
+    begin(streamBase+i);
     const stream="q\n"+width+" 0 0 "+height+" 0 0 cm\n/Img"+i+" Do\nQ\n";
     ascii("<< /Length "+encoder.encode(stream).length+" >>\nstream\n"+stream+"endstream");end();
   }
   const startXref=offset;
-  ascii("xref\n0 10\n0000000000 65535 f \n");
-  for(let id=1;id<=9;id++)ascii(String(offsets[id]??0).padStart(10,"0")+" 00000 n \n");
-  ascii("trailer\n<< /Size 10 /Root 1 0 R /Info 3 0 R >>\nstartxref\n"+startXref+"\n%%EOF");
+  ascii("xref\n0 "+(lastId+1)+"\n0000000000 65535 f \n");
+  for(let id=1;id<=lastId;id++)ascii(String(offsets[id]??0).padStart(10,"0")+" 00000 n \n");
+  ascii("trailer\n<< /Size "+(lastId+1)+" /Root 1 0 R /Info 3 0 R >>\nstartxref\n"+startXref+"\n%%EOF");
   return new Blob(chunks as BlobPart[],{type:"application/pdf"});
 }
 export async function createOperationsReportPdf(data:PdfReportData):Promise<File>{
@@ -186,7 +199,9 @@ export async function createOperationsReportPdf(data:PdfReportData):Promise<File
   const logo=await getLogo();
   const first=createCanvas();firstPage(first.ctx,data,logo);
   const second=createCanvas();secondPage(second.ctx,data,logo);
-  const pages=await Promise.all([jpegBytes(first.canvas),jpegBytes(second.canvas)]);
+  const canvases=[first.canvas,second.canvas];
+  if(data.advanced_metrics){const third=createCanvas();thirdPage(third.ctx,data,logo);canvases.push(third.canvas);}
+  const pages=await Promise.all(canvases.map(jpegBytes));
   const blob=packPdf(pages,842,595);
   return new File([blob],"CARONAA_Relatorio_"+data.from+"_"+data.to+".pdf",{type:"application/pdf"});
 }

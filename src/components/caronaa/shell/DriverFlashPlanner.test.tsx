@@ -56,8 +56,18 @@ beforeEach(()=>{
 });
 afterEach(cleanup);
 describe("Flash driver shell",()=>{
+  it("defaults to accepting all compatible requests without requiring a destination",async()=>{
+    render(<DriverFlashPlanner {...props}/>);
+    expect(screen.getByRole("button",{name:"Aceito tudo"})).toHaveAttribute("aria-pressed","true");
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Ficar Disponível"}));});
+    expect(api.goOnline).toHaveBeenCalledWith(expect.objectContaining({
+      online:true,mode:"ALL",destination:null,routePath:null,
+    }));
+    expect(api.route).not.toHaveBeenCalled();
+  });
   it("enters exclusive-only availability without a destination or Google Routes",async()=>{
     render(<DriverFlashPlanner {...props}/>);
+    fireEvent.click(screen.getByRole("button",{name:"Apenas Exclusiva"}));
     await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Ficar Disponível"}));});
     expect(api.goOnline).toHaveBeenCalledWith(expect.objectContaining({
       online:true,mode:"EXCLUSIVE",destination:null,routePath:null,

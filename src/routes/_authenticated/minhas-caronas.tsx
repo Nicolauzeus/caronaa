@@ -12,6 +12,8 @@ import {
   Plus,
   UsersRound,
 } from "lucide-react";
+import { PassengerCancellationReason } from "@/components/caronaa/PassengerCancellationReason";
+import { useAuth } from "@/lib/auth-context";
 import { AppShell } from "@/components/caronaa/AppShell";
 import { PageHeading } from "@/components/caronaa/PageParts";
 import { QuickRideTripHistory } from "@/components/caronaa/QuickRideTripHistory";
@@ -57,6 +59,11 @@ export const Route = createFileRoute("/_authenticated/minhas-caronas")({
 });
 
 function MinhasCaronas() {
+  const {user}=useAuth();
+  const accountId=user?.id??null;
+  const [cancelledAttempt,setCancelledAttempt]=useState<{id:string;account:string}|null>(null);
+  useEffect(()=>{setCancelledAttempt(null);},[accountId]);
+  const onPassengerCancelled=(id:string)=>{if(accountId)setCancelledAttempt({id,account:accountId});};
   const loadMyRides = useServerFn(getMyRides);
   const [tab, setTab] = useState<"pedidos" | "disponiveis" | "rotinas" | "flash">(
     "pedidos",
@@ -237,6 +244,7 @@ function MinhasCaronas() {
     tab === "disponiveis" ? groupByOffer(historyItems) : [];
   return (
     <AppShell>
+      {cancelledAttempt&&cancelledAttempt.account===accountId&&<PassengerCancellationReason key={cancelledAttempt.id} service="shared" sharedAttempt requestId={cancelledAttempt.id} onClose={()=>setCancelledAttempt(null)}/>}
       <PageHeading
         eyebrow="SEUS TRAJETOS"
         title="Minhas viagens"
@@ -384,6 +392,7 @@ function MinhasCaronas() {
                       <Trip
                         key={item.id}
                         ride={item}
+                        onPassengerCancelled={onPassengerCancelled}
                         onChanged={() => refreshRides(false)}
                       />
                     ))}
@@ -416,6 +425,7 @@ function MinhasCaronas() {
                       <Trip
                         key={item.id}
                         ride={item}
+                        onPassengerCancelled={onPassengerCancelled}
                         onChanged={() => refreshRides(false)}
                       />
                     ))}
@@ -784,9 +794,11 @@ function initials(name: string) {
 function Trip({
   ride,
   onChanged,
+  onPassengerCancelled,
 }: {
   ride: RideSummary;
   onChanged: () => Promise<void>;
+  onPassengerCancelled?: (id:string)=>void;
 }) {
   const [details, setDetails] = useState(false);
   const [updating, setUpdating] = useState<RideStatus | null>(null);
@@ -855,6 +867,7 @@ function Trip({
     setUpdating(nextStatus);
     try {
       const result = await transitionRideStatus(ride.rideId, nextStatus);
+      if(nextStatus==="CANCELLED"&&result==="CANCELLED"&&ride.role==="passenger")onPassengerCancelled?.(ride.rideId);
       const waitingForOther = result === "AWAITING_OTHER_PARTICIPANT";
       if (result !== "CONFIRMED") {
         toast.success(

@@ -107,13 +107,13 @@ describe("F07 lifecycle: transport end != payment or customer confirmation",()=>
     expect(driver).toContain("quick_ride_request_manual_review");
     expect(flashDriver).toContain("quick_ride_request_manual_review");
     expect(passengerHistory).toContain('case "PENDING_REVIEW"');
-    expect(driverHistory).toContain('PENDING_REVIEW: "Encerramento em análise"');
+    expect(driverHistory).toContain('PENDING_REVIEW: "Aguardando confirmação / análise"');
     expect(admin).toContain('item.status==="PENDING_REVIEW"');
   });
 
   it("only opens Pix and rating on a confirmed COMPLETED status",()=>{
     expect(checkout).toContain("<QuickRidePixCard rideId={rideId} />");
-    expect(checkout).toContain("<QuickRideDriverSettlement rideId={rideId} />");
+    expect(checkout).toContain("<QuickRideDriverSettlement rideId={rideId} onPixReady={onPixReady} />");
     expect(passenger).toContain('r.status==="COMPLETED"');
     expect(driver).toContain('r.status==="COMPLETED"');
     expect(passengerHistory).toContain('ride.status === "COMPLETED"');

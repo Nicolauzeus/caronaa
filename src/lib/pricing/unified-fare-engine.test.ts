@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe("CARONAA — unified fare engine, default R$ 6 / 11km", () => {
   it.each([
-    [5, 3, 3, 9],
+    [5, 3, 6, 9],
     [11, 6, 12, 18],
     [25, 13.64, 27.28, 40.92],
   ])("ON_ROUTE car %.0fkm: one, two and three seats", (distanceKm, perSeat, two, three) => {

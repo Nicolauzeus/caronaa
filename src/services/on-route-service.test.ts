@@ -63,6 +63,12 @@ describe("on-route atomic confirmation client",()=>{
       code:"OVERBOOKING_PREVENTED",
     });
   });
+  it("does not expose unrelated server error text or claim a booking",async()=>{
+    mock.rpc.mockResolvedValue({data:null,error:{code:"42501",message:"private authorization detail"}});
+    await expect(confirmOnRouteBooking("offer-1",2,meetingDetails)).rejects.toMatchObject({
+      code:"ON_ROUTE_SERVICE_UNAVAILABLE",message:"ON_ROUTE_SERVICE_UNAVAILABLE",
+    });
+  });
   it("does not accept absent or ambiguous confirmation",async()=>{
     mock.rpc.mockResolvedValue({data:true,error:null});
     await expect(confirmOnRouteBooking("offer-1",1,meetingDetails)).rejects.toMatchObject({

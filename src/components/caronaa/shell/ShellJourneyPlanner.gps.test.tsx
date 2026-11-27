@@ -38,7 +38,14 @@ describe("Passenger itinerary GPS and route recovery",()=>{
   it("shows location progress and vehicle loading instead of unavailable prices",()=>{
     render(<ShellJourneyPlanner {...props} locating originPoint={undefined}/>);
     expect(screen.getByRole("button",{name:"Localizando você…"})).toBeEnabled();
-    expect(screen.getAllByRole("status",{name:"Aguardando localização"})).toHaveLength(2);
+    expect(screen.queryByRole("radiogroup",{name:"Opções de viagem"})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:"Escolher destino de teste"}));
+    const moto=screen.getByRole("radio",{name:/Flash Moto/});
+    const car=screen.getByRole("radio",{name:/Flash Carro/});
+    expect(moto).toBeDisabled();
+    expect(car).toBeDisabled();
+    expect(moto).toHaveTextContent("Aguardando localização");
+    expect(car).toHaveTextContent("Aguardando localização");
     expect(screen.queryByText("Indisponível")).not.toBeInTheDocument();
     expect(api.route).not.toHaveBeenCalled();expect(api.quote).not.toHaveBeenCalled();
   });

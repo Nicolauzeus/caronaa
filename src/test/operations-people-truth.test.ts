@@ -58,7 +58,12 @@ describe("F09 Pessoas — audited account-backed metrics",()=>{
    expect(route).toContain("<OperationsPeopleDashboard kind={peopleTab}/>");
    expect(ui).toContain('rpc("admin_operations_people_truth")');
    expect(ui).toContain('lg:hidden');
-   expect(ui).toContain('hidden min-w-0 overflow-hidden rounded-xl border lg:block');
+   expect(ui).toContain('ops-history-desktop hidden min-w-0 overflow-hidden rounded-xl border bg-card lg:block');
+   expect(ui).toContain('ops-history-mobile grid gap-2 lg:hidden');
+   const responsive=readFileSync("src/components/admin/operations-workspace.css","utf8");
+   expect(responsive).toContain("@container operations (max-width:879px)");
+   expect(responsive).toContain(".ops-history-desktop {display:none}");
+   expect(responsive).toContain(".ops-history-mobile {display:grid}");
    expect(ui).toContain("Último acesso medido");
    expect(ui).toContain("Solicitaram viagens");
    expect(ui).not.toContain("overflow-x-auto");

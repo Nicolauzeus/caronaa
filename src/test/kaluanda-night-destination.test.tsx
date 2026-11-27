@@ -117,6 +117,10 @@ describe("Kaluanda Night launch suggestion - mobility only", () => {
     fireEvent.change(screen.getByLabelText("Destino"), { target: { value: "Meu destino" } });
     await act(async () => { resolve(verified); });
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith("Meu destino", expect.objectContaining({ lat: undefined }));
+    const [label,details]=onChange.mock.calls[0];
+    expect(label).toBe("Meu destino");
+    expect(details).toMatchObject({rawText:"Meu destino",formattedAddress:"Meu destino"});
+    expect(details?.lat).toBeUndefined();
+    expect(details?.lng).toBeUndefined();
   });
 });

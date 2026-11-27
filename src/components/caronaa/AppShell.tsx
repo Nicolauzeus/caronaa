@@ -2,13 +2,13 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   CalendarClock,
+  LayoutDashboard,
   LogIn,
   LogOut,
   Menu,
   UserRound,
   X,
   ShieldCheck,
-  LayoutDashboard,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
@@ -25,18 +25,12 @@ import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSyn
 import { QuickRidePendingDropoffPrompt } from "@/components/caronaa/QuickRidePendingDropoffPrompt";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
-import { authenticatedNav, sharedDriverNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
+import { authenticatedNav, sharedDriverNav, professionalNav, isAppNavSelected } from "@/components/caronaa/shell/app-navigation";
 import { caronaaHomeTarget, resolveCaronaaHomeSurface, type CaronaaHomeSurface } from "@/lib/navigation/role-home";
 
 const waitingNav = [
   { to: "/aguardando" as const, label: "Lançamento", icon: CalendarClock },
   { to: "/perfil" as const, label: "Meu perfil", icon: UserRound },
-];
-
-const professionalNav = [
-  { to: "/disponibilidade-profissional" as const, label: "Painel", icon: LayoutDashboard },
-  { to: "/viagens-profissionais" as const, label: "Viagens", icon: CalendarClock },
-  { to: "/perfil" as const, label: "Conta", icon: UserRound },
 ];
 
 export function Brand({ light = false, homeSurface }: { light?: boolean; homeSurface?: CaronaaHomeSurface }) {
@@ -120,6 +114,12 @@ export function AppShell({
     professionalOnly === true ? professionalNav :
     professionalAccessPending && user ? [] :
     homeSurface === "shared-driver" ? sharedDriverNav : authenticatedNav;
+  const navSearch = (to: string, label: string) => {
+    if (to !== "/home") return undefined;
+    if (label === "Viagens") return { trips: "open" as const };
+    if (label === "Oferecer") return { intent: homeSurface === "professional-driver" || homeSurface === "shared-driver" ? "scheduled" as const : "offer" as const };
+    return undefined;
+  };
   const adminPreview = !publicPage ? getAdminAppPreview(user?.id) : null;
   const navigate = useNavigate();
   async function signOut() {
@@ -192,7 +192,7 @@ export function AppShell({
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
+                  search={navSearch(to,label)}
                   onClick={()=>{
                     if(to==="/home" && typeof window!=="undefined"){
                       if(homeSurface==="shared-driver"&&label==="Painel")
@@ -362,7 +362,7 @@ export function AppShell({
                     <Link
                       key={`${to}-${label}`}
                       to={to}
-                      search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
+                      search={navSearch(to,label)}
                       onClick={()=>{
                         setMenuOpen(false);
                         if(to==="/home" && homeSurface==="shared-driver" && label==="Painel")
@@ -462,14 +462,14 @@ export function AppShell({
           aria-label={professionalOnly ? "Navegação profissional mobile" : "Navegação principal mobile"}
           className={`fixed inset-x-0 bottom-0 z-40 isolate border-t pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.10)] backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : professionalOnly ? "grid-cols-3" : "grid-cols-4"}`}>
+          <div className={`mx-auto grid max-w-lg gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
               const selected = selectedNav(to,label);
               return (
                 <Link
                   key={`${to}-${label}`}
                   to={to}
-                  search={to==="/home" && homeSurface==="shared-driver" ? label==="Viagens"?{trips:"open"}:{intent:"offer"} : undefined}
+                  search={navSearch(to,label)}
                   aria-current={selected ? "page" : undefined}
                   className={`group relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFBB00] ${
                     selected

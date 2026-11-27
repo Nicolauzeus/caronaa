@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-ro
 import { useEffect, useState } from "react";
 import { OperationPage } from "@/components/admin/OperationPage";
 import { OperationsPeopleDashboard } from "@/components/admin/OperationsPeopleDashboard";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Settings2, Route as RouteIcon, UsersRound } from "lucide-react";
+import "@/components/admin/operations-workspace.css";
 import { F07OperationsCockpit } from "@/components/admin/F07OperationsCockpit";
 import { F07OperationsCommandCenter } from "@/components/admin/F07OperationsCommandCenter";
 import { OperationsHistoryReport } from "@/components/admin/OperationsHistoryReport";
@@ -35,22 +36,22 @@ function MobilityOperationsCenter(){
   useEffect(()=>{setTools(false);},[section]);
   const openTools=(next:Tool="monitor")=>{setTool(next);setTools(true);};
   const back=()=>{setTools(false);void navigate({hash:"command",search:true});};
-  return <main className="min-w-0 w-full pb-6">
+  return <div className="operations-workspace min-w-0 w-full pb-4" data-operations-module={showHistory?"reports":showIntelligence?"intelligence":showJourneys?"journeys":showPeople?"people":showSupport?"settings":"central"}>
     {showHistory?<OperationsHistoryReport mode="reports"/>:
      showIntelligence?<OperationsHistoryReport mode="intelligence"/>:
      showSupport?<section className="min-w-0 space-y-4" aria-label="Configurações operacionais">
-       <header><h1 className="font-[Sora] text-2xl font-extrabold">Configurações</h1>
+       <header className="ops-heading"><div className="ops-eyebrow"><Settings2 size={14}/> Administração</div><h1 className="font-[Sora] text-2xl font-extrabold">Configurações</h1>
          <p className="text-sm text-muted-foreground">Suporte e parâmetros administrativos, separados da operação ao vivo.</p></header>
        <OperationsSupportSettings/>
-       <details className="rounded-2xl border bg-card p-4">
+       <details className="ops-panel rounded-2xl border bg-card p-4">
          <summary className="cursor-pointer text-sm font-bold">Configurações profissionais avançadas</summary>
          <div className="mt-4"><QuickRideAdminPanel/></div>
        </details>
      </section>:
      showJourneys?<section className="min-w-0 space-y-3" aria-label="Gestão de viagens">
-       <header><h1 className="font-[Sora] text-2xl font-extrabold">Viagens</h1>
-         <p className="text-sm text-muted-foreground">Ofertas, pedidos de carona e correspondências em um só lugar.</p></header>
-       <nav aria-label="Tipo de operação" className="flex max-w-full gap-2 overflow-x-auto pb-1">
+       <header className="ops-heading"><div className="ops-eyebrow"><RouteIcon size={14}/> Gestão de mobilidade</div><h1 className="font-[Sora] text-2xl font-extrabold">Viagens</h1>
+         <p className="text-sm text-muted-foreground">Ofertas, pedidos de carona e correspondências em um só lugar.</p><button type="button" onClick={()=>void navigate({hash:"history",search:true})} className="w-fit rounded-lg text-sm font-semibold underline underline-offset-4">Consultar histórico de Flash e caronas</button></header>
+       <nav aria-label="Tipo de operação" className="ops-subnav flex max-w-full flex-wrap gap-2">
          {([{id:"caronas",label:"Caronas"},{id:"solicitacoes",label:"Solicitações"},
             {id:"matching",label:"Correspondências"}] as const).map(item=>
            <button key={item.id} type="button" aria-pressed={journeyTab===item.id}
@@ -61,9 +62,9 @@ function MobilityOperationsCenter(){
        <OperationPage kind={journeyTab} embedded/>
      </section>:
      showPeople?<section className="min-w-0 space-y-3" aria-label="Gestão de pessoas">
-       <header><h1 className="font-[Sora] text-2xl font-extrabold">Pessoas</h1>
+       <header className="ops-heading"><div className="ops-eyebrow"><UsersRound size={14}/> Contas e desempenho</div><h1 className="font-[Sora] text-2xl font-extrabold">Pessoas</h1>
          <p className="text-sm text-muted-foreground">Contas reais, habilitação, pedidos e atividade medida por perfil.</p></header>
-       <nav aria-label="Perfis operacionais" className="flex max-w-full gap-2 overflow-x-auto pb-1">
+       <nav aria-label="Perfis operacionais" className="ops-subnav flex max-w-full flex-wrap gap-2">
          {([{id:"motoristas",label:"Motoristas"},{id:"passageiros",label:"Passageiros"}] as const).map(item=>
            <button key={item.id} type="button" aria-pressed={peopleTab===item.id}
              onClick={()=>setPeopleTab(item.id)}
@@ -94,5 +95,5 @@ function MobilityOperationsCenter(){
         {tool==="disputes"&&<QuickRideDisputesAdmin/>}
         {tool==="access"&&<ProfessionalAccessQueue/>}
       </div>}
-  </main>;
+  </div>;
 }

@@ -95,11 +95,16 @@ describe("Flash driver RPC boundaries",()=>{
     await expect(respondFlashOrder("ride-1",true)).rejects.toMatchObject({code:"ALREADY_TAKEN"});
   });
   it("preserves the existing PIN start RPC contract",async()=>{
+    api.rpc.mockResolvedValueOnce({data:true,error:null});
     await startFlashRideWithPin("ride-1","1234");
     expect(api.rpc).toHaveBeenCalledWith("quick_ride_start_with_code",{
       p_id:"ride-1",p_code:"1234",
     });
     await expect(startFlashRideWithPin("ride-1","12345")).rejects.toMatchObject({code:"INVALID"});
+    api.rpc.mockResolvedValueOnce({data:false,error:null});
+    await expect(startFlashRideWithPin("ride-1","1234")).rejects.toMatchObject({code:"UNAVAILABLE"});
+    api.rpc.mockResolvedValueOnce({data:{success:true},error:null});
+    await expect(startFlashRideWithPin("ride-1","1234")).rejects.toMatchObject({code:"UNAVAILABLE"});
   });
   it("reads active ride through existing F07 participant RPC",async()=>{
     api.rpc.mockResolvedValue({data:[{

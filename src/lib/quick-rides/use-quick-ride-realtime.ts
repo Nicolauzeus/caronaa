@@ -20,12 +20,25 @@ export function useQuickRideRealtime(
     let subscribed=false;
     let disposed=false;
     let debounce:ReturnType<typeof setTimeout>|null=null;
+    let lastReconciledAt=0;
+    let refreshInFlight=false;
     const signal=()=>{
-      if(disposed)return;
+      if(disposed||refreshInFlight)return;
       if(debounce)clearTimeout(debounce);
       debounce=setTimeout(()=>{
         debounce=null;
-        if(!disposed)void callback.current();
+        if(!disposed&&!refreshInFlight){
+          refreshInFlight=true;
+          lastReconciledAt=Date.now();
+          try{
+            const result=callback.current();
+            if(result&&typeof result.then==="function")
+              void result.catch(()=>undefined).finally(()=>{refreshInFlight=false;});
+            else refreshInFlight=false;
+          }catch{
+            refreshInFlight=false;
+          }
+        }
       },150);
     };
     const visible=()=>{if(!document.hidden)signal();};
@@ -42,11 +55,12 @@ export function useQuickRideRealtime(
       subscribed=status==="SUBSCRIBED";
       if(subscribed)signal();
     }):null;
-    // Reconcile even on a connected socket: delivery of change events is not guaranteed.
-    // This reads an authorized Supabase RPC only; it never invokes Google APIs.
+    // Reconcile even on a healthy socket: SUBSCRIBED confirms the channel, not
+    // delivery of every event. This recovers missed invalidations across
+    // municipal boundaries while avoiding a duplicate RPC after recent events.
     const fallback=window.setInterval(()=>{
-      if(!document.hidden)signal();
-    },6_000);
+      if(!document.hidden&&Date.now()-lastReconciledAt>=30_000)signal();
+    },10_000);
     signal(); // initial authorized RPC after mounting
     return ()=>{
       disposed=true;

@@ -49,7 +49,8 @@ describe("motorista F07: navegação e controle de custo do Google",()=>{
     expect(needsDriverReroute({current,start:origin,path,elapsedMs:9000,offRouteConfirmations:2,accuracyM:12})).toBe(false);
     expect(needsDriverReroute({current,start:origin,path,elapsedMs:70000,offRouteConfirmations:2,accuracyM:200})).toBe(true);
     expect(needsDriverReroute({current:origin,start:origin,path,elapsedMs:100000})).toBe(false);
-    expect(needsDriverReroute({current:origin,start:origin,path,elapsedMs:181000})).toBe(true);
+    // A timer alone cannot trigger a reroute while the driver is stationary.
+    expect(needsDriverReroute({current:origin,start:origin,path,elapsedMs:181000})).toBe(false);
   });
 });
 
