@@ -6,9 +6,21 @@ on:
     paths:
       - 'src/components/caronaa/QuickRide*.tsx'
       - 'src/lib/quick-ride-map.functions.ts'
+      - 'src/lib/quick-rides/**'
+      - 'src/integrations/supabase/types.ts'
+      - 'src/test/f07-*.test.ts'
+      - 'src/test/quick-ride-push-dispatch.test.ts'
+      - 'scripts/sql/f07-public-operation-*.sql'
+      - 'scripts/test-f07-permanent-operation-db.mjs'
+      - 'scripts/tests/f07-permanent-operation.*.sql'
+      - 'package.json'
+      - 'bun.lock'
       - 'drizzle/migrations/0154_quick_ride_otp_pix_declaration.sql'
       - '.github/workflows/f07-quick-ride.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test-and-build:
@@ -20,8 +32,23 @@ jobs:
         with:
           bun-version: latest
       - name: Install dependencies
+        id: install
         run: bun install --frozen-lockfile
+      - name: F07 focused post-install regression
+        if: always() && steps.install.outcome == 'success'
+        run: >-
+          bunx vitest run
+          src/test/f07-retired-controls.test.ts
+          src/test/quick-ride-push-dispatch.test.ts
+          src/test/f07-passenger-demand-waiting.test.ts
+          src/lib/quick-rides/f07-homologation.test.ts
+          src/test/f07-permanent-operation-types.test.ts
+      - name: TypeScript
+        if: always() && steps.install.outcome == 'success'
+        run: bunx tsc --noEmit
       - name: Run regression tests
+        if: always() && steps.install.outcome == 'success'
         run: bunx vitest run
       - name: Build
+        if: always() && steps.install.outcome == 'success'
         run: bun run build

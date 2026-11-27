@@ -362,6 +362,51 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_f07_operation_control: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_f07_operation_control_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          previous_enabled: boolean
+          reason: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          enabled: boolean
+          id?: string
+          previous_enabled: boolean
+          reason: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          previous_enabled?: boolean
+          reason?: string
+        }
+        Relationships: []
+      }
       caronaa_f07_operations_audit: {
         Row: {
           action: string
@@ -6653,6 +6698,10 @@ export type Database = {
         Args: { p_number: string }
         Returns: string
       }
+      admin_set_f07_operation_enabled: {
+        Args: { p_enabled: boolean; p_reason: string }
+        Returns: boolean
+      }
       admin_set_platform_pix: { Args: { p_key: string }; Returns: boolean }
       admin_set_quick_ride_driver: {
         Args: { p_approved: boolean; p_email: string; p_vehicle_type: string }
@@ -6748,6 +6797,7 @@ export type Database = {
         Args: { p_request_ids: string[] }
         Returns: number
       }
+      caronaa_f07_operation_dispatch_allowed: { Args: never; Returns: boolean }
       caronaa_f07_pilot_activate_driver: {
         Args: { p_user_id: string; p_vehicle_type: string }
         Returns: string
