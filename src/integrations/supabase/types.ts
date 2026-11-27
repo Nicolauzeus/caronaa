@@ -1540,6 +1540,44 @@ export type Database = {
           },
         ]
       }
+      driver_fcm_tokens: {
+        Row: {
+          created_at: string
+          device_info: string | null
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          platform?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_fcm_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_pix_settings: {
         Row: {
           pix_key: string
@@ -7002,6 +7040,7 @@ export type Database = {
             }
             Returns: string
           }
+      delete_driver_fcm_token: { Args: { p_token: string }; Returns: undefined }
       delete_driver_push_subscription: {
         Args: { p_endpoint: string }
         Returns: undefined
@@ -8163,6 +8202,10 @@ export type Database = {
       ride_route_inventory_version: {
         Args: { p_offer_id: string }
         Returns: string
+      }
+      save_driver_fcm_token: {
+        Args: { p_device_info?: string; p_platform?: string; p_token: string }
+        Returns: undefined
       }
       save_driver_push_subscription: {
         Args: {
