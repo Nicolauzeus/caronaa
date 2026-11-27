@@ -46,7 +46,7 @@ A região é uma configuração de disponibilidade do serviço, **não** uma res
 
 **Revisão de UX (07/11/2026):** mapa Google em destaque e painel inferior expansível.
 As opções são Carona Compartilhada (carro, até três passageiros por pedido), Carona Moto
-(uma vaga) e Corrida Direta (piloto regional existente, com preço independente).
+(uma vaga) e Corrida Direta (Flash público, com preço independente).
 Mostrar o preço estimado final, sem expor a fórmula matemática nos componentes da interface.
 O cálculo compartilhado descrito em F03 continua inalterado no servidor e na biblioteca.
 
@@ -63,8 +63,8 @@ em celular e desktop, respeitando a permissão do navegador. Recusa/indisponibil
 libera origem manual; uma escolha manual nunca é sobrescrita por uma resposta tardia.
 A origem contratada usa o fix de GPS inicial (ou um novo fix solicitado), enquanto o
 marcador pode acompanhar o movimento sem refazer cotações a cada atualização.
-Coordenadas resolvidas seguem para a cotação rodoviária no servidor e para o piloto F07.
-A seleção de Corrida Direta abre `/viagem-rapida`, sem montar o piloto dentro do sheet.
+Coordenadas resolvidas seguem para a cotação rodoviária no servidor e para o Flash F07.
+A seleção de Corrida Direta abre `/viagem-rapida`, sem montar o Flash dentro do sheet.
 
 Após uma combinação autorizada, a Home mostra a sugestão de encontro para oferta estrita
 ou rodovia identificada nos endereços/ponto de referência salvos da oferta (BR/CE).
@@ -277,7 +277,11 @@ Oferta publicada → Encontrar demanda próxima → Agrupar interessados
 
 ### F07 — Encontrar viagem imediata (carro e mototáxi)
 
-**Decisão vigente de 27/11/2026 — Flash é operação pública:** o proprietário substitui o enquadramento de F07 como produto/ambiente de homologação. Os trabalhos seguintes usam a operação pública e preservam os municípios, modalidades e tarifas já configurados; não exigem um ambiente de homologação como condição de produto. A janela solicitada é de **90 dias**, controlada como operação pública, sem depender de ativações temporárias de teste. Retirar simulação de GPS e atalhos de autorização temporária dos caminhos ativos; preservar os registros históricos e não promover autorizações temporárias a permanentes. Permanecem obrigatórios autenticação, habilitação normal emitida pelo servidor, veículo ativo, suspensões, regras financeiras, GPS real consentido, raio de 15 km, cotação imutável, autorização de origem/destino e busca de até 30 minutos mesmo sem motoristas. Esta decisão substitui as restrições históricas de enquadramento abaixo, mas não libera novas coberturas, altera tarifas, comprova conformidade legal ou autoriza alterações de banco sem apresentação e aprovação do SQL completo. Testes automatizados de segurança/regressão continuam obrigatórios e nunca criam dados fictícios na operação pública.
+**Decisão definitiva de 27/11/2026 — Flash público permanente:** o Flash é funcionalidade definitiva do CARONAA em produção, **habilitada continuamente por padrão, sem prazo de expiração, janela de 90 dias ou renovação periódica**. A operação comercial não depende de controles, flags ou RPCs de homologação/testes. Preservar Carro e Moto nos **17 municípios atualmente habilitados no banco**, modalidades e tarifas comerciais vigentes; não recriar o catálogo a partir de scripts históricos nem alterar versões tarifárias/snapshots. Administradores continuam controlando municípios, modalidades, tarifas e suspensão/retomada do serviço. Uma suspensão de novos pedidos/aceites não deve interromper acompanhamento, conclusão, pagamento ou cancelamento de corridas já aceitas.
+
+Retirar simulação de GPS e atalhos temporários dos caminhos ativos; manter endpoints antigos bloqueados para clientes desatualizados, histórico e auditorias, sem transformar permissões temporárias em autorizações comerciais permanentes. Permanecem autenticação, habilitação normal no servidor, veículo ativo, suspensões, finanças, GPS real consentido, raio de **15 km**, cotação imutável e autorização de origem/destino. Com preço válido e cobertura autorizada, permitir pedido mesmo com **zero motoristas online ou falha de radar**, buscando por **30 minutos**. A validade de cotações, busca, GPS e permissões individuais temporárias continua independente: retirar a expiração do serviço não elimina esses limites de segurança.
+
+Esta decisão substitui as restrições históricas de homologação e qualquer proposta de janela de 14/30/90 dias abaixo, sem liberar novas coberturas, alterar tarifas, declarar conformidade legal ou dispensar apresentação e aprovação do SQL completo antes da produção. Referências antigas e nomes tarifários com `-piloto` são históricos, não modo operacional ativo. Testes automatizados/regressão continuam obrigatórios, sem dados fictícios na operação real. **Estado da transição:** a migração permanente está proposta e depende da aprovação do SQL; até sua aplicação, o banco ainda contém o controle antigo com expiração.
 
 ```text
 Passageiro → Viajar agora → Origem/destino → Carro ou moto elegível

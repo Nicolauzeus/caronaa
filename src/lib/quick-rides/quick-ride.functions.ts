@@ -226,8 +226,8 @@ export const getQuickRideFarePreview = createServerFn({method:"POST"})
       waiveLocalMacicoCommission,
       localMotoFixedFareCents,
       routeFixedFareCents:flashRouteFixedFareCents(coverage.municipality,destinationCity.municipality),
-      // Pilot rates are the four approved matrices. Event campaigns must not
-      // silently override their explicit 15%/20% commission decisions.
+      // Existing -piloto versions are immutable commercial tariff identifiers,
+      // not a test-mode switch. Preserve their explicit commission decisions.
       officialActivity:!String(policy.policy_version).endsWith("-piloto")&&matchingEvent?{
         id:String(matchingEvent.id),published:true,enabled:true,
         startsAt:String(matchingEvent.starts_at),

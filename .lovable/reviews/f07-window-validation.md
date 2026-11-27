@@ -1,3 +1,5 @@
+> **Histórico substituído:** a decisão definitiva de 27/11/2026 exige Flash permanente, não janelas de 90 dias. Não executar o SQL histórico abaixo; a proposta vigente está no relatório de operação pública permanente.
+
 # F07 — Validação da janela Flash
 
 ## Módulo e situação atual
