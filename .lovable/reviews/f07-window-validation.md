@@ -34,3 +34,31 @@ WHERE id = true;
 ```
 
 Não será usada a alternativa contínua nem removido `activated_at`. A aprovação do SQL não deve ser confundida com autorização automática para retirar a separação entre homologação e produção.
+
+## Revisão solicitada — operação pública (27/11/2026)
+
+O proprietário escolheu **revisar a operação pública**, não aprovar automaticamente a renovação. A leitura das funções instaladas confirmou que o controle atual tem duas responsabilidades:
+
+1. Permite a cobertura comercial em `caronaa_quick_region_status` quando modalidade, radar, despacho e tarifa também estão habilitados.
+2. Permite que a função privilegiada `caronaa_f07_pilot_activate_driver` emita autorizações temporárias e marque presença disponível. A renovação não chama essa função nem aprova contas por si só, mas prolonga o período em que ela pode ser utilizada; não renova automaticamente as autorizações individuais já emitidas.
+
+Por isso, o UPDATE isolado acima **não é a proposta recomendada para produção**. Uma janela de serviço público deve ser independente das exceções de homologação.
+
+### Proposta de regra para aprovação
+
+- Autorizar a preparação de uma janela pública de **90 dias contados da ativação**, sem operação contínua e sem ativação imediata nesta revisão.
+- Limitar Carro/Moto aos municípios e tarifas explicitamente aprovados para produção; o catálogo de 17 cidades e suas quatro tarifas de teste não se tornam comerciais automaticamente.
+- Separar o controle de operação pública do controle de testes, sem desligar o serviço vigente durante a transição. Não alterar `activated_at` para contornar a expiração.
+- Manter a habilitação normal do motorista no servidor, dados completos, suspensões/rejeições, veículo ativo, regras financeiras, GPS real consentido e filtros operacionais. Não converter autorizações temporárias em permanentes.
+- Preservar o raio de **15 km**, a cotação imutável, a autorização de origem/destino e a regra de pedir com **zero motoristas**, buscando por até **30 minutos**, sem cobrança antes da conclusão.
+- Manter simulações e ativações temporárias de homologação restritas ao ambiente isolado; não estender essas exceções à produção.
+- Preservar a tarifa compartilhada F03 de **R$ 6/11 km**, as tarifas profissionais vigentes e os snapshots históricos. Qualquer adoção comercial de tarifas de teste exige decisão separada.
+- Não tratar aprovação de produto como licença de transporte: conformidade municipal, habilitação, seguro e segurança operacional continuam exigindo avaliação antes da liberação real.
+
+### Sequência após aprovação da proposta
+
+Auditar todos os consumidores do controle e as configurações comerciais; preparar alteração incremental com SQL completo, reversão e testes; apresentar o SQL para **nova aprovação explícita**; somente então aplicar e validar o fluxo autenticado de cotação → solicitação → leitura do pedido, inclusive ausência de motoristas. Não criar pedidos reais nesta revisão.
+
+### Resultado desta revisão
+
+**Módulos:** F07, com preservação de F02/F08. **Status:** proposta, não ativada. **Arquivos:** este relatório e `roadmap.md`. **Verificação:** leitura das funções efetivamente instaladas; nenhum novo teste funcional executado. Os 116 testes relatados acima pertencem à etapa anterior. **Pendências:** aprovação desta regra, configuração comercial/conformidade, SQL completo aprovado e validação real. **README:** regra vigente preservada; alteração contratual somente após aprovação expressa do escopo proposto.
