@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "744104008022",
+    "project_id": "caronaa-app",
+    "storage_bucket": "caronaa-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744104008022:android:2906450680138ef58f1ef7",
+        "android_client_info": {
+          "package_name": "com.caronaa.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmajql3-lBlbQndfRQHNFujkbzRhapNpM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -18,7 +18,7 @@ import {
 } from "@/services/flash-driver-service";
 import { enableDriverAlerts, getDriverAlertPermission } from "@/lib/native/driver-notifications";
 import { DriverPwaPromotionCard } from "@/components/caronaa/DriverPwaPromotionCard";
-import { DriverNotificationPermissionDialog, KeepScreenOpenWarning, RemoteAlertsUnavailableNotice } from "@/components/caronaa/DriverNotificationPermissionDialog";
+import { DriverNotificationPermissionDialog, KeepScreenOpenWarning, NativeAlertSetupCard, RemoteAlertsUnavailableNotice } from "@/components/caronaa/DriverNotificationPermissionDialog";
 import { FlashIncomingOrderCard } from "./FlashIncomingOrderCard";
 import { FlashDriverActiveSheet } from "./FlashDriverActiveSheet";
 import { QuickRidePostTripFlow } from "../QuickRidePostTripFlow";
@@ -344,6 +344,7 @@ export function DriverFlashPlanner({
       {!active&&!presence.online&&<DriverPwaPromotionCard/>}
       {!active&&presence.online&&noAlerts&&<KeepScreenOpenWarning/>}
       {!active&&presence.online&&!noAlerts&&remoteUnavailable&&<RemoteAlertsUnavailableNotice/>}
+      {!active&&<NativeAlertSetupCard/>}
       {!active&&snap==="peek"&&<>
         <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"

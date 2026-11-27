@@ -96,3 +96,29 @@ export async function refreshGrantedDriverAlerts(): Promise<DriverAlertResult | 
 }
 
 export function __resetDriverNotificationsForTests() { pushRegistration = null; }
+
+/** APK only: fires a local alert on the ride channel so the driver can hear the ringtone. Never prompts. */
+export async function testRideAlertSound(): Promise<"ok" | "denied" | "unsupported"> {
+  if (!isNativeAndroid()) return "unsupported";
+  const plugin = await nativeLocal();
+  if (!plugin) return "unsupported";
+  try {
+    if (normalize((await plugin.checkPermissions()).display) !== "granted") return "denied";
+    await setupAndroidNotificationChannels();
+    await plugin.schedule({ notifications: [{
+      id: 990001, title: "Teste de corrida CARONAA", body: "Este é o toque que você ouvirá quando chegar uma corrida.",
+      channelId: "corridas_urgentes", smallIcon: "ic_stat_caronaa", iconColor: "#FFBB00",
+    }] });
+    return "ok";
+  } catch { return "unsupported"; }
+}
+
+/** APK only: opens this app's Android settings (battery/notifications). */
+export async function openNativeAppSettings(): Promise<boolean> {
+  if (!isNativeAndroid() || !isNativePluginAvailable("CaronaaNative")) return false;
+  try {
+    const { registerPlugin } = await import("@capacitor/core");
+    await registerPlugin<{ openAppSettings(): Promise<void> }>("CaronaaNative").openAppSettings();
+    return true;
+  } catch { return false; }
+}

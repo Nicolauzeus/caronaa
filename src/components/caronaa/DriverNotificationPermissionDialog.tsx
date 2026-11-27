@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { BellRing } from "lucide-react";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
+import { openNativeAppSettings, testRideAlertSound } from "@/lib/native/driver-notifications";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function needsNotificationExplanation(): boolean {
@@ -41,4 +44,30 @@ export function KeepScreenOpenWarning() {
   return <p role="status" className="rounded-xl border border-primary/50 bg-primary/10 px-3 py-2 text-xs leading-snug text-foreground">
     Notificações desativadas: mantenha esta tela aberta para ver as corridas.
   </p>;
+}
+
+/** APK only: guided checklist so the driver can leave alerts fully active. */
+export function NativeAlertSetupCard() {
+  const [msg, setMsg] = useState<string | null>(null);
+  if (!isNativeAndroid()) return null;
+  const test = async () => {
+    const r = await testRideAlertSound();
+    setMsg(r === "ok" ? "Alerta enviado. Se não tocou, ative o som da categoria Corridas urgentes."
+      : r === "denied" ? "Permita as notificações do CARONAA para testar o toque." : "Teste indisponível neste aparelho.");
+  };
+  return <details className="rounded-xl border border-primary/40 bg-black/40 px-3 py-2 text-xs leading-snug">
+    <summary className="cursor-pointer font-bold text-primary">Deixe os alertas de corrida 100% ativos</summary>
+    <ol className="mt-2 list-decimal space-y-1 pl-4">
+      <li>Toque em <b>Abrir ajustes do app</b>.</li>
+      <li><b>Bateria</b>: escolha <b>Sem restrições</b>.</li>
+      <li><b>Notificações › Corridas urgentes</b>: ative som, pop-up e tela de bloqueio.</li>
+      <li>Xiaomi/Samsung: ative <b>Início automático</b>.</li>
+      <li>Volte e toque em <b>Testar toque de corrida</b>.</li>
+    </ol>
+    <div className="mt-2 grid grid-cols-2 gap-2">
+      <button type="button" onClick={() => void openNativeAppSettings()} className="min-h-10 rounded-lg border border-border font-semibold">Abrir ajustes do app</button>
+      <button type="button" onClick={() => void test()} className="min-h-10 rounded-lg bg-primary font-bold text-primary-foreground">Testar toque de corrida</button>
+    </div>
+    {msg && <p role="status" className="mt-2">{msg}</p>}
+  </details>;
 }
