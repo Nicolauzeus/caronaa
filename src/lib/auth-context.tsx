@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { onNativeAppResume } from "@/lib/native/capacitor-bridge";
 import { useRouter } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,7 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", resume);
     window.addEventListener("pageshow", resume);
     window.addEventListener("online", resume);
+    // Android APK: resume restores the session in place; never signs out or prompts.
+    const offNativeResume = onNativeAppResume(() => {
+      resume();
+      window.dispatchEvent(new Event("caronaa:app-refresh"));
+    });
     return () => {
+      offNativeResume();
       active = false;
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("focus", resume);

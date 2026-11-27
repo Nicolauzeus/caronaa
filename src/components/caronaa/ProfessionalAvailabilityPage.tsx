@@ -10,7 +10,7 @@ import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { getF07PilotState } from "@/lib/quick-rides/f07-pilot.functions";
 import { simulateF07TestLocation, clearF07TestLocation } from "@/lib/quick-rides/f07-radar-diagnostic.functions";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
-import { subscribeDriverToPush } from "@/lib/push/web-push-client";
+import { enableDriverAlerts } from "@/lib/native/driver-notifications";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
@@ -398,7 +398,7 @@ export function ProfessionalAvailabilityPage() {
         return;
       }
       // Ask for notifications inside this tap so calls arrive with the app closed.
-      void subscribeDriverToPush().catch(()=>undefined);
+      void enableDriverAlerts().catch(()=>undefined);
       const {error}=await (supabase as any).rpc("set_professional_presence",{
         p_available:true,p_municipality:municipality||null,
       });

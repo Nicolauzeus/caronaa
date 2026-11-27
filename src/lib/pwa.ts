@@ -1,5 +1,7 @@
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
+
 export async function registerPwa(): Promise<void> {
-  if (!window.isSecureContext || !("serviceWorker" in navigator)) return;
+  if (isNativeAndroid() || !window.isSecureContext || !("serviceWorker" in navigator)) return;
   try {
     const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
     // A tab left open across a deploy keeps requesting files the server replaced,
@@ -21,7 +23,7 @@ export async function registerPwa(): Promise<void> {
 }
 
 export async function requestPersistentStorage(): Promise<boolean> {
-  if (!window.isSecureContext || !navigator.storage?.persist) return false;
+  if (isNativeAndroid() || !window.isSecureContext || !navigator.storage?.persist) return false;
   try {
     if (await navigator.storage.persisted()) return true;
     return await navigator.storage.persist();

@@ -1,5 +1,6 @@
 // Shared capture of the Android `beforeinstallprompt` event so several
 // components (global notice, driver card) can trigger the native prompt.
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 export interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -12,6 +13,7 @@ export function onInstallPromptChange(l: () => void) { listeners.add(l); return 
 
 export function isStandaloneApp(): boolean {
   if (typeof window === "undefined") return false;
+  if (isNativeAndroid()) return true; // the APK is already an installed app
   return (navigator as Navigator & { standalone?: boolean }).standalone === true ||
     window.matchMedia?.("(display-mode: standalone)").matches === true;
 }

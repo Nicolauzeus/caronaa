@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { VAPID_PUBLIC_KEY } from "./vapid-public-key";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 
 export type PushSubscribeResult =
   | { ok: true }
@@ -14,7 +15,8 @@ export function urlBase64ToUint8Array(base64: string): Uint8Array {
 }
 
 export function isWebPushSupported(): boolean {
-  return typeof window !== "undefined" && window.isSecureContext &&
+  // The Android APK uses native notifications; never a browser subscription.
+  return typeof window !== "undefined" && !isNativeAndroid() && window.isSecureContext &&
     "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 

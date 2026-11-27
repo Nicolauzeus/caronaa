@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { subscribeDriverToPush } from "@/lib/push/web-push-client";
+import { refreshGrantedDriverAlerts } from "@/lib/native/driver-notifications";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { f07RadarAccuracyBand, f07RadarFailureCode, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
 
@@ -17,9 +17,8 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
   const publisherRef = useRef(publishVerified);
   publisherRef.current = publishVerified;
   useEffect(() => {
-    // Silently refresh this device's push subscription when already allowed.
-    if (typeof window !== "undefined" && "Notification" in window &&
-        Notification.permission === "granted") void subscribeDriverToPush().catch(() => undefined);
+    // Revalidate alerts only when already allowed; never prompts.
+    if (typeof window !== "undefined") void refreshGrantedDriverAlerts().catch(() => undefined);
   }, [userId]);
   useEffect(() => {
     if (typeof window === "undefined" ||

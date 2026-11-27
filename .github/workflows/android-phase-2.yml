@@ -1,0 +1,19 @@
+name: Android phase 2 (read-only checks)
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", "bun.lock", "src/lib/native/**", "scripts/check-android-phase*.mjs"]
+  pull_request:
+    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", "bun.lock", "src/lib/native/**", "scripts/check-android-phase*.mjs"]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run android:check
+      - run: npx vitest run src/test/android-capacitor-phase2.test.ts

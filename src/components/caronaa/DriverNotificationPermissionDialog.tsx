@@ -30,6 +30,13 @@ export function DriverNotificationPermissionDialog({ open, onAllow, onSkip }: {
   </Dialog>;
 }
 
+/** Native APK: permission granted, but remote delivery is not configured yet. */
+export function RemoteAlertsUnavailableNotice() {
+  return <p role="status" className="rounded-xl border border-border bg-muted px-3 py-2 text-xs leading-snug text-foreground">
+    Notificações permitidas. Alertas com o app fechado ainda não estão disponíveis nesta versão: mantenha o app aberto para ver as corridas.
+  </p>;
+}
+
 export function KeepScreenOpenWarning() {
   return <p role="status" className="rounded-xl border border-primary/50 bg-primary/10 px-3 py-2 text-xs leading-snug text-foreground">
     Notificações desativadas: mantenha esta tela aberta para ver as corridas.

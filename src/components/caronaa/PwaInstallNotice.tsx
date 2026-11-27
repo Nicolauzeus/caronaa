@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, Share2, PlusSquare, X, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { setInstallPrompt } from "@/lib/push/install-prompt";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 
 interface InstallPrompt extends Event {
@@ -15,7 +16,7 @@ const REMIND_AFTER_DISMISS_MS = 30_000;
 const ELIGIBILITY_CHECK_MS = 5_000;
 
 function installed() {
-  return window.matchMedia("(display-mode: standalone)").matches ||
+  return isNativeAndroid() || window.matchMedia("(display-mode: standalone)").matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 

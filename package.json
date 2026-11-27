@@ -16,7 +16,7 @@
     "android:sync": "cap sync android",
     "android:open": "cap open android",
     "android:doctor": "cap doctor",
-    "android:check": "tsc --noEmit -p tsconfig.capacitor.json && node scripts/check-android-phase1.mjs",
+    "android:check": "tsc --noEmit -p tsconfig.capacitor.json && node scripts/check-android-phase1.mjs && node scripts/check-android-phase2.mjs",
     "android:build:debug": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "overrides": {
@@ -24,7 +24,10 @@
   },
   "dependencies": {
     "@capacitor/android": "6.2.1",
+    "@capacitor/app": "6.0.3",
     "@capacitor/core": "6.2.1",
+    "@capacitor/local-notifications": "6.1.3",
+    "@capacitor/push-notifications": "6.0.5",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@lovable.dev/email-js": "0.3.1",

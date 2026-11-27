@@ -10,6 +10,10 @@ const config: CapacitorConfig = {
     cleartext: false,
     errorPath: "index.html",
   },
+  plugins: {
+    LocalNotifications: { smallIcon: "ic_stat_caronaa", iconColor: "#FFBB00", sound: "caronaa_ride_alert.wav" },
+    PushNotifications: { presentationOptions: ["sound", "alert"] },
+  },
   android: {
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,
