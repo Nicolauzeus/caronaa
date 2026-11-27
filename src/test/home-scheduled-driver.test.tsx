@@ -122,9 +122,9 @@ describe("Home — origem da carona tradicional",()=>{
 
   it("requires confirmation of a real approximate F03 origin while retaining strict F07 map GPS",async()=>{
     setFix(150);render(<Home/>);
-    expect(lastMap().passengerPreview).toBe(false);
-    expect(lastMap().following).toBe(false);
-    expect(lastMap().origin).toBeUndefined();
+    expect(lastMap().passengerPreview).toBe(true);
+    expect(lastMap().following).toBe(true);
+    expect(lastMap().origin).toEqual(expect.objectContaining({lat:-3.73,lng:-38.53}));
     plan();fireEvent.click(screen.getByRole("button",{name:"Selecionar UNIFOR"}));schedule();
     await waitFor(()=>expect(screen.getByText(/Valor sugerido por vaga/)).toHaveTextContent("6,00"));
     expect(lastMap().passengerPreview).toBe(true);

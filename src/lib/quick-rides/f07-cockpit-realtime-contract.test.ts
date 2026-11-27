@@ -48,8 +48,8 @@ describe("F07 GPS, cockpit and secure realtime regression",()=>{
     expect(sql).toContain("ALTER PUBLICATION supabase_realtime ADD TABLE public.caronaa_quick_queue_events");
     expect(sql).not.toContain("ADD TABLE public.professional_quick_rides");
     expect(hook).toContain('table:"caronaa_quick_queue_events"');
-    expect(hook).toContain('},6_000)');
-    expect(hook).toContain('if(!document.hidden)signal();');
+    expect(hook).toContain('},10_000)');
+    expect(hook).toContain('if(!document.hidden&&Date.now()-lastReconciledAt>=30_000)signal();');
     expect(hook).toContain('window.clearInterval(fallback)');
     expect(hook).toContain('visibilitychange');
     expect(hook).toContain('removeChannel(channel)');

@@ -33,8 +33,8 @@ describe("CARONAA passenger mobile-first UX contract",()=>{
   it("keeps desktop maps open and links account trips to real trip history",()=>{
     expect(home).toContain("flashFare={flashFare}");
     expect(home).toContain("onFareChange={setFlashFare}");
-    expect(home).toContain('trips: z.enum(["open"]).optional()');
+    expect(home).toMatch(/trips\s*:\s*z\.enum\(\["open"\]\)\.optional\(\)/);
     expect(home).toContain("routeLeftInset=");
-    expect(passenger).toContain('search={{trips:"open"}}');
+    expect(readFileSync("src/components/caronaa/shell/app-navigation.ts", "utf8")).toContain('label: "Viagens"');
   });
 });

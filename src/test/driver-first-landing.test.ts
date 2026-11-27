@@ -48,8 +48,8 @@ describe("new CARONAA driver: online-first navigation",()=>{
     const shell=read("src/components/caronaa/AppShell.tsx");
     const availability=read("src/components/caronaa/ProfessionalAvailabilityPage.tsx");
     expect(shell).toContain('professionalOnly: !roleRow.error && activeRole === "MOTORISTA"');
-    expect(availability).toContain('online={enabled && authorized && !blocked}');
-    expect(availability).toContain('disabled={!ready||busy||(enabled&&activeQuickRide)||(!enabled&&(blocked||(!authorized&&!pilotEnabled)))}');
+    expect(availability).toContain('online={enabled && authorized}');
+    expect(availability).toContain('disabled={!ready||busy||(enabled&&activeQuickRide)}');
     expect(availability).toContain('professionalRadarConsentKey(userId)');
     expect(availability).toContain("Concluir cadastro e habilitar corridas");
   });

@@ -6,6 +6,7 @@ const pix = readFileSync("src/components/caronaa/DriverPix.tsx", "utf8");
 const fees = readFileSync("src/components/caronaa/DriverPlatformFees.tsx", "utf8");
 const finance = readFileSync("src/components/admin/PlatformFeeFinance.tsx", "utf8");
 const shell = readFileSync("src/components/caronaa/AppShell.tsx", "utf8");
+const navigation = readFileSync("src/components/caronaa/shell/app-navigation.ts", "utf8");
 const home = readFileSync("src/routes/_authenticated/home.tsx", "utf8");
 const offer = readFileSync("src/routes/_authenticated/oferecer.tsx", "utf8");
 
@@ -48,10 +49,12 @@ describe("Manual payments and platform fee policy", () => {
     expect(migration).toContain("ON CONFLICT(ride_id) DO NOTHING");
   });
   it("exposes an explicit four-tab navigation and distinct roles", () => {
-    expect(shell).toContain('label: "Oferecer"');
-    expect(shell).toContain('label: "Viagens"');
+    expect(navigation).toContain('label: "Início"');
+    expect(navigation).toContain('label: "Oferecer"');
+    expect(navigation).toContain('label: "Viagens"');
+    expect(navigation).toContain('label: "Perfil"');
     expect(shell).toContain('"grid-cols-4"');
-    expect(home).toContain("Confirmar Carona");
+    expect(home).toContain("flashOperationalPanel={");
     expect(home).not.toContain("Vou dirigindo");
     expect(offer).toContain("Vagas disponíveis");
     expect(offer).toContain("Publicar Viagem");

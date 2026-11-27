@@ -279,7 +279,8 @@ describe("automatic ride cost splitting", () => {
     expect(migration).toContain("NEW.passenger_accepted_at IS DISTINCT FROM OLD.passenger_accepted_at");
     expect(migration).toContain("route_distance_km IS NULL");
     expect(quoteService).toContain('z.object({ rideId: z.string().uuid() })');
-    expect(quoteService).toContain('geocodeAddressService(request.origin)');
+    expect(quoteService).toContain('geocodeAddressService(request.origin, googleRequest)');
+    expect(quoteService).toContain('geocodeAddressService(request.destination, googleRequest)');
     expect(quoteService).toContain("getDrivingDistanceKm(");
     expect(quoteService).not.toContain("data.distanceKm");
     expect(quoteService).not.toContain("data.price");

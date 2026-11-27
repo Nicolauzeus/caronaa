@@ -28,14 +28,14 @@
 | Sensor GPS em movimento | `navigator.geolocation.watchPosition`, sensor do aparelho | Não por si só |
 | Publicação GPS profissional | RPC Supabase com guard de precisão e prazo | Não por si só; backend pode executar Geocoding para validar município |
 | Mudança da corrida/fila | Supabase Realtime via WebSocket; consulta protegida após evento | Não |
-| Recuperação de perda de socket | Polling limitado no Supabase, só quando necessário | Não |
+| Recuperação de evento/socket perdido | Reconciliação moderada no Supabase, inclusive com socket ativo | Não |
 | Mover ícone e ajustar zoom em mapa já existente | API Google Maps JavaScript, objeto local do mapa | Não é uma nova consulta ao Routes |
 | Criar novo mapa JS `new google.maps.Map` | Maps JavaScript Dynamic Maps | Pode gerar novo carregamento faturável |
 | Calcular/atualizar rota | Google Routes / backend | Pode gerar nova solicitação faturável |
 | Resolver rua/cidade de coordenadas | Geocoding / Places | Pode gerar cobrança separada |
 
 **Não confundir Webhook com WebSocket.** Um webhook envia requisições HTTP ao endpoint servidor em eventos; não é uma conexão de navegador que fica "em aberto". A assinatura WebSocket mantém a sessão e entrega eventos, sem consultar Google.
-No F07 já existe `useQuickRideRealtime` com `postgres_changes` na fila municipal e fallback a 60 s apenas se não estiver conectado. O passageiro continua consultando seu pedido com RPC autorizada durante a corrida, pois a fila profissional não é um canal de dados privados do passageiro. **Não** assinar tabelas de localização brutas sem política RLS; eventual melhoria é um Supabase Broadcast privado por ID de corrida com autorização server-side.
+No F07, `useQuickRideRealtime` usa `postgres_changes` na fila municipal como sinal rápido, mas não trata uma assinatura ativa como garantia de entrega de todos os eventos. Um timer leve verifica a cada 10 s e só inicia reconciliação pelo RPC autorizado depois de pelo menos 30 s desde a última; foco, retorno à visibilidade e reconexão também solicitam atualização. Debounce e trava de execução evitam duplicatas ou sobreposição. Assim, um evento municipal/intermunicipal perdido é recuperado sem geocodificação nem chamadas adicionais ao Google Maps. O passageiro continua consultando seu pedido com RPC autorizada durante a corrida, pois a fila profissional não é um canal de dados privados do passageiro. **Não** assinar tabelas de localização brutas sem política RLS; eventual melhoria é um Supabase Broadcast privado por ID de corrida com autorização server-side.
 
 ## Correções de código
 - `ShellJourneyPlanner`: uma instância do painel passageiro durante peek/half/full; sem montar uma nova em cada posição da folha.

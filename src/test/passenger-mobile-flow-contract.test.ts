@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
 describe("CARONAA passenger mobile experience", () => {
-  it("keeps role switching exclusively in the account drawer", () => {
+  it("keeps role changes explicit while offering the approved four-tab navigation", () => {
     const home = source("src/routes/_authenticated/home.tsx");
     const menu = source("src/components/caronaa/MobileAccountDrawer.tsx");
     const nav = source("src/components/caronaa/shell/app-navigation.ts");
@@ -15,7 +15,10 @@ describe("CARONAA passenger mobile experience", () => {
     expect(menu).toContain('title: "Trabalhar como motorista"');
     expect(menu).toContain('intent: "request"');
     expect(menu).toContain('intent: "offer"');
-    expect(nav).not.toContain('label: "Oferecer"');
+    expect(nav).toContain('label: "Oferecer"');
+    expect(home).toContain("Continuar como motorista");
+    expect(home).toContain("Continuar como passageiro");
+    expect(home).toContain('handleShellRoleSwitch("MOTORISTA")');
   });
 
   it("uses verified, separate Flash prices and only shows real matching shared rides", () => {

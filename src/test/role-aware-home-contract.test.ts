@@ -33,7 +33,7 @@ describe("CARONAA role-aware Home contracts",()=>{
     const shell=source("src/components/caronaa/AppShell.tsx");
     const nav=source("src/components/caronaa/shell/app-navigation.ts");
     expect(nav).toContain("sharedDriverNav");
-    expect(shell).toContain('label==="Viagens"?{trips:"open"}:{intent:"offer"}');
+    expect(shell).toContain('if (label === "Viagens") return { trips: "open" as const };');
     expect(shell).toContain("professionalNav");
     expect(shell).toContain('professionalOnly: !roleRow.error && activeRole === "MOTORISTA"');
     const drawer=source("src/components/caronaa/MobileAccountDrawer.tsx");

@@ -14,7 +14,7 @@ describe("CARONAA F07 Google Routes and public radar integration",()=>{
     expect(home).toContain("p_vehicle:type");
     expect(home).toContain("mapQuickRadarDrivers(data,type)");
     expect(home).toContain("Promise.allSettled");
-    expect(home).toContain("setQuickDriverCounts(counts)");
+    expect(home).toContain("setQuickDriverCounts(previous=>");
     expect(home).not.toContain("p_vehicle:quickVehicle");
     expect(home).toContain('professionalDrivers={quickDrivers}');
     expect(home).toContain('setQuickDrivers([])');

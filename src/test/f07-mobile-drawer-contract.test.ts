@@ -42,7 +42,7 @@ describe("F07 map-first mobile operational drawers",()=>{
   });
   it("keeps passenger live controls visible when sheet is in map peek",()=>{
     expect(shell).toContain('snap!=="peek"||flashRideActive');
-    expect(shell).toContain('flashRideActive?"min-h-0 flex-1 overflow-hidden"');
+    expect(shell).toContain('flashRideActive?"min-h-0 flex-1 overflow-y-auto overscroll-contain"');
     expect(passenger).toContain("<FlashPassengerLiveSheet");
     expect(passengerSheet).toContain('Seu código de embarque');
     expect(passengerSheet).toContain("<QuickRideSearchActivity");
