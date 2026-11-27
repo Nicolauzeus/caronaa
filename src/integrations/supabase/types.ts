@@ -520,6 +520,90 @@ export type Database = {
         }
         Relationships: []
       }
+      caronaa_flash_creation_candidates: {
+        Row: {
+          captured_at: string
+          driver_ids: string[]
+          request_id: string
+          rule_version: string
+        }
+        Insert: {
+          captured_at: string
+          driver_ids: string[]
+          request_id: string
+          rule_version: string
+        }
+        Update: {
+          captured_at?: string
+          driver_ids?: string[]
+          request_id?: string
+          rule_version?: string
+        }
+        Relationships: []
+      }
+      caronaa_flash_driver_view_history: {
+        Row: {
+          driver_id: string
+          first_viewed_at: string
+          last_viewed_at: string
+          ride_id: string
+        }
+        Insert: {
+          driver_id: string
+          first_viewed_at: string
+          last_viewed_at: string
+          ride_id: string
+        }
+        Update: {
+          driver_id?: string
+          first_viewed_at?: string
+          last_viewed_at?: string
+          ride_id?: string
+        }
+        Relationships: []
+      }
+      caronaa_flash_queue_signal_history: {
+        Row: {
+          id: number
+          operation: string
+          recorded_at: string
+          request_id: string
+          status: string
+        }
+        Insert: {
+          id?: never
+          operation: string
+          recorded_at: string
+          request_id: string
+          status: string
+        }
+        Update: {
+          id?: never
+          operation?: string
+          recorded_at?: string
+          request_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      caronaa_flash_radar_client_ack: {
+        Row: {
+          acknowledged_at: string
+          driver_id: string
+          request_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          driver_id: string
+          request_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          driver_id?: string
+          request_id?: string
+        }
+        Relationships: []
+      }
       caronaa_operational_presence_hours: {
         Row: {
           hour_bucket: string
@@ -609,6 +693,69 @@ export type Database = {
           recipients?: string[]
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      caronaa_order_notification_receipts: {
+        Row: {
+          channel: string
+          dispatch_key: string
+          driver_id: string
+          receipt_id: string
+          recorded_at: string
+          request_id: string
+          service: string
+          stage: string
+        }
+        Insert: {
+          channel: string
+          dispatch_key: string
+          driver_id: string
+          receipt_id?: string
+          recorded_at?: string
+          request_id: string
+          service: string
+          stage: string
+        }
+        Update: {
+          channel?: string
+          dispatch_key?: string
+          driver_id?: string
+          receipt_id?: string
+          recorded_at?: string
+          request_id?: string
+          service?: string
+          stage?: string
+        }
+        Relationships: []
+      }
+      caronaa_order_passenger_cancellations: {
+        Row: {
+          cancelled_at: string
+          passenger_id: string
+          previous_status: string
+          reason_code: string | null
+          reason_recorded_at: string | null
+          request_id: string
+          service: string
+        }
+        Insert: {
+          cancelled_at?: string
+          passenger_id: string
+          previous_status: string
+          reason_code?: string | null
+          reason_recorded_at?: string | null
+          request_id: string
+          service: string
+        }
+        Update: {
+          cancelled_at?: string
+          passenger_id?: string
+          previous_status?: string
+          reason_code?: string | null
+          reason_recorded_at?: string | null
+          request_id?: string
+          service?: string
         }
         Relationships: []
       }
@@ -1007,6 +1154,30 @@ export type Database = {
           municipality?: string
           pricing_region?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      caronaa_shared_attempt_cancel_reasons: {
+        Row: {
+          passenger_id: string
+          reason_code: string
+          recorded_at: string
+          request_id: string
+          ride_id: string
+        }
+        Insert: {
+          passenger_id: string
+          reason_code: string
+          recorded_at?: string
+          request_id: string
+          ride_id: string
+        }
+        Update: {
+          passenger_id?: string
+          reason_code?: string
+          recorded_at?: string
+          request_id?: string
+          ride_id?: string
         }
         Relationships: []
       }
@@ -6324,6 +6495,56 @@ export type Database = {
         }
         Returns: string
       }
+      admin_operational_audience_diagnostics: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operational_cancellation_breakdown: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operational_conversion_retention: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operational_diagnostics: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operational_driver_performance: {
+        Args: {
+          p_from: string
+          p_limit?: number
+          p_offset?: number
+          p_service?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_operational_order_kpis: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operational_overview: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operational_person_history: {
+        Args: {
+          p_from: string
+          p_limit?: number
+          p_offset?: number
+          p_person_id: string
+          p_role: string
+          p_service?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_operational_quote_funnel: {
+        Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
       admin_operations_history_report: {
         Args: {
           p_from: string
@@ -6336,6 +6557,14 @@ export type Database = {
       }
       admin_operations_intelligence: {
         Args: { p_from: string; p_service?: string; p_to: string }
+        Returns: Json
+      }
+      admin_operations_order_evidence: {
+        Args: { p_request_id: string; p_service: string }
+        Returns: Json
+      }
+      admin_operations_order_timeline: {
+        Args: { p_request_id: string; p_service: string }
         Returns: Json
       }
       admin_operations_people_truth: { Args: never; Returns: Json }
@@ -6477,6 +6706,10 @@ export type Database = {
         }
         Returns: string
       }
+      caronaa_ack_flash_radar_response: {
+        Args: { p_request_ids: string[] }
+        Returns: number
+      }
       caronaa_f07_pilot_activate_driver: {
         Args: { p_user_id: string; p_vehicle_type: string }
         Returns: string
@@ -6486,7 +6719,33 @@ export type Database = {
         Returns: boolean
       }
       caronaa_f07_test_dispatch_allowed: { Args: never; Returns: boolean }
+      caronaa_flash_creation_candidate_ids: {
+        Args: { p_request_id: string }
+        Returns: string[]
+      }
       caronaa_normalize_whatsapp: { Args: { p_value: string }; Returns: string }
+      caronaa_operational_order_facts: {
+        Args: { p_from: string; p_service: string; p_until: string }
+        Returns: {
+          accepted: boolean
+          cancelled: boolean
+          completed: boolean
+          destination: string
+          driver_id: string
+          expired: boolean
+          fare_cents: number
+          first_accepted_at: string
+          id: string
+          in_progress: boolean
+          municipality: string
+          origin: string
+          passenger_id: string
+          payment_status: string
+          requested_at: string
+          service: string
+          status: string
+        }[]
+      }
       caronaa_passenger_demand_heartbeat: {
         Args: { p_vehicle: string }
         Returns: undefined
@@ -6520,6 +6779,25 @@ export type Database = {
       caronaa_quick_submit_quoted: {
         Args: { p_quote_id: string }
         Returns: string
+      }
+      caronaa_record_notification_receipt: {
+        Args: {
+          p_channel: string
+          p_dispatch_key: string
+          p_driver_id: string
+          p_request_id: string
+          p_service: string
+          p_stage: string
+        }
+        Returns: boolean
+      }
+      caronaa_record_passenger_cancel_reason: {
+        Args: { p_reason_code: string; p_request_id: string; p_service: string }
+        Returns: boolean
+      }
+      caronaa_record_shared_attempt_cancel_reason: {
+        Args: { p_reason_code: string; p_ride_id: string }
+        Returns: boolean
       }
       caronaa_register_coverage_interest: {
         Args: { p_municipality: string; p_vehicle: string }
@@ -7102,6 +7380,10 @@ export type Database = {
           vehicle_type: string
           walk_distance_m: number
         }[]
+      }
+      get_flash_driver_radar_orders_observed: {
+        Args: { p_max_distance_m?: number }
+        Returns: Json
       }
       get_form_account_activation: { Args: never; Returns: Json }
       get_form_funnel_metrics: {
