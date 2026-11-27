@@ -17,7 +17,7 @@ function repo(): FcmRepo {
       { userId: "driver-moto", lat: -3.73, lng: -38.52 },
       { userId: "outside", lat: -4.5, lng: -38.5 },
     ]),
-    approvedDrivers: vi.fn(async (ids) => ids.filter(id => id === "driver-a")),
+    approvedDrivers: vi.fn(async (ids: string[]) => ids.filter((id: string) => id === "driver-a")),
     tokens: vi.fn(async () => [...rows, rows[0]!]),
     deleteToken: vi.fn(async () => true),
   };
