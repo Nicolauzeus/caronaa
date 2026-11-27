@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { onNativeAppResume } from "@/lib/native/capacitor-bridge";
+import { mountNativeForegroundTracking, stopNativeForegroundTracking, syncNativeTrackingAuth } from "@/lib/native/foreground-location";
 import { mountNativeDriverNotifications, nativeDriverAuthChanged, revokeNativeDriverNotificationsBeforeSignOut, resumeNativeDriverNotifications } from "@/lib/native/driver-fcm-session";
 import { useRouter } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const identityChanged=lastIdentity.current!==identity;
       lastIdentity.current=identity;
       if (identityChanged) nativeDriverAuthChanged(identity);
+      syncNativeTrackingAuth(session);
       setUser(previous => {
         const next = session?.user ?? null;
         return previous?.id === next?.id ? (next ?? previous) : next;
@@ -46,7 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
-      if (!error) setUser(previous => data.session?.user ?? previous);
+      if (!error) {
+        setUser(previous => data.session?.user ?? previous);
+        if (data.session) syncNativeTrackingAuth(data.session);
+      }
       setLoading(false);
     }).catch(() => { if (active) setLoading(false); });
 
@@ -57,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void supabase.auth.getSession().then(({ data, error }) => {
         if (!active || error) return;
         // A temporarily unavailable auth endpoint is NOT a sign-out.
-        if (data.session?.user) setUser(data.session.user);
+        if (data.session?.user) { setUser(data.session.user); syncNativeTrackingAuth(data.session); }
         // Route invalidation on a normal reconnect can invoke auth redirects;
         // live screens are reconciled in place by caronaa:app-refresh.
       }).catch(() => {});
@@ -81,6 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       listener.subscription.unsubscribe();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (loading || !user?.id) return;
+    return mountNativeForegroundTracking(user.id);
+  }, [loading, user?.id]);
 
   // The root owns the native push listener across all authenticated routes.
   // Mount only after the session is restored; no permission request on login.
@@ -138,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  * Web/PWA remains the original Supabase logout. Never block logout indefinitely.
  */
 export async function signOutWithNativeNotifications() {
+  await stopNativeForegroundTracking(true).catch(() => undefined);
   await revokeNativeDriverNotificationsBeforeSignOut().catch(() => undefined);
   try {
     const result = await supabase.auth.signOut();

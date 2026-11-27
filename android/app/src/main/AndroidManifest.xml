@@ -26,6 +26,12 @@
 
         </activity>
 
+        <service
+            android:name=".CaronaaLocationService"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            android:stopWithTask="true" />
+
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="corridas_urgentes" />

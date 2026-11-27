@@ -16,7 +16,7 @@ const map=readFileSync("src/components/caronaa/QuickRideOperationalMap.tsx","utf
 const surface=readFileSync("src/components/caronaa/GoogleMapSurface.tsx","utf8");
 const google=readFileSync("src/lib/location/google-places.ts","utf8");
 const token=readFileSync("src/components/formulario/LocationAutocomplete.tsx","utf8");
-const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
+const server=readFileSync("src/lib/professional-radar-publication.server.ts","utf8");
 
 describe("F07 GPS, cockpit and secure realtime regression",()=>{
   it("no longer requests quota-limited geocoding v4 for reverse GPS",()=>{

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
+import { nativeOwnsBackgroundGps, startNativeForegroundTracking, stopNativeForegroundTracking } from "@/lib/native/foreground-location";
 import { setFlashDriverOffline, setFlashDriverOnline, pingFlashDriverPresence, updateFlashDriverHeartbeatGPS, FlashDriverError, type FlashDriverOnlineInput } from "@/services/flash-driver-service";
 
 export type DriverGpsFix={lat:number;lng:number;accuracyM:number;at:number};
@@ -60,7 +62,7 @@ export function useFlashDriverPresence(){
     presenceTimer.current=null;
   },[]);
   const sendHeartbeat=useCallback(async(fix:DriverGpsFix,force=false)=>{
-    if(!active.current||sending.current)return false;
+    if(!active.current||sending.current||nativeOwnsBackgroundGps())return false;
     if(!force && Date.now()-lastSentAt.current<FLASH_GPS_THROTTLE_MS)return true;
     sending.current=true;
     const generation=presenceGeneration.current;
@@ -88,7 +90,8 @@ export function useFlashDriverPresence(){
     stopWatch();
     releaseWakeLock();
     setState(s=>({...s,busy:true,gpsConnected:false}));
-    try{await setFlashDriverOffline();
+    try{await stopNativeForegroundTracking(true);
+      await setFlashDriverOffline();
       setState(s=>({...s,online:false,busy:false,error:null}));
     }catch{
       // Do not claim offline was committed if the server rejected the change.
@@ -107,13 +110,14 @@ export function useFlashDriverPresence(){
       // registration region, Pix, or delayed device sensor initialization.
       currentMunicipality.current=input.municipality??"";
       await setFlashDriverOnline(input);
+      if (isNativeAndroid()) void startNativeForegroundTracking(true);
       active.current=true;
       ++presenceGeneration.current;
       currentFix.current=null;
       lastGpsAt.current=0;
       lastSentAt.current=0;
       setState(s=>({...s,online:true,gpsConnected:false,error:null}));
-      const ping=()=>{if(active.current&&navigator.onLine)
+      const ping=()=>{if(active.current&&navigator.onLine&&!nativeOwnsBackgroundGps())
         void pingFlashDriverPresence().catch(()=>undefined);};
       void ping();
       presenceTimer.current=setInterval(ping,20000);

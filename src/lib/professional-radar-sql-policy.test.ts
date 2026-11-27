@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const sql = readFileSync("drizzle/migrations/0142_radar_corredor_localizacao_verificada.sql", "utf8");
 const page = readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx", "utf8");
 const sync = readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx", "utf8");
-const server = readFileSync("src/lib/professional-radar.functions.ts", "utf8");
+const server = readFileSync("src/lib/professional-radar-publication.server.ts", "utf8");
 const homeMap = readFileSync("src/components/caronaa/GoogleHomeRideMap.tsx", "utf8");
 
 describe("F07 corridor radar migration safety contracts", () => {

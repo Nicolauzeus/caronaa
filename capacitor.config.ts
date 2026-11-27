@@ -14,6 +14,7 @@ const config: CapacitorConfig = {
     LocalNotifications: { smallIcon: "ic_stat_caronaa", iconColor: "#FFBB00", sound: "caronaa_ride_alert.wav" },
     PushNotifications: { presentationOptions: ["sound", "alert"] },
   },
+  // BridgeActivity is singleTask: resume reconciles existing state, not the URL.
   android: {
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,

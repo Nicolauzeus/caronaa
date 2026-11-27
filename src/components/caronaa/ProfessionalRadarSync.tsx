@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { publishVerifiedProfessionalPosition } from "@/lib/professional-radar.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { refreshGrantedDriverAlerts } from "@/lib/native/driver-notifications";
+import { nativeOwnsBackgroundGps, stopNativeForegroundTracking } from "@/lib/native/foreground-location";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { f07RadarAccuracyBand, f07RadarFailureCode, f07RadarTraceId } from "@/lib/professional-radar-diagnostics";
 
@@ -48,11 +50,14 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
       timer = null;
       // Delete precise stored location immediately; stale heartbeat is also
       // excluded from discovery server-side after 90 seconds.
-      if (deleteStored)void (supabase as any).rpc("professional_location_stop");
+      if (deleteStored) {
+        void stopNativeForegroundTracking(false);
+        void (supabase as any).rpc("professional_location_stop");
+      }
     };
 
     const publish = async (position: GeolocationPosition) => {
-      if (disposed || publishing || watchId === null) return;
+      if (disposed || publishing || watchId === null || nativeOwnsBackgroundGps()) return;
       const { latitude, longitude, accuracy } = position.coords;
       const sampledAtMs=position.timestamp;
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
@@ -115,7 +120,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
     };
 
     const start = async () => {
-      if (starting || disposed || watchId !== null ||
+      if (starting || disposed || watchId !== null || nativeOwnsBackgroundGps() ||
           window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") return;
       starting = true;
       const epoch = generation;
@@ -141,10 +146,12 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
         // Do not use the stored/profile municipality for GPS publications.
         // The privileged server endpoint resolves the CURRENT city per fix.
         // Renew presence only when the user did not explicitly choose offline.
-        const { error } = await (supabase as any).rpc("set_professional_presence", {
-          p_available: true,
-          p_municipality: null,
-        });
+        const { error } = isNativeAndroid()
+          ? await supabase.rpc("driver_presence_ping")
+          : await (supabase as any).rpc("set_professional_presence", {
+            p_available: true,
+            p_municipality: null,
+          });
         if (error || disposed || generation !== epoch) {
           if (error) log("SYNC_PRESENCE_REFRESH_FAILED",String(error.code??"PRESENCE_RPC_ERROR"));
           return;
@@ -166,7 +173,7 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
           { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
         );
         timer = window.setInterval(() => {
-          if (disposed) return;
+          if (disposed || nativeOwnsBackgroundGps()) return;
           if (window.localStorage.getItem(professionalRadarConsentKey(userId)) !== "yes") {
             stop();
             return;
@@ -181,8 +188,9 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
               stop();
               return;
             }
-            const { error: heartbeatError } = await (supabase as any)
-              .rpc("set_professional_presence", {
+            const { error: heartbeatError } = isNativeAndroid()
+              ? await supabase.rpc("driver_presence_ping")
+              : await (supabase as any).rpc("set_professional_presence", {
                 p_available: true, p_municipality: null,
               });
             if (heartbeatError || disposed) {

@@ -9,6 +9,8 @@ import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTrace
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { enableDriverAlerts } from "@/lib/native/driver-notifications";
+import { hasNativeForegroundTracking, nativeOwnsBackgroundGps, startNativeForegroundTracking, stopNativeForegroundTracking } from "@/lib/native/foreground-location";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
 import { QuickRideDriverQueue, type ActiveDriverRide } from "@/components/caronaa/QuickRideDriverQueue";
 import { QuickRideOperationalMap } from "@/components/caronaa/QuickRideOperationalMap";
@@ -80,16 +82,18 @@ export function ProfessionalAvailabilityPage() {
   const stop=useCallback(async()=>{
     record("LOCATION_STOP_REQUEST");
     discardWatch();
+    await stopNativeForegroundTracking(false);
     if(mounted.current){setFix(null);setObservedFix(null);setAccuracyWarning(false);}
     await (supabase as any).rpc("professional_location_stop");
   },[discardWatch,record]);
 
   const onFix=useCallback(async(position:GeolocationPosition)=>{
-    if(!tracking.current)return;
+    if(!tracking.current || nativeOwnsBackgroundGps())return;
     record("GPS_FIX_RECEIVED",{accuracy:f07RadarAccuracyBand(position.coords.accuracy)});
     if(userId && window.localStorage.getItem(professionalRadarConsentKey(userId))!=="yes"){
       record("CONSENT_REVOKED",{},"warn");
       discardWatch();
+      void stopNativeForegroundTracking(false);
       void (supabase as any).rpc("professional_location_stop");
       return;
     }
@@ -215,6 +219,12 @@ export function ProfessionalAvailabilityPage() {
       // A transient timeout is NOT revocation. Keep the browser watcher alive
       // and let the 90-second server cutoff hide stale positions.
       if(reason.code===1){
+        if (hasNativeForegroundTracking()) {
+          // Android can keep an explicitly consented native tracker while
+          // the WebView GPS is temporarily unavailable. Do not revoke on a hidden page.
+          if (nativeOwnsBackgroundGps()) return;
+        }
+        void stopNativeForegroundTracking(false);
         discardWatch();
         window.localStorage.removeItem(professionalRadarConsentKey(uid));
         void (supabase as any).rpc("professional_location_stop");
@@ -315,6 +325,7 @@ export function ProfessionalAvailabilityPage() {
     if(!enabled)return;
     const timer=window.setInterval(()=>{
       // Do not silently re-enable an explicit offline choice from another device.
+      if (nativeOwnsBackgroundGps()) return;
       void (async()=>{
         const {data,stateError}=await (supabase as any)
           .from("professional_presence").select("is_available").eq("user_id",userId).maybeSingle()
@@ -323,9 +334,11 @@ export function ProfessionalAvailabilityPage() {
           if(mounted.current){setEnabled(false);setError("Disponibilidade encerrada ou sessão indisponível.");}
           void stop();return;
         }
-        const {error}=await (supabase as any).rpc("set_professional_presence",{
-          p_available:true,p_municipality:null,
-        });
+        const {error}=isNativeAndroid()
+          ? await supabase.rpc("driver_presence_ping")
+          : await (supabase as any).rpc("set_professional_presence",{
+            p_available:true,p_municipality:null,
+          });
         if(error && mounted.current)setError("Não foi possível atualizar o sinal de disponibilidade.");
       })();
     },30000);
@@ -335,7 +348,7 @@ export function ProfessionalAvailabilityPage() {
   useEffect(()=>{
     if(!sharing)return;
     const timer=window.setInterval(()=>{
-      if(!tracking.current || !navigator.geolocation)return;
+      if(!tracking.current || !navigator.geolocation || nativeOwnsBackgroundGps())return;
       // Browsers may throttle background execution; DB TTL will prevent stale
       // GPS from appearing as a live driver if that happens.
       navigator.geolocation.getCurrentPosition(
@@ -376,6 +389,9 @@ export function ProfessionalAvailabilityPage() {
       // The user explicitly chose availability + GPS in ONE labeled button.
       if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
       startGps(municipality,userId);
+      if (isNativeAndroid()) void startNativeForegroundTracking(true).then(ok => {
+        if (!ok && mounted.current) setError("GPS em segundo plano indisponível. Confira as permissões e a versão do APK.");
+      });
     }catch(e){
       record("PRESENCE_TRANSITION_FAILED",{code:f07RadarFailureCode(e)},"warn");
       setError(e instanceof Error?e.message:"Não foi possível mudar a disponibilidade.");
@@ -544,6 +560,7 @@ export function ProfessionalAvailabilityPage() {
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
         startGps(municipality,userId);
+        if (isNativeAndroid()) void startNativeForegroundTracking(true);
       }} className="min-h-11 w-full rounded-xl border border-white/20 bg-white/5 px-3 text-xs font-semibold text-white hover:bg-white/10">
         Tentar compartilhar GPS novamente
       </button>}

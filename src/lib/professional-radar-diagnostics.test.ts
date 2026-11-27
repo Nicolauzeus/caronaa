@@ -68,7 +68,7 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
   });
 
   it("publishes only fresh native GPS fixes with the v2 timestamp contract",()=>{
-    const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
+    const server=readFileSync("src/lib/professional-radar-publication.server.ts","utf8");
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
     const geo=readFileSync("src/lib/professional-radar-geo.ts","utf8");
@@ -118,7 +118,7 @@ describe("F07 — structured GPS diagnostics without leaking location or secrets
   });
 
   it("maintains geolocation security boundaries while logging every backend stage",()=>{
-    const server=readFileSync("src/lib/professional-radar.functions.ts","utf8");
+    const server=readFileSync("src/lib/professional-radar-publication.server.ts","utf8");
     const page=readFileSync("src/components/caronaa/ProfessionalAvailabilityPage.tsx","utf8");
     const sync=readFileSync("src/components/caronaa/ProfessionalRadarSync.tsx","utf8");
     expect(server).toContain("resolvePilotCivic(data.lat, data.lng)");
