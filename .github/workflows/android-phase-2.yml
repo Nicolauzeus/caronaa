@@ -2,9 +2,9 @@ name: Android phase 2 (read-only checks)
 on:
   push:
     branches: [main]
-    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", "bun.lock", "src/lib/native/**", "scripts/check-android-phase*.mjs"]
+    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", "bun.lock", "src/lib/native/**", "src/lib/quick-rides/quick-ride-*push*.ts", "src/lib/quick-rides/quick-ride-fcm.server.ts", "src/test/quick-ride-fcm-dispatch.test.ts", "scripts/check-android-phase*.mjs"]
   pull_request:
-    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", "bun.lock", "src/lib/native/**", "scripts/check-android-phase*.mjs"]
+    paths: ["android/**", "capacitor.config.ts", "package.json", "package-lock.json", "bun.lock", "src/lib/native/**", "src/lib/quick-rides/quick-ride-*push*.ts", "src/lib/quick-rides/quick-ride-fcm.server.ts", "src/test/quick-ride-fcm-dispatch.test.ts", "scripts/check-android-phase*.mjs"]
 permissions:
   contents: read
 jobs:
@@ -16,4 +16,6 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run android:check
-      - run: npx vitest run src/test/android-capacitor-phase2.test.ts
+      - run: npx vitest run src/test/android-capacitor-phase2.test.ts src/test/quick-ride-fcm-dispatch.test.ts src/test/quick-ride-push-dispatch.test.ts src/test/web-push-client.test.ts src/test/driver-pwa-promotion.test.tsx src/test/pwa-install-notice.test.tsx src/lib/research-waiting-page-contract.test.ts
+      - run: npx tsc --noEmit
+      - run: npm run build

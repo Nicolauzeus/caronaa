@@ -29,7 +29,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, signOutWithNativeNotifications } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/lib/admin/departments";
 import { useAdminAccess, hasDepartmentAccess } from "@/lib/admin/access";
@@ -299,7 +299,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
-    const { error } = await supabase.auth.signOut();
+    const { error } = await signOutWithNativeNotifications();
     if (error) { toast.error("Não foi possível encerrar a sessão. Tente novamente."); return; }
     void navigate({ to: "/auth", replace: true });
   }

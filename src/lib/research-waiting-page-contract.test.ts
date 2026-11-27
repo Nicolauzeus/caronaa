@@ -23,7 +23,8 @@ describe("Generic launch waiting room",()=>{
   expect(waiting).toContain('to="/perfil"');
   expect(waiting).toContain("Personalizar meu perfil");
   expect(waiting).toContain("SOMENTE VISUALIZAÇÃO");
-  expect(waiting).toContain("supabase.auth.signOut()");
+  expect(waiting).toContain("signOutWithNativeNotifications()");
+  expect(waiting).not.toContain("supabase.auth.signOut()");
   expect(waiting).not.toContain("createRideRequest(");
   expect(waiting).not.toContain("createRideOffer(");
  });

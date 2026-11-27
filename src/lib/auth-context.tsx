@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { onNativeAppResume } from "@/lib/native/capacitor-bridge";
+import { mountNativeDriverNotifications, nativeDriverAuthChanged, revokeNativeDriverNotificationsBeforeSignOut, resumeNativeDriverNotifications } from "@/lib/native/driver-fcm-session";
 import { useRouter } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const identity=session?.user?.id??null;
       const identityChanged=lastIdentity.current!==identity;
       lastIdentity.current=identity;
+      if (identityChanged) nativeDriverAuthChanged(identity);
       setUser(previous => {
         const next = session?.user ?? null;
         return previous?.id === next?.id ? (next ?? previous) : next;
@@ -80,6 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [router]);
 
+  // The root owns the native push listener across all authenticated routes.
+  // Mount only after the session is restored; no permission request on login.
+  useEffect(() => {
+    if (loading || !user?.id) return;
+    return mountNativeDriverNotifications(user.id, route => {
+      void router.navigate({ to: route }).then(() => {
+        window.dispatchEvent(new Event("caronaa:app-refresh"));
+      }).catch(() => undefined);
+    });
+  }, [loading, user?.id, router]);
+
   // Authenticated engagement: count unique accounts once per day/role, with
   // throttled presence signals. No GPS, user agent, IP or raw navigation data.
   useEffect(()=>{
@@ -119,6 +132,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   },[user?.id,user?.email_confirmed_at]);
 
   return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>;
+}
+
+/** All deliberate logout paths revoke native bindings while the JWT is valid.
+ * Web/PWA remains the original Supabase logout. Never block logout indefinitely.
+ */
+export async function signOutWithNativeNotifications() {
+  await revokeNativeDriverNotificationsBeforeSignOut().catch(() => undefined);
+  try {
+    const result = await supabase.auth.signOut();
+    if (result.error) resumeNativeDriverNotifications();
+    return result;
+  } catch (error) {
+    resumeNativeDriverNotifications();
+    throw error;
+  }
 }
 
 export function useAuth() {

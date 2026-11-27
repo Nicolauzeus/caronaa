@@ -13,7 +13,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, signOutWithNativeNotifications } from "@/lib/auth-context";
 import { getAdminAppPreview, leaveAdminAppPreview } from "@/lib/admin/entry";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
@@ -131,7 +131,7 @@ export function AppShell({
     }
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await signOutWithNativeNotifications();
     await navigate({ to: "/auth", replace: true });
   }
 

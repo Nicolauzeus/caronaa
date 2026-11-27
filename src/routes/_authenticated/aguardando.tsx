@@ -1,3 +1,4 @@
+import { signOutWithNativeNotifications } from "@/lib/auth-context";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -279,7 +280,7 @@ function ResearchWaitingRoom() {
             type="button"
             className="min-h-9 shrink-0 rounded-lg border border-white/25 px-3 font-semibold text-white/85"
             onClick={async () => {
-              await supabase.auth.signOut();
+              await signOutWithNativeNotifications();
               void navigate({ to: "/auth", replace: true });
             }}
           >

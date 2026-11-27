@@ -1,7 +1,8 @@
 import { subscribeDriverToPush } from "@/lib/push/web-push-client";
 import {
-  hasNativeFirebaseConfig, isNativeAndroid, isNativePluginAvailable, setupAndroidNotificationChannels,
+  isNativeAndroid, isNativePluginAvailable, setupAndroidNotificationChannels,
 } from "./capacitor-bridge";
+import { registerNativeDriverPush, __resetFcmSessionForTests } from "./driver-fcm-session";
 
 /** Platform-neutral driver alert permission. */
 export type DriverAlertPermission = "granted" | "denied" | "prompt" | "unsupported";
@@ -33,38 +34,9 @@ export async function getDriverAlertPermission(): Promise<DriverAlertPermission>
   return normalize(Notification.permission);
 }
 
-let pushRegistration: Promise<boolean> | null = null;
-
-/**
- * Registers with FCM only when the APK carries a real Firebase config. The token
- * is neither logged nor stored: authenticated FCM delivery is a later phase.
- */
-function registerNativePushOnce(): Promise<boolean> {
-  if (pushRegistration) return pushRegistration;
-  pushRegistration = (async () => {
-    if (!isNativePluginAvailable("PushNotifications") || !(await hasNativeFirebaseConfig())) return false;
-    try {
-      const { PushNotifications } = await import("@capacitor/push-notifications");
-      const result = await new Promise<boolean>((resolve) => {
-        const handles: Array<Promise<{ remove: () => Promise<void> }>> = [];
-        const done = (ok: boolean) => { handles.forEach((h) => void h.then((x) => x.remove())); resolve(ok); };
-        handles.push(PushNotifications.addListener("registration", () => done(true)));
-        handles.push(PushNotifications.addListener("registrationError", () => done(false)));
-        PushNotifications.register().catch(() => done(false));
-      });
-      if (!result) pushRegistration = null;
-      return result;
-    } catch {
-      pushRegistration = null;
-      return false;
-    }
-  })();
-  return pushRegistration;
-}
-
 async function finishNative(): Promise<DriverAlertResult> {
   await setupAndroidNotificationChannels();
-  return { ok: true, remote: (await registerNativePushOnce()) ? "native-registered" : "native-unavailable" };
+  return { ok: true, remote: (await registerNativeDriverPush()) ? "native-registered" : "native-unavailable" };
 }
 
 /** Asks for permission (call only from an explicit driver action). */
@@ -95,7 +67,7 @@ export async function refreshGrantedDriverAlerts(): Promise<DriverAlertResult | 
   return finishNative();
 }
 
-export function __resetDriverNotificationsForTests() { pushRegistration = null; }
+export function __resetDriverNotificationsForTests() { __resetFcmSessionForTests(); }
 
 /** APK only: fires a local alert on the ride channel so the driver can hear the ringtone. Never prompts. */
 export async function testRideAlertSound(): Promise<"ok" | "denied" | "unsupported"> {

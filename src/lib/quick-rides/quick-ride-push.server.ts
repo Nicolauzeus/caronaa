@@ -1,7 +1,9 @@
-// F07 Web Push dispatch: notifies online, nearby, vehicle-compatible drivers
+// F07 Web Push and Android FCM dispatch: notifies online, nearby, vehicle-compatible drivers
 // when a Flash ride enters SEARCHING. Uses WebCrypto (RFC 8291 aes128gcm +
 // RFC 8292 VAPID) so it runs on the Worker runtime without Node crypto.
 // Never logs coordinates, user IDs or endpoints.
+
+import { createFcmSender, readFcmConfig, type FcmSender, type FcmTokenRow } from "./quick-ride-fcm.server";
 
 export const PUSH_RADIUS_KM = 15;
 // Wake-up push only: a locked phone stops sending GPS, so the last known fix of a
@@ -22,6 +24,10 @@ export type PushRepo = {
   deleteSubscription(endpoint: string): Promise<void>;
 };
 export type PushSender = (sub: PushSubscriptionRow, payload: string) => Promise<{ status: number }>;
+export type FcmRepo = Pick<PushRepo, "onlineDriversSince" | "approvedDrivers"> & {
+  tokens(userIds: string[]): Promise<FcmTokenRow[]>;
+  deleteToken(row: FcmTokenRow): Promise<void>;
+};
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
   const r = (d: number) => (d * Math.PI) / 180;
@@ -42,23 +48,28 @@ export function buildRidePushPayload(input: PushDispatchInput, distanceKm: numbe
   });
 }
 
-export async function dispatchPushToEligibleDrivers(
-  input: PushDispatchInput,
-  deps: { repo: PushRepo; send: PushSender; now?: () => number },
-) {
-  const result = { eligible: 0, sent: 0, failed: 0, removed: 0 };
-  if (!Number.isFinite(input.originLat) || !Number.isFinite(input.originLng)) return result;
-  const now = deps.now?.() ?? Date.now();
-  const online = await deps.repo.onlineDriversSince(new Date(now - PUSH_LOCATION_MAX_AGE_MS).toISOString());
+async function eligiblePushDrivers(input: PushDispatchInput, repo: Pick<PushRepo, "onlineDriversSince" | "approvedDrivers">, now: number) {
   const near = new Map<string, number>();
+  if (!Number.isFinite(input.originLat) || !Number.isFinite(input.originLng)) return near;
+  const online = await repo.onlineDriversSince(new Date(now - PUSH_LOCATION_MAX_AGE_MS).toISOString());
   for (const d of online) {
     if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) continue;
     const km = haversineKm(input.originLat, input.originLng, d.lat, d.lng);
     if (km <= PUSH_RADIUS_KM) near.set(d.userId, km);
   }
-  if (!near.size) return result;
-  const approved = new Set(await deps.repo.approvedDrivers([...near.keys()], input.vehicleType));
-  const ids = [...near.keys()].filter((id) => approved.has(id));
+  if (!near.size) return near;
+  const approved = new Set(await repo.approvedDrivers([...near.keys()], input.vehicleType));
+  for (const id of near.keys()) if (!approved.has(id)) near.delete(id);
+  return near;
+}
+
+export async function dispatchPushToEligibleDrivers(
+  input: PushDispatchInput,
+  deps: { repo: PushRepo; send: PushSender; now?: () => number },
+) {
+  const result = { eligible: 0, sent: 0, failed: 0, removed: 0 };
+  const near = await eligiblePushDrivers(input, deps.repo, deps.now?.() ?? Date.now());
+  const ids = [...near.keys()];
   result.eligible = ids.length;
   if (!ids.length) return result;
   const subs = await deps.repo.subscriptions(ids);
@@ -72,6 +83,46 @@ export async function dispatchPushToEligibleDrivers(
     if (res.status < 200 || res.status >= 300) throw new Error(`status ${res.status}`);
   }));
   for (const o of outcomes) o.status === "fulfilled" ? result.sent++ : result.failed++;
+  return result;
+}
+
+/** Independent Android channel: only authenticated-role, nearby approved drivers.
+ * FCM provider acceptance is not evidence of display or receipt.
+ */
+export async function dispatchFcmToEligibleDrivers(
+  input: PushDispatchInput,
+  deps: { repo: FcmRepo; send: FcmSender; now?: () => number },
+) {
+  const result = { eligible: 0, sent: 0, failed: 0, removed: 0 };
+  const near = await eligiblePushDrivers(input, deps.repo, deps.now?.() ?? Date.now());
+  const ids = [...near.keys()];
+  result.eligible = ids.length;
+  if (!ids.length) return result;
+  const seen = new Set<string>();
+  const tokens = (await deps.repo.tokens(ids)).filter(row => {
+    if (!near.has(row.userId) || !row.token || seen.has(row.token)) return false;
+    seen.add(row.token);
+    return true;
+  });
+  // Bound fan-out; token/credential failures must not block other devices.
+  let next = 0;
+  const run = async () => {
+    for (;;) {
+      const row = tokens[next++];
+      if (!row) return;
+      try {
+        const response = await deps.send(row, input.rideId);
+        if (response.unregistered) {
+          // Conditional deletion preserves a token refreshed/reassigned since lookup.
+          await deps.repo.deleteToken(row);
+          result.removed++;
+          result.failed++;
+        } else if (response.status >= 200 && response.status < 300) result.sent++;
+        else result.failed++;
+      } catch { result.failed++; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(tokens.length, 8) }, run));
   return result;
 }
 
@@ -104,6 +155,34 @@ export function supabasePushRepo(db: any): PushRepo {
     },
     async deleteSubscription(endpoint) {
       await db.from("driver_push_subscriptions").delete().eq("endpoint", endpoint);
+    },
+  };
+}
+
+export function supabaseFcmRepo(db: any): FcmRepo {
+  const base = supabasePushRepo(db);
+  return {
+    onlineDriversSince: base.onlineDriversSince,
+    approvedDrivers: base.approvedDrivers,
+    async tokens(userIds) {
+      // An approved driver's account may currently be in passenger mode.
+      // Resolve the actual database role, never trust notification payload or client metadata.
+      const { data: profiles, error: roleError } = await db.from("profiles")
+        .select("id").in("id", userIds).eq("active_role", "MOTORISTA");
+      if (roleError) throw new Error("fcm_roles");
+      const drivers = (profiles ?? []).map((row: any) => row.id);
+      if (!drivers.length) return [];
+      const { data, error } = await db.from("driver_fcm_tokens")
+        .select("user_id,token,updated_at").eq("platform", "android").in("user_id", drivers);
+      if (error) throw new Error("fcm_tokens");
+      return (data ?? []).map((row: any) => ({
+        userId: row.user_id, token: row.token, updatedAt: row.updated_at,
+      }));
+    },
+    async deleteToken(row) {
+      const { error } = await db.from("driver_fcm_tokens").delete()
+        .eq("token", row.token).eq("user_id", row.userId).eq("updated_at", row.updatedAt);
+      if (error) throw new Error("fcm_cleanup_failed");
     },
   };
 }
@@ -169,20 +248,38 @@ export function createWebPushSender(cfg: { publicKey: string; privateKey: string
   };
 }
 
-/** Best-effort dispatch for a newly created ride; never throws. */
+/** Best-effort dispatch for a newly created ride; never throws.
+ * The two providers are independent, including credential setup and failures.
+ */
 export async function dispatchPushForQuickRide(rideId: string) {
   try {
     const publicKey = process.env["VAPID_PUBLIC_KEY"], privateKey = process.env["VAPID_PRIVATE_KEY"], subject = process.env["VAPID_SUBJECT"];
-    if (!publicKey || !privateKey || !subject) { console.warn("[CARONAA][F07][PUSH] vapid_not_configured"); return; }
+    const webConfigured = Boolean(publicKey && privateKey && subject);
+    const fcm = readFcmConfig(process.env["FCM_SERVICE_ACCOUNT_JSON"]);
+    if (!webConfigured) console.warn("[CARONAA][F07][PUSH] vapid_not_configured");
+    if (!fcm) console.warn("[CARONAA][F07][PUSH] fcm_not_configured");
+    if (!webConfigured && !fcm) return;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: ride } = await (supabaseAdmin as any).from("professional_quick_rides")
-      .select("id,origin_lat,origin_lng,vehicle_type,estimated_fare_cents,status").eq("id", rideId).maybeSingle();
-    if (!ride || ride.status !== "SEARCHING" || (ride.vehicle_type !== "CAR" && ride.vehicle_type !== "MOTO")) return;
-    const r = await dispatchPushToEligibleDrivers(
-      { rideId, originLat: Number(ride.origin_lat), originLng: Number(ride.origin_lng), vehicleType: ride.vehicle_type, fareCents: ride.estimated_fare_cents },
-      { repo: supabasePushRepo(supabaseAdmin), send: createWebPushSender({ publicKey, privateKey, subject }) },
-    );
-    console.info("[CARONAA][F07][PUSH] dispatched", r);
+      .select("id,origin_lat,origin_lng,vehicle_type,estimated_fare_cents,status,expires_at").eq("id", rideId).maybeSingle();
+    if (!ride || ride.status !== "SEARCHING" || (ride.vehicle_type !== "CAR" && ride.vehicle_type !== "MOTO") ||
+        !ride.expires_at || Date.parse(ride.expires_at) <= Date.now()) return;
+    const input: PushDispatchInput = {
+      rideId, originLat: Number(ride.origin_lat), originLng: Number(ride.origin_lng),
+      vehicleType: ride.vehicle_type, fareCents: ride.estimated_fare_cents,
+    };
+    const tasks: Promise<void>[] = [];
+    const report = (channel: "web" | "fcm", work: Promise<unknown>) => work.then(result => {
+      // Aggregate provider acceptance only, never token, endpoint, user, coordinates or raw error.
+      console.info("[CARONAA][F07][PUSH] dispatched", { channel, ...(result as object) });
+    }).catch(() => { console.warn("[CARONAA][F07][PUSH] channel_failed", { channel }); });
+    if (publicKey && privateKey && subject) tasks.push(report("web", dispatchPushToEligibleDrivers(input, {
+      repo: supabasePushRepo(supabaseAdmin), send: createWebPushSender({ publicKey, privateKey, subject }),
+    })));
+    if (fcm) tasks.push(report("fcm", dispatchFcmToEligibleDrivers(input, {
+      repo: supabaseFcmRepo(supabaseAdmin), send: createFcmSender(fcm),
+    })));
+    await Promise.allSettled(tasks);
   } catch {
     console.warn("[CARONAA][F07][PUSH] dispatch_failed");
   }
