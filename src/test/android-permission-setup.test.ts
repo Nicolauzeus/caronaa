@@ -4,7 +4,7 @@ vi.mock("@capacitor/core", () => ({ registerPlugin: () => ({ permissionSetupStat
 vi.mock("@/lib/native/capacitor-bridge", () => ({ isNativeAndroid: () => native.enabled, isNativePluginAvailable: () => native.enabled }));
 vi.mock("@/lib/native/driver-notifications", () => ({ openNativeAppSettings: native.oldSettings, refreshGrantedDriverAlerts: native.refresh }));
 vi.mock("@capacitor/local-notifications", () => ({ LocalNotifications: { checkPermissions: native.check, requestPermissions: native.ask } }));
-import { openSetupSettings, readSetupStatus, requestSetupGps, requestSetupNotifications, setupSeenKey, setupStatusLabel } from "@/lib/native/permission-setup";
+import { openSetupSettings, readSetupStatus, requestSetupGps, requestSetupNotifications, setupSeenKey, setupStatusLabel, nextSetupStep } from "@/lib/native/permission-setup";
 beforeEach(() => { vi.resetAllMocks(); native.enabled = true; native.oldSettings.mockResolvedValue(true); native.refresh.mockResolvedValue(null); });
 describe("native first-access permissions", () => {
   it("does not ask permissions on web", async () => { native.enabled = false; expect(await readSetupStatus()).toEqual({}); expect(await requestSetupGps()).toBe(false); expect(await requestSetupNotifications(true)).toBe(false); expect(native.request).not.toHaveBeenCalled(); expect(native.ask).not.toHaveBeenCalled(); });
@@ -15,5 +15,11 @@ describe("native first-access permissions", () => {
   it("asks for notification consent only when prompted, registers driver only", async () => { native.check.mockResolvedValue({ display: "prompt" }); native.ask.mockResolvedValue({ display: "granted" }); native.status.mockResolvedValue({ notifications: true }); expect(await requestSetupNotifications(false)).toBe(true); expect(native.refresh).not.toHaveBeenCalled(); expect(await requestSetupNotifications(true)).toBe(true); expect(native.refresh).toHaveBeenCalledOnce(); });
   it("respects a fresh refusal without immediately opening settings", async () => { native.check.mockResolvedValue({ display: "prompt" }); native.ask.mockResolvedValue({ display: "denied" }); expect(await requestSetupNotifications(true)).toBe(true); expect(native.settings).not.toHaveBeenCalled(); expect(native.refresh).not.toHaveBeenCalled(); });
   it("keeps denial actionable and does not register a driver", async () => { native.check.mockResolvedValue({ display: "denied" }); native.settings.mockResolvedValue(undefined); expect(await requestSetupNotifications(true)).toBe(true); expect(native.settings).toHaveBeenCalledWith({target:"notifications"}); expect(native.refresh).not.toHaveBeenCalled(); expect(native.ask).not.toHaveBeenCalled(); });
+  it("guides only pending or unknown items, once per explicit pass", () => {
+    const rows = [{title:"Ativo",value:true},{title:"GPS",value:false},{title:"Bateria",value:undefined}];
+    expect(nextSetupStep(rows, [])?.title).toBe("GPS");
+    expect(nextSetupStep(rows, ["GPS"])?.title).toBe("Bateria");
+    expect(nextSetupStep(rows, ["GPS","Bateria"])).toBeUndefined();
+  });
   it("separates the first-run marker by account and role", () => { expect(setupSeenKey("a", true)).not.toBe(setupSeenKey("a", false)); expect(setupSeenKey("a", true)).not.toBe(setupSeenKey("b", true)); });
 });

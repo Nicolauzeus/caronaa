@@ -1,3 +1,4 @@
+import { NativePermissionSetupFab } from "@/components/caronaa/NativePermissionSetup";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { LocationAutocomplete } from "@/components/formulario/LocationAutocomplete";
@@ -549,6 +550,7 @@ function Home(){
             selectingOrigin={selectingOrigin} onPickOrigin={chooseOriginOnMap}
             onDrag={()=>location.setFollowing(false)} onRecenter={location.locate}/>}
       </div>
+      {!shouldShowPassengerMap && !shouldShowOperationalMap && sheetSnap !== "full" && !selectingOrigin && <NativePermissionSetupFab />}
       <QuickVehicleModal open={vehicleModalOpen} onOpenChange={open=>{
           setVehicleModalOpen(open);
           if(!open&&(routeSearch.intent==="offer"||routeSearch.intent==="scheduled")){

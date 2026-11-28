@@ -557,11 +557,11 @@ export function QuickRideHomePanel({
         </button>)}
       </div>}
       {!shellMode&&<div className="min-w-0 rounded-xl border border-white/10 bg-[#121212]/70 p-3 text-xs">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold"><Users size={16} className="text-[#FFBB00]"/><span>Profissionais disponíveis na região</span></div>
+        <div className="flex min-w-0 flex-wrap items-center gap-2 font-semibold"><Users size={16} className="text-[#FFBB00]"/><span>Radar de motoristas</span></div>
         <p role="status" className="mt-1 text-gray-300">{driverLoading?"Consultando o radar…":driverError?driverError:
-          coverage?.radar===false?"Nenhum motorista visível no radar agora. Você pode solicitar e aguardar.":driverCount===0?"Nenhum profissional online no momento. Seu pedido pode continuar aguardando.":
+          coverage?.radar===false||driverCount===0?"Buscando motoristas na sua área… Você já pode solicitar.":
           driverCount===1?"1 profissional autorizado e online.":driverCount+" profissionais autorizados e online."}</p>
-        {driverCounts&&<p className="mt-1 text-xs text-gray-300">🚗 {driverCounts.CAR} carro(s) · 🏍️ {driverCounts.MOTO} moto(s) no radar</p>}
+        {driverCounts&&(driverCounts.CAR+driverCounts.MOTO)>0&&<p className="mt-1 text-xs text-gray-300">🚗 {driverCounts.CAR} carro(s) · 🏍️ {driverCounts.MOTO} moto(s) no radar</p>}
         <p className="mt-1 text-[11px] text-gray-400">Radar com posições aproximadas de profissionais aprovados. A presença no mapa não significa disponibilidade para corrida comercial; o despacho exige habilitação separada.</p>
       </div>}
       {!liveRide&&(shellMode
@@ -597,7 +597,7 @@ export function QuickRideHomePanel({
         {shownExpiredRide&&<section role="status"
           className="space-y-2 rounded-2xl border border-[#FFBB00]/40 bg-[#FFBB00]/10 p-3 text-sm">
           <p className="font-semibold text-[#FFBB00]">Busca encerrada</p>
-          <p className="text-white/85">O prazo terminou sem um motorista confirmado. Você pode solicitar outra corrida sem atualizar a página.</p>
+          <p className="text-white/85">Esta busca foi encerrada. Você pode solicitar outra corrida sem atualizar a página.</p>
           <button type="button" onClick={releaseExpiredRide}
             className="min-h-12 w-full rounded-xl bg-[#FFBB00] px-3 font-bold text-[#121212]">
             Tentar outra corrida
@@ -612,7 +612,7 @@ export function QuickRideHomePanel({
             <p className="text-xs text-gray-200">Preço até {destination} · {vehicle==="MOTO"?"Moto":"Carro"}</p>
             <div className="flex items-center gap-2 text-xs font-semibold text-white">
               {vehicle==="MOTO"?<Bike size={16} className="text-[#FFBB00]"/>:<CarFront size={16} className="text-[#FFBB00]"/>}
-              <span>{driverLoading?"Buscando motoristas online…":driverError?"Não foi possível verificar motoristas online.":driverCount===0?"Sem motorista online agora. Você pode solicitar e aguardar.":driverCount===1?"1 motorista online para receber seu pedido.":driverCount+" motoristas online para receber seu pedido."}</span>
+              <span>{driverLoading?"Buscando motoristas online…":driverError?"Não foi possível verificar motoristas online.":driverCount===0?"Buscando motoristas na sua área…":driverCount===1?"1 motorista online para receber seu pedido.":driverCount+" motoristas online para receber seu pedido."}</span>
             </div>
             <p className="break-words text-2xl font-extrabold text-[#FFBB00]">{formatBrl(currentQuote.customerPaysCents/100)}</p>
             <p className="flex items-center gap-1 text-xs text-gray-200"><Clock3 size={13}/>{currentQuote.distanceKm.toFixed(1)} km • aprox. {Math.round(currentQuote.durationMinutes)} min</p>
