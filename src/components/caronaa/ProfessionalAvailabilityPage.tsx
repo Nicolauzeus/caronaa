@@ -9,7 +9,7 @@ import { f07RadarAccuracyBand, f07RadarEvent, f07RadarFailureCode, f07RadarTrace
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { MISSING_LABELS, type MissingCode } from "@/lib/professional-access";
 import { enableDriverAlerts } from "@/lib/native/driver-notifications";
-import { DriverWebPushStatus } from "@/components/caronaa/DriverWebPushStatus";
+import { openDriverWebPushPrompt } from "@/components/caronaa/DriverWebPushPrompt";
 import { hasNativeForegroundTracking, nativeOwnsBackgroundGps, startNativeForegroundTracking, stopNativeForegroundTracking } from "@/lib/native/foreground-location";
 import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 import { MunicipalitySelect } from "@/components/caronaa/MunicipalitySelect";
@@ -52,8 +52,6 @@ export function ProfessionalAvailabilityPage() {
   const [observedFix,setObservedFix]=useState<Fix|null>(null);
   const [accuracyWarning,setAccuracyWarning]=useState(false); // real GPS in the browser, even when publication fails
   const [error,setError]=useState("");
-  const [alertResult,setAlertResult]=useState<Awaited<ReturnType<typeof enableDriverAlerts>>|null>(null);
-  const [alertPending,setAlertPending]=useState(false);
   const [diagnostics,setDiagnostics]=useState<SafeF07RadarEvent[]>([]);
   const [copied,setCopied]=useState(false);
   const [tick,setTick]=useState(Date.now());
@@ -362,14 +360,6 @@ export function ProfessionalAvailabilityPage() {
     return()=>window.clearInterval(timer);
   },[sharing]);
 
-  async function setupAlerts() {
-    setAlertPending(true);
-    try {
-      const result=await enableDriverAlerts().catch(()=>({ok:false as const,reason:"SAVE_FAILED" as const}));
-      if(mounted.current)setAlertResult(result);
-    } finally { if(mounted.current)setAlertPending(false); }
-  }
-
   async function toggleOnline(next:boolean) {
     if(next)void unlockNotificationAudio();
     if(busy)return;
@@ -386,8 +376,8 @@ export function ProfessionalAvailabilityPage() {
         setEnabled(false);
         return;
       }
-      // Ask for notifications inside this tap so calls arrive with the app closed.
-      void setupAlerts();
+      // Web consent belongs to the shared card; preserve the APK's native flow.
+      if(isNativeAndroid())void enableDriverAlerts().catch(()=>undefined);
       const {error}=await (supabase as any).rpc("set_professional_presence",{
         p_available:true,p_municipality:municipality||null,
       });
@@ -568,7 +558,8 @@ export function ProfessionalAvailabilityPage() {
         onClick={()=>void toggleOnline(!enabled)}>
         {busy ? "Atualizando..." : enabled && activeQuickRide ? "Finalize a corrida antes de pausar" : enabled ? "PAUSAR DISPONIBILIDADE" : "FICAR ONLINE AGORA"}
       </Button>
-      {ready&&authorized&&!activeQuickRide&&<DriverWebPushStatus result={alertResult} pending={alertPending} onEnable={()=>void setupAlerts()}/>}
+      {ready&&authorized&&!activeQuickRide&&!isNativeAndroid()&&<button type="button" onClick={openDriverWebPushPrompt}
+        className="min-h-10 w-full rounded-xl border border-white/20 px-3 text-xs font-semibold text-white hover:bg-white/5">Configurar notificações</button>}
       {enabled && !sharing && <button type="button" onClick={()=>{
         if(userId)window.localStorage.setItem(professionalRadarConsentKey(userId),"yes");
         startGps(municipality,userId);

@@ -333,6 +333,8 @@ Reserva confirmada → Aviso e dados do embarque → Condutor a caminho
 
 **Android — GPS em segundo plano (F07):** APK com serviço de localização em primeiro plano (FGS) iniciado após disponibilidade/consentimento explícito do motorista habilitado, com notificação persistente e precisão real. No segundo plano, o serviço nativo usa HTTPS autenticado e a mesma validação Google/SQL, sem reativar presença offline. No primeiro plano, a WebView existente conserva mapa e fluxo de corridas; não recarrega a URL ao retornar. O serviço mantém somente JWT de acesso em memória e recebe atualizações da sessão; sem JWT válido, suspende o envio e solicita reabertura. Desligar disponibilidade, retirar consentimento, trocar de papel ou sair da conta interrompe o rastreador. APK antigo/PWA preservam o comportamento existente; não há garantia de rastreamento após force-stop, encerramento do processo ou restrição do sistema. Ver docs/android-foreground-location.md.
 
+**Web Push — card de autorização (27/11/2026):** o motorista recebe um card do CARONAA na entrada da Home, Disponibilidade e Perfil, após carregar o papel autenticado no banco. Ao tocar em **Ativar notificações**, confirma a permissão nativa do navegador e o sistema conclui o cadastro, mostrando sucesso apenas após persistir a inscrição. **Agora não** adia o convite por 24 horas neste navegador e conta; **Configurar notificações** reabre o mesmo card. Permissões já concedidas são reconciliadas sem novo prompt; negação, falhas e instalação necessária no iPhone têm orientação própria. O card não bloqueia navegação, não ativa GPS/disponibilidade e não interfere no FCM do APK. Este fluxo cobre os alertas de novas corridas aos motoristas; não declara entrega real ou adiciona despacho de push aos passageiros.
+
 **Aceite F08:** testar eventos de ponta a ponta, notificações sem duplicações, mapa, cancelamento, repasses e avaliações consistentes.
 
 ### F09 — CRM, BI e mensuração de impacto social
@@ -470,5 +472,3 @@ npm run build
 ```
 
 > **Regra final:** **CARONAA simples na interface, inteligente na operação, mensurável no impacto.** Nenhum desenvolvimento novo deve contrariar estes fluxos sem autorização de uma revisão do produto.
-
-

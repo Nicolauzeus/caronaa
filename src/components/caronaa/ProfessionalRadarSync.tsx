@@ -19,8 +19,8 @@ export function ProfessionalRadarSync({ userId }: { userId: string }) {
   const publisherRef = useRef(publishVerified);
   publisherRef.current = publishVerified;
   useEffect(() => {
-    // Revalidate alerts only when already allowed; never prompts.
-    if (typeof window !== "undefined") void refreshGrantedDriverAlerts().catch(() => undefined);
+    // The shared card owns Web Push. Keep the existing native revalidation.
+    if (typeof window !== "undefined" && isNativeAndroid()) void refreshGrantedDriverAlerts().catch(() => undefined);
   }, [userId]);
   useEffect(() => {
     if (typeof window === "undefined" ||

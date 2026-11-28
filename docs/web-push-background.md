@@ -6,7 +6,11 @@ O APK Android continua usando o canal FCM existente.
 
 ## Ativação e recuperação
 
-- O motorista ativa as notificações por toque explícito nas telas de disponibilidade ou Flash.
+- O CARONAA apresenta automaticamente um card próprio com a marca e a explicação dos alertas na entrada do motorista (Home, Disponibilidade e Perfil), após confirmar o papel no banco. Não aparece no APK, em páginas públicas, no pré-lançamento ou para passageiros sem o canal de despacho correspondente.
+- **Ativar notificações** abre a permissão nativa obrigatória do navegador. Após **Permitir**, o sistema conclui a inscrição e a persistência e só então confirma sucesso. O card não substitui nem contorna a autorização do navegador.
+- **Agora não** adia o convite por 24 horas neste navegador e nesta conta, inclusive ao navegar/recarregar. **Configurar notificações**, no Flash ou na disponibilidade, reabre manualmente o mesmo card. Falhas de armazenamento mantêm o adiamento durante a sessão.
+- Permissões já concedidas são reconciliadas sem novo prompt na entrada/retorno. Cadastro existente confirmado fica silencioso; falha mostra recuperação. Respostas após logout/troca de conta são ignoradas pela interface.
+- O card é único no shell autenticado, não bloqueia a navegação nem ativa GPS/disponibilidade. As telas de motorista não abrem prompts de navegador em paralelo. No recebimento de corridas permanece o canal atual.
 - No primeiro carregamento, o cliente registra `/sw.js` quando necessário e aguarda um worker ativo por até oito segundos. Timeout limpa listeners e ignora conclusões tardias.
 - Permissão concedida não é apresentada como sucesso de cadastro: a confirmação exige sucesso da RPC autenticada que salva a inscrição.
 - Falha de worker ou persistência mostra orientação e nova tentativa. Permissão bloqueada orienta os ajustes do navegador.

@@ -63,17 +63,17 @@ beforeEach(()=>{
 });
 afterEach(cleanup);
 describe("Flash driver shell",()=>{
-  it("shows failed web registration and allows retry without blocking availability",async()=>{
-    alerts.permission.mockResolvedValue("granted");
-    alerts.enable.mockResolvedValue({ok:false,reason:"SAVE_FAILED"});
+  it("opens the app's guided card without requesting browser permission from the online action",async()=>{
+    const open=vi.fn();
+    window.addEventListener("caronaa:web-push-setup",open);
     render(<DriverFlashPlanner {...props}/>);
     await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Ficar Disponível"}));});
     expect(api.goOnline).toHaveBeenCalled();
-    expect(await screen.findByText(/Não foi possível cadastrar este navegador/)).toBeInTheDocument();
-    alerts.enable.mockResolvedValue({ok:true,remote:"web"});
-    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Tentar novamente"}));});
-    expect(await screen.findByText("Notificações ativadas neste navegador")).toBeInTheDocument();
-    expect(alerts.enable).toHaveBeenCalledTimes(2);
+    expect(alerts.enable).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"Configurar notificações"}));
+    expect(open).toHaveBeenCalledOnce();
+    expect(alerts.enable).not.toHaveBeenCalled();
+    window.removeEventListener("caronaa:web-push-setup",open);
   });
   it("defaults to accepting all compatible requests without requiring a destination",async()=>{
     render(<DriverFlashPlanner {...props}/>);
