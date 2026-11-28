@@ -123,11 +123,12 @@ describe("CARONAA Flash passenger shell",()=>{
     const moto=screen.getByRole("radio",{name:/Flash Moto/});
     expect(car).not.toBeDisabled();
     expect(moto).not.toBeDisabled();
-    expect(car).toHaveTextContent("Sem motorista agora · você pode aguardar");
+    expect(car).toHaveTextContent("Buscando motoristas na sua área…");
+    expect(car).not.toHaveTextContent(/sem motorista|nenhum motorista/i);
     expect(car).toHaveTextContent("Solicitar e aguardar");
     fireEvent.click(car);
     expect(screen.getByRole("heading",{name:"Confirmar viagem"})).toBeInTheDocument();
-    expect(screen.getByText(/pedido ficará ativo por até 30 minutos/i)).toBeInTheDocument();
+    expect(screen.getByText(/Você pode confirmar seu pedido e acompanhar a busca/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:"Pedir Caronaa Flash"}));
     expect(api.dispatch).toHaveBeenCalledOnce();
   });

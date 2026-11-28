@@ -1,7 +1,17 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { authenticatedNav, sharedDriverNav, professionalNav, isAppNavSelected } from "./app-navigation";
 
 describe("CARONAA mobile-first navigation", () => {
+  it("keeps notifications in the header instead of adding a fifth mobile tab", () => {
+    const shell = readFileSync("src/components/caronaa/AppShell.tsx", "utf8");
+    const header = shell.slice(shell.indexOf("<header"), shell.indexOf("</header>"));
+    const bottom = shell.slice(shell.indexOf("{/* Navegação inferior acessível"));
+    expect(header).toContain("<NotificationControls />");
+    expect(bottom).not.toContain("<NotificationControls");
+    expect(bottom).toContain("grid-rows-1");
+    expect(bottom).toContain("grid-cols-4");
+  });
   it("keeps the four passenger destinations in the approved order", () => {
     expect(authenticatedNav.map(item => item.label)).toEqual(["Início", "Oferecer", "Viagens", "Perfil"]);
     expect(authenticatedNav.map(item => item.to)).toEqual(["/home", "/home", "/minhas-caronas", "/perfil"]);

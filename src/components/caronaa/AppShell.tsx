@@ -222,7 +222,7 @@ export function AppShell({
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle className="hidden md:inline-flex" />
             {user && (
-              <div className="hidden lg:block">
+              <div className="shrink-0">
                 <NotificationControls />
               </div>
             )}
@@ -472,7 +472,7 @@ export function AppShell({
           aria-label={professionalOnly ? "Navegação profissional mobile" : "Navegação principal mobile"}
           className={`fixed inset-x-0 bottom-0 z-40 isolate border-t pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.10)] backdrop-blur-xl md:hidden ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}
         >
-          <div className={`mx-auto grid max-w-lg gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : "grid-cols-4"}`}>
+          <div className={`mx-auto grid max-w-lg grid-rows-1 gap-1 px-2 pt-1.5 ${prelaunchMode ? "grid-cols-2" : "grid-cols-4"}`}>
             {navigation.map(({ to, label, icon: Icon }) => {
               const selected = selectedNav(to,label);
               return (
@@ -493,7 +493,6 @@ export function AppShell({
                 </Link>
               );
             })}
-            {!prelaunchMode && !professionalOnly && <NotificationControls dock />}
           </div>
         </nav>
       )}
