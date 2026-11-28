@@ -164,14 +164,38 @@ export function createFcmSender(cfg: FcmConfig, deps: { fetch?: typeof fetch; no
     if (!remainingTtl(alert, now())) return { status: 0, unregistered: false };
     const access = await getAccess(cfg, fetcher, now);
     if (!remainingTtl(alert, now())) return { status: 0, unregistered: false };
-    const response = await fetcher("https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(cfg.projectId) + "/messages:send", {
+    const payload = row.rideActions === true
+      ? await buildFcmActionMessage(row, rideId, alert, now())
+      : buildFcmRideMessage(row.token, rideId, alert, now());
+    // Inspect the exact outgoing payload rather than inferring it from device metadata.
+    // Only fixed enums/booleans/status are logged: never identifiers, addresses,
+    // values, tokens, hashes, OAuth headers, or raw provider responses.
+    const message = payload.message;
+    const data = message.data;
+    const diagnostic = {
+      channel: "fcm",
+      revision: "ride-actions-v1-diagnostic",
+      format: "notification" in message || "notification" in message.android ? "LEGACY" : "DATA_ONLY",
+      rideActions: row.rideActions === true,
+      hasFare: Boolean(data.estimatedFare),
+      hasDriverEarnings: "driverEarnings" in data && Boolean(data.driverEarnings),
+      hasOrigin: "originCity" in data && Boolean(data.originCity),
+      hasDestination: "destinationCity" in data && Boolean(data.destinationCity),
+      actionKind: data.kind === "flash_ride_action_v1" ? "interactive" : "legacy",
+    };
+    let response: Response;
+    try {
+      response = await fetcher("https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(cfg.projectId) + "/messages:send", {
       method: "POST",
       headers: { Authorization: "Bearer " + access.value, "Content-Type": "application/json" },
-      body: JSON.stringify(row.rideActions === true
-        ? await buildFcmActionMessage(row, rideId, alert, now())
-        : buildFcmRideMessage(row.token, rideId, alert, now())),
-      signal: AbortSignal.timeout(2500),
-    });
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(2500),
+      });
+    } catch (error) {
+      console.info("[CARONAA][F07][PUSH] fcm_payload", { ...diagnostic, providerStatus: null });
+      throw error;
+    }
+    console.info("[CARONAA][F07][PUSH] fcm_payload", { ...diagnostic, providerStatus: response.status });
     // Expired credentials may recover on the next dispatch; don't erase devices.
     if (response.status === 401 && cache && sameConfig(cache.config, cfg)) cache = undefined;
     if (response.ok) return { status: response.status, unregistered: false };
