@@ -335,6 +335,10 @@ Reserva confirmada → Aviso e dados do embarque → Condutor a caminho
 
 **Web Push — card de autorização (27/11/2026):** o motorista recebe um card do CARONAA na entrada da Home, Disponibilidade e Perfil, após carregar o papel autenticado no banco. Ao tocar em **Ativar notificações**, confirma a permissão nativa do navegador e o sistema conclui o cadastro, mostrando sucesso apenas após persistir a inscrição. **Agora não** adia o convite por 24 horas neste navegador e conta; **Configurar notificações** reabre o mesmo card. Permissões já concedidas são reconciliadas sem novo prompt; negação, falhas e instalação necessária no iPhone têm orientação própria. O card não bloqueia navegação, não ativa GPS/disponibilidade e não interfere no FCM do APK. Este fluxo cobre os alertas de novas corridas aos motoristas; não declara entrega real ou adiciona despacho de push aos passageiros.
 
+**Atualização do APK do piloto:** o app Android compara o `versionCode` instalado com o manifesto de `GET /api/native/android-release`. Oferece **Atualizar app** no Início fora de uma Corrida Flash em andamento e no Perfil. O download abre no navegador e a instalação é confirmada no Android. Adiar oculta o aviso no Início por 24 horas para aquela versão e mantém o download no Perfil. Navegadores e PWAs seguem o fluxo web. Sem versão anunciada, o endpoint retorna 204.
+
+**Publicação do APK:** gere um APK com `com.caronaa.app`, o certificado da instalação anterior e um `versionCode` maior. Hospede e teste o arquivo no domínio oficial de downloads e configure `CARONAA_ANDROID_RELEASE` no servidor, por exemplo `{"versionCode":2,"versionName":"1.1","downloadUrl":"https://downloads.caronaa.com/android/caronaa-1.1.apk"}`. O exemplo só deve ser configurado quando corresponder ao APK realmente disponível. Remova a variável para suspender o aviso.
+
 **Aceite F08:** testar eventos de ponta a ponta, notificações sem duplicações, mapa, cancelamento, repasses e avaliações consistentes.
 
 ### F09 — CRM, BI e mensuração de impacto social

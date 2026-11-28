@@ -527,7 +527,7 @@ function Home(){
   const shouldShowOperationalMap=driverRole&&serviceType==="FLASH"&&driverFlashRide!=null;
   const shouldShowPassengerMap=!driverRole&&serviceType==="FLASH"&&passengerRide!==null;
 
-  return <AppShell mapLayout>
+  return <AppShell mapLayout offerAndroidUpdate={!driverFlashRide && !passengerRide}>
     <CaronaaPerformanceDiagnostic/>
     <div className="relative isolate h-full min-h-0 min-w-0 overflow-hidden bg-[#121212] font-[family-name:var(--font-sans)] text-white">
       <div className="absolute inset-0">

@@ -67,6 +67,7 @@ import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
 import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
 import { Route as ApiAsaasWebhookRouteImport } from './routes/api/asaas/webhook'
+import { Route as ApiNativeAndroidReleaseRouteImport } from './routes/api/native/android-release'
 import { Route as ApiNativeDriverLocationRouteImport } from './routes/api/native/driver-location'
 import { Route as ApiOperationsEmailPdfRouteImport } from './routes/api/operations/email-pdf'
 import { Route as ApiOperationsReportSchedulerRouteImport } from './routes/api/operations/report-scheduler'
@@ -374,6 +375,11 @@ const ApiAsaasWebhookRoute = ApiAsaasWebhookRouteImport.update({
   path: '/api/asaas/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNativeAndroidReleaseRoute = ApiNativeAndroidReleaseRouteImport.update({
+  id: '/api/native/android-release',
+  path: '/api/native/android-release',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiNativeDriverLocationRoute = ApiNativeDriverLocationRouteImport.update({
   id: '/api/native/driver-location',
   path: '/api/native/driver-location',
@@ -474,6 +480,7 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/native/android-release': typeof ApiNativeAndroidReleaseRoute
   '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
   '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
@@ -538,6 +545,7 @@ export interface FileRoutesByTo {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/native/android-release': typeof ApiNativeAndroidReleaseRoute
   '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
   '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
@@ -607,6 +615,7 @@ export interface FileRoutesById {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/native/android-release': typeof ApiNativeAndroidReleaseRoute
   '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
   '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
@@ -676,6 +685,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/native/android-release'
     | '/api/native/driver-location'
     | '/api/operations/email-pdf'
     | '/api/operations/report-scheduler'
@@ -740,6 +750,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/native/android-release'
     | '/api/native/driver-location'
     | '/api/operations/email-pdf'
     | '/api/operations/report-scheduler'
@@ -808,6 +819,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/native/android-release'
     | '/api/native/driver-location'
     | '/api/operations/email-pdf'
     | '/api/operations/report-scheduler'
@@ -838,6 +850,7 @@ export interface RootRouteChildren {
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
+  ApiNativeAndroidReleaseRoute: typeof ApiNativeAndroidReleaseRoute
   ApiNativeDriverLocationRoute: typeof ApiNativeDriverLocationRoute
   ApiOperationsEmailPdfRoute: typeof ApiOperationsEmailPdfRoute
   ApiOperationsReportSchedulerRoute: typeof ApiOperationsReportSchedulerRoute
@@ -1253,6 +1266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAsaasWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/native/android-release': {
+      id: '/api/native/android-release'
+      path: '/api/native/android-release'
+      fullPath: '/api/native/android-release'
+      preLoaderRoute: typeof ApiNativeAndroidReleaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/native/driver-location': {
       id: '/api/native/driver-location'
       path: '/api/native/driver-location'
@@ -1469,6 +1489,7 @@ const rootRouteChildren: RootRouteChildren = {
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
+  ApiNativeAndroidReleaseRoute: ApiNativeAndroidReleaseRoute,
   ApiNativeDriverLocationRoute: ApiNativeDriverLocationRoute,
   ApiOperationsEmailPdfRoute: ApiOperationsEmailPdfRoute,
   ApiOperationsReportSchedulerRoute: ApiOperationsReportSchedulerRoute,

@@ -22,6 +22,7 @@ import { NotificationControls } from "@/components/caronaa/NotificationControls"
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
+import { AndroidUpdateNotice } from "@/components/caronaa/AndroidUpdateNotice";
 import { DriverWebPushPrompt } from "@/components/caronaa/DriverWebPushPrompt";
 import { QuickRidePendingDropoffPrompt } from "@/components/caronaa/QuickRidePendingDropoffPrompt";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
@@ -60,11 +61,13 @@ export function AppShell({
   publicPage = false,
   prelaunchMode = false,
   mapLayout = false,
+  offerAndroidUpdate = false,
 }: {
   children: ReactNode;
   publicPage?: boolean;
   prelaunchMode?: boolean;
   mapLayout?: boolean;
+  offerAndroidUpdate?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -399,6 +402,9 @@ export function AppShell({
           </nav>
         )}
       </header>
+      {!publicPage && user && (offerAndroidUpdate || pathname === "/perfil") && (
+        <AndroidUpdateNotice fromProfile={pathname === "/perfil"} />
+      )}
 
       {adminPreview && (
         <div role="status" className="border-b border-primary/25 bg-primary/10 px-4 py-2.5">
