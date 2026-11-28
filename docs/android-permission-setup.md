@@ -11,3 +11,8 @@
 - FAB amarelo separado de zoom e GPS, no mapa inicial Android, fora de corrida operacional e painel totalmente expandido.
 - Ativar tudo conduz os itens pendentes/indeterminados em sequência por toque, com opção de pular e atualização ao voltar. Conexão local via navigator.onLine; ajuste de rede por ACTION_WIRELESS_SETTINGS. Não declarar conectividade do backend. Nenhuma permissão de sobreposição ou acesso a notificações de outros apps.
 - F07: texto neutro durante busca real, sem exibir contagem zero; manter contagens positivas reais, cancelamento e prazo no servidor. Não simular presença ou manter busca falsa após expiração.
+
+## Correção de acesso multiplataforma
+- Cabeçalho, menu de conta e Perfil abrem a central mesmo no navegador e no cockpit profissional. FAB no mapa inicial e no cockpit; cabeçalho permanece disponível durante os outros estados. Marcador v2 separado por plataforma, conta e papel. Sem prompt nativo automático.
+- Navegador usa somente APIs de permissão do site; localização do site não equivale a GPS preciso, bateria/canal não podem ser detectados no navegador. A solicitação de localização usa um fix descartado, sem publicação. Não confundir consentimento de notificações com entrega remota.
+- Ícones do launcher e PWA têm fundo preto opaco; logo e ícone monocromático de notificação permanecem. PWA usa revisão de cache e URLs de ícone versionadas; launcher do Android exige APK atualizado.

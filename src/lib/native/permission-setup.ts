@@ -4,7 +4,7 @@ import { openNativeAppSettings, refreshGrantedDriverAlerts } from "./driver-noti
 
 export type SetupStatus = {
   preciseLocation?: boolean; approximateLocation?: boolean; gpsEnabled?: boolean;
-  notifications?: boolean; rideChannel?: boolean; batteryExempt?: boolean;
+  notifications?: boolean; rideChannel?: boolean; batteryExempt?: boolean; siteLocation?: boolean;
 };
 export type SetupTarget = "app" | "gps" | "battery" | "notifications" | "channel" | "network";
 const bridge = registerPlugin<{
@@ -67,8 +67,8 @@ export async function requestSetupNotifications(driver: boolean): Promise<boolea
   } catch { return openSetupSettings("notifications"); }
 }
 
-export function setupSeenKey(userId: string, driver: boolean): string {
-  return "caronaa:android-permission-setup:v1:" + userId + ":" + (driver ? "driver" : "passenger");
+export function setupSeenKey(userId: string, driver: boolean, platform: "android" | "web" = "android"): string {
+  return "caronaa:permission-setup:v2:" + platform + ":" + userId + ":" + (driver ? "driver" : "passenger");
 }
 
 export function setupStatusLabel(value: boolean | undefined): string {

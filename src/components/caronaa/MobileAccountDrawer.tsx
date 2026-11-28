@@ -182,6 +182,7 @@ export function MobileAccountDrawer({ signOut, prelaunchMode = false, profession
 
         <div className="mt-5 rounded-2xl border border-border bg-muted/50 p-3">
           <p className="mb-2 text-xs font-semibold text-muted-foreground">Aparência e notificações</p>
+          <button type="button" onClick={() => { close(); window.setTimeout(() => window.dispatchEvent(new Event("caronaa:permission-setup")), 250); }} className="mb-2 flex min-h-11 w-full items-center gap-2 rounded-lg border border-border px-3 text-left text-sm font-semibold"><Settings2 size={17} aria-hidden /> Permissões do aplicativo</button>
           <div className="flex min-h-12 items-center justify-between gap-2">
             <span className="inline-flex items-center gap-2 text-sm font-medium"><Settings2 size={17} aria-hidden="true" /> Tema</span>
             <ThemeToggle />

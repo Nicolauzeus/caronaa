@@ -18,6 +18,7 @@ import { getAdminAppPreview, leaveAdminAppPreview } from "@/lib/admin/entry";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/brand/caronaa-logo.png.asset.json";
 import { ThemeToggle } from "@/components/caronaa/ThemeToggle";
+import { NativePermissionSetupHeaderButton } from "@/components/caronaa/NativePermissionSetup";
 import { NotificationControls } from "@/components/caronaa/NotificationControls";
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
@@ -219,8 +220,9 @@ export function AppShell({
           )}
 
           {/* Área Direita do Header */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-3">
             <ThemeToggle className="hidden md:inline-flex" />
+            {!publicPage && user && <NativePermissionSetupHeaderButton />}
             {user && (
               <div className="shrink-0">
                 <NotificationControls />
