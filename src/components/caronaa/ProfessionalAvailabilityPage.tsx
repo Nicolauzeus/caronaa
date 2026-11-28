@@ -1,3 +1,4 @@
+import { NativePermissionSetupFab } from "@/components/caronaa/NativePermissionSetup";
 import { Link } from "@tanstack/react-router";
 import { unlockNotificationAudio } from "@/lib/notification-sound";
 import "./professional-cockpit.css";
@@ -462,6 +463,7 @@ export function ProfessionalAvailabilityPage() {
           className="h-full w-full"
           ariaLabel="Mapa da posição atual do motorista"
         />
+        <NativePermissionSetupFab className="absolute right-3 top-3 z-20" />
         {!mapFix && <div role="status" className="professional-cockpit__map-status pointer-events-none absolute inset-x-3 bottom-3 rounded-lg border bg-background/95 p-3 text-center text-xs font-semibold shadow">
           Aguardando localização real. Ative ou autorize o GPS para centralizar o mapa.
         </div>}

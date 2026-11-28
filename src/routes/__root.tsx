@@ -153,7 +153,7 @@ export const Route = createRootRouteWithContext<{
       },
       {
         rel: "apple-touch-icon",
-        href: "/pwa-icon-192.png",
+        href: "/pwa-icon-192.png?v=4",
       },
       {
         rel: "preconnect",

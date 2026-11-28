@@ -21,5 +21,5 @@ describe("native first-access permissions", () => {
     expect(nextSetupStep(rows, ["GPS"])?.title).toBe("Bateria");
     expect(nextSetupStep(rows, ["GPS","Bateria"])).toBeUndefined();
   });
-  it("separates the first-run marker by account and role", () => { expect(setupSeenKey("a", true)).not.toBe(setupSeenKey("a", false)); expect(setupSeenKey("a", true)).not.toBe(setupSeenKey("b", true)); });
+  it("separates the first-run marker by account and role", () => { expect(setupSeenKey("a", true)).not.toBe(setupSeenKey("a", false)); expect(setupSeenKey("a", true)).not.toBe(setupSeenKey("b", true)); expect(setupSeenKey("a", true, "web")).not.toBe(setupSeenKey("a", true, "android")); });
 });

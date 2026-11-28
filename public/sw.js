@@ -1,4 +1,4 @@
-const CACHE = "caronaa-static-v3";
+const CACHE = "caronaa-static-v4";
 const SHELL = ["/offline.html", "/pwa-icon-192.png", "/pwa-icon-512.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
