@@ -51,7 +51,7 @@ jobs:
         run: |
           npm run android:check
           npx tsc --noEmit
-          npx vitest run src/test/native-foreground-location.test.ts src/test/android-capacitor-phase2.test.ts src/test/android-release.test.tsx src/test/quick-ride-fcm-dispatch.test.ts src/test/quick-ride-push-dispatch.test.ts
+          npx vitest run src/test/android-permission-setup.test.ts src/test/native-foreground-location.test.ts src/test/android-capacitor-phase2.test.ts src/test/android-release.test.tsx src/test/quick-ride-fcm-dispatch.test.ts src/test/quick-ride-push-dispatch.test.ts
           npm run build
           npx cap sync android
       - name: Configure Firebase Android client
