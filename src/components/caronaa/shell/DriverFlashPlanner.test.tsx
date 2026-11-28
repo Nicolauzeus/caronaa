@@ -7,6 +7,11 @@ const api=vi.hoisted(()=>({
   getOrders:vi.fn(),getRide:vi.fn(),snapshot:vi.fn(),passenger:vi.fn(),respond:vi.fn(),
   arrived:vi.fn(),start:vi.fn(),
 }));
+const alerts=vi.hoisted(()=>({permission:vi.fn(),enable:vi.fn()}));
+vi.mock("@/lib/native/driver-notifications",()=>({
+  getDriverAlertPermission:alerts.permission,enableDriverAlerts:alerts.enable,
+  openNativeAppSettings:vi.fn(),testRideAlertSound:vi.fn(),
+}));
 vi.mock("@tanstack/react-start",()=>({useServerFn:(fn:unknown)=>fn}));
 vi.mock("@/lib/map-routing.functions",()=>({getMapDrivingRoute:api.route}));
 vi.mock("@/hooks/use-flash-driver-presence",()=>({
@@ -45,6 +50,8 @@ const props={
 };
 beforeEach(()=>{
   vi.clearAllMocks();
+  alerts.permission.mockResolvedValue("unsupported");
+  alerts.enable.mockResolvedValue({ok:false,reason:"UNSUPPORTED"});
   api.route.mockResolvedValue({routePath:points,distanceKm:11,durationMinutes:18});
   api.goOnline.mockResolvedValue(true);
   api.markOffline.mockResolvedValue(undefined);
@@ -56,6 +63,18 @@ beforeEach(()=>{
 });
 afterEach(cleanup);
 describe("Flash driver shell",()=>{
+  it("opens the app's guided card without requesting browser permission from the online action",async()=>{
+    const open=vi.fn();
+    window.addEventListener("caronaa:web-push-setup",open);
+    render(<DriverFlashPlanner {...props}/>);
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Ficar Disponível"}));});
+    expect(api.goOnline).toHaveBeenCalled();
+    expect(alerts.enable).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"Configurar notificações"}));
+    expect(open).toHaveBeenCalledOnce();
+    expect(alerts.enable).not.toHaveBeenCalled();
+    window.removeEventListener("caronaa:web-push-setup",open);
+  });
   it("defaults to accepting all compatible requests without requiring a destination",async()=>{
     render(<DriverFlashPlanner {...props}/>);
     expect(screen.getByRole("button",{name:"Aceito tudo"})).toHaveAttribute("aria-pressed","true");

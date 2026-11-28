@@ -17,6 +17,8 @@ import {
   type FlashDriverRide, type FlashPassengerDetails,
 } from "@/services/flash-driver-service";
 import { enableDriverAlerts, getDriverAlertPermission } from "@/lib/native/driver-notifications";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
+import { openDriverWebPushPrompt } from "@/components/caronaa/DriverWebPushPrompt";
 import { DriverPwaPromotionCard } from "@/components/caronaa/DriverPwaPromotionCard";
 import { DriverNotificationPermissionDialog, KeepScreenOpenWarning, NativeAlertSetupCard, RemoteAlertsUnavailableNotice } from "@/components/caronaa/DriverNotificationPermissionDialog";
 import { FlashIncomingOrderCard } from "./FlashIncomingOrderCard";
@@ -212,6 +214,8 @@ export function DriverFlashPlanner({
   };
   const requestActivate=async()=>{
     if(presence.busy||presence.online)return;
+    // The shared branded card owns browser consent, independently of GPS/online.
+    if(!isNativeAndroid()){void activate();return;}
     const permission=await getDriverAlertPermission();
     if(permission==="prompt"){setAskNotify(true);return;}
     if(permission==="granted")void enableDriverAlerts().then(applyAlertResult).catch(()=>undefined);
@@ -342,9 +346,11 @@ export function DriverFlashPlanner({
       style={{fontFamily:"Manrope, sans-serif"}}>
       <DriverNotificationPermissionDialog open={askNotify} onAllow={()=>void allowNotify()} onSkip={skipNotify}/>
       {!active&&!presence.online&&<DriverPwaPromotionCard/>}
-      {!active&&presence.online&&noAlerts&&<KeepScreenOpenWarning/>}
+      {!active&&presence.online&&noAlerts&&isNativeAndroid()&&<KeepScreenOpenWarning/>}
       {!active&&presence.online&&!noAlerts&&remoteUnavailable&&<RemoteAlertsUnavailableNotice/>}
       {!active&&<NativeAlertSetupCard/>}
+      {!active&&snap!=="peek"&&!isNativeAndroid()&&<button type="button" onClick={openDriverWebPushPrompt}
+        className="min-h-10 px-2 text-xs font-semibold text-[#FFBB00] underline underline-offset-4">Configurar notificações</button>}
       {!active&&snap==="peek"&&<>
         <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"

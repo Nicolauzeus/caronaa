@@ -22,6 +22,7 @@ import { NotificationControls } from "@/components/caronaa/NotificationControls"
 import { PublicFooter } from "@/components/caronaa/PublicFooter";
 import { MobileAccountDrawer } from "@/components/caronaa/MobileAccountDrawer";
 import { ProfessionalRadarSync } from "@/components/caronaa/ProfessionalRadarSync";
+import { DriverWebPushPrompt } from "@/components/caronaa/DriverWebPushPrompt";
 import { QuickRidePendingDropoffPrompt } from "@/components/caronaa/QuickRidePendingDropoffPrompt";
 import { professionalRadarConsentKey } from "@/lib/professional-radar-consent";
 import { clearRideIntentDraft } from "@/lib/ride-intent-draft";
@@ -143,6 +144,9 @@ export function AppShell({
       {!publicPage && !prelaunchMode && user &&
         pathname !== "/disponibilidade-profissional" &&
         <ProfessionalRadarSync userId={user.id} />}
+      {!publicPage && !prelaunchMode && user && professionalOnly === true &&
+        <DriverWebPushPrompt key={user.id} userId={user.id}
+          automatic={["/home", "/disponibilidade-profissional", "/perfil"].includes(pathname)}/>}
       <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${professionalOnly ? "border-white/10 bg-[#121212] text-white" : "border-border/80 bg-background/95"}`}>
         <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-3 px-3 sm:h-16 sm:px-5 lg:px-8">
           {/* Logo CARONAA */}
@@ -493,4 +497,3 @@ export function AppShell({
     </div>
   );
 }
-

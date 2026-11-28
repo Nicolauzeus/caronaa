@@ -1,4 +1,4 @@
-import { subscribeDriverToPush } from "@/lib/push/web-push-client";
+import { subscribeDriverToPush, type PushSubscribeResult } from "@/lib/push/web-push-client";
 import {
   isNativeAndroid, isNativePluginAvailable, setupAndroidNotificationChannels,
 } from "./capacitor-bridge";
@@ -9,7 +9,7 @@ export type DriverAlertPermission = "granted" | "denied" | "prompt" | "unsupport
 
 export type DriverAlertResult =
   | { ok: true; remote: "web" | "native-registered" | "native-unavailable" }
-  | { ok: false; reason: "UNSUPPORTED" | "DENIED" | "NO_SERVICE_WORKER" | "SAVE_FAILED" };
+  | Extract<PushSubscribeResult, { ok: false }>;
 
 function normalize(value: string | undefined): DriverAlertPermission {
   if (value === "granted") return "granted";
