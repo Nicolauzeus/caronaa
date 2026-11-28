@@ -27,6 +27,7 @@ public class CaronaaNativePlugin extends Plugin {
         int id = getContext().getResources().getIdentifier("google_app_id", "string", getContext().getPackageName());
         JSObject result = new JSObject();
         result.put("configured", id != 0);
+        result.put("rideActions", true);
         call.resolve(result);
     }
 
@@ -36,6 +37,12 @@ public class CaronaaNativePlugin extends Plugin {
             return "https".equals(uri.getScheme()) && "caronaa.com".equals(uri.getHost())
                 && (uri.getPort() == -1 || uri.getPort() == 443);
         } catch (Exception e) { return false; }
+    }
+
+    @PluginMethod
+    public void consumeRideNotificationAction(PluginCall call) {
+        if (!trustedOrigin()) { call.reject("ORIGIN_DENIED"); return; }
+        call.resolve(RideNotificationActionActivity.consume());
     }
 
     private boolean precisePermission() {

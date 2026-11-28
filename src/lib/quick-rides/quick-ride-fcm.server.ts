@@ -1,9 +1,11 @@
 // FCM HTTP v1 server-only implementation for Worker/Node runtimes.
+import { resolveCorridorMunicipality } from "./corridor-coverage";
 // No Firebase private key or OAuth access token is ever shipped to the APK.
-export type FcmTokenRow = { userId: string; token: string; updatedAt: string };
+export type FcmTokenRow = { userId: string; token: string; updatedAt: string; rideActions?: boolean };
 export type FcmResult = { status: number; unregistered: boolean };
 export type FcmRideAlert = {
   vehicleType: "CAR" | "MOTO"; fareCents: number | null; distanceKm: number; expiresAtMs?: number;
+  driverEarningsCents?: number | null; originCity?: string | null; destinationCity?: string | null;
 };
 export type FcmSender = (row: FcmTokenRow, rideId: string, alert: FcmRideAlert) => Promise<FcmResult>;
 type FcmConfig = { projectId: string; clientEmail: string; privateKey: string };
@@ -137,6 +139,24 @@ export function buildFcmRideMessage(token: string, rideId: string, alert: FcmRid
   } };
 }
 
+/** Only clients that explicitly advertise the native handler receive data-only FCM.
+ * Municipality values come from verified persisted ride/quote fields, never address labels. */
+export async function buildFcmActionMessage(row: FcmTokenRow, rideId: string, alert: FcmRideAlert, now = Date.now()) {
+  const legacy = buildFcmRideMessage(row.token, rideId, alert, now).message;
+  const ttl = remainingTtl(alert, now);
+  const ownerHash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(row.userId))), b => b.toString(16).padStart(2,"0")).join("");
+  const valid = (c: unknown): c is number => typeof c === "number" && Number.isSafeInteger(c) && c >= 0;
+  const city = (c: string | null | undefined) => resolveCorridorMunicipality(c, "CE", "BR")?.municipality ?? "";
+  return { message: {
+    token: row.token,
+    data: { ...legacy.data, kind: "flash_ride_action_v1", ownerHash,
+      expiresAtMs: String(now + ttl * 1000),
+      originCity: city(alert.originCity), destinationCity: city(alert.destinationCity),
+      driverEarnings: valid(alert.driverEarningsCents) ? (alert.driverEarningsCents / 100).toFixed(2) : "" },
+    android: { priority: "HIGH", ttl: ttl + "s", restricted_package_name: "com.caronaa.app" },
+  } };
+}
+
 export function createFcmSender(cfg: FcmConfig, deps: { fetch?: typeof fetch; now?: () => number } = {}): FcmSender {
   const fetcher = deps.fetch ?? fetch;
   const now = deps.now ?? Date.now;
@@ -147,7 +167,9 @@ export function createFcmSender(cfg: FcmConfig, deps: { fetch?: typeof fetch; no
     const response = await fetcher("https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(cfg.projectId) + "/messages:send", {
       method: "POST",
       headers: { Authorization: "Bearer " + access.value, "Content-Type": "application/json" },
-      body: JSON.stringify(buildFcmRideMessage(row.token, rideId, alert, now())),
+      body: JSON.stringify(row.rideActions === true
+        ? await buildFcmActionMessage(row, rideId, alert, now())
+        : buildFcmRideMessage(row.token, rideId, alert, now())),
       signal: AbortSignal.timeout(2500),
     });
     // Expired credentials may recover on the next dispatch; don't erase devices.

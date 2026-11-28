@@ -26,7 +26,8 @@ export function isNativePluginAvailable(name: string): boolean {
 }
 
 interface CaronaaNativePlugin {
-  firebaseStatus(): Promise<{ configured: boolean }>;
+  firebaseStatus(): Promise<{ configured: boolean; rideActions?: boolean }>;
+  consumeRideNotificationAction(): Promise<{ rideId?: string; ownerHash?: string; expiresAtMs?: number; action?: string }>;
 }
 const CaronaaNative = registerPlugin<CaronaaNativePlugin>("CaronaaNative");
 
@@ -38,6 +39,16 @@ export async function hasNativeFirebaseConfig(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function nativeRideActionsSupported(): Promise<boolean> {
+  if (!isNativePluginAvailable("CaronaaNative")) return false;
+  try { return (await CaronaaNative.firebaseStatus()).rideActions === true; } catch { return false; }
+}
+
+export async function consumeNativeRideAction() {
+  if (!isNativePluginAvailable("CaronaaNative")) return null;
+  try { return await CaronaaNative.consumeRideNotificationAction(); } catch { return null; }
 }
 
 let channelSetup: Promise<boolean> | null = null;

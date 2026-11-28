@@ -15,6 +15,7 @@ export type PushDispatchInput = {
   rideId: string; originLat: number; originLng: number;
   vehicleType: "CAR" | "MOTO"; fareCents: number | null;
   expiresAtMs?: number;
+  originCity?: string | null; destinationCity?: string | null; driverEarningsCents?: number | null;
 };
 export type OnlineDriver = { userId: string; lat: number; lng: number };
 export type PushSubscriptionRow = { userId: string; endpoint: string; p256dh: string; auth: string };
@@ -128,6 +129,7 @@ async function dispatchFcmForDrivers(input: PushDispatchInput, near: Map<string,
         const alert: FcmRideAlert = {
           vehicleType: input.vehicleType, fareCents: input.fareCents,
           distanceKm: near.get(row.userId)!, expiresAtMs: input.expiresAtMs,
+          originCity: input.originCity, destinationCity: input.destinationCity, driverEarningsCents: input.driverEarningsCents,
         };
         const response = await deps.send(row, input.rideId, alert);
         if (response.unregistered) {
@@ -195,6 +197,10 @@ export function supabasePushRepo(db: any): PushRepo {
   };
 }
 
+export function supportsNativeRideActions(raw: unknown): boolean {
+  if (typeof raw !== "string" || raw.length > 2000) return false;
+  try { return JSON.parse(raw)?.rideActions === "v1"; } catch { return false; }
+}
 export function supabaseFcmRepo(db: any): FcmRepo {
   const base = supabasePushRepo(db);
   return {
@@ -209,10 +215,11 @@ export function supabaseFcmRepo(db: any): FcmRepo {
       const drivers = (profiles ?? []).map((row: any) => row.id);
       if (!drivers.length) return [];
       const { data, error } = await db.from("driver_fcm_tokens")
-        .select("user_id,token,updated_at").eq("platform", "android").in("user_id", drivers);
+        .select("user_id,token,updated_at,device_info").eq("platform", "android").in("user_id", drivers);
       if (error) throw new Error("fcm_tokens");
       return (data ?? []).map((row: any) => ({
         userId: row.user_id, token: row.token, updatedAt: row.updated_at,
+        ...(supportsNativeRideActions(row.device_info) ? { rideActions: true } : {}),
       }));
     },
     async deleteToken(row) {
@@ -302,14 +309,29 @@ export async function dispatchPushForQuickRide(rideId: string) {
     if (!webConfigured && !fcm) return;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: ride } = await (supabaseAdmin as any).from("professional_quick_rides")
-      .select("id,origin_lat,origin_lng,vehicle_type,estimated_fare_cents,status,expires_at").eq("id", rideId).maybeSingle();
+      .select("id,origin_lat,origin_lng,municipality,vehicle_type,estimated_fare_cents,driver_earnings_cents,status,expires_at").eq("id", rideId).maybeSingle();
     const expiresAtMs = Date.parse(ride?.expires_at ?? "");
     if (!ride || ride.status !== "SEARCHING" || (ride.vehicle_type !== "CAR" && ride.vehicle_type !== "MOTO") ||
         ride.origin_lat == null || ride.origin_lng == null ||
         !Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) return;
+    // Read the immutable quote actually bound to this ride. Never guess a
+    // price or expose precise addresses. A failed optional lookup must not
+    // stop either push transport.
+    let quote: { customer_pays_cents?: number; driver_receives_cents?: number; destination_municipality?: string } | undefined;
+    try {
+      const result = await (supabaseAdmin as any).from("caronaa_quick_fare_quotes")
+        .select("customer_pays_cents,driver_receives_cents,destination_municipality").eq("ride_id", rideId).limit(2);
+      if (!result.error && result.data?.length === 1) quote = result.data[0];
+    } catch { /* legacy ride or unavailable quote; remain best-effort */ }
+    const cents = (a: unknown, b: unknown): number | null => {
+      for (const x of [a,b]) if (typeof x === "number" && Number.isSafeInteger(x) && x >= 0) return x;
+      return null;
+    };
     const input: PushDispatchInput = {
       rideId, originLat: Number(ride.origin_lat), originLng: Number(ride.origin_lng),
-      vehicleType: ride.vehicle_type, fareCents: ride.estimated_fare_cents, expiresAtMs,
+      vehicleType: ride.vehicle_type, fareCents: cents(ride.estimated_fare_cents, quote?.customer_pays_cents), expiresAtMs,
+      originCity: ride.municipality, destinationCity: quote?.destination_municipality,
+      driverEarningsCents: cents(ride.driver_earnings_cents, quote?.driver_receives_cents),
     };
     const repo = supabasePushRepo(supabaseAdmin);
     const outcomes = await dispatchRidePushChannels(input, {
