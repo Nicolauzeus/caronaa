@@ -1,0 +1,8 @@
+# Android — configuração inicial de permissões
+
+- A configuração é exibida no primeiro acesso autenticado por conta e papel, e pode ser reaberta no Perfil. O usuário pode continuar sem autorizar; não altera login, aprovação, presença, rastreamento, tarifas ou banco.
+- APKs 1.1.0 e 1.1.1 recebem a tela web após publicação. Métodos nativos ausentes usam os ajustes existentes; status não verificável nunca é marcado como ativo.
+- Próximo APK candidato: bridge com leitura real de localização precisa, serviço de localização do aparelho, notificações globais, canal de corrida e exceção de bateria. Ajustes específicos abertos apenas por toque. Inicialização automática OEM é manual e não verificável genericamente.
+- GPS não inicia rastreamento nem coleta coordenadas por este fluxo. Serviço de localização foreground continua vinculado a consentimento, disponibilidade e autorização. Não solicitar localização sempre ativa, câmera, galeria, contatos ou microfone preventivamente. Câmera/fotos seguem os fluxos existentes.
+- O próximo APK anuncia rideActions=false para preservar entrega convencional enquanto a entrega data-only no 1.1.1 não estiver validada fisicamente. O código interativo permanece para diagnóstico futuro; nenhum token existente é modificado diretamente. 1.1.0 original permanece disponível.
+- Aceite físico: instalar candidato assinado por cima de 1.1.0 e 1.1.1, confirmar login e papel, permitir/recusar, retornar de ajustes, testar toque, verificar FCM convencional em primeiro e segundo plano, GPS/mapa, disponibilidade e logout. Confirmar Xiaomi e Android 13+. Não publicar como estável apenas com build verde.

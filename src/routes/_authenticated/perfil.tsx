@@ -1,3 +1,4 @@
+import { NativePermissionSetupLink } from "@/components/caronaa/NativePermissionSetup";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
@@ -578,6 +579,7 @@ function Perfil() {
   if (loading) {
     return (
       <AppShell prelaunchMode={launchLocked}>
+      <NativePermissionSetupLink />
         <PageHeading
           eyebrow="SUA COMUNIDADE"
           title="Meu perfil"

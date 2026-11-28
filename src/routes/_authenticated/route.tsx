@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { readOnboarding } from "@/lib/onboarding/progressive-onboarding";
+import { NativePermissionSetup } from "@/components/caronaa/NativePermissionSetup";
 import { FirstRunTutorial } from "@/components/onboarding/FirstRunTutorial";
 import { claimPendingParticipations,readPendingParticipations } from "@/lib/formulario/research-participation";
 
@@ -68,5 +69,5 @@ export const Route = createFileRoute("/_authenticated")({
     // Professional dispatch, account confirmation and vehicle guards remain enforced above.
     return { user: data.user, launchLocked: false };
   },
-  component: () => <><Outlet /><FirstRunTutorial /></>,
+  component: () => <><Outlet /><NativePermissionSetup><FirstRunTutorial /></NativePermissionSetup></>,
 });
