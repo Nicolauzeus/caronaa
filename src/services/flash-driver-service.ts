@@ -160,10 +160,10 @@ export async function getFlashDriverRadarOrders():Promise<FlashDriverOrder[]>{
     return parsed;
   }catch(error){if(error instanceof FlashDriverError)throw error;throw new FlashDriverError("UNAVAILABLE");}
 }
-export async function respondFlashOrder(rideId:string,accept:boolean):Promise<"ACCEPTED"|"REJECTED">{
+export async function respondFlashOrder(rideId:string,accept:boolean,client:typeof supabase=supabase):Promise<"ACCEPTED"|"REJECTED">{
   if(!rideId)throw new FlashDriverError("INVALID");
   try{
-    const {data,error}=await (supabase as any).rpc("respond_flash_order",{
+    const {data,error}=await (client as any).rpc("respond_flash_order",{
       p_ride_id:rideId,p_accept:accept,
     });
     if(error)throw rpcError(error);

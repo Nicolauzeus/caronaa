@@ -26,4 +26,17 @@ assert.ok(statSync(new URL("../android/app/src/main/res/raw/caronaa_ride_alert.w
 const config = read("capacitor.config.ts");
 assert.doesNotMatch(config, /allowNavigation\s*:/);
 assert.match(config, /cleartext: false/);
+const rideService = read("android/app/src/main/java/com/caronaa/app/RideMessagingService.java");
+assert.match(manifest, /android:name="com\.capacitorjs\.plugins\.pushnotifications\.MessagingService" tools:node="remove"/);
+assert.match(manifest, /android:name="\.RideMessagingService" android:exported="false"/);
+assert.match(manifest, /android:name="\.RideNotificationActionActivity" android:exported="false"/);
+assert.match(manifest, /android:name="\.RideNotificationDismissReceiver" android:exported="false"/);
+assert.match(rideService, /extends MessagingService/);
+assert.match(rideService, /FLAG_IMMUTABLE/);
+assert.match(rideService, /VISIBILITY_PRIVATE/);
+assert.match(rideService, /setTimeoutAfter/);
+assert.match(rideService, /addAction\(0, "Aceitar"/);
+assert.match(rideService, /addAction\(0, "Dispensar"/);
+assert.match(read("android/app/src/main/java/com/caronaa/app/RideNotificationActionActivity.java"), /synchronized JSObject consume/);
+assert.doesNotMatch(read("android/app/src/main/java/com/caronaa/app/RideNotificationDismissReceiver.java"), /\brpc\b\s*\(|https?:\/\/|startActivity\(/i);
 console.log("Android phase 2 static checks passed.");

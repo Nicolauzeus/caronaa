@@ -251,3 +251,35 @@ describe("native resume lifecycle", () => {
     expect(remove).toHaveBeenCalledTimes(2);
   });
 });
+
+
+describe("explicit native ride action", () => {
+  it("rejects stale, malformed, or unbound action payloads", async () => {
+    const { rideActionOwnerHash, validNativeRideAction, handleNativeRideAction } = await import("@/lib/native/native-ride-action");
+    const now = Date.now();
+    const payload = { rideId: "11111111-1111-4111-8111-111111111111", ownerHash: await rideActionOwnerHash("driver-a"), expiresAtMs: now + 30_000, action: "accept" };
+    expect(validNativeRideAction(payload, now)).toBe(true);
+    expect(validNativeRideAction({ ...payload, expiresAtMs: now }, now)).toBe(false);
+    expect(validNativeRideAction({ ...payload, action: "dismiss" }, now)).toBe(false);
+    expect(validNativeRideAction({ ...payload, rideId: "arbitrary" }, now)).toBe(false);
+    const open = vi.fn(), role = vi.fn(async () => "MOTORISTA");
+    await handleNativeRideAction(payload, "another-driver", { open, role, live: () => true });
+    expect(open).not.toHaveBeenCalled();
+    expect(role).not.toHaveBeenCalled();
+    await handleNativeRideAction(payload, "driver-a", { open, role: async () => "PASSAGEIRO", live: () => true });
+    expect(open).not.toHaveBeenCalled();
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+  it("a plain notification tap navigates but never invokes the accept RPC", async () => {
+    const { rideActionOwnerHash, handleNativeRideAction } = await import("@/lib/native/native-ride-action");
+    const open = vi.fn();
+    await handleNativeRideAction({
+      rideId: "11111111-1111-4111-8111-111111111111",
+      ownerHash: await rideActionOwnerHash("driver-a"),
+      expiresAtMs: Date.now() + 30_000,
+      action: "open",
+    }, "driver-a", { open, role: async () => "MOTORISTA", live: () => true });
+    expect(open).toHaveBeenCalledOnce();
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+});

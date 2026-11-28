@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { hasNativeFirebaseConfig, isNativeAndroid, isNativePluginAvailable } from "./capacitor-bridge";
+import { hasNativeFirebaseConfig, isNativeAndroid, isNativePluginAvailable, nativeRideActionsSupported, consumeNativeRideAction } from "./capacitor-bridge";
+import { handleNativeRideAction } from "./native-ride-action";
 import type { PluginListenerHandle } from "@capacitor/core";
 
 type Route = "/home" | "/disponibilidade-profissional";
@@ -95,6 +96,7 @@ async function currentRole(s: Session): Promise<"MOTORISTA" | "PASSAGEIRO" | nul
 }
 async function deviceInfo(): Promise<string> {
   const info: Record<string, string> = { platform: "android" };
+  if (await bounded(() => nativeRideActionsSupported(), 1000)) info.rideActions = "v1";
   if (isNativePluginAvailable("App")) {
     const app = await bounded(async () => (await import("@capacitor/app")).App.getInfo(), 1200);
     if (app?.version) info.version = app.version.slice(0, 40);
@@ -263,7 +265,20 @@ export function mountNativeDriverNotifications(owner: string, open: (route: Rout
     token: null, saved: null, savedAt: 0, refreshing: null, attaching: null,
     handles: [], resolveRegistration: null };
   session = s;
-  const retry = () => { void refresh(s); };
+  let handlingAction = false;
+  const retry = () => {
+    void refresh(s);
+    if (handlingAction || !live(s)) return;
+    handlingAction = true;
+    void (async () => {
+      const pending = await bounded(() => consumeNativeRideAction(), 1200);
+      if (!pending?.rideId || !live(s)) return;
+      await handleNativeRideAction(pending, s.owner, {
+        live: () => live(s), role: () => currentRole(s),
+        open: () => s.open("/home"),
+      });
+    })().catch(() => undefined).finally(() => { handlingAction = false; });
+  };
   const roleChanged = () => { s.driver = false; void (s.refreshing ?? Promise.resolve()).then(retry); };
   window.addEventListener("online", retry);
   window.addEventListener("caronaa:app-refresh", retry);

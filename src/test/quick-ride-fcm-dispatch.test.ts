@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchFcmToEligibleDrivers, type FcmRepo } from "@/lib/quick-rides/quick-ride-push.server";
-import { buildFcmRideMessage, isUnregisteredFcmResponse, readFcmConfig, createFcmSender, __resetFcmAccessForTests } from "@/lib/quick-rides/quick-ride-fcm.server";
+import { buildFcmRideMessage, buildFcmActionMessage, isUnregisteredFcmResponse, readFcmConfig, createFcmSender, __resetFcmAccessForTests } from "@/lib/quick-rides/quick-ride-fcm.server";
 
 const input = { rideId: "ride-1", originLat: -3.7319, originLng: -38.5267, vehicleType: "CAR" as const, fareCents: 1500 };
 const alert = { vehicleType: "CAR" as const, fareCents: 1500, distanceKm: 1.5 };
@@ -74,6 +74,20 @@ describe("native Android FCM dispatch", () => {
     expect(JSON.stringify(message)).not.toContain("originLng");
     expect(JSON.stringify(message)).not.toContain("fareCents");
     expect(buildFcmRideMessage("test-a", input.rideId, { ...alert, expiresAtMs: 61_000 }, 1000).message.android.ttl).toBe("60s");
+  });
+  it("builds data-only native action alerts with verified cities and no private addresses", async () => {
+    const { message } = await buildFcmActionMessage({ ...rows[0]!, rideActions: true }, input.rideId,
+      { ...alert, driverEarningsCents: 600, originCity: "Acarape", destinationCity: "Redenção", expiresAtMs: 61_000 }, 1000);
+    expect(message).not.toHaveProperty("notification");
+    expect(message.android).not.toHaveProperty("notification");
+    expect(message.android.ttl).toBe("60s");
+    expect(message.data).toMatchObject({ kind: "flash_ride_action_v1", originCity: "Acarape", destinationCity: "Redenção",
+      driverEarnings: "6.00", estimatedFare: "15.00", expiresAtMs: "61000" });
+    expect(message.data.ownerHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(message)).not.toContain("driver-a");
+    const invalid = await buildFcmActionMessage(rows[0]!, input.rideId, { ...alert, originCity: "Rua privada 42", destinationCity: "Fortaleza" }, 1000);
+    expect(invalid.message.data.originCity).toBe("");
+    expect(invalid.message.data.destinationCity).toBe("Fortaleza");
   });
   it("rejects missing/malformed service-account configuration", () => {
     expect(readFcmConfig(undefined)).toBeNull();
