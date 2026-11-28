@@ -101,6 +101,8 @@ describe("native Android FCM dispatch", () => {
     const key = "-----BEGIN PRIVATE KEY-----\n" + btoa(String.fromCharCode(...der)) + "\n-----END PRIVATE KEY-----";
     const cfg = readFcmConfig(JSON.stringify({type:"service_account", project_id:"caronaa-test", client_email:"test@caronaa-test.iam.gserviceaccount.com", private_key:key}));
     expect(cfg).not.toBeNull();
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const bodies: any[] = [];
     const fakeFetch = vi.fn(async (url: string, options: RequestInit) => {
       if (url === "https://oauth2.googleapis.com/token") {
         const assertion = new URLSearchParams(String(options.body)).get("assertion");
@@ -109,11 +111,35 @@ describe("native Android FCM dispatch", () => {
       }
       expect(url).toBe("https://fcm.googleapis.com/v1/projects/caronaa-test/messages:send");
       expect(new Headers(options.headers).get("authorization")).toBe("Bearer mock-access");
+      bodies.push(JSON.parse(String(options.body)).message);
       return Response.json({name:"projects/caronaa-test/messages/test"});
     });
     const send = createFcmSender(cfg!, {fetch:fakeFetch as unknown as typeof fetch});
-    await Promise.all([send(rows[0]!, input.rideId, alert), send(rows[1]!, input.rideId, alert)]);
-    expect(fakeFetch.mock.calls.filter(c => c[0] === "https://oauth2.googleapis.com/token")).toHaveLength(1);
-    expect(fakeFetch).toHaveBeenCalledTimes(3);
+    try {
+      await Promise.all([send(rows[0]!, input.rideId, alert), send({ ...rows[1]!, rideActions: true }, input.rideId,
+        { ...alert, driverEarningsCents: 618, originCity: "Maracanaú", destinationCity: "Maracanaú" })]);
+      expect(fakeFetch.mock.calls.filter(c => c[0] === "https://oauth2.googleapis.com/token")).toHaveLength(1);
+      expect(fakeFetch).toHaveBeenCalledTimes(3);
+      const legacy = bodies.find(m => m.data.kind === "flash_ride");
+      const interactive = bodies.find(m => m.data.kind === "flash_ride_action_v1");
+      expect(legacy.notification).toBeDefined();
+      expect(interactive).not.toHaveProperty("notification");
+      expect(interactive.android).not.toHaveProperty("notification");
+      expect(interactive.data).toMatchObject({ driverEarnings: "6.18", originCity: "Maracanaú", destinationCity: "Maracanaú" });
+      expect(info).toHaveBeenCalledWith("[CARONAA][F07][PUSH] fcm_payload", {
+        channel: "fcm", revision: "ride-actions-v1-diagnostic", format: "LEGACY", rideActions: false,
+        hasFare: true, hasDriverEarnings: false, hasOrigin: false, hasDestination: false,
+        actionKind: "legacy", providerStatus: 200,
+      });
+      expect(info).toHaveBeenCalledWith("[CARONAA][F07][PUSH] fcm_payload", {
+        channel: "fcm", revision: "ride-actions-v1-diagnostic", format: "DATA_ONLY", rideActions: true,
+        hasFare: true, hasDriverEarnings: true, hasOrigin: true, hasDestination: true,
+        actionKind: "interactive", providerStatus: 200,
+      });
+      const logs = JSON.stringify(info.mock.calls);
+      for (const privateValue of ["test-a", "test-b", "driver-a", "driver-b", "ride-1", "6.18", "Maracanaú", "mock-access"]) {
+        expect(logs).not.toContain(privateValue);
+      }
+    } finally { info.mockRestore(); }
   });
 });
