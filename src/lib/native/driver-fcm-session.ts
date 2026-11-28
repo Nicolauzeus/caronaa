@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { hasNativeFirebaseConfig, isNativeAndroid, isNativePluginAvailable, nativeRideActionsSupported, consumeNativeRideAction, onNativeAppResume } from "./capacitor-bridge";
+import { hasNativeFirebaseConfig, isNativeAndroid, isNativePluginAvailable, nativeRideActionsSupported, consumeNativeRideAction } from "./capacitor-bridge";
 import { handleNativeRideAction } from "./native-ride-action";
 import type { PluginListenerHandle } from "@capacitor/core";
 
@@ -279,7 +279,6 @@ export function mountNativeDriverNotifications(owner: string, open: (route: Rout
       });
     })().catch(() => undefined).finally(() => { handlingAction = false; });
   };
-  const removeResume = onNativeAppResume(retry);
   const roleChanged = () => { s.driver = false; void (s.refreshing ?? Promise.resolve()).then(retry); };
   window.addEventListener("online", retry);
   window.addEventListener("caronaa:app-refresh", retry);
@@ -291,7 +290,6 @@ export function mountNativeDriverNotifications(owner: string, open: (route: Rout
     window.removeEventListener("caronaa:app-refresh", retry);
     window.removeEventListener("caronaa:role-changed", roleChanged);
     window.clearInterval(timer);
-    removeResume();
     stopListening(s);
     if (session === s) session = null;
   };
