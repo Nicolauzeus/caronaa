@@ -1,0 +1,138 @@
+name: Android signed release candidate
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Version name (e.g. 1.1.0)
+        required: true
+        default: '1.1.0'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: android-signed-release-candidate
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      version_code: ${{  steps.version.outputs.code }}
+      version_name: ${{  steps.version.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: version
+        env:
+          VERSION_NAME: ${{  inputs.version_name }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION_NAME" =~ ^[0-9][0-9A-Za-z.+-]{0,39}$ ]]
+          code=$((GITHUB_RUN_NUMBER + 1))
+          [[ "$code" -le 2100000000 ]]
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0 platform-tools'
+      - name: Validate native configuration and regressions
+        run: |
+          npm run android:check
+          npx tsc --noEmit
+          npx vitest run src/test/native-foreground-location.test.ts src/test/android-capacitor-phase2.test.ts src/test/android-release.test.tsx src/test/quick-ride-fcm-dispatch.test.ts src/test/quick-ride-push-dispatch.test.ts
+          npm run build
+          npx cap sync android
+      - name: Configure Firebase Android client
+        env:
+          FIREBASE_CLIENT_JSON: ${{  secrets.CARONAA_ANDROID_GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib
+          raw = os.environ.get("FIREBASE_CLIENT_JSON", "")
+          if not raw:
+              raise SystemExit("Missing Android Firebase client configuration")
+          cfg = json.loads(raw)
+          if cfg.get("type") == "service_account" or "private_key" in cfg:
+              raise SystemExit("Use Android google-services.json, not a service account")
+          if cfg.get("project_info", {}).get("project_id") != "caronaa-app":
+              raise SystemExit("Unexpected Firebase project")
+          if not any(c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.caronaa.app" for c in cfg.get("client", [])):
+              raise SystemExit("Firebase Android application mismatch")
+          pathlib.Path("android/app/google-services.json").write_text(raw, encoding="utf-8")
+          PY
+      - name: Build unsigned release APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{  steps.version.outputs.code }}
+          VERSION_NAME: ${{  steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew assembleRelease -PcaronaaVersionCode="$VERSION_CODE" -PcaronaaVersionName="$VERSION_NAME" --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-android-candidate
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 1
+          if-no-files-found: error
+  sign:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;34.0.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-android-candidate
+          path: unsigned
+      - name: Sign with permanent key and verify certificate
+        env:
+          CARONAA_KEYSTORE_BASE64: ${{  secrets.CARONAA_ANDROID_KEYSTORE_BASE64 }}
+          CARONAA_KEYSTORE_PASSWORD: ${{  secrets.CARONAA_ANDROID_KEYSTORE_PASSWORD }}
+          VERSION_CODE: ${{  needs.build.outputs.version_code }}
+          VERSION_NAME: ${{  needs.build.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ -n "$CARONAA_KEYSTORE_BASE64" && -n "$CARONAA_KEYSTORE_PASSWORD" ]] || { echo "Signing secrets missing"; exit 1; }
+          keystore=$(mktemp "$RUNNER_TEMP/caronaa-signing.XXXXXX")
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$CARONAA_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          unset CARONAA_KEYSTORE_BASE64
+          tools="$ANDROID_HOME/build-tools/34.0.0"
+          mkdir -p candidate
+          "$tools/zipalign" -p -f 4 unsigned/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          apk="candidate/CARONAA-$VERSION_NAME.apk"
+          "$tools/apksigner" sign --ks "$keystore" --ks-type PKCS12 --ks-key-alias caronaa-release --ks-pass env:CARONAA_KEYSTORE_PASSWORD --key-pass env:CARONAA_KEYSTORE_PASSWORD --out "$apk" "$RUNNER_TEMP/aligned.apk"
+          unset CARONAA_KEYSTORE_PASSWORD
+          "$tools/apksigner" verify --verbose --print-certs "$apk"
+          "$tools/aapt" dump badging "$apk" > "$RUNNER_TEMP/apk-badging.txt"
+          grep -F "package: name='com.caronaa.app' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" "$RUNNER_TEMP/apk-badging.txt"
+          (cd candidate && sha256sum "CARONAA-$VERSION_NAME.apk" > SHA256SUMS.txt)
+          printf '{"versionCode":%s,"versionName":"%s","status":"candidate"}\n' "$VERSION_CODE" "$VERSION_NAME" > candidate/version.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CARONAA-signed-release-candidate-${{  needs.build.outputs.version_name }}
+          path: candidate/
+          retention-days: 30
+          if-no-files-found: error
