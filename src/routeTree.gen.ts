@@ -67,9 +67,9 @@ import { Route as AdminUsuariosIndexRouteImport } from './routes/admin/usuarios/
 import { Route as AdminUsuariosIdRouteImport } from './routes/admin/usuarios/$id'
 import { Route as AdminValidacaoPainIdRouteImport } from './routes/admin/validacao/$painId'
 import { Route as ApiAsaasWebhookRouteImport } from './routes/api/asaas/webhook'
+import { Route as ApiNativeDriverLocationRouteImport } from './routes/api/native/driver-location'
 import { Route as ApiOperationsEmailPdfRouteImport } from './routes/api/operations/email-pdf'
 import { Route as ApiOperationsReportSchedulerRouteImport } from './routes/api/operations/report-scheduler'
-import { Route as ApiNativeDriverLocationRouteImport } from './routes/api/native/driver-location'
 import { Route as AuthenticatedPerfilViagemRideIdUserIdRouteImport } from './routes/_authenticated/perfil-viagem.$rideId.$userId'
 import { Route as AdminFormulariosRespostasIndexRouteImport } from './routes/admin/formularios/respostas/index'
 import { Route as AdminFormulariosRespostasIdRouteImport } from './routes/admin/formularios/respostas/$id'
@@ -374,6 +374,11 @@ const ApiAsaasWebhookRoute = ApiAsaasWebhookRouteImport.update({
   path: '/api/asaas/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNativeDriverLocationRoute = ApiNativeDriverLocationRouteImport.update({
+  id: '/api/native/driver-location',
+  path: '/api/native/driver-location',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOperationsEmailPdfRoute = ApiOperationsEmailPdfRouteImport.update({
   id: '/api/operations/email-pdf',
   path: '/api/operations/email-pdf',
@@ -383,12 +388,6 @@ const ApiOperationsReportSchedulerRoute =
   ApiOperationsReportSchedulerRouteImport.update({
     id: '/api/operations/report-scheduler',
     path: '/api/operations/report-scheduler',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiNativeDriverLocationRoute =
-  ApiNativeDriverLocationRouteImport.update({
-    id: '/api/native/driver-location',
-    path: '/api/native/driver-location',
     getParentRoute: () => rootRouteImport,
   } as any)
 const AuthenticatedPerfilViagemRideIdUserIdRoute =
@@ -475,9 +474,9 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
   '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
-  '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/admin/departamentos/': typeof AdminDepartamentosIndexRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
@@ -539,9 +538,9 @@ export interface FileRoutesByTo {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
   '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
-  '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/admin/departamentos': typeof AdminDepartamentosIndexRoute
   '/admin/formularios': typeof AdminFormulariosIndexRoute
   '/admin/usuarios': typeof AdminUsuariosIndexRoute
@@ -608,9 +607,9 @@ export interface FileRoutesById {
   '/admin/usuarios/$id': typeof AdminUsuariosIdRoute
   '/admin/validacao/$painId': typeof AdminValidacaoPainIdRoute
   '/api/asaas/webhook': typeof ApiAsaasWebhookRoute
+  '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/api/operations/email-pdf': typeof ApiOperationsEmailPdfRoute
   '/api/operations/report-scheduler': typeof ApiOperationsReportSchedulerRoute
-  '/api/native/driver-location': typeof ApiNativeDriverLocationRoute
   '/admin/departamentos/': typeof AdminDepartamentosIndexRoute
   '/admin/formularios/': typeof AdminFormulariosIndexRoute
   '/admin/usuarios/': typeof AdminUsuariosIndexRoute
@@ -677,9 +676,9 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/native/driver-location'
     | '/api/operations/email-pdf'
     | '/api/operations/report-scheduler'
-    | '/api/native/driver-location'
     | '/admin/departamentos/'
     | '/admin/formularios/'
     | '/admin/usuarios/'
@@ -741,9 +740,9 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/native/driver-location'
     | '/api/operations/email-pdf'
     | '/api/operations/report-scheduler'
-    | '/api/native/driver-location'
     | '/admin/departamentos'
     | '/admin/formularios'
     | '/admin/usuarios'
@@ -809,9 +808,9 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/validacao/$painId'
     | '/api/asaas/webhook'
+    | '/api/native/driver-location'
     | '/api/operations/email-pdf'
     | '/api/operations/report-scheduler'
-    | '/api/native/driver-location'
     | '/admin/departamentos/'
     | '/admin/formularios/'
     | '/admin/usuarios/'
@@ -839,9 +838,9 @@ export interface RootRouteChildren {
   SegurancaRoute: typeof SegurancaRoute
   TermosRoute: typeof TermosRoute
   ApiAsaasWebhookRoute: typeof ApiAsaasWebhookRoute
+  ApiNativeDriverLocationRoute: typeof ApiNativeDriverLocationRoute
   ApiOperationsEmailPdfRoute: typeof ApiOperationsEmailPdfRoute
   ApiOperationsReportSchedulerRoute: typeof ApiOperationsReportSchedulerRoute
-  ApiNativeDriverLocationRoute: typeof ApiNativeDriverLocationRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -1254,6 +1253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAsaasWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/native/driver-location': {
+      id: '/api/native/driver-location'
+      path: '/api/native/driver-location'
+      fullPath: '/api/native/driver-location'
+      preLoaderRoute: typeof ApiNativeDriverLocationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/operations/email-pdf': {
       id: '/api/operations/email-pdf'
       path: '/api/operations/email-pdf'
@@ -1266,13 +1272,6 @@ declare module '@tanstack/react-router' {
       path: '/api/operations/report-scheduler'
       fullPath: '/api/operations/report-scheduler'
       preLoaderRoute: typeof ApiOperationsReportSchedulerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/native/driver-location': {
-      id: '/api/native/driver-location'
-      path: '/api/native/driver-location'
-      fullPath: '/api/native/driver-location'
-      preLoaderRoute: typeof ApiNativeDriverLocationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/perfil-viagem/$rideId/$userId': {
@@ -1470,9 +1469,9 @@ const rootRouteChildren: RootRouteChildren = {
   SegurancaRoute: SegurancaRoute,
   TermosRoute: TermosRoute,
   ApiAsaasWebhookRoute: ApiAsaasWebhookRoute,
+  ApiNativeDriverLocationRoute: ApiNativeDriverLocationRoute,
   ApiOperationsEmailPdfRoute: ApiOperationsEmailPdfRoute,
   ApiOperationsReportSchedulerRoute: ApiOperationsReportSchedulerRoute,
-  ApiNativeDriverLocationRoute: ApiNativeDriverLocationRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
