@@ -16,7 +16,8 @@ describe("F07 demand without online drivers",()=>{
     expect(sql).toContain("expires_at=now()+interval '30 minutes'");
     expect(sql).toContain("public.quick_ride_request(");
     expect(sql).toContain("WHERE id=r_id AND passenger_id=auth.uid() AND status='SEARCHING'");
-    expect(sheet).toContain("Pedido ativo. Aguardando motorista");
+    expect(sheet).toContain("Seu pedido está ativo. Acompanhe a busca por aqui.");
+    expect(sheet).not.toContain("nenhum esteja online");
     expect(sheet).toContain("Você pode cancelar a qualquer momento");
   });
   it("counts preparing passengers and accepted pending demand without sharing GPS",()=>{

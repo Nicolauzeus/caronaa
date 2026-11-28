@@ -352,7 +352,7 @@ describe("Home mobile", () => {
     await waitFor(()=>expect(api.unifiedFare).toHaveBeenCalled());
     expect(await screen.findByRole("radio",{name:/Flash Carro/})).toBeInTheDocument();
     expect(screen.getByRole("radio",{name:/Flash Moto/})).toBeInTheDocument();
-    expect(screen.getAllByText("Sem motorista agora · você pode aguardar")).toHaveLength(2);
+    expect(screen.getAllByText("Buscando motoristas na sua área…")).toHaveLength(2);
     expect(api.quickPanel).toHaveBeenLastCalledWith(expect.objectContaining({
       originPoint:expect.objectContaining({lat:-3.73,lng:-38.52}),
       destinationPoint:expect.objectContaining({lat:-3.75,lng:-38.5}),

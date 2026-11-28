@@ -6,7 +6,7 @@ export type SetupStatus = {
   preciseLocation?: boolean; approximateLocation?: boolean; gpsEnabled?: boolean;
   notifications?: boolean; rideChannel?: boolean; batteryExempt?: boolean;
 };
-export type SetupTarget = "app" | "gps" | "battery" | "notifications" | "channel";
+export type SetupTarget = "app" | "gps" | "battery" | "notifications" | "channel" | "network";
 const bridge = registerPlugin<{
   permissionSetupStatus(): Promise<SetupStatus>;
   requestSetupLocation(): Promise<SetupStatus>;
@@ -73,4 +73,9 @@ export function setupSeenKey(userId: string, driver: boolean): string {
 
 export function setupStatusLabel(value: boolean | undefined): string {
   return value === true ? "Ativo" : value === false ? "Pendente" : "Verificar nos ajustes";
+}
+
+/** One explicit action per step; unknown or denied permissions remain actionable. */
+export function nextSetupStep<T extends { title: string; value: boolean | undefined }>(rows: readonly T[], visited: readonly string[]): T | undefined {
+  return rows.find(row => row.value !== true && !visited.includes(row.title));
 }

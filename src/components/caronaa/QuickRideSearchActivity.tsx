@@ -69,6 +69,12 @@ export function QuickRideSearchActivity({rideId,status,compact=false}:{rideId:st
   const searching=status==="SEARCHING";
   const driver=searching ? audience.viewers[index%Math.max(1,audience.viewers.length)] : audience.acceptedDriver;
 
+  if(searching && audience.watchingCount === 0 && !driver) return <div role="status" aria-live="polite"
+    className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.045] p-3 text-xs text-white/85">
+    <span aria-hidden="true" className="size-4 shrink-0 animate-spin rounded-full border-2 border-[#FFBB00]/30 border-t-[#FFBB00] motion-reduce:animate-none"/>
+    <span>Buscando motoristas na sua área…</span>
+  </div>;
+
   if(compact){
     return <div aria-label="Resumo do acompanhamento da corrida"
       className="flex min-w-0 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.045] p-2">

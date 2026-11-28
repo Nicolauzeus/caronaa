@@ -175,6 +175,7 @@ public class CaronaaNativePlugin extends Plugin {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:" + getContext().getPackageName()));
         if ("gps".equals(target)) intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+        else if ("network".equals(target)) intent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
         else if ("battery".equals(target)) intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
         else if ("notifications".equals(target) && android.os.Build.VERSION.SDK_INT >= 26) {
             intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)

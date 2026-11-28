@@ -6,3 +6,8 @@
 - GPS não inicia rastreamento nem coleta coordenadas por este fluxo. Serviço de localização foreground continua vinculado a consentimento, disponibilidade e autorização. Não solicitar localização sempre ativa, câmera, galeria, contatos ou microfone preventivamente. Câmera/fotos seguem os fluxos existentes.
 - O próximo APK anuncia rideActions=false para preservar entrega convencional enquanto a entrega data-only no 1.1.1 não estiver validada fisicamente. O código interativo permanece para diagnóstico futuro; nenhum token existente é modificado diretamente. 1.1.0 original permanece disponível.
 - Aceite físico: instalar candidato assinado por cima de 1.1.0 e 1.1.1, confirmar login e papel, permitir/recusar, retornar de ajustes, testar toque, verificar FCM convencional em primeiro e segundo plano, GPS/mapa, disponibilidade e logout. Confirmar Xiaomi e Android 13+. Não publicar como estável apenas com build verde.
+
+## Atalho do mapa e modo guiado
+- FAB amarelo separado de zoom e GPS, no mapa inicial Android, fora de corrida operacional e painel totalmente expandido.
+- Ativar tudo conduz os itens pendentes/indeterminados em sequência por toque, com opção de pular e atualização ao voltar. Conexão local via navigator.onLine; ajuste de rede por ACTION_WIRELESS_SETTINGS. Não declarar conectividade do backend. Nenhuma permissão de sobreposição ou acesso a notificações de outros apps.
+- F07: texto neutro durante busca real, sem exibir contagem zero; manter contagens positivas reais, cancelamento e prazo no servidor. Não simular presença ou manter busca falsa após expiração.

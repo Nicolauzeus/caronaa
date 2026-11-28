@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bell, BatteryCharging, MapPin, Navigation, Settings2, ShieldCheck, Smartphone, Volume2 } from "lucide-react";
+import { Bell, BatteryCharging, MapPin, Navigation, Settings2, ShieldCheck, Smartphone, Volume2, Wifi, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { isNativeAndroid, onNativeAppResume } from "@/lib/native/capacitor-bridge";
 import { testRideAlertSound } from "@/lib/native/driver-notifications";
-import { openSetupSettings, readSetupStatus, requestSetupGps, requestSetupNotifications, setupSeenKey, setupStatusLabel, type SetupStatus } from "@/lib/native/permission-setup";
+import { openSetupSettings, readSetupStatus, requestSetupGps, requestSetupNotifications, setupSeenKey, setupStatusLabel, nextSetupStep, type SetupStatus } from "@/lib/native/permission-setup";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+export function NativePermissionSetupFab() {
+  if (!isNativeAndroid()) return null;
+  return <button type="button" aria-label="Abrir painel de permissões" title="Permissões do aplicativo"
+    onClick={() => window.dispatchEvent(new Event("caronaa:permission-setup"))}
+    className="absolute right-3 top-48 z-20 flex size-12 items-center justify-center rounded-full border border-[#121212]/20 bg-[#FFBB00] text-[#121212] shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+    <Plus size={24} aria-hidden />
+  </button>;
+}
 
 export function NativePermissionSetupLink() {
   if (!isNativeAndroid()) return null;
@@ -23,6 +32,9 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SetupStatus>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [guided, setGuided] = useState(false);
+  const [visited, setVisited] = useState<string[]>([]);
+  const [online, setOnline] = useState<boolean | undefined>(undefined);
   const generation = useRef(0);
   const actionLock = useRef(false);
   const native = isNativeAndroid();
@@ -64,10 +76,14 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
       const id = ++generation.current;
       void readSetupStatus().then(value => { if (alive && id === generation.current) setStatus(value); });
     };
+    const network = () => setOnline(navigator.onLine);
+    network();
+    window.addEventListener("online", network);
+    window.addEventListener("offline", network);
     update();
-    const off = onNativeAppResume(update);
+    const off = onNativeAppResume(() => { network(); update(); });
     window.addEventListener("focus", update);
-    return () => { alive = false; generation.current++; off(); window.removeEventListener("focus", update); };
+    return () => { alive = false; generation.current++; off(); window.removeEventListener("focus", update); window.removeEventListener("online", network); window.removeEventListener("offline", network); };
   }, [native, open]);
 
   const dismiss = () => {
@@ -75,7 +91,7 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
     if (user?.id && role) {
       try { localStorage.setItem(setupSeenKey(user.id, driver), "yes"); } catch { /* no login dependency */ }
     }
-    setOpen(false); setMessage("");
+    setOpen(false); setMessage(""); setGuided(false); setVisited([]);
   };
   const act = async (action: () => Promise<boolean>, hint?: string) => {
     if (actionLock.current) return;
@@ -95,12 +111,20 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
     { icon: Bell, title: "Notificações", description: driver ? "Receba avisos de corridas mesmo fora do app." : "Permita avisos importantes do aplicativo.", value: status.notifications, action: () => requestSetupNotifications(driver), button: "Permitir / ajustar" },
     { icon: MapPin, title: "Localização precisa", description: "Use o mapa e encontre o ponto de embarque. Escolha localização precisa enquanto usa o app.", value: status.preciseLocation, action: () => requestSetupGps(), button: "Permitir GPS" },
     { icon: Navigation, title: "GPS do aparelho", description: "Ative a localização do Android para o mapa funcionar.", value: status.gpsEnabled, action: () => openSetupSettings("gps"), button: "Abrir localização" },
+    { icon: Wifi, title: "Conexão de rede", description: "Verifique Wi-Fi ou dados móveis. O estado indica a conexão local, não confirma acesso ao servidor.", value: online, action: () => openSetupSettings("network"), button: "Abrir rede" },
     ...(driver ? [
       { icon: Volume2, title: "Som e vibração das corridas", description: "Na categoria Corridas urgentes, habilite som, vibração e avisos na tela.", value: status.rideChannel, action: () => openSetupSettings("channel"), button: "Ajustar alertas" },
       { icon: BatteryCharging, title: "Bateria sem restrições", description: "Recomendado para receber pedidos em segundo plano. Em Bateria, selecione Sem restrições ou Não otimizar. Pode aumentar o consumo.", value: status.batteryExempt, action: () => openSetupSettings("battery"), button: "Ajustar bateria" },
       { icon: Smartphone, title: "Execução em segundo plano", description: "Em aparelhos Xiaomi ou similares, permita início automático e atividade em segundo plano se essas opções existirem. A disponibilidade profissional continua sob seu controle.", value: undefined, action: () => openSetupSettings("app"), button: "Abrir ajustes" },
     ] : []),
   ];
+
+  const next = nextSetupStep(rows, visited);
+  const advance = () => {
+    if (!next || actionLock.current) return;
+    setVisited(previous => [...previous, next.title]);
+    void act(next.action);
+  };
 
   if (!native) return <>{children}</>;
   return <>
@@ -112,6 +136,17 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
           <DialogTitle className="text-center text-xl">Prepare seu CARONAA</DialogTitle>
           <DialogDescription className="text-center">Configure as permissões necessárias para usar o app com segurança. Você decide o que permitir e pode voltar a estes ajustes pelo Perfil.</DialogDescription>
         </DialogHeader>
+        <button type="button" disabled={busy} onClick={() => { setVisited([]); setGuided(true); }}
+          className="min-h-12 rounded-xl bg-primary font-bold text-primary-foreground">Ativar tudo · configuração guiada</button>
+        {guided && <div className="space-y-2 rounded-xl border border-primary/40 p-3">
+          <p role="status" className="text-sm font-semibold">{next ? "Próximo ajuste: " + next.title : "Etapas revisadas. Confira os itens que continuam pendentes."}</p>
+          <p className="text-xs text-muted-foreground">Abra um ajuste por vez, autorize se desejar e volte ao CARONAA. Nenhuma permissão é ativada sem seu consentimento.</p>
+          {next && <div className="grid grid-cols-2 gap-2">
+            <button type="button" disabled={busy} onClick={advance} className="min-h-11 rounded-lg bg-primary text-xs font-bold text-primary-foreground">Abrir próximo ajuste</button>
+            <button type="button" disabled={busy} onClick={() => setVisited(previous => [...previous, next.title])} className="min-h-11 rounded-lg border border-border text-xs font-bold">Pular etapa</button>
+          </div>}
+          <button type="button" disabled={busy} onClick={() => setGuided(false)} className="min-h-10 text-xs font-bold text-muted-foreground">Sair do modo guiado</button>
+        </div>}
         <div className="space-y-2">
           {rows.map(({ icon: Icon, title, description, value, action, button }) => <div key={title} className="rounded-xl border border-border p-3">
             <div className="flex items-start gap-3">
@@ -122,15 +157,16 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
                   <span className={value === true ? "text-xs font-semibold text-emerald-700 dark:text-emerald-300" : "text-xs text-muted-foreground"}>{setupStatusLabel(value)}</span>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-                {value !== true && <button type="button" disabled={busy} onClick={() => void act(action)} className="mt-2 min-h-10 rounded-lg border border-border px-3 text-xs font-bold disabled:opacity-50">{button}</button>}
+                {<button type="button" disabled={busy} onClick={() => void act(action)} className="mt-2 min-h-10 rounded-lg border border-border px-3 text-xs font-bold disabled:opacity-50">{button}</button>}
               </div>
             </div>
           </div>)}
         </div>
+        <button type="button" disabled={busy} onClick={() => void act(() => openSetupSettings("notifications"))} className="min-h-11 rounded-xl border border-border text-sm font-bold">Configurar notificações</button>
         <button type="button" disabled={busy} onClick={() => void act(() => openSetupSettings("app"))} className="min-h-11 rounded-xl border border-border text-sm font-bold">Abrir ajustes gerais do CARONAA</button>
         {status.preciseLocation === false && status.approximateLocation === true && <p className="text-xs text-muted-foreground">Localização aproximada permitida; selecione a opção precisa nos ajustes se necessário.</p>}
         {driver && <button type="button" disabled={busy} onClick={() => void act(async () => (await testRideAlertSound()) === "ok", "Alerta local solicitado. Confira o som e a vibração; isso não testa o envio remoto.")} className="min-h-11 rounded-xl border border-border text-sm font-bold">Testar som de corrida</button>}
-        <p className="text-xs leading-relaxed text-muted-foreground">Permitir localização não ativa o rastreamento profissional. A câmera e as fotos são solicitadas somente quando você usa esses recursos.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Permitir localização não ativa o rastreamento profissional. O serviço de localização em segundo plano funciona somente com disponibilidade e consentimento do motorista. A câmera e as fotos são solicitadas somente quando você usa esses recursos.</p>
         {message && <p role="status" className="text-xs font-medium">{message}</p>}
         <button type="button" disabled={busy} onClick={dismiss} className="min-h-12 rounded-xl bg-primary font-bold text-primary-foreground">{rows.every(row => row.value === true) ? "Concluir" : "Continuar para o app"}</button>
       </DialogContent>

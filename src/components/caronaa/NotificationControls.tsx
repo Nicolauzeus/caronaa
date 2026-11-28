@@ -88,7 +88,7 @@ export function NotificationControls({ dock = false }: { dock?: boolean } = {}) 
   const label = settings.soundEnabled ? "Desativar som" : "Ativar som";
   return (
     <div className={dock?"flex min-w-0 flex-1 items-stretch":"flex shrink-0 items-center gap-1"}>
-      {!dock&&<Tooltip>
+      {!dock&&<div className="hidden lg:block"><Tooltip>
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
@@ -105,7 +105,7 @@ export function NotificationControls({ dock = false }: { dock?: boolean } = {}) 
           </Button>
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
-      </Tooltip>}
+      </Tooltip></div>}
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -114,10 +114,10 @@ export function NotificationControls({ dock = false }: { dock?: boolean } = {}) 
             className={dock?"relative flex h-14 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted":"relative"}
             aria-label={`Notificações, ${unread} não lidas`}
           >
-            <Bell className={dock?"size-[22px]":"size-4"} />
+            <Bell className={dock?"size-[22px]":"size-5"} />
             {dock&&<span className="truncate text-[10px]">Notificações</span>}
             {unread > 0 && (
-              <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
+              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-4 text-destructive-foreground">{unread > 99 ? "99+" : unread}</span>
             )}
           </Button>
         </PopoverTrigger>

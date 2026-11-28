@@ -284,7 +284,7 @@ export function ShellJourneyPlanner({
   const flashChoices=<section aria-label="Escolha sua carona" className="space-y-3">
     <div className="space-y-1">
       <h2 className="font-[Sora] text-lg font-extrabold text-white">Escolha sua Corrida Rápida</h2>
-      <p className="text-xs leading-relaxed text-white/65">Confira o preço. Mesmo sem motorista online, você pode solicitar e aguardar por até 30 minutos.</p>
+      <p className="text-xs leading-relaxed text-white/65">Confira o preço e solicite sua corrida. Acompanhe a busca na mesma tela.</p>
     </div>
     <div role="radiogroup" aria-label="Opções de viagem" className="space-y-2">
       {(["MOTO","CAR"] as const).map(type=>{
@@ -314,7 +314,7 @@ export function ShellJourneyPlanner({
             <small className="mt-1 block text-[11px] text-white/55">{fare?.durationMinutes?Math.round(fare.durationMinutes)+" min · ":""}{fare?.distanceKm.toFixed(1)??"—"} km</small>
             <small className={`mt-1 block text-[11px] ${available?"text-emerald-300":"text-white/60"}`} aria-live="polite">
               {flashDriverLoading?"Verificando motoristas…":radarFailed?"Radar temporariamente indisponível · pode solicitar":available
-                ?`${onlineCount} ${type==="MOTO"?"mototaxista(s)":"motorista(s)"} online`:"Sem motorista agora · você pode aguardar"}
+                ?`${onlineCount} ${type==="MOTO"?"mototaxista(s)":"motorista(s)"} online`:"Buscando motoristas na sua área…"}
             </small>
           </span>
           <span className="shrink-0 text-right">
@@ -486,7 +486,7 @@ export function ShellJourneyPlanner({
                   {flashFares[exclusiveVehicle]!.distanceKm.toFixed(1)} km · aproximadamente {Math.round(flashFares[exclusiveVehicle]!.durationMinutes)} min
                 </p>}
               <p className="border-t border-white/10 pt-2 text-xs text-white/65">Pagamento direto ao motorista, conforme a operação da viagem. Revise o preço antes de confirmar.</p>
-              {(flashDriverCounts[exclusiveVehicle]??0)===0&&<p role="status" className="text-xs text-[#FFBB00]">Nenhum motorista online agora. Seu pedido ficará ativo por até 30 minutos para receber novos motoristas elegíveis.</p>}
+              {(flashDriverCounts[exclusiveVehicle]??0)===0&&<p role="status" className="text-xs text-[#FFBB00]">Buscando motoristas na sua área… Você pode confirmar seu pedido e acompanhar a busca.</p>}
             </div>
           </section>}
         {!flashRideActive&&flashStep==="shared"&&flashOnRoute}
