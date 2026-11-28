@@ -4,7 +4,17 @@ import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
 
 export type PushSubscribeResult =
   | { ok: true }
-  | { ok: false; reason: "UNSUPPORTED" | "DENIED" | "NO_SERVICE_WORKER" | "SAVE_FAILED" };
+  | { ok: false; reason: "UNSUPPORTED" | "INSTALL_REQUIRED" | "DENIED" | "NO_SERVICE_WORKER" | "SAVE_FAILED" };
+
+/** iOS Web Push is available from an installed Home Screen web app. */
+export function needsIOSHomeScreen(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined" || isNativeAndroid()) return false;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const installed = window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return ios && !installed;
+}
 
 export function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
@@ -24,20 +34,59 @@ type Rpc = (fn: string, args: Record<string, unknown>) => Promise<{ error: unkno
 const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as Rpc)(fn, args);
 
-async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
-  try {
-    return (await navigator.serviceWorker.getRegistration("/")) ?? null;
-  } catch { return null; }
+/** First-load registration and activation share one bounded deadline. */
+function getRegistration(ensureActive = false): Promise<ServiceWorkerRegistration | null> {
+  return new Promise((resolve) => {
+    let finished = false;
+    const cleanup: Array<() => void> = [];
+    const finish = (registration: ServiceWorkerRegistration | null) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      cleanup.forEach(remove => remove());
+      resolve(registration);
+    };
+    const timer = setTimeout(() => finish(null), 8000);
+    void (async () => {
+      try {
+        let registration = await navigator.serviceWorker.getRegistration("/");
+        if (finished) return;
+        if (!registration && ensureActive) {
+          registration = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+        }
+        if (finished) return;
+        if (!registration || !ensureActive) { finish(registration ?? null); return; }
+        const current = registration;
+        const observed = new Set<ServiceWorker>();
+        const check = () => {
+          if (finished) return;
+          if (current.active?.state === "activated") { finish(current); return; }
+          for (const worker of [current.installing, current.waiting, current.active]) {
+            if (!worker || observed.has(worker)) continue;
+            observed.add(worker);
+            worker.addEventListener("statechange", check);
+            cleanup.push(() => worker.removeEventListener("statechange", check));
+          }
+        };
+        current.addEventListener("updatefound", check);
+        cleanup.push(() => current.removeEventListener("updatefound", check));
+        check();
+      } catch { finish(null); }
+    })();
+  });
 }
 
 /** Ask permission, subscribe through the service worker and save it for the signed-in driver. */
 export async function subscribeDriverToPush(): Promise<PushSubscribeResult> {
+  if (needsIOSHomeScreen()) return { ok: false, reason: "INSTALL_REQUIRED" };
   if (!isWebPushSupported()) return { ok: false, reason: "UNSUPPORTED" };
-  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-  if (permission !== "granted") return { ok: false, reason: "DENIED" };
-  const registration = await getRegistration();
-  if (!registration) return { ok: false, reason: "NO_SERVICE_WORKER" };
   try {
+    // Ask immediately within the driver's tap, before awaiting worker setup.
+    if (Notification.permission === "denied") return { ok: false, reason: "DENIED" };
+    const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+    if (permission !== "granted") return { ok: false, reason: "DENIED" };
+    const registration = await getRegistration(true);
+    if (!registration) return { ok: false, reason: "NO_SERVICE_WORKER" };
     const subscription = (await registration.pushManager.getSubscription()) ??
       (await registration.pushManager.subscribe({
         userVisibleOnly: true,

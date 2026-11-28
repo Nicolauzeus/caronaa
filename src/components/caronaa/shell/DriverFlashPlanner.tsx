@@ -17,6 +17,8 @@ import {
   type FlashDriverRide, type FlashPassengerDetails,
 } from "@/services/flash-driver-service";
 import { enableDriverAlerts, getDriverAlertPermission } from "@/lib/native/driver-notifications";
+import { isNativeAndroid } from "@/lib/native/capacitor-bridge";
+import { DriverWebPushStatus } from "@/components/caronaa/DriverWebPushStatus";
 import { DriverPwaPromotionCard } from "@/components/caronaa/DriverPwaPromotionCard";
 import { DriverNotificationPermissionDialog, KeepScreenOpenWarning, NativeAlertSetupCard, RemoteAlertsUnavailableNotice } from "@/components/caronaa/DriverNotificationPermissionDialog";
 import { FlashIncomingOrderCard } from "./FlashIncomingOrderCard";
@@ -206,22 +208,31 @@ export function DriverFlashPlanner({
   const [noAlerts,setNoAlerts]=useState(false);
   // Explain notifications before the browser prompt; never block going online.
   const [remoteUnavailable,setRemoteUnavailable]=useState(false);
+  const [alertResult,setAlertResult]=useState<Awaited<ReturnType<typeof enableDriverAlerts>>|null>(null);
+  const [alertPending,setAlertPending]=useState(false);
   const applyAlertResult=(r:Awaited<ReturnType<typeof enableDriverAlerts>>)=>{
+    setAlertResult(r);
     setNoAlerts(!r.ok&&r.reason==="DENIED");
     setRemoteUnavailable(r.ok&&r.remote==="native-unavailable");
+  };
+  const setupAlerts=async()=>{
+    setAlertPending(true);
+    try {
+      const result=await enableDriverAlerts().catch(()=>({ok:false as const,reason:"SAVE_FAILED" as const}));
+      applyAlertResult(result);
+    } finally { setAlertPending(false); }
   };
   const requestActivate=async()=>{
     if(presence.busy||presence.online)return;
     const permission=await getDriverAlertPermission();
     if(permission==="prompt"){setAskNotify(true);return;}
-    if(permission==="granted")void enableDriverAlerts().then(applyAlertResult).catch(()=>undefined);
+    if(permission==="granted"||!isNativeAndroid())void setupAlerts();
     else setNoAlerts(true);
     void activate();
   };
   const allowNotify=async()=>{
     setAskNotify(false);
-    const r=await enableDriverAlerts().catch(()=>({ok:false as const,reason:"UNSUPPORTED" as const}));
-    applyAlertResult(r);
+    await setupAlerts();
     void activate();
   };
   const skipNotify=()=>{setAskNotify(false);setNoAlerts(true);void activate();};
@@ -342,9 +353,10 @@ export function DriverFlashPlanner({
       style={{fontFamily:"Manrope, sans-serif"}}>
       <DriverNotificationPermissionDialog open={askNotify} onAllow={()=>void allowNotify()} onSkip={skipNotify}/>
       {!active&&!presence.online&&<DriverPwaPromotionCard/>}
-      {!active&&presence.online&&noAlerts&&<KeepScreenOpenWarning/>}
+      {!active&&presence.online&&noAlerts&&isNativeAndroid()&&<KeepScreenOpenWarning/>}
       {!active&&presence.online&&!noAlerts&&remoteUnavailable&&<RemoteAlertsUnavailableNotice/>}
       {!active&&<NativeAlertSetupCard/>}
+      {!active&&(snap!=="peek"||alertResult!==null)&&<DriverWebPushStatus result={alertResult} pending={alertPending} onEnable={()=>void setupAlerts()}/>}
       {!active&&snap==="peek"&&<>
         <LocationAutocomplete id="flash-driver-destination" label="Para onde você vai? (opcional)"
           value={destination} selectedLocation={destPoint} variant="glass"
