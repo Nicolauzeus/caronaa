@@ -53,6 +53,7 @@ export async function requestSetupNotifications(driver: boolean): Promise<boolea
     let display = (await LocalNotifications.checkPermissions()).display;
     if (display === "prompt" || display === "prompt-with-rationale") {
       display = (await LocalNotifications.requestPermissions()).display;
+      if (display !== "granted") return true; // Respect refusal; settings remain available on a later tap.
     }
     if (display === "granted") {
       const status = await readSetupStatus();

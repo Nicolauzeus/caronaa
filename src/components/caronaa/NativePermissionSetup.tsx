@@ -25,7 +25,6 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState("");
   const generation = useRef(0);
   const actionLock = useRef(false);
-  const manual = useRef(false);
   const native = isNativeAndroid();
   const driver = role === "MOTORISTA";
 
@@ -53,7 +52,7 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!native) return;
-    const show = () => { manual.current = true; setOpen(true); setReady(true); };
+    const show = () => { setOpen(true); setReady(true); };
     window.addEventListener("caronaa:permission-setup", show);
     return () => window.removeEventListener("caronaa:permission-setup", show);
   }, [native]);
@@ -76,7 +75,7 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
     if (user?.id && role) {
       try { localStorage.setItem(setupSeenKey(user.id, driver), "yes"); } catch { /* no login dependency */ }
     }
-    setOpen(false); setMessage(""); manual.current = false;
+    setOpen(false); setMessage("");
   };
   const act = async (action: () => Promise<boolean>, hint?: string) => {
     if (actionLock.current) return;
@@ -98,7 +97,7 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
     { icon: Navigation, title: "GPS do aparelho", description: "Ative a localização do Android para o mapa funcionar.", value: status.gpsEnabled, action: () => openSetupSettings("gps"), button: "Abrir localização" },
     ...(driver ? [
       { icon: Volume2, title: "Som e vibração das corridas", description: "Na categoria Corridas urgentes, habilite som, vibração e avisos na tela.", value: status.rideChannel, action: () => openSetupSettings("channel"), button: "Ajustar alertas" },
-      { icon: BatteryCharging, title: "Bateria sem restrições", description: "Recomendado para receber pedidos quando o app estiver em segundo plano. Pode aumentar o consumo de bateria.", value: status.batteryExempt, action: () => openSetupSettings("battery"), button: "Ajustar bateria" },
+      { icon: BatteryCharging, title: "Bateria sem restrições", description: "Recomendado para receber pedidos em segundo plano. Em Bateria, selecione Sem restrições ou Não otimizar. Pode aumentar o consumo.", value: status.batteryExempt, action: () => openSetupSettings("battery"), button: "Ajustar bateria" },
       { icon: Smartphone, title: "Execução em segundo plano", description: "Em aparelhos Xiaomi ou similares, permita início automático e atividade em segundo plano se essas opções existirem. A disponibilidade profissional continua sob seu controle.", value: undefined, action: () => openSetupSettings("app"), button: "Abrir ajustes" },
     ] : []),
   ];
@@ -128,6 +127,7 @@ export function NativePermissionSetup({ children }: { children: ReactNode }) {
             </div>
           </div>)}
         </div>
+        <button type="button" disabled={busy} onClick={() => void act(() => openSetupSettings("app"))} className="min-h-11 rounded-xl border border-border text-sm font-bold">Abrir ajustes gerais do CARONAA</button>
         {status.preciseLocation === false && status.approximateLocation === true && <p className="text-xs text-muted-foreground">Localização aproximada permitida; selecione a opção precisa nos ajustes se necessário.</p>}
         {driver && <button type="button" disabled={busy} onClick={() => void act(async () => (await testRideAlertSound()) === "ok", "Alerta local solicitado. Confira o som e a vibração; isso não testa o envio remoto.")} className="min-h-11 rounded-xl border border-border text-sm font-bold">Testar som de corrida</button>}
         <p className="text-xs leading-relaxed text-muted-foreground">Permitir localização não ativa o rastreamento profissional. A câmera e as fotos são solicitadas somente quando você usa esses recursos.</p>
